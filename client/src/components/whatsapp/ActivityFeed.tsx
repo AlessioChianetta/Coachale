@@ -6,17 +6,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Activity, 
   MessageSquare, 
-  UserPlus, 
-  Calendar, 
-  CheckCircle, 
-  XCircle,
-  Clock,
   Bot,
-  Zap,
   AlertCircle,
   RefreshCw,
   Send,
-  Phone
+  User,
+  Sparkles
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -25,78 +20,21 @@ import { it } from "date-fns/locale";
 
 interface ActivityItem {
   id: string;
-  type: "message_sent" | "message_received" | "lead_qualified" | "appointment_booked" | "agent_started" | "agent_paused" | "conversation_completed" | "error";
-  agentId: string;
   agentName: string;
-  description: string;
+  action: string;
+  icon: string;
   timestamp: string;
-  metadata?: Record<string, any>;
+  preview?: string;
 }
 
-const activityConfig: Record<string, { 
-  icon: typeof MessageSquare; 
-  color: string; 
-  bgColor: string;
-  label: string;
-}> = {
-  message_sent: {
-    icon: Send,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-    label: "Messaggio Inviato",
-  },
-  message_received: {
-    icon: MessageSquare,
-    color: "text-green-600",
-    bgColor: "bg-green-50",
-    label: "Messaggio Ricevuto",
-  },
-  lead_qualified: {
-    icon: UserPlus,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50",
-    label: "Lead Qualificato",
-  },
-  appointment_booked: {
-    icon: Calendar,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-    label: "Appuntamento",
-  },
-  agent_started: {
-    icon: Zap,
-    color: "text-green-600",
-    bgColor: "bg-green-50",
-    label: "Agente Attivato",
-  },
-  agent_paused: {
-    icon: Clock,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-    label: "Agente in Pausa",
-  },
-  conversation_completed: {
-    icon: CheckCircle,
-    color: "text-green-600",
-    bgColor: "bg-green-50",
-    label: "Conversazione Completata",
-  },
-  error: {
-    icon: AlertCircle,
-    color: "text-red-600",
-    bgColor: "bg-red-50",
-    label: "Errore",
-  },
+const iconMap: Record<string, { icon: typeof Send; color: string; bg: string }> = {
+  "🤖": { icon: Bot, color: "text-blue-600", bg: "bg-gradient-to-br from-blue-400 to-blue-600" },
+  "📩": { icon: MessageSquare, color: "text-emerald-600", bg: "bg-gradient-to-br from-emerald-400 to-teal-600" },
+  "👤": { icon: User, color: "text-purple-600", bg: "bg-gradient-to-br from-purple-400 to-purple-600" },
 };
 
-function ActivityRow({ activity }: { activity: ActivityItem }) {
-  const config = activityConfig[activity.type] || {
-    icon: Activity,
-    color: "text-slate-600",
-    bgColor: "bg-slate-50",
-    label: "Attivita",
-  };
-  
+function ActivityRow({ activity, isFirst }: { activity: ActivityItem; isFirst?: boolean }) {
+  const config = iconMap[activity.icon] || iconMap["🤖"];
   const Icon = config.icon;
 
   const timeAgo = formatDistanceToNow(new Date(activity.timestamp), {
@@ -105,25 +43,41 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
   });
 
   return (
-    <div className="flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
-      <div className={cn("p-2 rounded-lg", config.bgColor)}>
-        <Icon className={cn("h-4 w-4", config.color)} />
+    <div className={cn(
+      "group relative flex items-start gap-3 p-3 rounded-xl transition-all duration-200",
+      "hover:bg-gradient-to-r hover:from-slate-50 hover:to-white",
+      isFirst && "bg-gradient-to-r from-blue-50/50 to-white"
+    )}>
+      <div className="absolute left-[27px] top-[52px] bottom-0 w-0.5 bg-gradient-to-b from-slate-200 to-transparent group-last:hidden" />
+      
+      <div className={cn(
+        "relative z-10 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg",
+        config.bg,
+        "transition-transform group-hover:scale-110"
+      )}>
+        <Icon className="h-5 w-5 text-white" />
       </div>
       
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="font-medium text-sm text-slate-900 truncate">
+      <div className="flex-1 min-w-0 pt-0.5">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="font-semibold text-sm text-slate-800">
             {activity.agentName}
           </span>
-          <Badge variant="outline" className="text-xs px-1.5 py-0">
-            {config.label}
-          </Badge>
+          <span className="text-sm text-slate-500">
+            {activity.action}
+          </span>
         </div>
-        <p className="text-sm text-slate-600 line-clamp-2">
-          {activity.description}
-        </p>
-        <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-          <Clock className="h-3 w-3" />
+        
+        {activity.preview && (
+          <div className="bg-slate-50 rounded-lg px-3 py-2 mt-2 border border-slate-100">
+            <p className="text-xs text-slate-600 line-clamp-2 italic">
+              "{activity.preview}"
+            </p>
+          </div>
+        )}
+        
+        <p className="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
+          <Sparkles className="h-3 w-3" />
           {timeAgo}
         </p>
       </div>
@@ -134,14 +88,14 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
 function ActivityRowSkeleton() {
   return (
     <div className="flex items-start gap-3 p-3">
-      <Skeleton className="w-8 h-8 rounded-lg" />
-      <div className="flex-1 space-y-2">
+      <Skeleton className="w-10 h-10 rounded-xl" />
+      <div className="flex-1 space-y-2 pt-0.5">
         <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-32" />
         </div>
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-12 w-full rounded-lg" />
+        <Skeleton className="h-3 w-20" />
       </div>
     </div>
   );
@@ -167,50 +121,66 @@ export function ActivityFeed() {
   const activities = data || [];
 
   return (
-    <Card className="bg-white border border-slate-200 h-full flex flex-col">
-      <CardHeader className="pb-2 flex-row items-center justify-between">
-        <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-          <Activity className="h-5 w-5 text-blue-500" />
+    <Card className="bg-white/80 backdrop-blur-sm border border-slate-200/80 shadow-xl shadow-slate-200/50 h-full flex flex-col overflow-hidden">
+      <CardHeader className="pb-3 flex-row items-center justify-between bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+        <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-300/30">
+            <Activity className="h-5 w-5 text-white" />
+          </div>
           Attivita Recenti
         </CardTitle>
         <button
           onClick={() => refetch()}
           disabled={isFetching}
           className={cn(
-            "p-1.5 rounded-lg hover:bg-slate-100 transition-colors",
+            "p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-all",
             isFetching && "animate-spin"
           )}
         >
-          <RefreshCw className="h-4 w-4 text-slate-500" />
+          <RefreshCw className="h-4 w-4 text-slate-600" />
         </button>
       </CardHeader>
       
-      <CardContent className="flex-1 overflow-hidden pt-2 px-2">
+      <CardContent className="flex-1 overflow-hidden p-4">
         {isError ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
-            <p className="text-sm text-red-600">Errore nel caricamento</p>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="p-4 rounded-full bg-red-100 mb-4">
+              <AlertCircle className="h-8 w-8 text-red-500" />
+            </div>
+            <p className="text-sm font-medium text-red-600">Errore nel caricamento</p>
+            <button 
+              onClick={() => refetch()}
+              className="mt-3 text-xs text-blue-600 hover:underline"
+            >
+              Riprova
+            </button>
           </div>
         ) : (
-          <ScrollArea className="h-full">
+          <ScrollArea className="h-full pr-2">
             {isLoading ? (
-              <div className="space-y-1">
-                {[...Array(5)].map((_, i) => (
+              <div className="space-y-2">
+                {[...Array(4)].map((_, i) => (
                   <ActivityRowSkeleton key={i} />
                 ))}
               </div>
             ) : activities.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Activity className="h-10 w-10 text-slate-300 mb-3" />
-                <p className="text-sm text-slate-500">Nessuna attivita recente</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Le attivita degli agenti appariranno qui
+                <div className="p-4 rounded-full bg-slate-100 mb-4">
+                  <Activity className="h-8 w-8 text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-600">Nessuna attivita recente</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
+                  Le attivita degli agenti appariranno qui quando inizieranno a interagire
                 </p>
               </div>
             ) : (
-              <div className="space-y-1 pr-2">
-                {activities.slice(0, 10).map((activity) => (
-                  <ActivityRow key={activity.id} activity={activity} />
+              <div className="space-y-1">
+                {activities.slice(0, 10).map((activity, index) => (
+                  <ActivityRow 
+                    key={activity.id} 
+                    activity={activity} 
+                    isFirst={index === 0}
+                  />
                 ))}
               </div>
             )}
