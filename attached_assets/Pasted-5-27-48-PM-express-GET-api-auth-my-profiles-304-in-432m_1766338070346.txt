@@ -1,0 +1,34 @@
+5:27:48 PM [express] GET /api/auth/my-profiles 304 in 432ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+5:27:48 PM [express] GET /api/whatsapp/custom-templates/catalog 304 in 429ms :: {"success":true,"dat…
+5:27:52 PM [express] GET /api/whatsapp/custom-templates 304 in 10667ms :: {"success":true,"data":[{"…
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: none)...
+📋 Client preferred AI provider: vertex_admin
+⚠️ TIER 0: Skipped (no consultantId provided)
+⚠️ TIER 0.5: Skipped (no consultantId provided)
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+❌ [AI TEMPLATE] Error generating message: TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+    at getModelWithThinking (/home/runner/workspace/server/ai/provider-factory.ts:72:80)
+    at <anonymous> (/home/runner/workspace/server/routes/whatsapp/custom-templates.ts:133:53)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+5:28:00 PM [express] POST /api/whatsapp/custom-templates/generate-ai-message 500 in 582ms :: {"succe…
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 8 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incom

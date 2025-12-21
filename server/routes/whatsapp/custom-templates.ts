@@ -130,8 +130,8 @@ IMPORTANTE: Rispondi SOLO con il testo del messaggio, senza spiegazioni o commen
       const userMessage = `Genera un messaggio WhatsApp per: ${prompt}`;
 
       // Get the appropriate model based on provider (Gemini 3 for Google AI Studio, 2.5 for Vertex)
-      const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.provider);
-      console.log(`[AI TEMPLATE] Using model: ${model} (${aiProvider.metadata.provider}), thinking: ${useThinking}`);
+      const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+      console.log(`[AI TEMPLATE] Using model: ${model} (${aiProvider.metadata.name}), thinking: ${useThinking}`);
 
       // Call Gemini AI using the unified GeminiClient interface
       const result = await aiProvider.client.generateContent({
