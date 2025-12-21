@@ -1,0 +1,40 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 [DOCUMENT PROCESSOR] Starting text extraction with auto-detection
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 File: eeb91785-e3ea-4f49-9d7d-4b3a0469e53b.pdf
+📋 MIME Type (from browser): application/pdf
+📊 File size: 115.15 KB
+📄 [PDF] Extracting text from: uploads/eeb91785-e3ea-4f49-9d7d-4b3a0469e53b.pdf
+✅ [PDF] Extracted 11544 characters from undefined pages
+✅ [DOCUMENT PROCESSOR] Extraction successful
+📊 Total characters extracted: 11544
+📊 Estimated tokens: ~2886
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [KNOWLEDGE ITEMS] Created item: "Obiezioni (1)" (type: pdf)
+6:18:14 PM [express] POST /api/whatsapp/agent-config/760bb513-098f-4722-b02a-a700160c2fc3/knowledge …
+
+════════════════════════════════════════════════════════════
+📱 [FileSync] Syncing WhatsApp Agent Knowledge for agent "Marco setter" (760bb513)
+════════════════════════════════════════════════════════════
+
+🔄 [FileSync] Syncing 1 knowledge items for agent "Marco setter"
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+📤 [FileSearch] Uploading "Obiezioni (1)" (hash: 5e9f43cea94ab616) to store fileSearchStores/whatsapp-agent-marco-setter-o2sz4beuox1z
+✅ [FileSearch] Document uploaded: file-1766341101112 (hash: 5e9f43cea94ab616)
+✅ [FileSync] Synced WhatsApp knowledge item: Obiezioni (1)
+ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+🧹 [FileSearch] Reconciling 1 orphaned whatsapp_agent_knowledge documents
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: {"error":{"message":"","code":404,"status":"Not Found"}}
+🧹 [FileSearch] Reconciliation complete: 0/1 removed
+
+════════════════════════════════════════════════════════════
+✅ [FileSync] WhatsApp Agent Knowledge Sync Complete
+   Agent: Marco setter
+   Synced: 1/1
+   Failed: 0
+════════════════════════════════════════════════════════════
+
+6:18:22 PM [express] POST /api/file-search/sync-whatsapp/760bb513-098f-4722-b02a-a700160c2fc3 200 in…

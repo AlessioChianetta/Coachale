@@ -12,9 +12,12 @@ import { eq, and, desc } from "drizzle-orm";
 import { extractTextFromFile, type VertexAICredentials } from "../services/document-processor";
 import { parseServiceAccountJson } from "../ai/provider-factory";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
+import { FileSearchService } from "../ai/file-search-service";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+
+const fileSearchService = new FileSearchService();
 
 const router = Router();
 
@@ -395,6 +398,21 @@ router.delete(
           success: false,
           error: "Document not found",
         });
+      }
+
+      // Delete from FileSearch first (pass consultantId for proper API credential resolution)
+      try {
+        const deleteResult = await fileSearchService.deleteDocumentBySource(
+          'knowledge_base',
+          id,
+          consultantId
+        );
+        if (deleteResult.deleted > 0) {
+          console.log(`🗑️ [KNOWLEDGE DOCUMENTS] Deleted ${deleteResult.deleted} document(s) from FileSearch`);
+        }
+      } catch (fileSearchError: any) {
+        console.warn(`⚠️ [KNOWLEDGE DOCUMENTS] Could not delete from FileSearch:`, fileSearchError.message);
+        // Don't fail the request if FileSearch deletion fails
       }
 
       if (document.filePath) {

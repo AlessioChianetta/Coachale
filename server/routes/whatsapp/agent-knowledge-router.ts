@@ -15,9 +15,12 @@ import {
 } from "../../../shared/schema";
 import { eq, and, asc, notInArray, desc, isNotNull, inArray, sql } from "drizzle-orm";
 import { extractTextFromFile, getKnowledgeItemType } from "../../services/document-processor";
+import { FileSearchService } from "../../ai/file-search-service";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+
+const fileSearchService = new FileSearchService();
 
 const router = Router();
 
@@ -184,6 +187,53 @@ router.post(
             error: `Text extraction failed: ${extractionError.message}`,
           });
         }
+      }
+
+      // Check for duplicate title
+      const [existingByTitle] = await db
+        .select({ id: whatsappAgentKnowledgeItems.id, title: whatsappAgentKnowledgeItems.title })
+        .from(whatsappAgentKnowledgeItems)
+        .where(and(
+          eq(whatsappAgentKnowledgeItems.agentConfigId, agentConfigId),
+          eq(whatsappAgentKnowledgeItems.title, title)
+        ))
+        .limit(1);
+
+      if (existingByTitle) {
+        // Clean up uploaded file if exists
+        if (filePath) {
+          await fs.unlink(filePath).catch(() => {});
+        }
+        return res.status(409).json({
+          success: false,
+          error: "duplicate",
+          message: `Un documento con il titolo "${title}" esiste già per questo agente`,
+          existingId: existingByTitle.id,
+        });
+      }
+
+      // Check for duplicate content (same hash)
+      const contentHash = crypto.createHash('md5').update(content).digest('hex');
+      const [existingByContent] = await db
+        .select({ id: whatsappAgentKnowledgeItems.id, title: whatsappAgentKnowledgeItems.title })
+        .from(whatsappAgentKnowledgeItems)
+        .where(and(
+          eq(whatsappAgentKnowledgeItems.agentConfigId, agentConfigId),
+          sql`md5(${whatsappAgentKnowledgeItems.content}) = ${contentHash}`
+        ))
+        .limit(1);
+
+      if (existingByContent) {
+        // Clean up uploaded file if exists
+        if (filePath) {
+          await fs.unlink(filePath).catch(() => {});
+        }
+        return res.status(409).json({
+          success: false,
+          error: "duplicate_content",
+          message: `Un documento con lo stesso contenuto esiste già: "${existingByContent.title}"`,
+          existingId: existingByContent.id,
+        });
       }
 
       // Get max order value for this agent to append new item at end
@@ -389,6 +439,21 @@ router.delete(
           success: false,
           error: "Knowledge item not found",
         });
+      }
+
+      // Delete from FileSearch first (pass consultantId for proper API credential resolution)
+      try {
+        const deleteResult = await fileSearchService.deleteDocumentBySource(
+          'whatsapp_agent_knowledge',
+          itemId,
+          consultantId
+        );
+        if (deleteResult.deleted > 0) {
+          console.log(`🗑️ [KNOWLEDGE ITEMS] Deleted ${deleteResult.deleted} document(s) from FileSearch`);
+        }
+      } catch (fileSearchError: any) {
+        console.warn(`⚠️ [KNOWLEDGE ITEMS] Could not delete from FileSearch:`, fileSearchError.message);
+        // Don't fail the request if FileSearch deletion fails
       }
 
       // Delete from database

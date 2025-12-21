@@ -728,11 +728,17 @@ export class FileSearchService {
           await ai.fileSearchStores.documents.delete({ name: documentName, config: { force: true } });
           console.log(`🗑️ [FileSearch] Deleted from Google: ${documentName}`);
         } catch (googleError: any) {
-          if (!googleError.message?.includes('not found')) {
-            console.error(`❌ [FileSearch] Google delete failed:`, googleError.message);
-            return { success: false, error: `Google API error: ${googleError.message}` };
+          const errorMessage = typeof googleError.message === 'string' ? googleError.message : JSON.stringify(googleError.message || googleError);
+          const isNotFound = errorMessage.toLowerCase().includes('not found') || 
+                             errorMessage.includes('404') ||
+                             googleError.status === 404 ||
+                             googleError.code === 404;
+          
+          if (!isNotFound) {
+            console.error(`❌ [FileSearch] Google delete failed:`, errorMessage);
+            return { success: false, error: `Google API error: ${errorMessage}` };
           }
-          console.log(`⚠️ [FileSearch] Document not found on Google, cleaning up DB only`);
+          console.log(`⚠️ [FileSearch] Document not found on Google (404), cleaning up DB only`);
         }
       } else {
         console.warn(`⚠️ [FileSearch] No API client available, deleting from DB only`);
