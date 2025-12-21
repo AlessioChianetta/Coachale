@@ -2792,6 +2792,19 @@ export default function ConsultantApiKeysUnified() {
 
               {/* Calendar Tab Content - Unified View */}
               <TabsContent value="calendar" className="space-y-6">
+                {/* Agent Calendar Info Banner */}
+                <Alert className="bg-blue-50 border-blue-200">
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-sm text-blue-800">
+                    <strong>Novità: Calendari per Agente</strong>
+                    <p className="mt-1">
+                      Ora puoi collegare un calendario Google dedicato a ciascun agente WhatsApp. 
+                      Vai nella sezione <strong>"Disponibilità & Automazioni"</strong> dell'agente per configurare il suo calendario.
+                      Se un agente non ha un calendario dedicato, userà il calendario qui sotto come fallback.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+
                 {/* Section 1: Connection Status Header */}
                 <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
                   <CardHeader>
@@ -2801,9 +2814,9 @@ export default function ConsultantApiKeysUnified() {
                           <Calendar className="h-6 w-6 text-cyan-600" />
                         </div>
                         <div>
-                          <CardTitle>Stato Connessione Google Calendar</CardTitle>
+                          <CardTitle>Calendario di Fallback</CardTitle>
                           <CardDescription>
-                            Gestisci la connessione al tuo Google Calendar per sincronizzare gli appuntamenti
+                            Calendario usato per gli agenti che non hanno un calendario dedicato
                           </CardDescription>
                         </div>
                       </div>
