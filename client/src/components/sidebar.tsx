@@ -163,7 +163,6 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Sparkles,
     defaultExpanded: false,
     items: [
-      { name: "Echo Dashboard", href: "/consultant/echo-dashboard", icon: Sparkles, color: "text-orange-500", badge: "NEW" },
       { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles, color: "text-purple-500" },
       { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch, color: "text-emerald-500", badge: "RAG" },
     ]
