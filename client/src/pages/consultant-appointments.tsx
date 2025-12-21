@@ -15,9 +15,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail } from "lucide-react";
+import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2 } from "lucide-react";
 import ConsultationTasksManager from "@/components/consultation-tasks-manager";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths, formatDistanceToNow } from "date-fns";
 import it from "date-fns/locale/it";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/sidebar";
@@ -280,14 +280,425 @@ function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
 
         {/* Legend */}
         <div className="mt-4 text-center text-sm text-slate-600 dark:text-slate-400">
-          <span className="font-semibold">LEGENDA:</span> 🟢 Email Inviata  🟡 Bozza Pronta  🔴 Email Mancante
+          <span className="font-semibold">LEGENDA:</span> 🟢 Inviata/Approvata  🟡 Bozza  🔴 Mancante  🔵 Programmata
         </div>
       </CardContent>
     </Card>
   );
 }
 
-// Componente Vista Settimanale Premium
+// Helper function for getting appointment color based on status and email
+function getAppointmentColorClasses(appointment: any): { bg: string; border: string; text: string } {
+  if (appointment.status === 'completed') {
+    if (appointment.summaryEmailStatus === 'sent' || appointment.summaryEmailStatus === 'approved') {
+      return { 
+        bg: 'bg-emerald-100 dark:bg-emerald-900/40', 
+        border: 'border-l-4 border-l-emerald-500', 
+        text: 'text-emerald-800 dark:text-emerald-200' 
+      };
+    } else if (appointment.summaryEmailStatus === 'draft') {
+      return { 
+        bg: 'bg-amber-100 dark:bg-amber-900/40', 
+        border: 'border-l-4 border-l-amber-500', 
+        text: 'text-amber-800 dark:text-amber-200' 
+      };
+    } else {
+      return { 
+        bg: 'bg-rose-100 dark:bg-rose-900/40', 
+        border: 'border-l-4 border-l-rose-500', 
+        text: 'text-rose-800 dark:text-rose-200' 
+      };
+    }
+  }
+  return { 
+    bg: 'bg-blue-100 dark:bg-blue-900/40', 
+    border: 'border-l-4 border-l-blue-500', 
+    text: 'text-blue-800 dark:text-blue-200' 
+  };
+}
+
+// Componente Vista Settimanale con Timeline Oraria
+function WeeklyCalendarView({ 
+  appointments, 
+  onDateClick, 
+  selectedDate,
+  onAppointmentSelect,
+  selectedAppointment,
+  onEdit,
+  onComplete,
+  onGenerateEmail
+}: {
+  appointments: any[];
+  onDateClick: (date: Date) => void;
+  selectedDate: Date;
+  onAppointmentSelect: (apt: any | null) => void;
+  selectedAppointment: any | null;
+  onEdit: (apt: any) => void;
+  onComplete: (apt: any) => void;
+  onGenerateEmail: (apt: any) => void;
+}) {
+  const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(selectedDate, { weekStartsOn: 1 }));
+
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
+  const weekEnd = addDays(weekStart, 6);
+  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+
+  const getAppointmentsForDay = (date: Date) => {
+    return appointments.filter(apt => 
+      isSameDay(new Date(apt.scheduledAt), date)
+    ).sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  };
+
+  const nextWeek = () => {
+    setCurrentWeek(addDays(currentWeek, 7));
+    onAppointmentSelect(null);
+  };
+
+  const prevWeek = () => {
+    setCurrentWeek(addDays(currentWeek, -7));
+    onAppointmentSelect(null);
+  };
+
+  const timeSlots = Array.from({ length: 13 }, (_, index) => index + 8); // 08:00 - 20:00
+
+  const dayLabels = ["LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM"];
+
+  const getEmailStatusDisplay = (apt: any): { icon: string; label: string } => {
+    if (apt.status !== 'completed') {
+      return { icon: '', label: '' };
+    }
+    if (apt.summaryEmailStatus === 'sent' || apt.summaryEmailStatus === 'approved') {
+      return { icon: '✅', label: 'Inviata' };
+    } else if (apt.summaryEmailStatus === 'draft') {
+      return { icon: '🟡', label: 'Bozza' };
+    } else {
+      return { icon: '❌', label: 'Manca' };
+    }
+  };
+
+  return (
+    <div className="flex gap-6 h-[750px]">
+      {/* Main Calendar Grid */}
+      <Card className="flex-1 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 border-0 shadow-2xl overflow-hidden">
+        <CardHeader className="pb-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold uppercase tracking-wide">
+                  Settimana {format(weekStart, "d", { locale: it })}-{format(weekEnd, "d MMMM yyyy", { locale: it }).toUpperCase()}
+                </CardTitle>
+                <p className="text-blue-100 text-sm">Vista settimanale • Orario 08:00-20:00</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={prevWeek}
+                className="border-white/30 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={nextWeek}
+                className="border-white/30 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0 overflow-hidden h-[calc(100%-100px)]">
+          <div className="flex flex-col h-full">
+            {/* Header giorni */}
+            <div className="grid grid-cols-8 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-100 to-blue-50 dark:from-slate-800 dark:to-blue-900 sticky top-0 z-10">
+              <div className="p-3 text-center font-bold text-slate-600 dark:text-slate-300 bg-slate-200 dark:bg-slate-800 text-sm">
+                Orario
+              </div>
+              {weekDays.map((day, idx) => (
+                <div key={day.toISOString()} className={`p-3 text-center border-l border-slate-200 dark:border-slate-700 ${isSameDay(day, new Date()) ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}>
+                  <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                    {dayLabels[idx]}
+                  </div>
+                  <div className={`text-xs ${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
+                    {format(day, "dd/MM")}
+                  </div>
+                  {isSameDay(day, new Date()) && (
+                    <div className="w-2 h-2 bg-red-500 rounded-full mx-auto mt-1"></div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Griglia orari - 08:00 to 20:00 */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-8">
+                {timeSlots.map((hour) => (
+                  <React.Fragment key={hour}>
+                    <div className="p-2 text-center text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-[50px] flex items-center justify-center">
+                      <span className="font-bold">{hour.toString().padStart(2, '0')}:00</span>
+                    </div>
+                    {weekDays.map((day) => {
+                      const dayAppointments = getAppointmentsForDay(day);
+                      const hourAppointments = dayAppointments.filter(apt => {
+                        const aptHour = new Date(apt.scheduledAt).getHours();
+                        return aptHour === hour;
+                      });
+
+                      return (
+                        <div 
+                          key={`${day.toISOString()}-${hour}`}
+                          className="relative h-[50px] border-b border-l border-slate-200 dark:border-slate-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors duration-150 group"
+                          onClick={() => {
+                            const clickedDate = new Date(day);
+                            clickedDate.setHours(hour, 0, 0, 0);
+                            onDateClick(clickedDate);
+                          }}
+                        >
+                          {/* Indicatore orario corrente */}
+                          {isSameDay(day, new Date()) && new Date().getHours() === hour && (
+                            <div 
+                              className="absolute left-0 right-0 border-t-2 border-red-500 z-20"
+                              style={{
+                                top: `${(new Date().getMinutes() / 60) * 100}%`
+                              }}
+                            >
+                              <div className="w-2 h-2 bg-red-500 rounded-full -mt-1 -ml-1"></div>
+                            </div>
+                          )}
+
+                          {/* Appuntamenti */}
+                          {hourAppointments.map((appointment) => {
+                            const colors = getAppointmentColorClasses(appointment);
+                            const emailStatus = getEmailStatusDisplay(appointment);
+                            const isSelected = selectedAppointment?.id === appointment.id;
+                            
+                            return (
+                              <div
+                                key={appointment.id}
+                                className={`absolute inset-x-0.5 top-0.5 bottom-0.5 ${colors.bg} ${colors.border} ${colors.text} text-xs p-1 rounded shadow-sm z-10 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onAppointmentSelect(appointment);
+                                }}
+                              >
+                                <div className="font-semibold truncate text-[10px] leading-tight">
+                                  {appointment.client?.firstName} {appointment.client?.lastName}
+                                </div>
+                                <div className="text-[9px] opacity-80 flex items-center gap-1">
+                                  {format(new Date(appointment.scheduledAt), "HH:mm")}
+                                  {emailStatus.icon && (
+                                    <span className="text-[8px]">{emailStatus.icon}</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Indicatore hover per nuovo appuntamento */}
+                          {hourAppointments.length === 0 && (
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                              <Plus className="w-4 h-4 text-blue-500" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Right Side Detail Panel */}
+      <Card className="w-80 bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-3xl overflow-hidden flex flex-col">
+        <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-xl">
+              {selectedAppointment ? <User className="w-5 h-5" /> : <CalendarDays className="w-5 h-5" />}
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold">
+                {selectedAppointment ? 'Dettagli Appuntamento' : 'Seleziona Appuntamento'}
+              </CardTitle>
+              <p className="text-indigo-100 text-xs">
+                {selectedAppointment 
+                  ? format(new Date(selectedAppointment.scheduledAt), "dd MMMM yyyy", { locale: it })
+                  : 'Clicca su un appuntamento'
+                }
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 flex-1 overflow-y-auto">
+          {selectedAppointment ? (
+            <div className="space-y-4">
+              {/* Client Info */}
+              <div className="p-4 bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-700 dark:to-blue-900/30 rounded-xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">
+                      {selectedAppointment.client?.firstName} {selectedAppointment.client?.lastName}
+                    </p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      {selectedAppointment.client?.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Date & Duration */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">
+                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs mb-1">
+                    <CalendarDays className="w-3 h-3" />
+                    Data
+                  </div>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                    {format(new Date(selectedAppointment.scheduledAt), "dd/MM/yyyy")}
+                  </p>
+                </div>
+                <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">
+                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs mb-1">
+                    <Clock className="w-3 h-3" />
+                    Durata
+                  </div>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                    {selectedAppointment.duration} minuti
+                  </p>
+                </div>
+              </div>
+
+              {/* Time */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs mb-1">
+                  <Clock className="w-3 h-3" />
+                  Orario
+                </div>
+                <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                  {format(new Date(selectedAppointment.scheduledAt), "HH:mm")} - {format(new Date(new Date(selectedAppointment.scheduledAt).getTime() + selectedAppointment.duration * 60000), "HH:mm")}
+                </p>
+              </div>
+
+              {/* Status Badge */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">
+                <div className="text-slate-600 dark:text-slate-400 text-xs mb-2">Stato</div>
+                <Badge className={`${
+                  selectedAppointment.status === 'completed' 
+                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                    : selectedAppointment.status === 'cancelled'
+                    ? 'bg-rose-100 text-rose-700 border-rose-200'
+                    : 'bg-blue-100 text-blue-700 border-blue-200'
+                } border text-xs px-3 py-1`}>
+                  {selectedAppointment.status === 'completed' ? 'Completato' : 
+                   selectedAppointment.status === 'cancelled' ? 'Cancellato' : 'Programmato'}
+                </Badge>
+              </div>
+
+              {/* Email Status */}
+              {selectedAppointment.status === 'completed' && (
+                <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">
+                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs mb-2">
+                    <Mail className="w-3 h-3" />
+                    📧 Email
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedAppointment.summaryEmailStatus === 'sent' || selectedAppointment.summaryEmailStatus === 'approved' ? (
+                      <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                        ✅ Inviata
+                      </span>
+                    ) : selectedAppointment.summaryEmailStatus === 'draft' ? (
+                      <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                        🟡 Bozza
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium text-rose-600 dark:text-rose-400">
+                        ❌ Manca
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {selectedAppointment.notes && (
+                <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">
+                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs mb-2">
+                    <BookOpen className="w-3 h-3" />
+                    Note
+                  </div>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-3">
+                    {selectedAppointment.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-2">
+                <Button
+                  size="sm"
+                  onClick={() => onEdit(selectedAppointment)}
+                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-xl text-sm"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Visualizza / Modifica
+                </Button>
+
+                {selectedAppointment.status === 'scheduled' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onComplete(selectedAppointment)}
+                    className="w-full rounded-xl text-sm border-emerald-300 text-emerald-600 hover:bg-emerald-50"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Completa Consulenza
+                  </Button>
+                )}
+
+                {selectedAppointment.status === 'completed' && 
+                 selectedAppointment.transcript && 
+                 !selectedAppointment.summaryEmail && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onGenerateEmail(selectedAppointment)}
+                    className="w-full rounded-xl text-sm border-purple-300 text-purple-600 hover:bg-purple-50"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Genera Email
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-2xl flex items-center justify-center mb-4">
+                <Calendar className="w-8 h-8 text-blue-500" />
+              </div>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Nessuna selezione</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">
+                Clicca su un appuntamento nel calendario per visualizzarne i dettagli
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Componente Vista Settimanale Premium (Legacy)
 function PremiumWeekView({ appointments, onDateClick, selectedDate }: {
   appointments: any[];
   onDateClick: (date: Date) => void;
@@ -490,6 +901,416 @@ function PremiumWeekView({ appointments, onDateClick, selectedDate }: {
   );
 }
 
+// Echo Dashboard Panel Component (inline)
+interface EchoStats {
+  totalEmails: number;
+  totalTasks: number;
+  pendingApprovals: number;
+  missingEmails: number;
+  successRate: number;
+}
+
+interface EchoPendingConsultation {
+  id: string;
+  clientId: string;
+  scheduledAt: string;
+  duration: number;
+  notes: string | null;
+  transcript: string | null;
+  fathomShareLink: string | null;
+  summaryEmailStatus: string | null;
+  client: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+}
+
+interface EchoDraftEmail {
+  id: string;
+  clientId: string;
+  scheduledAt: string;
+  summaryEmailDraft: {
+    subject: string;
+    body: string;
+    extractedTasks: Array<{
+      title: string;
+      description: string | null;
+      dueDate: string | null;
+      priority: string;
+      category: string;
+    }>;
+  };
+  summaryEmailGeneratedAt: string;
+  client: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  draftTasks: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    dueDate: string | null;
+    priority: string;
+    category: string;
+  }>;
+}
+
+function EchoDashboardPanel() {
+  const { toast } = useToast();
+
+  const { data: stats, isLoading: statsLoading } = useQuery<EchoStats>({
+    queryKey: ["/api/echo/stats"],
+    queryFn: async () => {
+      const response = await fetch("/api/echo/stats", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      return response.json();
+    },
+  });
+
+  const { data: pendingConsultations = [], isLoading: pendingLoading } = useQuery<EchoPendingConsultation[]>({
+    queryKey: ["/api/echo/pending-consultations"],
+    queryFn: async () => {
+      const response = await fetch("/api/echo/pending-consultations", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch pending consultations");
+      return response.json();
+    },
+  });
+
+  const { data: draftEmails = [], isLoading: draftsLoading } = useQuery<EchoDraftEmail[]>({
+    queryKey: ["/api/echo/draft-emails"],
+    queryFn: async () => {
+      const response = await fetch("/api/echo/draft-emails", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch draft emails");
+      return response.json();
+    },
+  });
+
+  const generateEmailMutation = useMutation({
+    mutationFn: async ({ consultationId, additionalNotes }: { consultationId: string; additionalNotes?: string }) => {
+      const response = await fetch("/api/echo/generate-email", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ consultationId, additionalNotes }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to generate email");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email Generata",
+        description: "L'email è stata generata con successo.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/pending-consultations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const approveAndSendMutation = useMutation({
+    mutationFn: async (consultationId: string) => {
+      const response = await fetch("/api/echo/approve-and-send", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ consultationId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to approve and send");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email Inviata",
+        description: "L'email è stata approvata e inviata al cliente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveForAIMutation = useMutation({
+    mutationFn: async (consultationId: string) => {
+      const response = await fetch("/api/echo/save-for-ai", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ consultationId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save for AI");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Salvato per AI",
+        description: "Il contenuto è stato salvato nel contesto AI.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isLoading = statsLoading || pendingLoading || draftsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border-orange-200 dark:border-orange-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-orange-700 dark:text-orange-300">Email Generate</p>
+                <p className="text-3xl font-bold text-orange-900 dark:text-orange-100">{stats?.totalEmails || 0}</p>
+              </div>
+              <div className="p-3 bg-orange-100 dark:bg-orange-900/50 rounded-full">
+                <Mail className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-blue-200 dark:border-blue-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Task Estratti</p>
+                <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{stats?.totalTasks || 0}</p>
+              </div>
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-full">
+                <ClipboardCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30 border-yellow-200 dark:border-yellow-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300">In Attesa</p>
+                <p className="text-3xl font-bold text-yellow-900 dark:text-yellow-100">{stats?.pendingApprovals || 0}</p>
+              </div>
+              <div className="p-3 bg-yellow-100 dark:bg-yellow-900/50 rounded-full">
+                <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-950/30 dark:to-red-950/30 border-rose-200 dark:border-rose-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-rose-700 dark:text-rose-300">Mancanti</p>
+                <p className="text-3xl font-bold text-rose-900 dark:text-rose-100">{stats?.missingEmails || 0}</p>
+              </div>
+              <div className="p-3 bg-rose-100 dark:bg-rose-900/50 rounded-full">
+                <AlertCircle className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="border-2 border-orange-200 dark:border-orange-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+              <AlertCircle className="h-5 w-5" />
+              Consulenze Senza Email
+            </CardTitle>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Consulenze completate senza riepilogo email
+            </p>
+          </CardHeader>
+          <CardContent>
+            {pendingConsultations.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-400" />
+                <p>Tutte le consulenze hanno già un'email!</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {pendingConsultations.map((consultation) => (
+                  <div
+                    key={consultation.id}
+                    className="p-4 rounded-lg border border-orange-100 dark:border-orange-900 bg-gradient-to-r from-orange-50/50 to-amber-50/50 dark:from-orange-950/20 dark:to-amber-950/20 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-orange-600" />
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {consultation.client?.firstName} {consultation.client?.lastName}
+                        </span>
+                      </div>
+                      {consultation.transcript ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                          <FileText className="h-3 w-3 mr-1" />
+                          Trascrizione
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          No Trascrizione
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(consultation.scheduledAt), "d MMM yyyy", { locale: it })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(new Date(consultation.scheduledAt), { addSuffix: true, locale: it })}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
+                      disabled={!consultation.transcript || generateEmailMutation.isPending}
+                      onClick={() => generateEmailMutation.mutate({ consultationId: consultation.id })}
+                    >
+                      {generateEmailMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Mail className="h-4 w-4 mr-2" />
+                      )}
+                      Genera Email
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-yellow-200 dark:border-yellow-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
+              <Clock className="h-5 w-5" />
+              Email in Attesa Approvazione
+            </CardTitle>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Bozze pronte per la revisione
+            </p>
+          </CardHeader>
+          <CardContent>
+            {draftEmails.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Mail className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>Nessuna bozza in attesa</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {draftEmails.map((email) => (
+                  <div
+                    key={email.id}
+                    className="p-4 rounded-lg border border-yellow-100 dark:border-yellow-900 bg-gradient-to-r from-yellow-50/50 to-orange-50/50 dark:from-yellow-950/20 dark:to-orange-950/20 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-yellow-600" />
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {email.client?.firstName} {email.client?.lastName}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                        <ClipboardCheck className="h-3 w-3 mr-1" />
+                        {email.draftTasks?.length || 0} Task
+                      </Badge>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 truncate">
+                      {email.summaryEmailDraft?.subject || "Riepilogo Consulenza"}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                      <Clock className="h-3 w-3" />
+                      Generata {formatDistanceToNow(new Date(email.summaryEmailGeneratedAt), { addSuffix: true, locale: it })}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => saveForAIMutation.mutate(email.id)}
+                        disabled={saveForAIMutation.isPending}
+                      >
+                        <Save className="h-3 w-3 mr-1" />
+                        Salva AI
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-green-500 hover:bg-green-600 text-white"
+                        disabled={approveAndSendMutation.isPending}
+                        onClick={() => approveAndSendMutation.mutate(email.id)}
+                      >
+                        <Send className="h-3 w-3 mr-1" />
+                        Approva & Invia
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function ConsultantAppointments() {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -505,6 +1326,7 @@ export default function ConsultantAppointments() {
   const [justCompletedConsultationId, setJustCompletedConsultationId] = useState<string | null>(null);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState("");
+  const [selectedWeekAppointment, setSelectedWeekAppointment] = useState<any | null>(null);
 
   // Ottieni dati utente corrente da localStorage (disponibile immediatamente)
   const currentUser = React.useMemo(() => {
@@ -1771,31 +2593,50 @@ export default function ConsultantAppointments() {
             </div>
           </div>
 
-          {/* Tabs Premium */}
+          {/* Tabs Premium - Main navigation */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <TabsList className="grid w-full max-w-lg grid-cols-3 p-1 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-0">
-              <TabsTrigger 
-                value="calendar" 
-                className="flex items-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
-              >
-                <CalendarIcon className="w-4 h-4" />
-                Mese
-              </TabsTrigger>
-              <TabsTrigger 
-                value="week" 
-                className="flex items-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
-              >
-                <Calendar className="w-4 h-4" />
-                Settimana
-              </TabsTrigger>
-              <TabsTrigger 
-                value="list" 
-                className="flex items-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
-              >
-                <List className="w-4 h-4" />
-                Lista
-              </TabsTrigger>
-            </TabsList>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <TabsList className="grid w-full max-w-2xl grid-cols-4 p-1 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-0">
+                <TabsTrigger 
+                  value="calendar" 
+                  className="flex items-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+                >
+                  <CalendarIcon className="w-4 h-4" />
+                  Mese
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="week" 
+                  className="flex items-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Settimana
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="list" 
+                  className="flex items-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+                >
+                  <List className="w-4 h-4" />
+                  Lista
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="echo" 
+                  className="flex items-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+                >
+                  <Mail className="w-4 h-4" />
+                  Echo
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* Month/Week toggle reminder - visible at top */}
+              {(activeTab === "calendar" || activeTab === "week") && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-blue-200 dark:border-blue-700">
+                  <CalendarDays className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    Vista: {activeTab === "calendar" ? "Mensile" : "Settimanale"}
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Vista Calendario Premium */}
             <TabsContent value="calendar" className="space-y-8">
@@ -1948,12 +2789,20 @@ export default function ConsultantAppointments() {
               </div>
             </TabsContent>
 
-            {/* Vista Settimanale Premium */}
+            {/* Vista Settimanale con Timeline Oraria */}
             <TabsContent value="week" className="space-y-8">
-              <PremiumWeekView 
+              <WeeklyCalendarView 
                 appointments={appointments as any[]}
                 onDateClick={handleDateClick}
                 selectedDate={selectedDate}
+                onAppointmentSelect={setSelectedWeekAppointment}
+                selectedAppointment={selectedWeekAppointment}
+                onEdit={handleEdit}
+                onComplete={handleComplete}
+                onGenerateEmail={(apt) => {
+                  setJustCompletedConsultationId(apt.id);
+                  setIsEmailDialogOpen(true);
+                }}
               />
             </TabsContent>
 
@@ -2149,6 +2998,26 @@ export default function ConsultantAppointments() {
                   </div>
                 </div>
               )}
+            </TabsContent>
+
+            {/* Vista Echo Dashboard */}
+            <TabsContent value="echo" className="space-y-8">
+              <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-3xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-orange-500 to-amber-500 text-white pb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-xl">
+                      <ClipboardCheck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl font-bold">Echo Dashboard</CardTitle>
+                      <p className="text-orange-100 text-sm">Gestisci le email di riepilogo delle consulenze</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <EchoDashboardPanel />
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
