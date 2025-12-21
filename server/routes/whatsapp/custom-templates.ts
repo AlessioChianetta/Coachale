@@ -32,7 +32,7 @@ import {
   AGENT_TYPE_LABELS,
   type AgentType as TemplateAgentType
 } from "../../data/default-templates-seed";
-import { getAIProvider } from "../../ai/provider-factory";
+import { getAIProvider, getModelWithThinking } from "../../ai/provider-factory";
 
 const router = Router();
 
@@ -129,15 +129,24 @@ IMPORTANTE: Rispondi SOLO con il testo del messaggio, senza spiegazioni o commen
 
       const userMessage = `Genera un messaggio WhatsApp per: ${prompt}`;
 
-      // Call Gemini AI
-      const model = aiProvider.client.getGenerativeModel({ 
-        model: "gemini-2.5-flash",
-        systemInstruction: systemPrompt,
+      // Get the appropriate model based on provider (Gemini 3 for Google AI Studio, 2.5 for Vertex)
+      const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.provider);
+      console.log(`[AI TEMPLATE] Using model: ${model} (${aiProvider.metadata.provider}), thinking: ${useThinking}`);
+
+      // Call Gemini AI using the unified GeminiClient interface
+      const result = await aiProvider.client.generateContent({
+        model,
+        contents: [
+          { role: "user", parts: [{ text: systemPrompt + "\n\n" + userMessage }] }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 500,
+          ...(useThinking && { thinkingConfig: { thinkingLevel } }),
+        },
       });
 
-      const result = await model.generateContent(userMessage);
-      const response = result.response;
-      const generatedText = response.text();
+      const generatedText = result.response.text();
 
       if (!generatedText || generatedText.trim().length === 0) {
         return res.status(500).json({
