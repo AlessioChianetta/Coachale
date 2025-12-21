@@ -671,17 +671,17 @@ Rispondi SOLO con un JSON valido nel seguente formato:
 
 Se non ci sono azioni concrete nella trascrizione, rispondi con {"tasks": []}`;
 
-    const model = getModelWithThinking(aiProvider.metadata.name);
-    const result = await aiProvider.provider.models.generateContent({
+    const { model } = getModelWithThinking(aiProvider.metadata.name);
+    const result = await aiProvider.client.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
+      generationConfig: {
         temperature: 0.3,
         maxOutputTokens: 2000
       }
     });
 
-    const responseText = result.text || "";
+    const responseText = result.response.text() || "";
     
     // Parse JSON response
     let extractedTasks: Array<{

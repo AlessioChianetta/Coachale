@@ -473,23 +473,22 @@ export default function ConsultationTasksManager({ clientId, consultantId, consu
               <CardDescription>Gestisci le task assegnate al cliente</CardDescription>
             </div>
             {!readonly && (
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 {transcript && transcript.trim().length >= 50 && (
                   <Button 
-                    variant="outline"
                     onClick={() => extractTasksMutation.mutate()}
                     disabled={extractTasksMutation.isPending}
-                    className="gap-2"
+                    className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all"
                   >
                     {extractTasksMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Sparkles className="w-4 h-4" />
                     )}
-                    {extractTasksMutation.isPending ? "Estrazione..." : "Genera Task AI"}
+                    {extractTasksMutation.isPending ? "Estrazione AI..." : "✨ Genera Task con AI"}
                   </Button>
                 )}
-                <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
                   <Plus className="w-4 h-4" />
                   Nuova Task
                 </Button>
