@@ -20,10 +20,12 @@ import * as schema from "../../../shared/schema";
 import {
   whatsappTemplateVersions,
   whatsappVariableCatalog,
+  whatsappTemplateVariables,
   proactiveLeads,
   users,
   consultantWhatsappConfig,
 } from "../../../shared/schema";
+import { inArray } from "drizzle-orm";
 import { eq, and, sql } from "drizzle-orm";
 import {
   DEFAULT_TEMPLATES_BY_AGENT,
@@ -290,6 +292,16 @@ router.post(
         });
       }
 
+      // Load variable catalog for mapping
+      const catalogVariables = await db
+        .select({
+          id: whatsappVariableCatalog.id,
+          variableKey: whatsappVariableCatalog.variableKey,
+        })
+        .from(whatsappVariableCatalog);
+      
+      const catalogMap = new Map(catalogVariables.map(v => [v.variableKey, v.id]));
+
       // Create templates and their versions
       let createdCount = 0;
       for (const template of templatesToCreate) {
@@ -311,7 +323,7 @@ router.post(
 
         console.log(`✅ [DEFAULT TEMPLATES] Created template ID: ${newTemplate.id}, targetAgentType: ${newTemplate.targetAgentType}`);
 
-        await db
+        const [newVersion] = await db
           .insert(whatsappTemplateVersions)
           .values({
             templateId: newTemplate.id,
@@ -319,7 +331,37 @@ router.post(
             bodyText: template.body,
             isActive: true,
             createdBy: consultantId,
-          });
+          })
+          .returning();
+
+        // Extract variables from body and create variable mappings
+        const variableRegex = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+        const foundVariables: string[] = [];
+        let match;
+        while ((match = variableRegex.exec(template.body)) !== null) {
+          if (!foundVariables.includes(match[1])) {
+            foundVariables.push(match[1]);
+          }
+        }
+
+        // Create variable mappings for each found variable
+        let position = 1;
+        for (const variableKey of foundVariables) {
+          const catalogId = catalogMap.get(variableKey);
+          if (catalogId) {
+            await db
+              .insert(whatsappTemplateVariables)
+              .values({
+                templateVersionId: newVersion.id,
+                variableCatalogId: catalogId,
+                position: position,
+              });
+            console.log(`  ✅ Mapped variable {${variableKey}} -> position ${position}`);
+            position++;
+          } else {
+            console.log(`  ⚠️ Variable {${variableKey}} not found in catalog, skipping`);
+          }
+        }
 
         createdCount++;
       }
@@ -337,6 +379,115 @@ router.post(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to load default templates",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/custom-templates/fix-missing-variables
+ * Fix templates that are missing variable mappings (for already loaded templates)
+ */
+router.post(
+  "/whatsapp/custom-templates/fix-missing-variables",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      // Load variable catalog
+      const catalogVariables = await db
+        .select({
+          id: whatsappVariableCatalog.id,
+          variableKey: whatsappVariableCatalog.variableKey,
+        })
+        .from(whatsappVariableCatalog);
+      
+      const catalogMap = new Map(catalogVariables.map(v => [v.variableKey, v.id]));
+
+      // Get all templates with their active versions
+      const templatesWithVersions = await db
+        .select({
+          templateId: schema.whatsappCustomTemplates.id,
+          templateName: schema.whatsappCustomTemplates.templateName,
+          versionId: whatsappTemplateVersions.id,
+          bodyText: whatsappTemplateVersions.bodyText,
+        })
+        .from(schema.whatsappCustomTemplates)
+        .innerJoin(
+          whatsappTemplateVersions,
+          and(
+            eq(whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id),
+            eq(whatsappTemplateVersions.isActive, true)
+          )
+        )
+        .where(eq(schema.whatsappCustomTemplates.consultantId, consultantId));
+
+      let fixedCount = 0;
+      let skippedCount = 0;
+
+      for (const template of templatesWithVersions) {
+        // Check if variables already exist for this version
+        const existingVars = await db
+          .select({ id: whatsappTemplateVariables.id })
+          .from(whatsappTemplateVariables)
+          .where(eq(whatsappTemplateVariables.templateVersionId, template.versionId))
+          .limit(1);
+
+        if (existingVars.length > 0) {
+          skippedCount++;
+          continue; // Already has variables
+        }
+
+        // Extract variables from body
+        const variableRegex = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+        const foundVariables: string[] = [];
+        let match;
+        while ((match = variableRegex.exec(template.bodyText || "")) !== null) {
+          if (!foundVariables.includes(match[1])) {
+            foundVariables.push(match[1]);
+          }
+        }
+
+        if (foundVariables.length === 0) {
+          skippedCount++;
+          continue; // No variables to add
+        }
+
+        // Create variable mappings
+        let position = 1;
+        for (const variableKey of foundVariables) {
+          const catalogId = catalogMap.get(variableKey);
+          if (catalogId) {
+            await db
+              .insert(whatsappTemplateVariables)
+              .values({
+                templateVersionId: template.versionId,
+                variableCatalogId: catalogId,
+                position: position,
+              });
+            position++;
+          }
+        }
+
+        if (position > 1) {
+          console.log(`✅ [FIX VARIABLES] Fixed template "${template.templateName}" with ${position - 1} variables`);
+          fixedCount++;
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Corretti ${fixedCount} template. ${skippedCount} template già a posto o senza variabili.`,
+        fixed: fixedCount,
+        skipped: skippedCount,
+      });
+    } catch (error: any) {
+      console.error("❌ [FIX VARIABLES] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fix template variables",
       });
     }
   }

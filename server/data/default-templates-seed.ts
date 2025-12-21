@@ -1,21 +1,38 @@
 /**
- * Default WhatsApp Templates Seed Data
+ * Default WhatsApp Templates Seed Data - OPTIMIZED VERSION
  * 
- * Contains 20 templates for each of the 5 agent types:
+ * Contains 10 templates for each of the 5 agent types:
  * - receptionist
  * - proactive_setter
  * - informative_advisor
  * - customer_success
  * - intake_coordinator
+ * 
+ * Structure per agent:
+ * - 1 APERTURA (opening) - uses {nome_lead}, {nome_consulente}, {nome_azienda}
+ * - 8 RIPRESA (follow-up) - uses only {nome_lead}
+ * - 1 CHIUSURA (closing) - uses only {nome_lead}
  */
 
 export type AgentType = "receptionist" | "proactive_setter" | "informative_advisor" | "customer_success" | "intake_coordinator";
+
+export type TemplateUseCase = 
+    | "apertura"
+    | "ripresa_24h"
+    | "ripresa_48h"
+    | "ripresa_valore"
+    | "ripresa_domanda"
+    | "ripresa_social_proof"
+    | "ripresa_urgenza"
+    | "ripresa_ultimo_tentativo"
+    | "ripresa_riattivazione"
+    | "chiusura";
 
 export interface DefaultTemplate {
     templateName: string;
     description: string;
     body: string;
-    useCase: string;
+    useCase: TemplateUseCase;
     targetAgentType: AgentType;
 }
 
@@ -27,737 +44,405 @@ export const AGENT_TYPE_LABELS: Record<AgentType, string> = {
     intake_coordinator: "📋 Intake Coordinator",
 };
 
+export const USE_CASE_LABELS: Record<TemplateUseCase, string> = {
+    apertura: "🟢 Apertura",
+    ripresa_24h: "🔄 Ripresa 24h",
+    ripresa_48h: "🔄 Ripresa 48h",
+    ripresa_valore: "💎 Offerta Valore",
+    ripresa_domanda: "❓ Domanda Aperta",
+    ripresa_social_proof: "⭐ Social Proof",
+    ripresa_urgenza: "⏰ Urgenza Soft",
+    ripresa_ultimo_tentativo: "🙏 Ultimo Tentativo",
+    ripresa_riattivazione: "🔔 Riattivazione",
+    chiusura: "🏁 Chiusura",
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
-// RECEPTIONIST TEMPLATES (20)
+// RECEPTIONIST TEMPLATES (10)
+// Tone: Welcoming, helpful, service-oriented
 // ═══════════════════════════════════════════════════════════════════════════
 
 const receptionistTemplates: DefaultTemplate[] = [
     {
-        templateName: "Benvenuto Inbound",
-        description: "Primo messaggio di benvenuto per lead che scrivono spontaneamente",
-        body: "Ciao {nome_lead}! Grazie per averci contattato. Sono qui per aiutarti. Come posso assisterti oggi?",
-        useCase: "primo contatto",
+        templateName: "Benvenuto Receptionist",
+        description: "Primo messaggio di benvenuto - apertura conversazione",
+        body: "Ciao {nome_lead}! Sono {nome_consulente} di {nome_azienda}. Benvenuto/a! Come posso aiutarti oggi?",
+        useCase: "apertura",
         targetAgentType: "receptionist",
     },
     {
-        templateName: "Conferma Ricezione",
-        description: "Conferma ricezione richiesta",
-        body: "{nome_lead}, ho ricevuto la tua richiesta. Ti rispondo entro poche ore. Grazie per la pazienza!",
-        useCase: "conferma ricezione",
+        templateName: "Ripresa 24h Receptionist",
+        description: "Follow-up dopo 24h senza risposta",
+        body: "Ciao {nome_lead}! Ti scrivo per sapere se hai ricevuto il mio messaggio. Posso esserti utile in qualche modo?",
+        useCase: "ripresa_24h",
         targetAgentType: "receptionist",
     },
     {
-        templateName: "Appuntamento Confermato",
-        description: "Conferma appuntamento schedulato",
-        body: "Perfetto {nome_lead}! Il tuo appuntamento è confermato. Ti aspettiamo!",
-        useCase: "conferma appuntamento",
+        templateName: "Ripresa 48h Receptionist",
+        description: "Follow-up gentile dopo 48h",
+        body: "{nome_lead}, capisco che sei impegnato/a. Resto a disposizione quando hai un momento libero!",
+        useCase: "ripresa_48h",
         targetAgentType: "receptionist",
     },
     {
-        templateName: "Verifica Ricezione Info",
-        description: "Verifica che il lead abbia ricevuto le informazioni",
-        body: "Ciao {nome_lead}, volevo assicurarmi che avessi ricevuto le informazioni richieste. Posso aiutarti con altro?",
-        useCase: "follow-up info",
+        templateName: "Offerta Valore Receptionist",
+        description: "Messaggio con offerta di valore/risorsa",
+        body: "{nome_lead}, ho preparato una guida utile per te. Vuoi che te la invii? Potrebbe rispondere alle tue domande.",
+        useCase: "ripresa_valore",
         targetAgentType: "receptionist",
     },
     {
-        templateName: "Invio Informazioni",
-        description: "Inviare informazioni richieste",
-        body: "{nome_lead}, grazie per la tua pazienza. Ecco le informazioni che cercavi.",
-        useCase: "invio dati",
+        templateName: "Domanda Aperta Receptionist",
+        description: "Messaggio con domanda aperta per riattivare",
+        body: "{nome_lead}, c'è qualcosa di specifico che vorresti sapere sui nostri servizi? Sono qui per aiutarti.",
+        useCase: "ripresa_domanda",
         targetAgentType: "receptionist",
     },
     {
-        templateName: "Aggiornamento Richiesta",
-        description: "Aggiornamento sullo stato della richiesta",
-        body: "Buongiorno {nome_lead}! Come promesso, ti aggiorno sulla tua richiesta.",
-        useCase: "aggiornamento",
+        templateName: "Social Proof Receptionist",
+        description: "Messaggio con prova sociale",
+        body: "{nome_lead}, molti clienti come te ci hanno scelto per la nostra disponibilità. Posso mostrarti come li abbiamo aiutati?",
+        useCase: "ripresa_social_proof",
         targetAgentType: "receptionist",
     },
     {
-        templateName: "Reminder Appuntamento",
-        description: "Promemoria appuntamento del giorno dopo",
-        body: "{nome_lead}, ti ricordo l'appuntamento di domani. Confermi la tua presenza?",
-        useCase: "promemoria",
+        templateName: "Urgenza Soft Receptionist",
+        description: "Messaggio con urgenza leggera",
+        body: "{nome_lead}, volevo avvisarti che ho ancora qualche slot disponibile questa settimana. Preferisci prenotare ora?",
+        useCase: "ripresa_urgenza",
         targetAgentType: "receptionist",
     },
     {
-        templateName: "Verifica Chiarezza",
-        description: "Verificare che tutto sia chiaro",
-        body: "Ciao {nome_lead}! Tutto chiaro con le informazioni ricevute? Sono a disposizione.",
-        useCase: "verifica comprensione",
+        templateName: "Ultimo Tentativo Receptionist",
+        description: "Ultimo messaggio rispettoso",
+        body: "{nome_lead}, non voglio disturbarti ulteriormente. Se hai bisogno, sai dove trovarmi. Ti auguro una buona giornata!",
+        useCase: "ripresa_ultimo_tentativo",
         targetAgentType: "receptionist",
     },
     {
-        templateName: "Presa in Carico",
-        description: "Conferma presa in carico richiesta",
-        body: "{nome_lead}, il nostro team ha preso in carico la tua richiesta. Ti aggiorniamo presto.",
-        useCase: "presa in carico",
+        templateName: "Riattivazione Receptionist",
+        description: "Riattivazione dopo lungo silenzio",
+        body: "Ciao {nome_lead}! È passato un po' di tempo. Volevo sapere se posso esserti utile con qualcosa di nuovo.",
+        useCase: "ripresa_riattivazione",
         targetAgentType: "receptionist",
     },
     {
-        templateName: "Conferma Registrazione",
-        description: "Conferma registrazione appuntamento",
-        body: "Grazie {nome_lead}! Appuntamento registrato. Riceverai conferma via email.",
-        useCase: "conferma registrazione",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Richiesta Info Aggiuntive",
-        description: "Richiesta di informazioni extra per procedere",
-        body: "{nome_lead}, abbiamo bisogno di un'informazione aggiuntiva per procedere.",
-        useCase: "richiesta dati",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Feedback Post Appuntamento",
-        description: "Chiedere feedback dopo l'appuntamento",
-        body: "Ciao {nome_lead}, come è andato l'appuntamento? Posso aiutarti con altro?",
-        useCase: "post appuntamento",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Conferma Modifica Appuntamento",
-        description: "Conferma di modifica appuntamento",
-        body: "{nome_lead}, ti confermiamo la modifica dell'appuntamento.",
-        useCase: "modifica appuntamento",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Ringraziamento Scelta",
-        description: "Ringraziamento per aver scelto il servizio",
-        body: "Grazie per averci scelto {nome_lead}! A presto.",
-        useCase: "ringraziamento",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Avviso Ricontatto",
-        description: "Avviso che il consulente ricontatterà",
-        body: "{nome_lead}, il consulente ti ricontatterà a breve. Grazie per l'attesa.",
-        useCase: "avviso ricontatto",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Chiusura Positiva",
+        templateName: "Chiusura Receptionist",
         description: "Messaggio di chiusura positivo",
-        body: "Ciao {nome_lead}! Siamo felici di averti aiutato. Buona giornata!",
+        body: "Grazie {nome_lead}! È stato un piacere assisterti. Ti auguro il meglio e resto sempre a disposizione!",
         useCase: "chiusura",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Riepilogo Conversazione",
-        description: "Riepilogo di quanto discusso",
-        body: "{nome_lead}, ecco il riepilogo di quanto discusso oggi.",
-        useCase: "riepilogo",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Ringraziamento Fiducia",
-        description: "Ringraziamento per la fiducia accordata",
-        body: "Ti ringraziamo per la fiducia {nome_lead}. Siamo sempre a disposizione.",
-        useCase: "fidelizzazione",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Dettagli Pre Appuntamento",
-        description: "Invio dettagli per prepararsi all'appuntamento",
-        body: "{nome_lead}, ti invio i dettagli per prepararti all'appuntamento.",
-        useCase: "preparazione appuntamento",
-        targetAgentType: "receptionist",
-    },
-    {
-        templateName: "Check Finale",
-        description: "Verifica finale che tutto sia a posto",
-        body: "Ciao {nome_lead}, volevo solo confermare che è tutto a posto. Fammi sapere se hai bisogno!",
-        useCase: "verifica finale",
         targetAgentType: "receptionist",
     },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SETTER TEMPLATES (20)
+// PROACTIVE SETTER TEMPLATES (10)
+// Tone: Proactive, appointment-focused, persuasive
 // ═══════════════════════════════════════════════════════════════════════════
 
 const setterTemplates: DefaultTemplate[] = [
     {
-        templateName: "Primo Contatto Outbound",
-        description: "Primo messaggio per contatto proattivo",
-        body: "Ciao {nome_lead}! Sono {nome_consulente}. Ho visto il tuo interesse. Posso chiederti 2 minuti per capire se possiamo aiutarti?",
-        useCase: "primo contatto",
+        templateName: "Primo Contatto Setter",
+        description: "Primo messaggio proattivo per fissare appuntamento",
+        body: "Ciao {nome_lead}! Sono {nome_consulente} di {nome_azienda}. Ho 2 minuti per spiegarti come possiamo aiutarti?",
+        useCase: "apertura",
         targetAgentType: "proactive_setter",
     },
     {
-        templateName: "Follow-up Primo Messaggio",
-        description: "Follow-up se non ha risposto al primo messaggio",
+        templateName: "Ripresa 24h Setter",
+        description: "Follow-up deciso dopo 24h",
         body: "{nome_lead}, volevo assicurarmi che avessi visto il mio messaggio. Quando hai 5 minuti per una breve chiamata?",
-        useCase: "follow-up",
+        useCase: "ripresa_24h",
         targetAgentType: "proactive_setter",
     },
     {
-        templateName: "Riconoscimento Impegni",
-        description: "Riconoscere che il lead è occupato",
-        body: "Ciao {nome_lead}! So che sei impegnato/a, ma credo che una chiacchierata potrebbe esserti utile. Quando sei disponibile?",
-        useCase: "follow-up gentile",
+        templateName: "Ripresa 48h Setter",
+        description: "Follow-up comprensivo dopo 48h",
+        body: "Ciao {nome_lead}! So che sei occupato/a. Ti propongo una chiamata veloce di 10 minuti. Quando ti fa comodo?",
+        useCase: "ripresa_48h",
         targetAgentType: "proactive_setter",
     },
     {
-        templateName: "Proposta Idea",
-        description: "Proporre un'idea interessante",
-        body: "{nome_lead}, ho un'idea che potrebbe interessarti. Posso condividerla con te in 10 minuti?",
-        useCase: "proposta valore",
+        templateName: "Offerta Valore Setter",
+        description: "Proposta di valore concreta",
+        body: "{nome_lead}, ho un'idea che potrebbe interessarti molto. Posso mostrartela in una breve chiamata?",
+        useCase: "ripresa_valore",
         targetAgentType: "proactive_setter",
     },
     {
-        templateName: "Ultimo Tentativo",
-        description: "Ultimo tentativo di contatto rispettoso",
-        body: "Ultimo tentativo {nome_lead}! Se non è il momento giusto, nessun problema. Fammi sapere quando vuoi sentirci.",
-        useCase: "ultimo follow-up",
+        templateName: "Domanda Aperta Setter",
+        description: "Domanda per capire le esigenze",
+        body: "{nome_lead}, cosa ti impedisce di fare il prossimo passo? Forse posso aiutarti a superare questo ostacolo.",
+        useCase: "ripresa_domanda",
         targetAgentType: "proactive_setter",
     },
     {
-        templateName: "Social Proof",
-        description: "Usare la prova sociale",
-        body: "{nome_lead}, molti nella tua situazione hanno ottenuto risultati interessanti. Vuoi sapere come?",
-        useCase: "social proof",
+        templateName: "Social Proof Setter",
+        description: "Leva sociale per convincere",
+        body: "{nome_lead}, altre persone nella tua situazione hanno ottenuto risultati incredibili. Vuoi sapere come?",
+        useCase: "ripresa_social_proof",
         targetAgentType: "proactive_setter",
     },
     {
-        templateName: "Disponibilità Orari",
-        description: "Proporre orari specifici",
-        body: "Ciao {nome_lead}! Ho disponibilità oggi pomeriggio e domani mattina. Quale preferisci?",
-        useCase: "proposta orari",
+        templateName: "Urgenza Soft Setter",
+        description: "Creare senso di urgenza",
+        body: "{nome_lead}, ho solo 2 slot liberi questa settimana. Ti prenoto uno prima che finiscano?",
+        useCase: "ripresa_urgenza",
         targetAgentType: "proactive_setter",
     },
     {
-        templateName: "Preferenza Canale",
-        description: "Chiedere preferenza tra chiamata o messaggio",
-        body: "{nome_lead}, preferisci una chiamata o un messaggio vocale con più dettagli?",
-        useCase: "preferenza contatto",
+        templateName: "Ultimo Tentativo Setter",
+        description: "Ultimo tentativo rispettoso",
+        body: "{nome_lead}, questo è il mio ultimo messaggio. Se non è il momento giusto, nessun problema. Ti auguro il meglio!",
+        useCase: "ripresa_ultimo_tentativo",
         targetAgentType: "proactive_setter",
     },
     {
-        templateName: "Contenuto Preparato",
-        description: "Annunciare contenuto preparato specificamente",
-        body: "{nome_lead}, ho preparato qualcosa di specifico per te. Quando posso mostrartelo?",
-        useCase: "proposta personalizzata",
+        templateName: "Riattivazione Setter",
+        description: "Riattivazione lead dormiente",
+        body: "Ciao {nome_lead}! È passato un po' di tempo. Ho novità interessanti da condividere. Hai 5 minuti?",
+        useCase: "ripresa_riattivazione",
         targetAgentType: "proactive_setter",
     },
     {
-        templateName: "Chiarimento Dubbi",
-        description: "Offrirsi di chiarire dubbi",
-        body: "Ciao {nome_lead}! So che hai valutato la nostra soluzione. Hai dubbi su cui posso aiutarti?",
-        useCase: "gestione obiezioni",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Blocco Decisione",
-        description: "Capire cosa blocca la decisione",
-        body: "{nome_lead}, cosa ti impedisce di fare il prossimo passo? Forse posso aiutarti.",
-        useCase: "sblocco obiezioni",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Gestione Dubbi Comuni",
-        description: "Rispondere a dubbi comuni",
-        body: "{nome_lead}, altre persone come te hanno avuto gli stessi dubbi. Vuoi sapere come li hanno superati?",
-        useCase: "gestione obiezioni",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Slot Immediato",
-        description: "Proporre chiamata immediata",
-        body: "Ciao {nome_lead}! Ho uno slot libero tra 30 minuti. Ti andrebbe una breve chiamata?",
-        useCase: "proposta immediata",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Pitch Veloce",
-        description: "Richiedere 3 minuti per spiegare il valore",
-        body: "{nome_lead}, se hai 3 minuti, ti spiego perché vale la pena approfondire.",
-        useCase: "pitch rapido",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Preferenza Orario",
-        description: "Chiedere preferenza orario",
-        body: "{nome_lead}, qual è il momento migliore per sentirti? Mattina o pomeriggio?",
-        useCase: "scheduling",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Approccio Rispettoso",
-        description: "Approccio non invasivo",
-        body: "Ciao {nome_lead}! Non voglio disturbarti, ma credo davvero che questo possa interessarti.",
-        useCase: "approccio gentile",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Check Riflessione",
-        description: "Verificare se ha riflettuto sulla proposta",
-        body: "{nome_lead}, hai avuto modo di riflettere sulla nostra proposta?",
-        useCase: "follow-up riflessione",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Offerta Chiarimenti",
-        description: "Offrire chiarimenti pre-decisione",
-        body: "{nome_lead}, ci sono domande che posso chiarirti prima di decidere?",
-        useCase: "pre-decisione",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Promemoria Gentile",
-        description: "Promemoria non invasivo",
-        body: "Ciao {nome_lead}! Solo un gentile promemoria. Sono qui quando vuoi.",
-        useCase: "promemoria",
-        targetAgentType: "proactive_setter",
-    },
-    {
-        templateName: "Chiusura Rispettosa",
-        description: "Chiusura rispettosa senza forzare",
-        body: "{nome_lead}, se cambi idea, sai dove trovarmi. In bocca al lupo!",
-        useCase: "chiusura rispettosa",
+        templateName: "Chiusura Setter",
+        description: "Chiusura positiva e professionale",
+        body: "Grazie {nome_lead}! È stato un piacere conoscerti. Se cambi idea, sai dove trovarmi. In bocca al lupo!",
+        useCase: "chiusura",
         targetAgentType: "proactive_setter",
     },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INFORMATIVE ADVISOR TEMPLATES (20)
+// INFORMATIVE ADVISOR TEMPLATES (10)
+// Tone: Educational, value-driven, informative
 // ═══════════════════════════════════════════════════════════════════════════
 
 const advisorTemplates: DefaultTemplate[] = [
     {
-        templateName: "Benvenuto Educativo",
-        description: "Primo messaggio di benvenuto educativo",
-        body: "Ciao {nome_lead}! Benvenuto/a. Sono qui per rispondere a tutte le tue domande. Cosa vorresti sapere?",
-        useCase: "primo contatto",
+        templateName: "Benvenuto Advisor",
+        description: "Primo messaggio educativo",
+        body: "Ciao {nome_lead}! Sono {nome_consulente} di {nome_azienda}. Sono qui per rispondere a tutte le tue domande!",
+        useCase: "apertura",
         targetAgentType: "informative_advisor",
     },
     {
-        templateName: "Invio Guida",
-        description: "Invio di una guida utile",
-        body: "{nome_lead}, ecco una guida veloce che potrebbe esserti utile.",
-        useCase: "contenuto educativo",
+        templateName: "Ripresa 24h Advisor",
+        description: "Follow-up informativo dopo 24h",
+        body: "{nome_lead}, hai avuto modo di leggere le informazioni? Sono qui se hai domande o vuoi approfondire.",
+        useCase: "ripresa_24h",
         targetAgentType: "informative_advisor",
     },
     {
-        templateName: "Spiegazione Semplice",
-        description: "Spiegazione in modo semplice",
-        body: "Ciao {nome_lead}! Molti si chiedono come funziona. Te lo spiego in modo semplice.",
-        useCase: "spiegazione",
+        templateName: "Ripresa 48h Advisor",
+        description: "Follow-up gentile dopo 48h",
+        body: "Ciao {nome_lead}! Capisco che stai valutando. Resto a disposizione per qualsiasi chiarimento ti serva.",
+        useCase: "ripresa_48h",
         targetAgentType: "informative_advisor",
     },
     {
-        templateName: "Verifica Comprensione",
-        description: "Verificare la comprensione",
-        body: "{nome_lead}, hai domande su quanto ti ho spiegato? Sono qui per chiarire tutto.",
-        useCase: "verifica comprensione",
+        templateName: "Offerta Valore Advisor",
+        description: "Condivisione risorsa educativa",
+        body: "{nome_lead}, ho preparato una guida gratuita su questo argomento. Vuoi che te la invii?",
+        useCase: "ripresa_valore",
         targetAgentType: "informative_advisor",
     },
     {
-        templateName: "Tre Cose da Sapere",
-        description: "Condivisione punti chiave",
-        body: "Ecco 3 cose che dovresti sapere prima di iniziare, {nome_lead}.",
-        useCase: "punti chiave",
+        templateName: "Domanda Aperta Advisor",
+        description: "Domanda per capire interessi",
+        body: "{nome_lead}, qual è l'aspetto che ti interessa approfondire di più? Così posso aiutarti meglio.",
+        useCase: "ripresa_domanda",
         targetAgentType: "informative_advisor",
     },
     {
-        templateName: "Consegna Informazione",
-        description: "Consegna informazione richiesta",
-        body: "{nome_lead}, questa è l'informazione che cercavi. Fammi sapere se vuoi approfondire.",
-        useCase: "consegna info",
+        templateName: "Social Proof Advisor",
+        description: "Esempio di successo educativo",
+        body: "{nome_lead}, molti hanno avuto i tuoi stessi dubbi. Ecco come li hanno risolti grazie alle nostre informazioni.",
+        useCase: "ripresa_social_proof",
         targetAgentType: "informative_advisor",
     },
     {
-        templateName: "Condivisione Consiglio",
-        description: "Condivisione di un consiglio utile",
-        body: "Ciao {nome_lead}! Ti condivido un consiglio che trovo molto utile.",
-        useCase: "consiglio",
+        templateName: "Urgenza Soft Advisor",
+        description: "Invito ad agire con consapevolezza",
+        body: "{nome_lead}, prima inizi a informarti, prima potrai prendere una decisione consapevole. Posso aiutarti?",
+        useCase: "ripresa_urgenza",
         targetAgentType: "informative_advisor",
     },
     {
-        templateName: "Guida Applicazione",
-        description: "Come applicare quanto spiegato",
-        body: "{nome_lead}, ecco come puoi applicare quello che ti ho spiegato.",
-        useCase: "guida pratica",
+        templateName: "Ultimo Tentativo Advisor",
+        description: "Ultimo messaggio rispettoso",
+        body: "{nome_lead}, non voglio essere invadente. Se hai bisogno di informazioni, sai dove trovarmi. Buon percorso!",
+        useCase: "ripresa_ultimo_tentativo",
         targetAgentType: "informative_advisor",
     },
     {
-        templateName: "Check Comprensione",
-        description: "Verificare se ha capito tutto",
-        body: "Hai capito tutto {nome_lead}? Se hai dubbi, scrivi pure!",
-        useCase: "verifica dubbi",
+        templateName: "Riattivazione Advisor",
+        description: "Riattivazione con nuovi contenuti",
+        body: "Ciao {nome_lead}! Ho nuovi contenuti formativi che potrebbero interessarti. Vuoi che ti aggiorni?",
+        useCase: "ripresa_riattivazione",
         targetAgentType: "informative_advisor",
     },
     {
-        templateName: "Riepilogo",
-        description: "Invio riepilogo discussione",
-        body: "{nome_lead}, ti invio un riepilogo di quanto discusso.",
-        useCase: "riepilogo",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Risorse Promesse",
-        description: "Invio risorse promesse",
-        body: "Ciao {nome_lead}! Ecco le risorse che ti avevo promesso.",
-        useCase: "invio risorse",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Errore da Evitare",
-        description: "Segnalare errore comune da evitare",
-        body: "{nome_lead}, questo è un errore comune da evitare.",
-        useCase: "warning",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Risposta Domanda",
-        description: "Risposta diretta a domanda",
-        body: "{nome_lead}, ecco la risposta alla tua domanda.",
-        useCase: "risposta",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Augurio Utilità",
-        description: "Augurio che le info siano utili",
-        body: "Spero che le informazioni ti siano utili {nome_lead}. Buon percorso!",
-        useCase: "chiusura positiva",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Offerta Approfondimento",
-        description: "Offerta di materiali aggiuntivi",
-        body: "{nome_lead}, se vuoi approfondire, posso inviarti altri materiali.",
-        useCase: "offerta approfondimento",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Esperienza Personale",
-        description: "Condivisione esperienza personale",
-        body: "Ciao {nome_lead}! Nella mia esperienza, questo approccio funziona meglio.",
-        useCase: "best practice",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Check Applicazione",
-        description: "Verificare applicazione suggerimenti",
-        body: "{nome_lead}, hai già provato quanto ti ho suggerito? Come è andata?",
-        useCase: "follow-up applicazione",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Chiusura Supporto",
-        description: "Chiusura con offerta supporto",
-        body: "{nome_lead}, spero di esserti stato utile. A presto!",
+        templateName: "Chiusura Advisor",
+        description: "Chiusura con augurio formativo",
+        body: "Grazie {nome_lead}! Spero di averti dato informazioni utili. Ti auguro un ottimo percorso di crescita!",
         useCase: "chiusura",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Incoraggiamento",
-        description: "Messaggio di incoraggiamento",
-        body: "Ciao {nome_lead}! Ricorda: il primo passo è sempre il più difficile. Ce la puoi fare!",
-        useCase: "motivazione",
-        targetAgentType: "informative_advisor",
-    },
-    {
-        templateName: "Disponibilità Futura",
-        description: "Disponibilità per domande future",
-        body: "{nome_lead}, se hai bisogno di altre informazioni in futuro, scrivimi pure!",
-        useCase: "disponibilità continua",
         targetAgentType: "informative_advisor",
     },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CUSTOMER SUCCESS TEMPLATES (20)
+// CUSTOMER SUCCESS TEMPLATES (10)
+// Tone: Empathetic, post-sale support, caring
 // ═══════════════════════════════════════════════════════════════════════════
 
 const customerSuccessTemplates: DefaultTemplate[] = [
     {
-        templateName: "Benvenuto Post-Acquisto",
-        description: "Primo messaggio dopo l'acquisto",
-        body: "Ciao {nome_lead}! Benvenuto/a nella nostra community! Sono qui per assicurarmi che tu abbia tutto ciò di cui hai bisogno.",
-        useCase: "primo contatto post-vendita",
+        templateName: "Benvenuto Customer Success",
+        description: "Primo messaggio post-acquisto",
+        body: "Ciao {nome_lead}! Sono {nome_consulente} di {nome_azienda}. Benvenuto/a! Sono qui per supportarti nel tuo percorso.",
+        useCase: "apertura",
         targetAgentType: "customer_success",
     },
     {
-        templateName: "Check Andamento",
-        description: "Verificare come sta andando",
-        body: "{nome_lead}, come sta andando? Hai domande sul servizio?",
-        useCase: "check-in",
+        templateName: "Ripresa 24h CS",
+        description: "Check-in dopo 24h",
+        body: "{nome_lead}, volevo sapere come sta andando. Hai bisogno di aiuto con qualcosa?",
+        useCase: "ripresa_24h",
         targetAgentType: "customer_success",
     },
     {
-        templateName: "Verifica Progresso",
-        description: "Verificare che tutto proceda bene",
-        body: "Ciao {nome_lead}! Volevo chiederti se tutto procede come previsto.",
-        useCase: "verifica progresso",
+        templateName: "Ripresa 48h CS",
+        description: "Follow-up empatico dopo 48h",
+        body: "Ciao {nome_lead}! Non ti sento da un po'. Tutto bene? Sono qui se hai bisogno di supporto.",
+        useCase: "ripresa_48h",
         targetAgentType: "customer_success",
     },
     {
-        templateName: "Offerta Assistenza",
-        description: "Offerta proattiva di assistenza",
-        body: "{nome_lead}, hai bisogno di assistenza? Sono qui per te!",
-        useCase: "assistenza proattiva",
+        templateName: "Offerta Valore CS",
+        description: "Condivisione risorsa esclusiva",
+        body: "{nome_lead}, ho un consiglio esclusivo per te che potrebbe migliorare la tua esperienza. Posso condividerlo?",
+        useCase: "ripresa_valore",
         targetAgentType: "customer_success",
     },
     {
-        templateName: "Richiesta Feedback",
-        description: "Richiesta feedback onesto",
-        body: "{nome_lead}, come è stata la tua prima esperienza? Feedback onesto!",
-        useCase: "raccolta feedback",
+        templateName: "Domanda Aperta CS",
+        description: "Domanda per capire soddisfazione",
+        body: "{nome_lead}, come ti trovi finora? C'è qualcosa che potremmo fare meglio per te?",
+        useCase: "ripresa_domanda",
         targetAgentType: "customer_success",
     },
     {
-        templateName: "Celebrazione Successo",
-        description: "Celebrare un successo del cliente",
-        body: "Fantastico {nome_lead}! Sono felice che stia andando bene. Continua così!",
-        useCase: "celebrazione",
+        templateName: "Social Proof CS",
+        description: "Condivisione successi altri clienti",
+        body: "{nome_lead}, ecco cosa stanno ottenendo altri clienti come te. Vuoi qualche suggerimento per replicare?",
+        useCase: "ripresa_social_proof",
         targetAgentType: "customer_success",
     },
     {
-        templateName: "Nuove Funzionalità",
-        description: "Comunicare nuove funzionalità",
-        body: "Ciao {nome_lead}! Hai visto le nuove funzionalità disponibili?",
-        useCase: "aggiornamento prodotto",
+        templateName: "Urgenza Soft CS",
+        description: "Invito a sfruttare opportunità",
+        body: "{nome_lead}, ci sono alcune risorse che scadono presto. Vuoi che ti aiuti a sfruttarle al meglio?",
+        useCase: "ripresa_urgenza",
         targetAgentType: "customer_success",
     },
     {
-        templateName: "Suggerimento Ottimizzazione",
-        description: "Suggerimento per ottimizzare risultati",
-        body: "{nome_lead}, ti invio un suggerimento per ottimizzare i tuoi risultati.",
-        useCase: "ottimizzazione",
+        templateName: "Ultimo Tentativo CS",
+        description: "Ultimo check-in rispettoso",
+        body: "{nome_lead}, non voglio disturbarti. Sappi che sono sempre qui per te. Un abbraccio!",
+        useCase: "ripresa_ultimo_tentativo",
         targetAgentType: "customer_success",
     },
     {
-        templateName: "Riattivazione",
+        templateName: "Riattivazione CS",
         description: "Riattivazione cliente inattivo",
-        body: "{nome_lead}, abbiamo notato che non accedi da un po'. Tutto bene?",
-        useCase: "riattivazione",
+        body: "Ciao {nome_lead}! È passato un po' di tempo. Mi manchi! C'è qualcosa che posso fare per aiutarti?",
+        useCase: "ripresa_riattivazione",
         targetAgentType: "customer_success",
     },
     {
-        templateName: "Case Study",
-        description: "Condivisione risultati altri clienti",
-        body: "Ciao {nome_lead}! Ecco cosa altri clienti come te stanno ottenendo.",
-        useCase: "social proof",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Ringraziamento Fiducia",
-        description: "Ringraziamento per la fiducia",
-        body: "{nome_lead}, grazie per essere con noi. Apprezziamo la tua fiducia!",
-        useCase: "fidelizzazione",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Check Risorse",
-        description: "Verificare uso delle risorse disponibili",
-        body: "{nome_lead}, hai sfruttato tutte le risorse a tua disposizione?",
-        useCase: "educazione cliente",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Consiglio Esclusivo",
-        description: "Consiglio esclusivo per clienti",
-        body: "Ciao {nome_lead}! Ecco un consiglio esclusivo per i nostri clienti.",
-        useCase: "valore esclusivo",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Richiesta Testimonianza",
-        description: "Richiesta di testimonianza",
-        body: "{nome_lead}, ti andrebbe di condividere la tua esperienza con una testimonianza?",
-        useCase: "raccolta testimonianza",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Check Obiettivi",
-        description: "Verificare raggiungimento obiettivi",
-        body: "{nome_lead}, hai raggiunto i tuoi obiettivi? Parliamone!",
-        useCase: "review obiettivi",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Anteprima Novità",
-        description: "Anteprima di novità in arrivo",
-        body: "Ciao {nome_lead}! Stiamo preparando qualcosa di speciale per te.",
-        useCase: "engagement",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Richiesta Miglioramenti",
-        description: "Richiesta feedback per miglioramenti",
-        body: "{nome_lead}, c'è qualcosa che potremmo fare meglio? Il tuo feedback conta.",
-        useCase: "raccolta feedback miglioramento",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Vantaggio Fedeltà",
-        description: "Vantaggio esclusivo per clienti fedeli",
-        body: "{nome_lead}, grazie per essere un cliente fedele. Ecco un vantaggio esclusivo per te.",
-        useCase: "reward fedeltà",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Disponibilità",
-        description: "Ricordare disponibilità supporto",
-        body: "Ciao {nome_lead}! Ricorda che siamo sempre a disposizione.",
-        useCase: "promemoria supporto",
-        targetAgentType: "customer_success",
-    },
-    {
-        templateName: "Saluto Cordiale",
-        description: "Saluto cordiale di chiusura",
-        body: "{nome_lead}, a presto! È un piacere averti come cliente.",
+        templateName: "Chiusura CS",
+        description: "Chiusura con calore",
+        body: "Grazie {nome_lead}! È stato un piacere supportarti. Siamo sempre qui per te. A presto!",
         useCase: "chiusura",
         targetAgentType: "customer_success",
     },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INTAKE COORDINATOR TEMPLATES (20)
+// INTAKE COORDINATOR TEMPLATES (10)
+// Tone: Practical, document-focused, efficient
 // ═══════════════════════════════════════════════════════════════════════════
 
 const intakeTemplates: DefaultTemplate[] = [
     {
-        templateName: "Richiesta Documenti Iniziale",
-        description: "Prima richiesta documenti pre-appuntamento",
-        body: "Ciao {nome_lead}! Prima del tuo appuntamento, ho bisogno di alcuni documenti. Ti spiego cosa serve.",
-        useCase: "primo contatto",
+        templateName: "Benvenuto Intake",
+        description: "Primo messaggio pratico per raccolta documenti",
+        body: "Ciao {nome_lead}! Sono {nome_consulente} di {nome_azienda}. Ti guido nella raccolta dei documenti necessari.",
+        useCase: "apertura",
         targetAgentType: "intake_coordinator",
     },
     {
-        templateName: "Richiesta Documento Specifico",
-        description: "Richiesta documento specifico",
-        body: "{nome_lead}, per procedere ho bisogno di un documento. Puoi inviarlo qui?",
-        useCase: "richiesta documento",
+        templateName: "Ripresa 24h Intake",
+        description: "Promemoria documenti dopo 24h",
+        body: "{nome_lead}, ti ricordo di inviarmi i documenti richiesti. Manca poco per completare la pratica!",
+        useCase: "ripresa_24h",
         targetAgentType: "intake_coordinator",
     },
     {
-        templateName: "Conferma Ricezione Parziale",
-        description: "Conferma ricezione con documenti mancanti",
-        body: "Ciao {nome_lead}! Ho ricevuto il documento, grazie! Ne manca ancora uno.",
-        useCase: "conferma parziale",
+        templateName: "Ripresa 48h Intake",
+        description: "Follow-up comprensivo dopo 48h",
+        body: "Ciao {nome_lead}! Capisco che reperire i documenti richiede tempo. Posso aiutarti in qualche modo?",
+        useCase: "ripresa_48h",
         targetAgentType: "intake_coordinator",
     },
     {
-        templateName: "Documenti Completi",
-        description: "Conferma che tutti i documenti sono arrivati",
-        body: "{nome_lead}, perfetto! Ho tutto. Sei pronto/a per l'appuntamento.",
-        useCase: "conferma completa",
+        templateName: "Offerta Valore Intake",
+        description: "Invio checklist documenti",
+        body: "{nome_lead}, ti invio la checklist completa dei documenti. Così puoi procedere con ordine. La vuoi?",
+        useCase: "ripresa_valore",
         targetAgentType: "intake_coordinator",
     },
     {
-        templateName: "Qualità Insufficiente",
-        description: "Richiesta nuovo invio per qualità",
-        body: "{nome_lead}, il documento inviato non è leggibile. Puoi rifarlo per favore?",
-        useCase: "richiesta reinvio",
+        templateName: "Domanda Aperta Intake",
+        description: "Domanda su difficoltà documenti",
+        body: "{nome_lead}, c'è qualche documento che fai fatica a reperire? Posso suggerirti come ottenerlo.",
+        useCase: "ripresa_domanda",
         targetAgentType: "intake_coordinator",
     },
     {
-        templateName: "Reminder Documenti",
-        description: "Promemoria invio documenti",
-        body: "Ciao {nome_lead}! Ti ricordo di inviare i documenti entro domani.",
-        useCase: "promemoria",
+        templateName: "Social Proof Intake",
+        description: "Rassicurazione su processo",
+        body: "{nome_lead}, molti clienti completano la documentazione in pochi giorni. Sei quasi al traguardo!",
+        useCase: "ripresa_social_proof",
         targetAgentType: "intake_coordinator",
     },
     {
-        templateName: "Ultimo Documento",
-        description: "Notifica che manca solo un documento",
-        body: "{nome_lead}, manca solo un documento. Appena lo ricevo, sei a posto!",
-        useCase: "quasi completo",
+        templateName: "Urgenza Soft Intake",
+        description: "Promemoria scadenza gentile",
+        body: "{nome_lead}, i documenti servono entro breve per procedere. Riesci a inviarli questa settimana?",
+        useCase: "ripresa_urgenza",
         targetAgentType: "intake_coordinator",
     },
     {
-        templateName: "Verifica Completata",
-        description: "Conferma verifica documenti completata",
-        body: "{nome_lead}, ho controllato tutto. I documenti sono completi.",
-        useCase: "verifica ok",
+        templateName: "Ultimo Tentativo Intake",
+        description: "Ultimo promemoria rispettoso",
+        body: "{nome_lead}, questo è il mio ultimo promemoria. Se hai difficoltà, fammelo sapere. Sono qui per aiutarti.",
+        useCase: "ripresa_ultimo_tentativo",
         targetAgentType: "intake_coordinator",
     },
     {
-        templateName: "Checklist Documenti",
-        description: "Invio checklist documenti necessari",
-        body: "Ciao {nome_lead}! Ecco la checklist dei documenti necessari.",
-        useCase: "invio checklist",
+        templateName: "Riattivazione Intake",
+        description: "Riattivazione pratica sospesa",
+        body: "Ciao {nome_lead}! La tua pratica è ancora in sospeso. Posso aiutarti a completarla velocemente?",
+        useCase: "ripresa_riattivazione",
         targetAgentType: "intake_coordinator",
     },
     {
-        templateName: "Offerta Aiuto",
-        description: "Offerta di aiuto per reperire documenti",
-        body: "{nome_lead}, hai bisogno di aiuto per reperire un documento?",
-        useCase: "supporto",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Istruzioni Compilazione",
-        description: "Istruzioni per compilare modulo",
-        body: "{nome_lead}, ti invio le istruzioni per compilare il modulo.",
-        useCase: "istruzioni",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Conferma Arrivo",
-        description: "Conferma arrivo documento",
-        body: "Ciao {nome_lead}! Il documento è arrivato. Tutto ok!",
-        useCase: "conferma ricezione",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Documenti Appuntamento",
-        description: "Lista documenti da portare all'appuntamento",
-        body: "{nome_lead}, l'appuntamento è confermato. Porta con te questi documenti.",
-        useCase: "preparazione appuntamento",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Scadenza Documenti",
-        description: "Promemoria scadenza documenti",
-        body: "{nome_lead}, ti mando un promemoria: i documenti servono entro breve.",
-        useCase: "deadline",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Informazione Mancante",
-        description: "Segnalazione informazione mancante nel modulo",
-        body: "Ciao {nome_lead}! Ho notato un'informazione mancante nel modulo.",
-        useCase: "correzione",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Aggiornamento Documento",
-        description: "Richiesta aggiornamento documento in scadenza",
-        body: "{nome_lead}, il documento scade tra poco. Aggiorniamolo prima dell'appuntamento.",
-        useCase: "aggiornamento",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Riepilogo Inviati",
-        description: "Riepilogo documenti inviati",
-        body: "{nome_lead}, ecco il riepilogo di tutto ciò che hai inviato.",
-        useCase: "riepilogo",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Pronti Appuntamento",
-        description: "Conferma tutto pronto per l'appuntamento",
-        body: "Ciao {nome_lead}! Siamo pronti. A domani!",
-        useCase: "conferma finale",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Ringraziamento Collaborazione",
-        description: "Ringraziamento per la collaborazione",
-        body: "{nome_lead}, grazie per la collaborazione! Tutti i documenti sono in ordine.",
-        useCase: "ringraziamento",
-        targetAgentType: "intake_coordinator",
-    },
-    {
-        templateName: "Disponibilità Domande",
-        description: "Disponibilità per domande sui documenti",
-        body: "{nome_lead}, se hai domande sui documenti, scrivimi pure!",
-        useCase: "supporto",
+        templateName: "Chiusura Intake",
+        description: "Conferma documenti completi",
+        body: "Grazie {nome_lead}! Documentazione completa! Sei pronto/a per il prossimo step. A presto!",
+        useCase: "chiusura",
         targetAgentType: "intake_coordinator",
     },
 ];
@@ -790,9 +475,33 @@ export function getDefaultTemplatesForAgent(agentType: AgentType): DefaultTempla
 }
 
 /**
- * Get the first template (opening message) for an agent type
+ * Get the opening template (apertura) for an agent type
  */
 export function getOpeningTemplateForAgent(agentType: AgentType): DefaultTemplate | undefined {
     const templates = getDefaultTemplatesForAgent(agentType);
-    return templates.find(t => t.useCase === "primo contatto");
+    return templates.find(t => t.useCase === "apertura");
+}
+
+/**
+ * Get follow-up templates (ripresa) for an agent type
+ */
+export function getFollowUpTemplatesForAgent(agentType: AgentType): DefaultTemplate[] {
+    const templates = getDefaultTemplatesForAgent(agentType);
+    return templates.filter(t => t.useCase.startsWith("ripresa_"));
+}
+
+/**
+ * Get the closing template (chiusura) for an agent type
+ */
+export function getClosingTemplateForAgent(agentType: AgentType): DefaultTemplate | undefined {
+    const templates = getDefaultTemplatesForAgent(agentType);
+    return templates.find(t => t.useCase === "chiusura");
+}
+
+/**
+ * Get template by specific use case for an agent type
+ */
+export function getTemplateByUseCase(agentType: AgentType, useCase: TemplateUseCase): DefaultTemplate | undefined {
+    const templates = getDefaultTemplatesForAgent(agentType);
+    return templates.find(t => t.useCase === useCase);
 }

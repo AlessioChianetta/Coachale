@@ -65,6 +65,21 @@ export default function ConsultantWhatsAppAgentConfig() {
     enabled: !!agentId,
   });
   
+  const getInitialDataFromDuplicate = () => {
+    if (!isNewAgent) return undefined;
+    try {
+      const duplicateData = sessionStorage.getItem('duplicateAgentData');
+      if (duplicateData) {
+        const parsed = JSON.parse(duplicateData);
+        sessionStorage.removeItem('duplicateAgentData');
+        return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to parse duplicate data:', e);
+    }
+    return undefined;
+  };
+
   const getInitialDataFromIdea = () => {
     if (!ideaData) return undefined;
     
@@ -149,7 +164,7 @@ export default function ConsultantWhatsAppAgentConfig() {
     );
   }
   
-  const initialDataForWizard = existingConfig || getInitialDataFromIdea();
+  const initialDataForWizard = existingConfig || getInitialDataFromDuplicate() || getInitialDataFromIdea();
 
   return (
     <WhatsAppLayout>

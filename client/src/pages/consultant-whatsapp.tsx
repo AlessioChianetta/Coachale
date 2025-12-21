@@ -556,12 +556,12 @@ export default function ConsultantWhatsAppPage() {
   // Duplicate WhatsApp config mutation
   const duplicateMutation = useMutation({
     mutationFn: async (config: WhatsAppConfig) => {
-      // Invece di creare subito, apri il dialog con i dati pre-compilati
       const duplicateData = {
         agentName: `${config.agentName} - Copia`,
         twilioAccountSid: "",
         twilioAuthToken: "",
         twilioWhatsappNumber: "",
+        integrationMode: config.integrationMode || "whatsapp_ai",
         autoResponseEnabled: config.autoResponseEnabled,
         agentType: config.agentType,
         workingHoursEnabled: config.workingHoursEnabled,
@@ -570,6 +570,7 @@ export default function ConsultantWhatsAppPage() {
         workingDays: config.workingDays,
         afterHoursMessage: config.afterHoursMessage,
         businessName: config.businessName,
+        consultantDisplayName: config.consultantDisplayName,
         businessDescription: config.businessDescription,
         consultantBio: config.consultantBio,
         salesScript: config.salesScript,
@@ -596,6 +597,9 @@ export default function ConsultantWhatsAppPage() {
         defaultUncino: config.defaultUncino,
         defaultIdealState: config.defaultIdealState,
         isDryRun: config.isDryRun,
+        agentInstructions: config.agentInstructions,
+        agentInstructionsEnabled: config.agentInstructionsEnabled,
+        selectedTemplate: config.selectedTemplate,
       };
 
       return duplicateData;
@@ -848,6 +852,10 @@ export default function ConsultantWhatsAppPage() {
                       onDeleteAgent={(agentId) => {
                         const config = configs.find((c: WhatsAppConfig) => c.id === agentId);
                         if (config) handleDelete(config);
+                      }}
+                      onDuplicateAgent={(agentId) => {
+                        const config = configs.find((c: WhatsAppConfig) => c.id === agentId);
+                        if (config) handleDuplicate(config);
                       }}
                     />
                   </div>

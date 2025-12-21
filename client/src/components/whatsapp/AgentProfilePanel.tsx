@@ -30,7 +30,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Users
+  Users,
+  Copy
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,7 @@ interface AgentAnalytics {
 interface AgentProfilePanelProps {
   selectedAgent: Agent | null;
   onDeleteAgent?: (agentId: string) => void;
+  onDuplicateAgent?: (agentId: string) => void;
 }
 
 function PerformanceGauge({ score, trend }: { score: number; trend: string }) {
@@ -181,7 +183,7 @@ function LoadingSkeleton() {
   );
 }
 
-export function AgentProfilePanel({ selectedAgent, onDeleteAgent }: AgentProfilePanelProps) {
+export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAgent }: AgentProfilePanelProps) {
   const [, navigate] = useLocation();
 
   const { data, isLoading, isError } = useQuery<AgentAnalytics>({
@@ -405,7 +407,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent }: AgentProfile
               <Zap className="h-4 w-4 text-amber-500" />
               Azioni Rapide
             </h3>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -423,6 +425,15 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent }: AgentProfile
               >
                 <MessageSquare className="h-4 w-4" />
                 <span className="text-xs">Chat</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-col h-auto py-3 gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                onClick={() => onDuplicateAgent?.(selectedAgent.id)}
+              >
+                <Copy className="h-4 w-4" />
+                <span className="text-xs">Duplica</span>
               </Button>
               <Button
                 variant="outline"
