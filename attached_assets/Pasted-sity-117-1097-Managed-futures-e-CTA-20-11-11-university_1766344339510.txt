@@ -1,0 +1,2071 @@
+sity] 117/1097: Managed futures e CTA
+20:11:11
+📄
+[university] 118/1097: Art e collectibles
+20:11:11
+📄
+[library] 81/86: Capitolo 29: La Trappola dell'Euforia - Gestire un Mercato al Rialzo (e Non Diventare il Tuo Peggior Nemico)
+20:11:11
+📄
+[university] 119/1097: Farmland e timberland
+20:11:12
+📄
+[university] 120/1097: Check-up Q3 Anno 3
+20:11:12
+📄
+[library] 82/86: Capitolo 33: La Tua Costituzione Personale - Creare il Tuo Manifesto Finanziario
+20:11:12
+📄
+[university] 121/1097: Cos'è un family office
+20:11:12
+📄
+[university] 122/1097: Wealth management integrato
+20:11:12
+📄
+[library] 83/86: Capitolo 52: La Fine dell'Inizio - Il Tuo Comando Perpetuo
+20:11:12
+📄
+[university] 123/1097: Governance familiare
+20:11:12
+📄
+[university] 124/1097: Educazione finanziaria degli eredi
+20:11:12
+📄
+[library] 84/86: Capitolo 42: La Fase di Decumulo - Come Prelevare dal Tuo Portafoglio in Modo Intelligente
+20:11:12
+📄
+[university] 125/1097: Impact investing
+20:11:12
+📄
+[university] 126/1097: Donor-advised funds
+20:11:12
+📄
+[library] 85/86: Capitolo 51: L'Arte della Celebrazione - Il Ritmo Sostenibile del Successo
+20:11:13
+📄
+[university] 127/1097: Fondazioni private
+20:11:13
+📄
+[university] 128/1097: Measuring impact
+20:11:13
+📄
+[library] 86/86: Chiamata a freddo - Presa appuntamento
+20:11:13
+✅
+Completato library: 86/86 sincronizzati
+20:11:13
+📄
+[university] 129/1097: Codificare valori familiari
+20:11:13
+ℹ️
+Inizio sync knowledge_base: 0 elementi
+20:11:13
+✅
+Completato knowledge_base: 0/0 sincronizzati
+20:11:13
+📄
+[university] 130/1097: Mentorship e dare indietro
+20:11:13
+📄
+[university] 131/1097: Continuous learning
+20:11:13
+📄
+[university] 132/1097: Bilancio finale
+20:11:13
+📄
+[university] 133/1097: Oltre l'università
+20:11:14
+📄
+[university] 134/1097: Il Denaro nelle Relazioni - Costruire un Impero di Squadra
+20:11:14
+ℹ️
+Inizio sync exercises: 153 elementi
+20:11:14
+📄
+[university] 135/1097: La Filosofia F.I.R.E. - Ingegneria Inversa della Libertà
+20:11:14
+📄
+[exercises] 1/153: Flusso di Cassa
+20:11:14
+📄
+[university] 136/1097: Il Numero della Libertà - Calcolare il Tuo Traguardo per l'Indipendenza Finanziaria
+20:11:14
+📄
+[exercises] 2/153: Cameriere Aumentato
+20:11:14
+📄
+[university] 137/1097: Manuale di Sopravvivenza per l'Inverno Finanziario (Come Affrontare un Mercato al Ribasso)
+20:11:14
+📄
+[exercises] 3/153: 3. Creazione del Messaggio di Marketing
+20:11:14
+📄
+[university] 138/1097: La Trappola dell'Euforia - Gestire un Mercato al Rialzo (e Non Diventare il Tuo Peggior Nemico)
+20:11:14
+📄
+[exercises] 4/153: Rimettiamo in break even il locale
+20:11:14
+📄
+[university] 139/1097: La Manutenzione della Macchina - Rivedere e Ribilanciare il Tuo Portafoglio
+20:11:14
+📄
+[exercises] 5/153: Configurazione Conti
+20:11:14
+📄
+[university] 140/1097: Introduzione, COMANDA LE TUE FINANZE
+20:11:14
+📄
+[exercises] 6/153: Da Precarietà a Redditività e Libertà Finanziaria
+20:11:15
+📄
+[university] 141/1097: La Mappa del Tesoro - Diagnosi del Tuo Patrimonio Netto
+20:11:15
+📄
+[exercises] 7/153: La tua vita
+20:11:15
+📄
+[university] 142/1097: Il Piano di Comando - Dall'Anarchia al Controllo
+20:11:15
+📄
+[exercises] 8/153: Esercizio 4 Costruisci il tuo Piano di Comando. (da template)
+20:11:15
+📄
+[university] 143/1097: La Variabile Dominante - Padroneggiare l'Orizzonte Temporale
+20:11:15
+📄
+[exercises] 9/153: Esercizi di Consapevolezza e Azione
+20:11:15
+📄
+[university] 144/1097: L'Ultima Frontiera - Usare i Soldi per Comprare la Felicità (Sì, è Possibile)
+20:11:15
+📄
+[exercises] 10/153: La Dashboard Finanziaria
+20:11:15
+📄
+[university] 145/1097: La Tua Costituzione Personale - Creare il Tuo Manifesto Finanziario
+20:11:15
+📄
+[exercises] 11/153: 2. Crea la tua Offerta Irresistibile ad Alto Valore
+20:11:15
+📄
+[university] 146/1097: L'Eredità del Comando - Pianificazione Successoria e Responsabilità
+20:11:15
+📄
+[exercises] 12/153: 3. Creazione del Messaggio di Marketing
+20:11:15
+📄
+[university] 147/1097: Il Cerchio si Chiude - La Ricchezza che si Ottiene Donando
+20:11:15
+📄
+[exercises] 13/153: Calcolo break even
+20:11:16
+📄
+[university] 148/1097: La Dieta dell'Informazione - Navigare le Notizie Finanziarie Senza Impazzire
+20:11:16
+📄
+[exercises] 14/153: La tua prima vendita
+20:11:16
+📄
+[university] 149/1097: Il GPS per la Vita - Assemblare il Tuo Piano Finanziario Completo
+20:11:16
+📄
+[exercises] 15/153: prova template
+20:11:16
+📄
+[university] 150/1097: L'Arte della Celebrazione e il Ritmo del Successo
+20:11:16
+📄
+[exercises] 16/153: La trasformazione attraverso la pratica
+20:11:16
+📄
+[university] 151/1097: La Fine dell'Inizio - Trasformare Questo percorso in una Vita di Ricchezza
+20:11:16
+📄
+[exercises] 17/153: Miglioramenti e consulenza 02 10 2025
+20:11:16
+📄
+[university] 152/1097: Oltre il Numero - La Vita Dopo l'Indipendenza Finanziaria
+20:11:16
+📄
+[exercises] 18/153: Esercizio 1 la tua dichiarazione di intenti
+20:11:16
+📄
+[university] 153/1097: La Fase di Decumulo - Come Prelevare dal Tuo Portafoglio in Modo Intelligente
+20:11:16
+📄
+[exercises] 19/153: prova template (da template)
+20:11:16
+📄
+[university] 154/1097: L'Arte del Lavoro Opzionale - Ridefinire il Successo e lo Scopo
+20:11:16
+📄
+[exercises] 20/153: Capitolo 9: Le Forze Gemelle - Interesse Composto e Inflazione (da template)
+20:11:17
+📄
+[university] 155/1097: Il Patrimonio Olistico - Investire in Salute, Relazioni e Conoscenza
+20:11:17
+📄
+[exercises] 21/153: test ora
+20:11:17
+📄
+[university] 156/1097: Resilienza a Lungo Termine - Adattare il Piano ai Grandi Cambiamenti della Vita
+20:11:17
+📄
+[exercises] 22/153: test orario
+20:11:17
+📄
+[university] 157/1097: Il Viaggio Infinito - La Tua Eredità di Saggezza
+20:11:17
+📄
+[exercises] 23/153: Esercizio 1 la tua dichiarazione di intenti Newsletter (da template)
+20:11:17
+📄
+[university] 158/1097: Glossario Strategico - Il Tuo Dizionario per il Comando Finanziario
+20:11:17
+📄
+[exercises] 24/153: Esercizio 2 La Verità del Tuo Punteggio Finanziario (da template)
+20:11:17
+📄
+[university] 159/1097: Il Comando è Tuo
+20:11:17
+📄
+[exercises] 25/153: Esercizio 3 Diventa un Agente Segreto (da template)
+20:11:17
+📄
+[university] 160/1097: Il Progetto Definitivo - Creare il Tuo Piano Finanziario Completo (Il Tuo GPS per la Vita)
+20:11:17
+📄
+[exercises] 26/153: Esercizio 2 La Verità del Tuo Punteggio Finanziario (da template)
+20:11:17
+📄
+[university] 161/1097: L'Arte della Celebrazione - Il Ritmo Sostenibile del Successo
+20:11:18
+📄
+[exercises] 27/153: 1. Ipotizziamo la nicchia di mercato
+20:11:18
+📄
+[exercises] 28/153: Esercizio 3 Diventa un Agente Segreto (da template)
+20:11:18
+📄
+[exercises] 29/153: Esercizio 4 Costruisci il tuo Piano di Comando. (da template)
+20:11:18
+📄
+[exercises] 30/153: Esercizio 1 la tua dichiarazione di intenti Newsletter (da template)
+20:11:18
+📄
+[exercises] 31/153: La Tua Architettura Finanziaria
+20:11:18
+📄
+[exercises] 32/153: Esercizio 1 la tua dichiarazione di intenti Newsletter (da template)
+20:11:18
+📄
+[exercises] 33/153: Esercizio 2 La Verità del Tuo Punteggio Finanziario (da template)
+20:11:18
+📄
+[university] 162/1097: La Fine dell'Inizio - Il Tuo Comando Perpetuo
+20:11:19
+📄
+[exercises] 34/153: Esercizio 3 Diventa un Agente Segreto (da template)
+20:11:19
+📄
+[university] 163/1097: Psicologia del pricing
+20:11:19
+📄
+[exercises] 35/153: Esercizio 4 Costruisci il tuo Piano di Comando. (da template)
+20:11:19
+📄
+[university] 164/1097: Value-based pricing vs cost-based
+20:11:19
+📄
+[exercises] 36/153: Chiamata a freddo, Consulenza ed esercizi 13/10/2025
+20:11:19
+📄
+[university] 165/1097: Testing e ottimizzazione prezzi
+20:11:19
+📄
+[exercises] 37/153: Consulenza ed esercizi 13 10 2025
+20:11:19
+📄
+[university] 166/1097: Processi e sistemi
+20:11:19
+📄
+[exercises] 38/153: Verifica Creazione servizio per la tua attività
+20:11:19
+📄
+[university] 167/1097: Tool e software per l'automazione
+20:11:19
+📄
+[exercises] 39/153: La tua libertà finanziaria
+20:11:19
+📄
+[university] 168/1097: Delegare efficacemente
+20:11:19
+📄
+[exercises] 40/153: Esercizio 11: I Due Mattoni Fondamentali: Azioni e Obbligazioni, Motore e Freno
+20:11:19
+📄
+[university] 169/1097: Modelli di business scalabili
+20:11:20
+📄
+[exercises] 41/153: Esercizio 7: Assicurazione: Scavare il Fossato - Trasferimento Strategico del Rischio
+20:11:20
+📄
+[university] 170/1097: Marketing automation
+20:11:20
+📄
+[exercises] 42/153: Esercizio 12: Diversificazione Finanziaria: L'Unico Pranzo Gratis e la Costruzione della Fortezza
+20:11:20
+📄
+[university] 171/1097: Upsell e cross-sell
+20:11:20
+📄
+[exercises] 43/153: Esercizio 13: La Rivoluzione degli ETF: Il Paniere Globale per Tutti
+20:11:20
+📄
+[university] 172/1097: Creare 3-5 flussi di reddito
+20:11:20
+📄
+[exercises] 44/153: Esercizio 16: Il Tuo Io Futuro Ti Chiama: Il Potere Inesorabile del Tempo
+20:11:20
+📄
+[university] 173/1097: Reddito attivo vs passivo
+20:11:20
+📄
+[exercises] 45/153: Il progresso
+20:11:20
+📄
+[university] 174/1097: Monetizzare competenze ed expertise
+20:11:20
+📄
+[exercises] 46/153: Avviamo il primo motore
+20:11:20
+📄
+[university] 175/1097: Check-up Q1 Anno 2
+20:11:20
+📄
+[exercises] 47/153: Il tuo piano per la vita
+20:11:20
+📄
+[university] 176/1097: Strategie di allocazione per patrimoni crescenti
+20:11:21
+📄
+[exercises] 48/153: Capitolo 10: L'Identità dell'Investitore - Strategia, Rischio e Azzardo (da template)
+20:11:21
+📄
+[university] 177/1097: Bilanciamento geografico
+20:11:21
+📄
+[exercises] 49/153: Capitolo 10: L'Identità dell'Investitore - Strategia, Rischio e Azzardo (da template)
+20:11:21
+📄
+[university] 178/1097: Esposizione settoriale
+20:11:21
+📄
+[exercises] 50/153: Capitolo 10: L'Identità dell'Investitore - Strategia, Rischio e Azzardo (da template)
+20:11:21
+📄
+[university] 179/1097: Copertura valutaria
+20:11:21
+📄
+[exercises] 51/153: Capitolo 10: L'Identità dell'Investitore - Strategia, Rischio e Azzardo (da template)
+20:11:21
+📄
+[university] 180/1097: Obbligazioni corporate e governative
+20:11:21
+📄
+[exercises] 52/153: Capitolo 10: L'Identità dell'Investitore - Strategia, Rischio e Azzardo (da template)
+20:11:21
+📄
+[university] 181/1097: Duration e yield
+20:11:21
+📄
+[exercises] 53/153: Esercizio 6: Costruire Lo Scudo Infrangibile: La Missione €1000 e la Definizione di Emergenza
+20:11:21
+📄
+[university] 182/1097: Costruire una scala obbligazionaria
+20:11:21
+📄
+[exercises] 54/153: Creazione libro
+20:11:21
+📄
+[university] 183/1097: Obbligazioni indicizzate all'inflazione
+20:11:22
+📄
+[exercises] 55/153: 2. Crea la tua Offerta Irresistibile ad Alto Valore
+20:11:22
+📄
+[university] 184/1097: Oro e metalli preziosi
+20:11:22
+📄
+[exercises] 56/153: 1. Ipotizziamo la nicchia di mercato
+20:11:22
+📄
+[university] 185/1097: Materie prime
+20:11:22
+📄
+[exercises] 57/153: Esercizio 8 Dominare l'Asset Invisibile: Le 5 Regole d'Oro del Merito Creditizio
+20:11:22
+📄
+[university] 186/1097: Real estate avanzato
+20:11:22
+📄
+[exercises] 58/153: Esercizio 9: Forza Gemella: Interesse Composto vs. Inflazione – La Battaglia Esponenziale
+20:11:22
+📄
+[university] 187/1097: Criptovalute e blockchain
+20:11:22
+📄
+[exercises] 59/153: Esercizio 10: Le Tre Identità Finanziarie: Dal Guardiano allo Speculatore
+20:11:22
+📄
+[university] 188/1097: Check-up Q2 Anno 2
+20:11:22
+📄
+[exercises] 60/153: Esercizio 5: Addestramento Reclute: Il Tuo Piano di Battaglia Contro il Debito Tossico
+20:11:22
+📄
+[university] 189/1097: Filosofia del dividend investing
+20:11:22
+📄
+[exercises] 61/153: Esercizio 14: Scegliere il Broker Perfetto: I Quattro Pilastri per l'Azione
+20:11:22
+📄
+[university] 190/1097: Dividend Aristocrats e Kings
+20:11:23
+📄
+[exercises] 62/153: Esercizio 15: Piano di Accumulo del Capitale (PAC): Il Sistema che Batte le Emozioni
+20:11:23
+📄
+[university] 191/1097: DRIP
+20:11:23
+📄
+[exercises] 63/153: Esercizio attività 1
+20:11:23
+📄
+[university] 192/1097: Analisi fondamentale per dividendi
+20:11:23
+📄
+[exercises] 64/153: Esercizio 1 la tua dichiarazione di intenti
+20:11:23
+📄
+[university] 193/1097: Diversificazione settoriale nel portafoglio dividendi
+20:11:23
+📄
+[exercises] 65/153: Esercizio 17: Guerra per la Ricchezza: La Battaglia (Emozionale) Che si Combatte nella Mente
+20:11:23
+📄
+[university] 194/1097: ETF dividendi vs selezione titoli individuali
+20:11:23
+📄
+[exercises] 66/153: Esercizio 18: Investimento Immobiliare: Oltre il Mito – Analisi del Flusso di Cassa e Rischio
+20:11:23
+📄
+[university] 195/1097: Calendario dividendi
+20:11:23
+📄
+[exercises] 67/153: Esercizio 19: Il Socio Silenzioso: Padroneggiare le Tasse per un Vantaggio Strategico
+20:11:23
+📄
+[university] 196/1097: Tax efficiency nel dividend investing
+20:11:23
+📄
+[university] 197/1097: Immobiliare da reddito
+20:11:23
+📄
+[exercises] 68/153: Esercizio 20: Efficienza Fiscale: Il Rendimento Netto e le Tre Armi Segrete
+20:11:24
+📄
+[university] 198/1097: Gestione proprietà in affitto
+20:11:24
+📄
+[exercises] 69/153: Esercizio 21: Massimizzare la Carriera: Da Criceto sulla Ruota a CEO della TSPA
+20:11:24
+📄
+[university] 199/1097: Royalties e licensing
+20:11:24
+📄
+[exercises] 70/153: Esercizio 22: Diversificazione delle Entrate: Costruire la Rete di Salvataggio (Side Hustle Strategy)
+20:11:24
+📄
+[university] 200/1097: Peer-to-peer lending
+20:11:24
+📄
+[exercises] 71/153: Esercizio 23: Il Salto Quantico: Da Side Hustle a Sistema Imprenditoriale Solido
+20:11:24
+📄
+[university] 201/1097: Check-up Q3 Anno 2
+20:11:24
+📄
+[exercises] 72/153: Esercizio 24: Team Finanziario Invincibile: Dallo Stress al Money Date
+20:11:24
+📄
+[university] 202/1097: Tax loss harvesting
+20:11:24
+📄
+[exercises] 73/153: Esercizio 25: Educazione Finanziaria per i Figli: Dalla Paghetta alla Competenza
+20:11:24
+📄
+[university] 203/1097: Regime amministrato vs dichiarativo
+20:11:24
+📄
+[exercises] 74/153: Esercizio 26: La Filosofia F.I.R.E.: L'Ingegneria Inversa della Libertà Finanziaria
+20:11:25
+📄
+[university] 204/1097: Donazioni e deduzioni fiscali
+20:11:25
+📄
+[exercises] 75/153: Esercizio 27: Il Numero della Libertà: Trasformare l'Astrazione in Azione Concreta
+20:11:25
+📄
+[university] 205/1097: Fondi pensione e previdenza complementare
+20:11:25
+📄
+[exercises] 76/153: Esercizio 28: L'Inverno Finanziario: Il Piano di Battaglia contro il Panico
+20:11:25
+📄
+[university] 206/1097: Timing fiscale
+20:11:25
+📄
+[exercises] 77/153: Esercizio 29: La Trappola dell'Euforia: Difendersi dal Nemico Interiore
+20:11:25
+📄
+[university] 207/1097: Trust e holding familiari
+20:11:25
+📄
+[exercises] 78/153: Esercizio 30: Manutenzione del Portafoglio: Il Ribilanciamento Strategico
+20:11:25
+📄
+[university] 208/1097: Protezione patrimoniale
+20:11:25
+📄
+[exercises] 79/153: Esercizio 31: Mappa Finanziaria: Allineare il Veicolo all'Orizzonte
+20:11:25
+📄
+[university] 209/1097: Pianificazione successoria avanzata
+20:11:25
+📄
+[exercises] 80/153: Esercizio 32: Audit Personale della Felicità: Progettare la Vita con la Spesa Intenzionale
+20:11:25
+📄
+[university] 210/1097: Fondazioni e enti
+20:11:25
+📄
+[exercises] 81/153: Esercizio 33: Forgiare la Tua Costituzione Finanziaria: La Tua Legge Fondamentale
+20:11:25
+📄
+[university] 211/1097: Asset protection internazionale
+20:11:25
+📄
+[exercises] 82/153: Esercizio 34: Testamento Strategico: L'Atto Definitivo di Cura per i Vivi
+20:11:26
+📄
+[university] 212/1097: Bilancio Anno 2
+20:11:26
+📄
+[exercises] 83/153: Esercizio 35: Filantropia Strategica: Sbloccare la Quarta Fase del Significato
+20:11:26
+📄
+[university] 213/1097: Ottimizzazioni finali
+20:11:26
+📄
+[exercises] 84/153: Esercizio 36: Filtro Mentale Anti-Rumore: La Dieta dell'Informazione Finanziaria
+20:11:26
+📄
+[university] 214/1097: Strategia Anno 3
+20:11:26
+📄
+[exercises] 85/153: Esercizio 37: Mantenere la Competenza: L'Allenamento Finanziario Continuo
+20:11:26
+📄
+[university] 215/1097: Calcolare il numero esatto per la libertà finanziaria
+20:11:26
+📄
+[exercises] 86/153: Esercizio 38: La Grande Sintesi: Costruire il Capolavoro Finanziario (Il GPS Personale)
+20:11:26
+📄
+[university] 216/1097: La regola del 4%
+20:11:26
+📄
+[exercises] 87/153: Esercizio 39: Pausa Strategica: Progettare il Carburante Anti-Burnout
+20:11:26
+📄
+[university] 217/1097: Sequence of returns risk
+20:11:26
+📄
+[exercises] 88/153: Esercizio 40: Combattere la Compiacenza: Installare il Sistema Operativo Finanziario Permanente
+20:11:26
+📄
+[university] 218/1097: Strategie di withdrawal
+20:11:26
+📄
+[exercises] 89/153: Esercizio 41: Progettazione del Significato: Costruire la Tua Vita Post-Libertà
+20:11:27
+📄
+[university] 219/1097: FIRE variations
+20:11:27
+📄
+[exercises] 90/153: Esercizio 42: Strategie di Prelievo: La Discesa Tecnica a Prova di Bomba
+20:11:27
+📄
+[university] 220/1097: Healthcare in early retirement
+20:11:27
+📄
+[exercises] 91/153: Esercizio 43: L'Arte del Lavoro Opzionale: Progettare la Vita con Scopo
+20:11:27
+📄
+[university] 221/1097: Psicologia dell'early retirement
+20:11:27
+📄
+[exercises] 92/153: Esercizio 44: Checkup del Patrimonio Olistico: La Ricchezza a Tre Dimensioni
+20:11:27
+📄
+[university] 222/1097: Attività post-retirement
+20:11:27
+📄
+[exercises] 93/153: Esercizio 45: Resilienza Finanziaria: Progettare un Piano Flessibile (Il Bambù Strategico)
+20:11:27
+📄
+[university] 223/1097: Investimenti internazionali
+20:11:27
+📄
+[exercises] 94/153: Esercizio 46: Costruire una Dinastia: Progettare l'Eredità Oltre il Denaro
+20:11:27
+📄
+[university] 224/1097: Conti bancari esteri
+20:11:27
+📄
+[exercises] 95/153: Esercizio 47: Il Viaggio Infinito: Dal Pilota al Mentore Strategico
+20:11:27
+📄
+[university] 225/1097: Tax residency e domicilio fiscale
+20:11:27
+📄
+[exercises] 96/153: Esercizio 48: Glossario Strategico: Installare il Sistema Operativo Finanziario (Linguaggio di Comando)
+20:11:28
+📄
+[university] 226/1097: Geo-arbitrage
+20:11:28
+📄
+[exercises] 97/153: Esercizio 49: Il Comando è Vostro: Il Consolidamento della Competenza Finanziaria
+20:11:28
+📄
+[university] 227/1097: Check-up Q1 Anno 3
+20:11:28
+📄
+[exercises] 98/153: Esercizio 51: Nuova Pausa Strategica: Progettare il Carburante Anti-Burnout
+20:11:28
+📄
+[university] 228/1097: Costruire un team di eccellenza
+20:11:28
+📄
+[exercises] 99/153: Esercizio 50: Il Progetto Definitivo: L'Assemblaggio del Capolavoro Strategico (Il GPS Personale)
+20:11:28
+📄
+[university] 229/1097: Leadership e gestione
+20:11:28
+📄
+[exercises] 100/153: Esercizio 52: Il Comando Perpetuo: Dal Traguardo al Nuovo Punto di Partenza
+20:11:28
+📄
+[university] 230/1097: KPI e metriche aziendali
+20:11:28
+📄
+[exercises] 101/153: Modulo 1 Lezione 1: Il Sistema Scientifico di Vendita Milionaria
+20:11:28
+📄
+[university] 231/1097: Delega strategica
+20:11:28
+📄
+[exercises] 102/153: Modulo 1 Lezione 2: L'Audit del Subconscio: Smascherare e Riprogrammare le Credenze Limitanti
+20:11:28
+📄
+[university] 232/1097: Documentare processi aziendali
+20:11:28
+📄
+[exercises] 103/153: Modulo 1 Lezione 3 Il Diario di Bordo del Capitano: Misurare l'Input per Garantire l'Output
+20:11:29
+📄
+[university] 233/1097: Software e tool per scalare
+20:11:29
+📄
+[exercises] 104/153: Modulo 1 Lezione 4 La Fortezza della Performance: Audit e Ottimizzazione del Tuo Stadio di Lavoro
+20:11:29
+📄
+[university] 234/1097: Customer success e retention
+20:11:29
+📄
+[exercises] 105/153: Modulo 2 Lezione 1 Costruire il Ponte: Dal Dolore alla Destinazione Irresistibile
+20:11:29
+📄
+[university] 235/1097: Automazione vendite e marketing
+20:11:29
+📄
+[exercises] 106/153: Modulo 2 Lezione 2 L'Autoanalisi del Dottore: Misurare la Diagnosi vs. la Cura Prematura
+20:11:29
+📄
+[university] 236/1097: Valutare la tua azienda
+20:11:29
+📄
+[exercises] 107/153: Modulo 2 Lezione 3 Il Kit dello Status Delta: Potenziare l'Autorevolezza Silenziosa
+20:11:29
+📄
+[university] 237/1097: Preparare l'azienda alla vendita
+20:11:29
+📄
+[exercises] 108/153: Modulo 2 Lezione 4 Mostrare il Distintivo: Creare Rispetto, non Simpatia
+20:11:29
+📄
+[university] 238/1097: Trovare acquirenti
+20:11:29
+📄
+[exercises] 109/153: Modulo 3 Lezione 1 Allineamento Corpo-Voce (Linguaggio che Persuade)
+20:11:29
+📄
+[university] 239/1097: Negoziazione vendita
+20:11:29
+📄
+[exercises] 110/153: esercizio attività 2
+20:11:30
+📄
+[university] 240/1097: Check-up Q2 Anno 3
+20:11:30
+📄
+[exercises] 111/153: esercizio 3 crea attività
+20:11:30
+📄
+[university] 241/1097: Introduzione al private equity
+20:11:30
+📄
+[exercises] 112/153: Modulo 3 Lezione 2: 7 Tonalità della Persuasione
+20:11:30
+📄
+[university] 242/1097: Accesso al private equity
+20:11:30
+📄
+[exercises] 113/153: Modulo 4 Lezione 1: La Regola delle 7 Ore
+20:11:30
+📄
+[university] 243/1097: Due diligence in private equity
+20:11:30
+📄
+[exercises] 114/153: Modulo 4 Lezione 2: Gli Strumenti del Venditore
+20:11:30
+📄
+[university] 244/1097: Risk/return nel private equity
+20:11:30
+📄
+[exercises] 115/153: Modulo 4 Lezione 3: Padroneggiare la Pre-Chiamata
+20:11:30
+📄
+[university] 245/1097: Angel investing
+20:11:30
+📄
+[exercises] 116/153: Esercizio 1: Creazione attività NICCHIA DI MERCATO
+20:11:30
+📄
+[university] 246/1097: Portfolio approach nel VC
+20:11:30
+📄
+[exercises] 117/153: Modulo 5 Lezione 1: L'Apertura Perfetta
+20:11:31
+📄
+[university] 247/1097: Equity crowdfunding
+20:11:31
+📄
+[exercises] 118/153: Modulo 5 Lezione 2: L'arte della Domanda
+20:11:31
+📄
+[university] 248/1097: Valutare startup
+20:11:31
+📄
+[university] 249/1097: Hedge funds
+20:11:31
+📄
+[university] 250/1097: Managed futures e CTA
+20:11:31
+📄
+[university] 251/1097: Art e collectibles
+20:11:31
+📄
+[university] 252/1097: Farmland e timberland
+20:11:31
+📄
+[university] 253/1097: Check-up Q3 Anno 3
+20:11:32
+📄
+[university] 254/1097: Cos'è un family office
+20:11:32
+📄
+[exercises] 119/153: Modulo 5 Lezione 3: Stretch the Gap
+20:11:32
+📄
+[university] 255/1097: Wealth management integrato
+20:11:32
+📄
+[exercises] 120/153: Modulo 5 Lezione 4: La Qualifica Finale
+20:11:32
+📄
+[university] 256/1097: Governance familiare
+20:11:32
+📄
+[exercises] 121/153: Esercizio 4: Il Tuo Bacino di Ricerca
+20:11:32
+📄
+[university] 257/1097: Educazione finanziaria degli eredi
+20:11:32
+📄
+[exercises] 122/153: Modulo 6 Lezione 1: Il Pitch Perfetto
+20:11:32
+📄
+[university] 258/1097: Impact investing
+20:11:32
+📄
+[exercises] 123/153: Modulo 6 Lezione 2: Dalle Caratteristiche ai Risultati
+20:11:32
+📄
+[university] 259/1097: Donor-advised funds
+20:11:32
+📄
+[exercises] 124/153: Modulo 6 Lezione 3: Vendere Valore, Non Prezzo
+20:11:32
+📄
+[university] 260/1097: Fondazioni private
+20:11:32
+📄
+[exercises] 125/153: Modulo 7 Lezione 1: Padroneggiare il Prezzo
+20:11:33
+📄
+[university] 261/1097: Measuring impact
+20:11:33
+📄
+[exercises] 126/153: Modulo 7 Lezione 2: Looping di Vendita
+20:11:33
+📄
+[exercises] 127/153: Modulo 7 Lezione 3: Padroneggiare la Chiusura
+20:11:33
+📄
+[exercises] 128/153: Modulo 7 Lezione 4: Pagamento e Obiezioni Finali
+20:11:33
+📄
+[exercises] 129/153: Modulo 8 Lezione 1: Dopo il Sì: Prevenire il Rimorso
+20:11:33
+📄
+[exercises] 130/153: Modulo 8 Lezione 2: L'arte della Chiusura
+20:11:33
+📄
+[exercises] 131/153: Modulo 8 Lezione 3: Follow-up Strategico
+20:11:33
+📄
+[exercises] 132/153: Modulo 8 Lezione 4: Da Ignorato a Conquistato
+20:11:34
+📄
+[university] 262/1097: Codificare valori familiari
+20:11:34
+📄
+[exercises] 133/153: Modulo 7 Lezione 1: Padroneggiare il Prezzo
+20:11:34
+📄
+[university] 263/1097: Mentorship e dare indietro
+20:11:34
+📄
+[exercises] 134/153: Modulo 7 Lezione 2: Looping di Vendita
+20:11:34
+📄
+[university] 264/1097: Continuous learning
+20:11:34
+📄
+[exercises] 135/153: Modulo 7 Lezione 3: Padroneggiare la Chiusura
+20:11:34
+📄
+[university] 265/1097: Bilancio finale
+20:11:34
+📄
+[exercises] 136/153: Modulo 7 Lezione 4: Pagamento e Obiezioni Finali
+20:11:34
+📄
+[university] 266/1097: Oltre l'università
+20:11:34
+📄
+[exercises] 137/153: Modulo 8 Lezione 1: Dopo il Sì: Prevenire il Rimorso
+20:11:34
+📄
+[university] 267/1097: Lezione 1: Ipotizziamo la nicchia di mercato
+20:11:34
+📄
+[exercises] 138/153: Modulo 8 Lezione 4: Da Ignorato a Conquistato
+20:11:34
+📄
+[university] 268/1097: Lezione 2: Architettura di un'Offerta Premium
+20:11:34
+📄
+[exercises] 139/153: Modulo 8 Lezione 2: L'arte della Chiusura
+20:11:35
+📄
+[university] 269/1097: Lezione 3: Creazione della Tua Proposta di Valore Unica
+20:11:35
+📄
+[exercises] 140/153: Modulo 8 Lezione 3: Follow-up Strategico
+20:11:35
+📄
+[university] 270/1097: Modulo 1 Lezione 3: La Pratica Deliberata: Come Diventare un Professionista
+20:11:35
+📄
+[exercises] 141/153: Esercizio 3: POSIZIONAMENTO UNICO
+20:11:35
+📄
+[university] 271/1097: Modulo 1 Lezione 4: L'Ambiente del Successo: Preparazione Fisica e Mentale
+20:11:35
+📄
+[exercises] 142/153: Esercizio 1: Creazione attività NICCHIA DI MERCATO
+20:11:35
+📄
+[university] 272/1097: Modulo 2 Lezione 1: Vendere la Trasformazione: Il Concetto del "Ponte"
+20:11:35
+📄
+[exercises] 143/153: Esercizio 2: OFFERTA IRRESISTIBILE AD ALTO VALORE
+20:11:35
+📄
+[university] 273/1097: Modulo 2 Lezione 2: La Postura del "Dottore": Diagnosticare, non Curare
+20:11:36
+📄
+[exercises] 144/153: Esercizio 1: Creazione attività NICCHIA DI MERCATO
+20:11:36
+📄
+[university] 274/1097: Modulo 2 Lezione 3: Lo "Status Delta": Cos'è e Perché è Fondamentale
+20:11:36
+📄
+[exercises] 145/153: Esercizio 1: Creazione attività NICCHIA DI MERCATO
+20:11:36
+📄
+[university] 275/1097: Modulo 3 Lezione 1: I Segreti della Comunicazione Non Verbale
+20:11:36
+📄
+[exercises] 146/153: Esercizio 1: Creazione attività NICCHIA DI MERCATO
+20:11:36
+📄
+[university] 276/1097: Modulo 3 Lezione 2: Le 7 Tonalità Chiave della Persuasione
+20:11:36
+📄
+[exercises] 147/153: Modulo 1 Lezione 1: Il Sistema Scientifico di Vendita Milionaria
+20:11:36
+📄
+[university] 277/1097: Modulo 4 Lezione 1: L'Interdipendenza tra Marketing e Vendite: La Regola delle 7 Ore
+20:11:36
+📄
+[exercises] 148/153: Modulo 1 Lezione 1: Il Sistema Scientifico di Vendita Milionaria
+20:11:36
+📄
+[university] 278/1097: Modulo 4 Lezione 2: Gli Strumenti Essenziali del Venditore
+20:11:36
+📄
+[exercises] 149/153: Modulo 1 Lezione 1: Il Sistema Scientifico di Vendita Milionaria
+20:11:36
+📄
+[university] 279/1097: Modulo 4 Lezione 3: La Preparazione del Lead: Come "Riscaldare" il Cliente Prima della Chiamata
+20:11:36
+📄
+[exercises] 150/153: Modulo 1 Lezione 1: Il Sistema Scientifico di Vendita Milionaria
+20:11:37
+📄
+[university] 280/1097: Modulo 5 Lezione 1: Fasi 1 & 2 - L'Apertura Perfetta
+20:11:37
+📄
+[exercises] 151/153: Modulo 1 Lezione 1: Il Sistema Scientifico di Vendita Milionaria
+20:11:37
+📄
+[university] 281/1097: Introduzione, COMANDA LE TUE FINANZE
+20:11:37
+📄
+[exercises] 152/153: Modulo 1 Lezione 1: Il Sistema Scientifico di Vendita Milionaria
+20:11:37
+📄
+[university] 282/1097: La Mappa del Tesoro - Diagnosi del Tuo Patrimonio Netto
+20:11:37
+📄
+[exercises] 153/153: Modulo 1 Lezione 1: Il Sistema Scientifico di Vendita Milionaria
+20:11:37
+✅
+Completato exercises: 153/153 sincronizzati
+20:11:37
+📄
+[university] 283/1097: Intelligence Finanziaria - Padroneggiare i Flussi di Cassa
+20:11:37
+📄
+[university] 284/1097: Il Piano di Comando - Dall'Anarchia al Controllo
+20:11:37
+📄
+[university] 285/1097: Lo Scudo Infrangibile - Costruire la Tua Riserva d'Emergenza
+20:11:37
+📄
+[university] 286/1097: Modulo 5 Lezione 2: Fasi 3 & 4 - Indagare la Motivazione Reale
+20:11:37
+📄
+[university] 287/1097: Modulo 5 Lezione 3: Fase 5 & 6 - "Stretch the Gap": Fissare il Problema e Definire il Desiderio
+20:11:37
+📄
+[university] 288/1097: Modulo 5 Lezione 4: Fasi 7, 8 & 9 - Qualifica Finale e Transizione
+20:11:37
+ℹ️
+Inizio sync university: 1097 elementi
+20:11:38
+📄
+[university] 289/1097: Modulo 6 Lezione 1: Presentare il Metodo, i Casi di Studio e la Storia Aziendale
+20:11:38
+📄
+[university] 1/1097: Introduzione, COMANDA LE TUE FINANZE
+20:11:39
+📄
+[university] 290/1097: Modulo 6 Lezione 2: Dalle Caratteristiche ai Benefici: Spiegare l'Offerta in Dettaglio
+20:11:39
+📄
+[university] 2/1097: La Mappa del Tesoro - Diagnosi del Tuo Patrimonio Netto
+20:11:39
+📄
+[university] 291/1097: Psicologia del pricing
+20:11:39
+📄
+[university] 3/1097: Intelligence Finanziaria - Padroneggiare i Flussi di Cassa
+20:11:39
+📄
+[university] 292/1097: Value-based pricing vs cost-based
+20:11:39
+📄
+[university] 4/1097: Il Piano di Comando - Dall'Anarchia al Controllo
+20:11:39
+📄
+[university] 293/1097: Testing e ottimizzazione prezzi
+20:11:39
+📄
+[university] 5/1097: Le Catene Invisibili - Dichiarazione di Guerra al Debito Tossico
+20:11:39
+📄
+[university] 294/1097: Processi e sistemi
+20:11:39
+📄
+[university] 6/1097: l Fossato della Fortezza - Un Uso Strategico delle Assicurazioni
+20:11:39
+📄
+[university] 295/1097: Tool e software per l'automazione
+20:11:39
+📄
+[university] 7/1097: Il Tuo Asset Invisibile - Padroneggiare il Merito Creditizio
+20:11:39
+📄
+[university] 296/1097: Delegare efficacemente
+20:11:39
+📄
+[university] 8/1097: Le Forze Gemelle - Interesse Composto e Inflazione
+20:11:39
+📄
+[university] 297/1097: Modelli di business scalabili
+20:11:39
+📄
+[university] 9/1097: L'Identità dell'Investitore - Strategia, Rischio e Azzardo
+20:11:39
+📄
+[university] 298/1097: Marketing automation
+20:11:39
+📄
+[university] 10/1097: I Mattoni della Ricchezza - Azioni e Obbligazioni
+20:11:39
+📄
+[university] 299/1097: Upsell e cross-sell
+20:11:39
+📄
+[university] 11/1097: L'Unico Pranzo Gratis della Finanza - La Magia della Diversificazione
+20:11:39
+📄
+[university] 300/1097: Creare 3-5 flussi di reddito
+20:11:39
+📄
+[university] 12/1097: Lo Strumento Definitivo - Gli ETF e la Rivoluzione Passiva
+20:11:40
+📄
+[university] 301/1097: Reddito attivo vs passivo
+20:11:40
+📄
+[university] 13/1097: Il Pilota Automatico per Investire - La Superiorità Strategica del Piano di Accumulo (PAC)
+20:11:40
+📄
+[university] 302/1097: Modulo 7 Lezione 1: Fase 11 - Presentare il Prezzo e Giustificare il ROI
+20:11:40
+📄
+[university] 14/1097: La Macchina del Tempo Finanziaria - Progettare la Tua Pensione
+20:11:40
+📄
+[university] 303/1097: Modulo 7 Lezione 2: Fase 12 - Il "Looping" con Incentivi, Urgenza e Scarsità
+20:11:40
+📄
+[university] 15/1097: La Guerra nella Tua Mente - Sconfiggere i Nemici Psicologici dell'Investitore
+20:11:40
+📄
+[university] 304/1097: Modulo 7 Lezione 4: Gestire il Pagamento e le Obiezioni Finali
+20:11:40
+📄
+[university] 16/1097: La Verità sul Mattone - L'Investimento Immobiliare tra Mito e Realtà
+20:11:40
+📄
+[university] 305/1097: Modulo 8 Lezione 2: Procedure Post-Chiamata e Follow-up per la Chiusura
+20:11:40
+📄
+[university] 17/1097: Il Tuo Socio Silenzioso - Capire le Tasse sugli Investimenti (senza mal di testa)
+20:11:40
+📄
+[university] 306/1097: Modulo 8 Lezione 3: Il Follow-up Strategico per Chi Non Chiude Subito
+20:11:40
+📄
+[university] 18/1097: L'Arte dell'Efficienza - Strategie Fiscali per Massimizzare i Rendimenti Netti
+20:11:40
+📄
+[university] 307/1097: Modulo 8 Lezione 1: Prevenire il "Rimorso dell'Acquirente"
+20:11:40
+📄
+[university] 19/1097: Il Tuo Asset da un Milione di Euro - Massimizzare la Carriera
+20:11:41
+📄
+[university] 308/1097: Modulo 8 Lezione 4: La Campagna di Nurturing a Lungo Termine
+20:11:41
+📄
+[university] 20/1097: Modulo 1 Lezione 2: Il Lavoro Interiore e la Mentalità dell'Aiuto
+20:11:41
+📄
+[university] 309/1097: Monetizzare competenze ed expertise
+20:11:41
+📄
+[university] 21/1097: Modulo 1 Lezione 1: Introduzione alla vendita e Obiettivi
+20:11:41
+📄
+[university] 310/1097: Check-up Q1 Anno 2
+20:11:41
+📄
+[university] 22/1097: Modulo 1 Lezione 3: La Pratica Deliberata: Come Diventare un Professionista
+20:11:41
+📄
+[university] 311/1097: Strategie di allocazione per patrimoni crescenti
+20:11:41
+📄
+[university] 23/1097: Modulo 1 Lezione 4: L'Ambiente del Successo: Preparazione Fisica e Mentale
+20:11:41
+📄
+[university] 312/1097: Bilanciamento geografico
+20:11:41
+📄
+[university] 24/1097: Lezione 2: Architettura di un'Offerta Premium
+20:11:41
+📄
+[university] 313/1097: Esposizione settoriale
+20:11:41
+📄
+[university] 25/1097: Lezione 3: Creazione della Tua Proposta di Valore Unica
+20:11:41
+📄
+[university] 26/1097: Modulo 2 Lezione 1: Vendere la Trasformazione: Il Concetto del "Ponte"
+20:11:41
+📄
+[university] 314/1097: Copertura valutaria
+20:11:42
+📄
+[university] 27/1097: Modulo 2 Lezione 3: Lo "Status Delta": Cos'è e Perché è Fondamentale
+20:11:42
+📄
+[university] 315/1097: Obbligazioni corporate e governative
+20:11:42
+📄
+[university] 28/1097: Psicologia del pricing
+20:11:42
+📄
+[university] 316/1097: Duration e yield
+20:11:42
+📄
+[university] 29/1097: Value-based pricing vs cost-based
+20:11:42
+📄
+[university] 317/1097: Costruire una scala obbligazionaria
+20:11:42
+📄
+[university] 30/1097: Testing e ottimizzazione prezzi
+20:11:42
+📄
+[university] 318/1097: Obbligazioni indicizzate all'inflazione
+20:11:42
+📄
+[university] 31/1097: Processi e sistemi
+20:11:42
+📄
+[university] 319/1097: Oro e metalli preziosi
+20:11:42
+📄
+[university] 32/1097: Tool e software per l'automazione
+20:11:42
+📄
+[university] 320/1097: Materie prime
+20:11:43
+📄
+[university] 33/1097: Delegare efficacemente
+20:11:43
+📄
+[university] 321/1097: Real estate avanzato
+20:11:43
+📄
+[university] 34/1097: Modelli di business scalabili
+20:11:43
+📄
+[university] 322/1097: Criptovalute e blockchain
+20:11:43
+📄
+[university] 35/1097: Marketing automation
+20:11:43
+📄
+[university] 323/1097: Check-up Q2 Anno 2
+20:11:43
+📄
+[university] 36/1097: Upsell e cross-sell
+20:11:43
+📄
+[university] 324/1097: Filosofia del dividend investing
+20:11:43
+📄
+[university] 37/1097: Creare 3-5 flussi di reddito
+20:11:43
+📄
+[university] 325/1097: Dividend Aristocrats e Kings
+20:11:43
+📄
+[university] 38/1097: Reddito attivo vs passivo
+20:11:43
+📄
+[university] 326/1097: DRIP
+20:11:43
+📄
+[university] 39/1097: Monetizzare competenze ed expertise
+20:11:43
+📄
+[university] 327/1097: Analisi fondamentale per dividendi
+20:11:43
+📄
+[university] 40/1097: Check-up Q1 Anno 2
+20:11:43
+📄
+[university] 328/1097: Diversificazione settoriale nel portafoglio dividendi
+20:11:43
+📄
+[university] 41/1097: Strategie di allocazione per patrimoni crescenti
+20:11:43
+📄
+[university] 329/1097: ETF dividendi vs selezione titoli individuali
+20:11:43
+📄
+[university] 42/1097: Bilanciamento geografico
+20:11:43
+📄
+[university] 330/1097: Calendario dividendi
+20:11:44
+📄
+[university] 43/1097: Esposizione settoriale
+20:11:44
+📄
+[university] 331/1097: Tax efficiency nel dividend investing
+20:11:44
+📄
+[university] 44/1097: Copertura valutaria
+20:11:44
+📄
+[university] 332/1097: Immobiliare da reddito
+20:11:44
+📄
+[university] 45/1097: Obbligazioni corporate e governative
+20:11:44
+📄
+[university] 333/1097: Gestione proprietà in affitto
+20:11:44
+📄
+[university] 46/1097: Duration e yield
+20:11:44
+📄
+[university] 334/1097: Royalties e licensing
+20:11:44
+📄
+[university] 47/1097: Costruire una scala obbligazionaria
+20:11:44
+📄
+[university] 335/1097: Peer-to-peer lending
+20:11:44
+📄
+[university] 48/1097: Obbligazioni indicizzate all'inflazione
+20:11:44
+📄
+[university] 336/1097: Check-up Q3 Anno 2
+20:11:44
+📄
+[university] 49/1097: Oro e metalli preziosi
+20:11:45
+📄
+[university] 337/1097: Tax loss harvesting
+20:11:45
+📄
+[university] 50/1097: Materie prime
+20:11:45
+📄
+[university] 338/1097: Regime amministrato vs dichiarativo
+20:11:45
+📄
+[university] 51/1097: Real estate avanzato
+20:11:45
+📄
+[university] 339/1097: Donazioni e deduzioni fiscali
+20:11:45
+📄
+[university] 52/1097: Criptovalute e blockchain
+20:11:45
+📄
+[university] 340/1097: Fondi pensione e previdenza complementare
+20:11:45
+📄
+[university] 53/1097: Check-up Q2 Anno 2
+20:11:45
+📄
+[university] 341/1097: Timing fiscale
+20:11:45
+📄
+[university] 54/1097: Filosofia del dividend investing
+20:11:45
+📄
+[university] 342/1097: Trust e holding familiari
+20:11:45
+📄
+[university] 55/1097: Dividend Aristocrats e Kings
+20:11:45
+📄
+[university] 343/1097: Protezione patrimoniale
+20:11:45
+📄
+[university] 56/1097: DRIP
+20:11:46
+📄
+[university] 344/1097: Pianificazione successoria avanzata
+20:11:46
+📄
+[university] 57/1097: Analisi fondamentale per dividendi
+20:11:46
+📄
+[university] 345/1097: Fondazioni e enti
+20:11:46
+📄
+[university] 58/1097: Modulo 2 Lezione 4: Come Creare e Mantenere lo Status Delta
+20:11:46
+📄
+[university] 346/1097: Asset protection internazionale
+20:11:46
+📄
+[university] 59/1097: Modulo 3 Lezione 1: I Segreti della Comunicazione Non Verbale
+20:11:46
+📄
+[university] 347/1097: Bilancio Anno 2
+20:11:46
+📄
+[university] 60/1097: Diversificazione settoriale nel portafoglio dividendi
+20:11:46
+📄
+[university] 348/1097: Ottimizzazioni finali
+20:11:46
+📄
+[university] 61/1097: ETF dividendi vs selezione titoli individuali
+20:11:46
+📄
+[university] 349/1097: Strategia Anno 3
+20:11:46
+📄
+[university] 62/1097: Calendario dividendi
+20:11:46
+📄
+[university] 350/1097: Calcolare il numero esatto per la libertà finanziaria
+20:11:46
+📄
+[university] 63/1097: Tax efficiency nel dividend investing
+20:11:46
+📄
+[university] 351/1097: La regola del 4%
+20:11:47
+📄
+[university] 64/1097: Immobiliare da reddito
+20:11:47
+📄
+[university] 352/1097: Sequence of returns risk
+20:11:47
+📄
+[university] 65/1097: Gestione proprietà in affitto
+20:11:47
+📄
+[university] 353/1097: Strategie di withdrawal
+20:11:47
+📄
+[university] 66/1097: Royalties e licensing
+20:11:47
+📄
+[university] 354/1097: FIRE variations
+20:11:48
+📄
+[university] 67/1097: Peer-to-peer lending
+20:11:48
+📄
+[university] 355/1097: Healthcare in early retirement
+20:11:48
+📄
+[university] 68/1097: Check-up Q3 Anno 2
+20:11:48
+📄
+[university] 356/1097: Psicologia dell'early retirement
+20:11:48
+📄
+[university] 69/1097: Tax loss harvesting
+20:11:48
+📄
+[university] 357/1097: Attività post-retirement
+20:11:48
+📄
+[university] 70/1097: Regime amministrato vs dichiarativo
+20:11:48
+📄
+[university] 358/1097: Investimenti internazionali
+20:11:48
+📄
+[university] 71/1097: Donazioni e deduzioni fiscali
+20:11:48
+📄
+[university] 359/1097: Conti bancari esteri
+20:11:48
+📄
+[university] 72/1097: Fondi pensione e previdenza complementare
+20:11:48
+📄
+[university] 360/1097: Tax residency e domicilio fiscale
+20:11:48
+📄
+[university] 73/1097: Timing fiscale
+20:11:48
+📄
+[university] 361/1097: Geo-arbitrage
+20:11:48
+📄
+[university] 74/1097: Trust e holding familiari
+20:11:48
+📄
+[university] 75/1097: Protezione patrimoniale
+20:11:48
+📄
+[university] 76/1097: Pianificazione successoria avanzata
+20:11:48
+📄
+[university] 77/1097: Fondazioni e enti
+20:11:49
+📄
+[university] 78/1097: Asset protection internazionale
+20:11:49
+📄
+[university] 79/1097: Bilancio Anno 2
+20:11:49
+📄
+[university] 80/1097: Ottimizzazioni finali
+20:11:49
+📄
+[university] 362/1097: Check-up Q1 Anno 3
+20:11:50
+📄
+[university] 81/1097: Strategia Anno 3
+20:11:50
+📄
+[university] 363/1097: Costruire un team di eccellenza
+20:11:50
+📄
+[university] 82/1097: Calcolare il numero esatto per la libertà finanziaria
+20:11:50
+📄
+[university] 364/1097: Leadership e gestione
+20:11:50
+📄
+[university] 83/1097: La regola del 4%
+20:11:50
+📄
+[university] 365/1097: KPI e metriche aziendali
+20:11:50
+📄
+[university] 84/1097: Sequence of returns risk
+20:11:50
+📄
+[university] 366/1097: Delega strategica
+20:11:50
+📄
+[university] 85/1097: Strategie di withdrawal
+20:11:50
+📄
+[university] 367/1097: Documentare processi aziendali
+20:11:50
+📄
+[university] 86/1097: FIRE variations
+20:11:50
+📄
+[university] 368/1097: Software e tool per scalare
+20:11:50
+📄
+[university] 87/1097: Healthcare in early retirement
+20:11:50
+📄
+[university] 369/1097: Customer success e retention
+20:11:50
+📄
+[university] 88/1097: Psicologia dell'early retirement
+20:11:50
+📄
+[university] 370/1097: Automazione vendite e marketing
+20:11:50
+📄
+[university] 89/1097: Attività post-retirement
+20:11:50
+📄
+[university] 371/1097: Valutare la tua azienda
+20:11:50
+📄
+[university] 90/1097: Investimenti internazionali
+20:11:50
+📄
+[university] 372/1097: Preparare l'azienda alla vendita
+20:11:50
+📄
+[university] 91/1097: Conti bancari esteri
+20:11:51
+📄
+[university] 373/1097: Trovare acquirenti
+20:11:51
+📄
+[university] 92/1097: Tax residency e domicilio fiscale
+20:11:51
+📄
+[university] 374/1097: Negoziazione vendita
+20:11:51
+📄
+[university] 93/1097: Geo-arbitrage
+20:11:51
+📄
+[university] 375/1097: Check-up Q2 Anno 3
+20:11:51
+📄
+[university] 94/1097: Check-up Q1 Anno 3
+20:11:51
+📄
+[university] 376/1097: Introduzione al private equity
+20:11:51
+📄
+[university] 95/1097: Costruire un team di eccellenza
+20:11:51
+📄
+[university] 377/1097: Accesso al private equity
+20:11:51
+📄
+[university] 96/1097: Leadership e gestione
+20:11:51
+📄
+[university] 378/1097: Due diligence in private equity
+20:11:51
+📄
+[university] 97/1097: KPI e metriche aziendali
+20:11:51
+📄
+[university] 379/1097: Risk/return nel private equity
+20:11:51
+📄
+[university] 98/1097: Delega strategica
+20:11:51
+📄
+[university] 380/1097: Angel investing
+20:11:52
+📄
+[university] 99/1097: Documentare processi aziendali
+20:11:52
+📄
+[university] 381/1097: Portfolio approach nel VC
+20:11:52
+📄
+[university] 100/1097: Software e tool per scalare
+20:11:52
+📄
+[university] 382/1097: Equity crowdfunding
+20:11:52
+📄
+[university] 101/1097: Customer success e retention
+20:11:52
+📄
+[university] 383/1097: Valutare startup
+20:11:52
+📄
+[university] 102/1097: Automazione vendite e marketing
+20:11:52
+📄
+[university] 384/1097: Hedge funds
+20:11:52
+📄
+[university] 103/1097: Valutare la tua azienda
+20:11:52
+📄
+[university] 385/1097: Managed futures e CTA
+20:11:52
+📄
+[university] 104/1097: Preparare l'azienda alla vendita
+20:11:52
+📄
+[university] 386/1097: Art e collectibles
+20:11:52
+📄
+[university] 105/1097: Trovare acquirenti
+20:11:52
+📄
+[university] 387/1097: Farmland e timberland
+20:11:53
+📄
+[university] 106/1097: Negoziazione vendita
+20:11:53
+📄
+[university] 388/1097: Check-up Q3 Anno 3
+20:11:53
+📄
+[university] 107/1097: Check-up Q2 Anno 3
+20:11:53
+📄
+[university] 389/1097: Cos'è un family office
+20:11:53
+📄
+[university] 108/1097: Introduzione al private equity
+20:11:53
+📄
+[university] 390/1097: Wealth management integrato
+20:11:53
+📄
+[university] 109/1097: Accesso al private equity
+20:11:53
+📄
+[university] 391/1097: Governance familiare
+20:11:53
+📄
+[university] 110/1097: Due diligence in private equity
+20:11:53
+📄
+[university] 392/1097: Educazione finanziaria degli eredi
+20:11:53
+📄
+[university] 111/1097: Risk/return nel private equity
+20:11:53
+📄
+[university] 393/1097: Impact investing
+20:11:53
+📄
+[university] 112/1097: Angel investing
+20:11:53
+📄
+[university] 394/1097: Donor-advised funds
+20:11:54
+📄
+[university] 113/1097: Portfolio approach nel VC
+20:11:54
+📄
+[university] 395/1097: Fondazioni private
+20:11:54
+📄
+[university] 114/1097: Equity crowdfunding
+20:11:54
+📄
+[university] 396/1097: Measuring impact
+20:11:54
+📄
+[university] 115/1097: Valutare startup
+20:11:54
+📄
+[university] 397/1097: Codificare valori familiari
+20:11:54
+📄
+[university] 116/1097: Hedge funds
+20:11:54
+📄
+[university] 398/1097: Mentorship e dare indietro
+20:11:54
+📄
+[university] 117/1097: Managed futures e CTA
+20:11:54
+📄
+[university] 399/1097: Continuous learning
+20:11:54
+📄
+[university] 118/1097: Art e collectibles
+20:11:54
+📄
+[university] 400/1097: Bilancio finale
+20:11:54
+📄
+[university] 119/1097: Farmland e timberland
+20:11:54
+📄
+[university] 401/1097: Oltre l'università
+20:11:55
+📄
+[university] 120/1097: Check-up Q3 Anno 3
+20:11:55
+📄
+[university] 402/1097: Psicologia del pricing
+20:11:55
+📄
+[university] 121/1097: Cos'è un family office
+20:11:55
+📄
+[university] 403/1097: Value-based pricing vs cost-based
+20:11:55
+📄
+[university] 122/1097: Wealth management integrato
+20:11:55
+📄
+[university] 404/1097: Testing e ottimizzazione prezzi
+20:11:55
+📄
+[university] 123/1097: Governance familiare
+20:11:55
+📄
+[university] 405/1097: Processi e sistemi
+20:11:55
+📄
+[university] 124/1097: Educazione finanziaria degli eredi
+20:11:55
+📄
+[university] 406/1097: Tool e software per l'automazione
+20:11:55
+📄
+[university] 125/1097: Impact investing
+20:11:55
+📄
+[university] 407/1097: Delegare efficacemente
+20:11:55
+📄
+[university] 126/1097: Donor-advised funds
+20:11:55
+📄
+[university] 408/1097: Modelli di business scalabili
+20:11:56
+📄
+[university] 127/1097: Fondazioni private
+20:11:56
+📄
+[university] 409/1097: Marketing automation
+20:11:56
+📄
+[university] 128/1097: Measuring impact
+20:11:56
+📄
+[university] 410/1097: Modulo 4 Lezione 2: Gli Strumenti Essenziali del Venditore
+20:11:56
+📄
+[university] 129/1097: Codificare valori familiari
+20:11:56
+📄
+[university] 411/1097: Modulo 4 Lezione 3: La Preparazione del Lead: Come "Riscaldare" il Cliente Prima della Chiamata
+20:11:56
+📄
+[university] 130/1097: Mentorship e dare indietro
+20:11:56
+📄
+[university] 412/1097: Modulo 5 Lezione 1: Fasi 1 & 2 - L'Apertura Perfetta
+20:11:56
+📄
+[university] 131/1097: Continuous learning
+20:11:56
+📄
+[university] 413/1097: Modulo 5 Lezione 2: Fasi 3 & 4 - Indagare la Motivazione Reale
+20:11:56
+📄
+[university] 132/1097: Bilancio finale
+20:11:56
+📄
+[university] 414/1097: Modulo 5 Lezione 3: Fase 5 & 6 - "Stretch the Gap": Fissare il Problema e Definire il Desiderio
+20:11:56
+📄
+[university] 133/1097: Oltre l'università
+20:11:56
+📄
+[university] 415/1097: Modulo 5 Lezione 4: Fasi 7, 8 & 9 - Qualifica Finale e Transizione
+20:11:57
+📄
+[university] 134/1097: Il Denaro nelle Relazioni - Costruire un Impero di Squadra
+20:11:57
+📄
+[university] 416/1097: Modulo 6 Lezione 2: Dalle Caratteristiche ai Benefici: Spiegare l'Offerta in Dettaglio
+20:11:57
+📄
+[university] 135/1097: La Filosofia F.I.R.E. - Ingegneria Inversa della Libertà
+20:11:57
+📄
+[university] 417/1097: Modulo 6 Lezione 3: Lo "Stack" del Valore: Ancorare il Prezzo Prima di Rivelarlo
+20:11:57
+📄
+[university] 136/1097: Il Numero della Libertà - Calcolare il Tuo Traguardo per l'Indipendenza Finanziaria
+20:11:57
+📄
+[university] 418/1097: Modulo 7 Lezione 1: Fase 11 - Presentare il Prezzo e Giustificare il ROI
+20:11:57
+📄
+[university] 137/1097: Manuale di Sopravvivenza per l'Inverno Finanziario (Come Affrontare un Mercato al Ribasso)
+20:11:57
+📄
+[university] 419/1097: Modulo 7 Lezione 2: Fase 12 - Il "Looping" con Incentivi, Urgenza e Scarsità
+20:11:57
+📄
+[university] 138/1097: La Trappola dell'Euforia - Gestire un Mercato al Rialzo (e Non Diventare il Tuo Peggior Nemico)
+20:11:57
+📄
+[university] 420/1097: Modulo 7 Lezione 3: L'Inversione del Rischio e la Strategia del Deposito
+20:11:57
+📄
+[university] 139/1097: La Manutenzione della Macchina - Rivedere e Ribilanciare il Tuo Portafoglio
+20:11:57
+📄
+[university] 421/1097: Modulo 7 Lezione 4: Gestire il Pagamento e le Obiezioni Finali
+20:11:57
+📄
+[university] 140/1097: Introduzione, COMANDA LE TUE FINANZE
+20:11:57
+📄
+[university] 422/1097: Modulo 8 Lezione 2: Procedure Post-Chiamata e Follow-up per la Chiusura
+20:11:58
+📄
+[university] 141/1097: La Mappa del Tesoro - Diagnosi del Tuo Patrimonio Netto
+20:11:58
+📄
+[university] 423/1097: Modulo 8 Lezione 3: Il Follow-up Strategico per Chi Non Chiude Subito
+20:11:58
+📄
+[university] 142/1097: Il Piano di Comando - Dall'Anarchia al Controllo
+20:11:58
+📄
+[university] 424/1097: Modulo 8 Lezione 4: La Campagna di Nurturing a Lungo Termine
+20:11:58
+📄
+[university] 143/1097: La Variabile Dominante - Padroneggiare l'Orizzonte Temporale
+20:11:58
+📄
+[university] 425/1097: Il Tuo Asset Invisibile - Padroneggiare il Merito Creditizio
+20:11:58
+📄
+[university] 144/1097: L'Ultima Frontiera - Usare i Soldi per Comprare la Felicità (Sì, è Possibile)
+20:11:58
+📄
+[university] 426/1097: Le Forze Gemelle - Interesse Composto e Inflazione
+20:11:58
+📄
+[university] 145/1097: La Tua Costituzione Personale - Creare il Tuo Manifesto Finanziario
+20:11:58
+📄
+[university] 427/1097: L'Identità dell'Investitore - Strategia, Rischio e Azzardo
+20:11:58
+📄
+[university] 146/1097: L'Eredità del Comando - Pianificazione Successoria e Responsabilità
+20:11:58
+📄
+[university] 428/1097: I Mattoni della Ricchezza - Azioni e Obbligazioni
+20:11:58
+📄
+[university] 147/1097: Il Cerchio si Chiude - La Ricchezza che si Ottiene Donando
+20:11:58
+📄
+[university] 429/1097: L'Unico Pranzo Gratis della Finanza - La Magia della Diversificazione
+20:11:59
+📄
+[university] 148/1097: La Dieta dell'Informazione - Navigare le Notizie Finanziarie Senza Impazzire
+20:11:59
+📄
+[university] 430/1097: Lo Strumento Definitivo - Gli ETF e la Rivoluzione Passiva
+20:11:59
+📄
+[university] 149/1097: Il GPS per la Vita - Assemblare il Tuo Piano Finanziario Completo
+20:11:59
+📄
+[university] 431/1097: Il Pilota Automatico per Investire - La Superiorità Strategica del Piano di Accumulo (PAC)
+20:11:59
+📄
+[university] 150/1097: L'Arte della Celebrazione e il Ritmo del Successo
+20:11:59
+📄
+[university] 432/1097: La Macchina del Tempo Finanziaria - Progettare la Tua Pensione
+20:11:59
+📄
+[university] 151/1097: La Fine dell'Inizio - Trasformare Questo percorso in una Vita di Ricchezza
+20:11:59
+📄
+[university] 433/1097: La Guerra nella Tua Mente - Sconfiggere i Nemici Psicologici dell'Investitore
+20:11:59
+📄
+[university] 152/1097: Oltre il Numero - La Vita Dopo l'Indipendenza Finanziaria
+20:11:59
+📄
+[university] 434/1097: La Verità sul Mattone - L'Investimento Immobiliare tra Mito e Realtà
+20:11:59
+📄
+[university] 153/1097: La Fase di Decumulo - Come Prelevare dal Tuo Portafoglio in Modo Intelligente
+20:11:59
+📄
+[university] 435/1097: Il Tuo Socio Silenzioso - Capire le Tasse sugli Investimenti (senza mal di testa)
+20:11:59
+📄
+[university] 154/1097: L'Arte del Lavoro Opzionale - Ridefinire il Successo e lo Scopo
+20:11:59
+📄
+[university] 436/1097: L'Arte dell'Efficienza - Strategie Fiscali per Massimizzare i Rendimenti Netti
+20:12:00
+📄
+[university] 155/1097: Il Patrimonio Olistico - Investire in Salute, Relazioni e Conoscenza
+20:12:00
+📄
+[university] 437/1097: Il Tuo Asset da un Milione di Euro - Massimizzare la Carriera
+20:12:00
+📄
+[university] 156/1097: Resilienza a Lungo Termine - Adattare il Piano ai Grandi Cambiamenti della Vita
+20:12:00
+📄
+[university] 438/1097: La Diversificazione del Reddito - Creare la Tua Prima Entrata Extra (Side Hustle)
+20:12:00
+📄
+[university] 157/1097: Il Viaggio Infinito - La Tua Eredità di Saggezza
+20:12:00
+📄
+[university] 439/1097: Il Denaro nelle Relazioni - Costruire un Impero di Squadra
+20:12:00
+📄
+[university] 158/1097: Glossario Strategico - Il Tuo Dizionario per il Comando Finanziario
+20:12:00
+📄
+[university] 440/1097: L'Eredità più Grande - Educazione Finanziaria per i Figli
+20:12:00
+📄
+[university] 159/1097: Il Comando è Tuo
+20:12:00
+📄
+[university] 441/1097: La Filosofia F.I.R.E. - Ingegneria Inversa della Libertà
+20:12:00
+📄
+[university] 160/1097: Il Progetto Definitivo - Creare il Tuo Piano Finanziario Completo (Il Tuo GPS per la Vita)
+20:12:00
+📄
+[university] 442/1097: Il Numero della Libertà - Calcolare il Tuo Traguardo per l'Indipendenza Finanziaria
+20:12:00
+📄
+[university] 161/1097: L'Arte della Celebrazione - Il Ritmo Sostenibile del Successo
+20:12:00
+📄
+[university] 443/1097: Manuale di Sopravvivenza per l'Inverno Finanziario (Come Affrontare un Mercato al Ribasso)
+20:12:01
+📄
+[university] 162/1097: La Fine dell'Inizio - Il Tuo Comando Perpetuo
+20:12:01
+📄
+[university] 444/1097: La Trappola dell'Euforia - Gestire un Mercato al Rialzo (e Non Diventare il Tuo Peggior Nemico)
+20:12:01
+📄
+[university] 163/1097: Psicologia del pricing
+20:12:01
+📄
+[university] 445/1097: La Manutenzione della Macchina - Rivedere e Ribilanciare il Tuo Portafoglio
+20:12:01
+📄
+[university] 164/1097: Value-based pricing vs cost-based
+20:12:01
+📄
+[university] 446/1097: L'Ultima Frontiera - Usare i Soldi per Comprare la Felicità (Sì, è Possibile)
+20:12:01
+📄
+[university] 165/1097: Testing e ottimizzazione prezzi
+20:12:01
+📄
+[university] 447/1097: L'Eredità del Comando - Pianificazione Successoria e Responsabilità
+20:12:01
+📄
+[university] 166/1097: Processi e sistemi
+20:12:01
+📄
+[university] 448/1097: Il Cerchio si Chiude - La Ricchezza che si Ottiene Donando
+20:12:01
+📄
+[university] 167/1097: Tool e software per l'automazione
+20:12:01
+📄
+[university] 449/1097: La Dieta dell'Informazione - Navigare le Notizie Finanziarie Senza Impazzire
+20:12:01
+📄
+[university] 168/1097: Delegare efficacemente
+20:12:02
+📄
+[university] 450/1097: Affilare la Lama - L'Impegno per una Formazione Finanziaria Continua
+20:12:02
+📄
+[university] 169/1097: Modelli di business scalabili
+20:12:02
+📄
+[university] 451/1097: Il GPS per la Vita - Assemblare il Tuo Piano Finanziario Completo
+20:12:02
+📄
+[university] 170/1097: Marketing automation
+20:12:02
+📄
+[university] 452/1097: Psicologia del pricing
+20:12:02
+📄
+[university] 171/1097: Upsell e cross-sell
+20:12:02
+📄
+[university] 453/1097: Value-based pricing vs cost-based
+20:12:02
+📄
+[university] 172/1097: Creare 3-5 flussi di reddito
+20:12:02
+📄
+[university] 454/1097: Testing e ottimizzazione prezzi
+20:12:02
+📄
+[university] 173/1097: Reddito attivo vs passivo
+20:12:02
+📄
+[university] 455/1097: Processi e sistemi
+20:12:02
+📄
+[university] 174/1097: Monetizzare competenze ed expertise
+20:12:02
+📄
+[university] 456/1097: Tool e software per l'automazione
+20:12:02
+📄
+[university] 457/1097: Delegare efficacemente
+20:12:02
+📄
+[university] 175/1097: Check-up Q1 Anno 2
+20:12:03
+📄
+[university] 458/1097: Modelli di business scalabili
+20:12:03
+📄
+[university] 176/1097: Strategie di allocazione per patrimoni crescenti
+20:12:03
+📄
+[university] 459/1097: Marketing automation
+20:12:03
+📄
+[university] 177/1097: Bilanciamento geografico
+20:12:03
+📄
+[university] 460/1097: Upsell e cross-sell
+20:12:03
+📄
+[university] 178/1097: Esposizione settoriale
+20:12:03
+📄
+[university] 461/1097: Creare 3-5 flussi di reddito
+20:12:03
+📄
+[university] 179/1097: Copertura valutaria
+20:12:03
+📄
+[university] 180/1097: Obbligazioni corporate e governative
+20:12:03
+📄
+[university] 181/1097: Duration e yield
