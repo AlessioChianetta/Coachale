@@ -75,8 +75,10 @@ export async function cleanupGhostConversations(): Promise<number> {
 export function startGhostConversationCleanup(): NodeJS.Timeout {
   console.log("🧹 [CLEANUP] Starting ghost conversation cleanup (every 5 minutes)");
   
-  // Run immediately on start
-  cleanupGhostConversations();
+  // Delay first run by 30 seconds to allow database connection to stabilize
+  setTimeout(() => {
+    cleanupGhostConversations();
+  }, 30 * 1000);
   
   // Then run every 5 minutes
   return setInterval(() => {

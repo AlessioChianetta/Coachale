@@ -287,6 +287,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
   
+  const [cleaningOrphans, setCleaningOrphans] = useState(false);
+  const [selectedStoreForOrphans, setSelectedStoreForOrphans] = useState<string | null>(null);
+  
   useEffect(() => {
     if (logContainerRef.current && shouldAutoScroll) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
@@ -695,9 +698,6 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const toggleAuditAgent = (agentId: string) => {
     setOpenAuditAgents(prev => ({ ...prev, [agentId]: !prev[agentId] }));
   };
-
-  const [cleaningOrphans, setCleaningOrphans] = useState(false);
-  const [selectedStoreForOrphans, setSelectedStoreForOrphans] = useState<string | null>(null);
 
   const isLoading = settingsLoading || analyticsLoading || auditLoading;
   
