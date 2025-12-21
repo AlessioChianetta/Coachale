@@ -410,7 +410,12 @@ export default function ConsultantWhatsAppCustomTemplates() {
       setTemplateName(template.templateName);
       setUseCase(template.useCase || template.templateType || "");
       setDescription(template.description || "");
-      setBodyText(template.activeVersion?.bodyText || template.body || "");
+      
+      // Find active version from versions array, or use activeVersion if present, or fallback to body
+      const activeVersion = template.versions?.find((v: any) => v.isActive);
+      const bodyTextValue = activeVersion?.bodyText || template.activeVersion?.bodyText || template.body || "";
+      setBodyText(bodyTextValue);
+      
       const matchingScenario = SCENARIO_OPTIONS.find(s => s.useCase === (template.useCase || template.templateType));
       if (matchingScenario) {
         setSelectedScenario(matchingScenario.id);
