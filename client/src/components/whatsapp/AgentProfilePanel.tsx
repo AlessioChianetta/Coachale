@@ -220,23 +220,27 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent }: AgentProfile
     );
   }
 
-  const analytics = data || {
-    agent: selectedAgent,
-    performance: {
-      score: selectedAgent.performanceScore || 0,
-      trend: selectedAgent.trend || "stable",
-      conversationsTotal: 0,
-      conversationsToday: 0,
-      avgResponseTime: "0s",
-      successRate: 0,
-    },
-    trendData: [],
-    skills: [
-      { name: "Qualificazione Lead", level: 85, description: "Capacita di identificare lead qualificati" },
-      { name: "Gestione Obiezioni", level: 72, description: "Risposta efficace alle obiezioni" },
-      { name: "Conversione", level: 68, description: "Tasso di conversione in appuntamenti" },
-      { name: "Engagement", level: 90, description: "Mantenimento della conversazione" },
-    ],
+  const defaultPerformance = {
+    score: selectedAgent.performanceScore || 0,
+    trend: selectedAgent.trend || "stable",
+    conversationsTotal: 0,
+    conversationsToday: 0,
+    avgResponseTime: "0s",
+    successRate: 0,
+  };
+
+  const defaultSkills = [
+    { name: "Qualificazione Lead", level: 85, description: "Capacita di identificare lead qualificati" },
+    { name: "Gestione Obiezioni", level: 72, description: "Risposta efficace alle obiezioni" },
+    { name: "Conversione", level: 68, description: "Tasso di conversione in appuntamenti" },
+    { name: "Engagement", level: 90, description: "Mantenimento della conversazione" },
+  ];
+
+  const analytics = {
+    agent: data?.agent || selectedAgent,
+    performance: data?.performance || data?.metrics || defaultPerformance,
+    trendData: data?.trendData || data?.trend || [],
+    skills: data?.skills || defaultSkills,
   };
 
   const agentTypeLabels: Record<string, string> = {

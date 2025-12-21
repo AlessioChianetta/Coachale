@@ -7,7 +7,7 @@ import {
   whatsappDailyStats,
   users
 } from "../../../shared/schema";
-import { eq, and, sql, desc, gte, count, avg } from "drizzle-orm";
+import { eq, and, sql, desc, gte, count, avg, inArray } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole } from "../../middleware/auth";
 
 const router = Router();
@@ -36,7 +36,7 @@ router.get("/stats", authenticateToken, requireRole("consultant"), async (req: A
         count: count()
       }).from(whatsappConversations)
         .where(and(
-          sql`${whatsappConversations.agentConfigId} = ANY(${agentIds})`,
+          inArray(whatsappConversations.agentConfigId, agentIds),
           gte(whatsappConversations.lastMessageAt, last24h)
         ));
       totalConversations24h = conversations[0]?.count || 0;
@@ -46,7 +46,7 @@ router.get("/stats", authenticateToken, requireRole("consultant"), async (req: A
       }).from(whatsappMessages)
         .innerJoin(whatsappConversations, eq(whatsappMessages.conversationId, whatsappConversations.id))
         .where(and(
-          sql`${whatsappConversations.agentConfigId} = ANY(${agentIds})`,
+          inArray(whatsappConversations.agentConfigId, agentIds),
           gte(whatsappMessages.createdAt, last24h)
         ));
       totalMessages24h = messages[0]?.count || 0;
@@ -253,7 +253,7 @@ router.get("/activity-feed", authenticateToken, requireRole("consultant"), async
     })
       .from(whatsappMessages)
       .innerJoin(whatsappConversations, eq(whatsappMessages.conversationId, whatsappConversations.id))
-      .where(sql`${whatsappConversations.agentConfigId} = ANY(${agentIds})`)
+      .where(inArray(whatsappConversations.agentConfigId, agentIds))
       .orderBy(desc(whatsappMessages.createdAt))
       .limit(limit);
 

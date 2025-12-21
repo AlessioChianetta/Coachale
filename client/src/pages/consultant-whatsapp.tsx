@@ -487,6 +487,30 @@ export default function ConsultantWhatsAppPage() {
 
   const configs = existingConfigs?.configs || [];
 
+  // Query per caricare i dati delle statistiche agenti dal backend
+  const { data: agentStatsData, isLoading: isLoadingStats } = useQuery<{ agents: Array<{
+    id: string;
+    name: string;
+    agentType: string;
+    status: "active" | "paused" | "test";
+    performanceScore: number;
+    trend: "up" | "down" | "stable";
+    conversationsToday: number;
+  }> }>({
+    queryKey: ["/api/whatsapp/agents/leaderboard"],
+    queryFn: async () => {
+      const res = await fetch("/api/whatsapp/agents/leaderboard", { 
+        headers: getAuthHeaders() 
+      });
+      if (!res.ok) throw new Error("Failed to fetch agent stats");
+      return res.json();
+    },
+    enabled: configs.length > 0,
+    staleTime: 30000,
+  });
+
+  const agentStats = agentStatsData?.agents || [];
+
   // Delete WhatsApp config mutation
   const deleteMutation = useMutation({
     mutationFn: async (configId: string) => {
@@ -793,16 +817,8 @@ export default function ConsultantWhatsAppPage() {
                 {/* Sezione Leaderboard + Activity Feed */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <AgentLeaderboard 
-                    agents={configs.map((c: WhatsAppConfig) => ({
-                      id: c.id || '',
-                      name: c.agentName,
-                      agentType: c.agentType || 'reactive_lead',
-                      status: c.autoResponseEnabled ? (c.isDryRun ? 'test' : 'active') : 'paused' as const,
-                      performanceScore: 70,
-                      trend: 'stable' as const,
-                      conversationsToday: 0
-                    }))}
-                    isLoading={isLoading}
+                    agents={agentStats}
+                    isLoading={isLoadingStats}
                     onSelectAgent={(agent) => setSelectedAgent(agent)}
                   />
                   <ActivityFeed />
