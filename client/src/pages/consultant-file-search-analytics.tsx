@@ -39,7 +39,8 @@ import {
   Plus,
   AlertCircle,
   ClipboardCheck,
-  Wallet
+  Wallet,
+  Trash2
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -239,6 +240,21 @@ interface AuditData {
     healthScore: number;
   };
   recommendations: string[];
+}
+
+interface SourceOrphan {
+  id: string;
+  fileName: string;
+  googleFileId: string;
+  sourceType: string;
+  sourceId: string | null;
+}
+
+interface SourceOrphansData {
+  success: boolean;
+  orphans: SourceOrphan[];
+  count: number;
+  message?: string;
 }
 
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
@@ -452,6 +468,47 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
+  const { data: sourceOrphansData, isLoading: sourceOrphansLoading } = useQuery<SourceOrphansData>({
+    queryKey: [`/api/file-search/stores/${selectedStoreForOrphans}/source-orphans`],
+    queryFn: async () => {
+      const response = await fetch(`/api/file-search/stores/${selectedStoreForOrphans}/source-orphans`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch source orphans");
+      return response.json();
+    },
+    enabled: !!selectedStoreForOrphans,
+  });
+
+  const cleanupOrphansMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/file-search/stores/${selectedStoreForOrphans}/cleanup-source-orphans`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Cleanup failed");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/file-search/stores/${selectedStoreForOrphans}/source-orphans`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      toast({
+        title: "Pulizia completata",
+        description: data.message || "Documenti orfani rimossi con successo.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore pulizia",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const syncMissingMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch("/api/file-search/sync-missing", {
@@ -638,6 +695,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const toggleAuditAgent = (agentId: string) => {
     setOpenAuditAgents(prev => ({ ...prev, [agentId]: !prev[agentId] }));
   };
+
+  const [cleaningOrphans, setCleaningOrphans] = useState(false);
+  const [selectedStoreForOrphans, setSelectedStoreForOrphans] = useState<string | null>(null);
 
   const isLoading = settingsLoading || analyticsLoading || auditLoading;
   
@@ -2631,6 +2691,104 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       <AlertCircle className="h-3 w-3" />
                       I dati finanziari vengono recuperati da Percorso Capitale e salvati nello store privato di ogni cliente
                     </p>
+                  </CardContent>
+                </Card>
+
+                {/* Source Orphans Section */}
+                <Card className="border-red-200 bg-red-50/30">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-red-700">
+                      <AlertTriangle className="h-5 w-5" />
+                      Documenti Orfani dalla Sorgente
+                    </CardTitle>
+                    <CardDescription>
+                      Documenti nel FileSearch la cui sorgente originale è stata eliminata
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4">
+                      <Label className="text-sm font-medium mb-2 block">Seleziona Store da controllare:</Label>
+                      <Select 
+                        value={selectedStoreForOrphans || ""} 
+                        onValueChange={(val) => setSelectedStoreForOrphans(val || null)}
+                      >
+                        <SelectTrigger className="w-full max-w-xs">
+                          <SelectValue placeholder="Seleziona uno store..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {analytics?.hierarchicalData?.consultantStore && (
+                            <SelectItem value={analytics.hierarchicalData.consultantStore.storeId}>
+                              {analytics.hierarchicalData.consultantStore.storeName} (Consulente)
+                            </SelectItem>
+                          )}
+                          {(analytics?.hierarchicalData as any)?.whatsappAgentStores?.map((agent: any) => (
+                            <SelectItem key={agent.storeId} value={agent.storeId}>
+                              {agent.storeName} (WhatsApp)
+                            </SelectItem>
+                          ))}
+                          {analytics?.hierarchicalData?.clientStores?.filter(client => client.storeId).map(client => (
+                            <SelectItem key={client.storeId} value={client.storeId!}>
+                              {client.clientName} (Cliente)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {!selectedStoreForOrphans ? (
+                      <p className="text-sm text-muted-foreground">Seleziona uno store per controllare i documenti orfani.</p>
+                    ) : sourceOrphansLoading ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Controllo in corso...</span>
+                      </div>
+                    ) : sourceOrphansData?.orphans?.length === 0 ? (
+                      <div className="flex items-center gap-2 text-emerald-600">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="text-sm">Nessun documento orfano trovato!</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="destructive">
+                            {sourceOrphansData?.count || 0} documenti orfani
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => cleanupOrphansMutation.mutate()}
+                            disabled={cleanupOrphansMutation.isPending}
+                          >
+                            {cleanupOrphansMutation.isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Pulizia...
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Pulisci Orfani
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-2">
+                          {sourceOrphansData?.orphans?.map(orphan => (
+                            <div key={orphan.id} className="flex items-center justify-between p-2 bg-red-100/50 rounded border border-red-200">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-red-500" />
+                                <div>
+                                  <p className="text-sm font-medium">{orphan.fileName}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Tipo: {orphan.sourceType} | ID Sorgente: {orphan.sourceId || 'N/A'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

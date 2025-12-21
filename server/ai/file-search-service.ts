@@ -1504,6 +1504,155 @@ export class FileSearchService {
 
     return stores.map(store => store.googleStoreName);
   }
+
+  /**
+   * Find documents in FileSearch that no longer have their source record
+   * These are "source orphans" - documents whose original source (knowledge document,
+   * exercise, etc.) was deleted but the FileSearch document still exists
+   */
+  async findSourceOrphans(storeId: string): Promise<{
+    success: boolean;
+    orphans: Array<{
+      id: string;
+      fileName: string;
+      googleFileId: string;
+      sourceType: string;
+      sourceId: string | null;
+    }>;
+    error?: string;
+  }> {
+    try {
+      const { consultantKnowledgeDocuments, clientKnowledgeDocuments, whatsappAgentKnowledgeItems, consultantExercises, consultations, libraryDocuments } = await import('../../shared/schema');
+      
+      const docs = await db
+        .select()
+        .from(fileSearchDocuments)
+        .where(and(
+          eq(fileSearchDocuments.storeId, storeId),
+          sql`${fileSearchDocuments.sourceId} IS NOT NULL`
+        ));
+
+      const orphans: Array<{
+        id: string;
+        fileName: string;
+        googleFileId: string;
+        sourceType: string;
+        sourceId: string | null;
+      }> = [];
+
+      const bySourceType: Record<string, typeof docs> = {};
+      for (const doc of docs) {
+        const st = doc.sourceType || 'unknown';
+        if (!bySourceType[st]) bySourceType[st] = [];
+        bySourceType[st].push(doc);
+      }
+
+      for (const [sourceType, typeDocs] of Object.entries(bySourceType)) {
+        const sourceIds = typeDocs.map(d => d.sourceId!).filter(Boolean);
+        if (sourceIds.length === 0) continue;
+
+        let existingIds: Set<string> = new Set();
+
+        try {
+          switch (sourceType) {
+            case 'knowledge_base':
+              const kbDocs = await db.select({ id: consultantKnowledgeDocuments.id })
+                .from(consultantKnowledgeDocuments)
+                .where(inArray(consultantKnowledgeDocuments.id, sourceIds));
+              existingIds = new Set(kbDocs.map(d => d.id));
+              break;
+            case 'client_knowledge':
+              const ckDocs = await db.select({ id: clientKnowledgeDocuments.id })
+                .from(clientKnowledgeDocuments)
+                .where(inArray(clientKnowledgeDocuments.id, sourceIds));
+              existingIds = new Set(ckDocs.map(d => d.id));
+              break;
+            case 'whatsapp_agent_knowledge':
+              const wakDocs = await db.select({ id: whatsappAgentKnowledgeItems.id })
+                .from(whatsappAgentKnowledgeItems)
+                .where(inArray(whatsappAgentKnowledgeItems.id, sourceIds));
+              existingIds = new Set(wakDocs.map(d => d.id));
+              break;
+            case 'exercise':
+              const exDocs = await db.select({ id: consultantExercises.id })
+                .from(consultantExercises)
+                .where(inArray(consultantExercises.id, sourceIds));
+              existingIds = new Set(exDocs.map(d => d.id));
+              break;
+            case 'consultation':
+              const consDocs = await db.select({ id: consultations.id })
+                .from(consultations)
+                .where(inArray(consultations.id, sourceIds));
+              existingIds = new Set(consDocs.map(d => d.id));
+              break;
+            case 'library':
+              const libDocs = await db.select({ id: libraryDocuments.id })
+                .from(libraryDocuments)
+                .where(inArray(libraryDocuments.id, sourceIds));
+              existingIds = new Set(libDocs.map(d => d.id));
+              break;
+            default:
+              console.log(`⚠️ [FileSearch] Unknown sourceType for orphan check: ${sourceType}`);
+              continue;
+          }
+        } catch (checkError: any) {
+          console.warn(`⚠️ [FileSearch] Error checking source type ${sourceType}:`, checkError.message);
+          continue;
+        }
+
+        for (const doc of typeDocs) {
+          if (doc.sourceId && !existingIds.has(doc.sourceId)) {
+            orphans.push({
+              id: doc.id,
+              fileName: doc.fileName,
+              googleFileId: doc.googleFileId,
+              sourceType: doc.sourceType || 'unknown',
+              sourceId: doc.sourceId,
+            });
+          }
+        }
+      }
+
+      console.log(`🔍 [FileSearch] Found ${orphans.length} source orphans in store ${storeId}`);
+      return { success: true, orphans };
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] Error finding source orphans:`, error);
+      return { success: false, orphans: [], error: error.message };
+    }
+  }
+
+  /**
+   * Clean up source orphans - delete documents whose source no longer exists
+   */
+  async cleanupSourceOrphans(storeId: string, requestingUserId?: string): Promise<{
+    success: boolean;
+    removed: number;
+    errors: string[];
+  }> {
+    const orphansResult = await this.findSourceOrphans(storeId);
+    if (!orphansResult.success) {
+      return { success: false, removed: 0, errors: [orphansResult.error || 'Failed to find orphans'] };
+    }
+
+    let removed = 0;
+    const errors: string[] = [];
+
+    for (const orphan of orphansResult.orphans) {
+      const deleteResult = await this.deleteDocument(orphan.id, requestingUserId);
+      if (deleteResult.success) {
+        removed++;
+        console.log(`🗑️ [FileSearch] Deleted source orphan: ${orphan.fileName} (sourceType: ${orphan.sourceType})`);
+      } else {
+        errors.push(`Failed to delete ${orphan.fileName}: ${deleteResult.error}`);
+      }
+    }
+
+    return {
+      success: errors.length === 0,
+      removed,
+      errors,
+    };
+  }
 }
 
 export const fileSearchService = new FileSearchService();

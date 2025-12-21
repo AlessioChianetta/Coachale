@@ -403,6 +403,110 @@ router.post('/stores/:storeId/cleanup-db', authenticateToken, requireRole('consu
 });
 
 /**
+ * GET /api/file-search/stores/:storeId/source-orphans
+ * Find documents in FileSearch whose source records no longer exist
+ */
+router.get('/stores/:storeId/source-orphans', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { storeId } = req.params;
+
+    const store = await db.query.fileSearchStores.findFirst({
+      where: eq(fileSearchStores.id, storeId),
+    });
+
+    if (!store) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Store non trovato' 
+      });
+    }
+
+    const isOwnStore = store.ownerId === userId && (store.ownerType === 'consultant' || store.ownerType === 'whatsapp_agent');
+    
+    let isClientStore = false;
+    if (!isOwnStore && store.ownerType === 'client') {
+      const [clientUser] = await db.select().from(users).where(eq(users.id, store.ownerId)).limit(1);
+      if (clientUser && clientUser.consultantId === userId) {
+        isClientStore = true;
+      }
+    }
+
+    if (!isOwnStore && !isClientStore) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Non autorizzato ad accedere a questo store' 
+      });
+    }
+
+    const result = await fileSearchService.findSourceOrphans(storeId);
+    res.json({
+      success: result.success,
+      orphans: result.orphans,
+      count: result.orphans.length,
+      message: result.success 
+        ? `Trovati ${result.orphans.length} documenti orfani dalla sorgente`
+        : result.error,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error finding source orphans:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/stores/:storeId/cleanup-source-orphans
+ * Clean up documents whose source records no longer exist
+ */
+router.post('/stores/:storeId/cleanup-source-orphans', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { storeId } = req.params;
+
+    const store = await db.query.fileSearchStores.findFirst({
+      where: eq(fileSearchStores.id, storeId),
+    });
+
+    if (!store) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Store non trovato' 
+      });
+    }
+
+    const isOwnStore = store.ownerId === userId && (store.ownerType === 'consultant' || store.ownerType === 'whatsapp_agent');
+    
+    let isClientStore = false;
+    if (!isOwnStore && store.ownerType === 'client') {
+      const [clientUser] = await db.select().from(users).where(eq(users.id, store.ownerId)).limit(1);
+      if (clientUser && clientUser.consultantId === userId) {
+        isClientStore = true;
+      }
+    }
+
+    if (!isOwnStore && !isClientStore) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Non autorizzato ad accedere a questo store' 
+      });
+    }
+
+    const result = await fileSearchService.cleanupSourceOrphans(storeId, userId);
+    res.json({
+      success: result.success,
+      removed: result.removed,
+      errors: result.errors,
+      message: result.success 
+        ? `Pulizia completata. ${result.removed} documenti orfani rimossi.`
+        : `Pulizia parziale. ${result.removed} rimossi, ${result.errors.length} errori.`,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error cleaning up source orphans:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/file-search/initialize
  * Quick endpoint to create an empty FileSearchStore for a consultant
  * Use this before syncing documents to test File Search functionality
