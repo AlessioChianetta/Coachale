@@ -762,4 +762,81 @@ router.get("/consultations-email-status", async (req: any, res) => {
   }
 });
 
+// Sync historical email status from emailDrafts table to consultations table
+// This fixes consultations where emails were sent via the old system but summaryEmailStatus wasn't updated
+router.post("/sync-historical-emails", async (req: any, res) => {
+  try {
+    const consultantId = req.user.id;
+    console.log(`🔄 [ECHO SYNC] Starting historical email sync for consultant ${consultantId}`);
+
+    // Find all sent/approved consultation_summary drafts that have a consultationId
+    const sentDrafts = await db
+      .select({
+        consultationId: emailDrafts.consultationId,
+        status: emailDrafts.status,
+        sentAt: emailDrafts.sentAt,
+        approvedAt: emailDrafts.approvedAt
+      })
+      .from(emailDrafts)
+      .where(
+        and(
+          eq(emailDrafts.consultantId, consultantId),
+          eq(emailDrafts.emailType, "consultation_summary"),
+          sql`${emailDrafts.status} IN ('sent', 'approved')`,
+          sql`${emailDrafts.consultationId} IS NOT NULL`
+        )
+      );
+
+    console.log(`🔄 [ECHO SYNC] Found ${sentDrafts.length} sent/approved drafts to sync`);
+
+    let synced = 0;
+    let alreadySynced = 0;
+
+    for (const draft of sentDrafts) {
+      if (!draft.consultationId) continue;
+
+      // Check if consultation already has status
+      const [consultation] = await db
+        .select({ summaryEmailStatus: consultations.summaryEmailStatus })
+        .from(consultations)
+        .where(eq(consultations.id, draft.consultationId));
+
+      if (consultation && (!consultation.summaryEmailStatus || consultation.summaryEmailStatus === 'missing')) {
+        // Update consultation with correct status
+        const newStatus = draft.status === 'sent' ? 'sent' : 'approved';
+        const updateData: any = { summaryEmailStatus: newStatus };
+        
+        if (draft.status === 'sent' && draft.sentAt) {
+          updateData.summaryEmailSentAt = draft.sentAt;
+        } else if (draft.status === 'approved' && draft.approvedAt) {
+          updateData.summaryEmailApprovedAt = draft.approvedAt;
+        }
+
+        await db
+          .update(consultations)
+          .set(updateData)
+          .where(eq(consultations.id, draft.consultationId));
+        
+        synced++;
+        console.log(`✅ [ECHO SYNC] Synced consultation ${draft.consultationId} to status: ${newStatus}`);
+      } else {
+        alreadySynced++;
+      }
+    }
+
+    console.log(`🔄 [ECHO SYNC] Sync complete: ${synced} updated, ${alreadySynced} already synced`);
+
+    res.json({
+      success: true,
+      message: `Sincronizzazione completata: ${synced} consulenze aggiornate, ${alreadySynced} già sincronizzate`,
+      synced,
+      alreadySynced,
+      total: sentDrafts.length
+    });
+  } catch (error: any) {
+    console.error("Error syncing historical emails:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

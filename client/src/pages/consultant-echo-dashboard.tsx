@@ -275,6 +275,35 @@ export default function ConsultantEchoDashboardPage() {
     },
   });
 
+  const syncHistoricalMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/echo/sync-historical-emails", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to sync historical emails");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Sincronizzazione Completata",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/pending-consultations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const isLoading = statsLoading || pendingLoading || draftsLoading;
 
   if (isLoading) {
@@ -383,10 +412,26 @@ export default function ConsultantEchoDashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-2 border-orange-200 dark:border-orange-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
-                    <AlertCircle className="h-5 w-5" />
-                    Consulenze Senza Email
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                      <AlertCircle className="h-5 w-5" />
+                      Consulenze Senza Email
+                    </CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncHistoricalMutation.mutate()}
+                      disabled={syncHistoricalMutation.isPending}
+                      className="text-xs"
+                    >
+                      {syncHistoricalMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                      )}
+                      Sincronizza Storiche
+                    </Button>
+                  </div>
                   <CardDescription>
                     Consulenze completate che non hanno ancora un riepilogo email
                   </CardDescription>
