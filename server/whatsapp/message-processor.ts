@@ -3164,6 +3164,7 @@ Per favore scegli una data futura tra quelle che ti ho proposto. 😊`;
 
                     // Push to Google Calendar WITH EMAIL
                     // FIX: Pass date/time as strings with duration and timezone to avoid UTC confusion
+                    // NEW: Pass agentConfigId to use agent's calendar if available
                     try {
                       const googleEvent = await createGoogleCalendarEvent(
                         conversation.consultantId,
@@ -3175,7 +3176,8 @@ Per favore scegli una data futura tra quelle che ti ho proposto. 😊`;
                           duration: duration,
                           timezone: timezone,
                           attendees: [extracted.email], // Add client email as attendee
-                        }
+                        },
+                        conversation.agentConfigId || undefined  // Use agent's calendar if available
                       );
 
                       // Update booking with Google Event ID

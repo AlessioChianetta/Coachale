@@ -1226,10 +1226,12 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                         
                         if (booking) {
                           // Crea evento Google Calendar
+                          // Pass agentConfigId to use agent's calendar if available
                           const calendarResult = await createGoogleCalendarBooking(
                             agentConfig.consultantId,
                             booking,
-                            extractionResult.email
+                            extractionResult.email,
+                            agentConfig.id  // Use agent's calendar if available
                           );
                           
                           console.log(`   🎉 [PUBLIC-BOOKING] Booking created successfully!`);

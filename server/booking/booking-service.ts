@@ -516,10 +516,14 @@ export interface GoogleCalendarResult {
 export async function createGoogleCalendarBooking(
   consultantId: string,
   booking: typeof appointmentBookings.$inferSelect,
-  clientEmail: string
+  clientEmail: string,
+  agentConfigId?: string  // NEW: Optional agent ID to use agent's calendar
 ): Promise<GoogleCalendarResult> {
   console.log(`\n📅 [BOOKING SERVICE] Creating Google Calendar event`);
   console.log(`   Consultant: ${consultantId}`);
+  if (agentConfigId) {
+    console.log(`   Agent Config ID: ${agentConfigId}`);
+  }
   console.log(`   Booking ID: ${booking.id}`);
   console.log(`   Client email: ${clientEmail}`);
 
@@ -533,6 +537,7 @@ export async function createGoogleCalendarBooking(
     const duration = settings?.appointmentDuration || 60;
     const timezone = settings?.timezone || "Europe/Rome";
 
+    // NEW: Pass agentConfigId to use agent's calendar if available
     const googleEvent = await createGoogleCalendarEvent(
       consultantId,
       {
@@ -543,7 +548,8 @@ export async function createGoogleCalendarBooking(
         duration: duration,
         timezone: timezone,
         attendees: [clientEmail],
-      }
+      },
+      agentConfigId
     );
 
     await db
@@ -571,10 +577,14 @@ export async function processFullBooking(
   consultantId: string,
   conversationId: string | null,
   data: BookingData,
-  source: 'whatsapp' | 'public_link'
+  source: 'whatsapp' | 'public_link',
+  agentConfigId?: string  // NEW: Optional agent ID to use agent's calendar
 ): Promise<BookingCreationResult> {
   console.log(`\n🚀 [BOOKING SERVICE] Processing full booking`);
   console.log(`   Source: ${source}`);
+  if (agentConfigId) {
+    console.log(`   Agent Config ID: ${agentConfigId}`);
+  }
 
   const booking = await createBookingRecord(consultantId, conversationId, data, source);
   if (!booking) {
@@ -587,7 +597,8 @@ export async function processFullBooking(
     };
   }
 
-  const calendarResult = await createGoogleCalendarBooking(consultantId, booking, data.email);
+  // NEW: Pass agentConfigId to use agent's calendar if available
+  const calendarResult = await createGoogleCalendarBooking(consultantId, booking, data.email, agentConfigId);
 
   return {
     success: true,
