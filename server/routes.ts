@@ -2689,6 +2689,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateConsultation(consultation.id, {
           summaryEmail: generatedEmail.body,
           summaryEmailGeneratedAt: new Date(),
+          summaryEmailStatus: "draft",
+          summaryEmailDraft: JSON.stringify({
+            subject: generatedEmail.subject,
+            body: generatedEmail.body,
+            preview: generatedEmail.preview,
+          }),
         });
         const updateEndTime = Date.now();
         console.log(`✅ [TIMER] Consultation updated in ${updateEndTime - updateStartTime}ms (total: ${updateEndTime - startTime}ms)`);
