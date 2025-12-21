@@ -619,10 +619,28 @@ export default function ConsultationTasksManager({ clientId, consultantId, consu
                       <h3 className={`font-semibold ${task.completed ? "line-through" : ""}`}>{task.title}</h3>
                       {!readonly && (
                         <div className="flex gap-1 flex-shrink-0">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditTask(task)}>
+                          <Button 
+                            type="button"
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleEditTask(task);
+                            }}
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task)}>
+                          <Button 
+                            type="button"
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDeleteTask(task);
+                            }}
+                          >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </div>
