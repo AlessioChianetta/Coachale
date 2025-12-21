@@ -2552,7 +2552,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
           </Collapsible>
 
           <Tabs defaultValue="drafts" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8 bg-gradient-to-r from-white via-blue-50/30 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 shadow-xl border-2 border-blue-100/50 dark:border-slate-600 p-2 h-auto rounded-2xl backdrop-blur-sm">
+            <TabsList className="grid w-full grid-cols-7 bg-gradient-to-r from-white via-blue-50/30 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 shadow-xl border-2 border-blue-100/50 dark:border-slate-600 p-2 h-auto rounded-2xl backdrop-blur-sm">
               <TabsTrigger 
                 value="drafts" 
                 className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-slate-700/50"
@@ -2567,14 +2567,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 <Sparkles className="h-5 w-5" />
                 <span className="hidden lg:inline">Riepilogo Consulenza</span>
                 <span className="lg:hidden">Echo</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="consultation-summary" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-purple-50/50 dark:hover:bg-slate-700/50"
-              >
-                <span className="text-xl">📋</span>
-                <span className="hidden lg:inline">Email Riepilogo</span>
-                <span className="lg:hidden">Riepilogo</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="statistics" 
@@ -2725,135 +2717,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
             <TabsContent value="echo" className="space-y-6">
               <EchoTab />
-            </TabsContent>
-
-            <TabsContent value="consultation-summary" className="space-y-6">
-              <Card className="border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-6 w-6" />
-                    Bozze Email Riepilogo Consulenza
-                  </CardTitle>
-                  <CardDescription>
-                    Email di riepilogo generate dall'AI dopo le consulenze
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {consultationDraftsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                    </div>
-                  ) : consultationDrafts.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-lg font-semibold text-muted-foreground">Nessuna bozza di riepilogo consulenza</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Le email di riepilogo consulenza generate dall'AI appariranno qui
-                      </p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Data Consulenza</TableHead>
-                          <TableHead>Link Fathom</TableHead>
-                          <TableHead>Generata il</TableHead>
-                          <TableHead className="text-right">Azioni</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {consultationDrafts.map((draft) => (
-                          <TableRow key={draft.id}>
-                            <TableCell className="font-medium">{draft.clientName}</TableCell>
-                            <TableCell className="max-w-md truncate">{draft.subject}</TableCell>
-                            <TableCell>
-                              {draft.metadata?.consultationDate ? (
-                                <Badge variant="outline" className="bg-blue-50">
-                                  {format(new Date(draft.metadata.consultationDate), "dd/MM/yyyy", { locale: it })}
-                                </Badge>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">N/A</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {draft.metadata?.fathomShareLink ? (
-                                <a
-                                  href={draft.metadata.fathomShareLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1"
-                                >
-                                  <Eye className="h-3 w-3" />
-                                  Vedi Registrazione
-                                </a>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Nessun link</span>
-                              )}
-                            </TableCell>
-                            <TableCell>{format(new Date(draft.generatedAt), "dd/MM/yyyy HH:mm", { locale: it })}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handlePreviewDraft(draft)}
-                                >
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Preview
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    console.log('💾 [SAVE FOR AI] Salvataggio riepilogo per AI');
-                                    console.log('💾 [SAVE FOR AI] Draft ID:', draft.id);
-                                    console.log('💾 [SAVE FOR AI] Cliente:', draft.clientName);
-                                    console.log('💾 [SAVE FOR AI] Consultation ID:', draft.metadata?.consultationId);
-                                    saveForAiMutation.mutate(draft.id);
-                                  }}
-                                  disabled={saveForAiMutation.isPending}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                                >
-                                  💾 Salva per AI
-                                </Button>
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => {
-                                    console.log('📧 [CONSULTATION EMAIL] Invio email di riepilogo consulenza');
-                                    console.log('📧 [CONSULTATION EMAIL] Draft ID:', draft.id);
-                                    console.log('📧 [CONSULTATION EMAIL] Cliente:', draft.clientName);
-                                    console.log('📧 [CONSULTATION EMAIL] Subject:', draft.subject);
-                                    console.log('📧 [CONSULTATION EMAIL] Data consulenza:', draft.metadata?.consultationDate);
-                                    console.log('📧 [CONSULTATION EMAIL] Link Fathom:', draft.metadata?.fathomShareLink);
-                                    sendConsultationDraftMutation.mutate(draft.id);
-                                  }}
-                                  disabled={sendConsultationDraftMutation.isPending}
-                                  className="bg-emerald-600 hover:bg-emerald-700"
-                                >
-                                  <Send className="h-4 w-4 mr-1" />
-                                  Invia
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => deleteConsultationDraftMutation.mutate(draft.id)}
-                                  disabled={deleteConsultationDraftMutation.isPending}
-                                >
-                                  <X className="h-4 w-4 mr-1" />
-                                  Elimina
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="statistics" className="space-y-6">
