@@ -1,0 +1,60 @@
+La mia proposta precedente era:
+deleteDocument() per rimuovere singoli documenti
+reconcileBySourceType() per trovare e rimuovere orfani
+Chiamare reconcile alla fine di ogni sync
+
+Passaggio 2: Nuove Domande di Verifica
+Google FileSearch API supporta effettivamente la cancellazione di documenti singoli? Ho assunto che esista un'API per questo, ma devo verificare.
+Il campo sourceId esiste e viene popolato correttamente? La riconciliazione dipende dal fatto che ogni documento sincronizzato abbia un riferimento alla sua sorgente originale.
+Cosa succede con i documenti importati dalla Knowledge Base agli agenti WhatsApp? Questi hanno una catena di provenienza: KB → WhatsApp Agent. Se cancello dalla KB, devo cancellare anche dall'agente?
+Come distinguo documenti "manuali" da documenti "sincronizzati"? Se un utente aggiunge manualmente un documento al FileSearchStore, non dovrebbe essere toccato dalla riconciliazione.
+La struttura attuale dello store è per-agente o per-consulente? Se è per-consulente, come distinguo i documenti di agenti diversi?
+
+Passaggio 3: Risposte alle Domande
+1. Google FileSearch API cancellazione:
+→ Devo verificare nel codice esistente. Cerco se esiste già una funzione delete...
+2. Campo sourceId:
+→ Verifico la tabella file_search_documents per vedere se ha questo campo e come viene usato.
+3. Catena KB → WhatsApp:
+→ Quando un documento viene importato dalla KB a un agente WhatsApp, diventa un item separato in whatsapp_agent_knowledge_items con sourceDocumentId che punta al documento KB originale. Sono entità distinte. Se cancello dalla KB:
+Il documento KB viene rimosso dal FileSearchStore
+L'item WhatsApp rimane perché è una copia indipendente
+Questo è probabilmente il comportamento corretto (l'agente mantiene la sua copia)
+4. Documenti manuali vs sincronizzati:
+→ Il campo sourceType distingue: manual vs whatsapp_agent_knowledge vs library etc. La riconciliazione deve filtrare per sourceType specifico e non toccare i manual.
+5. Struttura store:
+→ Devo verificare: è probabile che ci sia uno store per consulente, con documenti etichettati per sourceType. La riconciliazione deve lavorare su sourceType + sourceId.
+Ottimo! Ho trovato informazioni cruciali:
+sourceId esiste nel database con un indice su (sourceType, sourceId)
+deleteDocument() esiste già ma devo verificare se chiama Google API
+PROBLEMA CRITICO SCOPERTO!
+La funzione deleteDocument() esistente:
+✅ Cancella dal database locale
+✅ Aggiorna il contatore dello store
+❌ NON chiama Google API per rimuovere dal corpus!
+Il documento rimane su Google FileSearch e l'AI continua a trovarlo!
+
+Passaggio 4: Risposta Finale Corretta
+Scoperte Chiave:
+sourceId esiste nel database con indice su (sourceType, sourceId) ✅
+deleteDocument() esiste ma NON chiama Google API - BUG CRITICO! ❌
+Google API per cancellare esiste: fileSearchStores.documents.delete({ name, config: { force: true } })
+Architettura Finale Corretta:
+1. FIX CRITICO: Modificare deleteDocument() per chiamare Google API PRIMA di cancellare dal DB
+  - Recupera googleFileId dal documento
+  - Chiama: ai.fileSearchStores.documents.delete({ name: `fileSearchStores/${storeName}/documents/${googleFileId}`, config: { force: true } })
+  - Solo se successo → cancella dal DB
+2. NUOVA FUNZIONE: reconcileBySourceType(storeId, sourceType, validSourceIds[])
+  - Query: SELECT * FROM file_search_documents WHERE store_id=X AND source_type=Y AND source_id NOT IN (validSourceIds)
+  - Per ogni orfano: chiama deleteDocument()
+  - Return: { removed: number, errors: string[] }
+3. INTEGRARE in syncWhatsappAgentKnowledge:
+  - Alla fine, dopo sync di tutti gli item attivi
+  - Raccogli tutti gli ID degli item attivi: SELECT id FROM whatsapp_agent_knowledge_items WHERE agent_config_id=X AND isActive=true
+  - Chiama reconcileBySourceType('whatsapp_agent_knowledge', activeIds)
+4. CLEANUP quando agente disattivato:
+  - Nella route che disattiva l'agente (isActive=false)
+  - Chiama reconcileBySourceType con validSourceIds=[] → rimuove tutto
+5. PER GLI ALTRI TIPI (library, exercises, etc):
+  - Stesso pattern: alla fine di ogni sync, chiama reconcile con gli ID validi
+
