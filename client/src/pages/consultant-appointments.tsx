@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2 } from "lucide-react";
+import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, ChevronDown, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2 } from "lucide-react";
 import ConsultationTasksManager from "@/components/consultation-tasks-manager";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths, formatDistanceToNow } from "date-fns";
 import it from "date-fns/locale/it";
@@ -1095,6 +1095,40 @@ function EchoDashboardPanel() {
     },
   });
 
+  const discardMutation = useMutation({
+    mutationFn: async (consultationId: string) => {
+      const response = await fetch("/api/echo/discard", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ consultationId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to discard draft");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Bozza Scartata",
+        description: "La bozza email è stata eliminata.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/pending-consultations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const isLoading = statsLoading || pendingLoading || draftsLoading;
 
   if (isLoading) {
@@ -1280,7 +1314,17 @@ function EchoDashboardPanel() {
                       <Clock className="h-3 w-3" />
                       Generata {formatDistanceToNow(new Date(email.summaryEmailGeneratedAt), { addSuffix: true, locale: it })}
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => discardMutation.mutate(email.id)}
+                        disabled={discardMutation.isPending}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Scarta
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -1300,6 +1344,32 @@ function EchoDashboardPanel() {
                         Approva & Invia
                       </Button>
                     </div>
+
+                    {/* Anteprima Email Espandibile */}
+                    <details className="group">
+                      <summary className="cursor-pointer list-none p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg border border-orange-200 dark:border-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-3 h-3 text-orange-600" />
+                            <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                              Anteprima Email
+                            </span>
+                          </div>
+                          <ChevronDown className="w-4 h-4 text-orange-600 group-open:rotate-180 transition-transform" />
+                        </div>
+                      </summary>
+                      <div className="mt-2 bg-white dark:bg-slate-800 rounded-lg border border-orange-200 dark:border-orange-700 overflow-hidden">
+                        <div className="p-3 border-b border-orange-100 dark:border-orange-800">
+                          <p className="text-xs text-gray-500 mb-1">Oggetto</p>
+                          <p className="text-sm font-medium">{email.summaryEmailDraft?.subject}</p>
+                        </div>
+                        <div className="max-h-[200px] overflow-y-auto p-3">
+                          <div className="prose prose-sm max-w-none text-sm whitespace-pre-wrap">
+                            {email.summaryEmailDraft?.body}
+                          </div>
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 ))}
               </div>

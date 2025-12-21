@@ -550,6 +550,16 @@ export default function ConsultantEchoDashboardPage() {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => discardMutation.mutate(email.id)}
+                              disabled={discardMutation.isPending}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Scarta
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => saveForAIMutation.mutate(email.id)}
                               disabled={saveForAIMutation.isPending}
                             >
