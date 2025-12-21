@@ -2039,7 +2039,11 @@ export default function ConsultantAppointments() {
               </Dialog>
 
               {/* Dialog per modifica appuntamento */}
-              <Dialog open={!!editingAppointment} onOpenChange={() => setEditingAppointment(null)}>
+              <Dialog open={!!editingAppointment} onOpenChange={() => {
+                setEditingAppointment(null);
+                setTranscriptMode('fathom');
+                setFullTranscript('');
+              }}>
                 <DialogContent className="sm:max-w-3xl bg-white dark:bg-slate-900 border-0 shadow-3xl rounded-3xl max-h-[90vh] overflow-y-auto">
                   {editingAppointment && (() => {
                     const currentAppointment = (appointments as any[]).find((apt: any) => apt.id === editingAppointment);
