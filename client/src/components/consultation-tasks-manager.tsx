@@ -15,6 +15,8 @@ import {
   Flag,
   ArrowUpDown,
   X,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,7 +50,8 @@ interface ConsultationTask {
 interface ConsultationTasksManagerProps {
   clientId: string;
   consultantId: string;
-  consultationId: string; // ID della consulenza specifica
+  consultationId: string;
+  transcript?: string;
   readonly?: boolean;
 }
 
@@ -79,9 +82,88 @@ const categoryLabels = {
 
 const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
 
-export default function ConsultationTasksManager({ clientId, consultantId, consultationId, readonly = false }: ConsultationTasksManagerProps) {
+export default function ConsultationTasksManager({ clientId, consultantId, consultationId, transcript, readonly = false }: ConsultationTasksManagerProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // AI Task extraction mutation
+  const extractTasksMutation = useMutation({
+    mutationFn: async () => {
+      if (!transcript || transcript.trim().length < 50) {
+        throw new Error("La trascrizione deve contenere almeno 50 caratteri");
+      }
+      
+      const response = await fetch("/api/echo/extract-tasks", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          consultationId,
+          transcript: transcript.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore nell'estrazione delle task");
+      }
+
+      return response.json();
+    },
+    onSuccess: async (data) => {
+      const extractedTasks = data.tasks || [];
+      
+      if (extractedTasks.length === 0) {
+        toast({
+          title: "Nessuna task trovata",
+          description: "L'AI non ha trovato azioni concrete nella trascrizione",
+        });
+        return;
+      }
+
+      // Create tasks one by one
+      let createdCount = 0;
+      for (const task of extractedTasks) {
+        try {
+          const response = await fetch("/api/consultation-tasks", {
+            method: "POST",
+            headers: {
+              ...getAuthHeaders(),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: task.title,
+              description: task.description || "",
+              dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
+              priority: task.priority || "medium",
+              category: task.category || "follow-up",
+              clientId,
+              consultationId,
+            }),
+          });
+          if (response.ok) createdCount++;
+        } catch (e) {
+          console.error("Error creating task:", e);
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/consultation-tasks"] });
+      
+      toast({
+        title: "Task estratte con successo",
+        description: `Create ${createdCount} task dalla trascrizione`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // State
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
@@ -391,10 +473,27 @@ export default function ConsultationTasksManager({ clientId, consultantId, consu
               <CardDescription>Gestisci le task assegnate al cliente</CardDescription>
             </div>
             {!readonly && (
-              <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Nuova Task
-              </Button>
+              <div className="flex gap-2">
+                {transcript && transcript.trim().length >= 50 && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => extractTasksMutation.mutate()}
+                    disabled={extractTasksMutation.isPending}
+                    className="gap-2"
+                  >
+                    {extractTasksMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    {extractTasksMutation.isPending ? "Estrazione..." : "Genera Task AI"}
+                  </Button>
+                )}
+                <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Nuova Task
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>

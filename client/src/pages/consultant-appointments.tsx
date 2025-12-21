@@ -2508,6 +2508,7 @@ export default function ConsultantAppointments() {
                                     clientId={currentAppointment.clientId}
                                     consultantId={currentUser.id}
                                     consultationId={editingAppointment}
+                                    transcript={currentAppointment?.transcript || ""}
                                     readonly={false}
                                   />
                                 </div>
@@ -2718,6 +2719,8 @@ export default function ConsultantAppointments() {
                               <ConsultationTasksManager
                                 clientId={currentAppointment.clientId}
                                 consultantId={currentUser.id}
+                                consultationId={completingAppointment}
+                                transcript={currentAppointment?.transcript || completionForm.getValues('transcript') || ""}
                                 readonly={false}
                               />
                             </div>
