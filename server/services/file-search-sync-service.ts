@@ -1349,7 +1349,7 @@ export class FileSearchSyncService {
 
     // Get all stores for this consultant (consultant store, whatsapp agent stores, client stores)
     const allStores = await db
-      .select({ id: fileSearchStores.id, name: fileSearchStores.name, ownerType: fileSearchStores.ownerType })
+      .select({ id: fileSearchStores.id, displayName: fileSearchStores.displayName, ownerType: fileSearchStores.ownerType })
       .from(fileSearchStores)
       .where(eq(fileSearchStores.ownerId, consultantId));
 
@@ -1357,7 +1357,7 @@ export class FileSearchSyncService {
     const clientStores = await db
       .select({ 
         id: fileSearchStores.id, 
-        name: fileSearchStores.name,
+        displayName: fileSearchStores.displayName,
         ownerType: fileSearchStores.ownerType 
       })
       .from(fileSearchStores)
@@ -1380,20 +1380,20 @@ export class FileSearchSyncService {
         const storeRemoved = cleanupResult.success ? cleanupResult.removed : 0;
         
         if (cleanupResult.success && cleanupResult.removed > 0) {
-          console.log(`   🗑️ ${store.name}: removed ${cleanupResult.removed} orphan(s)`);
+          console.log(`   🗑️ ${store.displayName}: removed ${cleanupResult.removed} orphan(s)`);
           orphansRemoved += cleanupResult.removed;
         }
         
         // Emit SSE orphan progress event for each store
-        syncProgressEmitter.emitOrphanProgress(consultantId, store.name || 'Store senza nome', storeRemoved, storeIndex, storesToClean.length);
+        syncProgressEmitter.emitOrphanProgress(consultantId, store.displayName || 'Store senza nome', storeRemoved, storeIndex, storesToClean.length);
         
         if (cleanupResult.errors.length > 0) {
-          orphanErrors.push(...cleanupResult.errors.map(e => `${store.name}: ${e}`));
+          orphanErrors.push(...cleanupResult.errors.map(e => `${store.displayName}: ${e}`));
         }
       } catch (error: any) {
-        console.error(`   ❌ Error cleaning orphans for ${store.name}:`, error.message);
-        orphanErrors.push(`${store.name}: ${error.message}`);
-        syncProgressEmitter.emitError(consultantId, 'orphans', `${store.name}: ${error.message}`);
+        console.error(`   ❌ Error cleaning orphans for ${store.displayName}:`, error.message);
+        orphanErrors.push(`${store.displayName}: ${error.message}`);
+        syncProgressEmitter.emitError(consultantId, 'orphans', `${store.displayName}: ${error.message}`);
       }
     }
 

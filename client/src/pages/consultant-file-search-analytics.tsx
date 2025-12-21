@@ -269,6 +269,25 @@ interface SyncLogEntry {
   total?: number;
 }
 
+interface CategoryProgress {
+  current: number;
+  total: number;
+  status: 'waiting' | 'syncing' | 'complete' | 'error';
+  lastItem?: string;
+  synced?: number;
+}
+
+const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  library: { label: 'Libreria', icon: '📚', color: 'bg-blue-500' },
+  knowledge_base: { label: 'Knowledge Base', icon: '📖', color: 'bg-purple-500' },
+  exercises: { label: 'Esercizi', icon: '🏋️', color: 'bg-green-500' },
+  university: { label: 'University', icon: '🎓', color: 'bg-amber-500' },
+  consultations: { label: 'Consultazioni', icon: '📞', color: 'bg-pink-500' },
+  whatsapp_agent_knowledge: { label: 'Agenti WhatsApp', icon: '📱', color: 'bg-emerald-500' },
+  client_data: { label: 'Dati Clienti', icon: '🔐', color: 'bg-indigo-500' },
+  orphans: { label: 'Pulizia Orfani', icon: '🧹', color: 'bg-gray-500' },
+};
+
 export default function ConsultantFileSearchAnalyticsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -286,6 +305,8 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [syncConsoleOpen, setSyncConsoleOpen] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
+  const [categoryProgress, setCategoryProgress] = useState<Record<string, CategoryProgress>>({});
+  const [showDetailedLogs, setShowDetailedLogs] = useState(false);
   
   const [cleaningOrphans, setCleaningOrphans] = useState(false);
   const [selectedStoreForOrphans, setSelectedStoreForOrphans] = useState<string | null>(null);
@@ -323,6 +344,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
     setIsSyncing(true);
     setSyncConsoleOpen(true);
     setSyncLogs([]);
+    setCategoryProgress({});
     
     addSyncLog('info', 'Avvio sincronizzazione...');
     
@@ -347,35 +369,84 @@ export default function ConsultantFileSearchAnalyticsPage() {
               sseConnected = true;
               addSyncLog('info', 'Console in tempo reale attiva');
             } else if (data.type === 'start') {
-              addSyncLog('info', `Inizio sync ${data.category}: ${data.total} elementi`, { category: data.category, total: data.total });
+              setCategoryProgress(prev => ({
+                ...prev,
+                [data.category]: { current: 0, total: data.total, status: 'syncing' }
+              }));
+              if (showDetailedLogs) {
+                addSyncLog('info', `Inizio sync ${data.category}: ${data.total} elementi`, { category: data.category, total: data.total });
+              }
             } else if (data.type === 'progress') {
-              addSyncLog('progress', `[${data.category}] ${data.current}/${data.total}: ${data.item}`, { 
-                category: data.category, 
-                current: data.current, 
-                total: data.total 
-              });
+              setCategoryProgress(prev => ({
+                ...prev,
+                [data.category]: { 
+                  ...prev[data.category],
+                  current: data.current, 
+                  total: data.total, 
+                  status: 'syncing',
+                  lastItem: data.item 
+                }
+              }));
+              if (showDetailedLogs) {
+                addSyncLog('progress', `[${data.category}] ${data.current}/${data.total}: ${data.item}`, { 
+                  category: data.category, 
+                  current: data.current, 
+                  total: data.total 
+                });
+              }
             } else if (data.type === 'error') {
-              addSyncLog('error', `Errore: ${data.error} - ${data.item || ''}`, { category: data.category });
+              setCategoryProgress(prev => ({
+                ...prev,
+                [data.category]: { ...prev[data.category], status: 'error' }
+              }));
+              addSyncLog('error', `Errore ${data.category}: ${data.error}`, { category: data.category });
             } else if (data.type === 'complete') {
               const synced = data.synced || data.current || 0;
-              addSyncLog('success', `Completato ${data.category}: ${synced}/${data.total} sincronizzati`, { category: data.category });
+              setCategoryProgress(prev => ({
+                ...prev,
+                [data.category]: { 
+                  ...prev[data.category],
+                  current: data.total, 
+                  total: data.total, 
+                  status: 'complete',
+                  synced 
+                }
+              }));
+              addSyncLog('success', `✅ ${CATEGORY_LABELS[data.category]?.label || data.category}: ${synced}/${data.total} sincronizzati`, { category: data.category });
             } else if (data.type === 'orphan_start') {
-              addSyncLog('info', `🧹 Pulizia documenti orfani: analisi di ${data.total} store...`);
+              setCategoryProgress(prev => ({
+                ...prev,
+                orphans: { current: 0, total: data.total, status: 'syncing' }
+              }));
             } else if (data.type === 'orphan_progress') {
-              const storeLabel = data.item || 'Store';
-              if (data.orphansRemoved > 0) {
-                addSyncLog('success', `[orfani] ${storeLabel}: rimossi ${data.orphansRemoved} documento/i (${data.current}/${data.total})`);
-              } else {
-                addSyncLog('progress', `[orfani] ${storeLabel}: nessun orfano (${data.current}/${data.total})`);
-              }
+              setCategoryProgress(prev => ({
+                ...prev,
+                orphans: { 
+                  ...prev.orphans,
+                  current: data.current, 
+                  total: data.total, 
+                  status: 'syncing',
+                  lastItem: data.item,
+                  synced: (prev.orphans?.synced || 0) + (data.orphansRemoved || 0)
+                }
+              }));
             } else if (data.type === 'orphan_complete') {
+              setCategoryProgress(prev => ({
+                ...prev,
+                orphans: { 
+                  current: data.storesChecked, 
+                  total: data.storesChecked, 
+                  status: 'complete',
+                  synced: data.orphansRemoved 
+                }
+              }));
               if (data.orphansRemoved > 0) {
-                addSyncLog('success', `🧹 Pulizia orfani completata: ${data.orphansRemoved} documento/i rimosso/i da ${data.storesChecked} store`);
+                addSyncLog('success', `🧹 Pulizia orfani: ${data.orphansRemoved} rimosso/i da ${data.storesChecked} store`);
               } else {
-                addSyncLog('success', `🧹 Pulizia orfani completata: nessun documento orfano trovato (${data.storesChecked} store analizzati)`);
+                addSyncLog('success', `🧹 Nessun documento orfano (${data.storesChecked} store verificati)`);
               }
             } else if (data.type === 'all_complete') {
-              addSyncLog('complete', `Sincronizzazione completata! Totale: ${data.totalSynced} documenti`);
+              addSyncLog('complete', `🎉 Sincronizzazione completata! Totale: ${data.totalSynced} documenti`);
               eventSource?.close();
               setIsSyncing(false);
               queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
@@ -2041,7 +2112,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           )}
                           Sincronizza Tutti i Documenti
                         </Button>
-                        {syncLogs.length > 0 && (
+                        {(syncLogs.length > 0 || Object.keys(categoryProgress).length > 0) && (
                           <Button
                             variant="outline"
                             onClick={() => setSyncConsoleOpen(!syncConsoleOpen)}
@@ -2052,73 +2123,120 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         )}
                       </div>
                       
-                      {syncConsoleOpen && syncLogs.length > 0 && (
-                        <div className="mt-4">
-                          <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
-                            <div className="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700">
-                              <span className="text-sm font-mono text-gray-300 flex items-center gap-2">
-                                <Activity className="h-4 w-4" />
-                                Console Sincronizzazione
-                                {isSyncing && <Loader2 className="h-3 w-3 animate-spin text-emerald-400" />}
-                              </span>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => setSyncLogs([])}
-                                className="h-6 text-gray-400 hover:text-white"
-                              >
-                                Pulisci
-                              </Button>
-                            </div>
-                            <div 
-                              ref={logContainerRef}
-                              onScroll={handleScrollConsole}
-                              className="p-3 max-h-96 overflow-y-auto font-mono text-xs space-y-1"
-                            >
-                              {syncLogs.map(log => (
-                                <div 
-                                  key={log.id} 
-                                  className={`flex items-start gap-2 ${
-                                    log.type === 'error' ? 'text-red-400' :
-                                    log.type === 'success' ? 'text-emerald-400' :
-                                    log.type === 'complete' ? 'text-blue-400 font-bold' :
-                                    log.type === 'progress' ? 'text-gray-400' :
-                                    'text-gray-300'
-                                  }`}
-                                >
-                                  <span className="text-gray-500 flex-shrink-0">
-                                    {log.timestamp.toLocaleTimeString('it-IT')}
-                                  </span>
-                                  <span className="flex-shrink-0">
-                                    {log.type === 'error' ? '❌' :
-                                     log.type === 'success' ? '✅' :
-                                     log.type === 'complete' ? '🎉' :
-                                     log.type === 'progress' ? '📄' :
-                                     'ℹ️'}
-                                  </span>
-                                  <span className="break-all">{log.message}</span>
+                      {syncConsoleOpen && (syncLogs.length > 0 || Object.keys(categoryProgress).length > 0) && (
+                        <div className="mt-4 space-y-4">
+                          {/* Barre di progresso per categoria */}
+                          {Object.keys(categoryProgress).length > 0 && (
+                            <div className="bg-gray-50 rounded-lg border p-4 space-y-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-medium text-sm flex items-center gap-2">
+                                  <Activity className="h-4 w-4" />
+                                  Progresso per Categoria
+                                  {isSyncing && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+                                </h5>
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs text-gray-500 flex items-center gap-1 cursor-pointer">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={showDetailedLogs} 
+                                      onChange={(e) => setShowDetailedLogs(e.target.checked)}
+                                      className="h-3 w-3"
+                                    />
+                                    Log dettagliati
+                                  </label>
                                 </div>
-                              ))}
-                              {isSyncing && (
-                                <div className="text-emerald-400 animate-pulse">
-                                  ▌ In elaborazione...
-                                </div>
-                              )}
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {Object.entries(categoryProgress).map(([category, progress]) => {
+                                  const catInfo = CATEGORY_LABELS[category] || { label: category, icon: '📄', color: 'bg-gray-500' };
+                                  const percentage = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+                                  
+                                  return (
+                                    <div key={category} className="bg-white rounded-lg border p-3">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-medium flex items-center gap-2">
+                                          <span>{catInfo.icon}</span>
+                                          {catInfo.label}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {progress.status === 'complete' ? (
+                                            <span className="text-emerald-600 font-medium">
+                                              {category === 'orphans' 
+                                                ? `${progress.synced || 0} rimosso/i`
+                                                : `${progress.synced || progress.current}/${progress.total}`
+                                              }
+                                            </span>
+                                          ) : progress.status === 'error' ? (
+                                            <span className="text-red-600">Errore</span>
+                                          ) : (
+                                            `${progress.current}/${progress.total}`
+                                          )}
+                                        </span>
+                                      </div>
+                                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div 
+                                          className={`h-full transition-all duration-300 ${
+                                            progress.status === 'complete' ? 'bg-emerald-500' :
+                                            progress.status === 'error' ? 'bg-red-500' :
+                                            catInfo.color
+                                          }`}
+                                          style={{ width: `${percentage}%` }}
+                                        />
+                                      </div>
+                                      {progress.status === 'syncing' && progress.lastItem && (
+                                        <p className="text-xs text-gray-400 mt-1 truncate" title={progress.lastItem}>
+                                          {progress.lastItem}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
+                          )}
 
-                            {!shouldAutoScroll && syncLogs.length > 0 && (
-                              <div className="flex justify-center pt-2 pb-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={jumpToBottom}
-                                  className="text-xs h-6"
+                          {/* Log riassuntivi */}
+                          {syncLogs.length > 0 && (
+                            <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+                              <div className="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700">
+                                <span className="text-sm font-mono text-gray-300 flex items-center gap-2">
+                                  Log Eventi
+                                </span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => { setSyncLogs([]); setCategoryProgress({}); }}
+                                  className="h-6 text-gray-400 hover:text-white"
                                 >
-                                  ⬇️ Vai all'ultimo messaggio
+                                  Pulisci
                                 </Button>
                               </div>
-                            )}
-                          </div>
+                              <div 
+                                ref={logContainerRef}
+                                onScroll={handleScrollConsole}
+                                className="p-3 max-h-48 overflow-y-auto font-mono text-xs space-y-1"
+                              >
+                                {syncLogs.map(log => (
+                                  <div 
+                                    key={log.id} 
+                                    className={`flex items-start gap-2 ${
+                                      log.type === 'error' ? 'text-red-400' :
+                                      log.type === 'success' ? 'text-emerald-400' :
+                                      log.type === 'complete' ? 'text-blue-400 font-bold' :
+                                      log.type === 'progress' ? 'text-gray-400' :
+                                      'text-gray-300'
+                                    }`}
+                                  >
+                                    <span className="text-gray-500 flex-shrink-0">
+                                      {log.timestamp.toLocaleTimeString('it-IT')}
+                                    </span>
+                                    <span className="break-all">{log.message}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                       
