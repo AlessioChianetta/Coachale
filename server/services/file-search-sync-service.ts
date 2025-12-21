@@ -2533,6 +2533,7 @@ export class FileSearchSyncService {
       exerciseResponses: { total: number; indexed: number; missing: Array<{ id: string; exerciseTitle: string; submittedAt: Date | null }> };
       consultationNotes: { total: number; indexed: number; missing: Array<{ id: string; date: Date; summary: string }> };
       knowledgeDocs: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+      hasFinancialDataIndexed: boolean;
     }>;
     whatsappAgents: Array<{
       agentId: string;
@@ -2676,7 +2677,10 @@ export class FileSearchSyncService {
 
       const clientMissing = submissionsMissing.length + consultationsMissing.length + clientKnowledgeMissing.length;
       
-      if (clientSubmissions.length > 0 || consultationsWithContent.length > 0 || clientKnowledge.length > 0) {
+      // Check if financial data is indexed for this client
+      const hasFinancialDataIndexed = clientIndexed.some(d => d.sourceType === 'financial_data');
+
+      if (clientSubmissions.length > 0 || consultationsWithContent.length > 0 || clientKnowledge.length > 0 || hasFinancialDataIndexed) {
         clientsAudit.push({
           clientId: client.id,
           clientName: `${client.firstName} ${client.lastName}`,
@@ -2684,6 +2688,7 @@ export class FileSearchSyncService {
           exerciseResponses: { total: clientSubmissions.length, indexed: clientSubmissions.length - submissionsMissing.length, missing: submissionsMissing },
           consultationNotes: { total: consultationsWithContent.length, indexed: consultationsWithContent.length - consultationsMissing.length, missing: consultationsMissing },
           knowledgeDocs: { total: clientKnowledge.length, indexed: clientKnowledge.length - clientKnowledgeMissing.length, missing: clientKnowledgeMissing },
+          hasFinancialDataIndexed,
         });
         totalClientsMissing += clientMissing;
       }

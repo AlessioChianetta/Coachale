@@ -814,7 +814,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
   return (
     <div className="flex h-screen">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
@@ -2796,12 +2796,27 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       </p>
                     ) : (
                       auditData.clients.map(client => (
-                        <div key={`financial-${client.clientId}`} className="flex items-center justify-between p-3 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors">
+                        <div key={`financial-${client.clientId}`} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                          client.hasFinancialDataIndexed 
+                            ? 'bg-emerald-100 border-emerald-300' 
+                            : 'bg-gray-50 hover:bg-gray-100 border-gray-200'
+                        }`}>
                           <div className="flex items-center gap-3">
-                            <Wallet className="h-4 w-4 text-emerald-600" />
-                            <div>
-                              <span className="font-medium text-emerald-900">{client.clientName}</span>
-                              <span className="text-sm text-gray-500 ml-2">({client.clientEmail})</span>
+                            {client.hasFinancialDataIndexed ? (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            ) : (
+                              <Wallet className="h-4 w-4 text-gray-400" />
+                            )}
+                            <div className="flex items-center gap-2">
+                              <span className={`font-medium ${client.hasFinancialDataIndexed ? 'text-emerald-900' : 'text-gray-700'}`}>
+                                {client.clientName}
+                              </span>
+                              <span className="text-sm text-gray-500">({client.clientEmail})</span>
+                              {client.hasFinancialDataIndexed && (
+                                <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">
+                                  Sincronizzato
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <Button 
@@ -2809,14 +2824,17 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             variant="outline"
                             onClick={() => syncFinancialMutation.mutate(client.clientId)}
                             disabled={syncFinancialMutation.isPending}
-                            className="border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                            className={client.hasFinancialDataIndexed 
+                              ? "border-emerald-300 text-emerald-700 hover:bg-emerald-200" 
+                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                            }
                           >
                             {syncFinancialMutation.isPending ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
                               <>
                                 <RefreshCw className="h-3 w-3 mr-1" />
-                                Sync Dati Finanziari
+                                {client.hasFinancialDataIndexed ? 'Aggiorna' : 'Sync'}
                               </>
                             )}
                           </Button>
