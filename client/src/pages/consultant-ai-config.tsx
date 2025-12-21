@@ -1443,18 +1443,6 @@ export default function ConsultantAIConfigPage() {
     },
   });
 
-  const { data: consultationDrafts = [], isLoading: consultationDraftsLoading } = useQuery<EmailDraft[]>({
-    queryKey: ["/api/consultant/email-drafts", { emailType: "consultation_summary", status: "pending" }],
-    queryFn: async () => {
-      const response = await fetch("/api/consultant/email-drafts?emailType=consultation_summary&status=pending", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch consultation drafts");
-      const result = await response.json();
-      return result.data || result;
-    },
-  });
-
   const { data: clientAutomation = [], isLoading: clientAutomationLoading } = useQuery<ClientAutomation[]>({
     queryKey: ["/api/consultant/client-automation"],
     queryFn: async () => {
@@ -1617,109 +1605,6 @@ export default function ConsultantAIConfigPage() {
       toast({
         title: "Errore",
         description: error.message || "Errore nella modifica della bozza",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const sendConsultationDraftMutation = useMutation({
-    mutationFn: async (draftId: string) => {
-      console.log('📧 [SEND MUTATION] Starting send request for draft:', draftId);
-      const res = await fetch(`/api/consultant/email-drafts/${draftId}/approve`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
-
-      console.log('📧 [SEND MUTATION] Response status:', res.status);
-      console.log('📧 [SEND MUTATION] Response ok:', res.ok);
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('❌ [SEND MUTATION] Error response:', errorText);
-        throw new Error(`Failed to send consultation draft: ${res.status} - ${errorText}`);
-      }
-
-      const data = await res.json();
-      console.log('✅ [SEND MUTATION] Success response:', data);
-      return data;
-    },
-    onSuccess: () => {
-      console.log('✅ [SEND MUTATION] onSuccess triggered');
-      queryClient.invalidateQueries({ queryKey: ["/api/consultant/email-drafts"] });
-      toast({
-        title: "Email Inviata",
-        description: "L'email di riepilogo consulenza è stata inviata con successo",
-      });
-    },
-    onError: (error: any) => {
-      console.error('❌ [SEND MUTATION] onError triggered:', error);
-      toast({
-        title: "Errore",
-        description: error.message || "Errore nell'invio dell'email",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteConsultationDraftMutation = useMutation({
-    mutationFn: async (draftId: string) => {
-      const res = await fetch(`/api/consultant/email-drafts/${draftId}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error("Failed to delete consultation draft");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consultant/email-drafts"] });
-      toast({
-        title: "Bozza Eliminata",
-        description: "La bozza è stata eliminata con successo",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Errore",
-        description: error.message || "Errore nell'eliminazione della bozza",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const saveForAiMutation = useMutation({
-    mutationFn: async (draftId: string) => {
-      console.log('💾 [SAVE FOR AI] Starting save request for draft:', draftId);
-      const res = await fetch(`/api/consultant/email-drafts/${draftId}/save-for-ai`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
-
-      console.log('💾 [SAVE FOR AI] Response status:', res.status);
-      console.log('💾 [SAVE FOR AI] Response ok:', res.ok);
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('❌ [SAVE FOR AI] Error response:', errorText);
-        throw new Error(`Failed to save for AI: ${res.status} - ${errorText}`);
-      }
-
-      const data = await res.json();
-      console.log('✅ [SAVE FOR AI] Success response:', data);
-      return data;
-    },
-    onSuccess: () => {
-      console.log('✅ [SAVE FOR AI] onSuccess triggered');
-      queryClient.invalidateQueries({ queryKey: ["/api/consultant/email-drafts"] });
-      toast({
-        title: "Riepilogo Salvato per AI",
-        description: "Riepilogo salvato per AI (non inviato al cliente)",
-      });
-    },
-    onError: (error: any) => {
-      console.error('❌ [SAVE FOR AI] onError triggered:', error);
-      toast({
-        title: "Errore",
-        description: error.message || "Errore nel salvataggio per AI",
         variant: "destructive",
       });
     },
