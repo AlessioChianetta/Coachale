@@ -1,0 +1,32 @@
+════════════════════════════════════════════════════════════
+📱 [FileSync] Syncing WhatsApp Agent Knowledge for agent "Marco setter" (760bb513)
+════════════════════════════════════════════════════════════
+
+🔄 [FileSync] Syncing 1 knowledge items for agent "Marco setter"
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+📤 [FileSearch] Uploading "Obiezioni (1)" (hash: 5e9f43cea94ab616) to store fileSearchStores/whatsapp-agent-marco-setter-o2sz4beuox1z
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 8 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+✅ [FileSearch] Document uploaded: file-1766340422080 (hash: 5e9f43cea94ab616)
+✅ [FileSync] Synced WhatsApp knowledge item: Obiezioni (1)
+ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🧹 [FileSearch] Reconciling 3 orphaned whatsapp_agent_knowledge documents
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+❌ [FileSearch] User 760bb513-098f-4722-b02a-a700160c2fc3 not found
+🗑️ [FileSearch] Document deleted: cfda5b2c-429b-4686-825c-2e45224d6d60
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+❌ [FileSearch] User 760bb513-098f-4722-b02a-a700160c2fc3 not found
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🗑️ [FileSearch] Document deleted: 8e0f0942-ea3e-4848-9e52-f6e15c8a7641
+❌ [FileSearch] User 760bb513-098f-4722-b02a-a700160c2fc3 not found
+🗑️ [FileSearch] Document deleted: 3f6ec7aa-df5d-4746-b43b-f213d928d73f
+🧹 [FileSearch] Reconciliation complete: 3/3 removed
+🧹 [FileSync] Reconciled 3 orphaned WhatsApp knowledge documents from agent store
