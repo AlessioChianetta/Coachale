@@ -1692,6 +1692,50 @@ export default function ConsultantAppointments() {
     (a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
   );
 
+  // Stato per filtro lista
+  const [listFilter, setListFilter] = useState<'all' | 'need_data' | 'ready_email' | 'email_sent'>('all');
+
+  // Calcola statistiche per i filtri
+  const filterStats = {
+    all: sortedAppointments.length,
+    need_data: sortedAppointments.filter(apt => 
+      apt.status === 'completed' && (!apt.transcript || apt.transcript.trim() === '')
+    ).length,
+    ready_email: sortedAppointments.filter(apt => 
+      apt.status === 'completed' && 
+      apt.transcript && apt.transcript.trim() !== '' && 
+      (!apt.summaryEmailStatus || apt.summaryEmailStatus === 'missing' || apt.summaryEmailStatus === 'draft')
+    ).length,
+    email_sent: sortedAppointments.filter(apt => 
+      apt.summaryEmailStatus === 'sent' || apt.summaryEmailStatus === 'approved' || apt.summaryEmailStatus === 'saved_for_ai'
+    ).length,
+  };
+
+  // Filtra appuntamenti in base al filtro selezionato
+  const filteredListAppointments = sortedAppointments.filter(apt => {
+    switch (listFilter) {
+      case 'need_data':
+        return apt.status === 'completed' && (!apt.transcript || apt.transcript.trim() === '');
+      case 'ready_email':
+        return apt.status === 'completed' && 
+               apt.transcript && apt.transcript.trim() !== '' && 
+               (!apt.summaryEmailStatus || apt.summaryEmailStatus === 'missing' || apt.summaryEmailStatus === 'draft');
+      case 'email_sent':
+        return apt.summaryEmailStatus === 'sent' || apt.summaryEmailStatus === 'approved' || apt.summaryEmailStatus === 'saved_for_ai';
+      default:
+        return true;
+    }
+  });
+
+  // Helper per controllare lo stato di completamento di un appuntamento
+  const getAppointmentProgress = (apt: any) => ({
+    hasGoogleMeet: !!apt.googleMeetLink,
+    isCompleted: apt.status === 'completed',
+    hasFathomLink: !!apt.fathomShareLink,
+    hasTranscript: !!apt.transcript && apt.transcript.trim() !== '',
+    emailStatus: apt.summaryEmailStatus || 'missing'
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -2855,195 +2899,292 @@ export default function ConsultantAppointments() {
             </TabsContent>
 
             {/* Vista Lista Compatta con Timeline */}
-            <TabsContent value="list" className="space-y-8">
-              {sortedAppointments.length === 0 ? (
+            <TabsContent value="list" className="space-y-6">
+              {/* Filtri Rapidi */}
+              <div className="flex flex-wrap gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+                <Button
+                  variant={listFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setListFilter('all')}
+                  className={`rounded-full ${listFilter === 'all' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                >
+                  <List className="w-4 h-4 mr-2" />
+                  Tutti ({filterStats.all})
+                </Button>
+                <Button
+                  variant={listFilter === 'need_data' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setListFilter('need_data')}
+                  className={`rounded-full ${listFilter === 'need_data' ? 'bg-amber-600 hover:bg-amber-700' : 'border-amber-300 text-amber-700 hover:bg-amber-50'}`}
+                >
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  Da Completare ({filterStats.need_data})
+                </Button>
+                <Button
+                  variant={listFilter === 'ready_email' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setListFilter('ready_email')}
+                  className={`rounded-full ${listFilter === 'ready_email' ? 'bg-purple-600 hover:bg-purple-700' : 'border-purple-300 text-purple-700 hover:bg-purple-50'}`}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Pronte Email ({filterStats.ready_email})
+                </Button>
+                <Button
+                  variant={listFilter === 'email_sent' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setListFilter('email_sent')}
+                  className={`rounded-full ${listFilter === 'email_sent' ? 'bg-green-600 hover:bg-green-700' : 'border-green-300 text-green-700 hover:bg-green-50'}`}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Inviate ({filterStats.email_sent})
+                </Button>
+              </div>
+
+              {filteredListAppointments.length === 0 ? (
                 <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-3xl overflow-hidden">
                   <CardContent className="p-16 text-center">
                     <div className="w-24 h-24 bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 dark:from-blue-900 dark:via-indigo-900 dark:to-purple-900 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                      <Calendar className="w-12 h-12 text-blue-500" />
+                      {listFilter === 'all' ? <Calendar className="w-12 h-12 text-blue-500" /> :
+                       listFilter === 'need_data' ? <AlertCircle className="w-12 h-12 text-amber-500" /> :
+                       listFilter === 'ready_email' ? <Mail className="w-12 h-12 text-purple-500" /> :
+                       <CheckCircle className="w-12 h-12 text-green-500" />}
                     </div>
-                    <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-                      Inizia la tua giornata
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-4">
+                      {listFilter === 'all' ? 'Nessun appuntamento' :
+                       listFilter === 'need_data' ? 'Tutto a posto!' :
+                       listFilter === 'ready_email' ? 'Nessuna email da generare' :
+                       'Nessuna email inviata'}
                     </h3>
-                    <p className="text-slate-600 dark:text-slate-400 text-lg mb-8 max-w-lg mx-auto">
-                      Non hai ancora appuntamenti programmati. Crea il tuo primo appuntamento per iniziare.
+                    <p className="text-slate-600 dark:text-slate-400 text-lg mb-6">
+                      {listFilter === 'all' ? 'Crea il tuo primo appuntamento per iniziare.' :
+                       listFilter === 'need_data' ? 'Tutte le consulenze completate hanno già il riassunto.' :
+                       listFilter === 'ready_email' ? 'Completa prima i riassunti delle consulenze.' :
+                       'Genera e invia le email riepilogo ai tuoi clienti.'}
                     </p>
-                    <Button
-                      onClick={() => setIsCreateDialogOpen(true)}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-10 py-4 rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
-                    >
-                      <Plus className="w-6 h-6 mr-3" />
-                      <span className="text-lg font-semibold">Crea Primo Appuntamento</span>
-                    </Button>
+                    {listFilter === 'all' && (
+                      <Button
+                        onClick={() => setIsCreateDialogOpen(true)}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-2xl shadow-xl"
+                      >
+                        <Plus className="w-5 h-5 mr-2" />
+                        Crea Appuntamento
+                      </Button>
+                    )}
+                    {listFilter !== 'all' && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setListFilter('all')}
+                        className="rounded-xl"
+                      >
+                        Mostra tutti gli appuntamenti
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ) : (
-                <div className="relative">
-                  {/* Timeline verticale */}
-                  <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-indigo-500 to-purple-500"></div>
-
-                  <div className="space-y-4">
-                    {sortedAppointments.map((appointment: any, index: number) => (
-                      <div key={appointment.id} className="relative pl-20">
-                        {/* Punto timeline */}
-                        <div className={`absolute left-5 top-4 w-7 h-7 rounded-full border-4 border-white dark:border-slate-900 shadow-lg ${
-                          appointment.status === 'completed' 
-                            ? 'bg-gradient-to-br from-emerald-500 to-green-600' 
-                            : appointment.status === 'cancelled'
-                            ? 'bg-gradient-to-br from-rose-500 to-red-600'
-                            : 'bg-gradient-to-br from-blue-500 to-indigo-600'
-                        }`}></div>
-
-                        {/* Card compatta */}
-                        <Card 
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
-                          data-testid={`card-appointment-${appointment.id}`}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between gap-4">
-                              {/* Info principale */}
-                              <div className="flex items-center gap-4 flex-1">
-                                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
-                                  <User className="w-6 h-6 text-white" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                                    {appointment.client.firstName} {appointment.client.lastName}
-                                  </h3>
-                                  <div className="flex items-center gap-3 mt-1 text-sm">
-                                    <span className="text-slate-600 dark:text-slate-400">
-                                      {format(new Date(appointment.scheduledAt), "dd MMM yyyy", { locale: it })}
-                                    </span>
-                                    <span className="text-slate-400">•</span>
-                                    <span className="text-slate-600 dark:text-slate-400">
-                                      {format(new Date(appointment.scheduledAt), "HH:mm")}
-                                    </span>
-                                    <span className="text-slate-400">•</span>
-                                    <span className="text-slate-600 dark:text-slate-400">
-                                      {appointment.duration} min
-                                    </span>
-                                  </div>
-                                </div>
+                <div className="space-y-4">
+                  {filteredListAppointments.map((appointment: any) => {
+                    const progress = getAppointmentProgress(appointment);
+                    
+                    return (
+                      <Card 
+                        key={appointment.id}
+                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-xl transition-all duration-300"
+                        data-testid={`card-appointment-${appointment.id}`}
+                      >
+                        <CardContent className="p-5">
+                          {/* Header con info cliente e badge */}
+                          <div className="flex items-center justify-between gap-4 mb-4">
+                            <div className="flex items-center gap-4 flex-1">
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md flex-shrink-0 ${
+                                progress.isCompleted 
+                                  ? 'bg-gradient-to-br from-emerald-500 to-green-600' 
+                                  : appointment.status === 'cancelled'
+                                  ? 'bg-gradient-to-br from-rose-500 to-red-600'
+                                  : 'bg-gradient-to-br from-blue-500 to-indigo-600'
+                              }`}>
+                                <User className="w-6 h-6 text-white" />
                               </div>
-
-                              {/* Badge status */}
-                              <div className="flex-shrink-0">
-                                <Badge className={`${
-                                  appointment.status === 'completed' 
-                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
-                                    : appointment.status === 'cancelled'
-                                    ? 'bg-rose-100 text-rose-700 border-rose-200'
-                                    : 'bg-blue-100 text-blue-700 border-blue-200'
-                                } border text-xs px-2 py-1`}>
-                                  {appointment.status === 'completed' ? 'Completato' : 
-                                   appointment.status === 'cancelled' ? 'Cancellato' : 'Programmato'}
-                                </Badge>
-                              </div>
-
-                              {/* Azioni */}
-                              <div className="flex gap-2 flex-shrink-0">
-                                {appointment.status === "scheduled" && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleComplete(appointment)}
-                                    className="rounded-lg border border-green-300 hover:bg-green-50 text-green-600 h-8 w-8 p-0"
-                                    data-testid={`button-complete-${appointment.id}`}
-                                  >
-                                    <CheckCircle className="w-4 h-4" />
-                                  </Button>
-                                )}
-                                {appointment.status === "completed" && appointment.transcript && !appointment.summaryEmail && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setJustCompletedConsultationId(appointment.id);
-                                      setIsEmailDialogOpen(true);
-                                    }}
-                                    className="rounded-lg border border-purple-300 hover:bg-purple-50 text-purple-600 h-8 w-8 p-0"
-                                    title="Genera Email Riepilogo"
-                                  >
-                                    <Mail className="w-4 h-4" />
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleEdit(appointment);
-                                  }}
-                                  className="rounded-lg border border-slate-300 hover:bg-blue-50 h-8 w-8 p-0"
-                                  data-testid={`button-edit-${appointment.id}`}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleDelete(appointment.id);
-                                  }}
-                                  className="rounded-lg border border-slate-300 hover:bg-red-50 hover:text-red-600 h-8 w-8 p-0"
-                                  data-testid={`button-delete-${appointment.id}`}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200 truncate">
+                                  {appointment.client.firstName} {appointment.client.lastName}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-1 text-sm text-slate-600 dark:text-slate-400">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>{format(new Date(appointment.scheduledAt), "EEEE d MMMM yyyy", { locale: it })}</span>
+                                  <span className="text-slate-400">•</span>
+                                  <Clock className="w-4 h-4" />
+                                  <span>{format(new Date(appointment.scheduledAt), "HH:mm")}</span>
+                                  <span className="text-slate-400">•</span>
+                                  <span>{appointment.duration} min</span>
+                                </div>
                               </div>
                             </div>
+                            <Badge className={`${
+                              progress.isCompleted 
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                                : appointment.status === 'cancelled'
+                                ? 'bg-rose-100 text-rose-700 border-rose-200'
+                                : 'bg-blue-100 text-blue-700 border-blue-200'
+                            } border px-3 py-1`}>
+                              {progress.isCompleted ? 'Completata' : 
+                               appointment.status === 'cancelled' ? 'Cancellata' : 'Programmata'}
+                            </Badge>
+                          </div>
 
-                            {/* Note espandibili */}
-                            {appointment.notes && (
-                              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                                <div className="flex items-start gap-2">
-                                  <BookOpen className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                                  <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
-                                    {appointment.notes}
-                                  </p>
+                          {/* Indicatori di progresso */}
+                          <div className="flex items-center gap-2 mb-4 flex-wrap">
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${progress.hasGoogleMeet ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              <div className={`w-2 h-2 rounded-full ${progress.hasGoogleMeet ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                              Link Call
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${progress.isCompleted ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              <div className={`w-2 h-2 rounded-full ${progress.isCompleted ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                              Completata
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${progress.hasFathomLink ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              <div className={`w-2 h-2 rounded-full ${progress.hasFathomLink ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                              Registrazione
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${progress.hasTranscript ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              <div className={`w-2 h-2 rounded-full ${progress.hasTranscript ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                              Riassunto
+                            </div>
+                          </div>
+
+                          {/* Stato Email e Azioni Contestuali */}
+                          <div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                            {/* Stato email */}
+                            <div className="flex-1">
+                              {progress.isCompleted && (
+                                <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${
+                                  progress.emailStatus === 'sent' || progress.emailStatus === 'approved' || progress.emailStatus === 'saved_for_ai'
+                                    ? 'bg-green-50 text-green-700 border border-green-200'
+                                    : progress.hasTranscript
+                                    ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                    : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                }`}>
+                                  {progress.emailStatus === 'sent' || progress.emailStatus === 'approved' ? (
+                                    <>
+                                      <CheckCircle className="w-4 h-4" />
+                                      Email inviata
+                                    </>
+                                  ) : progress.emailStatus === 'saved_for_ai' ? (
+                                    <>
+                                      <CheckCircle className="w-4 h-4" />
+                                      Salvata per AI
+                                    </>
+                                  ) : progress.emailStatus === 'draft' ? (
+                                    <>
+                                      <FileText className="w-4 h-4" />
+                                      Bozza pronta - Vai a ECHO
+                                    </>
+                                  ) : progress.hasTranscript ? (
+                                    <>
+                                      <Mail className="w-4 h-4" />
+                                      Pronta per generare email
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AlertCircle className="w-4 h-4" />
+                                      Manca riassunto
+                                    </>
+                                  )}
                                 </div>
-                              </div>
-                            )}
+                              )}
+                              {appointment.status === 'scheduled' && (
+                                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm bg-blue-50 text-blue-700 border border-blue-200">
+                                  <CalendarDays className="w-4 h-4" />
+                                  In attesa della call
+                                </div>
+                              )}
+                            </div>
 
-                            {/* Email Riepilogo Generata */}
-                            {appointment.summaryEmail && (
-                              <div className="mt-3">
-                                <details className="group">
-                                  <summary className="cursor-pointer list-none p-3 bg-purple-50 dark:bg-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <Mail className="w-4 h-4 text-purple-600" />
-                                        <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
-                                          ✅ Email Riepilogo Salvata
-                                        </span>
-                                      </div>
-                                      <svg className="w-5 h-5 text-purple-600 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                      </svg>
-                                    </div>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 ml-6">
-                                      Generata il {appointment.summaryEmailGeneratedAt ? format(new Date(appointment.summaryEmailGeneratedAt), "dd MMM yyyy 'alle' HH:mm", { locale: it }) : 'N/A'}
-                                    </p>
-                                  </summary>
-                                  <div className="mt-2 bg-white dark:bg-slate-800 rounded-xl border border-purple-200 dark:border-purple-700 overflow-hidden shadow-lg">
-                                    <div className="max-h-[600px] overflow-y-auto">
-                                      <div 
-                                        className="prose prose-sm max-w-none p-4"
-                                        dangerouslySetInnerHTML={{ __html: appointment.summaryEmail }}
-                                      />
-                                    </div>
-                                  </div>
-                                </details>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </div>
-                    ))}
-                  </div>
+                            {/* Azioni */}
+                            <div className="flex gap-2 flex-shrink-0">
+                              {/* Pulsante Completa */}
+                              {appointment.status === "scheduled" && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleComplete(appointment)}
+                                  className="rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                                  data-testid={`button-complete-${appointment.id}`}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Completa
+                                </Button>
+                              )}
+                              
+                              {/* Pulsante Aggiungi Riassunto */}
+                              {progress.isCompleted && !progress.hasTranscript && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleEdit(appointment)}
+                                  className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white"
+                                >
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Aggiungi Riassunto
+                                </Button>
+                              )}
+                              
+                              {/* Pulsante Genera Email */}
+                              {progress.isCompleted && progress.hasTranscript && 
+                               (progress.emailStatus === 'missing' || !progress.emailStatus) && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setJustCompletedConsultationId(appointment.id);
+                                    setIsEmailDialogOpen(true);
+                                  }}
+                                  className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white"
+                                >
+                                  <Mail className="w-4 h-4 mr-2" />
+                                  Genera Email
+                                </Button>
+                              )}
+                              
+                              {/* Pulsante Vai a ECHO */}
+                              {progress.emailStatus === 'draft' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => window.location.href = '/consultant/echo'}
+                                  className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white"
+                                >
+                                  <Send className="w-4 h-4 mr-2" />
+                                  Vai a ECHO
+                                </Button>
+                              )}
+                              
+                              {/* Pulsante Modifica */}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit(appointment)}
+                                className="rounded-xl border-slate-300 hover:bg-blue-50"
+                                data-testid={`button-edit-${appointment.id}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              
+                              {/* Pulsante Elimina */}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDelete(appointment.id)}
+                                className="rounded-xl border-slate-300 hover:bg-red-50 hover:text-red-600"
+                                data-testid={`button-delete-${appointment.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>
