@@ -2986,6 +2986,7 @@ export class FileSearchSyncService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Delete existing financial data document
+      // Pass consultantId for proper API credential resolution (client stores use consultant's keys)
       const existingDocs = await db.select()
         .from(fileSearchDocuments)
         .where(and(
@@ -2994,7 +2995,7 @@ export class FileSearchSyncService {
         ));
 
       for (const doc of existingDocs) {
-        await fileSearchService.deleteDocument(doc.id);
+        await fileSearchService.deleteDocument(doc.id, consultantId);
       }
 
       // Sync fresh data
@@ -3149,12 +3150,14 @@ export class FileSearchSyncService {
         .map(item => item.id);
 
       // Use the agentStore (already fetched above) for reconciliation
+      // Pass consultantId so Google API calls use consultant's credentials (not agent's ID)
       if (agentStore) {
         const fileSearchServiceInstance = new FileSearchService();
         const reconcileResult = await fileSearchServiceInstance.reconcileBySourceType(
           agentStore.id,
           'whatsapp_agent_knowledge',
-          activeItemIds
+          activeItemIds,
+          consultantId
         );
         
         if (reconcileResult.removed > 0) {

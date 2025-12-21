@@ -759,12 +759,14 @@ export class FileSearchService {
    * @param storeId - The FileSearchStore ID
    * @param sourceType - The source type to reconcile (e.g., 'whatsapp_agent_knowledge')
    * @param validSourceIds - Array of source IDs that should exist (empty = remove all)
+   * @param requestingUserId - Optional userId to use for API credentials when deleting
    * @returns Reconciliation results
    */
   async reconcileBySourceType(
     storeId: string, 
     sourceType: string, 
-    validSourceIds: string[]
+    validSourceIds: string[],
+    requestingUserId?: string
   ): Promise<{ removed: number; errors: string[] }> {
     try {
       let orphanedDocs;
@@ -798,7 +800,7 @@ export class FileSearchService {
       const errors: string[] = [];
 
       for (const doc of orphanedDocs) {
-        const result = await this.deleteDocument(doc.id);
+        const result = await this.deleteDocument(doc.id, requestingUserId);
         if (result.success) {
           removed++;
         } else {
@@ -820,11 +822,13 @@ export class FileSearchService {
    * 
    * @param sourceType - The type of source (e.g., 'library', 'knowledge_base', 'university_lesson')
    * @param sourceId - The ID of the source document
+   * @param requestingUserId - Optional userId to use for API credentials
    * @returns Result with success status and optional error
    */
   async deleteDocumentBySource(
     sourceType: string,
-    sourceId: string
+    sourceId: string,
+    requestingUserId?: string
   ): Promise<{ success: boolean; deleted: number; errors: string[] }> {
     try {
       const docs = await db
@@ -846,7 +850,7 @@ export class FileSearchService {
       const errors: string[] = [];
 
       for (const doc of docs) {
-        const result = await this.deleteDocument(doc.id);
+        const result = await this.deleteDocument(doc.id, requestingUserId);
         if (result.success) {
           deleted++;
         } else {
