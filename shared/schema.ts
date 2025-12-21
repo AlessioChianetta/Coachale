@@ -2251,6 +2251,14 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   ttsEnabled: boolean("tts_enabled").default(false).notNull(),
   audioResponseMode: text("audio_response_mode").$type<"always_text" | "always_audio" | "mirror" | "always_both">().default("always_text").notNull(),
 
+  // Agent-specific Google Calendar Integration (each agent can have its own calendar)
+  googleCalendarId: text("google_calendar_id"), // Calendar ID (e.g., "primary" or specific calendar email)
+  googleCalendarEmail: text("google_calendar_email"), // Email of connected Google account
+  googleAccessToken: text("google_access_token"), // OAuth access token
+  googleRefreshToken: text("google_refresh_token"), // OAuth refresh token
+  googleTokenExpiry: timestamp("google_token_expiry"), // Token expiration timestamp
+  calendarConnectedAt: timestamp("calendar_connected_at"), // When calendar was connected
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

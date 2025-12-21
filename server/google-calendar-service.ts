@@ -5,7 +5,7 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { db } from './db';
-import { consultantAvailabilitySettings, consultantCalendarSync, systemSettings } from '../shared/schema';
+import { consultantAvailabilitySettings, consultantCalendarSync, systemSettings, consultantWhatsappConfig } from '../shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import type { Request } from 'express';
 
@@ -502,9 +502,299 @@ export async function getPrimaryCalendarId(consultantId: string): Promise<string
   }
 }
 
+// ============================================================================
+// AGENT-SPECIFIC CALENDAR FUNCTIONS
+// Each WhatsApp agent can have its own Google Calendar
+// ============================================================================
+
+/**
+ * Get valid access token for an agent (auto-refreshes if expired)
+ * If agent has no calendar configured, returns null (caller should fallback to consultant)
+ */
+export async function getAgentValidAccessToken(agentConfigId: string): Promise<string | null> {
+  const [agentConfig] = await db
+    .select()
+    .from(consultantWhatsappConfig)
+    .where(eq(consultantWhatsappConfig.id, agentConfigId))
+    .limit(1);
+
+  if (!agentConfig || !agentConfig.googleRefreshToken) {
+    console.log(`⏭️ [AGENT CALENDAR] Agent ${agentConfigId} has no calendar configured`);
+    return null;
+  }
+
+  const now = new Date();
+  
+  // If token is still valid, return it
+  if (agentConfig.googleAccessToken && agentConfig.googleTokenExpiry && agentConfig.googleTokenExpiry > now) {
+    return agentConfig.googleAccessToken;
+  }
+
+  // Token expired, refresh it
+  try {
+    console.log(`🔄 [AGENT OAUTH REFRESH] Refreshing token for agent ${agentConfigId}`);
+    
+    const globalCredentials = await getGlobalOAuthCredentials();
+    if (!globalCredentials) {
+      console.error('❌ [AGENT OAUTH REFRESH] No global OAuth credentials found');
+      return null;
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      globalCredentials.clientId,
+      globalCredentials.clientSecret
+    );
+    
+    oauth2Client.setCredentials({
+      refresh_token: agentConfig.googleRefreshToken
+    });
+
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    
+    const newAccessToken = credentials.access_token!;
+    const newExpiresAt = credentials.expiry_date ? new Date(credentials.expiry_date) : new Date(Date.now() + 3600000);
+
+    // Update database with new token
+    await db
+      .update(consultantWhatsappConfig)
+      .set({
+        googleAccessToken: newAccessToken,
+        googleTokenExpiry: newExpiresAt,
+        updatedAt: new Date()
+      })
+      .where(eq(consultantWhatsappConfig.id, agentConfigId));
+
+    console.log(`✅ [AGENT OAUTH REFRESH] Token refreshed successfully for agent ${agentConfigId}`);
+    return newAccessToken;
+  } catch (error: any) {
+    console.error(`❌ [AGENT OAUTH REFRESH] Failed to refresh token for agent ${agentConfigId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get authenticated calendar client for an agent
+ */
+export async function getAgentCalendarClient(agentConfigId: string) {
+  const accessToken = await getAgentValidAccessToken(agentConfigId);
+  
+  if (!accessToken) {
+    return null; // Agent has no calendar configured
+  }
+
+  const globalCredentials = await getGlobalOAuthCredentials();
+  if (!globalCredentials) {
+    throw new Error('Credenziali OAuth globali non configurate');
+  }
+
+  const oauth2Client = new google.auth.OAuth2(
+    globalCredentials.clientId,
+    globalCredentials.clientSecret
+  );
+  
+  oauth2Client.setCredentials({
+    access_token: accessToken
+  });
+
+  return google.calendar({ version: 'v3', auth: oauth2Client });
+}
+
+/**
+ * Get agent's calendar ID (or primary if not specified)
+ */
+export async function getAgentCalendarId(agentConfigId: string): Promise<string | null> {
+  try {
+    const [agentConfig] = await db
+      .select()
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.id, agentConfigId))
+      .limit(1);
+
+    if (!agentConfig?.googleRefreshToken) {
+      return null; // Agent has no calendar configured
+    }
+
+    // Use saved calendar ID if present
+    if (agentConfig.googleCalendarId) {
+      console.log(`✅ [AGENT CALENDAR] Using saved calendar ID: ${agentConfig.googleCalendarId}`);
+      return agentConfig.googleCalendarId;
+    }
+
+    // Otherwise, auto-detect primary calendar
+    const calendar = await getAgentCalendarClient(agentConfigId);
+    if (!calendar) return null;
+
+    const { data } = await calendar.calendarList.list();
+    const primaryCalendar = data.items?.find(cal => cal.primary);
+    
+    if (primaryCalendar?.id) {
+      console.log(`✅ [AGENT CALENDAR] Using primary calendar: ${primaryCalendar.id}`);
+      return primaryCalendar.id;
+    }
+
+    return 'primary';
+  } catch (error: any) {
+    console.error('❌ [AGENT CALENDAR] Error getting calendar ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Generate OAuth authorization URL for an agent
+ */
+export async function getAgentAuthorizationUrl(agentConfigId: string, redirectBaseUrl?: string): Promise<string | null> {
+  const globalCredentials = await getGlobalOAuthCredentials();
+  if (!globalCredentials) {
+    console.error('❌ No global OAuth credentials configured');
+    return null;
+  }
+
+  let baseUrl = 'http://localhost:5000';
+  if (process.env.REPLIT_DOMAINS) {
+    const domains = process.env.REPLIT_DOMAINS.split(',');
+    baseUrl = `https://${domains[0]}`;
+  }
+  if (redirectBaseUrl) {
+    baseUrl = redirectBaseUrl;
+  }
+
+  const redirectUri = `${baseUrl}/api/whatsapp/agents/calendar/oauth/callback`;
+
+  const oauth2Client = new google.auth.OAuth2(
+    globalCredentials.clientId,
+    globalCredentials.clientSecret,
+    redirectUri
+  );
+  
+  return oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES,
+    prompt: 'consent',
+    state: agentConfigId // Pass agent ID to identify which agent is authenticating
+  });
+}
+
+/**
+ * Exchange authorization code for tokens and save to agent config
+ */
+export async function exchangeAgentCodeForTokens(
+  code: string, 
+  agentConfigId: string, 
+  redirectBaseUrl?: string
+): Promise<{ success: boolean; email?: string; error?: string }> {
+  try {
+    const globalCredentials = await getGlobalOAuthCredentials();
+    if (!globalCredentials) {
+      return { success: false, error: 'Credenziali OAuth globali non configurate' };
+    }
+
+    let baseUrl = 'http://localhost:5000';
+    if (process.env.REPLIT_DOMAINS) {
+      const domains = process.env.REPLIT_DOMAINS.split(',');
+      baseUrl = `https://${domains[0]}`;
+    }
+    if (redirectBaseUrl) {
+      baseUrl = redirectBaseUrl;
+    }
+
+    const redirectUri = `${baseUrl}/api/whatsapp/agents/calendar/oauth/callback`;
+
+    const oauth2Client = new google.auth.OAuth2(
+      globalCredentials.clientId,
+      globalCredentials.clientSecret,
+      redirectUri
+    );
+
+    const { tokens } = await oauth2Client.getToken(code);
+
+    // Get user email from Google
+    oauth2Client.setCredentials(tokens);
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const userInfo = await oauth2.userinfo.get();
+    const email = userInfo.data.email || 'unknown';
+
+    // Save tokens to agent config
+    await db
+      .update(consultantWhatsappConfig)
+      .set({
+        googleAccessToken: tokens.access_token,
+        googleRefreshToken: tokens.refresh_token,
+        googleTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600000),
+        googleCalendarEmail: email,
+        googleCalendarId: 'primary',
+        calendarConnectedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(consultantWhatsappConfig.id, agentConfigId));
+
+    console.log(`✅ [AGENT CALENDAR] Calendar connected for agent ${agentConfigId}, email: ${email}`);
+    
+    return { success: true, email };
+  } catch (error: any) {
+    console.error(`❌ [AGENT CALENDAR] Failed to exchange code for agent ${agentConfigId}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Disconnect calendar from agent
+ */
+export async function disconnectAgentCalendar(agentConfigId: string): Promise<boolean> {
+  try {
+    await db
+      .update(consultantWhatsappConfig)
+      .set({
+        googleAccessToken: null,
+        googleRefreshToken: null,
+        googleTokenExpiry: null,
+        googleCalendarEmail: null,
+        googleCalendarId: null,
+        calendarConnectedAt: null,
+        updatedAt: new Date()
+      })
+      .where(eq(consultantWhatsappConfig.id, agentConfigId));
+
+    console.log(`✅ [AGENT CALENDAR] Calendar disconnected for agent ${agentConfigId}`);
+    return true;
+  } catch (error: any) {
+    console.error(`❌ [AGENT CALENDAR] Failed to disconnect calendar for agent ${agentConfigId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Check if agent has calendar connected
+ */
+export async function isAgentCalendarConnected(agentConfigId: string): Promise<{
+  connected: boolean;
+  email?: string;
+  connectedAt?: Date;
+}> {
+  const [agentConfig] = await db
+    .select()
+    .from(consultantWhatsappConfig)
+    .where(eq(consultantWhatsappConfig.id, agentConfigId))
+    .limit(1);
+
+  if (!agentConfig?.googleRefreshToken) {
+    return { connected: false };
+  }
+
+  return {
+    connected: true,
+    email: agentConfig.googleCalendarEmail || undefined,
+    connectedAt: agentConfig.calendarConnectedAt || undefined
+  };
+}
+
+// ============================================================================
+// UNIFIED CALENDAR FUNCTIONS (AGENT OR CONSULTANT FALLBACK)
+// ============================================================================
+
 /**
  * Create event in Google Calendar
  * FIX: Accepts date/time as strings with timezone, let Google Calendar handle DST correctly
+ * NEW: Supports agentConfigId - uses agent's calendar if available, otherwise falls back to consultant
  */
 export async function createGoogleCalendarEvent(
   consultantId: string,
@@ -516,13 +806,17 @@ export async function createGoogleCalendarEvent(
     duration: number;   // minutes
     timezone: string;   // IANA timezone like 'Europe/Rome'
     attendees?: string[];
-  }
+  },
+  agentConfigId?: string  // NEW: Optional agent ID to use agent's calendar
 ) {
   try {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📅 [GOOGLE CALENDAR] Creating Calendar Event');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`👤 Consultant ID: ${consultantId}`);
+    if (agentConfigId) {
+      console.log(`🤖 Agent Config ID: ${agentConfigId}`);
+    }
     console.log(`📝 Event title: ${eventData.summary}`);
     
     // FIX TIMEZONE: Build datetime strings WITHOUT offset + use timeZone field
@@ -567,11 +861,31 @@ export async function createGoogleCalendarEvent(
       eventData.attendees.forEach(email => console.log(`   - ${email}`));
     }
     
-    console.log(`\n🔐 Authenticating with Google Calendar API...`);
-    const calendar = await getCalendarClient(consultantId);
+    // NEW: Try agent calendar first, fallback to consultant calendar
+    let calendar;
+    let calendarId: string | null = null;
+    let usingAgentCalendar = false;
     
-    console.log(`📋 Getting primary calendar ID...`);
-    const calendarId = await getPrimaryCalendarId(consultantId);
+    if (agentConfigId) {
+      console.log(`\n🔐 Checking if agent has its own calendar...`);
+      const agentCalendar = await getAgentCalendarClient(agentConfigId);
+      if (agentCalendar) {
+        calendar = agentCalendar;
+        calendarId = await getAgentCalendarId(agentConfigId);
+        usingAgentCalendar = true;
+        console.log(`✅ Using AGENT's calendar`);
+      } else {
+        console.log(`⏭️ Agent has no calendar, falling back to consultant's calendar`);
+      }
+    }
+    
+    // Fallback to consultant calendar
+    if (!calendar) {
+      console.log(`\n🔐 Authenticating with consultant's Google Calendar API...`);
+      calendar = await getCalendarClient(consultantId);
+      console.log(`📋 Getting consultant's primary calendar ID...`);
+      calendarId = await getPrimaryCalendarId(consultantId);
+    }
     
     if (!calendarId) {
       throw new Error('Calendar ID not found');
