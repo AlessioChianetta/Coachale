@@ -82,6 +82,11 @@ import { getAuthHeaders } from "@/lib/auth";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { AgentInstructionsPanel } from "@/components/whatsapp/AgentInstructionsPanel";
 import { whatsappAgentIdeas } from "@/data/whatsapp-agent-ideas";
+import { AgentDashboardHeader } from "@/components/whatsapp/AgentDashboardHeader";
+import { AgentRoster } from "@/components/whatsapp/AgentRoster";
+import { AgentProfilePanel } from "@/components/whatsapp/AgentProfilePanel";
+import { AgentLeaderboard } from "@/components/whatsapp/AgentLeaderboard";
+import { ActivityFeed } from "@/components/whatsapp/ActivityFeed";
 
 interface WhatsAppConfig {
   id?: string;
@@ -197,6 +202,17 @@ export default function ConsultantWhatsAppPage() {
   const [businessNameInput, setBusinessNameInput] = useState("");
   const [consultantDisplayNameInput, setConsultantDisplayNameInput] = useState("");
   const [isImprovingText, setIsImprovingText] = useState(false);
+
+  // Stato per dashboard enterprise agenti
+  const [selectedAgent, setSelectedAgent] = useState<{
+    id: string;
+    name: string;
+    agentType: string;
+    status: "active" | "paused" | "test";
+    performanceScore: number;
+    trend: "up" | "down" | "stable";
+    conversationsToday: number;
+  } | null>(null);
 
   // Query per caricare i documenti dalla knowledge base
   const knowledgeDocsQuery = useQuery({
@@ -748,124 +764,49 @@ export default function ConsultantWhatsAppPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {configs.map((config: WhatsAppConfig) => (
-                  <Card 
-                    key={config.id} 
-                    className="transition-all duration-200 hover:shadow-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl"
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded-lg flex-shrink-0">
-                            <Bot className="h-5 w-5 text-green-600 dark:text-green-400" />
-                          </div>
-                          <div className="min-w-0">
-                            <CardTitle className="text-base font-semibold truncate text-gray-900 dark:text-white">
-                              {config.agentName}
-                            </CardTitle>
-                            {config.businessName && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                {config.businessName}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <Badge 
-                          className={`flex-shrink-0 text-xs px-2 py-1 ${
-                            config.autoResponseEnabled
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-                              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                          }`}
-                        >
-                          {config.autoResponseEnabled ? "Attivo" : "Pausa"}
-                        </Badge>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs px-2 py-0.5 ${
-                            config.agentType === "proactive_setter"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700"
-                              : config.agentType === "informative_advisor"
-                              ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700"
-                              : config.agentType === "customer_success"
-                              ? "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-700"
-                              : config.agentType === "intake_coordinator"
-                              ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700"
-                              : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700"
-                          }`}
-                        >
-                          {config.agentType === "proactive_setter" ? "Setter" 
-                            : config.agentType === "informative_advisor" ? "Educativo"
-                            : config.agentType === "customer_success" ? "Customer Success"
-                            : config.agentType === "intake_coordinator" ? "Intake"
-                            : "Receptionist"}
-                        </Badge>
-                        {config.isProactiveAgent && (
-                          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700">
-                            Proattivo
-                          </Badge>
-                        )}
-                        {(config.isDryRun ?? true) && (
-                          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700">
-                            Test
-                          </Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="pt-0 space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                          <Phone className="h-4 w-4 text-gray-400" />
-                          <span className="font-mono text-xs truncate">
-                            {config.twilioWhatsappNumber || "Non configurato"}
-                          </span>
-                        </div>
-                        {config.aiPersonality && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                            <Sparkles className="h-4 w-4 text-purple-400" />
-                            <span className="text-xs capitalize truncate">
-                              {config.aiPersonality.replace(/_/g, " ")}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(config)}
-                          className="flex-1 text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/30"
-                        >
-                          <Edit className="h-4 w-4 mr-1.5" />
-                          Configura
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/consultant/whatsapp-agents-chat?agent=${config.id}`)}
-                          className="flex-1 text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/30"
-                        >
-                          <MessageCircle className="h-4 w-4 mr-1.5" />
-                          Chat
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(config)}
-                          className="flex-1 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/30"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1.5" />
-                          Elimina
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="space-y-6">
+                {/* Enterprise Dashboard Header con KPI */}
+                <AgentDashboardHeader />
+                
+                {/* Layout principale: Roster + Profile */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Sidebar Roster (4 colonne) */}
+                  <div className="lg:col-span-4">
+                    <AgentRoster 
+                      onSelectAgent={(agent) => setSelectedAgent(agent)}
+                      selectedAgentId={selectedAgent?.id}
+                    />
+                  </div>
+                  
+                  {/* Pannello Profilo Agente (8 colonne) */}
+                  <div className="lg:col-span-8">
+                    <AgentProfilePanel 
+                      selectedAgent={selectedAgent}
+                      onDeleteAgent={(agentId) => {
+                        const config = configs.find((c: WhatsAppConfig) => c.id === agentId);
+                        if (config) handleDelete(config);
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Sezione Leaderboard + Activity Feed */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <AgentLeaderboard 
+                    agents={configs.map((c: WhatsAppConfig) => ({
+                      id: c.id || '',
+                      name: c.agentName,
+                      agentType: c.agentType || 'reactive_lead',
+                      status: c.autoResponseEnabled ? (c.isDryRun ? 'test' : 'active') : 'paused' as const,
+                      performanceScore: 70,
+                      trend: 'stable' as const,
+                      conversationsToday: 0
+                    }))}
+                    isLoading={isLoading}
+                    onSelectAgent={(agent) => setSelectedAgent(agent)}
+                  />
+                  <ActivityFeed />
+                </div>
               </div>
             )}
 

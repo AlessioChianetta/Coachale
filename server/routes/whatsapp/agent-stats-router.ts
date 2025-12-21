@@ -8,7 +8,7 @@ import {
   users
 } from "../../../shared/schema";
 import { eq, and, sql, desc, gte, count, avg } from "drizzle-orm";
-import { AuthRequest, authenticateToken, requireRole } from "../../auth-middleware";
+import { AuthRequest, authenticateToken, requireRole } from "../../middleware/auth";
 
 const router = Router();
 
