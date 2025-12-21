@@ -163,7 +163,7 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data, isLoading, isError } = useQuery<{ agents: Agent[] }>({
+  const { data, isLoading, isError } = useQuery<Agent[]>({
     queryKey: ["/api/whatsapp/agents/leaderboard"],
     queryFn: async () => {
       const response = await fetch("/api/whatsapp/agents/leaderboard", {
@@ -172,12 +172,23 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
       if (!response.ok) {
         throw new Error("Failed to fetch agents");
       }
-      return response.json();
+      const result = await response.json();
+      const rawAgents = Array.isArray(result) ? result : (result.agents || []);
+      
+      return rawAgents.map((agent: any) => ({
+        id: agent.id,
+        name: agent.name || agent.agentName || "Agente",
+        agentType: agent.type || agent.agentType || "reactive_lead",
+        status: agent.isActive === false ? "paused" : (agent.status || "active"),
+        performanceScore: agent.score || agent.performanceScore || 0,
+        trend: agent.trend || "stable",
+        conversationsToday: agent.conversations7d || agent.conversationsToday || 0,
+      }));
     },
     staleTime: 30000,
   });
 
-  const agents = data?.agents || [];
+  const agents = data || [];
 
   const filteredAgents = useMemo(() => {
     return agents.filter((agent) => {

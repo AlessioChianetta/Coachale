@@ -730,41 +730,71 @@ export default function ConsultantWhatsAppPage() {
 
   return (
     <WhatsAppLayout 
-      title="Configurazione WhatsApp Business"
-      description="Gestisci più agenti WhatsApp AI per diversi ruoli e conversazioni"
-      actions={
-        <Button 
-          onClick={handleAddNew}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Aggiungi Nuovo Agente
-        </Button>
-      }
+      showHeader={false}
     >
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Navigation Tabs */}
-        <NavigationTabs
-          tabs={[
-            { label: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings },
-            { label: "Chat Agenti", href: "/consultant/whatsapp-agents-chat", icon: MessageCircle },
-          ]}
-        />
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Modern Header Section */}
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <MessageSquare className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Gestione Agenti WhatsApp</h1>
+                <p className="text-emerald-100 text-sm mt-1">
+                  Configura e monitora i tuoi agenti AI per conversazioni automatizzate
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-3">
+              <Button 
+                variant="secondary"
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
+                onClick={() => window.location.href = '/consultant/whatsapp-agents-chat'}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Chat Agenti
+              </Button>
+              <Button 
+                onClick={handleAddNew}
+                className="bg-white text-emerald-700 hover:bg-emerald-50 shadow-md font-semibold"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nuovo Agente
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Category Tabs */}
         <Tabs defaultValue={initialTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 gap-2">
-            <TabsTrigger value="custom" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
-              <Bot className="h-4 w-4 mr-2" />
-              Agenti Personalizzati
-            </TabsTrigger>
-            <TabsTrigger value="system" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
-              <Users className="h-4 w-4 mr-2" />
-              Agenti di Sistema
-            </TabsTrigger>
-            <TabsTrigger value="ideas" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
-              <Lightbulb className="h-4 w-4 mr-2" />
-              Idee AI
-            </TabsTrigger>
-          </TabsList>
+          <div className="bg-white rounded-xl border shadow-sm p-1">
+            <TabsList className="grid w-full grid-cols-3 gap-1 bg-transparent h-auto p-0">
+              <TabsTrigger 
+                value="custom" 
+                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+              >
+                <Bot className="h-4 w-4 mr-2" />
+                Agenti Personalizzati
+              </TabsTrigger>
+              <TabsTrigger 
+                value="system" 
+                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Agenti di Sistema
+              </TabsTrigger>
+              <TabsTrigger 
+                value="ideas" 
+                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+              >
+                <Lightbulb className="h-4 w-4 mr-2" />
+                Idee AI
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="custom" className="space-y-6">
             {isLoading ? (
