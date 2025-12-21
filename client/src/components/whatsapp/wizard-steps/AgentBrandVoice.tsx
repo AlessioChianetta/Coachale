@@ -319,11 +319,21 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
         });
       } else {
         const error = await response.json();
-        toast({
-          title: "Errore",
-          description: error.error || "Impossibile salvare l'elemento",
-          variant: "destructive",
-        });
+        
+        // Handle duplicate document (409 Conflict)
+        if (response.status === 409) {
+          toast({
+            title: "Documento Duplicato",
+            description: error.message || "Un documento con lo stesso titolo o contenuto esiste già",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Errore",
+            description: error.error || "Impossibile salvare l'elemento",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error("Error saving knowledge item:", error);
