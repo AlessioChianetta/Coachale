@@ -243,7 +243,7 @@ export interface IStorage {
   createConsultationTask(data: InsertConsultationTask): Promise<ConsultationTask>;
   getConsultationTasks(consultationId: string): Promise<ConsultationTask[]>;
   getConsultationTaskById(id: string): Promise<ConsultationTask | undefined>;
-  getClientTasks(clientId: string, filters?: {completed?: boolean; priority?: string; category?: string}): Promise<ConsultationTask[]>;
+  getClientTasks(clientId: string, filters?: {completed?: boolean; priority?: string; category?: string; consultationId?: string; excludeDraftStatus?: boolean}): Promise<ConsultationTask[]>;
   getConsultationTasksByConsultant(consultantId: string): Promise<(ConsultationTask & { clientName: string })[]>;
   updateConsultationTask(id: string, updates: UpdateConsultationTask): Promise<ConsultationTask | undefined>;
   deleteConsultationTask(id: string): Promise<boolean>;
@@ -1272,7 +1272,7 @@ export class DatabaseStorage implements IStorage {
 
   async getClientTasks(
     clientId: string, 
-    filters?: {completed?: boolean; priority?: string; category?: string}
+    filters?: {completed?: boolean; priority?: string; category?: string; consultationId?: string; excludeDraftStatus?: boolean}
   ): Promise<ConsultationTask[]> {
     let conditions = [eq(schema.consultationTasks.clientId, clientId)];
 
@@ -1286,6 +1286,20 @@ export class DatabaseStorage implements IStorage {
 
     if (filters?.category) {
       conditions.push(eq(schema.consultationTasks.category, filters.category as "preparation" | "follow-up" | "exercise" | "goal" | "reminder"));
+    }
+
+    if (filters?.consultationId) {
+      conditions.push(eq(schema.consultationTasks.consultationId, filters.consultationId));
+    }
+
+    // By default, exclude draft and discarded tasks - only show active tasks or tasks without draftStatus
+    if (filters?.excludeDraftStatus !== false) {
+      conditions.push(
+        or(
+          eq(schema.consultationTasks.draftStatus, "active"),
+          isNull(schema.consultationTasks.draftStatus)
+        )!
+      );
     }
 
     return db.select()

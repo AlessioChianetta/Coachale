@@ -282,9 +282,11 @@ router.post("/consultation-tasks/:taskId/complete", authenticateToken, async (re
 });
 
 // GET /api/consultation-tasks - Get tasks for a specific client (consultant only)
+// Supports optional consultationId filter to show only tasks for a specific consultation
+// Excludes draft and discarded tasks by default (only shows active or null draftStatus)
 router.get("/consultation-tasks", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
-    const { clientId, completed, priority, category } = req.query;
+    const { clientId, consultationId, completed, priority, category, includeDrafts } = req.query;
     
     if (!clientId) {
       return res.status(400).json({ 
@@ -304,6 +306,11 @@ router.get("/consultation-tasks", authenticateToken, requireRole("consultant"), 
     if (category) {
       filters.category = category as string;
     }
+    if (consultationId) {
+      filters.consultationId = consultationId as string;
+    }
+    // By default, exclude draft and discarded tasks unless specifically requested
+    filters.excludeDraftStatus = includeDrafts !== 'true';
     
     const tasks = await storage.getClientTasks(clientId as string, filters);
     
