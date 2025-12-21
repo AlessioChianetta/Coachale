@@ -1232,6 +1232,11 @@ export class FileSearchSyncService {
       clientKnowledge: { total: number; synced: number; failed: number };
       clientConsultations: { total: number; synced: number; failed: number };
     };
+    orphansCleanup?: {
+      storesChecked: number;
+      orphansRemoved: number;
+      errors: string[];
+    };
   }> {
     console.log(`\n${'═'.repeat(70)}`);
     console.log(`🔄 [FileSync] Starting FULL content sync for consultant ${consultantId}`);
@@ -1298,6 +1303,60 @@ export class FileSearchSyncService {
     const totalSynced = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
       universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced +
       totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced;
+
+    // ============================================================
+    // CLEANUP SOURCE ORPHANS - Remove documents whose source was deleted
+    // ============================================================
+    console.log(`\n${'─'.repeat(70)}`);
+    console.log(`🧹 [FileSync] Cleaning up SOURCE ORPHANS (deleted source records)...`);
+    console.log(`${'─'.repeat(70)}`);
+
+    let orphansRemoved = 0;
+    let orphanErrors: string[] = [];
+
+    // Get all stores for this consultant (consultant store, whatsapp agent stores, client stores)
+    const allStores = await db
+      .select({ id: fileSearchStores.id, name: fileSearchStores.name, ownerType: fileSearchStores.ownerType })
+      .from(fileSearchStores)
+      .where(eq(fileSearchStores.ownerId, consultantId));
+
+    // Also get client stores
+    const clientStores = await db
+      .select({ 
+        id: fileSearchStores.id, 
+        name: fileSearchStores.name,
+        ownerType: fileSearchStores.ownerType 
+      })
+      .from(fileSearchStores)
+      .innerJoin(users, eq(users.id, fileSearchStores.ownerId))
+      .where(and(
+        eq(users.consultantId, consultantId),
+        eq(fileSearchStores.ownerType, 'client')
+      ));
+
+    const storesToClean = [...allStores, ...clientStores];
+    
+    for (const store of storesToClean) {
+      try {
+        const cleanupResult = await fileSearchService.cleanupSourceOrphans(store.id, consultantId);
+        if (cleanupResult.success && cleanupResult.removed > 0) {
+          console.log(`   🗑️ ${store.name}: removed ${cleanupResult.removed} orphan(s)`);
+          orphansRemoved += cleanupResult.removed;
+        }
+        if (cleanupResult.errors.length > 0) {
+          orphanErrors.push(...cleanupResult.errors.map(e => `${store.name}: ${e}`));
+        }
+      } catch (error: any) {
+        console.error(`   ❌ Error cleaning orphans for ${store.name}:`, error.message);
+        orphanErrors.push(`${store.name}: ${error.message}`);
+      }
+    }
+
+    if (orphansRemoved > 0) {
+      console.log(`   ✅ Total source orphans removed: ${orphansRemoved}`);
+    } else {
+      console.log(`   ✅ No source orphans found`);
+    }
     
     console.log(`\n${'═'.repeat(70)}`);
     console.log(`✅ [FileSync] FULL content sync complete for consultant ${consultantId}`);
@@ -1311,6 +1370,7 @@ export class FileSearchSyncService {
     console.log(`      📝 Exercise Responses: ${totalExerciseResponses.synced}/${totalExerciseResponses.total} synced`);
     console.log(`      📚 Client Knowledge: ${totalClientKnowledge.synced}/${totalClientKnowledge.total} synced`);
     console.log(`      📞 Client Consultations: ${totalClientConsultations.synced}/${totalClientConsultations.total} synced`);
+    console.log(`   🧹 Source Orphans: ${orphansRemoved} removed from ${storesToClean.length} stores`);
     console.log(`${'═'.repeat(70)}\n`);
 
     syncProgressEmitter.emitAllComplete(consultantId, totalSynced);
@@ -1327,6 +1387,11 @@ export class FileSearchSyncService {
         exerciseResponses: totalExerciseResponses,
         clientKnowledge: totalClientKnowledge,
         clientConsultations: totalClientConsultations,
+      },
+      orphansCleanup: {
+        storesChecked: storesToClean.length,
+        orphansRemoved,
+        errors: orphanErrors,
       },
     };
   }
