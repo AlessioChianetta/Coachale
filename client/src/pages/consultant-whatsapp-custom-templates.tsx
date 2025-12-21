@@ -601,7 +601,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
 
   const generateAIMessageMutation = useMutation({
     mutationFn: async (prompt: string) => {
-      const response = await fetch("/api/ai/generate-template-message", {
+      const response = await fetch("/api/whatsapp/custom-templates/generate-ai-message", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ 

@@ -49,8 +49,12 @@ export default function TemplateBodyEditor({
     }, 0);
   };
 
+  // Regex that requires at least 3 characters and must contain underscore (valid variable format)
+  // This prevents matching single letters like {e}, {i} which are not real variables
+  const VARIABLE_REGEX = /\{([a-zA-Z][a-zA-Z0-9]*_[a-zA-Z0-9_]*|[a-zA-Z_][a-zA-Z0-9_]{2,})\}/g;
+
   const extractVariables = (text: string): string[] => {
-    const regex = /\{([a-zA-Z0-9_]+)\}/g;
+    const regex = new RegExp(VARIABLE_REGEX.source, 'g');
     const matches: string[] = [];
     let match;
 
@@ -68,7 +72,7 @@ export default function TemplateBodyEditor({
 
     const parts: Array<{ text: string; isVariable: boolean }> = [];
     let lastIndex = 0;
-    const regex = /\{([a-zA-Z0-9_]+)\}/g;
+    const regex = new RegExp(VARIABLE_REGEX.source, 'g');
     let match;
 
     while ((match = regex.exec(bodyText)) !== null) {

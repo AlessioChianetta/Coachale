@@ -32,6 +32,7 @@ import {
   AGENT_TYPE_LABELS,
   type AgentType as TemplateAgentType
 } from "../../data/default-templates-seed";
+import { getAIProvider } from "../../ai/provider-factory";
 
 const router = Router();
 
@@ -68,6 +69,102 @@ router.get(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to fetch variable catalog",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/custom-templates/generate-ai-message
+ * Generate a WhatsApp template message using AI
+ */
+router.post(
+  "/whatsapp/custom-templates/generate-ai-message",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { prompt, scenario, variables } = req.body;
+
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: "Descrizione richiesta mancante",
+        });
+      }
+
+      // Get AI provider for this consultant
+      const aiProvider = await getAIProvider(consultantId);
+      if (!aiProvider.client) {
+        return res.status(500).json({
+          success: false,
+          error: "Nessuna API key AI configurata. Configura una chiave Gemini nelle impostazioni.",
+        });
+      }
+
+      // Build the system prompt for template generation
+      const availableVariables = variables?.length > 0 
+        ? variables.map((v: string) => `{${v}}`).join(", ")
+        : "{nome_lead}, {nome_consulente}, {nome_azienda}";
+
+      const scenarioContext = scenario ? `Scenario: ${scenario}` : "";
+
+      const systemPrompt = `Sei un esperto copywriter italiano specializzato in messaggi WhatsApp per business.
+Genera un messaggio WhatsApp in italiano basato sulla richiesta dell'utente.
+
+REGOLE FONDAMENTALI:
+1. Il messaggio deve essere BREVE (massimo 160 caratteri idealmente, max 200)
+2. Usa un tono professionale ma amichevole
+3. Includi le variabili dinamiche disponibili nel formato {nome_variabile}
+4. Non usare emoji eccessive (max 1-2)
+5. Il messaggio deve essere pronto per essere inviato su WhatsApp Business
+
+VARIABILI DISPONIBILI (usa SOLO queste):
+${availableVariables}
+
+${scenarioContext}
+
+IMPORTANTE: Rispondi SOLO con il testo del messaggio, senza spiegazioni o commenti.`;
+
+      const userMessage = `Genera un messaggio WhatsApp per: ${prompt}`;
+
+      // Call Gemini AI
+      const model = aiProvider.client.getGenerativeModel({ 
+        model: "gemini-2.5-flash",
+        systemInstruction: systemPrompt,
+      });
+
+      const result = await model.generateContent(userMessage);
+      const response = result.response;
+      const generatedText = response.text();
+
+      if (!generatedText || generatedText.trim().length === 0) {
+        return res.status(500).json({
+          success: false,
+          error: "L'AI non ha generato alcun messaggio. Riprova con una descrizione diversa.",
+        });
+      }
+
+      // Clean up the response (remove quotes, markdown, etc.)
+      let cleanedMessage = generatedText
+        .trim()
+        .replace(/^["']|["']$/g, '') // Remove surrounding quotes
+        .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+        .replace(/\*\*/g, '') // Remove bold markdown
+        .trim();
+
+      console.log(`✅ [AI TEMPLATE] Generated message for consultant ${consultantId}: ${cleanedMessage.substring(0, 50)}...`);
+
+      res.json({
+        success: true,
+        message: cleanedMessage,
+      });
+    } catch (error: any) {
+      console.error("❌ [AI TEMPLATE] Error generating message:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante la generazione del messaggio AI",
       });
     }
   }
