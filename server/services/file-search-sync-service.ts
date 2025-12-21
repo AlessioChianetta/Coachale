@@ -46,7 +46,7 @@ export interface SyncProgressEvent {
   total?: number;
   synced?: number;
   totalSynced?: number;
-  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'client_data' | 'orphans';
+  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'whatsapp_agents' | 'exercise_responses' | 'client_knowledge' | 'client_consultations' | 'financial_data' | 'orphans';
   error?: string;
   consultantId: string;
   orphansRemoved?: number;
@@ -1281,6 +1281,7 @@ export class FileSearchSyncService {
       exerciseResponses: { total: number; synced: number; failed: number };
       clientKnowledge: { total: number; synced: number; failed: number };
       clientConsultations: { total: number; synced: number; failed: number };
+      financialData: { total: number; synced: number; failed: number };
     };
     orphansCleanup?: {
       storesChecked: number;
@@ -1322,37 +1323,160 @@ export class FileSearchSyncService {
       .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
 
     let clientsProcessed = 0;
-    let totalExerciseResponses = { total: 0, synced: 0, failed: 0 };
-    let totalClientKnowledge = { total: 0, synced: 0, failed: 0 };
-    let totalClientConsultations = { total: 0, synced: 0, failed: 0 };
+    let totalExerciseResponses = { total: 0, synced: 0, failed: 0, skipped: 0 };
+    let totalClientKnowledge = { total: 0, synced: 0, failed: 0, skipped: 0 };
+    let totalClientConsultations = { total: 0, synced: 0, failed: 0, skipped: 0 };
+    let totalFinancialData = { total: 0, synced: 0, failed: 0 };
+
+    // Pre-calculate totals for accurate progress tracking
+    const clientIds = clients.map(c => c.id);
+    
+    // Get all exercise submissions for all clients
+    const allClientAssignments = clientIds.length > 0 
+      ? await db.select({ id: exerciseAssignments.id })
+          .from(exerciseAssignments)
+          .where(inArray(exerciseAssignments.clientId, clientIds))
+      : [];
+    const assignmentIds = allClientAssignments.map(a => a.id);
+    const allClientSubmissions = assignmentIds.length > 0
+      ? await db.query.exerciseSubmissions.findMany({
+          where: inArray(exerciseSubmissions.assignmentId, assignmentIds)
+        })
+      : [];
+    const preCalcExerciseResponsesTotal = allClientSubmissions.length;
+
+    // Get all client knowledge documents
+    const allClientKnowledge = clientIds.length > 0
+      ? await db.query.clientKnowledgeDocuments.findMany({
+          where: inArray(clientKnowledgeDocuments.clientId, clientIds)
+        })
+      : [];
+    const preCalcClientKnowledgeTotal = allClientKnowledge.length;
+
+    // Get all completed consultations with content
+    const allClientConsultationsRaw = clientIds.length > 0
+      ? await db.query.consultations.findMany({
+          where: and(
+            inArray(consultations.clientId, clientIds),
+            eq(consultations.status, 'completed')
+          )
+        })
+      : [];
+    const preCalcClientConsultationsTotal = allClientConsultationsRaw.filter(
+      c => c.transcript || c.notes || c.summaryEmail
+    ).length;
+
+    // Get clients with finance settings (for financial_data category)
+    const clientsWithFinanceSettings = clientIds.length > 0
+      ? await db.query.userFinanceSettings.findMany({
+          where: inArray(userFinanceSettings.userId, clientIds)
+        })
+      : [];
+    const preCalcFinancialTotal = clientsWithFinanceSettings.length;
+
+    // Emit SSE start events with pre-calculated totals
+    syncProgressEmitter.emitStart(consultantId, 'exercise_responses', preCalcExerciseResponsesTotal);
+    syncProgressEmitter.emitStart(consultantId, 'client_knowledge', preCalcClientKnowledgeTotal);
+    syncProgressEmitter.emitStart(consultantId, 'client_consultations', preCalcClientConsultationsTotal);
+    if (settings?.autoSyncFinancial) {
+      syncProgressEmitter.emitStart(consultantId, 'financial_data', preCalcFinancialTotal);
+    }
 
     for (const client of clients) {
       console.log(`   📋 Processing client: ${client.firstName} ${client.lastName} (${client.id.substring(0, 8)}...)`);
+      const clientDisplayName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.id.substring(0, 8);
       
       // Sync exercise responses to client's private store
       const exerciseResponsesResult = await this.syncAllClientExerciseResponses(client.id, consultantId);
       totalExerciseResponses.total += exerciseResponsesResult.total;
       totalExerciseResponses.synced += exerciseResponsesResult.synced;
       totalExerciseResponses.failed += exerciseResponsesResult.failed;
+      totalExerciseResponses.skipped += exerciseResponsesResult.skipped || 0;
 
       // Sync client knowledge documents to client's private store
       const clientKnowledgeResult = await this.syncAllClientKnowledgeDocuments(client.id, consultantId);
       totalClientKnowledge.total += clientKnowledgeResult.total;
       totalClientKnowledge.synced += clientKnowledgeResult.synced;
       totalClientKnowledge.failed += clientKnowledgeResult.failed;
+      totalClientKnowledge.skipped += clientKnowledgeResult.skipped || 0;
 
       // Sync client consultations to client's private store
       const clientConsultationsResult = await this.syncAllClientConsultations(client.id, consultantId);
       totalClientConsultations.total += clientConsultationsResult.total;
       totalClientConsultations.synced += clientConsultationsResult.synced;
       totalClientConsultations.failed += clientConsultationsResult.failed;
+      totalClientConsultations.skipped += clientConsultationsResult.skipped || 0;
+
+      // Sync financial data if enabled (only count if client actually has finance settings)
+      if (settings?.autoSyncFinancial) {
+        const financialResult = await this.syncClientFinancialData(client.id, consultantId);
+        if (financialResult.success) {
+          totalFinancialData.synced += 1;
+        } else if (financialResult.error !== 'Finance settings not configured for this client') {
+          totalFinancialData.failed += 1;
+        }
+      }
 
       clientsProcessed++;
+      
+      // Calculate real progress for each category (processed items vs pre-calculated totals)
+      const exerciseResponsesProgress = totalExerciseResponses.synced + totalExerciseResponses.failed + totalExerciseResponses.skipped;
+      const clientKnowledgeProgress = totalClientKnowledge.synced + totalClientKnowledge.failed + totalClientKnowledge.skipped;
+      const clientConsultationsProgress = totalClientConsultations.synced + totalClientConsultations.failed + totalClientConsultations.skipped;
+      const financialProgress = totalFinancialData.synced + totalFinancialData.failed;
+      
+      // Emit SSE progress events with real progress vs pre-calculated totals
+      syncProgressEmitter.emitItemProgress(consultantId, 'exercise_responses', clientDisplayName, exerciseResponsesProgress, preCalcExerciseResponsesTotal);
+      syncProgressEmitter.emitItemProgress(consultantId, 'client_knowledge', clientDisplayName, clientKnowledgeProgress, preCalcClientKnowledgeTotal);
+      syncProgressEmitter.emitItemProgress(consultantId, 'client_consultations', clientDisplayName, clientConsultationsProgress, preCalcClientConsultationsTotal);
+      if (settings?.autoSyncFinancial) {
+        syncProgressEmitter.emitItemProgress(consultantId, 'financial_data', clientDisplayName, financialProgress, preCalcFinancialTotal);
+      }
+    }
+
+    // Set financial total from pre-calculated value (not incremented per client)
+    totalFinancialData.total = preCalcFinancialTotal;
+
+    // Emit SSE complete events with pre-calculated totals for consistency
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'exercise_responses',
+      total: preCalcExerciseResponsesTotal,
+      current: preCalcExerciseResponsesTotal,
+      synced: totalExerciseResponses.synced,
+      consultantId,
+    });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'client_knowledge',
+      total: preCalcClientKnowledgeTotal,
+      current: preCalcClientKnowledgeTotal,
+      synced: totalClientKnowledge.synced,
+      consultantId,
+    });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'client_consultations',
+      total: preCalcClientConsultationsTotal,
+      current: preCalcClientConsultationsTotal,
+      synced: totalClientConsultations.synced,
+      consultantId,
+    });
+    if (settings?.autoSyncFinancial) {
+      syncProgressEmitter.emitProgress({
+        type: 'complete',
+        category: 'financial_data',
+        total: preCalcFinancialTotal,
+        current: preCalcFinancialTotal,
+        synced: totalFinancialData.synced,
+        consultantId,
+      });
     }
 
     const totalSynced = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
       universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced +
-      totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced;
+      totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced + 
+      totalFinancialData.synced;
 
     // ============================================================
     // CLEANUP SOURCE ORPHANS - Remove documents whose source was deleted
@@ -1435,6 +1559,7 @@ export class FileSearchSyncService {
     console.log(`      📝 Exercise Responses: ${totalExerciseResponses.synced}/${totalExerciseResponses.total} synced`);
     console.log(`      📚 Client Knowledge: ${totalClientKnowledge.synced}/${totalClientKnowledge.total} synced`);
     console.log(`      📞 Client Consultations: ${totalClientConsultations.synced}/${totalClientConsultations.total} synced`);
+    console.log(`      💰 Financial Data: ${totalFinancialData.synced}/${totalFinancialData.total} synced`);
     console.log(`   🧹 Source Orphans: ${orphansRemoved} removed from ${storesToClean.length} stores`);
     console.log(`${'═'.repeat(70)}\n`);
 
@@ -1452,6 +1577,7 @@ export class FileSearchSyncService {
         exerciseResponses: totalExerciseResponses,
         clientKnowledge: totalClientKnowledge,
         clientConsultations: totalClientConsultations,
+        financialData: totalFinancialData,
       },
       orphansCleanup: {
         storesChecked: storesToClean.length,
@@ -3213,7 +3339,7 @@ export class FileSearchSyncService {
       let processed = 0;
 
       console.log(`🔄 [FileSync] Syncing ${knowledgeItems.length} knowledge items for agent "${agentConfig.agentName}"`);
-      syncProgressEmitter.emitStart(consultantId, 'whatsapp_agent_knowledge', knowledgeItems.length);
+      syncProgressEmitter.emitStart(consultantId, 'whatsapp_agents', knowledgeItems.length);
 
       for (const item of knowledgeItems) {
         processed++;
@@ -3223,7 +3349,7 @@ export class FileSearchSyncService {
         if (isAlreadyIndexed) {
           console.log(`📌 [FileSync] WhatsApp knowledge item already indexed: ${item.title}`);
           synced++;
-          syncProgressEmitter.emitItemProgress(consultantId, 'whatsapp_agent_knowledge', item.title, processed, knowledgeItems.length);
+          syncProgressEmitter.emitItemProgress(consultantId, 'whatsapp_agents', item.title, processed, knowledgeItems.length);
           continue;
         }
 
@@ -3264,12 +3390,12 @@ export class FileSearchSyncService {
         if (uploadResult.success) {
           synced++;
           console.log(`✅ [FileSync] Synced WhatsApp knowledge item: ${item.title}`);
-          syncProgressEmitter.emitItemProgress(consultantId, 'whatsapp_agent_knowledge', item.title, processed, knowledgeItems.length);
+          syncProgressEmitter.emitItemProgress(consultantId, 'whatsapp_agents', item.title, processed, knowledgeItems.length);
         } else {
           failed++;
           errors.push(`${item.title}: ${uploadResult.error}`);
           console.error(`❌ [FileSync] Failed to sync WhatsApp knowledge item "${item.title}": ${uploadResult.error}`);
-          syncProgressEmitter.emitError(consultantId, 'whatsapp_agent_knowledge', `${item.title}: ${uploadResult.error}`);
+          syncProgressEmitter.emitError(consultantId, 'whatsapp_agents', `${item.title}: ${uploadResult.error}`);
         }
       }
 
@@ -3302,7 +3428,7 @@ export class FileSearchSyncService {
       console.log(`   Failed: ${failed}`);
       console.log(`${'═'.repeat(60)}\n`);
 
-      syncProgressEmitter.emitComplete(consultantId, 'whatsapp_agent_knowledge', knowledgeItems.length);
+      syncProgressEmitter.emitComplete(consultantId, 'whatsapp_agents', knowledgeItems.length);
 
       return {
         total: knowledgeItems.length,

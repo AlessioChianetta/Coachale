@@ -283,8 +283,11 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: stri
   exercises: { label: 'Esercizi', icon: '🏋️', color: 'bg-green-500' },
   university: { label: 'University', icon: '🎓', color: 'bg-amber-500' },
   consultations: { label: 'Consultazioni', icon: '📞', color: 'bg-pink-500' },
-  whatsapp_agent_knowledge: { label: 'Agenti WhatsApp', icon: '📱', color: 'bg-emerald-500' },
-  client_data: { label: 'Dati Clienti', icon: '🔐', color: 'bg-indigo-500' },
+  whatsapp_agents: { label: 'Agenti WhatsApp', icon: '📱', color: 'bg-emerald-500' },
+  exercise_responses: { label: 'Risposte Esercizi', icon: '📝', color: 'bg-teal-500' },
+  client_knowledge: { label: 'Knowledge Clienti', icon: '📘', color: 'bg-cyan-500' },
+  client_consultations: { label: 'Consultazioni Clienti', icon: '📞', color: 'bg-rose-500' },
+  financial_data: { label: 'Dati Finanziari', icon: '💰', color: 'bg-yellow-500' },
   orphans: { label: 'Pulizia Orfani', icon: '🧹', color: 'bg-gray-500' },
 };
 
@@ -2163,7 +2166,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           {progress.status === 'complete' ? (
                                             <span className="text-emerald-600 font-medium">
                                               {category === 'orphans' 
-                                                ? `${progress.synced || 0} rimosso/i`
+                                                ? (progress.synced === 0 ? 'Nessun orfano' : `${progress.synced} rimoss${progress.synced === 1 ? 'o' : 'i'}`)
                                                 : `${progress.synced || progress.current}/${progress.total}`
                                               }
                                             </span>
