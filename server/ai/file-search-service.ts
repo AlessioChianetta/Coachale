@@ -17,7 +17,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { db } from "../db";
-import { fileSearchStores, fileSearchDocuments, users } from "../../shared/schema";
+import { fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig } from "../../shared/schema";
 import { eq, and, desc, inArray, or, sql } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
@@ -75,6 +75,75 @@ const DEFAULT_CHUNKING_CONFIG: ChunkingConfig = {
 export class FileSearchService {
   constructor() {
     console.log(`ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)`);
+  }
+
+  /**
+   * Resolve the correct user ID to use for API credentials based on store type.
+   * This handles the ownership chain for different store types:
+   * - consultant: Use store.ownerId directly (it's the consultant's userId)
+   * - client: Look up the client's consultant via users.consultantId
+   * - whatsapp_agent: Look up the agent's consultant via consultantWhatsappConfig
+   * - system: Return null (will use SuperAdmin fallback)
+   * 
+   * @param store - The FileSearchStore
+   * @param requestingUserId - Optional explicit userId to use (takes precedence)
+   * @returns The resolved userId to use for API credentials
+   */
+  async resolveStoreCredentialOwner(
+    store: { ownerId: string; ownerType: string },
+    requestingUserId?: string
+  ): Promise<string | null> {
+    // If explicit userId provided, use it
+    if (requestingUserId) {
+      return requestingUserId;
+    }
+
+    try {
+      switch (store.ownerType) {
+        case 'consultant':
+          // ownerId is the consultant's userId
+          return store.ownerId;
+
+        case 'client':
+          // ownerId is a client userId, look up their consultant
+          const [clientUser] = await db
+            .select({ consultantId: users.consultantId })
+            .from(users)
+            .where(eq(users.id, store.ownerId))
+            .limit(1);
+          
+          if (clientUser?.consultantId) {
+            return clientUser.consultantId;
+          }
+          console.warn(`⚠️ [FileSearch] Client ${store.ownerId} has no consultantId, falling back to SuperAdmin`);
+          return null;
+
+        case 'whatsapp_agent':
+          // ownerId is an agent config ID, look up the consultant
+          const [agentConfig] = await db
+            .select({ consultantId: consultantWhatsappConfig.consultantId })
+            .from(consultantWhatsappConfig)
+            .where(eq(consultantWhatsappConfig.id, store.ownerId))
+            .limit(1);
+          
+          if (agentConfig?.consultantId) {
+            return agentConfig.consultantId;
+          }
+          console.warn(`⚠️ [FileSearch] Agent config ${store.ownerId} not found, falling back to SuperAdmin`);
+          return null;
+
+        case 'system':
+          // System stores use SuperAdmin keys
+          return null;
+
+        default:
+          console.warn(`⚠️ [FileSearch] Unknown ownerType: ${store.ownerType}, falling back to SuperAdmin`);
+          return null;
+      }
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] Error resolving store credential owner:`, error.message);
+      return null;
+    }
   }
 
   /**
@@ -633,8 +702,11 @@ export class FileSearchService {
   /**
    * Delete a document from a FileSearchStore
    * First deletes from Google API, then from local database
+   * 
+   * @param documentId - The document ID to delete
+   * @param requestingUserId - Optional userId to use for API credentials (for consultant deleting from client/agent stores)
    */
-  async deleteDocument(documentId: string): Promise<{ success: boolean; error?: string }> {
+  async deleteDocument(documentId: string, requestingUserId?: string): Promise<{ success: boolean; error?: string }> {
     try {
       const doc = await db.query.fileSearchDocuments.findFirst({
         where: eq(fileSearchDocuments.id, documentId),
@@ -646,7 +718,10 @@ export class FileSearchService {
       });
       if (!store) return { success: false, error: 'Store not found' };
 
-      const ai = await this.getClientForUser(store.ownerId);
+      // Resolve the correct user ID for API credentials
+      const credentialOwnerId = await this.resolveStoreCredentialOwner(store, requestingUserId);
+      const ai = await this.getClientForUser(credentialOwnerId || undefined);
+      
       if (ai) {
         try {
           const documentName = `fileSearchStores/${store.googleStoreName}/documents/${doc.googleFileId}`;
@@ -659,6 +734,8 @@ export class FileSearchService {
           }
           console.log(`⚠️ [FileSearch] Document not found on Google, cleaning up DB only`);
         }
+      } else {
+        console.warn(`⚠️ [FileSearch] No API client available, deleting from DB only`);
       }
 
       await db.delete(fileSearchDocuments).where(eq(fileSearchDocuments.id, documentId));
