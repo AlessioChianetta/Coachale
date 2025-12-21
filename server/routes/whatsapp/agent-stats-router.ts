@@ -97,9 +97,16 @@ router.get("/leaderboard", authenticateToken, requireRole("consultant"), async (
       const convCount = conversations[0]?.count || 0;
       const msgCount = Number(conversations[0]?.totalMessages) || 0;
       
-      const score = Math.min(100, Math.round(
-        (convCount * 5) + (msgCount * 0.5) + (agent.autoResponseEnabled ? 20 : 0)
-      ));
+      let baseScore = 50;
+      if (agent.autoResponseEnabled) baseScore += 15;
+      if (agent.businessName) baseScore += 5;
+      if (agent.businessDescription) baseScore += 5;
+      if (agent.salesScript) baseScore += 5;
+      if (agent.agentInstructions) baseScore += 5;
+      
+      const activityBonus = Math.min(15, (convCount * 3) + (msgCount * 0.3));
+      
+      const score = Math.min(100, Math.round(baseScore + activityBonus));
 
       return {
         id: agent.id,
