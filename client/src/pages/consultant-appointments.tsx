@@ -62,10 +62,12 @@ type CompletionForm = z.infer<typeof completionFormSchema>;
 // Helper function to get email status indicator for appointments
 function getEmailStatusIndicator(apt: any): { dot: string; label: string } | null {
   if (apt.status === 'completed') {
-    if (apt.summaryEmailStatus === 'sent') {
-      return { dot: '🟢', label: 'Email Inviata' };
+    if (apt.summaryEmailStatus === 'sent' || apt.summaryEmailStatus === 'approved') {
+      return { dot: '🟢', label: apt.summaryEmailStatus === 'sent' ? 'Email Inviata' : 'Email Approvata' };
     } else if (apt.summaryEmailStatus === 'draft') {
       return { dot: '🟡', label: 'Bozza Pronta' };
+    } else if (apt.summaryEmailStatus === 'saved_for_ai') {
+      return { dot: '🟢', label: 'Salvata per AI' };
     } else {
       return { dot: '🔴', label: 'Email Mancante' };
     }

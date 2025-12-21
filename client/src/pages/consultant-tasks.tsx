@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import it from "date-fns/locale/it";
+import { Link } from "wouter";
 import {
   ListTodo,
   Filter,
@@ -16,6 +17,8 @@ import {
   ChevronRight,
   AlertCircle,
   Plus,
+  FileEdit,
+  ExternalLink,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +47,8 @@ interface ConsultationTask {
   completedAt: string | null;
   priority: "low" | "medium" | "high" | "urgent";
   category: "preparation" | "follow-up" | "exercise" | "goal" | "reminder";
+  source: "manual" | "echo_extracted" | "auto_followup";
+  draftStatus: "draft" | "active" | "discarded";
   createdAt: string;
   updatedAt: string;
 }
@@ -80,7 +85,7 @@ export default function ConsultantTasks() {
   const [selectedClientForTask, setSelectedClientForTask] = useState<{ id: string; name: string; consultationId: string } | null>(null);
 
   // Fetch all tasks for consultant
-  const { data: tasks = [], isLoading } = useQuery<ConsultationTask[]>({
+  const { data: allTasks = [], isLoading } = useQuery<ConsultationTask[]>({
     queryKey: ["/api/consultation-tasks/consultant", filterStatus, filterPriority, filterCategory],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -103,6 +108,20 @@ export default function ConsultantTasks() {
       return result.data || result;
     },
   });
+
+  // Separate draft tasks from Echo from active tasks
+  const draftTasksFromEcho = useMemo(() => {
+    return allTasks.filter(
+      task => task.draftStatus === "draft" && task.source === "echo_extracted"
+    );
+  }, [allTasks]);
+
+  // Filter out draft Echo tasks from main task list
+  const tasks = useMemo(() => {
+    return allTasks.filter(
+      task => !(task.draftStatus === "draft" && task.source === "echo_extracted")
+    );
+  }, [allTasks]);
 
   // Fetch clients list
   const { data: clients = [] } = useQuery({
@@ -367,6 +386,75 @@ export default function ConsultantTasks() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Sezione Task in Bozza da Echo */}
+          {draftTasksFromEcho.length > 0 && (
+            <Card className="mb-8 bg-slate-100 dark:bg-slate-800/50 border-2 border-dashed border-slate-300 dark:border-slate-600 shadow-lg">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                      <FileEdit className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg text-slate-700 dark:text-slate-300">
+                        Task in Bozza (da Echo)
+                      </CardTitle>
+                      <CardDescription className="text-slate-500 dark:text-slate-400">
+                        Task estratte automaticamente da Echo - in attesa di approvazione
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Link href="/consultant/echo-dashboard">
+                    <Button variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-900/30">
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Vai a Echo Dashboard
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  {draftTasksFromEcho.map(task => (
+                    <div
+                      key={task.id}
+                      className="p-4 border border-dashed border-slate-300 dark:border-slate-600 rounded-xl bg-white/50 dark:bg-slate-900/30"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className="mt-1">
+                            <Circle className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold mb-1 text-slate-700 dark:text-slate-300">
+                              {task.title}
+                            </h4>
+                            <div className="flex items-center gap-3 flex-wrap mt-2">
+                              <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                Attiva approvando l'email di riepilogo
+                              </Badge>
+                              <Badge className={`${priorityConfig[task.priority].variant === "destructive" ? "bg-red-100 text-red-700" : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"}`}>
+                                <Flag className="w-3 h-3 mr-1" />
+                                {priorityConfig[task.priority].label}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs text-slate-600 dark:text-slate-400">
+                                {categoryLabels[task.category]}
+                              </Badge>
+                              <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {task.clientName}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Lista Task raggruppate per consulenza */}
           <div className="space-y-6">
