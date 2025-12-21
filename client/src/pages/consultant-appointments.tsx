@@ -3299,6 +3299,40 @@ export default function ConsultantAppointments() {
                               </Button>
                             </div>
                           </div>
+
+                          {/* Email Riepilogo Generata - Sezione Espandibile */}
+                          {appointment.summaryEmail && (
+                            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                              <details className="group">
+                                <summary className="cursor-pointer list-none p-3 bg-purple-50 dark:bg-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <Mail className="w-4 h-4 text-purple-600" />
+                                      <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                                        Email Riepilogo Salvata
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                                        {appointment.summaryEmailGeneratedAt ? format(new Date(appointment.summaryEmailGeneratedAt), "dd MMM yyyy 'alle' HH:mm", { locale: it }) : ''}
+                                      </span>
+                                      <svg className="w-5 h-5 text-purple-600 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                </summary>
+                                <div className="mt-2 bg-white dark:bg-slate-800 rounded-xl border border-purple-200 dark:border-purple-700 overflow-hidden shadow-lg">
+                                  <div className="max-h-[400px] overflow-y-auto">
+                                    <div 
+                                      className="prose prose-sm max-w-none p-4"
+                                      dangerouslySetInnerHTML={{ __html: appointment.summaryEmail }}
+                                    />
+                                  </div>
+                                </div>
+                              </details>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     );
