@@ -562,11 +562,11 @@ router.post("/discard", async (req: any, res) => {
       return res.status(404).json({ error: "Consultation not found" });
     }
 
-    // Update consultation status
+    // Update consultation status - set to 'missing' so it reappears for regeneration
     await db
       .update(consultations)
       .set({
-        summaryEmailStatus: "discarded",
+        summaryEmailStatus: "missing",
         summaryEmailDraft: null
       })
       .where(eq(consultations.id, consultationId));
@@ -589,6 +589,135 @@ router.post("/discard", async (req: any, res) => {
     res.json({ success: true, message: "Draft discarded" });
   } catch (error: any) {
     console.error("Error discarding draft:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Extract tasks from transcript (without generating email)
+router.post("/extract-tasks", async (req: any, res) => {
+  try {
+    const consultantId = req.user.id;
+    const { consultationId, transcript } = req.body;
+
+    if (!consultationId) {
+      return res.status(400).json({ error: "consultationId is required" });
+    }
+    if (!transcript || transcript.trim().length < 50) {
+      return res.status(400).json({ error: "Transcript is required (minimum 50 characters)" });
+    }
+
+    // Verify ownership
+    const consultation = await db
+      .select({
+        id: consultations.id,
+        clientId: consultations.clientId
+      })
+      .from(consultations)
+      .where(
+        and(
+          eq(consultations.id, consultationId),
+          eq(consultations.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!consultation[0]) {
+      return res.status(404).json({ error: "Consultation not found" });
+    }
+
+    // Get client info
+    const client = await db
+      .select({
+        firstName: users.firstName,
+        lastName: users.lastName
+      })
+      .from(users)
+      .where(eq(users.id, consultation[0].clientId))
+      .limit(1);
+
+    const clientName = client[0] ? `${client[0].firstName} ${client[0].lastName}` : "Cliente";
+
+    // Use AI to extract tasks from transcript
+    const { getAIProvider, getModelWithThinking } = await import("../ai/provider-factory");
+    const aiProvider = await getAIProvider(consultantId, consultantId);
+
+    const prompt = `Analizza la seguente trascrizione di una consulenza e identifica TUTTE le azioni concrete, compiti e follow-up discussi.
+
+TRASCRIZIONE:
+${transcript}
+
+CLIENTE: ${clientName}
+
+Estrai ogni azione menzionata, inclusi:
+- Esercizi assegnati al cliente
+- Documenti da inviare o ricevere
+- Scadenze e appuntamenti
+- Attività di follow-up
+- Compiti per il consulente
+- Qualsiasi altro impegno discusso
+
+Rispondi SOLO con un JSON valido nel seguente formato:
+{
+  "tasks": [
+    {
+      "title": "Titolo breve dell'azione",
+      "description": "Descrizione dettagliata se necessaria",
+      "dueDate": "YYYY-MM-DD o null se non specificata",
+      "priority": "high" | "medium" | "low",
+      "category": "exercise" | "follow-up" | "document" | "meeting"
+    }
+  ]
+}
+
+Se non ci sono azioni concrete nella trascrizione, rispondi con {"tasks": []}`;
+
+    const model = getModelWithThinking(aiProvider.metadata.name);
+    const result = await aiProvider.provider.models.generateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        temperature: 0.3,
+        maxOutputTokens: 2000
+      }
+    });
+
+    const responseText = result.text || "";
+    
+    // Parse JSON response
+    let extractedTasks: Array<{
+      title: string;
+      description: string | null;
+      dueDate: string | null;
+      priority: "high" | "medium" | "low";
+      category: "exercise" | "follow-up" | "document" | "meeting";
+    }> = [];
+
+    try {
+      // Extract JSON from response (handle potential markdown code blocks)
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.tasks && Array.isArray(parsed.tasks)) {
+          extractedTasks = parsed.tasks.map((task: any) => ({
+            title: task.title || "Task senza titolo",
+            description: task.description || null,
+            dueDate: task.dueDate || null,
+            priority: ["high", "medium", "low"].includes(task.priority) ? task.priority : "medium",
+            category: ["exercise", "follow-up", "document", "meeting"].includes(task.category) ? task.category : "follow-up"
+          }));
+        }
+      }
+    } catch (parseError) {
+      console.error("Error parsing AI response for tasks:", parseError);
+    }
+
+    res.json({
+      success: true,
+      tasks: extractedTasks,
+      message: `Estratti ${extractedTasks.length} task dalla trascrizione`
+    });
+  } catch (error: any) {
+    console.error("Error extracting tasks:", error);
     res.status(500).json({ error: error.message });
   }
 });
