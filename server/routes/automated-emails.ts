@@ -1134,14 +1134,16 @@ router.post("/consultant/email-drafts/:id/approve", authenticateToken, requireRo
 
     await storage.updateEmailDraftStatus(id, "sent", new Date());
 
-    // If this is a consultation summary email, save it to the consultation record
+    // If this is a consultation summary email, save it to the consultation record and sync status
     if (draft.emailType === "consultation_summary" && draft.consultationId) {
       console.log(`📋 Saving consultation summary email to consultation ${draft.consultationId}`);
       try {
         await storage.updateConsultation(draft.consultationId, {
-          summaryEmail: draft.body
+          summaryEmail: draft.body,
+          summaryEmailStatus: "sent",
+          summaryEmailSentAt: new Date()
         });
-        console.log(`✅ Consultation summary email saved successfully`);
+        console.log(`✅ Consultation summary email saved and status synced to ECHO system`);
       } catch (error: any) {
         console.error(`❌ Failed to save consultation summary email:`, error);
         // Don't fail the whole operation, just log the error
@@ -1208,12 +1210,15 @@ router.post("/consultant/email-drafts/:id/save-for-ai", authenticateToken, requi
     console.log(`💾 [SAVE FOR AI] Client ID: ${draft.clientId}`);
 
     // Save email to consultation record for AI context (NOT sending to client)
+    // Also sync summaryEmailStatus to "approved" so ECHO recognizes this consultation is handled
     try {
       await storage.updateConsultation(draft.consultationId, {
         summaryEmail: draft.body,
-        summaryEmailGeneratedAt: new Date()
+        summaryEmailGeneratedAt: new Date(),
+        summaryEmailStatus: "approved",
+        summaryEmailApprovedAt: new Date()
       });
-      console.log(`✅ [SAVE FOR AI] Summary email saved to consultation successfully`);
+      console.log(`✅ [SAVE FOR AI] Summary email saved to consultation and status synced to ECHO system`);
     } catch (error: any) {
       console.error(`❌ [SAVE FOR AI] Failed to save summary email:`, error);
       return res.status(500).json({

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
-import { consultations, consultationTasks, users } from "../../shared/schema";
-import { eq, and, desc, sql, isNull, ne } from "drizzle-orm";
+import { consultations, consultationTasks, users, emailDrafts } from "../../shared/schema";
+import { eq, and, desc, sql, isNull, ne, notExists } from "drizzle-orm";
 import { generateConsultationSummaryEmail } from "../ai/email-template-generator";
 import { storage } from "../storage";
 
@@ -93,11 +93,13 @@ router.get("/stats", async (req: any, res) => {
 });
 
 // Get consultations without summary email
+// Also excludes consultations that have already been handled via the old emailDrafts system
 router.get("/pending-consultations", async (req: any, res) => {
   try {
     const consultantId = req.user.id;
 
-    const pendingConsultations = await db
+    // First get all completed consultations that appear to need email
+    const allPendingConsultations = await db
       .select({
         id: consultations.id,
         clientId: consultations.clientId,
@@ -125,7 +127,33 @@ router.get("/pending-consultations", async (req: any, res) => {
       )
       .orderBy(desc(consultations.scheduledAt));
 
-    res.json(pendingConsultations);
+    // Check which of these already have email drafts sent/approved in the old system
+    const consultationIds = allPendingConsultations.map(c => c.id);
+    
+    if (consultationIds.length > 0) {
+      // Find consultations that already have sent/approved/pending drafts in emailDrafts table
+      const existingDrafts = await db
+        .select({ consultationId: emailDrafts.consultationId })
+        .from(emailDrafts)
+        .where(
+          and(
+            sql`${emailDrafts.consultationId} IN (${sql.join(consultationIds.map(id => sql`${id}`), sql`, `)})`,
+            eq(emailDrafts.emailType, "consultation_summary"),
+            sql`${emailDrafts.status} IN ('sent', 'approved', 'pending')`
+          )
+        );
+      
+      const handledConsultationIds = new Set(existingDrafts.map(d => d.consultationId));
+      
+      // Filter out already handled consultations
+      const trulyPendingConsultations = allPendingConsultations.filter(
+        c => !handledConsultationIds.has(c.id)
+      );
+      
+      res.json(trulyPendingConsultations);
+    } else {
+      res.json(allPendingConsultations);
+    }
   } catch (error: any) {
     console.error("Error fetching pending consultations:", error);
     res.status(500).json({ error: error.message });
