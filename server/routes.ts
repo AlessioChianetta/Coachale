@@ -75,6 +75,7 @@ import agentInstructionsRouter from "./routes/whatsapp/agent-instructions-router
 import templateApprovalRouter from "./routes/whatsapp/template-approval-router";
 import agentKnowledgeRouter from "./routes/whatsapp/agent-knowledge-router";
 import agentShareRouter from "./routes/whatsapp/agent-share-router";
+import agentStatsRouter from "./routes/whatsapp/agent-stats-router";
 import publicShareRouter from "./routes/whatsapp/public-share-router";
 import externalApiRouter from "./routes/external-api";
 import webhookRouter from "./routes/webhook";
@@ -7174,6 +7175,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // WhatsApp Agent Knowledge Base routes
   app.use("/api", agentKnowledgeRouter);
+
+  // WhatsApp Agent Stats & Analytics routes
+  app.use("/api/whatsapp/agents", agentStatsRouter);
 
   // Live Prompts routes (requires authentication)
   // Scoped to /api/live-prompts to avoid intercepting other /api routes
