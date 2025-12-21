@@ -2371,17 +2371,10 @@ export default function ConsultantAppointments() {
                                                 if (!fullTranscript.trim()) return;
                                                 setIsGeneratingSummary(true);
                                                 try {
-                                                  const response = await fetch('/api/echo/generate-summary-from-transcript', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    credentials: 'include',
-                                                    body: JSON.stringify({
-                                                      fullTranscript: fullTranscript,
-                                                      clientName: currentAppointment?.client?.firstName + ' ' + currentAppointment?.client?.lastName
-                                                    })
+                                                  const data = await apiRequest('POST', '/api/echo/generate-summary-from-transcript', {
+                                                    fullTranscript: fullTranscript,
+                                                    clientName: currentAppointment?.client?.firstName + ' ' + currentAppointment?.client?.lastName
                                                   });
-                                                  if (!response.ok) throw new Error('Errore nella generazione');
-                                                  const data = await response.json();
                                                   updateForm.setValue('transcript', data.summary);
                                                   setTranscriptMode('fathom');
                                                   setFullTranscript('');
@@ -2389,10 +2382,10 @@ export default function ConsultantAppointments() {
                                                     title: "✅ Riassunto Generato",
                                                     description: "Il riassunto è stato creato dall'AI e inserito nel campo",
                                                   });
-                                                } catch (error) {
+                                                } catch (error: any) {
                                                   toast({
                                                     title: "❌ Errore",
-                                                    description: "Impossibile generare il riassunto",
+                                                    description: error.message || "Impossibile generare il riassunto",
                                                     variant: "destructive",
                                                   });
                                                 } finally {
