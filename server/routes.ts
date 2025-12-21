@@ -9771,6 +9771,147 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // ============================================================================
+  // AGENT-SPECIFIC GOOGLE CALENDAR OAuth ENDPOINTS
+  // Each agent can have its own Google Calendar for appointments
+  // ============================================================================
+
+  // GET /api/whatsapp/agents/:agentId/calendar/status - Check if agent has calendar connected
+  app.get("/api/whatsapp/agents/:agentId/calendar/status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const agentId = req.params.agentId;
+
+      // Verify agent belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(schema.consultantWhatsappConfig)
+        .where(
+          and(
+            eq(schema.consultantWhatsappConfig.id, agentId),
+            eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      const { isAgentCalendarConnected } = await import("./google-calendar-service");
+      const status = await isAgentCalendarConnected(agentId);
+
+      res.json(status);
+    } catch (error: any) {
+      console.error("❌ Error checking agent calendar status:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/agents/:agentId/calendar/oauth/start - Start OAuth flow for agent
+  app.post("/api/whatsapp/agents/:agentId/calendar/oauth/start", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const agentId = req.params.agentId;
+
+      // Verify agent belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(schema.consultantWhatsappConfig)
+        .where(
+          and(
+            eq(schema.consultantWhatsappConfig.id, agentId),
+            eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      const { getAgentAuthorizationUrl, buildBaseUrlFromRequest } = await import("./google-calendar-service");
+      const redirectBaseUrl = buildBaseUrlFromRequest(req);
+      const authUrl = await getAgentAuthorizationUrl(agentId, redirectBaseUrl);
+
+      if (!authUrl) {
+        return res.status(500).json({ 
+          message: "Credenziali OAuth globali non configurate. Contatta il SuperAdmin." 
+        });
+      }
+
+      res.json({ authUrl });
+    } catch (error: any) {
+      console.error("❌ Error starting agent calendar OAuth:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/agents/calendar/oauth/callback - OAuth callback (handles redirect from Google)
+  app.get("/api/whatsapp/agents/calendar/oauth/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+
+      if (!code || !state) {
+        return res.redirect("/consultant/whatsapp-wizard?calendar_error=missing_params");
+      }
+
+      const agentId = state as string;
+      const { exchangeAgentCodeForTokens, buildBaseUrlFromRequest } = await import("./google-calendar-service");
+      const redirectBaseUrl = buildBaseUrlFromRequest(req);
+
+      const result = await exchangeAgentCodeForTokens(code as string, agentId, redirectBaseUrl);
+
+      if (result.success) {
+        console.log(`✅ Agent ${agentId} calendar connected successfully, email: ${result.email}`);
+        res.redirect(`/consultant/whatsapp-wizard?agent=${agentId}&calendar_connected=true&email=${encodeURIComponent(result.email || '')}`);
+      } else {
+        console.error(`❌ Failed to connect calendar for agent ${agentId}:`, result.error);
+        res.redirect(`/consultant/whatsapp-wizard?agent=${agentId}&calendar_error=${encodeURIComponent(result.error || 'unknown')}`);
+      }
+    } catch (error: any) {
+      console.error("❌ Error in agent calendar OAuth callback:", error);
+      res.redirect(`/consultant/whatsapp-wizard?calendar_error=${encodeURIComponent(error.message)}`);
+    }
+  });
+
+  // POST /api/whatsapp/agents/:agentId/calendar/disconnect - Disconnect calendar from agent
+  app.post("/api/whatsapp/agents/:agentId/calendar/disconnect", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const agentId = req.params.agentId;
+
+      // Verify agent belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(schema.consultantWhatsappConfig)
+        .where(
+          and(
+            eq(schema.consultantWhatsappConfig.id, agentId),
+            eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      const { disconnectAgentCalendar } = await import("./google-calendar-service");
+      const success = await disconnectAgentCalendar(agentId);
+
+      if (success) {
+        console.log(`✅ Calendar disconnected for agent ${agentId}`);
+        res.json({ success: true, message: "Calendario Google scollegato con successo" });
+      } else {
+        res.status(500).json({ message: "Errore durante la disconnessione del calendario" });
+      }
+    } catch (error: any) {
+      console.error("❌ Error disconnecting agent calendar:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // POST /api/whatsapp/test-credentials - Test Twilio credentials validity
   // ✅ PROTECTED: Only authenticated consultants can test their own credentials
   app.post("/api/whatsapp/test-credentials", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
