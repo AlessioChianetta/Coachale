@@ -676,8 +676,8 @@ Se non ci sono azioni concrete nella trascrizione, rispondi con {"tasks": []}`;
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 2000
+        temperature: 0.2,
+        maxOutputTokens: 4000
       }
     });
 
@@ -703,7 +703,7 @@ Se non ci sono azioni concrete nella trascrizione, rispondi con {"tasks": []}`;
         jsonStr = codeBlockMatch[1].trim();
       }
       
-      // Pattern 2: Look for { "tasks": [...] } structure
+      // Pattern 2: Look for { "tasks": [...] } structure  
       if (!jsonStr) {
         const tasksMatch = responseText.match(/\{\s*"tasks"\s*:\s*\[[\s\S]*?\]\s*\}/);
         if (tasksMatch) {
@@ -726,15 +726,34 @@ Se non ci sono azioni concrete nella trascrizione, rispondi con {"tasks": []}`;
           .replace(/,\s*}/g, '}')  // Remove trailing commas in objects
           .replace(/[\x00-\x1F\x7F]/g, ' '); // Remove control characters
         
-        const parsed = JSON.parse(jsonStr);
-        if (parsed.tasks && Array.isArray(parsed.tasks)) {
-          extractedTasks = parsed.tasks.map((task: any) => ({
-            title: task.title || "Task senza titolo",
-            description: task.description || null,
-            dueDate: task.dueDate || null,
-            priority: ["high", "medium", "low"].includes(task.priority) ? task.priority : "medium",
-            category: ["exercise", "follow-up", "document", "meeting"].includes(task.category) ? task.category : "follow-up"
-          }));
+        try {
+          const parsed = JSON.parse(jsonStr);
+          if (parsed.tasks && Array.isArray(parsed.tasks)) {
+            extractedTasks = parsed.tasks.map((task: any) => ({
+              title: task.title || "Task senza titolo",
+              description: task.description || null,
+              dueDate: task.dueDate || null,
+              priority: ["high", "medium", "low"].includes(task.priority) ? task.priority : "medium",
+              category: ["exercise", "follow-up", "document", "meeting"].includes(task.category) ? task.category : "follow-up"
+            }));
+          }
+        } catch (jsonParseErr) {
+          // Fallback: Try to extract individual complete task objects from truncated JSON
+          console.log("Primary JSON parse failed, trying individual task extraction...");
+          const taskRegex = /\{\s*"title"\s*:\s*"([^"]+)"\s*,\s*"description"\s*:\s*"([^"]*)"\s*,\s*"dueDate"\s*:\s*"([^"]*)"\s*,\s*"priority"\s*:\s*"([^"]*)"\s*,\s*"category"\s*:\s*"([^"]*)"\s*\}/g;
+          let match;
+          while ((match = taskRegex.exec(responseText)) !== null) {
+            extractedTasks.push({
+              title: match[1] || "Task senza titolo",
+              description: match[2] || null,
+              dueDate: match[3] || null,
+              priority: ["high", "medium", "low"].includes(match[4]) ? match[4] as "high" | "medium" | "low" : "medium",
+              category: ["exercise", "follow-up", "document", "meeting"].includes(match[5]) ? match[5] as "exercise" | "follow-up" | "document" | "meeting" : "follow-up"
+            });
+          }
+          if (extractedTasks.length > 0) {
+            console.log(`Recovered ${extractedTasks.length} tasks from truncated JSON`);
+          }
         }
       }
     } catch (parseError) {
