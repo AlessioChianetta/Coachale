@@ -328,6 +328,7 @@ export default function WhatsAppAgentWizard({
                   formData={formData}
                   onChange={handleFieldChange}
                   errors={validationErrors}
+                  agentId={initialData?.id || null}
                 />
               )}
               {currentStep === 2 && (
