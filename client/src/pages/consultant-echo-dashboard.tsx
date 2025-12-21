@@ -22,6 +22,9 @@ import {
   Trash2,
   Calendar,
   User,
+  Wand2,
+  Sparkles,
+  ChevronDown,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -98,11 +101,14 @@ export default function ConsultantEchoDashboardPage() {
     open: false,
     email: null,
   });
-  const [generateDialog, setGenerateDialog] = useState<{ open: boolean; consultation: PendingConsultation | null; notes: string }>({
+  const [generateDialog, setGenerateDialog] = useState<{ open: boolean; consultation: PendingConsultation | null; notes: string; fullTranscript: string; mode: 'notes' | 'transcript' }>({
     open: false,
     consultation: null,
     notes: "",
+    fullTranscript: "",
+    mode: 'notes',
   });
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useQuery<EchoStats>({
     queryKey: ["/api/echo/stats"],
@@ -482,7 +488,7 @@ export default function ConsultantEchoDashboardPage() {
                             size="sm"
                             className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
                             disabled={!consultation.transcript || generateEmailMutation.isPending}
-                            onClick={() => setGenerateDialog({ open: true, consultation, notes: "" })}
+                            onClick={() => setGenerateDialog({ open: true, consultation, notes: "", fullTranscript: "", mode: 'notes' })}
                           >
                             {generateEmailMutation.isPending ? (
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -540,22 +546,15 @@ export default function ConsultantEchoDashboardPage() {
                             <Clock className="h-3 w-3" />
                             Generata {formatDistanceToNow(new Date(email.summaryEmailGeneratedAt), { addSuffix: true, locale: it })}
                           </div>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 mb-3">
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setPreviewDialog({ open: true, email })}
+                              onClick={() => saveForAIMutation.mutate(email.id)}
+                              disabled={saveForAIMutation.isPending}
                             >
-                              <Eye className="h-3 w-3 mr-1" />
-                              Preview
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => window.location.href = `/consultant/appointments?consultationId=${email.id}`}
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Modifica
+                              <Save className="h-3 w-3 mr-1" />
+                              Salva AI
                             </Button>
                             <Button
                               size="sm"
@@ -567,6 +566,32 @@ export default function ConsultantEchoDashboardPage() {
                               Approva & Invia
                             </Button>
                           </div>
+
+                          {/* Email Preview Espandibile */}
+                          <details className="group">
+                            <summary className="cursor-pointer list-none p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg border border-orange-200 dark:border-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Eye className="w-3 h-3 text-orange-600" />
+                                  <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                                    Anteprima Email
+                                  </span>
+                                </div>
+                                <ChevronDown className="w-4 h-4 text-orange-600 group-open:rotate-180 transition-transform" />
+                              </div>
+                            </summary>
+                            <div className="mt-2 bg-white dark:bg-slate-800 rounded-lg border border-orange-200 dark:border-orange-700 overflow-hidden">
+                              <div className="p-3 border-b border-orange-100 dark:border-orange-800">
+                                <p className="text-xs text-gray-500 mb-1">Oggetto</p>
+                                <p className="text-sm font-medium">{email.summaryEmailDraft?.subject}</p>
+                              </div>
+                              <div className="max-h-[200px] overflow-y-auto p-3">
+                                <div className="prose prose-sm max-w-none text-sm whitespace-pre-wrap">
+                                  {email.summaryEmailDraft?.body}
+                                </div>
+                              </div>
+                            </div>
+                          </details>
                         </div>
                       ))}
                     </div>
@@ -658,8 +683,8 @@ export default function ConsultantEchoDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={generateDialog.open} onOpenChange={(open) => setGenerateDialog({ open, consultation: open ? generateDialog.consultation : null, notes: "" })}>
-        <DialogContent>
+      <Dialog open={generateDialog.open} onOpenChange={(open) => setGenerateDialog({ open, consultation: open ? generateDialog.consultation : null, notes: "", fullTranscript: "", mode: 'notes' })}>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-orange-500" />
@@ -671,33 +696,88 @@ export default function ConsultantEchoDashboardPage() {
           </DialogHeader>
           {generateDialog.consultation && (
             <div className="space-y-4">
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-500 mb-1">Cliente</p>
-                <p className="font-medium">
-                  {generateDialog.consultation.client?.firstName} {generateDialog.consultation.client?.lastName}
-                </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-1">Cliente</p>
+                  <p className="font-medium text-sm">
+                    {generateDialog.consultation.client?.firstName} {generateDialog.consultation.client?.lastName}
+                  </p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-1">Data</p>
+                  <p className="font-medium text-sm">
+                    {format(new Date(generateDialog.consultation.scheduledAt), "d MMM yyyy HH:mm", { locale: it })}
+                  </p>
+                </div>
               </div>
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-500 mb-1">Data Consulenza</p>
-                <p className="font-medium">
-                  {format(new Date(generateDialog.consultation.scheduledAt), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Note Aggiuntive (opzionale)</label>
-                <Textarea
-                  placeholder="Aggiungi note o istruzioni per l'AI..."
-                  value={generateDialog.notes}
-                  onChange={(e) => setGenerateDialog({ ...generateDialog, notes: e.target.value })}
-                  rows={3}
-                />
+
+              {/* Tabs per scegliere modalità */}
+              <div className="space-y-3">
+                <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setGenerateDialog({ ...generateDialog, mode: 'notes' })}
+                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      generateDialog.mode === 'notes' 
+                        ? 'bg-white dark:bg-slate-700 text-orange-700 dark:text-orange-300 shadow-sm' 
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 justify-center">
+                      <Sparkles className="w-4 h-4" />
+                      Note Aggiuntive
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenerateDialog({ ...generateDialog, mode: 'transcript' })}
+                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      generateDialog.mode === 'transcript' 
+                        ? 'bg-white dark:bg-slate-700 text-orange-700 dark:text-orange-300 shadow-sm' 
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 justify-center">
+                      <Wand2 className="w-4 h-4" />
+                      Trascrizione Completa
+                    </span>
+                  </button>
+                </div>
+
+                {generateDialog.mode === 'notes' ? (
+                  <div>
+                    <Textarea
+                      placeholder="Aggiungi note o istruzioni per l'AI... (opzionale)"
+                      value={generateDialog.notes}
+                      onChange={(e) => setGenerateDialog({ ...generateDialog, notes: e.target.value })}
+                      rows={4}
+                      className="rounded-xl"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Note extra per personalizzare l'email (usate solo per la generazione)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="Incolla qui la trascrizione completa della chiamata...&#10;&#10;L'AI userà questa trascrizione per generare un'email più dettagliata e precisa."
+                      value={generateDialog.fullTranscript}
+                      onChange={(e) => setGenerateDialog({ ...generateDialog, fullTranscript: e.target.value })}
+                      rows={6}
+                      className="rounded-xl"
+                    />
+                    <p className="text-xs text-orange-600 dark:text-orange-400">
+                      La trascrizione NON viene salvata - serve solo a Gemini per generare un'email migliore
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setGenerateDialog({ open: false, consultation: null, notes: "" })}
+              onClick={() => setGenerateDialog({ open: false, consultation: null, notes: "", fullTranscript: "", mode: 'notes' })}
             >
               Annulla
             </Button>
@@ -705,7 +785,9 @@ export default function ConsultantEchoDashboardPage() {
               className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
               onClick={() => generateEmailMutation.mutate({
                 consultationId: generateDialog.consultation!.id,
-                additionalNotes: generateDialog.notes || undefined,
+                additionalNotes: generateDialog.mode === 'transcript' && generateDialog.fullTranscript.trim() 
+                  ? `[TRASCRIZIONE COMPLETA]\n${generateDialog.fullTranscript}\n\n${generateDialog.notes || ''}`
+                  : generateDialog.notes || undefined,
               })}
               disabled={generateEmailMutation.isPending}
             >
