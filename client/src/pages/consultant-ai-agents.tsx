@@ -13,6 +13,8 @@ import {
   Users,
   Mail,
   ClipboardCheck,
+  Sparkles,
+  Star,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -74,6 +76,20 @@ export default function ConsultantAIAgentsPage() {
     },
   });
 
+  // Fetch Echo stats for special agent card
+  const { data: echoStats } = useQuery({
+    queryKey: ["/api/echo/stats"],
+    queryFn: async () => {
+      const response = await fetch("/api/echo/stats", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        return { emailCount: 0, taskCount: 0, pendingApprovals: 0 };
+      }
+      return response.json();
+    },
+  });
+
   const handleCreateNewAgent = () => {
     toast({
       title: "🚀 Funzionalità in arrivo",
@@ -125,6 +141,79 @@ export default function ConsultantAIAgentsPage() {
               <p className="text-gray-600 dark:text-gray-400">
                 Gestisci e monitora i tuoi assistenti AI
               </p>
+            </div>
+
+            {/* AGENTE SPECIALE - Echo Section */}
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wide">
+                  Agente Speciale
+                </h2>
+              </div>
+              <Card className="relative overflow-hidden border-2 border-purple-300 dark:border-purple-700 bg-gradient-to-br from-purple-50 via-indigo-50 to-violet-100 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-violet-950/40 hover:shadow-2xl hover:shadow-purple-300/50 dark:hover:shadow-purple-800/50 hover:-translate-y-1 hover:border-purple-500 dark:hover:border-purple-500 transition-all duration-300 rounded-2xl">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-400/20 to-indigo-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-violet-400/20 to-purple-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+                <CardContent className="relative p-6">
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-xl ring-4 ring-purple-200 dark:ring-purple-800">
+                          <Sparkles className="h-10 w-10 text-white" />
+                        </div>
+                        <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs px-2 py-0.5 font-bold shadow-lg">
+                          <Star className="h-3 w-3 mr-1 fill-current" />
+                          SPECIALE
+                        </Badge>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                          Echo - Riepilogo Consulenze
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-lg">
+                          Genera automaticamente email di riepilogo dalle tue consulenze, estrae task e gestisce l'approvazione.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex-1"></div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
+                      <div className="flex gap-4 flex-wrap">
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl px-4 py-3 shadow-sm border border-purple-200/50 dark:border-purple-700/50">
+                          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                            {echoStats?.emailCount ?? 0}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            Email
+                          </div>
+                        </div>
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl px-4 py-3 shadow-sm border border-indigo-200/50 dark:border-indigo-700/50">
+                          <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                            {echoStats?.taskCount ?? 0}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            Task
+                          </div>
+                        </div>
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl px-4 py-3 shadow-sm border border-violet-200/50 dark:border-violet-700/50">
+                          <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">
+                            {echoStats?.pendingApprovals ?? 0}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            In Attesa
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        className="bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 hover:from-purple-700 hover:via-indigo-700 hover:to-violet-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-6"
+                        onClick={() => window.location.href = '/consultant/echo-dashboard'}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Apri Dashboard Echo
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* AI Agents Grid */}
@@ -296,7 +385,7 @@ export default function ConsultantAIAgentsPage() {
                   </div>
                   <Button
                     className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                    onClick={() => window.location.href = '/consultant/appointments'}
+                    onClick={() => window.location.href = '/consultant/echo-dashboard'}
                   >
                     Gestisci
                   </Button>

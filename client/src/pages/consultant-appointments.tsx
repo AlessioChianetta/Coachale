@@ -59,6 +59,20 @@ type AppointmentForm = z.infer<typeof appointmentSchema>;
 type UpdateAppointmentForm = z.infer<typeof updateAppointmentSchema>;
 type CompletionForm = z.infer<typeof completionFormSchema>;
 
+// Helper function to get email status indicator for appointments
+function getEmailStatusIndicator(apt: any): { dot: string; label: string } | null {
+  if (apt.status === 'completed') {
+    if (apt.summaryEmailStatus === 'sent') {
+      return { dot: '🟢', label: 'Email Inviata' };
+    } else if (apt.summaryEmailStatus === 'draft') {
+      return { dot: '🟡', label: 'Bozza Pronta' };
+    } else {
+      return { dot: '🔴', label: 'Email Mancante' };
+    }
+  }
+  return null;
+}
+
 // Componente Calendario Premium
 function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
   appointments: any[];
@@ -93,6 +107,18 @@ function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
   const prevMonth = () => {
     setCurrentDate(subMonths(currentDate, 1));
   };
+
+  // Calculate monthly email statistics
+  const monthlyAppointments = appointments.filter(apt => 
+    isSameMonth(new Date(apt.scheduledAt), currentDate)
+  );
+  const totalConsultations = monthlyAppointments.length;
+  const completedConsultations = monthlyAppointments.filter(apt => apt.status === 'completed');
+  const emailsSent = completedConsultations.filter(apt => apt.summaryEmailStatus === 'sent').length;
+  const draftsReady = completedConsultations.filter(apt => apt.summaryEmailStatus === 'draft').length;
+  const emailsMissing = completedConsultations.filter(apt => 
+    !apt.summaryEmailStatus || apt.summaryEmailStatus === 'missing'
+  ).length;
 
   return (
     <Card className="h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 border-0 shadow-2xl">
@@ -183,20 +209,27 @@ function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
                 </div>
 
                 <div className="flex-1 space-y-1">
-                  {dayAppointments.slice(0, 2).map((apt, idx) => (
-                    <div
-                      key={`${apt.id}-${idx}`}
-                      className={`text-xs px-2 py-1 rounded-full text-center truncate font-medium shadow-sm ${
-                        apt.status === 'completed' 
-                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                          : apt.status === 'cancelled'
-                          ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                          : 'bg-blue-100 text-blue-700 border border-blue-200'
-                      }`}
-                    >
-                      {format(new Date(apt.scheduledAt), "HH:mm")}
-                    </div>
-                  ))}
+                  {dayAppointments.slice(0, 2).map((apt, idx) => {
+                    const emailIndicator = getEmailStatusIndicator(apt);
+                    return (
+                      <div
+                        key={`${apt.id}-${idx}`}
+                        className={`text-xs px-2 py-1 rounded-full text-center truncate font-medium shadow-sm flex items-center justify-center gap-1 ${
+                          apt.status === 'completed' 
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                            : apt.status === 'cancelled'
+                            ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                            : 'bg-blue-100 text-blue-700 border border-blue-200'
+                        }`}
+                        title={emailIndicator ? emailIndicator.label : undefined}
+                      >
+                        {format(new Date(apt.scheduledAt), "HH:mm")}
+                        {emailIndicator && (
+                          <span className="text-[10px] ml-0.5">{emailIndicator.dot}</span>
+                        )}
+                      </div>
+                    );
+                  })}
                   {dayAppointments.length > 2 && (
                     <div className="text-xs text-center font-medium bg-slate-100 text-slate-600 rounded-full py-1">
                       +{dayAppointments.length - 2} altri
@@ -206,6 +239,46 @@ function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
               </div>
             );
           })}
+        </div>
+
+        {/* Monthly Email Statistics Bar */}
+        <div className="mt-6 p-4 bg-gradient-to-r from-slate-100 to-blue-50 dark:from-slate-800 dark:to-blue-900 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Totale: <span className="font-bold text-blue-600">{totalConsultations}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🟢</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Inviate: <span className="font-bold text-emerald-600">{emailsSent}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🟡</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Bozze: <span className="font-bold text-amber-600">{draftsReady}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🔴</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Mancanti: <span className={`font-bold ${emailsMissing > 0 ? 'text-rose-600' : 'text-slate-500'}`}>{emailsMissing}</span>
+                </span>
+                {emailsMissing > 0 && (
+                  <AlertCircle className="w-4 h-4 text-rose-500 animate-pulse" />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="mt-4 text-center text-sm text-slate-600 dark:text-slate-400">
+          <span className="font-semibold">LEGENDA:</span> 🟢 Email Inviata  🟡 Bozza Pronta  🔴 Email Mancante
         </div>
       </CardContent>
     </Card>

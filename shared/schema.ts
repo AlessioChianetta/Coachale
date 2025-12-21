@@ -139,9 +139,26 @@ export const consultations = pgTable("consultations", {
   googleMeetLink: text("google_meet_link"),
   fathomShareLink: text("fathom_share_link"),
   transcript: text("transcript"), // Trascrizione completa da Fathom
-  summaryEmail: text("summary_email"), // Email di riepilogo generata dall'AI
+  summaryEmail: text("summary_email"), // Email di riepilogo generata dall'AI (finale approvata)
   summaryEmailGeneratedAt: timestamp("summary_email_generated_at"), // Quando è stata generata
   googleCalendarEventId: text("google_calendar_event_id"),
+  
+  // Echo System - Email Status Tracking
+  summaryEmailStatus: text("summary_email_status").$type<"missing" | "draft" | "approved" | "sent" | "discarded">().default("missing"),
+  summaryEmailDraft: jsonb("summary_email_draft").$type<{
+    subject: string;
+    body: string;
+    extractedTasks: Array<{
+      title: string;
+      description: string | null;
+      dueDate: string | null;
+      priority: "low" | "medium" | "high" | "urgent";
+      category: "preparation" | "follow-up" | "exercise" | "goal" | "reminder";
+    }>;
+  }>(),
+  summaryEmailApprovedAt: timestamp("summary_email_approved_at"),
+  summaryEmailSentAt: timestamp("summary_email_sent_at"),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -407,6 +424,12 @@ export const consultationTasks = pgTable("consultation_tasks", {
   completedAt: timestamp("completed_at"),
   priority: text("priority").notNull().$type<"low" | "medium" | "high" | "urgent">().default("medium"),
   category: text("category").notNull().$type<"preparation" | "follow-up" | "exercise" | "goal" | "reminder">().default("reminder"),
+  
+  // Echo System - Task Source & Draft Status
+  source: text("source").$type<"manual" | "echo_extracted" | "auto_followup">().default("manual"),
+  draftStatus: text("draft_status").$type<"draft" | "active" | "discarded">().default("active"),
+  activatedAt: timestamp("activated_at"), // When task was activated (email approved)
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

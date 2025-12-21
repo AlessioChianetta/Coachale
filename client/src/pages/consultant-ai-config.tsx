@@ -50,7 +50,10 @@ import {
   Info,
   Megaphone,
   ChevronsUpDown,
-  History
+  History,
+  Trash2,
+  Save,
+  RefreshCw
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
@@ -763,6 +766,527 @@ function EmailJourneyTab() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// Echo - Riepilogo Consulenza Tab Component
+function EchoTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [previewDialog, setPreviewDialog] = useState(false);
+  const [selectedEchoDraft, setSelectedEchoDraft] = useState<any>(null);
+  const [generatingEmailId, setGeneratingEmailId] = useState<string | null>(null);
+
+  // Fetch Echo statistics
+  const { data: echoStats, isLoading: statsLoading } = useQuery<{
+    totalEmails: number;
+    totalTasks: number;
+    pendingApprovals: number;
+    missingEmails: number;
+    successRate: number;
+  }>({
+    queryKey: ["/api/echo/stats"],
+  });
+
+  // Fetch draft emails awaiting approval
+  const { data: draftEmails, isLoading: draftsLoading } = useQuery<any[]>({
+    queryKey: ["/api/echo/draft-emails"],
+  });
+
+  // Fetch consultations without email
+  const { data: pendingConsultations, isLoading: pendingLoading } = useQuery<any[]>({
+    queryKey: ["/api/echo/pending-consultations"],
+  });
+
+  // Generate email for consultation
+  const generateEmailMutation = useMutation({
+    mutationFn: async (consultationId: string) => {
+      const response = await fetch("/api/echo/generate-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ consultationId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore generazione email");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Successo", description: "Email generata con successo" });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/pending-consultations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
+      setGeneratingEmailId(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      setGeneratingEmailId(null);
+    },
+  });
+
+  // Approve and send email
+  const approveAndSendMutation = useMutation({
+    mutationFn: async (consultationId: string) => {
+      const response = await fetch("/api/echo/approve-and-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ consultationId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore invio email");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Successo", description: "Email inviata con successo" });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
+      setPreviewDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Save for AI only
+  const saveForAiMutation = useMutation({
+    mutationFn: async (consultationId: string) => {
+      const response = await fetch("/api/echo/save-for-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ consultationId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore salvataggio");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Successo", description: "Email salvata per contesto AI" });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
+      setPreviewDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Discard draft
+  const discardMutation = useMutation({
+    mutationFn: async (consultationId: string) => {
+      const response = await fetch("/api/echo/discard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ consultationId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore scarto bozza");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Bozza scartata", description: "La bozza è stata eliminata" });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/pending-consultations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
+      setPreviewDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handlePreview = (draft: any) => {
+    setSelectedEchoDraft(draft);
+    setPreviewDialog(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Section 1: Echo Statistics */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-700">Email Totali</CardTitle>
+            <Mail className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-900">
+              {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : echoStats?.totalEmails || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-emerald-700">Task Totali</CardTitle>
+            <ListTodo className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-900">
+              {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : echoStats?.totalTasks || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700">In Attesa Approvazione</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-900">
+              {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : echoStats?.pendingApprovals || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-purple-700">Tasso di Successo</CardTitle>
+            <TrendingUp className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-900">
+              {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${echoStats?.successRate || 0}%`}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Section 2: Draft Emails Waiting for Approval */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-6 w-6" />
+            Bozze Email in Attesa di Approvazione
+          </CardTitle>
+          <CardDescription>
+            Email di riepilogo consulenza generate da Echo in attesa della tua approvazione
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {draftsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : !draftEmails || draftEmails.length === 0 ? (
+            <div className="text-center py-12">
+              <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-lg font-semibold text-muted-foreground">Nessuna bozza in attesa</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Le email generate da Echo appariranno qui per l'approvazione
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Data Consulenza</TableHead>
+                  <TableHead>Oggetto Email</TableHead>
+                  <TableHead>Task Estratti</TableHead>
+                  <TableHead>Generata il</TableHead>
+                  <TableHead className="text-right">Azioni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {draftEmails.map((draft) => (
+                  <TableRow key={draft.id}>
+                    <TableCell className="font-medium">
+                      {draft.client?.firstName} {draft.client?.lastName}
+                    </TableCell>
+                    <TableCell>
+                      {draft.scheduledAt ? (
+                        <Badge variant="outline" className="bg-blue-50">
+                          {format(new Date(draft.scheduledAt), "dd/MM/yyyy", { locale: it })}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate">
+                      {draft.summaryEmailDraft?.subject || "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
+                        {draft.draftTasks?.length || 0} task
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {draft.summaryEmailGeneratedAt
+                        ? format(new Date(draft.summaryEmailGeneratedAt), "dd/MM/yyyy HH:mm", { locale: it })
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePreview(draft)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Vedi
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => approveAndSendMutation.mutate(draft.id)}
+                          disabled={approveAndSendMutation.isPending}
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Approva e Invia
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => saveForAiMutation.mutate(draft.id)}
+                          disabled={saveForAiMutation.isPending}
+                          className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                        >
+                          <Save className="h-4 w-4 mr-1" />
+                          Solo AI
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => discardMutation.mutate(draft.id)}
+                          disabled={discardMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Scarta
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Section 3: Consultations Without Email */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-6 w-6 text-orange-500" />
+            Consulenze Senza Email
+          </CardTitle>
+          <CardDescription>
+            Consulenze completate che necessitano di generazione email riepilogo
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pendingLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : !pendingConsultations || pendingConsultations.length === 0 ? (
+            <div className="text-center py-12">
+              <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
+              <p className="text-lg font-semibold text-muted-foreground">Tutte le consulenze hanno un'email</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Non ci sono consulenze in attesa di generazione email
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Data Consulenza</TableHead>
+                  <TableHead>Stato Trascrizione</TableHead>
+                  <TableHead className="text-right">Azioni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingConsultations.map((consultation) => (
+                  <TableRow key={consultation.id}>
+                    <TableCell className="font-medium">
+                      {consultation.client?.firstName} {consultation.client?.lastName}
+                    </TableCell>
+                    <TableCell>
+                      {consultation.scheduledAt ? (
+                        <Badge variant="outline" className="bg-blue-50">
+                          {format(new Date(consultation.scheduledAt), "dd/MM/yyyy HH:mm", { locale: it })}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {consultation.transcript ? (
+                        <Badge className="bg-emerald-600">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Trascrizione disponibile
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-orange-600 border-orange-300">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Trascrizione mancante
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          setGeneratingEmailId(consultation.id);
+                          generateEmailMutation.mutate(consultation.id);
+                        }}
+                        disabled={!consultation.transcript || generatingEmailId === consultation.id}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {generatingEmailId === consultation.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Generazione...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-1" />
+                            Genera Email
+                          </>
+                        )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewDialog} onOpenChange={setPreviewDialog}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Anteprima Email Riepilogo Consulenza
+            </DialogTitle>
+            <DialogDescription>
+              Cliente: {selectedEchoDraft?.client?.firstName} {selectedEchoDraft?.client?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedEchoDraft && (
+            <div className="space-y-6">
+              {/* Email Preview */}
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-semibold">Oggetto</Label>
+                  <p className="mt-1 p-3 bg-slate-50 rounded-lg text-sm">
+                    {selectedEchoDraft.summaryEmailDraft?.subject || "N/A"}
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-semibold">Contenuto Email</Label>
+                  <div className="mt-1 p-6 bg-white border rounded-lg max-h-[300px] overflow-y-auto">
+                    <div
+                      className="prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{
+                        __html: selectedEchoDraft.summaryEmailDraft?.body || "Nessun contenuto",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Extracted Tasks */}
+              {selectedEchoDraft.draftTasks && selectedEchoDraft.draftTasks.length > 0 && (
+                <div>
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <ListTodo className="h-4 w-4" />
+                    Task Estratti ({selectedEchoDraft.draftTasks.length})
+                  </Label>
+                  <div className="mt-2 space-y-2">
+                    {selectedEchoDraft.draftTasks.map((task: any, index: number) => (
+                      <div
+                        key={task.id || index}
+                        className="p-3 bg-slate-50 border rounded-lg flex items-start gap-3"
+                      >
+                        <Badge variant="outline" className="shrink-0">
+                          {index + 1}
+                        </Badge>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{task.title}</p>
+                          {task.description && (
+                            <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
+                          )}
+                          <div className="flex gap-2 mt-2">
+                            <Badge variant="outline" className="text-xs">
+                              {task.category || "generale"}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {task.priority || "medium"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setPreviewDialog(false)}>
+                  Chiudi
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => saveForAiMutation.mutate(selectedEchoDraft.id)}
+                  disabled={saveForAiMutation.isPending}
+                  className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  {saveForAiMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-1" />
+                  )}
+                  Solo AI
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => discardMutation.mutate(selectedEchoDraft.id)}
+                  disabled={discardMutation.isPending}
+                >
+                  {discardMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-1" />
+                  )}
+                  Scarta
+                </Button>
+                <Button
+                  onClick={() => approveAndSendMutation.mutate(selectedEchoDraft.id)}
+                  disabled={approveAndSendMutation.isPending}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {approveAndSendMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                  )}
+                  Approva e Invia
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -2028,7 +2552,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
           </Collapsible>
 
           <Tabs defaultValue="drafts" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 bg-gradient-to-r from-white via-blue-50/30 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 shadow-xl border-2 border-blue-100/50 dark:border-slate-600 p-2 h-auto rounded-2xl backdrop-blur-sm">
+            <TabsList className="grid w-full grid-cols-8 bg-gradient-to-r from-white via-blue-50/30 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 shadow-xl border-2 border-blue-100/50 dark:border-slate-600 p-2 h-auto rounded-2xl backdrop-blur-sm">
               <TabsTrigger 
                 value="drafts" 
                 className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-slate-700/50"
@@ -2037,11 +2561,19 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 <span>Bozze</span>
               </TabsTrigger>
               <TabsTrigger 
+                value="echo" 
+                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-amber-50/50 dark:hover:bg-slate-700/50"
+              >
+                <Sparkles className="h-5 w-5" />
+                <span className="hidden lg:inline">Riepilogo Consulenza</span>
+                <span className="lg:hidden">Echo</span>
+              </TabsTrigger>
+              <TabsTrigger 
                 value="consultation-summary" 
                 className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-purple-50/50 dark:hover:bg-slate-700/50"
               >
                 <span className="text-xl">📋</span>
-                <span className="hidden lg:inline">Riepilogo Consulenza</span>
+                <span className="hidden lg:inline">Email Riepilogo</span>
                 <span className="lg:hidden">Riepilogo</span>
               </TabsTrigger>
               <TabsTrigger 
@@ -2189,6 +2721,10 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="echo" className="space-y-6">
+              <EchoTab />
             </TabsContent>
 
             <TabsContent value="consultation-summary" className="space-y-6">

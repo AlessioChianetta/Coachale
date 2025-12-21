@@ -101,6 +101,7 @@ import adminRouter from "./routes/admin";
 import onboardingRouter from "./routes/onboarding";
 import followupApiRouter from "./routes/followup-api";
 import fileSearchRouter from "./routes/file-search";
+import echoRouter from "./routes/echo";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -7250,6 +7251,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Gemini File Search routes (RAG document retrieval)
   app.use("/api/file-search", fileSearchRouter);
+
+  // Echo - AI Consultation Summary Email System
+  app.use("/api/echo", authenticateToken, echoRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
