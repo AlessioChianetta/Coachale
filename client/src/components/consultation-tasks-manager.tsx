@@ -476,7 +476,12 @@ export default function ConsultationTasksManager({ clientId, consultantId, consu
               <div className="flex flex-col sm:flex-row gap-2">
                 {transcript && transcript.trim().length >= 50 && (
                   <Button 
-                    onClick={() => extractTasksMutation.mutate()}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      extractTasksMutation.mutate();
+                    }}
                     disabled={extractTasksMutation.isPending}
                     className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all"
                   >

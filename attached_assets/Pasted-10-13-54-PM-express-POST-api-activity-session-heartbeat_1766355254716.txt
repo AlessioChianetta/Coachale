@@ -1,0 +1,33 @@
+10:13:54 PM [express] POST /api/activity/session/heartbeat 200 in 1294ms :: {"success":true,"lastActi…
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+10:13:55 PM [express] PUT /api/consultations/c7048a7c-0310-4f5e-bc1a-718676dd65b4 200 in 578ms :: {"i…
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+10:13:56 PM [express] GET /api/consultations/consultant 304 in 1334ms :: [{"id":"044ccf1e-926b-49d7-8…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 8 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+Error parsing AI response for tasks: SyntaxError: Expected ',' or ']' after array element in JSON at position 1461
+    at parse (<anonymous>)
+    at JSON.parse (/home/runner/workspace/node_modules/pdf-parse/node_modules/pdfjs-dist/legacy/build/pdf.mjs:4852:56)
+    at <anonymous> (/home/runner/workspace/server/routes/echo.ts:699:29)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+10:14:06 PM [express] POST /api/echo/extract-tasks 200 in 11686ms :: {"success":true,"tasks":[],"mess…

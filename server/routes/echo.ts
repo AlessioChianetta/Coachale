@@ -694,9 +694,39 @@ Se non ci sono azioni concrete nella trascrizione, rispondi con {"tasks": []}`;
 
     try {
       // Extract JSON from response (handle potential markdown code blocks)
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+      // Try multiple patterns to find valid JSON
+      let jsonStr = "";
+      
+      // Pattern 1: Look for ```json ... ``` code block
+      const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1].trim();
+      }
+      
+      // Pattern 2: Look for { "tasks": [...] } structure
+      if (!jsonStr) {
+        const tasksMatch = responseText.match(/\{\s*"tasks"\s*:\s*\[[\s\S]*?\]\s*\}/);
+        if (tasksMatch) {
+          jsonStr = tasksMatch[0];
+        }
+      }
+      
+      // Pattern 3: Any JSON object (fallback)
+      if (!jsonStr) {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[0];
+        }
+      }
+      
+      if (jsonStr) {
+        // Clean common JSON issues
+        jsonStr = jsonStr
+          .replace(/,\s*]/g, ']')  // Remove trailing commas in arrays
+          .replace(/,\s*}/g, '}')  // Remove trailing commas in objects
+          .replace(/[\x00-\x1F\x7F]/g, ' '); // Remove control characters
+        
+        const parsed = JSON.parse(jsonStr);
         if (parsed.tasks && Array.isArray(parsed.tasks)) {
           extractedTasks = parsed.tasks.map((task: any) => ({
             title: task.title || "Task senza titolo",
@@ -709,6 +739,7 @@ Se non ci sono azioni concrete nella trascrizione, rispondi con {"tasks": []}`;
       }
     } catch (parseError) {
       console.error("Error parsing AI response for tasks:", parseError);
+      console.log("Raw AI response:", responseText.substring(0, 500));
     }
 
     res.json({
