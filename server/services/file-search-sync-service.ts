@@ -3294,7 +3294,7 @@ export class FileSearchSyncService {
       const consultantId = agentConfig.consultantId;
 
       // Check if already indexed
-      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', item.id);
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('whatsapp_agent_knowledge', item.id);
       if (isAlreadyIndexed) {
         return { success: true };
       }
@@ -3344,17 +3344,16 @@ export class FileSearchSyncService {
         return { success: false, error: 'Empty content' };
       }
 
-      // Upload to FileSearch store - use knowledge_base sourceType, differentiate via metadata
+      // Upload to FileSearch store with proper sourceType for reconciliation
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: `# ${item.title}\n\n${content}`,
         displayName: item.title,
         storeId: agentStore.id,
-        sourceType: 'knowledge_base',
+        sourceType: 'whatsapp_agent_knowledge',
         sourceId: item.id,
         userId: consultantId,
         customMetadata: {
           docType: item.type,
-          category: 'whatsapp_agent_knowledge',
           agentConfigId: agentConfigId,
         },
       });
