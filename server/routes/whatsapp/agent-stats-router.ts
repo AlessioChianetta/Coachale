@@ -193,9 +193,15 @@ router.get("/:agentId/analytics", authenticateToken, requireRole("consultant"), 
       });
     }
 
-    const score = Math.min(100, Math.round(
-      (convCount7d * 5) + (msgCount7d * 0.5) + (agent.autoResponseEnabled ? 20 : 0)
-    ));
+    let baseScore = 50;
+    if (agent.autoResponseEnabled) baseScore += 15;
+    if (agent.businessName) baseScore += 5;
+    if (agent.businessDescription) baseScore += 5;
+    if (agent.salesScript) baseScore += 5;
+    if (agent.agentInstructions) baseScore += 5;
+    
+    const activityBonus = Math.min(15, (convCount7d * 3) + (msgCount7d * 0.3));
+    const score = Math.min(100, Math.round(baseScore + activityBonus));
 
     const skills = [];
     if (agent.agentType === 'proactive_setter') {
