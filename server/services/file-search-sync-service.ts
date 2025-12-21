@@ -3082,17 +3082,17 @@ export class FileSearchSyncService {
       let processed = 0;
 
       console.log(`🔄 [FileSync] Syncing ${knowledgeItems.length} knowledge items for agent "${agentConfig.agentName}"`);
-      syncProgressEmitter.emitStart(consultantId, 'knowledge_base', knowledgeItems.length);
+      syncProgressEmitter.emitStart(consultantId, 'whatsapp_agent_knowledge', knowledgeItems.length);
 
       for (const item of knowledgeItems) {
         processed++;
 
         // Check if already indexed
-        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', item.id);
+        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('whatsapp_agent_knowledge', item.id);
         if (isAlreadyIndexed) {
           console.log(`📌 [FileSync] WhatsApp knowledge item already indexed: ${item.title}`);
           synced++;
-          syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', item.title, processed, knowledgeItems.length);
+          syncProgressEmitter.emitItemProgress(consultantId, 'whatsapp_agent_knowledge', item.title, processed, knowledgeItems.length);
           continue;
         }
 
@@ -3121,12 +3121,11 @@ export class FileSearchSyncService {
           content: `# ${item.title}\n\n${content}`,
           displayName: item.title,
           storeId: agentStore.id,
-          sourceType: 'knowledge_base',
+          sourceType: 'whatsapp_agent_knowledge',
           sourceId: item.id,
           userId: consultantId,
           customMetadata: {
             docType: item.type,
-            category: 'whatsapp_agent_knowledge',
             agentConfigId: agentConfigId,
           },
         });
@@ -3134,42 +3133,32 @@ export class FileSearchSyncService {
         if (uploadResult.success) {
           synced++;
           console.log(`✅ [FileSync] Synced WhatsApp knowledge item: ${item.title}`);
-          syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', item.title, processed, knowledgeItems.length);
+          syncProgressEmitter.emitItemProgress(consultantId, 'whatsapp_agent_knowledge', item.title, processed, knowledgeItems.length);
         } else {
           failed++;
           errors.push(`${item.title}: ${uploadResult.error}`);
           console.error(`❌ [FileSync] Failed to sync WhatsApp knowledge item "${item.title}": ${uploadResult.error}`);
-          syncProgressEmitter.emitError(consultantId, 'knowledge_base', `${item.title}: ${uploadResult.error}`);
+          syncProgressEmitter.emitError(consultantId, 'whatsapp_agent_knowledge', `${item.title}: ${uploadResult.error}`);
         }
       }
 
-      // RECONCILIATION: Remove orphaned documents
+      // RECONCILIATION: Remove orphaned documents from the AGENT's store
       // Get all active knowledge item IDs for this agent
       const activeItemIds = knowledgeItems
         .filter(item => item.isActive !== false)
         .map(item => item.id);
 
-      // Get the consultant's FileSearchStore
-      const [consultantStore] = await db
-        .select()
-        .from(fileSearchStores)
-        .where(and(
-          eq(fileSearchStores.ownerId, agentConfig.consultantId),
-          eq(fileSearchStores.ownerType, 'consultant'),
-          eq(fileSearchStores.isActive, true)
-        ))
-        .limit(1);
-
-      if (consultantStore) {
+      // Use the agentStore (already fetched above) for reconciliation
+      if (agentStore) {
         const fileSearchServiceInstance = new FileSearchService();
         const reconcileResult = await fileSearchServiceInstance.reconcileBySourceType(
-          consultantStore.id,
+          agentStore.id,
           'whatsapp_agent_knowledge',
           activeItemIds
         );
         
         if (reconcileResult.removed > 0) {
-          console.log(`🧹 [FileSync] Reconciled ${reconcileResult.removed} orphaned WhatsApp knowledge documents`);
+          console.log(`🧹 [FileSync] Reconciled ${reconcileResult.removed} orphaned WhatsApp knowledge documents from agent store`);
         }
       }
 
@@ -3180,7 +3169,7 @@ export class FileSearchSyncService {
       console.log(`   Failed: ${failed}`);
       console.log(`${'═'.repeat(60)}\n`);
 
-      syncProgressEmitter.emitComplete(consultantId, 'knowledge_base', knowledgeItems.length);
+      syncProgressEmitter.emitComplete(consultantId, 'whatsapp_agent_knowledge', knowledgeItems.length);
 
       return {
         total: knowledgeItems.length,
