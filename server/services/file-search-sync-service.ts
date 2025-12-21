@@ -1369,7 +1369,7 @@ export class FileSearchSyncService {
     // Get clients with finance settings (for financial_data category)
     const clientsWithFinanceSettings = clientIds.length > 0
       ? await db.query.userFinanceSettings.findMany({
-          where: inArray(userFinanceSettings.userId, clientIds)
+          where: inArray(userFinanceSettings.clientId, clientIds)
         })
       : [];
     const preCalcFinancialTotal = clientsWithFinanceSettings.length;
