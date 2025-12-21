@@ -770,281 +770,6 @@ function EmailJourneyTab() {
   );
 }
 
-// Email Riepilogo Tab Component - Dedicated consultation summary emails
-function EmailRiepilogoTab() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [previewDialog, setPreviewDialog] = useState(false);
-  const [selectedEmail, setSelectedEmail] = useState<any>(null);
-
-  // Fetch draft emails from consultations (summaryEmailStatus = "draft")
-  const { data: draftEmails, isLoading: draftsLoading } = useQuery<any[]>({
-    queryKey: ["/api/echo/draft-emails"],
-  });
-
-  // Approve and send email
-  const approveAndSendMutation = useMutation({
-    mutationFn: async (consultationId: string) => {
-      const response = await fetch("/api/echo/approve-and-send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ consultationId }),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Errore invio email");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Successo", description: "Email inviata con successo" });
-      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
-      setPreviewDialog(false);
-    },
-    onError: (error: Error) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
-    },
-  });
-
-  // Save for AI only
-  const saveForAiMutation = useMutation({
-    mutationFn: async (consultationId: string) => {
-      const response = await fetch("/api/echo/save-for-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ consultationId }),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Errore salvataggio");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Successo", description: "Email salvata per contesto AI" });
-      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
-      setPreviewDialog(false);
-    },
-    onError: (error: Error) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
-    },
-  });
-
-  // Discard draft
-  const discardMutation = useMutation({
-    mutationFn: async (consultationId: string) => {
-      const response = await fetch("/api/echo/discard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ consultationId }),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Errore scarto bozza");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Bozza scartata", description: "La bozza è stata eliminata" });
-      queryClient.invalidateQueries({ queryKey: ["/api/echo/draft-emails"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/echo/stats"] });
-      setPreviewDialog(false);
-    },
-    onError: (error: Error) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const handlePreview = (email: any) => {
-    setSelectedEmail(email);
-    setPreviewDialog(true);
-  };
-
-  return (
-    <div className="space-y-6">
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-6 w-6 text-teal-600" />
-            Email Riepilogo Consulenze
-          </CardTitle>
-          <CardDescription>
-            Rivedi e approva le email di riepilogo generate dall'AI per le tue consulenze
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {draftsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
-            </div>
-          ) : !draftEmails || draftEmails.length === 0 ? (
-            <div className="text-center py-12">
-              <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-lg font-semibold text-muted-foreground">Nessuna email riepilogo in attesa</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Genera email di riepilogo dalla sezione Consulenze per vederle qui
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {draftEmails.map((email: any) => (
-                <div
-                  key={email.id}
-                  className="p-4 rounded-lg border-2 bg-gradient-to-r from-teal-50 to-cyan-50 border-teal-200 hover:border-teal-400 transition-all"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-3">
-                        <Badge className="bg-teal-600">{email.clientName}</Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {email.consultationDate && format(new Date(email.consultationDate), "dd/MM/yyyy", { locale: it })}
-                        </span>
-                      </div>
-                      <p className="font-semibold text-lg">{email.subject}</p>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {email.preview || email.body?.substring(0, 150) + "..."}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePreview(email);
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Anteprima
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-teal-600 hover:bg-teal-700"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          approveAndSendMutation.mutate(email.id);
-                        }}
-                        disabled={approveAndSendMutation.isPending}
-                      >
-                        {approveAndSendMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                        ) : (
-                          <Send className="h-4 w-4 mr-1" />
-                        )}
-                        Invia
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Preview Dialog */}
-      <Dialog open={previewDialog} onOpenChange={setPreviewDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-teal-600" />
-              Anteprima Email Riepilogo
-            </DialogTitle>
-            <DialogDescription>
-              Rivedi l'email prima di inviarla al cliente
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedEmail && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Destinatario</Label>
-                  <p className="font-medium">{selectedEmail.clientName}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Data Consulenza</Label>
-                  <p className="font-medium">
-                    {selectedEmail.consultationDate && format(new Date(selectedEmail.consultationDate), "dd MMMM yyyy", { locale: it })}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs text-muted-foreground">Oggetto</Label>
-                <p className="font-semibold text-lg">{selectedEmail.subject}</p>
-              </div>
-
-              <div>
-                <Label className="text-xs text-muted-foreground">Contenuto Email</Label>
-                <div className="p-4 bg-white border rounded-lg prose prose-sm max-w-none">
-                  <div dangerouslySetInnerHTML={{ __html: selectedEmail.body?.replace(/\n/g, '<br/>') || '' }} />
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t">
-                <Button
-                  type="button"
-                  className="flex-1 bg-teal-600 hover:bg-teal-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    approveAndSendMutation.mutate(selectedEmail.id);
-                  }}
-                  disabled={approveAndSendMutation.isPending}
-                >
-                  {approveAndSendMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Approva e Invia
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    saveForAiMutation.mutate(selectedEmail.id);
-                  }}
-                  disabled={saveForAiMutation.isPending}
-                >
-                  {saveForAiMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Brain className="h-4 w-4 mr-2" />
-                  )}
-                  Salva per AI
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    discardMutation.mutate(selectedEmail.id);
-                  }}
-                  disabled={discardMutation.isPending}
-                >
-                  {discardMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Trash2 className="h-4 w-4 mr-2" />
-                  )}
-                  Scarta
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
 // Echo - Riepilogo Consulenza Tab Component
 function EchoTab() {
   const { toast } = useToast();
@@ -1718,6 +1443,18 @@ export default function ConsultantAIConfigPage() {
     },
   });
 
+  const { data: consultationDrafts = [], isLoading: consultationDraftsLoading } = useQuery<EmailDraft[]>({
+    queryKey: ["/api/consultant/email-drafts", { emailType: "consultation_summary", status: "pending" }],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/email-drafts?emailType=consultation_summary&status=pending", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch consultation drafts");
+      const result = await response.json();
+      return result.data || result;
+    },
+  });
+
   const { data: clientAutomation = [], isLoading: clientAutomationLoading } = useQuery<ClientAutomation[]>({
     queryKey: ["/api/consultant/client-automation"],
     queryFn: async () => {
@@ -1880,6 +1617,109 @@ export default function ConsultantAIConfigPage() {
       toast({
         title: "Errore",
         description: error.message || "Errore nella modifica della bozza",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendConsultationDraftMutation = useMutation({
+    mutationFn: async (draftId: string) => {
+      console.log('📧 [SEND MUTATION] Starting send request for draft:', draftId);
+      const res = await fetch(`/api/consultant/email-drafts/${draftId}/approve`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+
+      console.log('📧 [SEND MUTATION] Response status:', res.status);
+      console.log('📧 [SEND MUTATION] Response ok:', res.ok);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('❌ [SEND MUTATION] Error response:', errorText);
+        throw new Error(`Failed to send consultation draft: ${res.status} - ${errorText}`);
+      }
+
+      const data = await res.json();
+      console.log('✅ [SEND MUTATION] Success response:', data);
+      return data;
+    },
+    onSuccess: () => {
+      console.log('✅ [SEND MUTATION] onSuccess triggered');
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/email-drafts"] });
+      toast({
+        title: "Email Inviata",
+        description: "L'email di riepilogo consulenza è stata inviata con successo",
+      });
+    },
+    onError: (error: any) => {
+      console.error('❌ [SEND MUTATION] onError triggered:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nell'invio dell'email",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteConsultationDraftMutation = useMutation({
+    mutationFn: async (draftId: string) => {
+      const res = await fetch(`/api/consultant/email-drafts/${draftId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to delete consultation draft");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/email-drafts"] });
+      toast({
+        title: "Bozza Eliminata",
+        description: "La bozza è stata eliminata con successo",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nell'eliminazione della bozza",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveForAiMutation = useMutation({
+    mutationFn: async (draftId: string) => {
+      console.log('💾 [SAVE FOR AI] Starting save request for draft:', draftId);
+      const res = await fetch(`/api/consultant/email-drafts/${draftId}/save-for-ai`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+
+      console.log('💾 [SAVE FOR AI] Response status:', res.status);
+      console.log('💾 [SAVE FOR AI] Response ok:', res.ok);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('❌ [SAVE FOR AI] Error response:', errorText);
+        throw new Error(`Failed to save for AI: ${res.status} - ${errorText}`);
+      }
+
+      const data = await res.json();
+      console.log('✅ [SAVE FOR AI] Success response:', data);
+      return data;
+    },
+    onSuccess: () => {
+      console.log('✅ [SAVE FOR AI] onSuccess triggered');
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/email-drafts"] });
+      toast({
+        title: "Riepilogo Salvato per AI",
+        description: "Riepilogo salvato per AI (non inviato al cliente)",
+      });
+    },
+    onError: (error: any) => {
+      console.error('❌ [SAVE FOR AI] onError triggered:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nel salvataggio per AI",
         variant: "destructive",
       });
     },
@@ -2721,20 +2561,20 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 <span>Bozze</span>
               </TabsTrigger>
               <TabsTrigger 
-                value="email-riepilogo" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-teal-50/50 dark:hover:bg-slate-700/50"
-              >
-                <span className="text-xl">📨</span>
-                <span className="hidden lg:inline">Email Riepilogo</span>
-                <span className="lg:hidden">Riepilogo</span>
-              </TabsTrigger>
-              <TabsTrigger 
                 value="echo" 
                 className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-amber-50/50 dark:hover:bg-slate-700/50"
               >
                 <Sparkles className="h-5 w-5" />
                 <span className="hidden lg:inline">Riepilogo Consulenza</span>
                 <span className="lg:hidden">Echo</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="consultation-summary" 
+                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-purple-50/50 dark:hover:bg-slate-700/50"
+              >
+                <span className="text-xl">📋</span>
+                <span className="hidden lg:inline">Email Riepilogo</span>
+                <span className="lg:hidden">Riepilogo</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="statistics" 
@@ -2883,12 +2723,137 @@ Non limitarti a stato attuale/ideale. Attingi da:
               </Card>
             </TabsContent>
 
-            <TabsContent value="email-riepilogo" className="space-y-6">
-              <EmailRiepilogoTab />
-            </TabsContent>
-
             <TabsContent value="echo" className="space-y-6">
               <EchoTab />
+            </TabsContent>
+
+            <TabsContent value="consultation-summary" className="space-y-6">
+              <Card className="border-0 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-6 w-6" />
+                    Bozze Email Riepilogo Consulenza
+                  </CardTitle>
+                  <CardDescription>
+                    Email di riepilogo generate dall'AI dopo le consulenze
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {consultationDraftsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    </div>
+                  ) : consultationDrafts.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-lg font-semibold text-muted-foreground">Nessuna bozza di riepilogo consulenza</p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Le email di riepilogo consulenza generate dall'AI appariranno qui
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Subject</TableHead>
+                          <TableHead>Data Consulenza</TableHead>
+                          <TableHead>Link Fathom</TableHead>
+                          <TableHead>Generata il</TableHead>
+                          <TableHead className="text-right">Azioni</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {consultationDrafts.map((draft) => (
+                          <TableRow key={draft.id}>
+                            <TableCell className="font-medium">{draft.clientName}</TableCell>
+                            <TableCell className="max-w-md truncate">{draft.subject}</TableCell>
+                            <TableCell>
+                              {draft.metadata?.consultationDate ? (
+                                <Badge variant="outline" className="bg-blue-50">
+                                  {format(new Date(draft.metadata.consultationDate), "dd/MM/yyyy", { locale: it })}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">N/A</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {draft.metadata?.fathomShareLink ? (
+                                <a
+                                  href={draft.metadata.fathomShareLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  Vedi Registrazione
+                                </a>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Nessun link</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{format(new Date(draft.generatedAt), "dd/MM/yyyy HH:mm", { locale: it })}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePreviewDraft(draft)}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Preview
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    console.log('💾 [SAVE FOR AI] Salvataggio riepilogo per AI');
+                                    console.log('💾 [SAVE FOR AI] Draft ID:', draft.id);
+                                    console.log('💾 [SAVE FOR AI] Cliente:', draft.clientName);
+                                    console.log('💾 [SAVE FOR AI] Consultation ID:', draft.metadata?.consultationId);
+                                    saveForAiMutation.mutate(draft.id);
+                                  }}
+                                  disabled={saveForAiMutation.isPending}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                  💾 Salva per AI
+                                </Button>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => {
+                                    console.log('📧 [CONSULTATION EMAIL] Invio email di riepilogo consulenza');
+                                    console.log('📧 [CONSULTATION EMAIL] Draft ID:', draft.id);
+                                    console.log('📧 [CONSULTATION EMAIL] Cliente:', draft.clientName);
+                                    console.log('📧 [CONSULTATION EMAIL] Subject:', draft.subject);
+                                    console.log('📧 [CONSULTATION EMAIL] Data consulenza:', draft.metadata?.consultationDate);
+                                    console.log('📧 [CONSULTATION EMAIL] Link Fathom:', draft.metadata?.fathomShareLink);
+                                    sendConsultationDraftMutation.mutate(draft.id);
+                                  }}
+                                  disabled={sendConsultationDraftMutation.isPending}
+                                  className="bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                  <Send className="h-4 w-4 mr-1" />
+                                  Invia
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => deleteConsultationDraftMutation.mutate(draft.id)}
+                                  disabled={deleteConsultationDraftMutation.isPending}
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  Elimina
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="statistics" className="space-y-6">
