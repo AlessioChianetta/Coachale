@@ -852,12 +852,15 @@ router.post("/generate-summary-from-transcript", async (req: any, res) => {
     console.log(`🔄 [ECHO] Generating summary from transcript for consultant ${consultantId}`);
 
     // Get consultant's AI configuration
-    const { getAIProvider } = await import("../ai/provider-factory");
+    const { getAIProvider, getModelWithThinking } = await import("../ai/provider-factory");
     const aiProvider = await getAIProvider(consultantId, consultantId);
     
     if (!aiProvider) {
       return res.status(500).json({ error: "Configurazione AI non disponibile" });
     }
+
+    // Get the appropriate model name
+    const { model } = getModelWithThinking(aiProvider.metadata.name);
 
     const prompt = `Sei un assistente professionale per consulenze finanziarie. Analizza la seguente trascrizione di una consulenza con il cliente ${clientName || 'il cliente'} e crea un riassunto strutturato.
 
@@ -886,6 +889,7 @@ Crea un riassunto professionale in formato bullet-point che includa:
 Rispondi SOLO con il riassunto formattato in italiano, senza commenti aggiuntivi.`;
 
     const result = await aiProvider.client.generateContent({
+      model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.3,
