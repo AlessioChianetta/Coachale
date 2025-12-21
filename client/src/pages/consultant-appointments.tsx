@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2 } from "lucide-react";
+import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play } from "lucide-react";
 import ConsultationTasksManager from "@/components/consultation-tasks-manager";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths, formatDistanceToNow } from "date-fns";
 import it from "date-fns/locale/it";
@@ -1993,279 +1993,327 @@ export default function ConsultantAppointments() {
 
               {/* Dialog per modifica appuntamento */}
               <Dialog open={!!editingAppointment} onOpenChange={() => setEditingAppointment(null)}>
-                <DialogContent className="sm:max-w-2xl bg-white dark:bg-slate-900 border-0 shadow-3xl rounded-3xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader className="space-y-4 pb-6">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-gradient-to-r from-orange-600 to-yellow-600 rounded-2xl">
-                        <Edit className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-white">
-                          Modifica Appuntamento
-                        </DialogTitle>
-                        <p className="text-slate-600 dark:text-slate-400">Aggiorna i dettagli della consulenza</p>
-                      </div>
-                    </div>
-                  </DialogHeader>
-
-                  {/* Task Manager - SEMPRE VISIBILE */}
-                  {editingAppointment && currentUser?.id && (() => {
+                <DialogContent className="sm:max-w-3xl bg-white dark:bg-slate-900 border-0 shadow-3xl rounded-3xl max-h-[90vh] overflow-y-auto">
+                  {editingAppointment && (() => {
                     const currentAppointment = (appointments as any[]).find((apt: any) => apt.id === editingAppointment);
+                    const isCompleted = currentAppointment?.status === 'completed';
+                    const hasTranscript = !!currentAppointment?.transcript;
+                    const hasFathomLink = !!currentAppointment?.fathomShareLink;
+                    const hasGoogleMeet = !!currentAppointment?.googleMeetLink;
+                    
+                    return (
+                      <>
+                        <DialogHeader className="space-y-4 pb-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className={`p-3 rounded-2xl ${isCompleted ? 'bg-gradient-to-r from-green-600 to-emerald-600' : 'bg-gradient-to-r from-orange-600 to-yellow-600'}`}>
+                                {isCompleted ? <CheckCircle className="w-6 h-6 text-white" /> : <Edit className="w-6 h-6 text-white" />}
+                              </div>
+                              <div>
+                                <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-white">
+                                  {currentAppointment?.client?.firstName} {currentAppointment?.client?.lastName}
+                                </DialogTitle>
+                                <p className="text-slate-600 dark:text-slate-400">
+                                  {currentAppointment?.scheduledAt ? format(new Date(currentAppointment.scheduledAt), "EEEE d MMMM yyyy 'alle' HH:mm", { locale: it }) : ''}
+                                </p>
+                              </div>
+                            </div>
+                            {/* Status Badge */}
+                            <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                              isCompleted ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                              currentAppointment?.status === 'cancelled' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                              'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            }`}>
+                              {isCompleted ? 'Completata' : currentAppointment?.status === 'cancelled' ? 'Cancellata' : 'Programmata'}
+                            </div>
+                          </div>
+                          
+                          {/* Progress Steps */}
+                          <div className="flex items-center gap-2 pt-2">
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${hasGoogleMeet ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              <div className={`w-2 h-2 rounded-full ${hasGoogleMeet ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                              Link Call
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${isCompleted ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              <div className={`w-2 h-2 rounded-full ${isCompleted ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                              Completata
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${hasFathomLink ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              <div className={`w-2 h-2 rounded-full ${hasFathomLink ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                              Registrazione
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${hasTranscript ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              <div className={`w-2 h-2 rounded-full ${hasTranscript ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                              Trascrizione
+                            </div>
+                          </div>
+                        </DialogHeader>
 
-                    console.log('🎯 Task Manager Debug:', {
-                      editingAppointment,
-                      currentUserId: currentUser?.id,
-                      currentAppointment,
-                      clientId: currentAppointment?.clientId
-                    });
+                        <Form {...updateForm}>
+                          <form onSubmit={updateForm.handleSubmit(onUpdateSubmit)} className="space-y-6">
+                            
+                            {/* SEZIONE 1: Informazioni Base */}
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                              <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+                                <Calendar className="w-5 h-5 text-blue-600" />
+                                Informazioni Consulenza
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <FormField
+                                  control={updateForm.control}
+                                  name="scheduledAt"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-sm font-medium text-slate-600 dark:text-slate-400">Data e Ora</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="datetime-local"
+                                          className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                                          {...field}
+                                          value={field.value ? format(field.value, "yyyy-MM-dd'T'HH:mm") : ""}
+                                          onChange={(e) => field.onChange(new Date(e.target.value))}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={updateForm.control}
+                                  name="duration"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-sm font-medium text-slate-600 dark:text-slate-400">Durata (minuti)</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={updateForm.control}
+                                  name="status"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-sm font-medium text-slate-600 dark:text-slate-400">Stato</FormLabel>
+                                      <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                          <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                            <SelectValue placeholder="Seleziona stato" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                          <SelectItem value="scheduled" className="rounded-lg p-3 m-1">
+                                            <div className="flex items-center gap-3">
+                                              <CalendarDays className="w-4 h-4 text-blue-600" />
+                                              <span>Programmato</span>
+                                            </div>
+                                          </SelectItem>
+                                          <SelectItem value="completed" className="rounded-lg p-3 m-1">
+                                            <div className="flex items-center gap-3">
+                                              <CheckCircle className="w-4 h-4 text-green-600" />
+                                              <span>Completato</span>
+                                            </div>
+                                          </SelectItem>
+                                          <SelectItem value="cancelled" className="rounded-lg p-3 m-1">
+                                            <div className="flex items-center gap-3">
+                                              <XCircle className="w-4 h-4 text-red-600" />
+                                              <span>Cancellato</span>
+                                            </div>
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              
+                              {/* Note */}
+                              <div className="mt-4">
+                                <FormField
+                                  control={updateForm.control}
+                                  name="notes"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-sm font-medium text-slate-600 dark:text-slate-400">Note private</FormLabel>
+                                      <FormControl>
+                                        <Textarea
+                                          className="min-h-[80px] rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 resize-none"
+                                          rows={3}
+                                          {...field}
+                                          placeholder="Note interne sulla consulenza..."
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* SEZIONE 2: Prima della Call */}
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800">
+                              <h3 className="text-lg font-bold text-blue-800 dark:text-blue-200 flex items-center gap-2 mb-2">
+                                <Video className="w-5 h-5" />
+                                Prima della Call
+                                {hasGoogleMeet && <CheckCircle className="w-4 h-4 text-green-500 ml-auto" />}
+                              </h3>
+                              <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">
+                                Inserisci il link della videochiamata per permettere al cliente di partecipare
+                              </p>
+                              <FormField
+                                control={updateForm.control}
+                                name="googleMeetLink"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                                          <svg className="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 2C6.48 2 2 6.48 2 12c0 1.09.18 2.13.51 3.11l-.01-.03L6 18h12l3.5-2.92.01.03c.33-.98.51-2.02.51-3.11 0-5.52-4.48-10-10-10zm0 8c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm-6 5c0-2.21 1.79-4 4-4h4c2.21 0 4 1.79 4 4H6z"/>
+                                          </svg>
+                                        </div>
+                                        <Input
+                                          type="url"
+                                          className="h-12 pl-12 rounded-xl border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-800"
+                                          {...field}
+                                          placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                                          data-testid="input-google-meet-link-update"
+                                        />
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
 
-                    return currentAppointment?.clientId ? (
-                      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 p-6 rounded-2xl border-2 border-indigo-300 dark:border-indigo-700 mb-6 shadow-lg">
-                        <div className="mb-4">
-                          <h3 className="text-xl font-bold text-indigo-900 dark:text-indigo-100 flex items-center gap-2 mb-2">
-                            <ListTodo className="w-6 h-6" />
-                            Gestione Task del Cliente
-                          </h3>
-                          <p className="text-sm text-indigo-700 dark:text-indigo-300">
-                            Crea e gestisci le task collegate a questa consulenza
-                          </p>
-                        </div>
+                            {/* SEZIONE 3: Dopo la Call */}
+                            <div className={`p-5 rounded-2xl border ${isCompleted ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700'}`}>
+                              <h3 className={`text-lg font-bold flex items-center gap-2 mb-2 ${isCompleted ? 'text-purple-800 dark:text-purple-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                                <FileText className="w-5 h-5" />
+                                Dopo la Call
+                                {(hasFathomLink && hasTranscript) && <CheckCircle className="w-4 h-4 text-green-500 ml-auto" />}
+                              </h3>
+                              <p className={`text-sm mb-4 ${isCompleted ? 'text-purple-600 dark:text-purple-400' : 'text-slate-400'}`}>
+                                {isCompleted ? 'Aggiungi la registrazione e trascrizione per abilitare le funzioni AI' : 'Completa prima la consulenza per aggiungere questi dati'}
+                              </p>
+                              
+                              <div className="space-y-4">
+                                <FormField
+                                  control={updateForm.control}
+                                  name="fathomShareLink"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className={`text-sm font-medium flex items-center gap-2 ${isCompleted ? 'text-purple-700 dark:text-purple-300' : 'text-slate-400'}`}>
+                                        <Play className="w-4 h-4" />
+                                        Link Registrazione Fathom
+                                        {hasFathomLink && <CheckCircle className="w-3 h-3 text-green-500" />}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="url"
+                                          className={`h-11 rounded-xl ${isCompleted ? 'border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800' : 'border-slate-200 bg-slate-100'}`}
+                                          {...field}
+                                          placeholder="https://fathom.video/share/..."
+                                          data-testid="input-fathom-link-update"
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
 
-                        <div className="bg-white dark:bg-slate-800 rounded-xl p-4">
-                          <ConsultationTasksManager
-                            clientId={currentAppointment.clientId}
-                            consultantId={currentUser.id}
-                            consultationId={editingAppointment}
-                            readonly={false}
-                          />
-                        </div>
-                      </div>
-                    ) : null;
+                                <FormField
+                                  control={updateForm.control}
+                                  name="transcript"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className={`text-sm font-medium flex items-center gap-2 ${isCompleted ? 'text-purple-700 dark:text-purple-300' : 'text-slate-400'}`}>
+                                        <FileText className="w-4 h-4" />
+                                        Trascrizione AI
+                                        {hasTranscript && <CheckCircle className="w-3 h-3 text-green-500" />}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Textarea
+                                          className={`min-h-[120px] rounded-xl resize-y font-mono text-sm ${isCompleted ? 'border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800' : 'border-slate-200 bg-slate-100'}`}
+                                          rows={6}
+                                          {...field}
+                                          placeholder={isCompleted ? "Incolla qui la trascrizione da Fathom...\n\nInclude: conversazione, note chiave, action items, insights AI" : "Disponibile dopo il completamento della call"}
+                                        />
+                                      </FormControl>
+                                      <p className={`text-xs mt-1 ${isCompleted ? 'text-purple-500' : 'text-slate-400'}`}>
+                                        Usata dall'AI per risposte personalizzate e generazione email riepilogo
+                                      </p>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Task Manager - Solo per consulenze con cliente */}
+                            {currentUser?.id && currentAppointment?.clientId && (
+                              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 p-5 rounded-2xl border border-indigo-200 dark:border-indigo-700">
+                                <h3 className="text-lg font-bold text-indigo-800 dark:text-indigo-200 flex items-center gap-2 mb-2">
+                                  <ListTodo className="w-5 h-5" />
+                                  Task del Cliente
+                                </h3>
+                                <p className="text-sm text-indigo-600 dark:text-indigo-400 mb-4">
+                                  Crea task da assegnare al cliente come follow-up di questa consulenza
+                                </p>
+                                <div className="bg-white dark:bg-slate-800 rounded-xl p-4">
+                                  <ConsultationTasksManager
+                                    clientId={currentAppointment.clientId}
+                                    consultantId={currentUser.id}
+                                    consultationId={editingAppointment}
+                                    readonly={false}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex justify-end gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setEditingAppointment(null)}
+                                className="px-6 py-2.5 rounded-xl border-2 border-slate-300 hover:border-slate-400 font-medium"
+                              >
+                                Annulla
+                              </Button>
+                              <Button
+                                type="submit"
+                                disabled={updateMutation.isPending}
+                                className="px-6 py-2.5 bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
+                              >
+                                {updateMutation.isPending ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                                    Salvataggio...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Salva Modifiche
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </form>
+                        </Form>
+                      </>
+                    );
                   })()}
-
-                  <Form {...updateForm}>
-                    <form onSubmit={updateForm.handleSubmit(onUpdateSubmit)} className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FormField
-                          control={updateForm.control}
-                          name="scheduledAt"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                <Calendar className="w-4 h-4" />
-                                Data e Ora
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="datetime-local"
-                                  className="h-12 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-orange-500 bg-slate-50 dark:bg-slate-800"
-                                  {...field}
-                                  value={field.value ? format(field.value, "yyyy-MM-dd'T'HH:mm") : ""}
-                                  onChange={(e) => field.onChange(new Date(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={updateForm.control}
-                          name="duration"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
-                                Durata (minuti)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-12 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-orange-500 bg-slate-50 dark:bg-slate-800"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={updateForm.control}
-                        name="status"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                              <AlertCircle className="w-4 h-4" />
-                              Stato
-                            </FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-12 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-orange-500 bg-slate-50 dark:bg-slate-800">
-                                  <SelectValue placeholder="Seleziona stato" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                <SelectItem value="scheduled" className="rounded-lg p-3 m-1">
-                                  <div className="flex items-center gap-3">
-                                    <CalendarDays className="w-4 h-4 text-blue-600" />
-                                    <span>Programmato</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="completed" className="rounded-lg p-3 m-1">
-                                  <div className="flex items-center gap-3">
-                                    <CheckCircle className="w-4 h-4 text-green-600" />
-                                    <span>Completato</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="cancelled" className="rounded-lg p-3 m-1">
-                                  <div className="flex items-center gap-3">
-                                    <XCircle className="w-4 h-4 text-red-600" />
-                                    <span>Cancellato</span>
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={updateForm.control}
-                        name="notes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                              <BookOpen className="w-4 h-4" />
-                              Note aggiuntive (opzionale)
-                            </FormLabel>
-                            <FormControl>
-                              <Textarea
-                                className="min-h-[100px] rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-orange-500 bg-slate-50 dark:bg-slate-800 resize-none"
-                                rows={4}
-                                {...field}
-                                placeholder="Aggiorna le note per questa consulenza..."
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-1 gap-6">
-                        <FormField
-                          control={updateForm.control}
-                          name="googleMeetLink"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M15 12c0 1.654-1.346 3-3 3s-3-1.346-3-3 1.346-3 3-3 3 1.346 3 3zm9-.449s-4.252 8.449-11.985 8.449c-7.18 0-12.015-8.449-12.015-8.449s4.446-7.551 12.015-7.551c7.694 0 11.985 7.551 11.985 7.551zm-7 .449c0-2.757-2.243-5-5-5s-5 2.243-5 5 2.243 5 5 5 5-2.243 5-5z"/>
-                                </svg>
-                                Link Google Meet (opzionale)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="url"
-                                  className="h-12 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-green-500 bg-slate-50 dark:bg-slate-800"
-                                  {...field}
-                                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                                  data-testid="input-google-meet-link-update"
-                                />
-                              </FormControl>
-                              <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Il cliente vedrà un pulsante per entrare direttamente nella call
-                              </p>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={updateForm.control}
-                          name="fathomShareLink"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                </svg>
-                                Link Registrazione Fathom (opzionale)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="url"
-                                  className="h-12 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-purple-500 bg-slate-50 dark:bg-slate-800"
-                                  {...field}
-                                  placeholder="https://fathom.video/share/..."
-                                  data-testid="input-fathom-link-update"
-                                />
-                              </FormControl>
-                              <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Il cliente potrà rivedere la consulenza con trascrizione e AI insights
-                              </p>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={updateForm.control}
-                        name="transcript"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                              <BookOpen className="w-4 h-4" />
-                              Trascrizione Fathom (opzionale)
-                            </FormLabel>
-                            <FormControl>
-                              <Textarea
-                                className="min-h-[150px] rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-purple-500 bg-slate-50 dark:bg-slate-800 resize-y font-mono text-sm"
-                                rows={8}
-                                {...field}
-                                placeholder="Incolla qui la trascrizione completa della consulenza da Fathom...&#10;&#10;Puoi includere: &#10;- Testo della conversazione&#10;- Note chiave&#10;- Action items&#10;- Insights AI"
-                              />
-                            </FormControl>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                              La trascrizione sarà utilizzata dall'AI per dare risposte personalizzate al cliente
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="flex justify-end gap-4 pt-6 border-t border-slate-200 dark:border-slate-700">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setEditingAppointment(null)}
-                          className="px-8 py-3 rounded-xl border-2 border-slate-300 hover:border-slate-400 font-semibold"
-                        >
-                          Annulla
-                        </Button>
-                        <Button
-                          type="submit"
-                          disabled={updateMutation.isPending}
-                          className="px-8 py-3 bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 font-semibold"
-                        >
-                          {updateMutation.isPending ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                              Aggiornamento...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="w-4 h-4 mr-2" />
-                              Salva Modifiche
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
                 </DialogContent>
               </Dialog>
 
