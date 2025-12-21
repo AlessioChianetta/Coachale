@@ -359,6 +359,21 @@ export default function ConsultantFileSearchAnalyticsPage() {
             } else if (data.type === 'complete') {
               const synced = data.synced || data.current || 0;
               addSyncLog('success', `Completato ${data.category}: ${synced}/${data.total} sincronizzati`, { category: data.category });
+            } else if (data.type === 'orphan_start') {
+              addSyncLog('info', `🧹 Pulizia documenti orfani: analisi di ${data.total} store...`);
+            } else if (data.type === 'orphan_progress') {
+              const storeLabel = data.item || 'Store';
+              if (data.orphansRemoved > 0) {
+                addSyncLog('success', `[orfani] ${storeLabel}: rimossi ${data.orphansRemoved} documento/i (${data.current}/${data.total})`);
+              } else {
+                addSyncLog('progress', `[orfani] ${storeLabel}: nessun orfano (${data.current}/${data.total})`);
+              }
+            } else if (data.type === 'orphan_complete') {
+              if (data.orphansRemoved > 0) {
+                addSyncLog('success', `🧹 Pulizia orfani completata: ${data.orphansRemoved} documento/i rimosso/i da ${data.storesChecked} store`);
+              } else {
+                addSyncLog('success', `🧹 Pulizia orfani completata: nessun documento orfano trovato (${data.storesChecked} store analizzati)`);
+              }
             } else if (data.type === 'all_complete') {
               addSyncLog('complete', `Sincronizzazione completata! Totale: ${data.totalSynced} documenti`);
               eventSource?.close();

@@ -37,7 +37,7 @@ import { eq, and, desc, isNotNull, inArray } from "drizzle-orm";
 import { scrapeGoogleDoc } from "../web-scraper";
 import { extractTextFromFile } from "./document-processor";
 
-export type SyncEventType = 'start' | 'progress' | 'error' | 'complete' | 'all_complete';
+export type SyncEventType = 'start' | 'progress' | 'error' | 'complete' | 'all_complete' | 'orphan_start' | 'orphan_progress' | 'orphan_complete';
 
 export interface SyncProgressEvent {
   type: SyncEventType;
@@ -46,9 +46,11 @@ export interface SyncProgressEvent {
   total?: number;
   synced?: number;
   totalSynced?: number;
-  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'client_data';
+  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'client_data' | 'orphans';
   error?: string;
   consultantId: string;
+  orphansRemoved?: number;
+  storesChecked?: number;
 }
 
 export class SyncProgressEmitter extends EventEmitter {
@@ -114,6 +116,37 @@ export class SyncProgressEmitter extends EventEmitter {
     this.emitProgress({
       type: 'all_complete',
       totalSynced,
+      consultantId,
+    });
+  }
+
+  emitOrphanStart(consultantId: string, totalStores: number): void {
+    this.emitProgress({
+      type: 'orphan_start',
+      category: 'orphans',
+      total: totalStores,
+      consultantId,
+    });
+  }
+
+  emitOrphanProgress(consultantId: string, storeName: string, removed: number, current: number, total: number): void {
+    this.emitProgress({
+      type: 'orphan_progress',
+      category: 'orphans',
+      item: storeName,
+      orphansRemoved: removed,
+      current,
+      total,
+      consultantId,
+    });
+  }
+
+  emitOrphanComplete(consultantId: string, totalRemoved: number, storesChecked: number): void {
+    this.emitProgress({
+      type: 'orphan_complete',
+      category: 'orphans',
+      orphansRemoved: totalRemoved,
+      storesChecked,
       consultantId,
     });
   }
@@ -1336,21 +1369,36 @@ export class FileSearchSyncService {
 
     const storesToClean = [...allStores, ...clientStores];
     
+    // Emit SSE orphan start event
+    syncProgressEmitter.emitOrphanStart(consultantId, storesToClean.length);
+    
+    let storeIndex = 0;
     for (const store of storesToClean) {
+      storeIndex++;
       try {
         const cleanupResult = await fileSearchService.cleanupSourceOrphans(store.id, consultantId);
+        const storeRemoved = cleanupResult.success ? cleanupResult.removed : 0;
+        
         if (cleanupResult.success && cleanupResult.removed > 0) {
           console.log(`   🗑️ ${store.name}: removed ${cleanupResult.removed} orphan(s)`);
           orphansRemoved += cleanupResult.removed;
         }
+        
+        // Emit SSE orphan progress event for each store
+        syncProgressEmitter.emitOrphanProgress(consultantId, store.name || 'Store senza nome', storeRemoved, storeIndex, storesToClean.length);
+        
         if (cleanupResult.errors.length > 0) {
           orphanErrors.push(...cleanupResult.errors.map(e => `${store.name}: ${e}`));
         }
       } catch (error: any) {
         console.error(`   ❌ Error cleaning orphans for ${store.name}:`, error.message);
         orphanErrors.push(`${store.name}: ${error.message}`);
+        syncProgressEmitter.emitError(consultantId, 'orphans', `${store.name}: ${error.message}`);
       }
     }
+
+    // Emit SSE orphan complete event
+    syncProgressEmitter.emitOrphanComplete(consultantId, orphansRemoved, storesToClean.length);
 
     if (orphansRemoved > 0) {
       console.log(`   ✅ Total source orphans removed: ${orphansRemoved}`);
