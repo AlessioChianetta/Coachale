@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play } from "lucide-react";
+import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2 } from "lucide-react";
 import ConsultationTasksManager from "@/components/consultation-tasks-manager";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths, formatDistanceToNow } from "date-fns";
 import it from "date-fns/locale/it";
@@ -1316,6 +1316,9 @@ export default function ConsultantAppointments() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<string | null>(null);
   const [completingAppointment, setCompletingAppointment] = useState<string | null>(null);
+  const [transcriptMode, setTranscriptMode] = useState<'fathom' | 'full'>('fathom');
+  const [fullTranscript, setFullTranscript] = useState('');
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [activeTab, setActiveTab] = useState("calendar");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2277,31 +2280,149 @@ export default function ConsultantAppointments() {
                                   )}
                                 />
 
-                                <FormField
-                                  control={updateForm.control}
-                                  name="transcript"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel className={`text-sm font-medium flex items-center gap-2 ${isCompleted ? 'text-purple-700 dark:text-purple-300' : 'text-slate-400'}`}>
-                                        <FileText className="w-4 h-4" />
-                                        Trascrizione AI
-                                        {hasTranscript && <CheckCircle className="w-3 h-3 text-green-500" />}
-                                      </FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          className={`min-h-[120px] rounded-xl resize-y font-mono text-sm ${isCompleted ? 'border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800' : 'border-slate-200 bg-slate-100'}`}
-                                          rows={6}
-                                          {...field}
-                                          placeholder={isCompleted ? "Incolla qui la trascrizione da Fathom...\n\nInclude: conversazione, note chiave, action items, insights AI" : "Disponibile dopo il completamento della call"}
+                                {/* Tabs per Riassunto */}
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className={`w-4 h-4 ${isCompleted ? 'text-purple-700 dark:text-purple-300' : 'text-slate-400'}`} />
+                                    <span className={`text-sm font-medium ${isCompleted ? 'text-purple-700 dark:text-purple-300' : 'text-slate-400'}`}>
+                                      Riassunto Consulenza
+                                    </span>
+                                    {hasTranscript && <CheckCircle className="w-3 h-3 text-green-500" />}
+                                  </div>
+                                  
+                                  {isCompleted && (
+                                    <>
+                                      {/* Tab Selector */}
+                                      <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                                        <button
+                                          type="button"
+                                          onClick={() => setTranscriptMode('fathom')}
+                                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                            transcriptMode === 'fathom' 
+                                              ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-sm' 
+                                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'
+                                          }`}
+                                        >
+                                          <span className="flex items-center gap-2 justify-center">
+                                            <Sparkles className="w-4 h-4" />
+                                            Da Fathom
+                                          </span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setTranscriptMode('full')}
+                                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                            transcriptMode === 'full' 
+                                              ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-sm' 
+                                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'
+                                          }`}
+                                        >
+                                          <span className="flex items-center gap-2 justify-center">
+                                            <Wand2 className="w-4 h-4" />
+                                            Da Trascrizione Completa
+                                          </span>
+                                        </button>
+                                      </div>
+
+                                      {/* Tab Content */}
+                                      {transcriptMode === 'fathom' ? (
+                                        <FormField
+                                          control={updateForm.control}
+                                          name="transcript"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormControl>
+                                                <Textarea
+                                                  className="min-h-[150px] rounded-xl resize-y text-sm border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800"
+                                                  rows={8}
+                                                  {...field}
+                                                  placeholder="Incolla qui il riassunto bullet-point da Fathom...&#10;&#10;• Punto chiave 1&#10;• Punto chiave 2&#10;• Action items&#10;• Insights AI"
+                                                />
+                                              </FormControl>
+                                              <p className="text-xs text-purple-500 mt-1">
+                                                Incolla il riassunto già formattato da Fathom (bullet points, action items, note)
+                                              </p>
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
                                         />
-                                      </FormControl>
-                                      <p className={`text-xs mt-1 ${isCompleted ? 'text-purple-500' : 'text-slate-400'}`}>
-                                        Usata dall'AI per risposte personalizzate e generazione email riepilogo
-                                      </p>
-                                      <FormMessage />
-                                    </FormItem>
+                                      ) : (
+                                        <div className="space-y-3">
+                                          <Textarea
+                                            className="min-h-[150px] rounded-xl resize-y text-sm border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800"
+                                            rows={8}
+                                            value={fullTranscript}
+                                            onChange={(e) => setFullTranscript(e.target.value)}
+                                            placeholder="Incolla qui la trascrizione completa della chiamata...&#10;&#10;L'AI genererà automaticamente un riassunto bullet-point."
+                                          />
+                                          <div className="flex items-center justify-between">
+                                            <p className="text-xs text-purple-500">
+                                              La trascrizione NON viene salvata - solo il riassunto generato
+                                            </p>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              disabled={!fullTranscript.trim() || isGeneratingSummary}
+                                              onClick={async () => {
+                                                if (!fullTranscript.trim()) return;
+                                                setIsGeneratingSummary(true);
+                                                try {
+                                                  const response = await fetch('/api/echo/generate-summary-from-transcript', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    credentials: 'include',
+                                                    body: JSON.stringify({
+                                                      fullTranscript: fullTranscript,
+                                                      clientName: currentAppointment?.client?.firstName + ' ' + currentAppointment?.client?.lastName
+                                                    })
+                                                  });
+                                                  if (!response.ok) throw new Error('Errore nella generazione');
+                                                  const data = await response.json();
+                                                  updateForm.setValue('transcript', data.summary);
+                                                  setTranscriptMode('fathom');
+                                                  setFullTranscript('');
+                                                  toast({
+                                                    title: "✅ Riassunto Generato",
+                                                    description: "Il riassunto è stato creato dall'AI e inserito nel campo",
+                                                  });
+                                                } catch (error) {
+                                                  toast({
+                                                    title: "❌ Errore",
+                                                    description: "Impossibile generare il riassunto",
+                                                    variant: "destructive",
+                                                  });
+                                                } finally {
+                                                  setIsGeneratingSummary(false);
+                                                }
+                                              }}
+                                              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg"
+                                            >
+                                              {isGeneratingSummary ? (
+                                                <>
+                                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                                                  Generazione...
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Wand2 className="w-4 h-4 mr-2" />
+                                                  Genera Riassunto AI
+                                                </>
+                                              )}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
                                   )}
-                                />
+                                  
+                                  {!isCompleted && (
+                                    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-xl text-center">
+                                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                                        Completa prima la consulenza per aggiungere il riassunto
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
 

@@ -839,4 +839,73 @@ router.post("/sync-historical-emails", async (req: any, res) => {
   }
 });
 
+// Generate bullet-point summary from full transcript using AI
+router.post("/generate-summary-from-transcript", async (req: any, res) => {
+  try {
+    const { fullTranscript, clientName } = req.body;
+    const consultantId = req.user.id;
+
+    if (!fullTranscript || typeof fullTranscript !== 'string') {
+      return res.status(400).json({ error: "Trascrizione mancante" });
+    }
+
+    console.log(`🔄 [ECHO] Generating summary from transcript for consultant ${consultantId}`);
+
+    // Get consultant's AI configuration
+    const { getGeminiClient } = await import("../ai/gemini-unified");
+    const gemini = await getGeminiClient(consultantId);
+    
+    if (!gemini) {
+      return res.status(500).json({ error: "Configurazione AI non disponibile" });
+    }
+
+    const prompt = `Sei un assistente professionale per consulenze finanziarie. Analizza la seguente trascrizione di una consulenza con il cliente ${clientName || 'il cliente'} e crea un riassunto strutturato.
+
+TRASCRIZIONE:
+${fullTranscript}
+
+---
+
+Crea un riassunto professionale in formato bullet-point che includa:
+
+## Punti Chiave Discussi
+• [Elenca i principali argomenti trattati]
+
+## Situazione Attuale
+• [Descrivi brevemente la situazione finanziaria/personale emersa]
+
+## Obiettivi del Cliente
+• [Elenca gli obiettivi menzionati]
+
+## Azioni Concordate
+• [Elenca le azioni specifiche da fare]
+
+## Note Importanti
+• [Eventuali note aggiuntive rilevanti]
+
+Rispondi SOLO con il riassunto formattato in italiano, senza commenti aggiuntivi.`;
+
+    const result = await gemini.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 2000,
+      },
+    });
+
+    const summary = result.response.text();
+    
+    if (!summary) {
+      throw new Error("Nessun riassunto generato");
+    }
+
+    console.log(`✅ [ECHO] Summary generated successfully (${summary.length} chars)`);
+
+    res.json({ summary });
+  } catch (error: any) {
+    console.error("Error generating summary from transcript:", error);
+    res.status(500).json({ error: error.message || "Errore nella generazione del riassunto" });
+  }
+});
+
 export default router;
