@@ -148,7 +148,7 @@ function ActivityRowSkeleton() {
 }
 
 export function ActivityFeed() {
-  const { data, isLoading, isError, refetch, isFetching } = useQuery<{ activities: ActivityItem[] }>({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery<ActivityItem[]>({
     queryKey: ["/api/whatsapp/agents/activity-feed"],
     queryFn: async () => {
       const response = await fetch("/api/whatsapp/agents/activity-feed", {
@@ -157,13 +157,14 @@ export function ActivityFeed() {
       if (!response.ok) {
         throw new Error("Failed to fetch activity feed");
       }
-      return response.json();
+      const result = await response.json();
+      return Array.isArray(result) ? result : (result.activities || []);
     },
     staleTime: 15000,
     refetchInterval: 30000,
   });
 
-  const activities = data?.activities || [];
+  const activities = data || [];
 
   return (
     <Card className="bg-white border border-slate-200 h-full flex flex-col">

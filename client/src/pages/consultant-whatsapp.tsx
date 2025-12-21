@@ -488,28 +488,37 @@ export default function ConsultantWhatsAppPage() {
   const configs = existingConfigs?.configs || [];
 
   // Query per caricare i dati delle statistiche agenti dal backend
-  const { data: agentStatsData, isLoading: isLoadingStats } = useQuery<{ agents: Array<{
+  const { data: agentStatsData, isLoading: isLoadingStats } = useQuery<Array<{
     id: string;
     name: string;
-    agentType: string;
-    status: "active" | "paused" | "test";
-    performanceScore: number;
-    trend: "up" | "down" | "stable";
-    conversationsToday: number;
-  }> }>({
+    type: string;
+    isActive: boolean;
+    score: number;
+    conversations7d: number;
+    rank: number;
+  }>>({
     queryKey: ["/api/whatsapp/agents/leaderboard"],
     queryFn: async () => {
       const res = await fetch("/api/whatsapp/agents/leaderboard", { 
         headers: getAuthHeaders() 
       });
       if (!res.ok) throw new Error("Failed to fetch agent stats");
-      return res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.agents || []);
     },
     enabled: configs.length > 0,
     staleTime: 30000,
   });
 
-  const agentStats = agentStatsData?.agents || [];
+  const agentStats = (agentStatsData || []).map((agent: any) => ({
+    id: agent.id,
+    name: agent.name,
+    agentType: agent.type || agent.agentType || "reactive_lead",
+    status: agent.isActive === false ? "paused" : "active",
+    performanceScore: agent.score || 0,
+    trend: "stable" as const,
+    conversationsToday: agent.conversations7d || 0,
+  }));
 
   // Delete WhatsApp config mutation
   const deleteMutation = useMutation({
