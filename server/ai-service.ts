@@ -612,14 +612,20 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   const { detectIntent } = await import('./ai-context-builder');
   const intent = detectIntent(message);
   
-  // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE building context
+  // 🔍 FILE SEARCH: Check if consultant has FileSearchStore with ACTUAL DOCUMENTS
   const consultantIdForFileSearch = user.consultantId || clientId;
   const { storeNames: fileSearchStoreNames, breakdown: fileSearchBreakdown } = await fileSearchService.getStoreBreakdownForGeneration(
     clientId,
     user.role as 'consultant' | 'client',
     consultantIdForFileSearch
   );
-  const hasFileSearch = fileSearchStoreNames.length > 0;
+  // FIX: Only consider File Search active if stores have actual documents
+  const totalDocsInStores = fileSearchBreakdown.reduce((sum, store) => sum + store.totalDocs, 0);
+  const hasFileSearch = fileSearchStoreNames.length > 0 && totalDocsInStores > 0;
+  
+  if (fileSearchStoreNames.length > 0 && totalDocsInStores === 0) {
+    console.log(`⚠️ [FileSearch] Stores exist but are EMPTY (0 documents) - disabling File Search mode`);
+  }
   
   // Build context with reduced data if File Search is available
   const userContext: UserContext = await buildUserContext(clientId, { 
@@ -1231,7 +1237,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     // Extract consultantId (from user.consultantId or fallback to clientId)
     const consultantId = user.consultantId || clientId;
 
-    // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE selecting provider
+    // 🔍 FILE SEARCH: Check if consultant has FileSearchStore with ACTUAL DOCUMENTS
     // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
     const consultantIdForFileSearch = user.consultantId || clientId;
     const { storeNames: fileSearchStoreNames, breakdown: fileSearchBreakdown } = await fileSearchService.getStoreBreakdownForGeneration(
@@ -1239,7 +1245,13 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
       user.role as 'consultant' | 'client',
       consultantIdForFileSearch
     );
-    const hasFileSearch = fileSearchStoreNames.length > 0;
+    // FIX: Only consider File Search active if stores have actual documents
+    const totalDocsInStores = fileSearchBreakdown.reduce((sum, store) => sum + store.totalDocs, 0);
+    const hasFileSearch = fileSearchStoreNames.length > 0 && totalDocsInStores > 0;
+    
+    if (fileSearchStoreNames.length > 0 && totalDocsInStores === 0) {
+      console.log(`⚠️ [FileSearch] Stores exist but are EMPTY (0 documents) - disabling File Search mode`);
+    }
 
     // Get AI provider - Use Google AI Studio if File Search is active, otherwise 3-tier system
     let aiClient: any;
@@ -2412,13 +2424,19 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       throw new Error("Utente non autorizzato");
     }
 
-    // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE selecting provider
+    // 🔍 FILE SEARCH: Check if consultant has FileSearchStore with ACTUAL DOCUMENTS
     // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
     const { storeNames: consultantFileSearchStoreNames, breakdown: consultantFileSearchBreakdown } = await fileSearchService.getStoreBreakdownForGeneration(
       consultantId,
       'consultant'
     );
-    const hasConsultantFileSearch = consultantFileSearchStoreNames.length > 0;
+    // FIX: Only consider File Search active if stores have actual documents
+    const totalConsultantDocsInStores = consultantFileSearchBreakdown.reduce((sum, store) => sum + store.totalDocs, 0);
+    const hasConsultantFileSearch = consultantFileSearchStoreNames.length > 0 && totalConsultantDocsInStores > 0;
+    
+    if (consultantFileSearchStoreNames.length > 0 && totalConsultantDocsInStores === 0) {
+      console.log(`⚠️ [FileSearch] Consultant stores exist but are EMPTY (0 documents) - disabling File Search mode`);
+    }
 
     // Get AI provider - Use Google AI Studio if File Search is active, otherwise 3-tier system
     let aiClient: any;
