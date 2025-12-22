@@ -9951,6 +9951,75 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // POST /api/whatsapp/agents/:agentId/calendar/test - Test agent calendar connection
+  app.post("/api/whatsapp/agents/:agentId/calendar/test", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const agentId = req.params.agentId;
+
+      // Verify agent belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(schema.consultantWhatsappConfig)
+        .where(
+          and(
+            eq(schema.consultantWhatsappConfig.id, agentId),
+            eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      if (!agentConfig.calendarAccessToken || !agentConfig.calendarRefreshToken) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Nessun calendario collegato a questo agente" 
+        });
+      }
+
+      // Try to fetch events from the agent's calendar
+      const { getAgentCalendarService } = await import("./google-calendar-service");
+      const calendar = await getAgentCalendarService(agentId);
+
+      if (!calendar) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Impossibile inizializzare il servizio calendario" 
+        });
+      }
+
+      const now = new Date();
+      const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const events = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: now.toISOString(),
+        timeMax: weekLater.toISOString(),
+        maxResults: 5,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+
+      console.log(`✅ Agent ${agentId} calendar test successful - ${events.data.items?.length || 0} events found`);
+      
+      res.json({ 
+        success: true, 
+        message: "Connessione al calendario verificata con successo",
+        eventsCount: events.data.items?.length || 0,
+        calendarEmail: agentConfig.calendarEmail
+      });
+    } catch (error: any) {
+      console.error("❌ Error testing agent calendar:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || "Errore durante il test della connessione" 
+      });
+    }
+  });
+
   // POST /api/whatsapp/test-credentials - Test Twilio credentials validity
   // ✅ PROTECTED: Only authenticated consultants can test their own credentials
   app.post("/api/whatsapp/test-credentials", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {

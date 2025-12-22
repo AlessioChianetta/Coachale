@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -17,23 +16,14 @@ import {
   Shield,
   TrendingUp,
   AlertCircle,
-  Volume2,
-  CalendarCheck,
-  Link,
-  Unlink,
-  Loader2,
-  ExternalLink,
-  CheckCircle2
+  Volume2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { getAuthHeaders } from "@/lib/auth";
 
 interface AgentAvailabilityProps {
   formData: any;
   onChange: (field: string, value: any) => void;
   errors: Record<string, string>;
-  agentId?: string | null;
 }
 
 const daysOfWeek = [
@@ -94,106 +84,7 @@ const featureBlocks = [
   },
 ];
 
-export default function AgentAvailability({ formData, onChange, errors, agentId }: AgentAvailabilityProps) {
-  const { toast } = useToast();
-  const [calendarStatus, setCalendarStatus] = useState<{
-    connected: boolean;
-    email?: string;
-    connectedAt?: string;
-  }>({ connected: false });
-  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
-
-  // Fetch calendar status when agentId is available
-  useEffect(() => {
-    if (agentId) {
-      fetchCalendarStatus();
-    }
-  }, [agentId]);
-
-  const fetchCalendarStatus = async () => {
-    if (!agentId) return;
-    
-    setIsLoadingCalendar(true);
-    try {
-      const response = await fetch(`/api/whatsapp/agents/${agentId}/calendar/status`, {
-        headers: getAuthHeaders()
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setCalendarStatus(data);
-      }
-    } catch (error) {
-      console.error('Error fetching calendar status:', error);
-    } finally {
-      setIsLoadingCalendar(false);
-    }
-  };
-
-  const handleConnectCalendar = async () => {
-    if (!agentId) {
-      toast({
-        variant: "destructive",
-        title: "Errore",
-        description: "Salva prima l'agente per poter collegare il calendario"
-      });
-      return;
-    }
-
-    setIsConnecting(true);
-    try {
-      const response = await fetch(`/api/whatsapp/agents/${agentId}/calendar/oauth/start`, {
-        method: 'POST',
-        headers: getAuthHeaders()
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Errore durante la connessione');
-      }
-      
-      const { authUrl } = await response.json();
-      window.location.href = authUrl;
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Errore",
-        description: error.message || "Impossibile avviare la connessione al calendario"
-      });
-      setIsConnecting(false);
-    }
-  };
-
-  const handleDisconnectCalendar = async () => {
-    if (!agentId) return;
-
-    setIsDisconnecting(true);
-    try {
-      const response = await fetch(`/api/whatsapp/agents/${agentId}/calendar/disconnect`, {
-        method: 'POST',
-        headers: getAuthHeaders()
-      });
-      
-      if (!response.ok) {
-        throw new Error('Errore durante la disconnessione');
-      }
-      
-      setCalendarStatus({ connected: false });
-      toast({
-        title: "Calendario Scollegato",
-        description: "Il calendario Google è stato scollegato da questo agente"
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Errore",
-        description: error.message || "Impossibile scollegare il calendario"
-      });
-    } finally {
-      setIsDisconnecting(false);
-    }
-  };
+export default function AgentAvailability({ formData, onChange, errors }: AgentAvailabilityProps) {
 
   const handleDayToggle = (dayId: string, checked: boolean) => {
     const currentDays = formData.workingDays || [];
@@ -335,116 +226,6 @@ export default function AgentAvailability({ formData, onChange, errors, agentId 
                 L'agente sarà disponibile 24/7. Attiva gli orari di lavoro per limitare le risposte a specifici giorni e orari.
               </AlertDescription>
             </Alert>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Google Calendar Integration Section */}
-      <Card className="border-2 border-green-500/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-green-500/5 to-green-500/10">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarCheck className="h-5 w-5 text-green-500" />
-                Calendario Appuntamenti
-              </CardTitle>
-              <CardDescription>
-                Collega un calendario Google dedicato a questo agente per gestire gli appuntamenti
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-4">
-          {isLoadingCalendar ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Caricamento stato calendario...</span>
-            </div>
-          ) : calendarStatus.connected ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                <CheckCircle2 className="h-6 w-6 text-green-500" />
-                <div className="flex-1">
-                  <p className="font-semibold text-green-700 dark:text-green-300">
-                    Calendario Collegato
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {calendarStatus.email}
-                  </p>
-                  {calendarStatus.connectedAt && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Collegato il {new Date(calendarStatus.connectedAt).toLocaleDateString('it-IT')}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDisconnectCalendar}
-                  disabled={isDisconnecting}
-                  className="text-destructive hover:text-destructive"
-                >
-                  {isDisconnecting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Unlink className="h-4 w-4 mr-2" />
-                      Scollega
-                    </>
-                  )}
-                </Button>
-              </div>
-              <Alert className="border-green-500/30 bg-green-500/5">
-                <CalendarCheck className="h-4 w-4 text-green-500" />
-                <AlertDescription>
-                  Gli appuntamenti di questo agente verranno creati sul calendario Google collegato ({calendarStatus.email}).
-                </AlertDescription>
-              </Alert>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {!agentId ? (
-                <Alert className="border-orange-500/30 bg-orange-500/5">
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                  <AlertDescription>
-                    Salva l'agente per poter collegare un calendario Google dedicato.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 border border-muted">
-                    <Calendar className="h-6 w-6 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="font-medium">
-                        Nessun Calendario Collegato
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Collega un account Google per creare appuntamenti sul calendario di questo agente
-                      </p>
-                    </div>
-                    <Button
-                      onClick={handleConnectCalendar}
-                      disabled={isConnecting}
-                      className="bg-green-500 hover:bg-green-600"
-                    >
-                      {isConnecting ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Link className="h-4 w-4 mr-2" />
-                      )}
-                      Collega Google Calendar
-                    </Button>
-                  </div>
-                  <Alert>
-                    <ExternalLink className="h-4 w-4" />
-                    <AlertDescription>
-                      Cliccando su "Collega Google Calendar" verrai reindirizzato a Google per autorizzare l'accesso al calendario.
-                      Gli appuntamenti saranno creati su questo calendario invece che su quello del consulente.
-                    </AlertDescription>
-                  </Alert>
-                </>
-              )}
-            </div>
           )}
         </CardContent>
       </Card>

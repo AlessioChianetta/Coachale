@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +33,12 @@ import {
   CheckCircle,
   AlertCircle,
   Users,
-  Copy
+  Copy,
+  CalendarCheck,
+  Link,
+  Unlink,
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -185,6 +192,130 @@ function LoadingSkeleton() {
 
 export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAgent }: AgentProfilePanelProps) {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
+
+  const [calendarStatus, setCalendarStatus] = useState<{
+    connected: boolean;
+    email?: string;
+    connectedAt?: string;
+  }>({ connected: false });
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+
+  useEffect(() => {
+    if (selectedAgent?.id) {
+      fetchCalendarStatus();
+    }
+  }, [selectedAgent?.id]);
+
+  const fetchCalendarStatus = async () => {
+    if (!selectedAgent?.id) return;
+    
+    setIsLoadingCalendar(true);
+    try {
+      const response = await fetch(`/api/whatsapp/agents/${selectedAgent.id}/calendar/status`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCalendarStatus(data);
+      }
+    } catch (error) {
+      console.error('Error fetching calendar status:', error);
+    } finally {
+      setIsLoadingCalendar(false);
+    }
+  };
+
+  const handleConnectCalendar = async () => {
+    if (!selectedAgent?.id) return;
+
+    setIsConnecting(true);
+    try {
+      const response = await fetch(`/api/whatsapp/agents/${selectedAgent.id}/calendar/oauth/start`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Errore durante la connessione');
+      }
+      
+      const { authUrl } = await response.json();
+      window.location.href = authUrl;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile avviare la connessione al calendario"
+      });
+      setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnectCalendar = async () => {
+    if (!selectedAgent?.id) return;
+
+    setIsDisconnecting(true);
+    try {
+      const response = await fetch(`/api/whatsapp/agents/${selectedAgent.id}/calendar/disconnect`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error('Errore durante la disconnessione');
+      }
+      
+      setCalendarStatus({ connected: false });
+      toast({
+        title: "Calendario Scollegato",
+        description: "Il calendario Google è stato scollegato da questo agente"
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile scollegare il calendario"
+      });
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
+
+  const handleTestCalendar = async () => {
+    if (!selectedAgent?.id) return;
+
+    setIsTesting(true);
+    try {
+      const response = await fetch(`/api/whatsapp/agents/${selectedAgent.id}/calendar/test`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "Connessione Verificata",
+          description: `Calendario funzionante - ${data.eventsCount} eventi nei prossimi 7 giorni`
+        });
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore Test",
+        description: error.message || "Impossibile verificare la connessione"
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const { data, isLoading, isError } = useQuery<AgentAnalytics>({
     queryKey: ["/api/whatsapp/agents", selectedAgent?.id, "analytics"],
@@ -400,6 +531,80 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                 />
               ))}
             </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-200">
+            <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
+              <CalendarCheck className="h-4 w-4 text-green-500" />
+              Google Calendar
+            </h3>
+            {isLoadingCalendar ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+              </div>
+            ) : calendarStatus.connected ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200">
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-green-700">Collegato</p>
+                    <p className="text-xs text-green-600 truncate">{calendarStatus.email}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTestCalendar}
+                    disabled={isTesting}
+                    className="flex-1"
+                  >
+                    {isTesting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                    )}
+                    Test
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDisconnectCalendar}
+                    disabled={isDisconnecting}
+                    className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    {isDisconnecting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Unlink className="h-4 w-4 mr-1" />
+                    )}
+                    Scollega
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                  <Calendar className="h-5 w-5 text-slate-400" />
+                  <div className="flex-1">
+                    <p className="text-sm text-slate-600">Nessun calendario collegato</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleConnectCalendar}
+                  disabled={isConnecting}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {isConnecting ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Link className="h-4 w-4 mr-2" />
+                  )}
+                  Collega Google Calendar
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="pt-4 border-t border-slate-200">
