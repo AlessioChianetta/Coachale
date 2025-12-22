@@ -528,6 +528,10 @@ export const consultantSmtpSettings = pgTable("consultant_smtp_settings", {
   schedulerStatus: text("scheduler_status").$type<"idle" | "running">().default("idle"),
   lastSchedulerRun: timestamp("last_scheduler_run"), // Last execution timestamp
   nextSchedulerRun: timestamp("next_scheduler_run"), // Next calculated execution
+  // Journey Template Personalization
+  useCustomTemplates: boolean("use_custom_templates").default(false), // Use consultant-specific templates instead of defaults
+  businessContext: text("business_context"), // Description of consultant's business for AI template generation
+  lastTemplatesGeneratedAt: timestamp("last_templates_generated_at"), // When custom templates were last generated
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -724,6 +728,27 @@ export const emailJourneyTemplates = pgTable("email_journey_templates", {
 }, (table) => {
   return {
     uniqueDay: unique().on(table.dayOfMonth), // Ogni giorno ha un solo template
+  }
+});
+
+// Consultant Journey Templates - Template personalizzati per consultant (sovrascrivono i default)
+export const consultantJourneyTemplates = pgTable("consultant_journey_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  dayOfMonth: integer("day_of_month").notNull(), // 1-31
+  title: text("title").notNull(),
+  description: text("description"),
+  emailType: text("email_type").notNull(),
+  promptTemplate: text("prompt_template").notNull(), // Prompt AI personalizzato
+  tone: text("tone").$type<"formale" | "amichevole" | "motivazionale" | "professionale">().default("motivazionale"),
+  priority: integer("priority").notNull().default(5),
+  isActive: boolean("is_active").notNull().default(true),
+  generatedFromDefault: boolean("generated_from_default").default(true), // Se generato da template default
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => {
+  return {
+    uniqueConsultantDay: unique().on(table.consultantId, table.dayOfMonth), // Ogni consultant ha un solo template per giorno
   }
 });
 
@@ -1071,6 +1096,15 @@ export const insertEmailJourneyTemplateSchema = createInsertSchema(emailJourneyT
 });
 
 export const updateEmailJourneyTemplateSchema = insertEmailJourneyTemplateSchema.partial();
+
+// Consultant Journey Templates insert schema
+export const insertConsultantJourneyTemplateSchema = createInsertSchema(consultantJourneyTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateConsultantJourneyTemplateSchema = insertConsultantJourneyTemplateSchema.partial();
 
 // Client Email Journey Progress insert schema
 export const insertClientEmailJourneyProgressSchema = createInsertSchema(clientEmailJourneyProgress).omit({
@@ -2089,6 +2123,11 @@ export type InsertSchedulerExecutionLog = typeof schedulerExecutionLog.$inferIns
 export type EmailJourneyTemplate = typeof emailJourneyTemplates.$inferSelect;
 export type InsertEmailJourneyTemplate = z.infer<typeof insertEmailJourneyTemplateSchema>;
 export type UpdateEmailJourneyTemplate = z.infer<typeof updateEmailJourneyTemplateSchema>;
+
+// Consultant Journey Templates types
+export type ConsultantJourneyTemplate = typeof consultantJourneyTemplates.$inferSelect;
+export type InsertConsultantJourneyTemplate = z.infer<typeof insertConsultantJourneyTemplateSchema>;
+export type UpdateConsultantJourneyTemplate = z.infer<typeof updateConsultantJourneyTemplateSchema>;
 
 // Client Email Journey Progress types
 export type ClientEmailJourneyProgress = typeof clientEmailJourneyProgress.$inferSelect;
