@@ -987,6 +987,27 @@ export default function ConsultantApiKeysUnified() {
   // State for selected test config
   const [selectedTestConfigId, setSelectedTestConfigId] = useState<string | null>(null);
 
+  // State for ActiveCampaign webhook test
+  const [activecampaignTestData, setActivecampaignTestData] = useState({
+    firstName: "Mario",
+    lastName: "Rossi",
+    email: "mario.rossi@test.com",
+    phone: "+39 333 1234567",
+    tags: [] as string[],
+    tagInput: "",
+    customFieldKey: "",
+    customFieldValue: "",
+    customFields: [] as Array<{field: string, value: string}>,
+  });
+  const [showAdvancedACTest, setShowAdvancedACTest] = useState(false);
+  const [activecampaignTestResult, setActivecampaignTestResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
+  const [isTestingActivecampaign, setIsTestingActivecampaign] = useState(false);
+  const [selectedACTestConfigId, setSelectedACTestConfigId] = useState<string | null>(null);
+
   const handleTestHubdigitalWebhook = async () => {
     // Use the selected test config or the first available one
     const testConfig = selectedTestConfigId 
@@ -1078,6 +1099,83 @@ export default function ConsultantApiKeysUnified() {
       });
     } finally {
       setIsTestingHubdigital(false);
+    }
+  };
+
+  const handleTestActivecampaignWebhook = async () => {
+    const testConfig = selectedACTestConfigId 
+      ? activecampaignConfigs.find((c: any) => c.id === selectedACTestConfigId)
+      : activecampaignConfigs[0];
+    
+    if (!testConfig?.secretKey) return;
+    
+    setIsTestingActivecampaign(true);
+    setActivecampaignTestResult(null);
+
+    try {
+      // Build payload matching ActiveCampaign webhook format
+      const payload: any = {
+        type: "contact_add",
+        date_time: new Date().toISOString(),
+        initiated_by: "admin",
+        initiated_from: "test-ui",
+        contact: {
+          id: `ac_test_${Date.now()}`,
+          email: activecampaignTestData.email || undefined,
+          phone: activecampaignTestData.phone,
+          firstName: activecampaignTestData.firstName,
+          lastName: activecampaignTestData.lastName,
+          tags: activecampaignTestData.tags.length > 0 ? activecampaignTestData.tags.join(",") : undefined,
+          fieldValues: activecampaignTestData.customFields.length > 0 ? activecampaignTestData.customFields : undefined,
+        },
+      };
+
+      const response = await fetch(`/api/webhook/activecampaign/${testConfig.secretKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setActivecampaignTestResult({
+          success: true,
+          message: `Lead creato con successo nella configurazione "${testConfig.configName || testConfig.displayName || 'ActiveCampaign'}"!`,
+          details: data,
+        });
+        toast({
+          title: "Test Riuscito",
+          description: `Lead di test creato con ID: ${data.leadId}`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
+      } else {
+        setActivecampaignTestResult({
+          success: false,
+          message: data.error || "Errore durante il test",
+          details: data,
+        });
+        toast({
+          title: "Test Fallito",
+          description: data.error || "Errore sconosciuto",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      setActivecampaignTestResult({
+        success: false,
+        message: error.message || "Errore di connessione",
+      });
+      toast({
+        title: "Errore",
+        description: "Impossibile contattare il webhook",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingActivecampaign(false);
     }
   };
 
@@ -5253,6 +5351,322 @@ export default function ConsultantApiKeysUnified() {
                           </ol>
                         </AlertDescription>
                       </Alert>
+                    )}
+
+                    {/* Test Webhook Section - Only show if there are configs */}
+                    {activecampaignConfigs.length > 0 && (
+                      <Card className="border-2 border-purple-200 shadow-2xl bg-gradient-to-br from-purple-50 via-violet-50 to-fuchsia-50 mt-6 overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-purple-500 to-violet-500 text-white pb-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                <Sparkles className="h-6 w-6 text-white" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-xl text-white">Test Webhook ActiveCampaign</CardTitle>
+                                <CardDescription className="text-purple-100">Simula l'invio di un lead per verificare la configurazione</CardDescription>
+                              </div>
+                            </div>
+                            <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                              {activecampaignConfigs.length} config
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-6 pt-6">
+                          {/* Config Selection */}
+                          <div className="p-4 bg-white/60 rounded-xl border border-purple-200 shadow-sm">
+                            <Label className="text-sm font-semibold text-purple-800 mb-2 block">Configurazione da Testare</Label>
+                            <Select
+                              value={selectedACTestConfigId || activecampaignConfigs[0]?.id || ""}
+                              onValueChange={(configId) => {
+                                setSelectedACTestConfigId(configId);
+                              }}
+                            >
+                              <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400">
+                                <SelectValue placeholder="Seleziona una configurazione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {activecampaignConfigs.map((config: any) => (
+                                  <SelectItem key={config.id} value={config.id}>
+                                    <span className="flex items-center gap-2">
+                                      {config.isActive ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-gray-400" />}
+                                      {config.configName || config.displayName || "ActiveCampaign"}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Source Override Warning */}
+                          {(() => {
+                            const testConfig = selectedACTestConfigId 
+                              ? activecampaignConfigs.find((c: any) => c.id === selectedACTestConfigId)
+                              : activecampaignConfigs[0];
+                            if (testConfig?.defaultSource) {
+                              return (
+                                <Alert className="bg-violet-50 border-violet-200 rounded-xl">
+                                  <AlertCircle className="h-4 w-4 text-violet-600" />
+                                  <AlertDescription className="text-sm text-violet-800">
+                                    <strong>Nota:</strong> Fonte predefinita "<span className="font-mono bg-violet-100 px-1 rounded">{testConfig.defaultSource}</span>" sovrascriverà il campo Fonte.
+                                  </AlertDescription>
+                                </Alert>
+                              );
+                            }
+                            return null;
+                          })()}
+
+                          {/* Basic Fields */}
+                          <div className="space-y-4">
+                            <h4 className="font-semibold text-gray-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                              <User className="h-4 w-4 text-purple-600" />
+                              Dati Contatto Base
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <Label htmlFor="acTestFirstName" className="text-xs font-medium text-gray-600">Nome</Label>
+                                <Input
+                                  id="acTestFirstName"
+                                  value={activecampaignTestData.firstName}
+                                  onChange={(e) => setActivecampaignTestData(prev => ({ ...prev, firstName: e.target.value }))}
+                                  placeholder="Mario"
+                                  className="bg-white border-gray-200 focus:border-purple-400"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="acTestLastName" className="text-xs font-medium text-gray-600">Cognome</Label>
+                                <Input
+                                  id="acTestLastName"
+                                  value={activecampaignTestData.lastName}
+                                  onChange={(e) => setActivecampaignTestData(prev => ({ ...prev, lastName: e.target.value }))}
+                                  placeholder="Rossi"
+                                  className="bg-white border-gray-200 focus:border-purple-400"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="acTestPhone" className="text-xs font-medium text-purple-700 flex items-center gap-1">
+                                  Telefono <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                  id="acTestPhone"
+                                  value={activecampaignTestData.phone}
+                                  onChange={(e) => setActivecampaignTestData(prev => ({ ...prev, phone: e.target.value }))}
+                                  placeholder="+39 333 1234567"
+                                  className={`bg-white ${!activecampaignTestData.phone.trim() ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-purple-400"}`}
+                                />
+                                {!activecampaignTestData.phone.trim() && (
+                                  <p className="text-xs text-red-500">Obbligatorio</p>
+                                )}
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="acTestEmail" className="text-xs font-medium text-gray-600">Email</Label>
+                                <Input
+                                  id="acTestEmail"
+                                  type="email"
+                                  value={activecampaignTestData.email}
+                                  onChange={(e) => setActivecampaignTestData(prev => ({ ...prev, email: e.target.value }))}
+                                  placeholder="mario.rossi@test.com"
+                                  className="bg-white border-gray-200 focus:border-purple-400"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Advanced Fields Toggle */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowAdvancedACTest(!showAdvancedACTest)}
+                            className="w-full border-dashed border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-400"
+                          >
+                            {showAdvancedACTest ? (
+                              <>
+                                <ChevronUp className="h-4 w-4 mr-2" />
+                                Nascondi Campi Avanzati
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-4 w-4 mr-2" />
+                                Mostra Campi Avanzati (Tags, Custom Fields)
+                              </>
+                            )}
+                          </Button>
+
+                          {/* Advanced Fields */}
+                          {showAdvancedACTest && (
+                            <div className="space-y-6 p-4 bg-white/40 rounded-xl border border-purple-100">
+                              {/* Tags */}
+                              <div className="space-y-3">
+                                <h4 className="font-semibold text-gray-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                  <Tag className="h-4 w-4 text-purple-600" />
+                                  Tags
+                                </h4>
+                                <div className="flex gap-2">
+                                  <Input
+                                    value={activecampaignTestData.tagInput}
+                                    onChange={(e) => setActivecampaignTestData(prev => ({ ...prev, tagInput: e.target.value }))}
+                                    placeholder="Aggiungi tag..."
+                                    className="bg-white border-gray-200 focus:border-purple-400"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && activecampaignTestData.tagInput.trim()) {
+                                        e.preventDefault();
+                                        setActivecampaignTestData(prev => ({
+                                          ...prev,
+                                          tags: [...prev.tags, prev.tagInput.trim()],
+                                          tagInput: "",
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (activecampaignTestData.tagInput.trim()) {
+                                        setActivecampaignTestData(prev => ({
+                                          ...prev,
+                                          tags: [...prev.tags, prev.tagInput.trim()],
+                                          tagInput: "",
+                                        }));
+                                      }
+                                    }}
+                                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                {activecampaignTestData.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {activecampaignTestData.tags.map((tag, index) => (
+                                      <Badge key={index} variant="secondary" className="bg-purple-100 text-purple-800 flex items-center gap-1">
+                                        {tag}
+                                        <button
+                                          type="button"
+                                          onClick={() => setActivecampaignTestData(prev => ({
+                                            ...prev,
+                                            tags: prev.tags.filter((_, i) => i !== index),
+                                          }))}
+                                          className="ml-1 hover:text-red-600"
+                                        >
+                                          <XCircle className="h-3 w-3" />
+                                        </button>
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Custom Fields */}
+                              <div className="space-y-3">
+                                <h4 className="font-semibold text-gray-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                  <Settings className="h-4 w-4 text-purple-600" />
+                                  Campi Personalizzati
+                                </h4>
+                                <div className="flex gap-2">
+                                  <Input
+                                    value={activecampaignTestData.customFieldKey}
+                                    onChange={(e) => setActivecampaignTestData(prev => ({ ...prev, customFieldKey: e.target.value }))}
+                                    placeholder="Nome campo"
+                                    className="bg-white border-gray-200 focus:border-purple-400 flex-1"
+                                  />
+                                  <Input
+                                    value={activecampaignTestData.customFieldValue}
+                                    onChange={(e) => setActivecampaignTestData(prev => ({ ...prev, customFieldValue: e.target.value }))}
+                                    placeholder="Valore"
+                                    className="bg-white border-gray-200 focus:border-purple-400 flex-1"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (activecampaignTestData.customFieldKey.trim() && activecampaignTestData.customFieldValue.trim()) {
+                                        setActivecampaignTestData(prev => ({
+                                          ...prev,
+                                          customFields: [...prev.customFields, {
+                                            field: prev.customFieldKey.trim(),
+                                            value: prev.customFieldValue.trim(),
+                                          }],
+                                          customFieldKey: "",
+                                          customFieldValue: "",
+                                        }));
+                                      }
+                                    }}
+                                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                {activecampaignTestData.customFields.length > 0 && (
+                                  <div className="space-y-2">
+                                    {activecampaignTestData.customFields.map((cf, index) => (
+                                      <div key={index} className="flex items-center gap-2 p-2 bg-white rounded border border-purple-200">
+                                        <Badge variant="outline" className="bg-purple-50 text-purple-700">{cf.field}</Badge>
+                                        <span className="text-gray-600">=</span>
+                                        <span className="text-gray-800">{cf.value}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setActivecampaignTestData(prev => ({
+                                            ...prev,
+                                            customFields: prev.customFields.filter((_, i) => i !== index),
+                                          }))}
+                                          className="ml-auto text-gray-400 hover:text-red-600"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Test Button */}
+                          <div className="flex gap-3">
+                            <Button
+                              onClick={handleTestActivecampaignWebhook}
+                              disabled={!activecampaignTestData.phone.trim() || isTestingActivecampaign}
+                              className="flex-1 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg"
+                            >
+                              {isTestingActivecampaign ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Invio in corso...
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Invia Lead di Test
+                                </>
+                              )}
+                            </Button>
+                          </div>
+
+                          {/* Result */}
+                          {activecampaignTestResult && (
+                            <Alert className={`rounded-xl ${activecampaignTestResult.success ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}>
+                              {activecampaignTestResult.success ? (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              ) : (
+                                <XCircle className="h-5 w-5 text-red-600" />
+                              )}
+                              <AlertDescription className="text-sm">
+                                <strong className={activecampaignTestResult.success ? "text-green-800" : "text-red-800"}>
+                                  {activecampaignTestResult.success ? "Successo!" : "Errore:"}
+                                </strong>{" "}
+                                <span className={activecampaignTestResult.success ? "text-green-700" : "text-red-700"}>
+                                  {activecampaignTestResult.message}
+                                </span>
+                                {activecampaignTestResult.details && (
+                                  <pre className="mt-3 p-3 bg-white/70 rounded-lg text-xs overflow-auto max-h-40 border border-gray-200">
+                                    {JSON.stringify(activecampaignTestResult.details, null, 2)}
+                                  </pre>
+                                )}
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </CardContent>
+                      </Card>
                     )}
                   </>
                 )}
