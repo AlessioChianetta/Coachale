@@ -2142,12 +2142,16 @@ router.get("/consultant/journey-templates", authenticateToken, requireRole("cons
       templates = await storage.getAllEmailJourneyTemplates();
     }
     
+    // Check if SMTP is properly configured
+    const hasSmtpSettings = !!(smtpSettings?.smtpHost && smtpSettings?.smtpUser && smtpSettings?.fromEmail);
+    
     res.json({
       success: true,
       data: {
         templates,
         isCustom,
         hasCustomTemplates,
+        hasSmtpSettings,
         businessContext: smtpSettings?.businessContext || null,
         useCustomTemplates: smtpSettings?.useCustomTemplates || false,
         lastGeneratedAt: smtpSettings?.lastTemplatesGeneratedAt || null

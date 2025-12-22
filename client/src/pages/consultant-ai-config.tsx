@@ -3174,6 +3174,17 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     />
                   </div>
 
+                  {customJourneyData?.hasCustomTemplates && !customJourneyData?.hasSmtpSettings && (
+                    <Alert className="bg-amber-50 border-amber-300">
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-amber-800">
+                        <strong>Attenzione:</strong> Le impostazioni SMTP non sono configurate. 
+                        I template personalizzati sono pronti ma le email non potranno essere inviate 
+                        finché non configuri il server SMTP nella sezione "Email Automation".
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   {customJourneyData?.hasCustomTemplates && (
                     <Button
                       variant="outline"
