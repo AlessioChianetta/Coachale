@@ -1642,6 +1642,128 @@ router.post('/reset-stores', authenticateToken, requireRole('consultant'), async
 });
 
 /**
+ * POST /api/file-search/reset-and-resync
+ * Complete reset and resync of all File Search stores
+ * 
+ * This endpoint:
+ * 1. Deletes ALL documents from consultant and client stores
+ * 2. Triggers a full sync of all content
+ * 
+ * Use this when you need a clean slate and want to resync everything.
+ * Progress is emitted via SSE for real-time tracking.
+ */
+router.post('/reset-and-resync', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`🔄 [FileSearch] Starting COMPLETE RESET AND RESYNC for consultant ${consultantId}`);
+    console.log(`${'═'.repeat(70)}\n`);
+    
+    // PHASE 1: Delete all documents from all stores
+    console.log(`📍 PHASE 1: Deleting all documents from all stores...`);
+    
+    let consultantDocsDeleted = 0;
+    let clientDocsDeleted = 0;
+    let clientStoresReset = 0;
+    
+    // Reset consultant store
+    const consultantStore = await db.query.fileSearchStores.findFirst({
+      where: and(
+        eq(fileSearchStores.ownerId, consultantId),
+        eq(fileSearchStores.ownerType, 'consultant'),
+      ),
+    });
+    
+    if (consultantStore) {
+      const consultantDocs = await db.query.fileSearchDocuments.findMany({
+        where: eq(fileSearchDocuments.storeId, consultantStore.id),
+      });
+      
+      console.log(`   📦 Consultant store: ${consultantDocs.length} documents to delete`);
+      
+      for (const doc of consultantDocs) {
+        try {
+          await fileSearchService.deleteDocument(doc.id, consultantId);
+          consultantDocsDeleted++;
+        } catch (err: any) {
+          console.warn(`   ⚠️ Failed to delete doc ${doc.id}: ${err.message}`);
+        }
+      }
+      
+      await db.update(fileSearchStores)
+        .set({ documentCount: 0, updatedAt: new Date() })
+        .where(eq(fileSearchStores.id, consultantStore.id));
+    }
+    
+    // Reset all client stores
+    const clients = await db.select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
+    
+    const clientIds = clients.map(c => c.id);
+    
+    if (clientIds.length > 0) {
+      const clientStores = await db.query.fileSearchStores.findMany({
+        where: and(
+          inArray(fileSearchStores.ownerId, clientIds),
+          eq(fileSearchStores.ownerType, 'client'),
+        ),
+      });
+      
+      console.log(`   📦 Client stores: ${clientStores.length} stores to reset`);
+      
+      for (const store of clientStores) {
+        const clientDocs = await db.query.fileSearchDocuments.findMany({
+          where: eq(fileSearchDocuments.storeId, store.id),
+        });
+        
+        for (const doc of clientDocs) {
+          try {
+            await fileSearchService.deleteDocument(doc.id, consultantId);
+            clientDocsDeleted++;
+          } catch (err: any) {
+            console.warn(`   ⚠️ Failed to delete client doc ${doc.id}: ${err.message}`);
+          }
+        }
+        
+        await db.update(fileSearchStores)
+          .set({ documentCount: 0, updatedAt: new Date() })
+          .where(eq(fileSearchStores.id, store.id));
+          
+        clientStoresReset++;
+      }
+    }
+    
+    console.log(`   ✅ Phase 1 complete: ${consultantDocsDeleted + clientDocsDeleted} documents deleted`);
+    
+    // PHASE 2: Full sync of all content
+    console.log(`\n📍 PHASE 2: Syncing all content...`);
+    
+    const syncResult = await fileSearchSyncService.syncAllContentForConsultant(consultantId);
+    
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`✅ [FileSearch] RESET AND RESYNC COMPLETE!`);
+    console.log(`${'═'.repeat(70)}\n`);
+    
+    res.json({
+      success: true,
+      message: 'Reset e risincronizzazione completati',
+      resetPhase: {
+        consultantDocsDeleted,
+        clientDocsDeleted,
+        clientStoresReset,
+        totalDeleted: consultantDocsDeleted + clientDocsDeleted,
+      },
+      syncPhase: syncResult,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error in reset-and-resync:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/file-search/migrate-client/:clientId
  * Migrate a single client to private store architecture
  * Syncs all assigned content to the client's private store
