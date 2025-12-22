@@ -1720,6 +1720,12 @@ export class FileSearchSyncService {
     console.log(`      📚 Client Knowledge: ${totalClientKnowledge.synced}/${totalClientKnowledge.total} synced`);
     console.log(`      📞 Client Consultations: ${totalClientConsultations.synced}/${totalClientConsultations.total} synced`);
     console.log(`      💰 Financial Data: ${totalFinancialData.synced}/${totalFinancialData.total} synced`);
+    console.log(`   📋 Assigned Content:`);
+    console.log(`      📋 Assigned Exercises: ${totalAssignedExercises.synced}/${totalAssignedExercises.total} synced`);
+    console.log(`      📕 Assigned Library: ${totalAssignedLibrary.synced}/${totalAssignedLibrary.total} synced`);
+    console.log(`      🎯 Assigned University: ${totalAssignedUniversity.synced}/${totalAssignedUniversity.total} synced`);
+    console.log(`      🎯 Goals: ${totalGoals.synced}/${totalGoals.total} synced`);
+    console.log(`      ✅ Tasks: ${totalTasks.synced}/${totalTasks.total} synced`);
     console.log(`   🧹 Source Orphans: ${orphansRemoved} removed from ${storesToClean.length} stores`);
     console.log(`${'═'.repeat(70)}\n`);
 
@@ -1738,6 +1744,13 @@ export class FileSearchSyncService {
         clientKnowledge: totalClientKnowledge,
         clientConsultations: totalClientConsultations,
         financialData: totalFinancialData,
+      },
+      assignedContent: {
+        assignedExercises: totalAssignedExercises,
+        assignedLibrary: totalAssignedLibrary,
+        assignedUniversity: totalAssignedUniversity,
+        goals: totalGoals,
+        tasks: totalTasks,
       },
       orphansCleanup: {
         storesChecked: storesToClean.length,
