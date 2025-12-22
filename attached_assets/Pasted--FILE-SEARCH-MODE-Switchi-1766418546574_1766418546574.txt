@@ -1,0 +1,179 @@
+══════════════════════════════════════════════════════════════════════
+🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)
+══════════════════════════════════════════════════════════════════════
+   📦 Provider: Google AI Studio (@google/genai)
+   ✅ File Search API: SUPPORTED
+   ⚠️  Vertex AI: NOT compatible with File Search
+══════════════════════════════════════════════════════════════════════
+
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Gemini key for File Search (1/1)
+🔄 Building context for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: general, sessionType: normal)
+📚 Including ALL 87 exercises in context (no limits applied)
+📚 Prepared 87 exercise metadata (content will be loaded on-demand when asked)
+📚 Found 81 documents linked to exercises
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📚 Total library documents included in context: 5 (intent: general)
+🏦 Fetching finance data for giusy.dattilo@gmail.com
+[PercorsoCapitale] Client initialized for user: gi***@gmail.com
+[PercorsoCapitale] req-1 Cache MISS for dashboard (user: gi***@gmail.com), fetching from API... (stats: 0/1 hits)
+[PercorsoCapitale] req-2 Cache MISS for categoryBudgets (user: gi***@gmail.com), fetching from API... (stats: 0/2 hits)
+[PercorsoCapitale] req-3 Cache MISS for transactions (user: gi***@gmail.com), fetching from API... (stats: 0/3 hits)
+[PercorsoCapitale] req-4 Cache MISS for accountArchitecture (user: gi***@gmail.com), fetching from API... (stats: 0/4 hits)
+[PercorsoCapitale] req-5 Cache MISS for budgetSettings (user: gi***@gmail.com), fetching from API... (stats: 0/5 hits)
+[PercorsoCapitale] req-6 Cache MISS for investments (user: gi***@gmail.com), fetching from API... (stats: 0/6 hits)
+[PercorsoCapitale] req-7 Cache MISS for goals (user: gi***@gmail.com), fetching from API... (stats: 0/7 hits)
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+[PercorsoCapitale] req-6 Cached investments for 86400s (886ms response time)
+[PercorsoCapitale] req-5 Cached budgetSettings for 86400s (891ms response time)
+[PercorsoCapitale] req-2 Cached categoryBudgets for 86400s (1161ms response time)
+[PercorsoCapitale] req-3 Cached transactions for 86400s (1157ms response time)
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+[PercorsoCapitale] req-7 Cached goals for 86400s (1396ms response time)
+[PercorsoCapitale] req-1 Cached dashboard for 86400s (1541ms response time)
+[PercorsoCapitale] req-4 Cached accountArchitecture for 86400s (1532ms response time)
+📊 [ProcessBudgets] Month 2025-12: Found 32 expense transactions
+📊 [ProcessBudgets] Month 2025-12: Found 32 expense transactions
+📊 [ProcessBudgets] Month 2025-11: Found 42 expense transactions
+📊 [ProcessBudgets] Month 2025-10: Found 27 expense transactions
+📊 [MultiMonth] Analyzing 185 transactions
+📅 [MultiMonth] Date range: 2025-08-08 → 2026-01-02
+📅 [MultiMonth] Target months: 2025-07, 2025-08, 2025-09, 2025-10, 2025-11, 2025-12
+🔍 [FilterTransactions] Filtering for month 2025-07:
+   - Total transactions before filter: 185
+   - Transactions after type filter: 185
+   - Transactions matching month: 0
+📊 [ProcessBudgets] Month 2025-07: Found 0 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-08:
+   - Total transactions before filter: 185
+   - Transactions after type filter: 185
+   - Transactions matching month: 4
+   - Date range: 2025-08-27 → 2025-08-08
+📊 [ProcessBudgets] Month 2025-08: Found 3 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-09:
+   - Total transactions before filter: 185
+   - Transactions after type filter: 185
+   - Transactions matching month: 43
+   - Date range: 2025-09-29 → 2025-09-02
+📊 [ProcessBudgets] Month 2025-09: Found 33 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-10:
+   - Total transactions before filter: 185
+   - Transactions after type filter: 185
+   - Transactions matching month: 43
+   - Date range: 2025-10-31 → 2025-10-01
+📊 [ProcessBudgets] Month 2025-10: Found 27 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-11:
+   - Total transactions before filter: 185
+   - Transactions after type filter: 185
+   - Transactions matching month: 53
+   - Date range: 2025-11-29 → 2025-11-01
+📊 [ProcessBudgets] Month 2025-11: Found 42 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-12:
+   - Total transactions before filter: 185
+   - Transactions after type filter: 185
+   - Transactions matching month: 41
+   - Date range: 2025-12-21 → 2025-12-01
+📊 [ProcessBudgets] Month 2025-12: Found 32 expense transactions
+✅ Finance data fetched and transformed successfully (5 accounts, 8 budgets, 10 transactions)
+📊 Momentum stats: 17 check-ins (17 productive, 100% rate), streak: 2 days
+📅 Calendar stats: 0 total upcoming (0 ongoing, 0 today, 0 this week)
+📚 [Knowledge Base] Loading ALL knowledge content for client (no filtering)...
+📚 [Client Knowledge Base] Loaded 0 documents and 0 APIs for client 7e40b56c-2cc8-4515-b843-dc105e478f38
+ℹ️ [Knowledge Base] No documents or API data uploaded yet
+💾 Stored fresh context in cache for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: general)
+⏱️  [TIMING] Context building: 3713ms
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+🔍 [FileSearch] Exercises indexed check: 0/10 checked, using FileSearch: false
+📚 Loading exercise content - exercises NOT in File Search, need full Google Docs access...
+📋 Generic exercise query - FULL CONTENT (no limits)
+⏱️  [TIMING] Exercise scraping: 1128ms
+⏱️  [TIMING] Prompt building: 19ms
+
+📊 Token Usage Estimation (Intent: general):
+  - System Prompt: ~114,102 tokens
+  - User Message: ~48 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~114,150 tokens
+  - File Search Mode: ✅ ACTIVE (RAG via stores)
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~114,102 tokens)
+══════════════════════════════════════════════════════════════════════
+
+📍 NEL SYSTEM PROMPT (114,102 tokens):
+   💰 Finance Data: 13,755 tokens
+   🎯 Goals & Tasks: 12 tokens
+   ⚡ Momentum & Calendar: 72 tokens
+   👤 User Profile & Base: 5,055 tokens
+
+🔍 VIA FILE SEARCH RAG (non nel prompt, cercati su richiesta):
+   📚 Exercises: 93,882 tokens → via RAG
+   📖 Library Docs: 1,573 tokens → via RAG
+   💬 Consultations: 46,363 tokens → via RAG
+   📚 Knowledge Base: 41 tokens → via RAG
+   🎓 University: 10,102 tokens → via RAG
+
+   💰 RISPARMIO: ~151,961 tokens spostati su File Search
+
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👥 Private Store - Client 7e40b56c (0 documenti):
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~141,859 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~255,961 a ~114,102 tokens
+══════════════════════════════════════════════════════════════════════
+
+[AI] Using model: gemini-3-flash-preview with thinking_level: low [CLIENT STREAMING]
+[AI] Provider: Google AI Studio -> Gemini 3 Flash
+🔄 AI stream attempt 1/6...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ AI streaming completed successfully on attempt 1
+⏱️  [TIMING] Gemini API call (with streaming): 9073ms
+✅ AI streaming completed for message 4a5ce663-c1a7-43a1-b957-52bab08b763b
+
+──────────────────────────────────────────────────────────────────────
+🔍 FILE SEARCH STREAMING SUMMARY [CLIENT]
+──────────────────────────────────────────────────────────────────────
+   📦 Stores attivi: 1
+   ⚠️  Nota: In modalità streaming, le citazioni non sono disponibili
+      nel response object. File Search è stato configurato come tool.
+   📄 Se la risposta cita documenti specifici, Gemini ha usato File Search.
+──────────────────────────────────────────────────────────────────────
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE TIMING BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [0ms → 3713ms] Context Building (3713ms)
+   [3713ms → 4841ms] Exercise Scraping (1128ms)
+   [4841ms → 4860ms] Prompt Building (19ms)
+   [4860ms → 15965ms] Gemini API Call (9073ms)
+   ────────────────────────────────────────────────────────────────────
+   ⏱️  TOTAL: 15.96s (15965ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3:49:13 PM [express] POST /api/ai/chat 200 in 16195ms
