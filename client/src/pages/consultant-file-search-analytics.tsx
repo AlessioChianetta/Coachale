@@ -94,6 +94,15 @@ interface FileSearchSettings {
   autoSyncClientKnowledge: boolean;
   autoSyncExerciseResponses: boolean;
   autoSyncFinancial: boolean;
+  autoSyncGoals: boolean;
+  autoSyncTasks: boolean;
+  autoSyncDailyReflections: boolean;
+  autoSyncClientProgress: boolean;
+  autoSyncLibraryProgress: boolean;
+  autoSyncEmailJourney: boolean;
+  autoSyncAssignedExercises: boolean;
+  autoSyncAssignedLibrary: boolean;
+  autoSyncAssignedUniversity: boolean;
   scheduledSyncEnabled: boolean;
   scheduledSyncHour: number;
   lastScheduledSync: string | null;
@@ -2488,6 +2497,135 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <Switch
                             checked={settings?.autoSyncWhatsappAgents ?? false}
                             onCheckedChange={(checked) => handleToggle('autoSyncWhatsappAgents', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="border-t pt-4 mt-4">
+                          <h6 className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-2">
+                            <Target className="h-4 w-4" />
+                            Dati Personali Clienti
+                          </h6>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Obiettivi Clienti</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente gli obiettivi dei clienti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncGoals ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncGoals', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Task Clienti</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente i task dei clienti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncTasks ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncTasks', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Riflessioni Giornaliere</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente le riflessioni giornaliere dei clienti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncDailyReflections ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncDailyReflections', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="border-t pt-4 mt-4">
+                          <h6 className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4" />
+                            Tracciamento Progressi
+                          </h6>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Storico Progressi Cliente</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente lo storico dei progressi dei clienti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncClientProgress ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncClientProgress', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Progressi Libreria</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente i progressi nella libreria</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncLibraryProgress ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncLibraryProgress', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Progressi Email Journey</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente i progressi dell'email journey</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncEmailJourney ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncEmailJourney', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="border-t pt-4 mt-4">
+                          <h6 className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-2">
+                            <ClipboardCheck className="h-4 w-4" />
+                            Contenuti Assegnati
+                          </h6>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Esercizi Assegnati</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente gli esercizi assegnati ai clienti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncAssignedExercises ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncAssignedExercises', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Libreria Assegnata</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente i documenti libreria assegnati ai clienti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncAssignedLibrary ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncAssignedLibrary', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>University Assegnata</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente le lezioni university assegnate ai clienti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncAssignedUniversity ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncAssignedUniversity', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
                         </div>
