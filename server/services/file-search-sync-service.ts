@@ -1541,6 +1541,30 @@ export class FileSearchSyncService {
       syncProgressEmitter.emitItemProgress(consultantId, 'tasks', clientDisplayName,
         totalTasks.synced + totalTasks.failed, preCalcTasksTotal);
 
+      // Sync daily reflections
+      const reflectionsResult = await this.syncClientDailyReflections(client.id, consultantId);
+      if (!reflectionsResult.success && reflectionsResult.error) {
+        errors.push(`Client ${clientDisplayName} riflessioni: ${reflectionsResult.error}`);
+      }
+
+      // Sync client progress history
+      const progressHistResult = await this.syncClientProgress(client.id, consultantId);
+      if (!progressHistResult.success && progressHistResult.error) {
+        errors.push(`Client ${clientDisplayName} progresso: ${progressHistResult.error}`);
+      }
+
+      // Sync library progress  
+      const libraryProgResult = await this.syncClientLibraryProgress(client.id, consultantId);
+      if (!libraryProgResult.success && libraryProgResult.error) {
+        errors.push(`Client ${clientDisplayName} progresso libreria: ${libraryProgResult.error}`);
+      }
+
+      // Sync email journey progress
+      const emailJourneyResult = await this.syncClientEmailJourneyProgress(client.id, consultantId);
+      if (!emailJourneyResult.success && emailJourneyResult.error) {
+        errors.push(`Client ${clientDisplayName} email journey: ${emailJourneyResult.error}`);
+      }
+
       clientsProcessed++;
       
       // Calculate real progress for each category (processed items vs pre-calculated totals)
@@ -2717,6 +2741,10 @@ export class FileSearchSyncService {
       assignedUniversity: { total: number; indexed: number; missing: Array<{ id: string; title: string; yearName: string }> };
       goals: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
       tasks: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+      dailyReflections: { total: number; indexed: number; missing: Array<{ id: string; date: string }> };
+      clientProgressHistory: { total: number; indexed: number; missing: Array<{ id: string; date: string }> };
+      libraryProgress: { total: number; indexed: number; missing: Array<{ id: string; documentTitle: string }> };
+      emailJourneyProgress: { total: number; indexed: number; missing: Array<{ id: string; templateTitle: string }> };
     }>;
     whatsappAgents: Array<{
       agentId: string;
@@ -2930,6 +2958,25 @@ export class FileSearchSyncService {
       const clientTasks = await db.select({ id: consultationTasks.id, title: consultationTasks.title })
         .from(consultationTasks).where(eq(consultationTasks.clientId, client.id));
 
+      // 6. Client Daily Reflections
+      const clientReflections = await db.select({ id: dailyReflections.id, date: dailyReflections.date })
+        .from(dailyReflections).where(eq(dailyReflections.clientId, client.id));
+
+      // 7. Client Progress History
+      const clientProgressHist = await db.select({ id: clientProgress.id, date: clientProgress.date })
+        .from(clientProgress).where(eq(clientProgress.clientId, client.id));
+
+      // 8. Client Library Progress
+      const clientLibProgress = await db.select({ 
+          id: clientLibraryProgress.id, 
+          documentId: clientLibraryProgress.documentId
+        })
+        .from(clientLibraryProgress).where(eq(clientLibraryProgress.clientId, client.id));
+
+      // 9. Client Email Journey Progress  
+      const clientEmailProgress = await db.select({ id: clientEmailJourneyProgress.id })
+        .from(clientEmailJourneyProgress).where(eq(clientEmailJourneyProgress.clientId, client.id));
+
       // Get indexed documents for this client - use simple query without innerJoin
       const clientIndexedRaw = await db.select({
         sourceType: fileSearchDocuments.sourceType,
@@ -2951,6 +2998,12 @@ export class FileSearchSyncService {
       // Goals and tasks are saved with sourceId=clientId (one document per client containing all goals/tasks)
       const hasGoalsIndexed = clientIndexed.some(d => d.sourceType === 'goal' && d.sourceId === client.id);
       const hasTasksIndexed = clientIndexed.some(d => d.sourceType === 'task' && d.sourceId === client.id);
+      
+      // New categories - one aggregated document per client
+      const hasReflectionsIndexed = clientIndexed.some(d => d.sourceType === 'daily_reflection' && d.sourceId === client.id);
+      const hasProgressHistoryIndexed = clientIndexed.some(d => d.sourceType === 'client_progress' && d.sourceId === client.id);
+      const hasLibraryProgressIndexed = clientIndexed.some(d => d.sourceType === 'library_progress' && d.sourceId === client.id);
+      const hasEmailJourneyIndexed = clientIndexed.some(d => d.sourceType === 'email_journey' && d.sourceId === client.id);
 
       // Existing missing calculations
       const submissionsMissing = clientSubmissions.filter(s => !indexedSubmissionIds.has(s.id)).map(s => ({ id: s.id, exerciseTitle: 'Esercizio', submittedAt: s.submittedAt }));
@@ -2978,9 +3031,29 @@ export class FileSearchSyncService {
         ? clientTasks.map(t => ({ id: t.id, title: t.title })) 
         : [];
 
+      // Daily Reflections missing (aggregated, so if any exist and not indexed, all are missing)
+      const reflectionsMissing = (clientReflections.length > 0 && !hasReflectionsIndexed)
+        ? clientReflections.map(r => ({ id: r.id, date: r.date?.toISOString() || '' }))
+        : [];
+
+      // Progress history missing  
+      const progressHistoryMissing = (clientProgressHist.length > 0 && !hasProgressHistoryIndexed)
+        ? clientProgressHist.map(p => ({ id: p.id, date: p.date?.toISOString() || '' }))
+        : [];
+
+      // Library progress missing
+      const libraryProgressMissing = (clientLibProgress.length > 0 && !hasLibraryProgressIndexed)
+        ? clientLibProgress.map(l => ({ id: l.id, documentTitle: l.documentId || 'Documento' }))
+        : [];
+
+      // Email journey missing
+      const emailJourneyMissing = (clientEmailProgress.length > 0 && !hasEmailJourneyIndexed)
+        ? clientEmailProgress.map(e => ({ id: e.id, templateTitle: 'Email Journey' }))
+        : [];
+
       const clientMissing = submissionsMissing.length + consultationsMissing.length + clientKnowledgeMissing.length +
                             assignedExercisesMissing.length + assignedLibraryMissing.length + assignedUniversityMissing.length +
-                            goalsMissing.length + tasksMissing.length;
+                            goalsMissing.length + tasksMissing.length + reflectionsMissing.length + progressHistoryMissing.length + libraryProgressMissing.length + emailJourneyMissing.length;
       
       // Check if financial data is indexed for this client
       const hasFinancialDataIndexed = clientIndexed.some(d => d.sourceType === 'financial_data');
@@ -2988,7 +3061,8 @@ export class FileSearchSyncService {
       // Always include clients that have any data to audit
       const hasAnyData = clientSubmissions.length > 0 || consultationsWithContent.length > 0 || clientKnowledge.length > 0 || 
                          hasFinancialDataIndexed || assignedExercisesList.length > 0 || assignedLibraryDocs.length > 0 || 
-                         assignedLessons.length > 0 || clientGoals.length > 0 || clientTasks.length > 0;
+                         assignedLessons.length > 0 || clientGoals.length > 0 || clientTasks.length > 0 ||
+                         clientReflections.length > 0 || clientProgressHist.length > 0 || clientLibProgress.length > 0 || clientEmailProgress.length > 0;
 
       if (hasAnyData) {
         clientsAudit.push({
@@ -3004,6 +3078,10 @@ export class FileSearchSyncService {
           assignedUniversity: { total: assignedLessons.length, indexed: assignedLessons.length - assignedUniversityMissing.length, missing: assignedUniversityMissing },
           goals: { total: clientGoals.length, indexed: clientGoals.length - goalsMissing.length, missing: goalsMissing },
           tasks: { total: clientTasks.length, indexed: clientTasks.length - tasksMissing.length, missing: tasksMissing },
+          dailyReflections: { total: clientReflections.length, indexed: clientReflections.length - reflectionsMissing.length, missing: reflectionsMissing },
+          clientProgressHistory: { total: clientProgressHist.length, indexed: clientProgressHist.length - progressHistoryMissing.length, missing: progressHistoryMissing },
+          libraryProgress: { total: clientLibProgress.length, indexed: clientLibProgress.length - libraryProgressMissing.length, missing: libraryProgressMissing },
+          emailJourneyProgress: { total: clientEmailProgress.length, indexed: clientEmailProgress.length - emailJourneyMissing.length, missing: emailJourneyMissing },
         });
         totalClientsMissing += clientMissing;
       }
