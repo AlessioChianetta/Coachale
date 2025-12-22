@@ -12,6 +12,8 @@ import { EventEmitter } from "events";
 import { db } from "../db";
 import { 
   libraryDocuments, 
+  libraryCategories,
+  librarySubcategories,
   fileSearchStores, 
   fileSearchDocuments,
   consultantKnowledgeDocuments,
@@ -23,8 +25,12 @@ import {
   universityModules,
   universityTrimesters,
   universityYears,
+  universityYearClientAssignments,
+  libraryCategoryClientAssignments,
   consultations,
   users,
+  goals,
+  consultationTasks,
   userFinanceSettings,
   whatsappAgentKnowledgeItems,
   consultantWhatsappConfig,
@@ -3711,6 +3717,649 @@ export class FileSearchSyncService {
       },
       recommendations,
       healthScore,
+    };
+  }
+
+  // ============================================================
+  // CLIENT ASSIGNMENT SYNC - Sync content when assigned to client
+  // ============================================================
+  // NEW ARCHITECTURE: Client sees ONLY their private store
+  // When consultant assigns something, it gets COPIED to client's store
+  // ============================================================
+
+  /**
+   * Sync an exercise template to client's private store when assigned
+   * Called when consultant creates an exerciseAssignment
+   */
+  static async syncExerciseToClient(
+    exerciseId: string,
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const exercise = await db.query.exercises.findFirst({
+        where: eq(exercises.id, exerciseId),
+      });
+
+      if (!exercise) {
+        return { success: false, error: 'Exercise not found' };
+      }
+
+      // Check if already synced to this client's store
+      const existingDoc = await db.query.fileSearchDocuments.findFirst({
+        where: and(
+          eq(fileSearchDocuments.sourceType, 'exercise'),
+          eq(fileSearchDocuments.sourceId, exerciseId),
+          eq(fileSearchDocuments.clientId, clientId),
+        ),
+      });
+
+      if (existingDoc) {
+        console.log(`📌 [FileSync] Exercise already synced to client ${clientId.substring(0, 8)}: ${exercise.title}`);
+        return { success: true };
+      }
+
+      // Get or create client's private store
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, error: 'Failed to get or create client private store' };
+      }
+
+      // Build exercise content
+      let workPlatformContent: string | null = null;
+      if (exercise.workPlatform && exercise.workPlatform.includes('docs.google.com')) {
+        try {
+          workPlatformContent = await scrapeGoogleDoc(exercise.workPlatform);
+        } catch (e) {
+          console.warn(`⚠️ [FileSync] Failed to scrape Google Doc for ${exercise.title}`);
+        }
+      }
+
+      const content = this.buildExerciseContent(exercise, workPlatformContent);
+
+      // Upload to client's PRIVATE store
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[ESERCIZIO ASSEGNATO] ${exercise.title}`,
+        storeId: clientStore.storeId,
+        sourceType: 'exercise',
+        sourceId: exerciseId,
+        clientId: clientId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Exercise synced to client ${clientId.substring(0, 8)} private store: ${exercise.title}`);
+      }
+
+      return uploadResult.success
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing exercise to client:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Sync all library documents from a category to client's private store
+   * Called when consultant assigns a library category to client
+   */
+  static async syncLibraryCategoryToClient(
+    categoryId: string,
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; synced: number; failed: number; error?: string }> {
+    try {
+      // Get the category
+      const category = await db.query.libraryCategories.findFirst({
+        where: eq(libraryCategories.id, categoryId),
+      });
+
+      if (!category) {
+        return { success: false, synced: 0, failed: 0, error: 'Category not found' };
+      }
+
+      // Get all subcategories
+      const subcategories = await db.query.librarySubcategories.findMany({
+        where: eq(librarySubcategories.categoryId, categoryId),
+      });
+
+      const subcategoryIds = subcategories.map(s => s.id);
+
+      // Get all documents in this category (direct + via subcategories)
+      const docs = await db.query.libraryDocuments.findMany({
+        where: subcategoryIds.length > 0 
+          ? inArray(libraryDocuments.subcategoryId, subcategoryIds)
+          : eq(libraryDocuments.createdBy, consultantId),
+      });
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`📚 [FileSync] Syncing ${docs.length} library docs from category "${category.name}" to client ${clientId.substring(0, 8)}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      // Get or create client's private store
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, synced: 0, failed: 0, error: 'Failed to get or create client private store' };
+      }
+
+      let synced = 0;
+      let failed = 0;
+
+      for (const doc of docs) {
+        // Check if already synced
+        const existingDoc = await db.query.fileSearchDocuments.findFirst({
+          where: and(
+            eq(fileSearchDocuments.sourceType, 'library'),
+            eq(fileSearchDocuments.sourceId, doc.id),
+            eq(fileSearchDocuments.clientId, clientId),
+          ),
+        });
+
+        if (existingDoc) {
+          synced++; // Count as success
+          continue;
+        }
+
+        const uploadResult = await fileSearchService.uploadDocumentFromContent({
+          content: doc.content || `${doc.title}\n\n${doc.description || ''}`,
+          displayName: `[LIBRERIA] ${doc.title}`,
+          storeId: clientStore.storeId,
+          sourceType: 'library',
+          sourceId: doc.id,
+          clientId: clientId,
+          userId: clientId,
+        });
+
+        if (uploadResult.success) {
+          synced++;
+        } else {
+          failed++;
+        }
+      }
+
+      console.log(`✅ [FileSync] Library category sync complete - Synced: ${synced}, Failed: ${failed}`);
+
+      return { success: true, synced, failed };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing library category to client:', error);
+      return { success: false, synced: 0, failed: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Sync all university lessons from a year to client's private store
+   * Called when consultant assigns a university year to client
+   */
+  static async syncUniversityYearToClient(
+    yearId: string,
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; synced: number; failed: number; error?: string }> {
+    try {
+      // Get the year
+      const year = await db.query.universityYears.findFirst({
+        where: eq(universityYears.id, yearId),
+      });
+
+      if (!year) {
+        return { success: false, synced: 0, failed: 0, error: 'Year not found' };
+      }
+
+      // Get all trimesters for this year
+      const trimesters = await db.query.universityTrimesters.findMany({
+        where: eq(universityTrimesters.yearId, yearId),
+      });
+
+      const trimesterIds = trimesters.map(t => t.id);
+
+      // Get all modules for these trimesters
+      let allModules: any[] = [];
+      if (trimesterIds.length > 0) {
+        allModules = await db.query.universityModules.findMany({
+          where: inArray(universityModules.trimesterId, trimesterIds),
+        });
+      }
+
+      const moduleIds = allModules.map(m => m.id);
+
+      // Get all lessons for these modules
+      let allLessons: any[] = [];
+      if (moduleIds.length > 0) {
+        allLessons = await db.query.universityLessons.findMany({
+          where: inArray(universityLessons.moduleId, moduleIds),
+        });
+      }
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`🎓 [FileSync] Syncing ${allLessons.length} lessons from "${year.title}" to client ${clientId.substring(0, 8)}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      // Get or create client's private store
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, synced: 0, failed: 0, error: 'Failed to get or create client private store' };
+      }
+
+      let synced = 0;
+      let failed = 0;
+
+      for (const lesson of allLessons) {
+        // Check if already synced
+        const existingDoc = await db.query.fileSearchDocuments.findFirst({
+          where: and(
+            eq(fileSearchDocuments.sourceType, 'university_lesson'),
+            eq(fileSearchDocuments.sourceId, lesson.id),
+            eq(fileSearchDocuments.clientId, clientId),
+          ),
+        });
+
+        if (existingDoc) {
+          synced++;
+          continue;
+        }
+
+        // Build lesson content with hierarchy
+        const module = allModules.find(m => m.id === lesson.moduleId);
+        const trimester = module ? trimesters.find(t => t.id === module.trimesterId) : null;
+
+        let content = `# ${lesson.title}\n\n`;
+        if (year) content += `Anno: ${year.title}\n`;
+        if (trimester) content += `Trimestre: ${trimester.title}\n`;
+        if (module) content += `Modulo: ${module.title}\n\n`;
+        if (lesson.description) content += `${lesson.description}\n\n`;
+        if (lesson.content) content += lesson.content;
+
+        // Load linked library document if exists
+        if (lesson.libraryDocumentId) {
+          const libDoc = await db.query.libraryDocuments.findFirst({
+            where: eq(libraryDocuments.id, lesson.libraryDocumentId),
+          });
+          if (libDoc && libDoc.content) {
+            content += `\n\n## Contenuto Allegato\n${libDoc.content}`;
+          }
+        }
+
+        const uploadResult = await fileSearchService.uploadDocumentFromContent({
+          content: content,
+          displayName: `[LEZIONE] ${lesson.title}`,
+          storeId: clientStore.storeId,
+          sourceType: 'university_lesson',
+          sourceId: lesson.id,
+          clientId: clientId,
+          userId: clientId,
+        });
+
+        if (uploadResult.success) {
+          synced++;
+        } else {
+          failed++;
+        }
+
+        // Rate limit
+        if (synced % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      console.log(`✅ [FileSync] University year sync complete - Synced: ${synced}, Failed: ${failed}`);
+
+      return { success: true, synced, failed };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing university year to client:', error);
+      return { success: false, synced: 0, failed: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Sync client's goals to their private store
+   */
+  static async syncClientGoals(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; synced: number; error?: string }> {
+    try {
+      const clientGoals = await db.query.goals.findMany({
+        where: eq(goals.clientId, clientId),
+      });
+
+      if (clientGoals.length === 0) {
+        return { success: true, synced: 0 };
+      }
+
+      // Get or create client's private store
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, synced: 0, error: 'Failed to get or create client private store' };
+      }
+
+      // Build goals content
+      let content = `# Obiettivi del Cliente\n\n`;
+      content += `Data aggiornamento: ${new Date().toLocaleDateString('it-IT')}\n\n`;
+
+      for (const goal of clientGoals) {
+        content += `## ${goal.title}\n`;
+        if (goal.description) content += `${goal.description}\n`;
+        content += `- Stato: ${goal.status}\n`;
+        content += `- Valore target: ${goal.targetValue} ${goal.unit || ''}\n`;
+        content += `- Valore attuale: ${goal.currentValue || '0'} ${goal.unit || ''}\n`;
+        if (goal.targetDate) content += `- Scadenza: ${new Date(goal.targetDate).toLocaleDateString('it-IT')}\n`;
+        content += '\n';
+      }
+
+      // Delete old goals document if exists
+      await fileSearchService.deleteDocumentBySource('goal', clientId);
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[OBIETTIVI] Obiettivi del Cliente`,
+        storeId: clientStore.storeId,
+        sourceType: 'goal' as any,
+        sourceId: clientId,
+        clientId: clientId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Goals synced to client ${clientId.substring(0, 8)} private store`);
+      }
+
+      return uploadResult.success
+        ? { success: true, synced: clientGoals.length }
+        : { success: false, synced: 0, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing client goals:', error);
+      return { success: false, synced: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Sync client's consultation tasks to their private store
+   */
+  static async syncClientTasks(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; synced: number; error?: string }> {
+    try {
+      const clientTasks = await db.query.consultationTasks.findMany({
+        where: eq(consultationTasks.clientId, clientId),
+      });
+
+      if (clientTasks.length === 0) {
+        return { success: true, synced: 0 };
+      }
+
+      // Get or create client's private store
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, synced: 0, error: 'Failed to get or create client private store' };
+      }
+
+      // Build tasks content
+      let content = `# Task del Cliente\n\n`;
+      content += `Data aggiornamento: ${new Date().toLocaleDateString('it-IT')}\n\n`;
+
+      const pendingTasks = clientTasks.filter(t => t.status === 'pending');
+      const completedTasks = clientTasks.filter(t => t.status === 'completed');
+
+      if (pendingTasks.length > 0) {
+        content += `## Task in corso (${pendingTasks.length})\n\n`;
+        for (const task of pendingTasks) {
+          content += `### ${task.title}\n`;
+          if (task.description) content += `${task.description}\n`;
+          content += `- Priorità: ${task.priority}\n`;
+          content += `- Categoria: ${task.category}\n`;
+          if (task.dueDate) content += `- Scadenza: ${new Date(task.dueDate).toLocaleDateString('it-IT')}\n`;
+          content += '\n';
+        }
+      }
+
+      if (completedTasks.length > 0) {
+        content += `## Task completati (${completedTasks.length})\n\n`;
+        for (const task of completedTasks) {
+          content += `- ✅ ${task.title}`;
+          if (task.completedAt) content += ` (completato: ${new Date(task.completedAt).toLocaleDateString('it-IT')})`;
+          content += '\n';
+        }
+      }
+
+      // Delete old tasks document if exists
+      await fileSearchService.deleteDocumentBySource('task', clientId);
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[TASK] Task del Cliente`,
+        storeId: clientStore.storeId,
+        sourceType: 'task' as any,
+        sourceId: clientId,
+        clientId: clientId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Tasks synced to client ${clientId.substring(0, 8)} private store`);
+      }
+
+      return uploadResult.success
+        ? { success: true, synced: clientTasks.length }
+        : { success: false, synced: 0, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing client tasks:', error);
+      return { success: false, synced: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Full migration for an existing client - sync all assigned content to their private store
+   */
+  static async migrateClientToPrivateStore(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{
+    success: boolean;
+    exercises: { synced: number; failed: number };
+    library: { synced: number; failed: number };
+    university: { synced: number; failed: number };
+    goals: { synced: number };
+    tasks: { synced: number };
+    consultations: { synced: number; failed: number };
+    errors: string[];
+  }> {
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`🔄 [FileSync] FULL MIGRATION for client ${clientId.substring(0, 8)} to private store`);
+    console.log(`${'═'.repeat(70)}\n`);
+
+    const errors: string[] = [];
+    let exercisesResult = { synced: 0, failed: 0 };
+    let libraryResult = { synced: 0, failed: 0 };
+    let universityResult = { synced: 0, failed: 0 };
+    let goalsResult = { synced: 0 };
+    let tasksResult = { synced: 0 };
+    let consultationsResult = { synced: 0, failed: 0, skipped: 0 };
+
+    // 1. Sync all assigned exercises
+    console.log(`\n📝 [Migration] Step 1: Syncing assigned exercises...`);
+    const assignments = await db.query.exerciseAssignments.findMany({
+      where: eq(exerciseAssignments.clientId, clientId),
+    });
+
+    for (const assignment of assignments) {
+      const result = await this.syncExerciseToClient(assignment.exerciseId, clientId, consultantId);
+      if (result.success) {
+        exercisesResult.synced++;
+      } else {
+        exercisesResult.failed++;
+        errors.push(`Exercise ${assignment.exerciseId}: ${result.error}`);
+      }
+    }
+    console.log(`   ✅ Exercises: ${exercisesResult.synced} synced, ${exercisesResult.failed} failed`);
+
+    // 2. Sync all assigned library categories
+    console.log(`\n📚 [Migration] Step 2: Syncing assigned library categories...`);
+    const libraryAssignments = await db.query.libraryCategoryClientAssignments.findMany({
+      where: eq(libraryCategoryClientAssignments.clientId, clientId),
+    });
+
+    for (const assignment of libraryAssignments) {
+      const result = await this.syncLibraryCategoryToClient(assignment.categoryId, clientId, consultantId);
+      if (result.success) {
+        libraryResult.synced += result.synced;
+        libraryResult.failed += result.failed;
+      } else {
+        errors.push(`Library category ${assignment.categoryId}: ${result.error}`);
+      }
+    }
+    console.log(`   ✅ Library docs: ${libraryResult.synced} synced, ${libraryResult.failed} failed`);
+
+    // 3. Sync all assigned university years
+    console.log(`\n🎓 [Migration] Step 3: Syncing assigned university years...`);
+    const universityAssignments = await db.query.universityYearClientAssignments.findMany({
+      where: eq(universityYearClientAssignments.clientId, clientId),
+    });
+
+    for (const assignment of universityAssignments) {
+      const result = await this.syncUniversityYearToClient(assignment.yearId, clientId, consultantId);
+      if (result.success) {
+        universityResult.synced += result.synced;
+        universityResult.failed += result.failed;
+      } else {
+        errors.push(`University year ${assignment.yearId}: ${result.error}`);
+      }
+    }
+    console.log(`   ✅ University lessons: ${universityResult.synced} synced, ${universityResult.failed} failed`);
+
+    // 4. Sync goals
+    console.log(`\n🎯 [Migration] Step 4: Syncing goals...`);
+    const goalsRes = await this.syncClientGoals(clientId, consultantId);
+    goalsResult.synced = goalsRes.synced;
+    if (!goalsRes.success && goalsRes.error) errors.push(`Goals: ${goalsRes.error}`);
+    console.log(`   ✅ Goals: ${goalsResult.synced} synced`);
+
+    // 5. Sync tasks
+    console.log(`\n✅ [Migration] Step 5: Syncing tasks...`);
+    const tasksRes = await this.syncClientTasks(clientId, consultantId);
+    tasksResult.synced = tasksRes.synced;
+    if (!tasksRes.success && tasksRes.error) errors.push(`Tasks: ${tasksRes.error}`);
+    console.log(`   ✅ Tasks: ${tasksResult.synced} synced`);
+
+    // 6. Sync consultations (already handled by syncAllConsultations but call for this client)
+    console.log(`\n📞 [Migration] Step 6: Syncing consultations...`);
+    const clientConsultations = await db.query.consultations.findMany({
+      where: and(
+        eq(consultations.clientId, clientId),
+        eq(consultations.status, 'completed'),
+      ),
+    });
+
+    for (const consultation of clientConsultations) {
+      if (!consultation.transcript && !consultation.notes) continue;
+      
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultation', consultation.id);
+      if (isAlreadyIndexed) {
+        consultationsResult.skipped++;
+        continue;
+      }
+
+      const result = await this.syncClientConsultationNotes(consultation.id, clientId, consultantId);
+      if (result.success) {
+        consultationsResult.synced++;
+      } else {
+        consultationsResult.failed++;
+      }
+    }
+    console.log(`   ✅ Consultations: ${consultationsResult.synced} synced, ${consultationsResult.skipped} skipped, ${consultationsResult.failed} failed`);
+
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`✅ [FileSync] MIGRATION COMPLETE for client ${clientId.substring(0, 8)}`);
+    console.log(`${'═'.repeat(70)}\n`);
+
+    return {
+      success: errors.length === 0,
+      exercises: exercisesResult,
+      library: libraryResult,
+      university: universityResult,
+      goals: goalsResult,
+      tasks: tasksResult,
+      consultations: consultationsResult,
+      errors,
+    };
+  }
+
+  /**
+   * Migrate ALL clients for a consultant to the new private store architecture
+   */
+  static async migrateAllClientsToPrivateStores(
+    consultantId: string,
+  ): Promise<{
+    success: boolean;
+    clientsMigrated: number;
+    totalExercises: number;
+    totalLibrary: number;
+    totalUniversity: number;
+    totalGoals: number;
+    totalTasks: number;
+    totalConsultations: number;
+    errors: string[];
+  }> {
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`🚀 [FileSync] BULK MIGRATION - All clients for consultant ${consultantId.substring(0, 8)}`);
+    console.log(`${'═'.repeat(70)}\n`);
+
+    const clients = await db.query.users.findMany({
+      where: eq(users.consultantId, consultantId),
+    });
+
+    console.log(`📋 Found ${clients.length} clients to migrate`);
+
+    let clientsMigrated = 0;
+    let totalExercises = 0;
+    let totalLibrary = 0;
+    let totalUniversity = 0;
+    let totalGoals = 0;
+    let totalTasks = 0;
+    let totalConsultations = 0;
+    const errors: string[] = [];
+
+    for (const client of clients) {
+      console.log(`\n👤 Migrating client: ${client.firstName} ${client.lastName} (${client.id.substring(0, 8)})`);
+
+      const result = await this.migrateClientToPrivateStore(client.id, consultantId);
+
+      if (result.success) {
+        clientsMigrated++;
+      }
+
+      totalExercises += result.exercises.synced;
+      totalLibrary += result.library.synced;
+      totalUniversity += result.university.synced;
+      totalGoals += result.goals.synced;
+      totalTasks += result.tasks.synced;
+      totalConsultations += result.consultations.synced;
+      errors.push(...result.errors);
+    }
+
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`✅ [FileSync] BULK MIGRATION COMPLETE`);
+    console.log(`   👤 Clients migrated: ${clientsMigrated}/${clients.length}`);
+    console.log(`   📝 Exercises: ${totalExercises}`);
+    console.log(`   📚 Library docs: ${totalLibrary}`);
+    console.log(`   🎓 University lessons: ${totalUniversity}`);
+    console.log(`   🎯 Goals: ${totalGoals}`);
+    console.log(`   ✅ Tasks: ${totalTasks}`);
+    console.log(`   📞 Consultations: ${totalConsultations}`);
+    console.log(`${'═'.repeat(70)}\n`);
+
+    return {
+      success: errors.length === 0,
+      clientsMigrated,
+      totalExercises,
+      totalLibrary,
+      totalUniversity,
+      totalGoals,
+      totalTasks,
+      totalConsultations,
+      errors,
     };
   }
 }
