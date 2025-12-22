@@ -12796,7 +12796,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   );
 
   // Google Calendar Settings routes (for consultant)
+  // ⚠️ DEPRECATED: Use per-agent calendar APIs instead (/api/whatsapp/agents/:agentId/calendar/*)
+  // This legacy endpoint is maintained for backwards compatibility only
   app.get("/api/calendar-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    console.log(`⚠️ [DEPRECATED API] GET /api/calendar-settings called by consultant ${req.user!.id}`);
+    console.log(`   → Use /api/whatsapp/agents/:agentId/calendar/* for per-agent calendar management`);
     try {
       const [settings] = await db
         .select()
@@ -12893,7 +12897,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // ⚠️ DEPRECATED: Use per-agent calendar APIs instead
   app.post("/api/calendar-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    console.log(`⚠️ [DEPRECATED API] POST /api/calendar-settings called by consultant ${req.user!.id}`);
     try {
       const {
         googleOAuthClientId,
@@ -13037,7 +13043,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // ⚠️ DEPRECATED: Use per-agent calendar APIs instead
   app.post("/api/calendar-settings/save-tokens", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    console.log(`⚠️ [DEPRECATED API] POST /api/calendar-settings/save-tokens called by consultant ${req.user!.id}`);
     try {
       const { accessToken, refreshToken, expiresAt } = req.body;
 
@@ -13074,7 +13082,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
   // Check if global OAuth is configured for Calendar
+  // ⚠️ DEPRECATED: Use per-agent calendar APIs instead
   app.get("/api/calendar-settings/oauth/global-status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    console.log(`⚠️ [DEPRECATED API] GET /api/calendar-settings/oauth/global-status called`);
     try {
       const { isGlobalCalendarOAuthConfigured } = await import('./google-calendar-service');
       const isConfigured = await isGlobalCalendarOAuthConfigured();
@@ -13092,7 +13102,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
   // Google Calendar OAuth endpoints
+  // ⚠️ DEPRECATED: Use /api/whatsapp/agents/:agentId/calendar/oauth/start instead
   app.get("/api/calendar-settings/oauth/start", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    console.log(`⚠️ [DEPRECATED API] GET /api/calendar-settings/oauth/start called by consultant ${req.user!.id}`);
     try {
       const consultantId = req.user!.id;
       
@@ -13109,7 +13121,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // ⚠️ DEPRECATED: Use /api/whatsapp/agents/:agentId/calendar/oauth/callback instead
   app.get("/api/calendar-settings/oauth/callback", async (req, res) => {
+    console.log(`⚠️ [DEPRECATED API] GET /api/calendar-settings/oauth/callback called`);
     try {
       const { code, state } = req.query;
       
@@ -13180,7 +13194,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
   // Check Google Calendar connection status
+  // ⚠️ DEPRECATED: Use per-agent calendar APIs instead
   app.get("/api/calendar-settings/connection-status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    console.log(`⚠️ [DEPRECATED API] GET /api/calendar-settings/connection-status called`);
     try {
       const isConnected = await isGoogleCalendarConnected(req.user!.id);
       
@@ -13202,7 +13218,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
   // Test Google Calendar connection - actually tries to fetch events
+  // ⚠️ DEPRECATED: Use per-agent calendar APIs instead
   app.post("/api/calendar-settings/test-connection", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    console.log(`⚠️ [DEPRECATED API] POST /api/calendar-settings/test-connection called`);
     try {
       const consultantId = req.user!.id;
       
@@ -13281,7 +13299,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
   // Sync Google Calendar manually
+  // ⚠️ DEPRECATED: Use per-agent calendar APIs instead
   app.post("/api/calendar-settings/sync", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    console.log(`⚠️ [DEPRECATED API] POST /api/calendar-settings/sync called`);
     try {
       const isConnected = await isGoogleCalendarConnected(req.user!.id);
       
@@ -13302,7 +13322,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
   // Disconnect Google Calendar (remove OAuth tokens)
+  // ⚠️ DEPRECATED: Use per-agent calendar APIs instead
   app.post("/api/calendar-settings/disconnect", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    console.log(`⚠️ [DEPRECATED API] POST /api/calendar-settings/disconnect called`);
     try {
       const consultantId = req.user!.id;
       

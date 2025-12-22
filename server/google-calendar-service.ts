@@ -875,7 +875,8 @@ export async function createGoogleCalendarEvent(
       eventData.attendees.forEach(email => console.log(`   - ${email}`));
     }
     
-    // NEW: Try agent calendar first, fallback to consultant calendar
+    // AGENT-ONLY CALENDAR: No fallback to consultant
+    // Each agent MUST have its own calendar connected
     let calendar;
     let calendarId: string | null = null;
     let usingAgentCalendar = false;
@@ -889,13 +890,14 @@ export async function createGoogleCalendarEvent(
         usingAgentCalendar = true;
         console.log(`✅ Using AGENT's calendar`);
       } else {
-        console.log(`⏭️ Agent has no calendar, falling back to consultant's calendar`);
+        // NO FALLBACK: Agent MUST have its own calendar
+        throw new Error(`Agent ${agentConfigId} has no Google Calendar connected. Each agent must have its own calendar configured.`);
       }
     }
     
-    // Fallback to consultant calendar
-    if (!calendar) {
-      console.log(`\n🔐 Authenticating with consultant's Google Calendar API...`);
+    // Legacy: Only use consultant calendar if NO agentConfigId provided (backwards compatibility for non-agent flows)
+    if (!calendar && !agentConfigId) {
+      console.log(`\n🔐 Authenticating with consultant's Google Calendar API (legacy flow)...`);
       calendar = await getCalendarClient(consultantId);
       console.log(`📋 Getting consultant's primary calendar ID...`);
       calendarId = await getPrimaryCalendarId(consultantId);
@@ -964,7 +966,7 @@ export async function createGoogleCalendarEvent(
 
 /**
  * List events from Google Calendar (exported for calendar appointments endpoint)
- * Supports agent calendar with fallback to consultant calendar
+ * AGENT-ONLY: No fallback to consultant calendar when agentConfigId is provided
  */
 export async function listEvents(
   consultantId: string,
@@ -976,7 +978,7 @@ export async function listEvents(
     let calendar;
     let calendarId: string | null = null;
     
-    // Try agent calendar first if agentConfigId provided
+    // Agent calendar - NO FALLBACK
     if (agentConfigId) {
       console.log(`📅 [LIST EVENTS] Checking agent calendar for agent ${agentConfigId}...`);
       const agentCalendar = await getAgentCalendarClient(agentConfigId);
@@ -985,19 +987,21 @@ export async function listEvents(
         calendarId = await getAgentCalendarId(agentConfigId);
         console.log(`✅ [LIST EVENTS] Using AGENT's calendar: ${calendarId}`);
       } else {
-        console.log(`⏭️ [LIST EVENTS] Agent has no calendar, falling back to consultant's calendar`);
+        // NO FALLBACK: Return empty array if agent has no calendar
+        console.log(`⚠️ [LIST EVENTS] Agent ${agentConfigId} has no calendar connected - returning empty`);
+        return [];
       }
     }
     
-    // Fallback to consultant calendar
-    if (!calendar) {
+    // Legacy: Only use consultant calendar if NO agentConfigId provided
+    if (!calendar && !agentConfigId) {
       calendar = await getCalendarClient(consultantId);
       if (!calendar) {
         return [];
       }
       calendarId = await getPrimaryCalendarId(consultantId);
       if (calendarId) {
-        console.log(`📅 [LIST EVENTS] Using consultant's calendar: ${calendarId}`);
+        console.log(`📅 [LIST EVENTS] Using consultant's calendar (legacy flow): ${calendarId}`);
       }
     }
 
@@ -1036,6 +1040,7 @@ export async function listEvents(
 /**
  * Update event in Google Calendar
  * FIX: Accepts date/time as strings with timezone (same approach as create)
+ * AGENT-ONLY: When agentConfigId is provided, uses agent's calendar exclusively
  */
 export async function updateGoogleCalendarEvent(
   consultantId: string,
@@ -1047,7 +1052,8 @@ export async function updateGoogleCalendarEvent(
     startTime?: string;  // HH:MM
     duration?: number;   // minutes
     timezone?: string;   // IANA timezone like 'Europe/Rome'
-  }
+  },
+  agentConfigId?: string
 ) {
   try {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -1055,9 +1061,27 @@ export async function updateGoogleCalendarEvent(
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`👤 Consultant ID: ${consultantId}`);
     console.log(`🆔 Event ID: ${googleEventId}`);
+    if (agentConfigId) console.log(`🤖 Agent Config ID: ${agentConfigId}`);
     
-    const calendar = await getCalendarClient(consultantId);
-    const calendarId = await getPrimaryCalendarId(consultantId);
+    // AGENT-ONLY: Use agent's calendar if agentConfigId is provided
+    let calendar;
+    let calendarId: string | null = null;
+    
+    if (agentConfigId) {
+      console.log(`🔐 Using agent's calendar...`);
+      const agentCalendar = await getAgentCalendarClient(agentConfigId);
+      if (agentCalendar) {
+        calendar = agentCalendar;
+        calendarId = await getAgentCalendarId(agentConfigId);
+        console.log(`✅ Using AGENT's calendar: ${calendarId}`);
+      } else {
+        throw new Error(`Agent ${agentConfigId} has no Google Calendar connected. Cannot update event.`);
+      }
+    } else {
+      // Legacy: consultant calendar (for non-agent flows)
+      calendar = await getCalendarClient(consultantId);
+      calendarId = await getPrimaryCalendarId(consultantId);
+    }
     
     if (!calendarId) {
       throw new Error('Calendar ID not found');
@@ -1135,11 +1159,13 @@ export async function updateGoogleCalendarEvent(
 
 /**
  * Add attendees to existing Google Calendar event
+ * AGENT-ONLY: When agentConfigId is provided, uses agent's calendar exclusively
  */
 export async function addAttendeesToGoogleCalendarEvent(
   consultantId: string,
   googleEventId: string,
-  newAttendees: string[]
+  newAttendees: string[],
+  agentConfigId?: string
 ) {
   try {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -1148,9 +1174,27 @@ export async function addAttendeesToGoogleCalendarEvent(
     console.log(`👤 Consultant ID: ${consultantId}`);
     console.log(`🆔 Event ID: ${googleEventId}`);
     console.log(`📧 New Attendees: ${newAttendees.join(', ')}`);
+    if (agentConfigId) console.log(`🤖 Agent Config ID: ${agentConfigId}`);
     
-    const calendar = await getCalendarClient(consultantId);
-    const calendarId = await getPrimaryCalendarId(consultantId);
+    // AGENT-ONLY: Use agent's calendar if agentConfigId is provided
+    let calendar;
+    let calendarId: string | null = null;
+    
+    if (agentConfigId) {
+      console.log(`🔐 Using agent's calendar...`);
+      const agentCalendar = await getAgentCalendarClient(agentConfigId);
+      if (agentCalendar) {
+        calendar = agentCalendar;
+        calendarId = await getAgentCalendarId(agentConfigId);
+        console.log(`✅ Using AGENT's calendar: ${calendarId}`);
+      } else {
+        throw new Error(`Agent ${agentConfigId} has no Google Calendar connected. Cannot add attendees.`);
+      }
+    } else {
+      // Legacy: consultant calendar (for non-agent flows)
+      calendar = await getCalendarClient(consultantId);
+      calendarId = await getPrimaryCalendarId(consultantId);
+    }
     
     if (!calendarId) {
       throw new Error('Calendar ID not found');
@@ -1224,10 +1268,12 @@ export async function addAttendeesToGoogleCalendarEvent(
 
 /**
  * Delete event from Google Calendar
+ * AGENT-ONLY: When agentConfigId is provided, uses agent's calendar exclusively
  */
 export async function deleteGoogleCalendarEvent(
   consultantId: string,
-  googleEventId: string
+  googleEventId: string,
+  agentConfigId?: string
 ) {
   try {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -1235,6 +1281,7 @@ export async function deleteGoogleCalendarEvent(
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`👤 Consultant ID: ${consultantId}`);
     console.log(`🆔 Event ID: ${googleEventId}`);
+    if (agentConfigId) console.log(`🤖 Agent Config ID: ${agentConfigId}`);
     
     if (!googleEventId || googleEventId.trim() === '') {
       console.log('❌ [GOOGLE CALENDAR] Invalid or empty event ID');
@@ -1242,8 +1289,25 @@ export async function deleteGoogleCalendarEvent(
       return false;
     }
     
-    const calendar = await getCalendarClient(consultantId);
-    const calendarId = await getPrimaryCalendarId(consultantId);
+    // AGENT-ONLY: Use agent's calendar if agentConfigId is provided
+    let calendar;
+    let calendarId: string | null = null;
+    
+    if (agentConfigId) {
+      console.log(`🔐 Using agent's calendar...`);
+      const agentCalendar = await getAgentCalendarClient(agentConfigId);
+      if (agentCalendar) {
+        calendar = agentCalendar;
+        calendarId = await getAgentCalendarId(agentConfigId);
+        console.log(`✅ Using AGENT's calendar: ${calendarId}`);
+      } else {
+        throw new Error(`Agent ${agentConfigId} has no Google Calendar connected. Cannot delete event.`);
+      }
+    } else {
+      // Legacy: consultant calendar (for non-agent flows)
+      calendar = await getCalendarClient(consultantId);
+      calendarId = await getPrimaryCalendarId(consultantId);
+    }
     
     if (!calendarId) {
       console.log('❌ [GOOGLE CALENDAR] Calendar ID not found');

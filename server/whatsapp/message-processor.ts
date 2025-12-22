@@ -21,7 +21,7 @@ import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
 import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, getModelWithThinking, getSuperAdminGeminiKeys } from "../ai/provider-factory";
+import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, getModelWithThinking, getSuperAdminGeminiKeys, getAIProvider } from "../ai/provider-factory";
 import { sendWhatsAppMessage } from "./twilio-client";
 import { nanoid } from "nanoid";
 import { handleIncomingMedia } from "./media-handler";
@@ -2211,7 +2211,15 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     // Step 10.5: Automatic appointment booking/modification/cancellation
     // CRITICAL: Booking logic only applies to LEADS when bookingEnabled=true
     // Existing clients (effectiveUserId truthy) skip appointment booking (they use web interface)
-    if (consultantConfig?.bookingEnabled !== false && !effectiveUserId) {
+    // MANDATORY CHECK: Agent MUST have its own calendar connected (no fallback to consultant)
+    const agentHasCalendar = !!consultantConfig?.googleRefreshToken;
+    if (!agentHasCalendar && consultantConfig?.bookingEnabled !== false) {
+      console.log(`⚠️ [BOOKING DISABLED] Agent "${consultantConfig?.agentName}" has NO Google Calendar connected`);
+      console.log(`   → Booking is enabled but calendar is missing - skipping all appointment logic`);
+      console.log(`   → To enable booking, connect Google Calendar in agent settings`);
+    }
+    
+    if (consultantConfig?.bookingEnabled !== false && agentHasCalendar && !effectiveUserId) {
       let retrievedSlots: any[] = [];
       let alreadyConfirmed = false;
       let existingBookingForModification: any = null;
@@ -2266,8 +2274,9 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
       if (true) {
 
         // AI PRE-CHECK: Skip heavy extraction if message is not booking-related
-        const preCheckAi = new GoogleGenAI({ apiKey });
-        const shouldAnalyze = await shouldAnalyzeForBooking(userMessage, alreadyConfirmed, preCheckAi);
+        // Aligned with public-share-router.ts: use getAIProvider() instead of GoogleGenAI directly
+        const bookingAiProvider = await getAIProvider(conversation.consultantId, conversation.consultantId);
+        const shouldAnalyze = await shouldAnalyzeForBooking(userMessage, alreadyConfirmed, bookingAiProvider.client);
 
         if (!shouldAnalyze) {
           console.log(`   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "${userMessage.substring(0, 40)}..."`);
@@ -2919,10 +2928,11 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               console.log(`   📚 Analyzing ${conversationMessages.length} messages for new booking...`);
               
               // Estrai dati booking dalla conversazione usando il servizio centralizzato
+              // Aligned with public-share-router.ts: use bookingAiProvider.client
               const extracted = await extractBookingDataFromConversation(
                 conversationMessages,
                 undefined, // Nessun booking esistente
-                preCheckAi, // GoogleGenAI client già creato
+                bookingAiProvider.client, // AI client from getAIProvider (aligned with public-share)
                 'Europe/Rome'
               );
               
@@ -4210,13 +4220,8 @@ ${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
     console.log(`   - Disqualification: ${consultantConfig.disqualificationEnabled !== false ? 'ENABLED' : 'DISABLED'}`);
     console.log(`   - Upselling: ${consultantConfig.upsellingEnabled === true ? 'ENABLED' : 'DISABLED'} (no block yet)`);
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📤 [SYSTEM PROMPT] Complete prompt being sent to Gemini:');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(finalPrompt);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`📊 Total prompt length: ${finalPrompt.length} characters`);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    // Log only first 100 chars of prompt (reduced verbosity)
+    console.log(`📤 [SYSTEM PROMPT] Ready (${finalPrompt.length} chars): "${finalPrompt.substring(0, 100).replace(/\n/g, ' ')}..."`);
 
     return finalPrompt;
   }
