@@ -496,12 +496,9 @@ router.post(
           if (existingBooking) {
             console.log(`   ℹ️ Booking già esistente (ID: ${existingBooking.id}) - date: ${existingBooking.appointmentDate} ${existingBooking.appointmentTime}`);
             
-            // AI PRE-CHECK: Determina se analizzare per modifica/cancellazione
+            // ACCUMULATOR PATTERN: Always proceed with intent extraction (no pre-check skip)
             const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-            const shouldAnalyze = await shouldAnalyzeForBooking(message, true, aiProvider.client);
-            
-            if (shouldAnalyze) {
-              console.log(`   ✅ [AI PRE-CHECK] Message is booking-related, proceeding with intent extraction`);
+            console.log(`   ✅ [ACCUMULATOR] Always proceeding with intent extraction (no pre-check skip)`);
               
               // Recupera cronologia conversazione (ultimi 15 messaggi)
               const recentMessages = await db
@@ -848,9 +845,6 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                   console.log(`   💬 [NONE] No modification/cancellation/add attendees intent - will proceed with AI streaming`);
                 }
               }
-            } else {
-              console.log(`   ⏭️ [AI PRE-CHECK] Message not booking-related, will proceed with AI streaming`);
-            }
           } else {
             console.log(`   ℹ️ No existing booking for this conversation - will proceed with AI streaming`);
           }
@@ -1141,14 +1135,11 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                   console.log(`   📋 [CANCELLED BOOKING FOUND] Found recently cancelled booking (within 24h) with email: ${recentlyCancelledBooking.clientEmail}, phone: ${recentlyCancelledBooking.clientPhone}`);
                 }
                 
-                // AI PRE-CHECK: Determina se analizzare per nuovo booking
+                // ACCUMULATOR PATTERN: Always proceed with extraction (no pre-check skip)
                 const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-                const shouldAnalyze = await shouldAnalyzeForBooking(message, false, aiProvider.client);
-                
-                if (shouldAnalyze) {
-                  console.log(`   ✅ [AI PRE-CHECK] Proceeding with new booking analysis`);
+                console.log(`   ✅ [ACCUMULATOR] Always proceeding with new booking analysis (no pre-check skip)`);
                   
-                  // Recupera cronologia conversazione (ultimi 15 messaggi)
+                // Recupera cronologia conversazione (ultimi 15 messaggi)
                   const recentMessages = await db
                     .select()
                     .from(schema.whatsappAgentConsultantMessages)
@@ -1326,9 +1317,6 @@ Ti aspettiamo! 🚀`;
                   } else {
                     console.log(`   ℹ️ No booking data extracted from conversation`);
                   }
-                } else {
-                  console.log(`   ⏭️ [AI PRE-CHECK] Skip new booking extraction - message not booking-related`);
-                }
               } else {
                 console.log(`   ℹ️ Booking already exists - skipping new booking creation (modifications handled pre-streaming)`);
               }

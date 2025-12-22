@@ -2145,20 +2145,14 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
 
       // Proceed with extraction for NEW bookings OR MODIFICATIONS/CANCELLATIONS
       // ALLINEATO A PUBLIC SHARE: Non richiediamo più slot salvati per nuovi booking
-      // shouldAnalyzeForBooking() filtra già i messaggi non rilevanti
+      // ACCUMULATOR PATTERN: Always extract to progressively accumulate booking data
       if (true) {
 
-        // AI PRE-CHECK: Skip heavy extraction if message is not booking-related
-        // Aligned with public-share-router.ts: use getAIProvider() instead of GoogleGenAI directly
-        const bookingAiProvider = await getAIProvider(conversation.consultantId, conversation.consultantId);
-        const shouldAnalyze = await shouldAnalyzeForBooking(userMessage, alreadyConfirmed, bookingAiProvider.client);
+        // ACCUMULATOR: Always proceed with extraction - no pre-check skip
+        // This ensures we capture all booking data progressively across messages
+        console.log(`   ✅ [ACCUMULATOR] Always proceeding with booking analysis (no pre-check skip)`);
 
-        if (!shouldAnalyze) {
-          console.log(`   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "${userMessage.substring(0, 40)}..."`);
-        } else {
-          console.log(`   ✅ [AI PRE-CHECK] Proceeding with booking analysis`);
-
-          if (alreadyConfirmed) {
+        if (alreadyConfirmed) {
             console.log('📅 [APPOINTMENT MANAGEMENT] Existing appointment detected - checking for MODIFY/CANCEL intent');
           } else {
             console.log('📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message');
@@ -3175,8 +3169,7 @@ Il tuo appuntamento è stato registrato. Ti contatteremo presto con i dettagli d
             }
             // Continue processing - this is not a critical error
           }
-        } // Close else block for shouldAnalyze pre-check
-      } // Close if ((!alreadyConfirmed && retrievedSlots && retrievedSlots.length > 0) || alreadyConfirmed)
+      } // Close if (true) block for extraction
     } // Close if (consultantConfig?.bookingEnabled !== false && !effectiveUserId)
     else if (consultantConfig?.bookingEnabled === false) {
       // bookingEnabled === false - Skip ALL appointment processing for both leads and existing clients
