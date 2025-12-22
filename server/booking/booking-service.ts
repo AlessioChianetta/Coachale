@@ -535,6 +535,7 @@ export async function extractBookingDataFromConversation(
   console.log(`\n🔍 [BOOKING SERVICE] Extracting data from ${messages.length} messages`);
   console.log(`   Mode: ${existingBooking ? 'MODIFICATION' : 'NEW BOOKING'}`);
   console.log(`   Timezone: ${timezone}`);
+  console.log(`   Conversation context:\n${conversationContext.substring(0, 500)}...`);
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // ACCUMULATOR: Load existing state for new bookings (not modifications)
@@ -579,6 +580,7 @@ export async function extractBookingDataFromConversation(
       return null;
     }
     console.log(`   AI Response length: ${responseText.length} chars`);
+    console.log(`   AI Response preview: ${responseText.substring(0, 300)}`);
 
     if (existingBooking) {
       const result = parseJsonResponse<BookingModificationResult>(responseText);
