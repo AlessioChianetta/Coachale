@@ -4169,14 +4169,31 @@ export class DatabaseStorage implements IStorage {
     useCustomTemplates: boolean
   ): Promise<void> {
     try {
-      await db.update(schema.consultantSmtpSettings)
-        .set({ 
-          businessContext, 
-          useCustomTemplates,
-          lastTemplatesGeneratedAt: new Date(),
-          updatedAt: new Date() 
-        })
-        .where(eq(schema.consultantSmtpSettings.consultantId, consultantId));
+      // Check if settings exist first
+      const existing = await this.getConsultantSmtpSettings(consultantId);
+      
+      if (existing) {
+        // Update existing record
+        await db.update(schema.consultantSmtpSettings)
+          .set({ 
+            businessContext, 
+            useCustomTemplates,
+            lastTemplatesGeneratedAt: new Date(),
+            updatedAt: new Date() 
+          })
+          .where(eq(schema.consultantSmtpSettings.consultantId, consultantId));
+      } else {
+        // Create new record with minimal required fields
+        await db.insert(schema.consultantSmtpSettings)
+          .values({
+            consultantId,
+            businessContext,
+            useCustomTemplates,
+            lastTemplatesGeneratedAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+      }
     } catch (error: any) {
       console.error(`Error updating consultant business context:`, error);
       throw error;
