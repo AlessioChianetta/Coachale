@@ -1259,17 +1259,10 @@ export class FileSearchService {
         );
         console.log(`🔗 [FileSearch] Consultant ${userId} is also a client of ${consultantId} - including both stores`);
       }
-    } else if (userRole === 'client' && consultantId) {
-      // Pure client: include their consultant's stores
-      conditions.push(
-        and(
-          eq(fileSearchStores.ownerId, consultantId),
-          eq(fileSearchStores.ownerType, 'consultant'),
-          eq(fileSearchStores.isActive, true)
-        )
-      );
-      
-      // Include client's own private store (where exercises and consultations are indexed)
+    } else if (userRole === 'client') {
+      // PRIVACY ISOLATION: Client sees ONLY their own private store
+      // All assigned content (exercises, library docs, lessons) is copied to client's store
+      // Client NEVER sees consultant's store directly - this ensures perfect privacy
       conditions.push(
         and(
           eq(fileSearchStores.ownerId, userId),
@@ -1277,7 +1270,7 @@ export class FileSearchService {
           eq(fileSearchStores.isActive, true)
         )
       );
-      console.log(`🔐 [FileSearch] Including client's private store for user ${userId}`);
+      console.log(`🔐 [FileSearch] ISOLATION MODE: Client ${userId} sees ONLY their private store`);
     }
 
     // Always include system-wide stores
