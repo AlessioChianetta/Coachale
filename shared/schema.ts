@@ -5678,3 +5678,34 @@ export const fileSearchSettings = pgTable("file_search_settings", {
 
 export type FileSearchSettings = typeof fileSearchSettings.$inferSelect;
 export type InsertFileSearchSettings = typeof fileSearchSettings.$inferInsert;
+
+// Consultant Village Progress (Gamified Onboarding)
+export const consultantVillageProgress = pgTable("consultant_village_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  
+  // Position in the village
+  positionX: real("position_x").default(400),
+  positionY: real("position_y").default(300),
+  
+  // Buildings visited and completed
+  visitedBuildings: text("visited_buildings").array().default([]),
+  completedBuildings: text("completed_buildings").array().default([]),
+  
+  // Unlocked areas
+  unlockedAreas: text("unlocked_areas").array().default(['plaza']),
+  
+  // Badges earned
+  badges: text("badges").array().default([]),
+  
+  // Game state
+  introCompleted: boolean("intro_completed").default(false),
+  preferClassicMode: boolean("prefer_classic_mode").default(false),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConsultantVillageProgress = typeof consultantVillageProgress.$inferSelect;
+export type InsertConsultantVillageProgress = typeof consultantVillageProgress.$inferInsert;

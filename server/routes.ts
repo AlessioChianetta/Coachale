@@ -13587,6 +13587,152 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // ==========================================
+  // VILLAGE PROGRESS API (Gamified Onboarding)
+  // ==========================================
+
+  // GET /api/village/progress - Get consultant's village progress
+  app.get("/api/village/progress", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      // Get or create progress
+      let progress = await db.query.consultantVillageProgress.findFirst({
+        where: eq(schema.consultantVillageProgress.consultantId, consultantId)
+      });
+      
+      if (!progress) {
+        // Create default progress
+        const [newProgress] = await db.insert(schema.consultantVillageProgress)
+          .values({ consultantId })
+          .returning();
+        progress = newProgress;
+      }
+      
+      res.json(progress);
+    } catch (error: any) {
+      console.error("Error fetching village progress:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/village/progress - Save village progress
+  app.post("/api/village/progress", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { positionX, positionY, visitedBuildings, completedBuildings, unlockedAreas, badges, introCompleted, preferClassicMode } = req.body;
+      
+      // Upsert progress
+      const [progress] = await db.insert(schema.consultantVillageProgress)
+        .values({
+          consultantId,
+          positionX: positionX ?? 400,
+          positionY: positionY ?? 300,
+          visitedBuildings: visitedBuildings ?? [],
+          completedBuildings: completedBuildings ?? [],
+          unlockedAreas: unlockedAreas ?? ['plaza'],
+          badges: badges ?? [],
+          introCompleted: introCompleted ?? false,
+          preferClassicMode: preferClassicMode ?? false,
+          updatedAt: new Date()
+        })
+        .onConflictDoUpdate({
+          target: schema.consultantVillageProgress.consultantId,
+          set: {
+            positionX: positionX ?? sql`position_x`,
+            positionY: positionY ?? sql`position_y`,
+            visitedBuildings: visitedBuildings ?? sql`visited_buildings`,
+            completedBuildings: completedBuildings ?? sql`completed_buildings`,
+            unlockedAreas: unlockedAreas ?? sql`unlocked_areas`,
+            badges: badges ?? sql`badges`,
+            introCompleted: introCompleted ?? sql`intro_completed`,
+            preferClassicMode: preferClassicMode ?? sql`prefer_classic_mode`,
+            updatedAt: new Date()
+          }
+        })
+        .returning();
+      
+      res.json(progress);
+    } catch (error: any) {
+      console.error("Error saving village progress:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/village/config-status - Get configuration status for all buildings
+  app.get("/api/village/config-status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      // Check various configurations
+      const [
+        smtpSettings,
+        vertexSettings,
+        calendarConnected,
+        twilioConfig,
+        agents,
+        knowledgeDocs,
+        courses,
+        exercises
+      ] = await Promise.all([
+        // SMTP
+        db.query.consultantSmtpSettings.findFirst({
+          where: eq(schema.consultantSmtpSettings.consultantId, consultantId)
+        }),
+        // Vertex AI
+        db.query.vertexAiSettings.findFirst({
+          where: eq(schema.vertexAiSettings.consultantId, consultantId)
+        }),
+        // Google Calendar
+        googleCalendarService.isGoogleCalendarConnected(consultantId),
+        // Twilio (check user's twilio settings)
+        db.select().from(schema.users).where(eq(schema.users.id, consultantId)).then(users => 
+          users[0]?.twilioAccountSid ? true : false
+        ),
+        // Agents
+        db.query.consultantWhatsappConfig.findMany({
+          where: eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+        }),
+        // Knowledge docs
+        db.query.knowledgeDocuments.findMany({
+          where: eq(schema.knowledgeDocuments.consultantId, consultantId),
+          limit: 1
+        }),
+        // Courses
+        db.query.universityYears.findMany({
+          where: eq(schema.universityYears.consultantId, consultantId),
+          limit: 1
+        }),
+        // Exercises
+        db.query.exercises.findMany({
+          where: eq(schema.exercises.createdBy, consultantId),
+          limit: 1
+        })
+      ]);
+      
+      const status: Record<string, boolean> = {
+        vertex_ai: !!(vertexSettings?.serviceAccountJson || vertexSettings?.geminiApiKey),
+        smtp: !!(smtpSettings?.smtpHost && smtpSettings?.smtpUser),
+        google_calendar: calendarConnected,
+        whatsapp_twilio: twilioConfig,
+        inbound_agent: agents.some(a => a.agentType === 'inbound' && a.isActive),
+        outbound_agent: agents.some(a => a.agentType === 'outbound' && a.isActive),
+        consultative_agent: agents.some(a => a.agentType === 'consultative' && a.isActive),
+        knowledge_base: knowledgeDocs.length > 0,
+        courses: courses.length > 0,
+        first_exercise: exercises.length > 0,
+        public_link: agents.some(a => a.publicSlug),
+        video_meeting: false, // Would need to check TURN config
+        lead_import: false // Would need to check API integrations
+      };
+      
+      res.json(status);
+    } catch (error: any) {
+      console.error("Error fetching config status:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // SSE Test endpoint - Server-Sent Events (funziona su Replit)
   app.get("/api/sse-test", (req, res) => {
     // Setup SSE headers

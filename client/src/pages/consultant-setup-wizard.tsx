@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6,6 +6,9 @@ import confetti from "canvas-confetti";
 import { getAuthHeaders } from "@/lib/auth";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
+
+// Lazy load the Phaser game component
+const PhaserGame = lazy(() => import("@/game/PhaserGame").then(m => ({ default: m.PhaserGame })));
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +49,7 @@ import {
   ClipboardList,
   MailCheck,
   Phone,
+  Gamepad2,
 } from "lucide-react";
 
 type StepStatus = "pending" | "configured" | "verified" | "error" | "skipped";
@@ -405,8 +409,23 @@ const triggerMiniConfetti = () => {
 export default function ConsultantSetupWizard() {
   const [activeStep, setActiveStep] = useState<string>("vertex_ai");
   const [testingStep, setTestingStep] = useState<string | null>(null);
+  const [villageMode, setVillageMode] = useState<boolean>(false);
   const previousCompletedRef = useRef<number>(0);
   const { toast } = useToast();
+  
+  // Check if user prefers village mode from saved progress
+  const { data: villageProgress } = useQuery<{ preferClassicMode?: boolean }>({
+    queryKey: ["/api/village/progress"],
+    enabled: true,
+  });
+  
+  // Set initial mode based on saved preference (default to classic)
+  useEffect(() => {
+    if (villageProgress && villageProgress.preferClassicMode === false) {
+      // User explicitly chose village mode before
+      // Don't auto-enable, let them click the button
+    }
+  }, [villageProgress]);
 
   const { data: onboardingData, isLoading, refetch } = useQuery<{ success: boolean; data: OnboardingStatus }>({
     queryKey: ["/api/consultant/onboarding/status"],
@@ -706,6 +725,28 @@ export default function ConsultantSetupWizard() {
     );
   }
 
+  // Village Mode - Gamified Onboarding
+  if (villageMode) {
+    return (
+      <div className="min-h-screen flex bg-slate-900">
+        <Sidebar role="consultant" />
+        <main className="flex-1 overflow-hidden">
+          <Suspense fallback={
+            <div className="h-full flex items-center justify-center bg-slate-800">
+              <div className="text-center">
+                <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mx-auto mb-4" />
+                <p className="text-white text-lg">Caricamento Coachale Village...</p>
+                <p className="text-slate-400 text-sm mt-2">Preparando il tuo villaggio</p>
+              </div>
+            </div>
+          }>
+            <PhaserGame onSwitchToClassic={() => setVillageMode(false)} />
+          </Suspense>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <Sidebar role="consultant" />
@@ -773,6 +814,15 @@ export default function ConsultantSetupWizard() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4 }}
               >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVillageMode(true)}
+                  className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-300 hover:border-purple-400 hover:bg-purple-500/20"
+                >
+                  <Gamepad2 className="h-4 w-4 mr-2 text-purple-600" />
+                  <span className="text-purple-700 dark:text-purple-300">Modalità Villaggio</span>
+                </Button>
                 <div className="text-right">
                   <motion.div 
                     className="text-3xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent"
