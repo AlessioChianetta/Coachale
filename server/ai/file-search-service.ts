@@ -172,22 +172,15 @@ export class FileSearchService {
         return null;
       }
 
-      // Priority 1: SuperAdmin keys (if user opted in) - iterate ALL keys to find one with fileSearchStores
+      // Priority 1: SuperAdmin keys (if user opted in)
       if (user.useSuperadminGemini !== false) {
         const superAdminKeys = await getSuperAdminGeminiKeys();
         if (superAdminKeys && superAdminKeys.keys.length > 0) {
-          for (let i = 0; i < superAdminKeys.keys.length; i++) {
-            const apiKey = superAdminKeys.keys[i];
-            const testClient = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
-            
-            if (testClient.fileSearchStores) {
-              console.log(`✅ [FileSearch] Using SuperAdmin Gemini key for user ${userId} (${i + 1}/${superAdminKeys.keys.length})`);
-              return testClient;
-            } else {
-              console.warn(`⚠️ [FileSearch] SuperAdmin key ${i + 1}/${superAdminKeys.keys.length} does not support File Search API, trying next...`);
-            }
-          }
-          console.warn(`⚠️ [FileSearch] No SuperAdmin key supports File Search API, trying user keys...`);
+          // Use random key for load balancing (same as provider-factory.ts)
+          const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+          const apiKey = superAdminKeys.keys[index];
+          console.log(`✅ [FileSearch] Using SuperAdmin Gemini key for user ${userId} (${index + 1}/${superAdminKeys.keys.length})`);
+          return new GoogleGenAI({ apiKey });
         }
       }
 
@@ -197,14 +190,8 @@ export class FileSearchService {
         const currentIndex = user.geminiApiKeyIndex || 0;
         const validIndex = currentIndex % apiKeys.length;
         const apiKey = apiKeys[validIndex];
-        const testClient = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
-        
-        if (testClient.fileSearchStores) {
-          console.log(`✅ [FileSearch] Using user's own Gemini key for user ${userId}`);
-          return testClient;
-        } else {
-          console.warn(`⚠️ [FileSearch] User key does not support File Search API`);
-        }
+        console.log(`✅ [FileSearch] Using user's own Gemini key for user ${userId}`);
+        return new GoogleGenAI({ apiKey });
       }
 
       // Priority 3: If user is a client, try consultant's keys
@@ -218,21 +205,15 @@ export class FileSearchService {
         if (consultant) {
           const consultantKeys = consultant.geminiApiKeys || [];
           if (consultantKeys.length > 0) {
-            for (let i = 0; i < consultantKeys.length; i++) {
-              const apiKey = consultantKeys[i];
-              const testClient = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
-              
-              if (testClient.fileSearchStores) {
-                console.log(`✅ [FileSearch] Using consultant's Gemini key for client ${userId} (${i + 1}/${consultantKeys.length})`);
-                return testClient;
-              }
-            }
-            console.warn(`⚠️ [FileSearch] No consultant key supports File Search API for client ${userId}`);
+            const index = Math.floor(Math.random() * consultantKeys.length);
+            const apiKey = consultantKeys[index];
+            console.log(`✅ [FileSearch] Using consultant's Gemini key for client ${userId} (${index + 1}/${consultantKeys.length})`);
+            return new GoogleGenAI({ apiKey });
           }
         }
       }
 
-      console.error(`❌ [FileSearch] No Gemini API key with File Search support available for user ${userId}. Configure keys in /consultant/api-keys-unified`);
+      console.error(`❌ [FileSearch] No Gemini API key available for user ${userId}. Configure keys in /consultant/api-keys-unified`);
       return null;
     } catch (error: any) {
       console.error(`❌ [FileSearch] Error getting client for user ${userId}:`, error.message);
@@ -286,8 +267,6 @@ export class FileSearchService {
   /**
    * Get a client using the 2-tier priority system (async version for operations)
    * Priority: SuperAdmin keys → User keys (no environment fallback)
-   * 
-   * IMPORTANT: All returned clients are validated to have fileSearchStores support
    */
   private async ensureClientAsync(userId?: string): Promise<GoogleGenAI> {
     // If userId is provided, try to get a client for that user (uses 2-tier system)
@@ -298,24 +277,16 @@ export class FileSearchService {
       }
     }
     
-    // Try SuperAdmin keys as fallback - with fileSearchStores validation
+    // Try SuperAdmin keys as fallback
     const superAdminKeys = await getSuperAdminGeminiKeys();
     if (superAdminKeys && superAdminKeys.keys.length > 0) {
-      for (let i = 0; i < superAdminKeys.keys.length; i++) {
-        const apiKey = superAdminKeys.keys[i];
-        const testClient = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
-        
-        // Verify this key supports File Search API
-        if (testClient.fileSearchStores) {
-          console.log(`🔑 [FileSearch] Using SuperAdmin Gemini key ${i + 1}/${superAdminKeys.keys.length} for operation`);
-          return testClient;
-        } else {
-          console.warn(`⚠️ [FileSearch] SuperAdmin key ${i + 1} does not support File Search API, trying next...`);
-        }
-      }
+      const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+      const apiKey = superAdminKeys.keys[index];
+      console.log(`🔑 [FileSearch] Using SuperAdmin Gemini key ${index + 1}/${superAdminKeys.keys.length} for operation`);
+      return new GoogleGenAI({ apiKey });
     }
     
-    throw new Error('File Search Service: No Gemini API key configured with File Search support. Configure keys in /consultant/api-keys-unified (SuperAdmin or User keys with File Search access).');
+    throw new Error('File Search Service: No Gemini API key configured. Configure keys in /consultant/api-keys-unified (SuperAdmin or User keys).');
   }
 
   /**
