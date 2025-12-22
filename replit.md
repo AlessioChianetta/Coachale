@@ -51,3 +51,11 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Fathom**: AI-powered consultation recording and transcription.
 - **Driver.js**: Interactive guided tours and onboarding.
 - **Twilio API**: WhatsApp Business messaging.
+- **Kenney RPG Urban Pack**: CC0-licensed pixel art sprites for the gamified village onboarding.
+
+## Gamified Village Onboarding
+- **CoachaleVillage Component**: DOM-based React component (not Canvas/Phaser) for Pokemon-style 2D village exploration
+- **Architecture**: 20x20 CSS Grid with 48x48px cells, framer-motion animations, Zustand state management
+- **Sprites**: Kenney RPG Urban Pack (486 tiles, 16x16px scaled to 48x48px) stored in `public/game/kenney/Tiles/`
+- **Features**: Player movement (WASD/arrows), building interactions, NPC dialogues, configuration status sync
+- **Files**: `client/src/components/village/` (CoachaleVillage.tsx, villageStore.ts, tileConfig.ts)

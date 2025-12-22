@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { getAuthHeaders } from "@/lib/auth";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 
-// Lazy load the Phaser game component
-const PhaserGame = lazy(() => import("@/game/PhaserGame").then(m => ({ default: m.PhaserGame })));
+// Lazy load the Village component
+const CoachaleVillage = lazy(() => import("@/components/village/CoachaleVillage"));
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -725,6 +725,29 @@ export default function ConsultantSetupWizard() {
     );
   }
 
+  // Build config status map for village
+  const configStatusMap: Record<string, boolean> = {
+    vertex_ai: status?.vertexAiStatus === 'verified',
+    smtp: status?.smtpStatus === 'verified',
+    google_calendar: status?.googleCalendarStatus === 'verified',
+    twilio_config: status?.hasTwilioConfiguredAgent || false,
+    inbound_agent: status?.hasInboundAgent || false,
+    outbound_agent: status?.hasOutboundAgent || false,
+    consultative_agent: status?.hasConsultativeAgent || false,
+    public_agent_link: status?.hasPublicAgentLink || false,
+    ai_ideas: status?.hasGeneratedIdeas || false,
+    whatsapp_template: status?.hasCustomTemplate || false,
+    first_course: status?.hasCreatedCourse || false,
+    first_exercise: status?.hasCreatedExercise || false,
+    knowledge_base: status?.knowledgeBaseStatus === 'verified',
+    first_summary_email: status?.hasFirstSummaryEmail || false,
+  };
+
+  const handleVillageBuildingClick = (stepId: string) => {
+    setVillageMode(false);
+    setActiveStep(stepId);
+  };
+
   // Village Mode - Gamified Onboarding
   if (villageMode) {
     return (
@@ -740,7 +763,11 @@ export default function ConsultantSetupWizard() {
               </div>
             </div>
           }>
-            <PhaserGame onSwitchToClassic={() => setVillageMode(false)} />
+            <CoachaleVillage 
+              configStatus={configStatusMap}
+              onBuildingClick={handleVillageBuildingClick}
+              onClose={() => setVillageMode(false)}
+            />
           </Suspense>
         </main>
       </div>

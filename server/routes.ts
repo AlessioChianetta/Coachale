@@ -13691,8 +13691,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         db.select().from(schema.consultantWhatsappConfig)
           .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId)),
         // Knowledge docs
-        db.select().from(schema.knowledgeDocuments)
-          .where(eq(schema.knowledgeDocuments.consultantId, consultantId))
+        db.select().from(schema.consultantKnowledgeDocuments)
+          .where(eq(schema.consultantKnowledgeDocuments.consultantId, consultantId))
           .limit(1),
         // Courses
         db.select().from(schema.universityYears)
