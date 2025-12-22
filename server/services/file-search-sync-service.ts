@@ -4244,10 +4244,12 @@ export class FileSearchSyncService {
     console.log(`   ✅ Tasks: ${tasksResult.synced} synced`);
 
     // 6. Sync consultations (already handled by syncAllConsultations but call for this client)
+    // SECURITY: Filter by both clientId AND consultantId to prevent cross-consultant data exposure
     console.log(`\n📞 [Migration] Step 6: Syncing consultations...`);
     const clientConsultations = await db.query.consultations.findMany({
       where: and(
         eq(consultations.clientId, clientId),
+        eq(consultations.consultantId, consultantId),
         eq(consultations.status, 'completed'),
       ),
     });

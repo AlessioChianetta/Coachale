@@ -806,8 +806,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
-  const migrateClientMutation = useMutation({
-    mutationFn: async (clientId: string) => {
+  const handleMigrateClient = async (clientId: string) => {
+    setMigratingClients(prev => ({ ...prev, [clientId]: true }));
+    try {
       const response = await fetch(`/api/file-search/migrate-client/${clientId}`, {
         method: "POST",
         headers: getAuthHeaders(),
@@ -816,9 +817,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
         const error = await response.json();
         throw new Error(error.error || "Migration failed");
       }
-      return response.json();
-    },
-    onSuccess: (data) => {
+      const data = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
       queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
       queryClient.invalidateQueries({ queryKey: ["/api/file-search/stores"] });
@@ -826,15 +825,16 @@ export default function ConsultantFileSearchAnalyticsPage() {
         title: "Migrazione completata!",
         description: `Client ${data.clientName} migrato con successo.`,
       });
-    },
-    onError: (error: any) => {
+    } catch (error: any) {
       toast({
         title: "Errore migrazione",
         description: error.message,
         variant: "destructive",
       });
-    },
-  });
+    } finally {
+      setMigratingClients(prev => ({ ...prev, [clientId]: false }));
+    }
+  };
 
   const migrateAllClientsMutation = useMutation({
     mutationFn: async () => {
@@ -869,6 +869,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [openAuditCategories, setOpenAuditCategories] = useState<Record<string, boolean>>({});
   const [openAuditClients, setOpenAuditClients] = useState<Record<string, boolean>>({});
   const [openAuditAgents, setOpenAuditAgents] = useState<Record<string, boolean>>({});
+  const [migratingClients, setMigratingClients] = useState<Record<string, boolean>>({});
   
   const toggleAuditCategory = (key: string) => {
     setOpenAuditCategories(prev => ({ ...prev, [key]: !prev[key] }));
@@ -3223,10 +3224,10 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => migrateClientMutation.mutate(clientStore.clientId)}
-                                  disabled={migrateClientMutation.isPending}
+                                  onClick={() => handleMigrateClient(clientStore.clientId)}
+                                  disabled={migratingClients[clientStore.clientId]}
                                 >
-                                  {migrateClientMutation.isPending ? (
+                                  {migratingClients[clientStore.clientId] ? (
                                     <Loader2 className="h-3 w-3 animate-spin" />
                                   ) : (
                                     <RefreshCw className="h-3 w-3" />
