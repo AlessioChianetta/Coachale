@@ -942,6 +942,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [openAuditClients, setOpenAuditClients] = useState<Record<string, boolean>>({});
   const [openAuditAgents, setOpenAuditAgents] = useState<Record<string, boolean>>({});
   const [migratingClients, setMigratingClients] = useState<Record<string, boolean>>({});
+  const [openClientAuditCategories, setOpenClientAuditCategories] = useState<Record<string, boolean>>({});
   
   const toggleAuditCategory = (key: string) => {
     setOpenAuditCategories(prev => ({ ...prev, [key]: !prev[key] }));
@@ -953,6 +954,11 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
   const toggleAuditAgent = (agentId: string) => {
     setOpenAuditAgents(prev => ({ ...prev, [agentId]: !prev[agentId] }));
+  };
+
+  const toggleClientAuditCategory = (clientId: string, category: string) => {
+    const key = `${clientId}-${category}`;
+    setOpenClientAuditCategories(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const isLoading = settingsLoading || analyticsLoading || auditLoading;
@@ -2859,265 +2865,349 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             </CollapsibleTrigger>
                             <CollapsibleContent className="mt-2 ml-6 space-y-2">
                               {client.assignedExercises?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-blue-700 flex items-center gap-2">
-                                    <Dumbbell className="h-3 w-3" />
-                                    Esercizi Assegnati ({client.assignedExercises.missing.length})
-                                  </p>
-                                  {client.assignedExercises.missing.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200 ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <Dumbbell className="h-3 w-3 text-blue-500" />
-                                        <span className="text-sm">{item.title}</span>
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-assignedExercises`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'assignedExercises')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-assignedExercises`] ?? false) ? <ChevronDown className="h-3 w-3 text-blue-600" /> : <ChevronRight className="h-3 w-3 text-blue-600" />}
+                                    <Dumbbell className="h-3 w-3 text-blue-600" />
+                                    <span className="text-sm font-medium text-blue-700">Esercizi Assegnati</span>
+                                    <Badge className="ml-auto bg-blue-200 text-blue-800">{client.assignedExercises.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.assignedExercises.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <Dumbbell className="h-3 w-3 text-blue-500" />
+                                          <span className="text-sm">{item.title}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.assignedLibrary?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-indigo-700 flex items-center gap-2">
-                                    <BookOpen className="h-3 w-3" />
-                                    Documenti Libreria Assegnati ({client.assignedLibrary.missing.length})
-                                  </p>
-                                  {client.assignedLibrary.missing.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-indigo-50 rounded border border-indigo-200 ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <BookOpen className="h-3 w-3 text-indigo-500" />
-                                        <span className="text-sm">{item.title}</span>
-                                        {item.categoryName && (
-                                          <Badge variant="outline" className="text-xs">{item.categoryName}</Badge>
-                                        )}
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-assignedLibrary`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'assignedLibrary')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-assignedLibrary`] ?? false) ? <ChevronDown className="h-3 w-3 text-indigo-600" /> : <ChevronRight className="h-3 w-3 text-indigo-600" />}
+                                    <BookOpen className="h-3 w-3 text-indigo-600" />
+                                    <span className="text-sm font-medium text-indigo-700">Documenti Libreria Assegnati</span>
+                                    <Badge className="ml-auto bg-indigo-200 text-indigo-800">{client.assignedLibrary.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.assignedLibrary.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-indigo-50 rounded border border-indigo-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <BookOpen className="h-3 w-3 text-indigo-500" />
+                                          <span className="text-sm">{item.title}</span>
+                                          {item.categoryName && (
+                                            <Badge variant="outline" className="text-xs">{item.categoryName}</Badge>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.assignedUniversity?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-amber-700 flex items-center gap-2">
-                                    <GraduationCap className="h-3 w-3" />
-                                    Lezioni University Assegnate ({client.assignedUniversity.missing.length})
-                                  </p>
-                                  {client.assignedUniversity.missing.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-amber-50 rounded border border-amber-200 ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <GraduationCap className="h-3 w-3 text-amber-500" />
-                                        <span className="text-sm">{item.title}</span>
-                                        {item.yearName && (
-                                          <Badge variant="outline" className="text-xs">{item.yearName}</Badge>
-                                        )}
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-assignedUniversity`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'assignedUniversity')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-assignedUniversity`] ?? false) ? <ChevronDown className="h-3 w-3 text-amber-600" /> : <ChevronRight className="h-3 w-3 text-amber-600" />}
+                                    <GraduationCap className="h-3 w-3 text-amber-600" />
+                                    <span className="text-sm font-medium text-amber-700">Lezioni University Assegnate</span>
+                                    <Badge className="ml-auto bg-amber-200 text-amber-800">{client.assignedUniversity.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.assignedUniversity.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-amber-50 rounded border border-amber-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <GraduationCap className="h-3 w-3 text-amber-500" />
+                                          <span className="text-sm">{item.title}</span>
+                                          {item.yearName && (
+                                            <Badge variant="outline" className="text-xs">{item.yearName}</Badge>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.goals?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-emerald-700 flex items-center gap-2">
-                                    <Target className="h-3 w-3" />
-                                    Goals ({client.goals.missing.length})
-                                  </p>
-                                  {client.goals.missing.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-emerald-50 rounded border border-emerald-200 ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <Target className="h-3 w-3 text-emerald-500" />
-                                        <span className="text-sm">{item.title}</span>
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-goals`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'goals')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-goals`] ?? false) ? <ChevronDown className="h-3 w-3 text-emerald-600" /> : <ChevronRight className="h-3 w-3 text-emerald-600" />}
+                                    <Target className="h-3 w-3 text-emerald-600" />
+                                    <span className="text-sm font-medium text-emerald-700">Goals</span>
+                                    <Badge className="ml-auto bg-emerald-200 text-emerald-800">{client.goals.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.goals.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-emerald-50 rounded border border-emerald-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <Target className="h-3 w-3 text-emerald-500" />
+                                          <span className="text-sm">{item.title}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.tasks?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-orange-700 flex items-center gap-2">
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    Tasks ({client.tasks.missing.length})
-                                  </p>
-                                  {client.tasks.missing.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-orange-50 rounded border border-orange-200 ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-3 w-3 text-orange-500" />
-                                        <span className="text-sm">{item.title}</span>
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-tasks`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'tasks')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-orange-50 hover:bg-orange-100 rounded border border-orange-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-tasks`] ?? false) ? <ChevronDown className="h-3 w-3 text-orange-600" /> : <ChevronRight className="h-3 w-3 text-orange-600" />}
+                                    <CheckCircle2 className="h-3 w-3 text-orange-600" />
+                                    <span className="text-sm font-medium text-orange-700">Tasks</span>
+                                    <Badge className="ml-auto bg-orange-200 text-orange-800">{client.tasks.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.tasks.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-orange-50 rounded border border-orange-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <CheckCircle2 className="h-3 w-3 text-orange-500" />
+                                          <span className="text-sm">{item.title}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.dailyReflections?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-pink-700 flex items-center gap-2">
-                                    <Heart className="h-3 w-3" />
-                                    Riflessioni Giornaliere ({client.dailyReflections.missing.length})
-                                  </p>
-                                  {client.dailyReflections.missing.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-pink-50 rounded border border-pink-200 ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <Heart className="h-3 w-3 text-pink-500" />
-                                        <span className="text-sm">{item.date ? new Date(item.date).toLocaleDateString('it-IT') : 'Data non disponibile'}</span>
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-dailyReflections`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'dailyReflections')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-pink-50 hover:bg-pink-100 rounded border border-pink-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-dailyReflections`] ?? false) ? <ChevronDown className="h-3 w-3 text-pink-600" /> : <ChevronRight className="h-3 w-3 text-pink-600" />}
+                                    <Heart className="h-3 w-3 text-pink-600" />
+                                    <span className="text-sm font-medium text-pink-700">Riflessioni Giornaliere</span>
+                                    <Badge className="ml-auto bg-pink-200 text-pink-800">{client.dailyReflections.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.dailyReflections.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-pink-50 rounded border border-pink-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <Heart className="h-3 w-3 text-pink-500" />
+                                          <span className="text-sm">{item.date ? new Date(item.date).toLocaleDateString('it-IT') : 'Data non disponibile'}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.clientProgressHistory?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-teal-700 flex items-center gap-2">
-                                    <TrendingUp className="h-3 w-3" />
-                                    Storico Progresso ({client.clientProgressHistory.missing.length})
-                                  </p>
-                                  {client.clientProgressHistory.missing.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-teal-50 rounded border border-teal-200 ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <TrendingUp className="h-3 w-3 text-teal-500" />
-                                        <span className="text-sm">{item.date ? new Date(item.date).toLocaleDateString('it-IT') : 'Data non disponibile'}</span>
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-clientProgressHistory`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'clientProgressHistory')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-teal-50 hover:bg-teal-100 rounded border border-teal-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-clientProgressHistory`] ?? false) ? <ChevronDown className="h-3 w-3 text-teal-600" /> : <ChevronRight className="h-3 w-3 text-teal-600" />}
+                                    <TrendingUp className="h-3 w-3 text-teal-600" />
+                                    <span className="text-sm font-medium text-teal-700">Storico Progresso</span>
+                                    <Badge className="ml-auto bg-teal-200 text-teal-800">{client.clientProgressHistory.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.clientProgressHistory.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-teal-50 rounded border border-teal-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <TrendingUp className="h-3 w-3 text-teal-500" />
+                                          <span className="text-sm">{item.date ? new Date(item.date).toLocaleDateString('it-IT') : 'Data non disponibile'}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.libraryProgress?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-cyan-700 flex items-center gap-2">
-                                    <BookOpen className="h-3 w-3" />
-                                    Progresso Libreria ({client.libraryProgress.missing.length})
-                                  </p>
-                                  {client.libraryProgress.missing.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-cyan-50 rounded border border-cyan-200 ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <BookOpen className="h-3 w-3 text-cyan-500" />
-                                        <span className="text-sm">{item.documentTitle || 'Documento'}</span>
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-libraryProgress`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'libraryProgress')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-cyan-50 hover:bg-cyan-100 rounded border border-cyan-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-libraryProgress`] ?? false) ? <ChevronDown className="h-3 w-3 text-cyan-600" /> : <ChevronRight className="h-3 w-3 text-cyan-600" />}
+                                    <BookOpen className="h-3 w-3 text-cyan-600" />
+                                    <span className="text-sm font-medium text-cyan-700">Progresso Libreria</span>
+                                    <Badge className="ml-auto bg-cyan-200 text-cyan-800">{client.libraryProgress.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.libraryProgress.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-cyan-50 rounded border border-cyan-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <BookOpen className="h-3 w-3 text-cyan-500" />
+                                          <span className="text-sm">{item.documentTitle || 'Documento'}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.emailJourneyProgress?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-violet-700 flex items-center gap-2">
-                                    <Mail className="h-3 w-3" />
-                                    Email Journey ({client.emailJourneyProgress.missing.length})
-                                  </p>
-                                  {client.emailJourneyProgress.missing.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-violet-50 rounded border border-violet-200 ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <Mail className="h-3 w-3 text-violet-500" />
-                                        <span className="text-sm">{item.templateTitle || 'Email'}</span>
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-emailJourneyProgress`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'emailJourneyProgress')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-violet-50 hover:bg-violet-100 rounded border border-violet-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-emailJourneyProgress`] ?? false) ? <ChevronDown className="h-3 w-3 text-violet-600" /> : <ChevronRight className="h-3 w-3 text-violet-600" />}
+                                    <Mail className="h-3 w-3 text-violet-600" />
+                                    <span className="text-sm font-medium text-violet-700">Email Journey</span>
+                                    <Badge className="ml-auto bg-violet-200 text-violet-800">{client.emailJourneyProgress.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.emailJourneyProgress.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-violet-50 rounded border border-violet-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <Mail className="h-3 w-3 text-violet-500" />
+                                          <span className="text-sm">{item.templateTitle || 'Email'}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.exerciseResponses?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                    <Dumbbell className="h-3 w-3" />
-                                    Risposte Esercizi ({client.exerciseResponses.missing.length})
-                                  </p>
-                                  {client.exerciseResponses.missing.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <FileText className="h-3 w-3 text-gray-400" />
-                                        <span className="text-sm">{item.exerciseTitle}</span>
-                                        {item.submittedAt && (
-                                          <span className="text-xs text-gray-400">
-                                            ({new Date(item.submittedAt).toLocaleDateString('it-IT')})
-                                          </span>
-                                        )}
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-exerciseResponses`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'exerciseResponses')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-gray-50 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-exerciseResponses`] ?? false) ? <ChevronDown className="h-3 w-3 text-gray-600" /> : <ChevronRight className="h-3 w-3 text-gray-600" />}
+                                    <Dumbbell className="h-3 w-3 text-gray-600" />
+                                    <span className="text-sm font-medium text-gray-700">Risposte Esercizi</span>
+                                    <Badge className="ml-auto bg-gray-200 text-gray-800">{client.exerciseResponses.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.exerciseResponses.missing.map(item => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <FileText className="h-3 w-3 text-gray-400" />
+                                          <span className="text-sm">{item.exerciseTitle}</span>
+                                          {item.submittedAt && (
+                                            <span className="text-xs text-gray-400">
+                                              ({new Date(item.submittedAt).toLocaleDateString('it-IT')})
+                                            </span>
+                                          )}
+                                        </div>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => syncSingleMutation.mutate({ type: 'exercise_response', id: item.id, clientId: client.clientId })}
+                                          disabled={syncSingleMutation.isPending}
+                                        >
+                                          {syncSingleMutation.isPending ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <>
+                                              <Plus className="h-3 w-3 mr-1" />
+                                              Sync
+                                            </>
+                                          )}
+                                        </Button>
                                       </div>
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        onClick={() => syncSingleMutation.mutate({ type: 'exercise_response', id: item.id, clientId: client.clientId })}
-                                        disabled={syncSingleMutation.isPending}
-                                      >
-                                        {syncSingleMutation.isPending ? (
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : (
-                                          <>
-                                            <Plus className="h-3 w-3 mr-1" />
-                                            Sync
-                                          </>
-                                        )}
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.consultationNotes?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                    <MessageSquare className="h-3 w-3" />
-                                    Note Consulenze ({client.consultationNotes.missing.length})
-                                  </p>
-                                  {client.consultationNotes.missing.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <FileText className="h-3 w-3 text-gray-400" />
-                                        <span className="text-sm">
-                                          {new Date(item.date).toLocaleDateString('it-IT')} - {item.summary}
-                                        </span>
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-consultationNotes`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'consultationNotes')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-gray-50 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-consultationNotes`] ?? false) ? <ChevronDown className="h-3 w-3 text-gray-600" /> : <ChevronRight className="h-3 w-3 text-gray-600" />}
+                                    <MessageSquare className="h-3 w-3 text-gray-600" />
+                                    <span className="text-sm font-medium text-gray-700">Note Consulenze</span>
+                                    <Badge className="ml-auto bg-gray-200 text-gray-800">{client.consultationNotes.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.consultationNotes.missing.map(item => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <FileText className="h-3 w-3 text-gray-400" />
+                                          <span className="text-sm">
+                                            {new Date(item.date).toLocaleDateString('it-IT')} - {item.summary}
+                                          </span>
+                                        </div>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => syncSingleMutation.mutate({ type: 'consultation', id: item.id, clientId: client.clientId })}
+                                          disabled={syncSingleMutation.isPending}
+                                        >
+                                          {syncSingleMutation.isPending ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <>
+                                              <Plus className="h-3 w-3 mr-1" />
+                                              Sync
+                                            </>
+                                          )}
+                                        </Button>
                                       </div>
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        onClick={() => syncSingleMutation.mutate({ type: 'consultation', id: item.id, clientId: client.clientId })}
-                                        disabled={syncSingleMutation.isPending}
-                                      >
-                                        {syncSingleMutation.isPending ? (
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : (
-                                          <>
-                                            <Plus className="h-3 w-3 mr-1" />
-                                            Sync
-                                          </>
-                                        )}
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {client.knowledgeDocs?.missing?.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                    <Brain className="h-3 w-3" />
-                                    Knowledge Docs ({client.knowledgeDocs.missing.length})
-                                  </p>
-                                  {client.knowledgeDocs.missing.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <FileText className="h-3 w-3 text-gray-400" />
-                                        <span className="text-sm">{item.title}</span>
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-knowledgeDocs`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'knowledgeDocs')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-gray-50 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-knowledgeDocs`] ?? false) ? <ChevronDown className="h-3 w-3 text-gray-600" /> : <ChevronRight className="h-3 w-3 text-gray-600" />}
+                                    <Brain className="h-3 w-3 text-gray-600" />
+                                    <span className="text-sm font-medium text-gray-700">Knowledge Docs</span>
+                                    <Badge className="ml-auto bg-gray-200 text-gray-800">{client.knowledgeDocs.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.knowledgeDocs.missing.map(item => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <FileText className="h-3 w-3 text-gray-400" />
+                                          <span className="text-sm">{item.title}</span>
+                                        </div>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => syncSingleMutation.mutate({ type: 'client_knowledge', id: item.id, clientId: client.clientId })}
+                                          disabled={syncSingleMutation.isPending}
+                                        >
+                                          {syncSingleMutation.isPending ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <>
+                                              <Plus className="h-3 w-3 mr-1" />
+                                              Sync
+                                            </>
+                                          )}
+                                        </Button>
                                       </div>
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        onClick={() => syncSingleMutation.mutate({ type: 'client_knowledge', id: item.id, clientId: client.clientId })}
-                                        disabled={syncSingleMutation.isPending}
-                                      >
-                                        {syncSingleMutation.isPending ? (
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : (
-                                          <>
-                                            <Plus className="h-3 w-3 mr-1" />
-                                            Sync
-                                          </>
-                                        )}
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               )}
 
                               {clientMissing === 0 && (
