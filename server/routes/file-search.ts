@@ -621,7 +621,16 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
       autoSyncClientKnowledge,
       autoSyncWhatsappAgents,
       scheduledSyncEnabled,
-      scheduledSyncHour
+      scheduledSyncHour,
+      autoSyncGoals,
+      autoSyncTasks,
+      autoSyncDailyReflections,
+      autoSyncClientProgress,
+      autoSyncLibraryProgress,
+      autoSyncEmailJourney,
+      autoSyncAssignedExercises,
+      autoSyncAssignedLibrary,
+      autoSyncAssignedUniversity
     } = req.body;
     
     const updateData: Partial<typeof fileSearchSettings.$inferInsert> = {
@@ -642,6 +651,15 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
     if (typeof scheduledSyncHour === 'number' && scheduledSyncHour >= 0 && scheduledSyncHour <= 23) {
       updateData.scheduledSyncHour = scheduledSyncHour;
     }
+    if (typeof autoSyncGoals === 'boolean') updateData.autoSyncGoals = autoSyncGoals;
+    if (typeof autoSyncTasks === 'boolean') updateData.autoSyncTasks = autoSyncTasks;
+    if (typeof autoSyncDailyReflections === 'boolean') updateData.autoSyncDailyReflections = autoSyncDailyReflections;
+    if (typeof autoSyncClientProgress === 'boolean') updateData.autoSyncClientProgress = autoSyncClientProgress;
+    if (typeof autoSyncLibraryProgress === 'boolean') updateData.autoSyncLibraryProgress = autoSyncLibraryProgress;
+    if (typeof autoSyncEmailJourney === 'boolean') updateData.autoSyncEmailJourney = autoSyncEmailJourney;
+    if (typeof autoSyncAssignedExercises === 'boolean') updateData.autoSyncAssignedExercises = autoSyncAssignedExercises;
+    if (typeof autoSyncAssignedLibrary === 'boolean') updateData.autoSyncAssignedLibrary = autoSyncAssignedLibrary;
+    if (typeof autoSyncAssignedUniversity === 'boolean') updateData.autoSyncAssignedUniversity = autoSyncAssignedUniversity;
     
     const [updated] = await db
       .update(fileSearchSettings)
