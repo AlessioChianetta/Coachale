@@ -1434,6 +1434,33 @@ export class FileSearchSyncService {
         }
       }
 
+      // Sync assigned content (exercises, library, university, goals, tasks) via inline migration
+      // This ensures all audit-expected content is synchronized to client private stores
+      const clientExerciseAssigns = await db.query.exerciseAssignments.findMany({
+        where: eq(exerciseAssignments.clientId, client.id),
+      });
+      for (const assignment of clientExerciseAssigns) {
+        await this.syncExerciseToClient(assignment.exerciseId, client.id, consultantId);
+      }
+
+      const clientLibAssigns = await db.query.libraryCategoryClientAssignments.findMany({
+        where: eq(libraryCategoryClientAssignments.clientId, client.id),
+      });
+      for (const assignment of clientLibAssigns) {
+        await this.syncLibraryCategoryToClient(assignment.categoryId, client.id, consultantId);
+      }
+
+      const clientUniAssigns = await db.query.universityYearClientAssignments.findMany({
+        where: eq(universityYearClientAssignments.clientId, client.id),
+      });
+      for (const assignment of clientUniAssigns) {
+        await this.syncUniversityYearToClient(assignment.yearId, client.id, consultantId);
+      }
+
+      // Sync goals and tasks (aggregated documents) - always re-sync to ensure up-to-date
+      await this.syncClientGoals(client.id, consultantId);
+      await this.syncClientTasks(client.id, consultantId);
+
       clientsProcessed++;
       
       // Calculate real progress for each category (processed items vs pre-calculated totals)
