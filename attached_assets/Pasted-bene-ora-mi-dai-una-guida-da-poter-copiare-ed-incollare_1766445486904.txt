@@ -1,0 +1,125 @@
+bene, ora mi dai una guida da poter copiare ed incollare così me la metto su un docuemnt? dovrò farlo per altri 9
+
+Kodee
+Di seguito una guida generica, pensata per essere copiata in un documento e riusata per più server/domìni.
+Sostituisci ogni volta:
+
+MIO_DOMINIO → con il dominio reale (es. conorbitale.it)
+WWW_MIO_DOMINIO → con il sottodominio www (es. www.conorbitale.it)
+IP_VPS → con l’IP della VPS (es. 72.62.50.40)
+PORTA_APP → con la porta dell’app (es. 5000)
+GUIDA: Configurare dominio + Nginx + HTTPS (Let’s Encrypt) su VPS Ubuntu 1. Configurazione DNS presso il registrar
+Nel pannello DNS del dominio MIO_DOMINIO (es. Register.it):
+
+Crea/modifica i record:
+Record A principale:
+
+Tipo: A
+Nome/Host: @
+Valore/IP: IP_VPS
+Record A per www (consigliato):
+
+Tipo: A
+Nome/Host: www
+Valore/IP: IP_VPS
+(Opzionale) Wildcard:
+
+Tipo: A
+Nome/Host: *
+Valore/IP: IP_VPS
+Salva e attendi la propagazione DNS (da pochi minuti a qualche ora).
+2. Preparazione VPS (Ubuntu)
+Aggiorna i pacchetti e installa Nginx:
+
+Copy
+sudo apt update
+sudo apt install -y nginx
+(Opzionale) Abilita il firewall e apri le porte HTTP/HTTPS:
+
+Copy
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+3. Verifica che l’applicazione sia in ascolto
+Assicurati che l’app Node/Express (o altra app) sia in ascolto su PORTA_APP (es. 5000) e su 0.0.0.0 o 127.0.0.1.
+
+Controllo rapido:
+
+Copy
+sudo ss -tulpn | grep PORTA_APP || sudo lsof -i:PORTA_APP
+Se non appare nulla, avvia l’app (o il container Docker) e ripeti il comando.
+
+4. Configurazione Nginx come reverse proxy
+Crea un file di configurazione per il dominio:
+
+Copy
+sudo nano /etc/nginx/sites-available/MIO_DOMINIO
+Inserisci questo contenuto, adattando MIO_DOMINIO, WWW_MIO_DOMINIO e PORTA_APP:
+
+Copy
+server {
+    listen 80;
+    listen [::]:80;
+    server_name MIO_DOMINIO WWW_MIO_DOMINIO;
+
+    location / {
+        proxy_pass http://127.0.0.1:PORTA_APP;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+Abilita il sito e ricarica Nginx:
+
+Copy
+sudo ln -s /etc/nginx/sites-available/MIO_DOMINIO /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+Test da server:
+
+Copy
+curl -I http://MIO_DOMINIO
+Deve rispondere con HTTP/1.1 200 OK.
+
+5. Abilitare HTTPS con Let’s Encrypt (Certbot)
+Installa Certbot e plugin Nginx:
+
+Copy
+sudo apt update
+sudo apt install -y certbot python3-certbot-nginx
+Richiedi il certificato per il dominio:
+
+Copy
+sudo certbot --nginx -d MIO_DOMINIO -d WWW_MIO_DOMINIO
+Durante la procedura:
+
+Conferma l’email
+Accetta i termini
+Quando chiede il redirect, scegli l’opzione che forza il passaggio da HTTP a HTTPS.
+6. Verifiche HTTPS e rinnovo automatico
+Controlla che il sito risponda in HTTPS:
+
+Copy
+curl -I https://MIO_DOMINIO
+Deve rispondere con HTTP/2 200 o HTTP/1.1 200 e un certificato valido.
+
+Verifica il timer di rinnovo automatico:
+
+Copy
+sudo systemctl status certbot.timer --no-pager
+sudo certbot renew --dry-run
+Se il dry-run va a buon fine, il rinnovo automatico è configurato.
+
+7. Checklist rapida per ogni nuovo dominio
+Per ognuno dei 10 domini da configurare, ripetere:
+
+Creare/aggiornare record DNS A per MIO_DOMINIO (+ www).
+Verificare che l’app giri su PORTA_APP.
+Creare file Nginx in sites-available/MIO_DOMINIO e abilitarlo.
+Testare HTTP (curl -I http://MIO_DOMINIO).
+Lanciare certbot --nginx -d MIO_DOMINIO -d WWW_MIO_DOMINIO.
+Testare HTTPS (https://MIO_DOMINIO).
+Se vuoi, posso adattare questa guida a un caso specifico (es. porta diversa, Docker, più app sulla stessa VPS).
+

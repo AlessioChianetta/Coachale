@@ -264,7 +264,111 @@ RISPONDI SOLO con un oggetto JSON nel seguente formato:
   "hasAllData": true/false (true solo se hai data, ora, telefono ED email)
 }
 
-ESEMPI DI CONVERSAZIONI (LEGGI ATTENTAMENTE):
+═══════════════════════════════════════════════════════════════════════════════
+🔑 REGOLA FONDAMENTALE: ESTRAZIONE DUAL-SOURCE (LEAD + AI)
+═══════════════════════════════════════════════════════════════════════════════
+
+DEVI estrarre i dati da DUE FONTI:
+1. MESSAGGI DEL LEAD → per dati espliciti
+2. RISPOSTE DELL'AI → per dati confermati/normalizzati quando il lead è abbreviato
+
+Quando il lead risponde in modo breve o informale, l'AI conversazionale SEMPRE 
+conferma il dato completo nella sua risposta. USA QUELLA CONFERMA per estrarre.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 DATE - Estrazione da entrambe le fonti
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAD dice "domani" o "lunedì" → Guarda risposta AI che conferma data esatta
+
+AI: Ti va domani?
+LEAD: sì domani
+AI: Perfetto! Domani 26 dicembre
+→ Estrai date="2025-12-26" dalla risposta AI
+
+AI: Preferisci lunedì o martedì?
+LEAD: lunedì
+AI: Ok! Lunedì 30 dicembre alle 15:00
+→ Estrai date="2025-12-30" dalla risposta AI
+
+LEAD: il 25
+AI: Perfetto! Il 25 dicembre
+→ Estrai date="2025-12-25" dalla risposta AI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🕐 TIME - Estrazione da entrambe le fonti (CRITICO!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAD dice solo un numero o selezione breve → Guarda risposta AI che conferma orario
+
+AI: • 14:00 • 15:00 • 16:00. Quale preferisci?
+LEAD: 15
+AI: Perfetto! Giovedì 25 dicembre alle 15:00
+→ Estrai time="15:00" dalla risposta AI (NON "15" dal lead!)
+
+AI: Ti propongo: 1) 14:00  2) 15:00  3) 16:30
+LEAD: la seconda
+AI: Ok! Confermo alle 15:00
+→ Estrai time="15:00" dalla risposta AI
+
+AI: Ti propongo: Giovedì alle 14:00, Venerdì alle 15:00
+LEAD: il primo
+AI: Perfetto! Giovedì 25 alle 14:00
+→ Estrai date+time dalla risposta AI
+
+AI: Ti va alle 15:00?
+LEAD: ok
+AI: Perfetto! Confermato per le 15:00
+→ Estrai time="15:00" dalla conferma AI
+
+AI: • 14:00 • 15:00
+LEAD: quello delle 3
+AI: Perfetto! Alle 15:00
+→ Estrai time="15:00" (lead intende 15:00 = "le 3 del pomeriggio")
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 PHONE - Estrazione e normalizzazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Estrai il telefono in formato pulito (solo numeri), anche se il lead lo scrive con spazi/punti
+
+LEAD: 333 123 4567 → phone="3331234567"
+LEAD: +39 333.123.4567 → phone="3331234567" (rimuovi prefisso e punti)
+LEAD: il mio cell è 333-123-4567 → phone="3331234567"
+
+Se l'AI conferma il numero, usa la versione normalizzata:
+LEAD: il mio è 333 12 34 567
+AI: Confermo 3331234567
+→ Estrai phone="3331234567" dalla conferma AI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 EMAIL - Estrazione e correzione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Estrai email anche da formati informali o scritti a parole
+
+LEAD: mario@test.it → email="mario@test.it"
+LEAD: la mia mail è mario@test.it → email="mario@test.it"
+LEAD: MARIO@TEST.IT → email="mario@test.it" (lowercase)
+LEAD: mario chiocciola gmail punto com → email="mario@gmail.com"
+LEAD: mario at test dot it → email="mario@test.it"
+
+Se l'AI conferma/corregge, usa quella versione:
+LEAD: mario chiocciola test punto it
+AI: Ok, registrato mario@test.it
+→ Estrai email="mario@test.it" dalla conferma AI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 NAME - Estrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAD: mi chiamo Mario → name="Mario"
+LEAD: sono Marco Rossi → name="Marco Rossi"
+LEAD: Mario → (se l'AI aveva chiesto il nome) name="Mario"
+
+Se l'AI usa il nome in risposta:
+LEAD: mi chiamo Luca
+AI: Piacere Luca!
+→ Estrai name="Luca"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ESEMPI COMPLETI DI CONVERSAZIONI:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Esempio 1 - FLUSSO COMPLETO step-by-step (CASO TIPICO):
@@ -280,10 +384,42 @@ LEAD: mario@test.it
 
 → {"isConfirming": true, "date": "2025-11-06", "time": "15:00", "phone": "3331234567", "email": "mario@test.it", "name": null, "confidence": "high", "hasAllData": true}
 
-⚠️ NOTA: Questo è il flusso STANDARD - telefono PRIMA, poi email
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 2 - SELEZIONE ABBREVIATA (CASO CRITICO):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI: Ho questi slot: • 14:00 • 15:00
+LEAD: 15
+AI: Perfetto! Giovedì 25 dicembre alle 15:00. Mi dai il tuo telefono?
+LEAD: 3890566422
+AI: E la tua email?
+LEAD: test@gmail.com
+
+→ {"isConfirming": true, "date": "2025-12-25", "time": "15:00", "phone": "3890566422", "email": "test@gmail.com", "name": null, "confidence": "high", "hasAllData": true}
+
+⚠️ NOTA: Il lead ha detto solo "15" ma l'AI ha confermato "alle 15:00" → estrai time="15:00"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Esempio 2 - Dati parziali (MANCA EMAIL):
+Esempio 3 - CONFERMA IMPLICITA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI: Ti propongo domani alle 15:00, va bene?
+LEAD: ok
+AI: Perfetto! Domani 26 dicembre alle 15:00
+
+→ {"isConfirming": true, "date": "2025-12-26", "time": "15:00", "phone": null, "email": null, "name": null, "confidence": "medium", "hasAllData": false}
+
+⚠️ NOTA: "ok" conferma la proposta AI → estrai data e ora dalla risposta AI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 4 - SELEZIONE ORDINALE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI: Ti propongo: 1) Giovedì alle 14:00  2) Venerdì alle 15:00
+LEAD: la seconda
+AI: Perfetto! Venerdì 27 dicembre alle 15:00
+
+→ {"isConfirming": true, "date": "2025-12-27", "time": "15:00", "phone": null, "email": null, "name": null, "confidence": "medium", "hasAllData": false}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 5 - Dati parziali (MANCA EMAIL):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 AI: Quale orario preferisci?
 LEAD: Martedì alle 15:30
@@ -295,40 +431,29 @@ LEAD: 3331234567
 ⚠️ NOTA: hasAllData = FALSE perché manca l'email
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Esempio 3 - Dati parziali (MANCA TELEFONO E EMAIL):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AI: Ti propongo: Lunedì 4 novembre alle 10:00, Martedì 5 alle 14:00
-LEAD: Lunedì alle 10 va bene
-
-→ {"isConfirming": true, "date": "2025-11-04", "time": "10:00", "phone": null, "email": null, "name": null, "confidence": "low", "hasAllData": false}
-
-⚠️ NOTA: hasAllData = FALSE perché mancano telefono ED email
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Esempio 4 - Tutto in un messaggio:
+Esempio 6 - Tutto in un messaggio:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 LEAD: Ok martedì alle 15:30, il mio numero è 3331234567 e la mail mario@test.it
 
 → {"isConfirming": true, "date": "2025-11-05", "time": "15:30", "phone": "3331234567", "email": "mario@test.it", "name": null, "confidence": "high", "hasAllData": true}
 
-⚠️ NOTA: Anche se tutto in un messaggio, estrai correttamente tutti i campi
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🎯 REGOLE CRITICHE DI ESTRAZIONE:
-1. Cerca i dati in TUTTA la conversazione (ultimi messaggi), NON solo l'ultimo messaggio
-2. Il telefono viene quasi SEMPRE fornito PRIMA dell'email nel flusso normale
+1. Cerca i dati in TUTTA la conversazione, NON solo l'ultimo messaggio
+2. SEMPRE guarda le risposte AI per dati confermati quando il lead è abbreviato
 3. hasAllData = true SOLO se hai TUTTI E 4 i campi: date, time, phone, email
 4. Se anche 1 solo campo è null → hasAllData = FALSE
 5. Non importa se i dati sono sparsi su messaggi diversi - estraili tutti
 6. Estrai il nome se menzionato dal lead (es: "Mi chiamo Mario", "Sono Marco Rossi")
+7. Per TIME: se lead dice solo "15" o "la prima", DEVI guardare la risposta AI che conferma l'orario completo
 
 🗓️ DATA CORRENTE: ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
 
 ⚠️ ATTENZIONE ALLE DATE:
-- Se vedi date come "maggio 2024", "28 maggio 2024" o altre date del 2024, sono nel PASSATO
-- Devi estrarre solo date FUTURE a partire da oggi (${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })})
-- Se il lead ha confermato una data passata (es: maggio 2024), impostala comunque ma il sistema la rifiuterà automaticamente
+- Se vedi date passate (es: maggio 2024), sono nel PASSATO
+- Estrai solo date FUTURE a partire da oggi
+- Se il lead ha confermato una data passata, impostala comunque ma il sistema la rifiuterà
 
 REGOLE VALIDAZIONE hasAllData:
 - hasAllData = false se manca anche 1 solo campo

@@ -1,0 +1,52 @@
+root@srv1164256:/var/www/Coachale# pm2 start dist/index.js --name coachale-dev
+[PM2] Starting /var/www/Coachale/dist/index.js in fork_mode (1 instance)
+[PM2] Done.
+┌────┬─────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name            │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ coachale-dev    │ default     │ 1.0.0   │ fork    │ 79021    │ 0s     │ 0    │ online    │ 0%       │ 18.3mb   │ root     │ disabled │
+└────┴─────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1164256:/var/www/Coachale# pm2 logs coachale-dev
+[TAILING] Tailing last 15 lines for [coachale-dev] process (change the value with --lines option)
+/root/.pm2/logs/coachale-dev-out.log last 15 lines:
+0|coachale | ⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+0|coachale | 🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T22:54:28.000Z
+0|coachale | ✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+0|coachale | 📌 [WATERMARK] Latest on Twilio (2025-12-22T22:54:28.000Z) is older than watermark - keeping current
+0|coachale | 🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T21:10:53.000Z
+0|coachale | ✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+0|coachale | 📌 [WATERMARK] Latest on Twilio (2025-12-22T21:10:53.000Z) is older than watermark - keeping current
+0|coachale | 🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+0|coachale | ✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+0|coachale | ✅ [WHATSAPP POLLING] Poll cycle complete
+0|coachale | Closing database pool...
+0|coachale | 🧹 [SCHEDULER REGISTRY] Cleaning up scheduler (ID: a8bz7h)
+0|coachale | 🧹 [SCHEDULER REGISTRY] Cleaning up finance-prefetch scheduler (ID: tz0x1l)
+0|coachale | 🛑 [WHATSAPP POLLING] Stopping polling service (ID: whatsapp-polling-1766444861595)
+0|coachale | 🛑 [CALENDAR SYNC] Stopping sync service (ID: calendar-sync-1766444861599)
+
+/root/.pm2/logs/coachale-dev-error.log last 15 lines:
+0|coachale |     at server/db.ts (file:///var/www/Coachale/dist/index.js:4724:13)
+0|coachale |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale |     at server/storage.ts (file:///var/www/Coachale/dist/index.js:12549:5)
+0|coachale |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale |     at file:///var/www/Coachale/dist/index.js:33640:1
+0|coachale |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|coachale |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+0|coachale | Error: DATABASE_URL must be set. Did you forget to provision a database?
+0|coachale |     at server/db.ts (file:///var/www/Coachale/dist/index.js:4724:13)
+0|coachale |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale |     at server/storage.ts (file:///var/www/Coachale/dist/index.js:12549:5)
+0|coachale |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale |     at file:///var/www/Coachale/dist/index.js:33640:1
+0|coachale |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|coachale |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+
+0|coachale-dev  | Error: DATABASE_URL must be set. Did you forget to provision a database?
+0|coachale-dev  |     at server/db.ts (file:///var/www/Coachale/dist/index.js:4724:13)
+0|coachale-dev  |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale-dev  |     at server/storage.ts (file:///var/www/Coachale/dist/index.js:12549:5)
+0|coachale-dev  |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale-dev  |     at file:///var/www/Coachale/dist/index.js:33640:1
+0|coachale-dev  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|coachale-dev  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)

@@ -1,0 +1,100 @@
+root@srv1164256:/var/www/Coachale# pm2 logs coachale-dev
+[TAILING] Tailing last 15 lines for [coachale-dev] process (change the value with --lines option)
+/root/.pm2/logs/coachale-dev-out.log last 15 lines:
+0|coachale | 🧹 [SCHEDULER REGISTRY] Cleaning up finance-prefetch scheduler (ID: tz0x1l)
+0|coachale | 🛑 [WHATSAPP POLLING] Stopping polling service (ID: whatsapp-polling-1766444861595)
+0|coachale | 🛑 [CALENDAR SYNC] Stopping sync service (ID: calendar-sync-1766444861599)
+0|coachale | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale | ✅ All required environment variables are set
+0|coachale | ✅ Encryption tests passed (legacy + per-consultant)
+0|coachale | ✅ Encryption configuration verified successfully (per-consultant system active)
+0|coachale | 🔧 Setting up Gemini Live WebSocket server...
+0|coachale | 🔧 WebSocketServer instance created, attaching connection handler...
+0|coachale | ✅ Gemini Live API WebSocket server setup on /ws/ai-voice
+0|coachale | 🎥 Setting up Video AI Copilot WebSocket server...
+0|coachale | ✅ Video AI Copilot WebSocket server ready on /ws/video-copilot
+
+/root/.pm2/logs/coachale-dev-error.log last 15 lines:
+0|coachale |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale |     at server/storage.ts (file:///var/www/Coachale/dist/index.js:12549:5)
+0|coachale |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale |     at file:///var/www/Coachale/dist/index.js:33640:1
+0|coachale |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|coachale |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+0|coachale | Error: DATABASE_URL must be set. Did you forget to provision a database?
+0|coachale |     at server/db.ts (file:///var/www/Coachale/dist/index.js:4724:13)
+0|coachale |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale |     at server/storage.ts (file:///var/www/Coachale/dist/index.js:12549:5)
+0|coachale |     at __init (file:///var/www/Coachale/dist/index.js:4:56)
+0|coachale |     at file:///var/www/Coachale/dist/index.js:33640:1
+0|coachale |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|coachale |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+0|coachale | [vite-plugin-static-copy] Error: No file was found to copy on ../node_modules/@ricky0123/vad-web/dist/silero_vad_legacy.onnx src.
+
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ✅ All required environment variables are set
+0|coachale-dev  | ✅ Encryption tests passed (legacy + per-consultant)
+0|coachale-dev  | ✅ Encryption configuration verified successfully (per-consultant system active)
+0|coachale-dev  | 🔧 Setting up Gemini Live WebSocket server...
+0|coachale-dev  | 🔧 WebSocketServer instance created, attaching connection handler...
+0|coachale-dev  | ✅ Gemini Live API WebSocket server setup on /ws/ai-voice
+0|coachale-dev  | 🎥 Setting up Video AI Copilot WebSocket server...
+0|coachale-dev  | ✅ Video AI Copilot WebSocket server ready on /ws/video-copilot
+0|coachale-dev  | [vite-plugin-static-copy] Error: No file was found to copy on ../node_modules/@ricky0123/vad-web/dist/silero_vad_legacy.onnx src.
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ✅ All required environment variables are set
+0|coachale-dev  | ✅ Encryption tests passed (legacy + per-consultant)
+0|coachale-dev  | ✅ Encryption configuration verified successfully (per-consultant system active)
+0|coachale-dev  | 🔧 Setting up Gemini Live WebSocket server...
+0|coachale-dev  | 🔧 WebSocketServer instance created, attaching connection handler...
+0|coachale-dev  | ✅ Gemini Live API WebSocket server setup on /ws/ai-voice
+0|coachale-dev  | 🎥 Setting up Video AI Copilot WebSocket server...
+0|coachale-dev  | ✅ Video AI Copilot WebSocket server ready on /ws/video-copilot
+0|coachale-dev  | [vite-plugin-static-copy] Error: No file was found to copy on ../node_modules/@ricky0123/vad-web/dist/silero_vad_legacy.onnx src.
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ✅ All required environment variables are set
+0|coachale-dev  | ✅ Encryption tests passed (legacy + per-consultant)
+0|coachale-dev  | ✅ Encryption configuration verified successfully (per-consultant system active)
+0|coachale-dev  | 🔧 Setting up Gemini Live WebSocket server...
+0|coachale-dev  | 🔧 WebSocketServer instance created, attaching connection handler...
+0|coachale-dev  | ✅ Gemini Live API WebSocket server setup on /ws/ai-voice
+0|coachale-dev  | 🎥 Setting up Video AI Copilot WebSocket server...
+0|coachale-dev  | ✅ Video AI Copilot WebSocket server ready on /ws/video-copilot
+0|coachale-dev  | [vite-plugin-static-copy] Error: No file was found to copy on ../node_modules/@ricky0123/vad-web/dist/silero_vad_legacy.onnx src.
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ✅ All required environment variables are set
+0|coachale-dev  | ✅ Encryption tests passed (legacy + per-consultant)
+0|coachale-dev  | ✅ Encryption configuration verified successfully (per-consultant system active)
+0|coachale-dev  | 🔧 Setting up Gemini Live WebSocket server...
+0|coachale-dev  | 🔧 WebSocketServer instance created, attaching connection handler...
+0|coachale-dev  | ✅ Gemini Live API WebSocket server setup on /ws/ai-voice
+0|coachale-dev  | 🎥 Setting up Video AI Copilot WebSocket server...
+0|coachale-dev  | ✅ Video AI Copilot WebSocket server ready on /ws/video-copilot
+0|coachale-dev  | [vite-plugin-static-copy] Error: No file was found to copy on ../node_modules/@ricky0123/vad-web/dist/silero_vad_legacy.onnx src.
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+0|coachale-dev  | ✅ All required environment variables are set
+0|coachale-dev  | ✅ Encryption tests passed (legacy + per-consultant)
+0|coachale-dev  | ✅ Encryption configuration verified successfully (per-consultant system active)
+0|coachale-dev  | 🔧 Setting up Gemini Live WebSocket server...
+0|coachale-dev  | 🔧 WebSocketServer instance created, attaching connection handler...
+0|coachale-dev  | ✅ Gemini Live API WebSocket server setup on /ws/ai-voice
+0|coachale-dev  | 🎥 Setting up Video AI Copilot WebSocket server...
+0|coachale-dev  | ✅ Video AI Copilot WebSocket server ready on /ws/video-c
