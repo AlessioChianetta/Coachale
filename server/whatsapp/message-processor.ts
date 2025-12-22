@@ -25,7 +25,8 @@ import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMI
 import { sendWhatsAppMessage } from "./twilio-client";
 import { nanoid } from "nanoid";
 import { handleIncomingMedia } from "./media-handler";
-import { detectObjection, trackObjection, getConversationObjections } from "../objection-detector";
+// OBJECTION DETECTOR DISABLED - Aligned with public share (Dec 2025)
+// import { detectObjection, trackObjection, getConversationObjections } from "../objection-detector";
 import { getOrCreateProfile, updateClientProfile } from "../client-profiler";
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent, addAttendeesToGoogleCalendarEvent } from "../google-calendar-service";
 import { decryptJSON } from "../encryption";
@@ -1083,123 +1084,14 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
       const leadIntent = detectIntent(batchedText);
       console.log(`✅ Intent detected: ${leadIntent}`);
 
-      // For leads, detect objections and get profile with retry + key rotation
-      if (consultantConfig?.objectionHandlingEnabled !== false && !effectiveUserId) {
-        console.log(`\n🚨 Detecting objections in message...`);
+      // OBJECTION DETECTION DISABLED - Aligned with public share (Dec 2025)
+      // The AI handles objections naturally without explicit detection
+      console.log(`⏭️ [OBJECTION] Objection detection DISABLED (aligned with public share)`);
 
-        // ⏱️ Objection Detection Timing
-        timings.objectionDetectionStart = performance.now();
-
-        const maxObjectionRetries = 3;
-        let objectionKeyId = keyInfo.keyId;
-        let objectionAttempt = 0;
-
-        while (objectionAttempt < maxObjectionRetries) {
-          objectionAttempt++;
-          try {
-            console.log(`🔄 [OBJECTION] Attempt ${objectionAttempt}/${maxObjectionRetries}${objectionAttempt > 1 ? ' with rotated API key' : ''}`);
-
-            // Rotate API key if retry (attempt > 1)
-            let objectionApiKey = apiKey;
-            if (objectionAttempt > 1) {
-              console.log(`🔄 [OBJECTION] Previous key failed (${objectionKeyId.substring(0, 8)}...), rotating to new key...`);
-              const newKeyInfo = await selectApiKey(conversation, objectionKeyId);
-              objectionApiKey = newKeyInfo.apiKey;
-              objectionKeyId = newKeyInfo.keyId;
-              // Update the shared keyInfo to keep it in sync
-              keyInfo = newKeyInfo;
-              console.log(`🔑 [OBJECTION] Rotated to new API key: ${objectionKeyId.substring(0, 8)}...`);
-            } else {
-              console.log(`🔑 [OBJECTION] Using current API key: ${objectionKeyId.substring(0, 8)}...`);
-            }
-
-            console.log(`🤖 [OBJECTION] Calling detectObjection() with provider: ${aiProvider.type}`);
-
-            // Validate Vertex AI credentials before using
-            const hasVertexCredentials = aiProvider.type === 'vertex' &&
-              aiProvider.projectId &&
-              aiProvider.location &&
-              aiProvider.credentials;
-
-            // Use primary provider (Vertex AI) for objection detection instead of fallback
-            const objectionProvider = (aiProvider.type === 'vertex' && hasVertexCredentials)
-              ? {
-                type: 'vertex' as const,
-                projectId: aiProvider.projectId,
-                location: aiProvider.location,
-                credentials: aiProvider.credentials
-              }
-              : {
-                type: 'studio' as const,
-                apiKey: objectionApiKey
-              };
-
-            // Warn if Vertex requested but credentials missing
-            if (aiProvider.type === 'vertex' && !hasVertexCredentials) {
-              console.warn(`⚠️ [OBJECTION] Vertex AI requested but credentials missing - falling back to Google AI Studio`);
-            }
-
-            objectionDetection = await detectObjection(batchedText, objectionProvider);
-
-            if (objectionDetection?.hasObjection) {
-              console.log(`⚠️ [OBJECTION] ✅ SUCCESS - Objection detected: ${objectionDetection.objectionType} (confidence: ${objectionDetection.confidence})`);
-            } else {
-              console.log(`✅ [OBJECTION] ✅ SUCCESS - No objections detected`);
-            }
-
-            timings.objectionDetectionEnd = performance.now();
-            const objectionDetectionTime = Math.round(timings.objectionDetectionEnd - timings.objectionDetectionStart);
-            console.log(`⏱️  [TIMING] Objection detection: ${objectionDetectionTime}ms`);
-
-            break; // Success - exit retry loop
-
-          } catch (objectionError: any) {
-            const is503 = objectionError.status === 503 ||
-              objectionError.message?.includes('overloaded') ||
-              objectionError.message?.includes('UNAVAILABLE');
-
-            console.error(`❌ [OBJECTION] Error on attempt ${objectionAttempt}`);
-            console.error(`   Error type: ${objectionError?.name || 'Unknown'}`);
-            console.error(`   Error message: ${objectionError?.message || objectionError}`);
-            console.error(`   Status code: ${objectionError?.status || 'N/A'}`);
-            if (objectionError?.stack) {
-              console.error(`   Stack trace:\n${objectionError.stack}`);
-            }
-
-            if (is503 && objectionAttempt < maxObjectionRetries) {
-              console.log(`⚠️ [OBJECTION] API overloaded (503) - marking key as failed`);
-              await markKeyAsFailed(objectionKeyId);
-
-              const backoffMs = Math.min(1000 * Math.pow(2, objectionAttempt - 1), 5000);
-              console.log(`⏱️ [OBJECTION] Waiting ${backoffMs}ms before rotating to new key...`);
-              await new Promise(resolve => setTimeout(resolve, backoffMs));
-              console.log(`✅ [OBJECTION] Backoff complete - will retry with new key on attempt ${objectionAttempt + 1}`);
-            } else {
-              // Final attempt or non-503 error - continue without objection detection
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.error(`⚠️ [OBJECTION] Detection failed after ${objectionAttempt} attempt(s)`);
-              console.error(`   Error type: ${is503 ? '503 (all keys exhausted)' : 'Non-503 error'}`);
-              console.error(`   Error: ${objectionError.message || objectionError}`);
-              console.log(`   ➡️ Continuing without objection detection...`);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-              objectionDetection = null;
-              break;
-            }
-          }
-        }
-      } else {
-        console.log(`⏭️ [OBJECTION DETECTION] Objection detection DISABLED`);
-      }
-
-      // Get or create client profile
+      // Get or create client profile (without objection tracking)
       console.log(`👤 Fetching/creating lead profile...`);
       clientProfile = await getOrCreateProfile(undefined, conversation.phoneNumber);
       console.log(`✅ Lead profile: ${clientProfile.profileType} (difficulty: ${clientProfile.difficultyScore}/10)`);
-
-      // Get recent objections for context
-      console.log(`📋 Fetching recent objections...`);
-      recentObjections = await getConversationObjections(conversation.id);
-      console.log(`✅ Found ${recentObjections.length} recent objection(s)`);
 
       // Initialize availableSlots and existingAppointmentInfo OUTSIDE guard so they're always defined
       let availableSlots: any[] = [];
@@ -1964,25 +1856,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
       .returning();
     console.log(`✅ [STEP 9] AI response saved with ID: ${savedMessage.id} (timing: ${geminiTime}ms Gemini, ${currentTotalTime}ms total)`);
 
-    // Track objection if detected (for leads only AND if objection handling is enabled)
-    if (consultantConfig?.objectionHandlingEnabled !== false &&
-      !conversation.userId &&
-      objectionDetection &&
-      objectionDetection.hasObjection) {
-      console.log(`🚩 [OBJECTION TRACKING] Detected ${objectionDetection.objectionType} objection`);
-      await trackObjection(
-        conversation.id,
-        inboundMessages[0]?.id || null,
-        objectionDetection,
-        aiResponse
-      );
-
-      // Update client profile after objection
-      await updateClientProfile(conversation.id);
-      console.log(`✅ [OBJECTION TRACKING] Client profile updated`);
-    } else if (objectionDetection && objectionDetection.hasObjection && consultantConfig?.objectionHandlingEnabled === false) {
-      console.log(`⏭️ [OBJECTION TRACKING] Objection detected but tracking DISABLED (objectionHandlingEnabled=false)`);
-    }
+    // OBJECTION TRACKING DISABLED - Aligned with public share (Dec 2025)
 
     // Step 9.5: Generate TTS audio response if enabled (Mirror Mode)
     // CRITICAL: TTS generation is fully isolated - any failure falls back to text-only
@@ -4114,46 +3988,8 @@ ${consultantBio ? `\n\nIl consulente: ${consultantBio}` : ''}`;
         businessHeader = `Sei l'assistente WhatsApp AI di ${businessName}.`;
     }
 
-    // Build objection context (show clientProfile even without objections)
-    let objectionContext = "";
-    if (clientProfile) {
-      objectionContext = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧠 PROFILO CLIENTE E GESTIONE OBIEZIONI
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 PROFILO CLIENTE:
-- Tipo: ${clientProfile.profileType.toUpperCase()} 
-- Difficulty Score: ${clientProfile.difficultyScore.toFixed(1)}/10
-- Obiezioni Totali: ${clientProfile.totalObjections}
-${clientProfile.escalationRequired ? '⚠️ ESCALATION RICHIESTA: Questo cliente necessita intervento consulente umano' : ''}
-
-${clientProfile.profileType === 'easy' ? `
-✅ APPROCCIO CONSIGLIATO (Cliente FACILE):
-- Sii DIRETTO e PROPOSITIVO
-- Risposte concise, focus su benefici immediati` : clientProfile.profileType === 'difficult' ? `
-⚠️ APPROCCIO CONSIGLIATO (Cliente DIFFICILE):
-- Sii EMPATICO e PAZIENTE
-- Pratica ascolto attivo e domande di scoperta` : `
-💡 APPROCCIO CONSIGLIATO (Cliente NEUTRALE):
-- Approccio BILANCIATO ed EDUCATIVO
-- Mix di contenuto informativo e call-to-action`}
-
-${recentObjections && recentObjections.length > 0 ? `
-📋 OBIEZIONI RECENTI:
-${recentObjections.slice(0, 3).map((obj, i) => `
-${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
-   Testo: "${obj.objectionText.substring(0, 100)}..."
-   ${obj.wasResolved ? '✅ Risolta' : '❌ Non ancora risolta'}
-`).join('\n')}
-
-🎯 GESTIONE OBIEZIONI:
-- Usa tecnica "Feel-Felt-Found"
-- Enfatizza ROI e risultati concreti` : ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`;
-    }
+    // OBJECTION CONTEXT DISABLED - Aligned with public share (Dec 2025)
+    // The AI handles objections naturally without explicit context injection
 
     // Build mandatory booking block (only if bookingEnabled)
     const bookingBlock = consultantConfig.bookingEnabled !== false
@@ -4187,10 +4023,7 @@ ${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
       finalPrompt += '\n\n' + knowledgeBaseSection;
     }
 
-    // Inject objection context only if objectionHandlingEnabled
-    if (objectionContext && consultantConfig.objectionHandlingEnabled !== false) {
-      finalPrompt += '\n\n' + objectionContext;
-    }
+    // OBJECTION CONTEXT INJECTION DISABLED - Aligned with public share (Dec 2025)
 
     finalPrompt += '\n\n' + resolvedTemplate;
 
@@ -4218,7 +4051,7 @@ ${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
     console.log('✅ [FEATURE BLOCKS] Conditional injection summary:');
     console.log(`   - Knowledge Base: ${knowledgeItems.length > 0 ? `ENABLED (${knowledgeItems.length} items)` : 'DISABLED (no items)'}`);
     console.log(`   - Booking: ${consultantConfig.bookingEnabled !== false ? 'ENABLED' : 'DISABLED'}`);
-    console.log(`   - Objection Handling: ${consultantConfig.objectionHandlingEnabled !== false ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`   - Objection Handling: DISABLED (removed Dec 2025)`);
     console.log(`   - Disqualification: ${consultantConfig.disqualificationEnabled !== false ? 'ENABLED' : 'DISABLED'}`);
     console.log(`   - Upselling: ${consultantConfig.upsellingEnabled === true ? 'ENABLED' : 'DISABLED'} (no block yet)`);
 
@@ -4392,65 +4225,7 @@ ${formattedSlots.map((slot, i) => `${i + 1}. ${slot}`).join('\n')}
 `;
   }
 
-  // Build objection context
-  let objectionContext = "";
-  if (clientProfile && recentObjections) {
-    objectionContext = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧠 PROFILO CLIENTE E GESTIONE OBIEZIONI
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 PROFILO CLIENTE:
-- Tipo: ${clientProfile.profileType.toUpperCase()} 
-- Difficulty Score: ${clientProfile.difficultyScore.toFixed(1)}/10
-- Obiezioni Totali: ${clientProfile.totalObjections}
-${clientProfile.escalationRequired ? '⚠️ ESCALATION RICHIESTA: Questo cliente necessita intervento consulente umano' : ''}
-
-${clientProfile.profileType === 'easy' ? `
-✅ APPROCCIO CONSIGLIATO (Cliente FACILE):
-- Sii DIRETTO e PROPOSITIVO
-- Risposte concise, focus su benefici immediati
-- Proponi azioni concrete e prossimi passi rapidi
-- Usa case study brevi e dati concreti
-- Non esitare ad essere assertivo nelle raccomandazioni
-` : clientProfile.profileType === 'difficult' ? `
-⚠️ APPROCCIO CONSIGLIATO (Cliente DIFFICILE):
-- Sii EMPATICO e PAZIENTE
-- Pratica ascolto attivo, fai domande di scoperta
-- Risposte più dettagliate e ben argomentate
-- Gestisci obiezioni con tecnica "Feel-Felt-Found"
-- Non forzare la vendita, costruisci fiducia gradualmente
-${clientProfile.escalationRequired ? '- SUGGERISCI call con consulente per approfondire personalmente' : ''}
-` : `
-💡 APPROCCIO CONSIGLIATO (Cliente NEUTRALE):
-- Approccio BILANCIATO ed EDUCATIVO
-- Mix di contenuto informativo e call-to-action
-- Usa esempi pratici, dati e testimonianze
-- Rispondi in modo completo ma non eccessivo
-- Guida verso decisione con soft nudges
-`}
-
-${recentObjections.length > 0 ? `
-📋 OBIEZIONI RECENTI DA QUESTO CLIENTE:
-${recentObjections.slice(0, 3).map((obj, i) => `
-${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
-   Testo: "${obj.objectionText.substring(0, 100)}..."
-   ${obj.wasResolved ? '✅ Risolta' : '❌ Non ancora risolta - ATTENZIONE!'}
-`).join('\n')}
-
-🎯 LINEE GUIDA PER GESTIONE OBIEZIONI:
-- Se solleva NUOVE obiezioni simili a quelle passate, significa che non le hai risolte bene
-- Usa tecnica "Feel-Felt-Found": "Capisco come ti senti... Altri si sono sentiti così... Ecco cosa hanno scoperto..."
-- Per obiezioni PREZZO: enfatizza ROI, risultati concreti, investimento vs spesa
-- Per obiezioni TEMPO: mostra risparmio tempo futuro, breakdown investimento temporale
-- Per obiezioni FIDUCIA: usa proof sociali, testimonianze, garanzie
-- Per obiezioni COMPETITOR: differenzia con unique value proposition
-- Per obiezioni VALORE: collega benefici a obiettivi specifici del cliente
-` : ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`;
-  }
+  // OBJECTION CONTEXT DISABLED - Aligned with public share (Dec 2025)
 
   // Build CONSULENZIALE prompt - approccio umano, non robotico
   let prompt = `Sei l'assistente WhatsApp AI di ${businessName}. Il cliente è un LEAD CALDO che ha mostrato interesse.
@@ -4458,7 +4233,6 @@ ${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
 ${personalityInstructions}
 
 ${existingAppointmentContext}
-${objectionContext}
 ${appointmentContext}
 
 🎯 OBIETTIVO PRINCIPALE: ${existingAppointment ? 'GESTIRE L\'APPUNTAMENTO ESISTENTE (modifica/cancellazione) o assistere il lead' : 'SCOPRIRE IL BISOGNO E FISSARE UN APPUNTAMENTO QUALIFICATO'}
