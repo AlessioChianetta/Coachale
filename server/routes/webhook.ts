@@ -80,7 +80,6 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     const payload: HubdigitalPayload = req.body;
 
     console.log(`📨 [WEBHOOK] Received webhook with secretKey: ${secretKey.substring(0, 8)}...`);
-    console.log(`📨 [WEBHOOK] Payload type: ${payload.type}`);
 
     const webhookConfig = await storage.getWebhookConfigBySecret(secretKey);
     
@@ -92,6 +91,15 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       });
     }
 
+    // Verify provider scoping - ensure this config is for Hubdigital
+    if (webhookConfig.providerName !== 'hubdigital') {
+      console.log(`❌ [WEBHOOK] Provider mismatch - config is for: ${webhookConfig.providerName}`);
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized - Provider mismatch',
+      });
+    }
+
     if (!webhookConfig.isActive) {
       console.log(`⛔ [WEBHOOK] Webhook config is inactive for consultant: ${webhookConfig.consultantId}`);
       return res.status(403).json({
@@ -99,6 +107,9 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
         error: 'Forbidden - Webhook is inactive',
       });
     }
+
+    // Log event type after auth
+    console.log(`📨 [WEBHOOK] Payload type: ${payload.type}`);
 
     if (payload.type && payload.type !== 'ContactCreate') {
       console.log(`ℹ️ [WEBHOOK] Ignoring event type: ${payload.type}`);
@@ -355,10 +366,8 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
     const payload: ActiveCampaignPayload = req.body;
 
     console.log(`📨 [AC-WEBHOOK] Received ActiveCampaign webhook with secretKey: ${secretKey.substring(0, 8)}...`);
-    console.log(`📨 [AC-WEBHOOK] Payload type: ${payload.type}`);
-    console.log(`📨 [AC-WEBHOOK] Full payload:`, JSON.stringify(payload, null, 2));
 
-    // Validate webhook config
+    // Validate webhook config BEFORE logging payload data
     const webhookConfig = await storage.getWebhookConfigBySecret(secretKey);
     
     if (!webhookConfig) {
@@ -369,6 +378,15 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       });
     }
 
+    // Verify provider scoping - ensure this config is for ActiveCampaign
+    if (webhookConfig.providerName !== 'activecampaign') {
+      console.log(`❌ [AC-WEBHOOK] Provider mismatch - config is for: ${webhookConfig.providerName}`);
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized - Provider mismatch',
+      });
+    }
+
     if (!webhookConfig.isActive) {
       console.log(`⛔ [AC-WEBHOOK] Webhook config is inactive for consultant: ${webhookConfig.consultantId}`);
       return res.status(403).json({
@@ -376,6 +394,9 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
         error: 'Forbidden - Webhook is inactive',
       });
     }
+
+    // Now safe to log payload details (after auth)
+    console.log(`📨 [AC-WEBHOOK] Payload type: ${payload.type}`);
 
     // Accept relevant event types from ActiveCampaign
     const acceptedTypes = ['subscribe', 'contact_add', 'contact_update', undefined, ''];
