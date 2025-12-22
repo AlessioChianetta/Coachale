@@ -1271,6 +1271,113 @@ export class FileSearchService {
   }
 
   /**
+   * Get detailed breakdown of stores and documents for AI generation logging
+   * Returns store names + detailed category breakdown for console output
+   */
+  async getStoreBreakdownForGeneration(userId: string, userRole: 'consultant' | 'client', consultantId?: string): Promise<{
+    storeNames: string[];
+    breakdown: Array<{
+      storeName: string;
+      storeDisplayName: string;
+      ownerType: string;
+      categories: Record<string, number>;
+      totalDocs: number;
+    }>;
+  }> {
+    const conditions = [];
+    
+    if (userRole === 'consultant') {
+      conditions.push(
+        and(
+          eq(fileSearchStores.ownerId, userId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+          eq(fileSearchStores.isActive, true)
+        )
+      );
+      
+      const consultantClients = await db.query.users.findMany({
+        where: eq(users.consultantId, userId),
+        columns: { id: true, firstName: true, lastName: true },
+      });
+      
+      if (consultantClients.length > 0) {
+        const clientIds = consultantClients.map(c => c.id);
+        conditions.push(
+          and(
+            inArray(fileSearchStores.ownerId, clientIds),
+            eq(fileSearchStores.ownerType, 'client'),
+            eq(fileSearchStores.isActive, true)
+          )
+        );
+      }
+      
+      if (consultantId && consultantId !== userId) {
+        conditions.push(
+          and(
+            eq(fileSearchStores.ownerId, consultantId),
+            eq(fileSearchStores.ownerType, 'consultant'),
+            eq(fileSearchStores.isActive, true)
+          )
+        );
+      }
+    } else if (userRole === 'client') {
+      conditions.push(
+        and(
+          eq(fileSearchStores.ownerId, userId),
+          eq(fileSearchStores.ownerType, 'client'),
+          eq(fileSearchStores.isActive, true)
+        )
+      );
+    }
+
+    conditions.push(
+      and(
+        eq(fileSearchStores.ownerType, 'system'),
+        eq(fileSearchStores.isActive, true)
+      )
+    );
+
+    const stores = await db.query.fileSearchStores.findMany({
+      where: conditions.length > 1 ? or(...conditions) : conditions[0],
+    });
+
+    const breakdown: Array<{
+      storeName: string;
+      storeDisplayName: string;
+      ownerType: string;
+      categories: Record<string, number>;
+      totalDocs: number;
+    }> = [];
+
+    for (const store of stores) {
+      const docs = await db.query.fileSearchDocuments.findMany({
+        where: and(
+          eq(fileSearchDocuments.storeId, store.id),
+          eq(fileSearchDocuments.status, 'indexed')
+        ),
+      });
+
+      const categories: Record<string, number> = {};
+      for (const doc of docs) {
+        const cat = doc.sourceType || 'other';
+        categories[cat] = (categories[cat] || 0) + 1;
+      }
+
+      breakdown.push({
+        storeName: store.googleStoreName,
+        storeDisplayName: store.displayName,
+        ownerType: store.ownerType,
+        categories,
+        totalDocs: docs.length,
+      });
+    }
+
+    const uniqueStoreNames = [...new Set(stores.map(store => store.googleStoreName))];
+
+    return { storeNames: uniqueStoreNames, breakdown };
+  }
+
+  /**
    * Get documents in a store
    */
   async getDocumentsInStore(storeId: string): Promise<FileSearchDocumentInfo[]> {

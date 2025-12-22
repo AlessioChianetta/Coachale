@@ -206,6 +206,51 @@ function logTokenBreakdown(
   console.log(`\n${'═'.repeat(70)}\n`);
 }
 
+// Helper function to log File Search store breakdown with category details
+const CATEGORY_LABELS: Record<string, string> = {
+  'library': '📖 Libreria',
+  'knowledge_base': '🧠 Knowledge Base',
+  'exercise': '🏋️ Esercizi',
+  'consultation': '💬 Consulenze',
+  'university': '🎓 University',
+  'university_lesson': '🎓 Lezioni',
+  'goal': '🎯 Obiettivi',
+  'task': '✅ Task',
+  'daily_reflection': '❤️ Riflessioni',
+  'client_progress': '📈 Progressi',
+  'library_progress': '📚 Progr. Libreria',
+  'email_journey': '📧 Email Journey',
+  'financial_data': '💰 Dati Finanziari',
+  'manual': '📝 Manuali',
+  'other': '📄 Altri'
+};
+
+function logFileSearchBreakdown(
+  breakdown: Array<{
+    storeName: string;
+    storeDisplayName: string;
+    ownerType: string;
+    categories: Record<string, number>;
+    totalDocs: number;
+  }>
+) {
+  if (breakdown.length === 0) return;
+  
+  console.log(`\n   📊 BREAKDOWN DOCUMENTI PER STORE:`);
+  for (const store of breakdown) {
+    const ownerIcon = store.ownerType === 'consultant' ? '👤' : store.ownerType === 'client' ? '👥' : '🌐';
+    console.log(`\n   ${ownerIcon} ${store.storeDisplayName} (${store.totalDocs} documenti):`);
+    
+    const sortedCategories = Object.entries(store.categories)
+      .sort((a, b) => b[1] - a[1]); // Sort by count descending
+    
+    for (const [cat, count] of sortedCategories) {
+      const label = CATEGORY_LABELS[cat] || `📄 ${cat}`;
+      console.log(`      ${label}: ${count}`);
+    }
+  }
+}
+
 // Calculate detailed token breakdown by context section
 function calculateTokenBreakdown(userContext: UserContext, intent: string): {
   financeData: number;
@@ -569,7 +614,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   
   // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE building context
   const consultantIdForFileSearch = user.consultantId || clientId;
-  const fileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
+  const { storeNames: fileSearchStoreNames, breakdown: fileSearchBreakdown } = await fileSearchService.getStoreBreakdownForGeneration(
     clientId,
     user.role as 'consultant' | 'client',
     consultantIdForFileSearch
@@ -948,6 +993,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📦 Stores disponibili: ${fileSearchStoreNames.length}`);
       fileSearchStoreNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
+      logFileSearchBreakdown(fileSearchBreakdown);
       console.log(`   ✅ Tool fileSearch: ATTIVO`);
       console.log(`   📄 Il modello cercherà semanticamente nei documenti indicizzati`);
       console.log(`   💰 RISPARMIO TOKENS: ~${ragTokens.toLocaleString()} tokens (esercizi+library+consultazioni+KB)`);
@@ -1188,7 +1234,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE selecting provider
     // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
     const consultantIdForFileSearch = user.consultantId || clientId;
-    const fileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
+    const { storeNames: fileSearchStoreNames, breakdown: fileSearchBreakdown } = await fileSearchService.getStoreBreakdownForGeneration(
       clientId,
       user.role as 'consultant' | 'client',
       consultantIdForFileSearch
@@ -1613,6 +1659,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📦 Stores disponibili: ${fileSearchStoreNames.length}`);
       fileSearchStoreNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
+      logFileSearchBreakdown(fileSearchBreakdown);
       console.log(`   ✅ Tool fileSearch: ATTIVO`);
       console.log(`   📄 Il modello cercherà semanticamente nei documenti indicizzati`);
       console.log(`   💰 RISPARMIO TOKENS: ~${ragTokensClient.toLocaleString()} tokens (esercizi+library+consultazioni+KB)`);
@@ -2367,7 +2414,7 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
 
     // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE selecting provider
     // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
-    const consultantFileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
+    const { storeNames: consultantFileSearchStoreNames, breakdown: consultantFileSearchBreakdown } = await fileSearchService.getStoreBreakdownForGeneration(
       consultantId,
       'consultant'
     );
@@ -2501,6 +2548,7 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📦 Stores disponibili: ${consultantFileSearchStoreNames.length}`);
       consultantFileSearchStoreNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
+      logFileSearchBreakdown(consultantFileSearchBreakdown);
       console.log(`   ✅ Tool fileSearch: ATTIVO`);
       console.log(`   📄 Il modello cercherà semanticamente nei documenti indicizzati`);
       console.log(`   📉 System prompt ridotto grazie a File Search`);
