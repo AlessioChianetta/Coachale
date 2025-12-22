@@ -2336,29 +2336,48 @@ router.put("/consultant/journey-templates/settings", authenticateToken, requireR
     const consultantId = req.user!.id;
     const { useCustomTemplates, businessContext } = req.body;
     
-    // Update settings
+    // Check if settings exist
     const smtpSettings = await storage.getConsultantSmtpSettings(consultantId);
     
-    if (!smtpSettings) {
-      return res.status(400).json({
-        success: false,
-        message: "Configura prima le impostazioni SMTP",
-        error: "Configura prima le impostazioni SMTP"
-      });
+    if (smtpSettings) {
+      // Update existing record
+      await db.execute(sql`
+        UPDATE consultant_smtp_settings 
+        SET use_custom_templates = ${useCustomTemplates || false},
+            business_context = ${businessContext || null},
+            updated_at = now()
+        WHERE consultant_id = ${consultantId}
+      `);
+    } else {
+      // Insert new record with placeholder SMTP values (not functional for sending)
+      await db.execute(sql`
+        INSERT INTO consultant_smtp_settings (
+          consultant_id, 
+          smtp_host, 
+          smtp_port, 
+          smtp_user, 
+          smtp_password, 
+          from_email,
+          use_custom_templates, 
+          business_context,
+          automation_enabled,
+          created_at, 
+          updated_at
+        ) VALUES (
+          ${consultantId},
+          '',
+          587,
+          '',
+          '',
+          '',
+          ${useCustomTemplates || false},
+          ${businessContext || null},
+          false,
+          now(),
+          now()
+        )
+      `);
     }
-    
-    await db.update(systemSettings)
-      .set({ updatedAt: new Date() })
-      .where(eq(systemSettings.id, systemSettings.id));
-    
-    // Use raw SQL for this update since we need specific fields
-    await db.execute(sql`
-      UPDATE consultant_smtp_settings 
-      SET use_custom_templates = ${useCustomTemplates || false},
-          business_context = ${businessContext || null},
-          updated_at = now()
-      WHERE consultant_id = ${consultantId}
-    `);
     
     res.json({
       success: true,
