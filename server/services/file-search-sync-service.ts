@@ -57,7 +57,7 @@ export interface SyncProgressEvent {
   total?: number;
   synced?: number;
   totalSynced?: number;
-  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'whatsapp_agents' | 'exercise_responses' | 'client_knowledge' | 'client_consultations' | 'financial_data' | 'orphans' | 'assigned_exercises' | 'assigned_library' | 'assigned_university' | 'goals' | 'tasks';
+  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'whatsapp_agents' | 'exercise_responses' | 'client_knowledge' | 'client_consultations' | 'financial_data' | 'orphans' | 'assigned_exercises' | 'assigned_library' | 'assigned_university' | 'goals' | 'tasks' | 'daily_reflections' | 'client_progress' | 'library_progress' | 'email_journey';
   error?: string;
   consultantId: string;
   orphansRemoved?: number;
@@ -1416,12 +1416,23 @@ export class FileSearchSyncService {
     const preCalcGoalsTotal = clients.length;
     const preCalcTasksTotal = clients.length;
 
+    // Pre-calculate totals for new sync categories (daily_reflections, client_progress, library_progress, email_journey)
+    // These are also aggregated per client (one document per client)
+    const preCalcDailyReflectionsTotal = clients.length;
+    const preCalcClientProgressTotal = clients.length;
+    const preCalcLibraryProgressTotal = clients.length;
+    const preCalcEmailJourneyTotal = clients.length;
+
     // Counters for assigned content
     let totalAssignedExercises = { total: 0, synced: 0, failed: 0 };
     let totalAssignedLibrary = { total: 0, synced: 0, failed: 0 };
     let totalAssignedUniversity = { total: 0, synced: 0, failed: 0 };
     let totalGoals = { total: 0, synced: 0, failed: 0 };
     let totalTasks = { total: 0, synced: 0, failed: 0 };
+    let totalDailyReflections = { total: 0, synced: 0, failed: 0 };
+    let totalClientProgress = { total: 0, synced: 0, failed: 0 };
+    let totalLibraryProgress = { total: 0, synced: 0, failed: 0 };
+    let totalEmailJourney = { total: 0, synced: 0, failed: 0 };
 
     // Emit SSE start events with pre-calculated totals
     syncProgressEmitter.emitStart(consultantId, 'exercise_responses', preCalcExerciseResponsesTotal);
@@ -1435,6 +1446,10 @@ export class FileSearchSyncService {
     syncProgressEmitter.emitStart(consultantId, 'assigned_university', preCalcAssignedUniversityTotal);
     syncProgressEmitter.emitStart(consultantId, 'goals', preCalcGoalsTotal);
     syncProgressEmitter.emitStart(consultantId, 'tasks', preCalcTasksTotal);
+    syncProgressEmitter.emitStart(consultantId, 'daily_reflections', preCalcDailyReflectionsTotal);
+    syncProgressEmitter.emitStart(consultantId, 'client_progress', preCalcClientProgressTotal);
+    syncProgressEmitter.emitStart(consultantId, 'library_progress', preCalcLibraryProgressTotal);
+    syncProgressEmitter.emitStart(consultantId, 'email_journey', preCalcEmailJourneyTotal);
 
     for (const client of clients) {
       console.log(`   📋 Processing client: ${client.firstName} ${client.lastName} (${client.id.substring(0, 8)}...)`);
@@ -1543,27 +1558,59 @@ export class FileSearchSyncService {
 
       // Sync daily reflections
       const reflectionsResult = await this.syncClientDailyReflections(client.id, consultantId);
-      if (!reflectionsResult.success && reflectionsResult.error) {
-        errors.push(`Client ${clientDisplayName} riflessioni: ${reflectionsResult.error}`);
+      totalDailyReflections.total++;
+      if (reflectionsResult.success) {
+        totalDailyReflections.synced++;
+      } else {
+        totalDailyReflections.failed++;
+        if (reflectionsResult.error) {
+          errors.push(`Client ${clientDisplayName} riflessioni: ${reflectionsResult.error}`);
+        }
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'daily_reflections', clientDisplayName,
+        totalDailyReflections.synced + totalDailyReflections.failed, preCalcDailyReflectionsTotal);
 
       // Sync client progress history
       const progressHistResult = await this.syncClientProgress(client.id, consultantId);
-      if (!progressHistResult.success && progressHistResult.error) {
-        errors.push(`Client ${clientDisplayName} progresso: ${progressHistResult.error}`);
+      totalClientProgress.total++;
+      if (progressHistResult.success) {
+        totalClientProgress.synced++;
+      } else {
+        totalClientProgress.failed++;
+        if (progressHistResult.error) {
+          errors.push(`Client ${clientDisplayName} progresso: ${progressHistResult.error}`);
+        }
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'client_progress', clientDisplayName,
+        totalClientProgress.synced + totalClientProgress.failed, preCalcClientProgressTotal);
 
       // Sync library progress  
       const libraryProgResult = await this.syncClientLibraryProgress(client.id, consultantId);
-      if (!libraryProgResult.success && libraryProgResult.error) {
-        errors.push(`Client ${clientDisplayName} progresso libreria: ${libraryProgResult.error}`);
+      totalLibraryProgress.total++;
+      if (libraryProgResult.success) {
+        totalLibraryProgress.synced++;
+      } else {
+        totalLibraryProgress.failed++;
+        if (libraryProgResult.error) {
+          errors.push(`Client ${clientDisplayName} progresso libreria: ${libraryProgResult.error}`);
+        }
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'library_progress', clientDisplayName,
+        totalLibraryProgress.synced + totalLibraryProgress.failed, preCalcLibraryProgressTotal);
 
       // Sync email journey progress
       const emailJourneyResult = await this.syncClientEmailJourneyProgress(client.id, consultantId);
-      if (!emailJourneyResult.success && emailJourneyResult.error) {
-        errors.push(`Client ${clientDisplayName} email journey: ${emailJourneyResult.error}`);
+      totalEmailJourney.total++;
+      if (emailJourneyResult.success) {
+        totalEmailJourney.synced++;
+      } else {
+        totalEmailJourney.failed++;
+        if (emailJourneyResult.error) {
+          errors.push(`Client ${clientDisplayName} email journey: ${emailJourneyResult.error}`);
+        }
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'email_journey', clientDisplayName,
+        totalEmailJourney.synced + totalEmailJourney.failed, preCalcEmailJourneyTotal);
 
       clientsProcessed++;
       
@@ -1660,12 +1707,45 @@ export class FileSearchSyncService {
       synced: totalTasks.synced,
       consultantId,
     });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'daily_reflections',
+      total: preCalcDailyReflectionsTotal,
+      current: preCalcDailyReflectionsTotal,
+      synced: totalDailyReflections.synced,
+      consultantId,
+    });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'client_progress',
+      total: preCalcClientProgressTotal,
+      current: preCalcClientProgressTotal,
+      synced: totalClientProgress.synced,
+      consultantId,
+    });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'library_progress',
+      total: preCalcLibraryProgressTotal,
+      current: preCalcLibraryProgressTotal,
+      synced: totalLibraryProgress.synced,
+      consultantId,
+    });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'email_journey',
+      total: preCalcEmailJourneyTotal,
+      current: preCalcEmailJourneyTotal,
+      synced: totalEmailJourney.synced,
+      consultantId,
+    });
 
     const totalSynced = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
       universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced +
       totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced + 
       totalFinancialData.synced + totalAssignedExercises.synced + totalAssignedLibrary.synced +
-      totalAssignedUniversity.synced + totalGoals.synced + totalTasks.synced;
+      totalAssignedUniversity.synced + totalGoals.synced + totalTasks.synced +
+      totalDailyReflections.synced + totalClientProgress.synced + totalLibraryProgress.synced + totalEmailJourney.synced;
 
     // ============================================================
     // CLEANUP SOURCE ORPHANS - Remove documents whose source was deleted

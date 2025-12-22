@@ -335,6 +335,10 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: stri
   assigned_university: { label: 'University Assegnata', icon: '🎯', color: 'bg-orange-500' },
   goals: { label: 'Obiettivi', icon: '🎯', color: 'bg-lime-500' },
   tasks: { label: 'Task', icon: '✅', color: 'bg-violet-500' },
+  daily_reflections: { label: 'Riflessioni Giornaliere', icon: '❤️', color: 'bg-red-400' },
+  client_progress: { label: 'Storico Progressi', icon: '📈', color: 'bg-emerald-400' },
+  library_progress: { label: 'Progressi Libreria', icon: '📚', color: 'bg-blue-400' },
+  email_journey: { label: 'Email Journey', icon: '📧', color: 'bg-purple-400' },
 };
 
 export default function ConsultantFileSearchAnalyticsPage() {
