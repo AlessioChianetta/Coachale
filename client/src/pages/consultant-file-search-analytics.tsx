@@ -146,11 +146,29 @@ interface HierarchicalData {
       exerciseResponses: SyncedDocument[];
       consultationNotes: SyncedDocument[];
       knowledgeBase: SyncedDocument[];
+      goals: SyncedDocument[];
+      tasks: SyncedDocument[];
+      dailyReflections: SyncedDocument[];
+      clientProgressHistory: SyncedDocument[];
+      libraryProgress: SyncedDocument[];
+      emailJourneyProgress: SyncedDocument[];
+      assignedExercises: SyncedDocument[];
+      assignedLibrary: SyncedDocument[];
+      assignedUniversity: SyncedDocument[];
     };
     totals: {
       exerciseResponses: number;
       consultationNotes: number;
       knowledgeBase: number;
+      goals: number;
+      tasks: number;
+      dailyReflections: number;
+      clientProgressHistory: number;
+      libraryProgress: number;
+      emailJourneyProgress: number;
+      assignedExercises: number;
+      assignedLibrary: number;
+      assignedUniversity: number;
       total: number;
     };
     potentialContent: {
@@ -1976,7 +1994,199 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                   </CollapsibleContent>
                                                 </Collapsible>
                                               )}
-                                              {client.totals.exerciseResponses === 0 && client.totals.consultationNotes === 0 && client.totals.knowledgeBase === 0 && (
+                                              {(client.totals?.goals || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-goals`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-goals`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-goals`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <Target className="h-4 w-4 text-emerald-600" />
+                                                    <span className="text-sm text-gray-700">Obiettivi</span>
+                                                    {getSyncStatusBadge(client.documents?.goals || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.goals || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {(client.totals?.tasks || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-tasks`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-tasks`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-tasks`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <ClipboardCheck className="h-4 w-4 text-orange-600" />
+                                                    <span className="text-sm text-gray-700">Task</span>
+                                                    {getSyncStatusBadge(client.documents?.tasks || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.tasks || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {(client.totals?.dailyReflections || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-reflections`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-reflections`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-reflections`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <Heart className="h-4 w-4 text-pink-600" />
+                                                    <span className="text-sm text-gray-700">Riflessioni Giornaliere</span>
+                                                    {getSyncStatusBadge(client.documents?.dailyReflections || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.dailyReflections || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {(client.totals?.clientProgressHistory || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-progress`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-progress`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-progress`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <TrendingUp className="h-4 w-4 text-teal-600" />
+                                                    <span className="text-sm text-gray-700">Storico Progressi</span>
+                                                    {getSyncStatusBadge(client.documents?.clientProgressHistory || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.clientProgressHistory || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {(client.totals?.libraryProgress || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-libprog`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-libprog`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-libprog`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <BookOpen className="h-4 w-4 text-cyan-600" />
+                                                    <span className="text-sm text-gray-700">Progressi Libreria</span>
+                                                    {getSyncStatusBadge(client.documents?.libraryProgress || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.libraryProgress || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {(client.totals?.emailJourneyProgress || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-emailprog`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-emailprog`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-emailprog`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <Mail className="h-4 w-4 text-violet-600" />
+                                                    <span className="text-sm text-gray-700">Progressi Email Journey</span>
+                                                    {getSyncStatusBadge(client.documents?.emailJourneyProgress || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.emailJourneyProgress || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {(client.totals?.assignedExercises || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-assignedex`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-assignedex`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-assignedex`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <Dumbbell className="h-4 w-4 text-blue-600" />
+                                                    <span className="text-sm text-gray-700">Esercizi Assegnati</span>
+                                                    {getSyncStatusBadge(client.documents?.assignedExercises || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.assignedExercises || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {(client.totals?.assignedLibrary || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-assignedlib`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-assignedlib`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-assignedlib`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <BookOpen className="h-4 w-4 text-indigo-600" />
+                                                    <span className="text-sm text-gray-700">Libreria Assegnata</span>
+                                                    {getSyncStatusBadge(client.documents?.assignedLibrary || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.assignedLibrary || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {(client.totals?.assignedUniversity || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-assigneduni`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-assigneduni`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-assigneduni`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <GraduationCap className="h-4 w-4 text-amber-600" />
+                                                    <span className="text-sm text-gray-700">University Assegnata</span>
+                                                    {getSyncStatusBadge(client.documents?.assignedUniversity || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.assignedUniversity || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {client.totals.exerciseResponses === 0 && client.totals.consultationNotes === 0 && client.totals.knowledgeBase === 0 && 
+                                               (client.totals?.goals || 0) === 0 && (client.totals?.tasks || 0) === 0 && (client.totals?.dailyReflections || 0) === 0 &&
+                                               (client.totals?.clientProgressHistory || 0) === 0 && (client.totals?.libraryProgress || 0) === 0 && (client.totals?.emailJourneyProgress || 0) === 0 &&
+                                               (client.totals?.assignedExercises || 0) === 0 && (client.totals?.assignedLibrary || 0) === 0 && (client.totals?.assignedUniversity || 0) === 0 && (
                                                 <p className="text-gray-500 text-sm text-center py-2">Nessun documento categorizzato</p>
                                               )}
                                             </div>
@@ -1989,6 +2199,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                 <Badge variant="outline" className="text-xs"><Dumbbell className="h-3 w-3 mr-1" />Risposte Esercizi</Badge>
                                                 <Badge variant="outline" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />Note Consulenze</Badge>
                                                 <Badge variant="outline" className="text-xs"><Brain className="h-3 w-3 mr-1" />Knowledge Docs</Badge>
+                                                <Badge variant="outline" className="text-xs"><Target className="h-3 w-3 mr-1" />Obiettivi</Badge>
+                                                <Badge variant="outline" className="text-xs"><ClipboardCheck className="h-3 w-3 mr-1" />Task</Badge>
+                                                <Badge variant="outline" className="text-xs"><Heart className="h-3 w-3 mr-1" />Riflessioni</Badge>
+                                                <Badge variant="outline" className="text-xs"><TrendingUp className="h-3 w-3 mr-1" />Progressi</Badge>
+                                                <Badge variant="outline" className="text-xs"><BookOpen className="h-3 w-3 mr-1" />Libreria</Badge>
+                                                <Badge variant="outline" className="text-xs"><Mail className="h-3 w-3 mr-1" />Email Journey</Badge>
+                                                <Badge variant="outline" className="text-xs"><GraduationCap className="h-3 w-3 mr-1" />University</Badge>
                                               </div>
                                               <p className="text-gray-400 text-xs mt-3">Vai alla tab Audit per sincronizzare</p>
                                             </div>
