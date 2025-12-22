@@ -1,0 +1,54 @@
+📋 Generic exercise query - FULL CONTENT (no limits)
+⏱️  [TIMING] Exercise scraping: 1ms
+⏱️  [TIMING] Prompt building: 22ms
+
+📊 Token Usage Estimation (Intent: general):
+  - System Prompt: ~214,680 tokens
+  - User Message: ~48 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~214,728 tokens
+  - File Search Mode: ✅ ACTIVE (RAG via stores)
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~214,680 tokens)
+══════════════════════════════════════════════════════════════════════
+
+📍 NEL SYSTEM PROMPT (214,680 tokens):
+   💰 Finance Data: 13,755 tokens
+   🎯 Goals & Tasks: 12 tokens
+   ⚡ Momentum & Calendar: 72 tokens
+   👤 User Profile & Base: 5,055 tokens
+
+🔍 VIA FILE SEARCH RAG (non nel prompt, cercati su richiesta):
+   📚 Exercises: 93,882 tokens → via RAG
+   📖 Library Docs: 1,573 tokens → via RAG
+   💬 Consultations: 46,363 tokens → via RAG
+   📚 Knowledge Base: 41 tokens → via RAG
+   🎓 University: 110,793 tokens → via RAG
+
+   💰 RISPARMIO: ~252,652 tokens spostati su File Search
+
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👥 Private Store - Client 7e40b56c (0 documenti):
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~141,859 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~356,539 a ~214,680 tokens
+══════════════════════════════════════════════════════════════════════
+
+[AI] Using model: gemini-3-flash-preview with thinking_level: low [CLIENT STREAMING]
+[AI] Provider: Google AI Studio -> Gemini 3 Flash
+🔄 AI stream attempt 1/6...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...

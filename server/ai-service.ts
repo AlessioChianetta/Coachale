@@ -953,8 +953,8 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     const historyTokens = conversationHistory.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
     const totalEstimatedTokens = systemPromptTokens + userMessageTokens + historyTokens;
     
-    // Determine if File Search is active based on stores availability
-    const hasActiveFileSearch = fileSearchStoreNames.length > 0;
+    // Determine if File Search is active - MUST have actual documents
+    const hasActiveFileSearch = hasFileSearch; // Uses the already-computed value that checks totalDocsInStores > 0
 
     console.log(`\n📊 Token Usage Estimation (Intent: ${intent}):`);
     console.log(`  - System Prompt: ~${systemPromptTokens.toLocaleString()} tokens`);
@@ -986,15 +986,15 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       },
     };
 
-    // Build FileSearch tool from stores already fetched above
-    const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
+    // Build FileSearch tool from stores already fetched above (only if stores have actual documents)
+    const fileSearchTool = hasFileSearch ? fileSearchService.buildFileSearchTool(fileSearchStoreNames) : null;
     
     // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO
     const ragTokens = breakdown.exercises + breakdown.library + breakdown.consultations + breakdown.knowledgeBase;
-    const potentialSavings = fileSearchStoreNames.length > 0 ? ragTokens : 0;
+    const potentialSavings = hasFileSearch ? ragTokens : 0;
     
     console.log(`\n${'═'.repeat(70)}`);
-    if (fileSearchStoreNames.length > 0) {
+    if (hasFileSearch) {
       console.log(`🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG)`);
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📦 Stores disponibili: ${fileSearchStoreNames.length}`);
@@ -1044,7 +1044,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     let assistantMessage = response.text || "Mi dispiace, non sono riuscito a generare una risposta.";
 
     // 📊 LOG CITAZIONI FILE SEARCH (se usato)
-    if (fileSearchStoreNames.length > 0) {
+    if (hasFileSearch) {
       const citations = fileSearchService.parseCitations(response);
       console.log(`\n${'─'.repeat(70)}`);
       console.log(`🔍 FILE SEARCH RESPONSE ANALYSIS`);
@@ -1636,8 +1636,8 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     const historyTokens = conversationHistory.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
     const totalEstimatedTokens = systemPromptTokens + userMessageTokens + historyTokens;
     
-    // Determine if File Search is active based on stores availability (for client streaming)
-    const hasActiveFileSearchClient = fileSearchStoreNames.length > 0;
+    // Determine if File Search is active - MUST have actual documents
+    const hasActiveFileSearchClient = hasFileSearch; // Uses the already-computed value that checks totalDocsInStores > 0
 
     console.log(`\n📊 Token Usage Estimation (Intent: ${intent}):`);
     console.log(`  - System Prompt: ~${systemPromptTokens.toLocaleString()} tokens`);
@@ -1659,14 +1659,14 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
 
-    // Build FileSearch tool from stores already fetched above
-    const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
+    // Build FileSearch tool from stores already fetched above (only if stores have actual documents)
+    const fileSearchTool = hasFileSearch ? fileSearchService.buildFileSearchTool(fileSearchStoreNames) : null;
     
     // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO (CLIENT STREAMING)
     const ragTokensClient = breakdown.exercises + breakdown.library + breakdown.consultations + breakdown.knowledgeBase;
     
     console.log(`\n${'═'.repeat(70)}`);
-    if (fileSearchStoreNames.length > 0) {
+    if (hasFileSearch) {
       console.log(`🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]`);
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📦 Stores disponibili: ${fileSearchStoreNames.length}`);
@@ -1791,7 +1791,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     console.log(`✅ AI streaming completed for message ${savedMessage.id}`);
 
     // 📊 LOG FILE SEARCH STREAMING SUMMARY (CLIENT)
-    if (fileSearchStoreNames.length > 0) {
+    if (hasFileSearch) {
       console.log(`\n${'─'.repeat(70)}`);
       console.log(`🔍 FILE SEARCH STREAMING SUMMARY [CLIENT]`);
       console.log(`${'─'.repeat(70)}`);
@@ -2556,12 +2556,12 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
 
-    // Build FileSearch tool from stores already fetched above (reuse consultantFileSearchStoreNames)
-    const consultantFileSearchTool = fileSearchService.buildFileSearchTool(consultantFileSearchStoreNames);
+    // Build FileSearch tool from stores already fetched above (only if stores have actual documents)
+    const consultantFileSearchTool = hasConsultantFileSearch ? fileSearchService.buildFileSearchTool(consultantFileSearchStoreNames) : null;
     
     // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO (CONSULTANT)
     console.log(`\n${'═'.repeat(70)}`);
-    if (consultantFileSearchStoreNames.length > 0) {
+    if (hasConsultantFileSearch) {
       console.log(`🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CONSULTANT]`);
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📦 Stores disponibili: ${consultantFileSearchStoreNames.length}`);
@@ -2641,7 +2641,7 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
     console.log(`✅ Consultant AI streaming completed for message ${savedMessage.id}`);
 
     // 📊 LOG FILE SEARCH STREAMING SUMMARY (CONSULTANT)
-    if (consultantFileSearchStoreNames.length > 0) {
+    if (hasConsultantFileSearch) {
       console.log(`\n${'─'.repeat(70)}`);
       console.log(`🔍 FILE SEARCH STREAMING SUMMARY [CONSULTANT]`);
       console.log(`${'─'.repeat(70)}`);
