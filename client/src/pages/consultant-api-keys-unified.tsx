@@ -533,18 +533,6 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
-  const { data: calendarSettings, isLoading: isLoadingCalendar } = useQuery({
-    queryKey: ["/api/calendar-settings"],
-    queryFn: async () => {
-      const response = await fetch("/api/calendar-settings", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok && response.status !== 404) throw new Error("Failed to fetch calendar settings");
-      if (response.status === 404) return null;
-      return response.json();
-    },
-  });
-
   const { data: calendarGlobalOAuth } = useQuery({
     queryKey: ["/api/calendar-settings/oauth/global-status"],
     queryFn: async () => {
