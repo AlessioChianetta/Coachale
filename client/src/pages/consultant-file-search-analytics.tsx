@@ -44,6 +44,17 @@ import {
   Target
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -311,6 +322,8 @@ export default function ConsultantFileSearchAnalyticsPage() {
   
   const [syncLogs, setSyncLogs] = useState<SyncLogEntry[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const [syncConsoleOpen, setSyncConsoleOpen] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
@@ -519,6 +532,142 @@ export default function ConsultantFileSearchAnalyticsPage() {
       addSyncLog('error', `Errore: ${error.message}`);
       toast({
         title: "Errore sincronizzazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startResetAndResync = async () => {
+    setShowResetDialog(false);
+    setIsResetting(true);
+    setSyncConsoleOpen(true);
+    setSyncLogs([]);
+    setCategoryProgress({});
+    
+    addSyncLog('info', '🗑️ Avvio reset completo di tutti gli store...');
+    
+    let eventSource: EventSource | null = null;
+    let sseConnected = false;
+    
+    try {
+      const tokenResponse = await fetch("/api/file-search/sync-token", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      
+      if (tokenResponse.ok) {
+        const { token } = await tokenResponse.json();
+        eventSource = new EventSource(`/api/file-search/sync-events?token=${token}`);
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'connected') {
+              sseConnected = true;
+              addSyncLog('info', 'Console in tempo reale attiva');
+            } else if (data.type === 'start') {
+              setCategoryProgress(prev => ({
+                ...prev,
+                [data.category]: { current: 0, total: data.total, status: 'syncing' }
+              }));
+            } else if (data.type === 'progress') {
+              setCategoryProgress(prev => ({
+                ...prev,
+                [data.category]: { 
+                  ...prev[data.category],
+                  current: data.current, 
+                  total: data.total, 
+                  status: 'syncing',
+                  lastItem: data.item 
+                }
+              }));
+            } else if (data.type === 'complete') {
+              const synced = data.synced || data.current || 0;
+              setCategoryProgress(prev => ({
+                ...prev,
+                [data.category]: { 
+                  ...prev[data.category],
+                  current: data.total, 
+                  total: data.total, 
+                  status: 'complete',
+                  synced 
+                }
+              }));
+              addSyncLog('success', `✅ ${CATEGORY_LABELS[data.category]?.label || data.category}: ${synced}/${data.total} sincronizzati`);
+            } else if (data.type === 'orphan_complete') {
+              setCategoryProgress(prev => ({
+                ...prev,
+                orphans: { 
+                  current: data.storesChecked, 
+                  total: data.storesChecked, 
+                  status: 'complete',
+                  synced: data.orphansRemoved 
+                }
+              }));
+            } else if (data.type === 'all_complete') {
+              addSyncLog('complete', `🎉 Reset e risincronizzazione completati! Totale: ${data.totalSynced} documenti`);
+              eventSource?.close();
+              setIsResetting(false);
+              queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/file-search/stores"] });
+              toast({
+                title: "Reset e risincronizzazione completati",
+                description: `${data.totalSynced} documenti risincronizzati con successo.`,
+              });
+            }
+          } catch (e) {
+            console.error('Error parsing SSE:', e);
+          }
+        };
+        
+        eventSource.onerror = () => {
+          eventSource?.close();
+          eventSource = null;
+        };
+      }
+    } catch (e) {
+      addSyncLog('info', 'Reset e risincronizzazione senza console in tempo reale...');
+    }
+    
+    try {
+      addSyncLog('info', 'Eliminazione di tutti i documenti dagli store...');
+      
+      const response = await fetch("/api/file-search/reset-and-resync", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Reset and resync failed");
+      }
+      
+      const result = await response.json();
+      
+      setTimeout(() => {
+        eventSource?.close();
+        setIsResetting(false);
+        if (!sseConnected) {
+          addSyncLog('complete', `Reset e risincronizzazione completati! ${result.resetPhase.totalDeleted} eliminati, poi risincronizzati`);
+        }
+        queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/file-search/stores"] });
+        toast({
+          title: "Reset e risincronizzazione completati",
+          description: `${result.resetPhase.totalDeleted} documenti eliminati e poi risincronizzati`,
+        });
+      }, 1000);
+      
+    } catch (error: any) {
+      eventSource?.close();
+      setIsResetting(false);
+      addSyncLog('error', `Errore: ${error.message}`);
+      toast({
+        title: "Errore reset e risincronizzazione",
         description: error.message,
         variant: "destructive",
       });
@@ -2210,7 +2359,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       <div className="flex flex-col sm:flex-row gap-3">
                         <Button
                           onClick={startSyncWithSSE}
-                          disabled={isSyncing}
+                          disabled={isSyncing || isResetting}
                           className="flex-1"
                         >
                           {isSyncing ? (
@@ -2220,6 +2369,40 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           )}
                           Sincronizza Tutti i Documenti
                         </Button>
+                        
+                        <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                              disabled={isSyncing || isResetting}
+                            >
+                              {isResetting ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 mr-2" />
+                              )}
+                              Reset e Risincronizza
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confermi reset e risincronizzazione?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Questa operazione eliminerà TUTTI i documenti da tutti gli store (consulente e clienti) e poi risincronizzerà tutto da zero.
+                                <br /><br />
+                                Usa questa opzione se vuoi garantire che tutti i contenuti siano perfettamente allineati con la logica di privacy isolation.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annulla</AlertDialogCancel>
+                              <AlertDialogAction onClick={startResetAndResync} className="bg-amber-600 hover:bg-amber-700">
+                                Conferma Reset e Risincronizza
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                        
                         {(syncLogs.length > 0 || Object.keys(categoryProgress).length > 0) && (
                           <Button
                             variant="outline"
