@@ -1641,4 +1641,85 @@ router.post('/reset-stores', authenticateToken, requireRole('consultant'), async
   }
 });
 
+/**
+ * POST /api/file-search/migrate-client/:clientId
+ * Migrate a single client to private store architecture
+ * Syncs all assigned content to the client's private store
+ */
+router.post('/migrate-client/:clientId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientId } = req.params;
+    
+    // Verify client belongs to this consultant
+    const client = await db.query.users.findFirst({
+      where: and(
+        eq(users.id, clientId),
+        eq(users.consultantId, consultantId),
+      ),
+    });
+    
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found or not authorized' });
+    }
+    
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`🔄 [API] Starting migration for client: ${client.firstName} ${client.lastName}`);
+    console.log(`${'═'.repeat(60)}\n`);
+    
+    const result = await fileSearchSyncService.migrateClientToPrivateStore(clientId, consultantId);
+    
+    res.json({
+      success: result.success,
+      clientName: `${client.firstName} ${client.lastName}`,
+      summary: {
+        exercises: result.exercises,
+        library: result.library,
+        university: result.university,
+        goals: result.goals,
+        tasks: result.tasks,
+        consultations: result.consultations,
+      },
+      errors: result.errors,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error migrating client:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/migrate-all-clients
+ * Migrate ALL clients to private store architecture
+ * Syncs all assigned content to each client's private store
+ */
+router.post('/migrate-all-clients', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`🚀 [API] Starting BULK migration for all clients`);
+    console.log(`${'═'.repeat(60)}\n`);
+    
+    const result = await fileSearchSyncService.migrateAllClientsToPrivateStores(consultantId);
+    
+    res.json({
+      success: result.success,
+      summary: {
+        clientsMigrated: result.clientsMigrated,
+        totalExercises: result.totalExercises,
+        totalLibrary: result.totalLibrary,
+        totalUniversity: result.totalUniversity,
+        totalGoals: result.totalGoals,
+        totalTasks: result.totalTasks,
+        totalConsultations: result.totalConsultations,
+      },
+      errors: result.errors,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error in bulk migration:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
