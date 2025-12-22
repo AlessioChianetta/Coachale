@@ -1,0 +1,33 @@
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+════════════════════════════════════════════════════════════
+🗑️ [FileSearch Reset] Starting store reset for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   Type: all
+════════════════════════════════════════════════════════════
+
+📦 [Reset] Found 1354 documents in consultant store
+⚠️ [FileSearch] SuperAdmin key 1/1 does not support File Search API, trying next...
+⚠️ [FileSearch] No SuperAdmin key supports File Search API, trying user keys...
+❌ [FileSearch] No Gemini API key with File Search support available for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b. Configure keys in /consultant/api-keys-unified
+⚠️ [FileSearch] No API client available, deleting from DB only
+🗑️ [FileSearch] Document deleted: 1f431e22-bc8d-4b33-8ccb-f387fef99266
+⚠️ [FileSearch] SuperAdmin key 1/1 does not support File Search API, trying next...
+⚠️ [FileSearch] No SuperAdmin key supports File Search API, trying user keys...
+❌ [FileSearch] No Gemini API key with File Search support available for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b. Configure keys in /consultant/api-keys-unified
+⚠️ [FileSearch] No API client available, deleting from DB only
+🗑️ [FileSearch] Document deleted: 68ba2132-30fc-443a-8328-aca4d89425ce
+⚠️ [FileSearch] SuperAdmin key 1/1 does not support File Search API, trying next...
+⚠️ [FileSearch] No SuperAdmin key supports File Search API, trying user keys...
+❌ [FileSearch] No Gemini API key with File Search support available for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b. Configure keys in /consultant/api-keys-unified
+⚠️ [FileSearch] No API client available, deleting from DB only
+🗑️ [FileSearch] Document deleted: 2cc576e0-5a0e-4ff6-ba38-fe2f28494a79
+⚠️ [FileSearch] SuperAdmin key 1/1 does not support File Search API, trying next...
+⚠️ [FileSearch] No SuperAdmin key supports File Search API, trying user keys...
+❌ [FileSearch] No Gemini API key with File Search support available for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b. Configure keys in /consultant/api-keys-unified
+⚠️ [FileSearch] No API client available, deleting from DB only
+🗑️ [FileSearch] Document deleted: f4ef1aac-228f-49da-923a-1e1e0de7623e
+⚠️ [FileSearch] SuperAdmin key 1/1 does not support File Search API, trying next...
+⚠️ [FileSearch] No SuperAdmin key supports File Search API, trying user keys...
+❌ [FileSearch] No Gemini API key with File Search support available for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b. Configure keys in /consultant/api-keys-unified
+⚠️ [FileSearch] No API client available, deleting from DB only
+🗑️ [FileSearch] Document deleted: b7c1b33f-beb8-45d5-a4c9-6a576fe33ca0
