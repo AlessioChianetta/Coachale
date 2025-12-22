@@ -13406,15 +13406,19 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
-  // Get available appointment slots for consultant
+  // Get available appointment slots for consultant (supports agent calendar)
   app.get("/api/calendar/available-slots", async (req: Request, res: Response) => {
     try {
-      const { consultantId, startDate, endDate } = req.query;
+      const { consultantId, startDate, endDate, agentConfigId } = req.query;
 
       if (!consultantId || !startDate || !endDate) {
         return res.status(400).json({ 
           message: "Missing required parameters: consultantId, startDate, endDate" 
         });
+      }
+      
+      if (agentConfigId) {
+        console.log(`📅 [AVAILABLE-SLOTS] Using agent calendar: ${agentConfigId}`);
       }
 
       const start = new Date(startDate as string);
@@ -13500,11 +13504,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         currentDate.setDate(currentDate.getDate() + 1);
       }
 
-      // 3. Fetch existing events from Google Calendar
+      // 3. Fetch existing events from Google Calendar (with agent calendar support)
       const existingEvents = await googleCalendarService.listEvents(
         consultantId as string,
         start,
-        end
+        end,
+        agentConfigId as string | undefined
       );
       console.log(`📅 Found ${existingEvents.length} existing events on Google Calendar`);
 

@@ -1253,12 +1253,14 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
             console.log(`📆 Search range: ${startDate.toLocaleDateString('it-IT')} → ${endDate.toLocaleDateString('it-IT')} (7 days)`);
             console.log(`🌐 Calling API: /api/calendar/available-slots`);
 
-            // Call available slots endpoint
+            // Call available slots endpoint (with agent calendar support)
+            const agentConfigId = conversation.agentConfigId || consultantConfig?.id;
             const slotsResponse = await fetch(
               `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
               `consultantId=${conversation.consultantId}&` +
               `startDate=${startDate.toISOString()}&` +
-              `endDate=${endDate.toISOString()}`
+              `endDate=${endDate.toISOString()}` +
+              (agentConfigId ? `&agentConfigId=${agentConfigId}` : '')
             );
 
             if (slotsResponse.ok) {

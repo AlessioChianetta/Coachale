@@ -92,6 +92,8 @@ export interface FollowupDecision {
   completionReason?: string;         // Why AI thinks conversation is complete
   silenceReason?: string;            // Why AI chose to go silent
   longTermScheduleType?: "nurturing" | "reactivation" | "seasonal";
+  // Model name used for the decision (for logging)
+  modelName?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -263,7 +265,8 @@ export async function evaluateFollowup(
       updatedEngagementScore: result.updatedEngagementScore || undefined,
       updatedConversionProbability: result.updatedConversionProbability || undefined,
       stateTransition: result.stateTransition || undefined,
-      allowFreeformMessage, // NUOVO: indica se possiamo usare messaggi liberi
+      allowFreeformMessage,
+      modelName: model, // Include model name for logging
     };
   } catch (error) {
     console.error("❌ [FOLLOWUP-ENGINE] Error evaluating follow-up:", error);

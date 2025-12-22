@@ -1565,7 +1565,7 @@ async function evaluateConversation(
     }
   }
 
-  const { model: decisionModelName } = getModelWithThinking(aiProviderResult.metadata.name);
+  const decisionModelName = decision.modelName || 'unknown';
   await logFollowupDecision(
     candidate.conversationId,
     context,

@@ -964,23 +964,44 @@ export async function createGoogleCalendarEvent(
 
 /**
  * List events from Google Calendar (exported for calendar appointments endpoint)
+ * Supports agent calendar with fallback to consultant calendar
  */
 export async function listEvents(
   consultantId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  agentConfigId?: string
 ): Promise<Array<{ start: Date; end: Date; summary: string; status: string }>> {
   try {
-    const calendar = await getCalendarClient(consultantId);
+    let calendar;
+    let calendarId: string | null = null;
+    
+    // Try agent calendar first if agentConfigId provided
+    if (agentConfigId) {
+      console.log(`📅 [LIST EVENTS] Checking agent calendar for agent ${agentConfigId}...`);
+      const agentCalendar = await getAgentCalendarClient(agentConfigId);
+      if (agentCalendar) {
+        calendar = agentCalendar;
+        calendarId = await getAgentCalendarId(agentConfigId);
+        console.log(`✅ [LIST EVENTS] Using AGENT's calendar: ${calendarId}`);
+      } else {
+        console.log(`⏭️ [LIST EVENTS] Agent has no calendar, falling back to consultant's calendar`);
+      }
+    }
+    
+    // Fallback to consultant calendar
     if (!calendar) {
-      // Silently return empty if calendar not configured
-      return [];
+      calendar = await getCalendarClient(consultantId);
+      if (!calendar) {
+        return [];
+      }
+      calendarId = await getPrimaryCalendarId(consultantId);
+      if (calendarId) {
+        console.log(`📅 [LIST EVENTS] Using consultant's calendar: ${calendarId}`);
+      }
     }
 
-    // Get correct calendar ID (not hardcoded 'primary')
-    const calendarId = await getPrimaryCalendarId(consultantId);
     if (!calendarId) {
-      // Silently return empty if calendar not found
       return [];
     }
 
@@ -990,16 +1011,15 @@ export async function listEvents(
       calendarId,
       timeMin: startDate.toISOString(),
       timeMax: endDate.toISOString(),
-      singleEvents: true, // Expand recurring events
+      singleEvents: true,
       orderBy: 'startTime',
     });
 
     const events = response.data.items || [];
     
-    // Normalize events to simple format
     return events
       .filter(event => event.status !== 'cancelled')
-      .filter(event => event.transparency !== 'transparent') // Skip "free" events
+      .filter(event => event.transparency !== 'transparent')
       .map(event => ({
         start: new Date(event.start?.dateTime || event.start?.date || ''),
         end: new Date(event.end?.dateTime || event.end?.date || ''),

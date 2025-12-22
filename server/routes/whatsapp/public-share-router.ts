@@ -902,7 +902,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                 `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
                 `consultantId=${agentConfig.consultantId}&` +
                 `startDate=${startDate.toISOString()}&` +
-                `endDate=${endDate.toISOString()}`
+                `endDate=${endDate.toISOString()}&` +
+                `agentConfigId=${agentConfig.id}`
               );
               
               if (slotsResponse.ok) {
