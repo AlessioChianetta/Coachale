@@ -180,7 +180,8 @@ export class FileSearchService {
           const index = Math.floor(Math.random() * superAdminKeys.keys.length);
           const apiKey = superAdminKeys.keys[index];
           console.log(`✅ [FileSearch] Using SuperAdmin Gemini key for user ${userId} (${index + 1}/${superAdminKeys.keys.length})`);
-          return new GoogleGenAI({ apiKey });
+          // File Search API requires v1beta
+          return new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
         }
       }
 
@@ -191,7 +192,8 @@ export class FileSearchService {
         const validIndex = currentIndex % apiKeys.length;
         const apiKey = apiKeys[validIndex];
         console.log(`✅ [FileSearch] Using user's own Gemini key for user ${userId}`);
-        return new GoogleGenAI({ apiKey });
+        // File Search API requires v1beta
+        return new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
       }
 
       // Priority 3: If user is a client, try consultant's keys
@@ -208,7 +210,8 @@ export class FileSearchService {
             const index = Math.floor(Math.random() * consultantKeys.length);
             const apiKey = consultantKeys[index];
             console.log(`✅ [FileSearch] Using consultant's Gemini key for client ${userId} (${index + 1}/${consultantKeys.length})`);
-            return new GoogleGenAI({ apiKey });
+            // File Search API requires v1beta
+            return new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
           }
         }
       }
@@ -283,7 +286,8 @@ export class FileSearchService {
       const index = Math.floor(Math.random() * superAdminKeys.keys.length);
       const apiKey = superAdminKeys.keys[index];
       console.log(`🔑 [FileSearch] Using SuperAdmin Gemini key ${index + 1}/${superAdminKeys.keys.length} for operation`);
-      return new GoogleGenAI({ apiKey });
+      // File Search API requires v1beta
+      return new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
     }
     
     throw new Error('File Search Service: No Gemini API key configured. Configure keys in /consultant/api-keys-unified (SuperAdmin or User keys).');
