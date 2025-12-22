@@ -13664,55 +13664,53 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     try {
       const consultantId = req.user!.id;
       
-      // Check various configurations
+      // Check various configurations using db.select() for reliability
       const [
         smtpSettings,
         vertexSettings,
         calendarConnected,
-        twilioConfig,
+        users,
         agents,
         knowledgeDocs,
         courses,
         exercises
       ] = await Promise.all([
         // SMTP
-        db.query.consultantSmtpSettings.findFirst({
-          where: eq(schema.consultantSmtpSettings.consultantId, consultantId)
-        }),
+        db.select().from(schema.consultantSmtpSettings)
+          .where(eq(schema.consultantSmtpSettings.consultantId, consultantId))
+          .limit(1),
         // Vertex AI
-        db.query.vertexAiSettings.findFirst({
-          where: eq(schema.vertexAiSettings.consultantId, consultantId)
-        }),
+        db.select().from(schema.vertexAiSettings)
+          .where(eq(schema.vertexAiSettings.consultantId, consultantId))
+          .limit(1),
         // Google Calendar
         googleCalendarService.isGoogleCalendarConnected(consultantId),
         // Twilio (check user's twilio settings)
-        db.select().from(schema.users).where(eq(schema.users.id, consultantId)).then(users => 
-          users[0]?.twilioAccountSid ? true : false
-        ),
+        db.select().from(schema.users).where(eq(schema.users.id, consultantId)),
         // Agents
-        db.query.consultantWhatsappConfig.findMany({
-          where: eq(schema.consultantWhatsappConfig.consultantId, consultantId)
-        }),
+        db.select().from(schema.consultantWhatsappConfig)
+          .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId)),
         // Knowledge docs
-        db.query.knowledgeDocuments.findMany({
-          where: eq(schema.knowledgeDocuments.consultantId, consultantId),
-          limit: 1
-        }),
+        db.select().from(schema.knowledgeDocuments)
+          .where(eq(schema.knowledgeDocuments.consultantId, consultantId))
+          .limit(1),
         // Courses
-        db.query.universityYears.findMany({
-          where: eq(schema.universityYears.consultantId, consultantId),
-          limit: 1
-        }),
+        db.select().from(schema.universityYears)
+          .where(eq(schema.universityYears.consultantId, consultantId))
+          .limit(1),
         // Exercises
-        db.query.exercises.findMany({
-          where: eq(schema.exercises.createdBy, consultantId),
-          limit: 1
-        })
+        db.select().from(schema.exercises)
+          .where(eq(schema.exercises.createdBy, consultantId))
+          .limit(1)
       ]);
       
+      const twilioConfig = users[0]?.twilioAccountSid ? true : false;
+      const smtp = smtpSettings[0];
+      const vertex = vertexSettings[0];
+      
       const status: Record<string, boolean> = {
-        vertex_ai: !!(vertexSettings?.serviceAccountJson || vertexSettings?.geminiApiKey),
-        smtp: !!(smtpSettings?.smtpHost && smtpSettings?.smtpUser),
+        vertex_ai: !!(vertex?.serviceAccountJson || vertex?.geminiApiKey),
+        smtp: !!(smtp?.smtpHost && smtp?.smtpUser),
         google_calendar: calendarConnected,
         whatsapp_twilio: twilioConfig,
         inbound_agent: agents.some(a => a.agentType === 'inbound' && a.isActive),
