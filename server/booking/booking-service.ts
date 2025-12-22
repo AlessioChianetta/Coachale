@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { appointmentBookings, consultantAvailabilitySettings, users } from "../../shared/schema";
-import { eq } from "drizzle-orm";
+import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtractionState } from "../../shared/schema";
+import { eq, and, or, isNull, sql } from "drizzle-orm";
 import { createGoogleCalendarEvent } from "../google-calendar-service";
 import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
 import { sendEmail } from "../services/email-scheduler";
@@ -55,6 +55,193 @@ export interface BookingData {
   name?: string;
   clientName?: string;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACCUMULATOR PATTERN: Progressive booking data extraction
+// Prevents field loss when re-extracting from conversation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface AccumulatedBookingData {
+  date: string | null;
+  time: string | null;
+  phone: string | null;
+  email: string | null;
+  name: string | null;
+  confidence: "high" | "medium" | "low" | null;
+}
+
+async function loadExtractionState(
+  conversationId: string | null,
+  publicConversationId: string | null
+): Promise<AccumulatedBookingData | null> {
+  try {
+    if (!conversationId && !publicConversationId) return null;
+    
+    const now = new Date();
+    
+    const conditions = [];
+    if (conversationId) {
+      conditions.push(eq(bookingExtractionState.conversationId, conversationId));
+    }
+    if (publicConversationId) {
+      conditions.push(eq(bookingExtractionState.publicConversationId, publicConversationId));
+    }
+    
+    const [existing] = await db
+      .select()
+      .from(bookingExtractionState)
+      .where(and(
+        or(...conditions),
+        isNull(bookingExtractionState.completedAt),
+        sql`${bookingExtractionState.expiresAt} > ${now.toISOString()}`
+      ))
+      .limit(1);
+    
+    if (!existing) {
+      console.log(`   📦 [ACCUMULATOR] No existing state found`);
+      return null;
+    }
+    
+    console.log(`   📦 [ACCUMULATOR] Loaded existing state: date=${existing.extractedDate}, time=${existing.extractedTime}, phone=${existing.extractedPhone ? '***' : null}, email=${existing.extractedEmail}`);
+    
+    return {
+      date: existing.extractedDate,
+      time: existing.extractedTime,
+      phone: existing.extractedPhone,
+      email: existing.extractedEmail,
+      name: existing.extractedName,
+      confidence: existing.confidence as "high" | "medium" | "low" | null,
+    };
+  } catch (error) {
+    console.error(`❌ [ACCUMULATOR] Failed to load state:`, error);
+    return null;
+  }
+}
+
+async function saveExtractionState(
+  conversationId: string | null,
+  publicConversationId: string | null,
+  consultantId: string,
+  data: AccumulatedBookingData
+): Promise<void> {
+  try {
+    if (!conversationId && !publicConversationId) return;
+    
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+    
+    const conditions = [];
+    if (conversationId) {
+      conditions.push(eq(bookingExtractionState.conversationId, conversationId));
+    }
+    if (publicConversationId) {
+      conditions.push(eq(bookingExtractionState.publicConversationId, publicConversationId));
+    }
+    
+    const [existing] = await db
+      .select({ id: bookingExtractionState.id })
+      .from(bookingExtractionState)
+      .where(or(...conditions))
+      .limit(1);
+    
+    if (existing) {
+      await db
+        .update(bookingExtractionState)
+        .set({
+          extractedDate: data.date,
+          extractedTime: data.time,
+          extractedPhone: data.phone,
+          extractedEmail: data.email,
+          extractedName: data.name,
+          confidence: data.confidence,
+          expiresAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookingExtractionState.id, existing.id));
+      console.log(`   💾 [ACCUMULATOR] Updated state: date=${data.date}, time=${data.time}`);
+    } else {
+      await db.insert(bookingExtractionState).values({
+        conversationId,
+        publicConversationId,
+        consultantId,
+        extractedDate: data.date,
+        extractedTime: data.time,
+        extractedPhone: data.phone,
+        extractedEmail: data.email,
+        extractedName: data.name,
+        confidence: data.confidence,
+        expiresAt,
+      });
+      console.log(`   💾 [ACCUMULATOR] Created new state: date=${data.date}, time=${data.time}`);
+    }
+  } catch (error) {
+    console.error(`❌ [ACCUMULATOR] Failed to save state:`, error);
+  }
+}
+
+function mergeExtractionData(
+  existing: AccumulatedBookingData | null,
+  newData: BookingExtractionResult
+): BookingExtractionResult {
+  if (!existing) return newData;
+  
+  const merged: BookingExtractionResult = {
+    isConfirming: newData.isConfirming,
+    date: newData.date || existing.date,
+    time: newData.time || existing.time,
+    phone: newData.phone || existing.phone,
+    email: newData.email || existing.email,
+    name: newData.name || existing.name,
+    confidence: newData.confidence,
+    hasAllData: false, // Will be recalculated
+  };
+  
+  // Recalculate hasAllData with merged values
+  merged.hasAllData = !!(merged.date && merged.time && merged.phone && merged.email);
+  
+  // Log what was preserved from previous extraction
+  const preserved: string[] = [];
+  if (!newData.date && existing.date) preserved.push(`date=${existing.date}`);
+  if (!newData.time && existing.time) preserved.push(`time=${existing.time}`);
+  if (!newData.phone && existing.phone) preserved.push('phone');
+  if (!newData.email && existing.email) preserved.push('email');
+  if (!newData.name && existing.name) preserved.push('name');
+  
+  if (preserved.length > 0) {
+    console.log(`   🔄 [ACCUMULATOR] Preserved from previous: ${preserved.join(', ')}`);
+  }
+  
+  console.log(`   📊 [ACCUMULATOR] Merged result: date=${merged.date}, time=${merged.time}, hasAllData=${merged.hasAllData}`);
+  
+  return merged;
+}
+
+export async function markExtractionStateCompleted(
+  conversationId: string | null,
+  publicConversationId: string | null
+): Promise<void> {
+  try {
+    if (!conversationId && !publicConversationId) return;
+    
+    const conditions = [];
+    if (conversationId) {
+      conditions.push(eq(bookingExtractionState.conversationId, conversationId));
+    }
+    if (publicConversationId) {
+      conditions.push(eq(bookingExtractionState.publicConversationId, publicConversationId));
+    }
+    
+    await db
+      .update(bookingExtractionState)
+      .set({ completedAt: new Date() })
+      .where(or(...conditions));
+    
+    console.log(`   ✅ [ACCUMULATOR] Marked state as completed`);
+  } catch (error) {
+    console.error(`❌ [ACCUMULATOR] Failed to mark completed:`, error);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 
 function buildNewBookingExtractionPrompt(conversationContext: string): string {
   return `
@@ -325,12 +512,19 @@ function parseJsonResponse<T>(responseText: string): T | null {
   }
 }
 
+export interface ExtractionAccumulatorOptions {
+  conversationId?: string | null;
+  publicConversationId?: string | null;
+  consultantId?: string;
+}
+
 export async function extractBookingDataFromConversation(
   messages: ConversationMessage[],
   existingBooking: ExistingBooking | null,
   aiClient: GeminiClient,
   timezone: string = "Europe/Rome",
-  providerName?: string
+  providerName?: string,
+  accumulatorOptions?: ExtractionAccumulatorOptions
 ): Promise<BookingExtractionResult | BookingModificationResult | null> {
   const conversationContext = buildConversationContext(messages);
   
@@ -341,6 +535,18 @@ export async function extractBookingDataFromConversation(
   console.log(`\n🔍 [BOOKING SERVICE] Extracting data from ${messages.length} messages`);
   console.log(`   Mode: ${existingBooking ? 'MODIFICATION' : 'NEW BOOKING'}`);
   console.log(`   Timezone: ${timezone}`);
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ACCUMULATOR: Load existing state for new bookings (not modifications)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  let existingState: AccumulatedBookingData | null = null;
+  if (!existingBooking && accumulatorOptions) {
+    console.log(`   📦 [ACCUMULATOR] Loading existing extraction state...`);
+    existingState = await loadExtractionState(
+      accumulatorOptions.conversationId || null,
+      accumulatorOptions.publicConversationId || null
+    );
+  }
 
   const { model, useThinking, thinkingLevel } = getModelWithThinking(providerName || 'Vertex AI');
   console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
@@ -381,10 +587,33 @@ export async function extractBookingDataFromConversation(
         return result;
       }
     } else {
-      const result = parseJsonResponse<BookingExtractionResult>(responseText);
-      if (result) {
-        console.log(`   Parsed extraction result: hasAllData=${result.hasAllData}, date=${result.date}, time=${result.time}`);
-        return result;
+      const rawResult = parseJsonResponse<BookingExtractionResult>(responseText);
+      if (rawResult) {
+        console.log(`   Parsed extraction result (raw): hasAllData=${rawResult.hasAllData}, date=${rawResult.date}, time=${rawResult.time}`);
+        
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // ACCUMULATOR: Merge with existing state and save
+        // ═══════════════════════════════════════════════════════════════════════════════
+        const mergedResult = mergeExtractionData(existingState, rawResult);
+        
+        // Save merged state if we have accumulator options
+        if (accumulatorOptions?.consultantId) {
+          await saveExtractionState(
+            accumulatorOptions.conversationId || null,
+            accumulatorOptions.publicConversationId || null,
+            accumulatorOptions.consultantId,
+            {
+              date: mergedResult.date,
+              time: mergedResult.time,
+              phone: mergedResult.phone,
+              email: mergedResult.email,
+              name: mergedResult.name,
+              confidence: mergedResult.confidence,
+            }
+          );
+        }
+        
+        return mergedResult;
       }
     }
 

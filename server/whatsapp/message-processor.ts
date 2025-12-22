@@ -51,6 +51,7 @@ import {
   createBookingRecord,
   createGoogleCalendarBooking,
   sendBookingConfirmationEmail,
+  markExtractionStateCompleted,
   BookingExtractionResult,
   ConversationMessage,
 } from "../booking/booking-service";
@@ -2804,11 +2805,17 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               
               // Estrai dati booking dalla conversazione usando il servizio centralizzato
               // Aligned with public-share-router.ts: use bookingAiProvider.client
+              // ACCUMULATOR PATTERN: Passa conversationId per accumulare dati progressivamente
               const extracted = await extractBookingDataFromConversation(
                 conversationMessages,
                 undefined, // Nessun booking esistente
                 bookingAiProvider.client, // AI client from getAIProvider (aligned with public-share)
-                'Europe/Rome'
+                'Europe/Rome',
+                undefined, // providerName
+                {
+                  conversationId: conversation.id,
+                  consultantId: conversation.consultantId,
+                }
               );
               
               if (extracted && 'isConfirming' in extracted) {
@@ -3141,6 +3148,9 @@ Il tuo appuntamento è stato registrato. Ti contatteremo presto con i dettagli d
                       .where(eq(proposedAppointmentSlots.conversationId, conversation.id));
 
                     console.log(`💾 [APPOINTMENT BOOKING] Marked proposed slots as used`);
+                    
+                    // ACCUMULATOR: Mark extraction state as completed
+                    await markExtractionStateCompleted(conversation.id, null);
                   } // Chiusura else block validazione data
                 } else if (extracted.isConfirming && !extracted.hasAllData) {
                   // Lead is confirming but missing some data - AI should ask for missing info

@@ -24,6 +24,7 @@ import {
   createBookingRecord,
   createGoogleCalendarBooking,
   sendBookingConfirmationEmail,
+  markExtractionStateCompleted,
   BookingExtractionResult,
   ConversationMessage,
 } from '../../booking/booking-service';
@@ -1166,11 +1167,17 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                   console.log(`   📚 Analyzing ${conversationMessages.length} messages for new booking...`);
                   
                   // Estrai dati booking dalla conversazione
+                  // ACCUMULATOR PATTERN: Passa publicConversationId per accumulare dati progressivamente
                   const extracted = await extractBookingDataFromConversation(
                     conversationMessages,
                     undefined, // Nessun booking esistente
                     aiProvider.client,
-                    'Europe/Rome'
+                    'Europe/Rome',
+                    undefined, // providerName
+                    {
+                      publicConversationId: conversation.id,
+                      consultantId: agentConfig.consultantId,
+                    }
                   );
                   
                   if (extracted && 'isConfirming' in extracted) {
@@ -1306,6 +1313,9 @@ Ti aspettiamo! 🚀`;
                             googleMeetLink: calendarResult.googleMeetLink || undefined,
                             confirmationMessage: bookingConfirmationMessage
                           };
+                          
+                          // ACCUMULATOR: Mark extraction state as completed
+                          await markExtractionStateCompleted(null, conversation.id);
                         }
                       } else {
                         console.log(`   ❌ Validation failed: ${validation.reason}`);
