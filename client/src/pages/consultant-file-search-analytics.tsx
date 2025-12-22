@@ -290,6 +290,11 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: stri
   client_consultations: { label: 'Consultazioni Clienti', icon: '📞', color: 'bg-rose-500' },
   financial_data: { label: 'Dati Finanziari', icon: '💰', color: 'bg-yellow-500' },
   orphans: { label: 'Pulizia Orfani', icon: '🧹', color: 'bg-gray-500' },
+  assigned_exercises: { label: 'Esercizi Assegnati', icon: '📋', color: 'bg-indigo-500' },
+  assigned_library: { label: 'Libreria Assegnata', icon: '📕', color: 'bg-sky-500' },
+  assigned_university: { label: 'University Assegnata', icon: '🎯', color: 'bg-orange-500' },
+  goals: { label: 'Obiettivi', icon: '🎯', color: 'bg-lime-500' },
+  tasks: { label: 'Task', icon: '✅', color: 'bg-violet-500' },
 };
 
 export default function ConsultantFileSearchAnalyticsPage() {

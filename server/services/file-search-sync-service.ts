@@ -52,7 +52,7 @@ export interface SyncProgressEvent {
   total?: number;
   synced?: number;
   totalSynced?: number;
-  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'whatsapp_agents' | 'exercise_responses' | 'client_knowledge' | 'client_consultations' | 'financial_data' | 'orphans';
+  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'whatsapp_agents' | 'exercise_responses' | 'client_knowledge' | 'client_consultations' | 'financial_data' | 'orphans' | 'assigned_exercises' | 'assigned_library' | 'assigned_university' | 'goals' | 'tasks';
   error?: string;
   consultantId: string;
   orphansRemoved?: number;
@@ -1391,6 +1391,33 @@ export class FileSearchSyncService {
       : [];
     const preCalcFinancialTotal = clientsWithFinanceSettings.length;
 
+    // Pre-calculate totals for assigned content categories
+    const allExerciseAssignments = clientIds.length > 0
+      ? await db.query.exerciseAssignments.findMany({ where: inArray(exerciseAssignments.clientId, clientIds) })
+      : [];
+    const preCalcAssignedExercisesTotal = allExerciseAssignments.length;
+
+    const allLibraryAssignments = clientIds.length > 0
+      ? await db.query.libraryCategoryClientAssignments.findMany({ where: inArray(libraryCategoryClientAssignments.clientId, clientIds) })
+      : [];
+    const preCalcAssignedLibraryTotal = allLibraryAssignments.length;
+
+    const allUniversityAssignments = clientIds.length > 0
+      ? await db.query.universityYearClientAssignments.findMany({ where: inArray(universityYearClientAssignments.clientId, clientIds) })
+      : [];
+    const preCalcAssignedUniversityTotal = allUniversityAssignments.length;
+
+    // Goals and tasks are aggregated per client, so total = number of clients with goals/tasks
+    const preCalcGoalsTotal = clients.length;
+    const preCalcTasksTotal = clients.length;
+
+    // Counters for assigned content
+    let totalAssignedExercises = { total: 0, synced: 0, failed: 0 };
+    let totalAssignedLibrary = { total: 0, synced: 0, failed: 0 };
+    let totalAssignedUniversity = { total: 0, synced: 0, failed: 0 };
+    let totalGoals = { total: 0, synced: 0, failed: 0 };
+    let totalTasks = { total: 0, synced: 0, failed: 0 };
+
     // Emit SSE start events with pre-calculated totals
     syncProgressEmitter.emitStart(consultantId, 'exercise_responses', preCalcExerciseResponsesTotal);
     syncProgressEmitter.emitStart(consultantId, 'client_knowledge', preCalcClientKnowledgeTotal);
@@ -1398,6 +1425,11 @@ export class FileSearchSyncService {
     if (settings?.autoSyncFinancial) {
       syncProgressEmitter.emitStart(consultantId, 'financial_data', preCalcFinancialTotal);
     }
+    syncProgressEmitter.emitStart(consultantId, 'assigned_exercises', preCalcAssignedExercisesTotal);
+    syncProgressEmitter.emitStart(consultantId, 'assigned_library', preCalcAssignedLibraryTotal);
+    syncProgressEmitter.emitStart(consultantId, 'assigned_university', preCalcAssignedUniversityTotal);
+    syncProgressEmitter.emitStart(consultantId, 'goals', preCalcGoalsTotal);
+    syncProgressEmitter.emitStart(consultantId, 'tasks', preCalcTasksTotal);
 
     for (const client of clients) {
       console.log(`   📋 Processing client: ${client.firstName} ${client.lastName} (${client.id.substring(0, 8)}...)`);
@@ -1440,26 +1472,69 @@ export class FileSearchSyncService {
         where: eq(exerciseAssignments.clientId, client.id),
       });
       for (const assignment of clientExerciseAssigns) {
-        await this.syncExerciseToClient(assignment.exerciseId, client.id, consultantId);
+        const result = await this.syncExerciseToClient(assignment.exerciseId, client.id, consultantId);
+        totalAssignedExercises.total++;
+        if (result.success) {
+          totalAssignedExercises.synced++;
+        } else {
+          totalAssignedExercises.failed++;
+        }
+        syncProgressEmitter.emitItemProgress(consultantId, 'assigned_exercises', clientDisplayName, 
+          totalAssignedExercises.synced + totalAssignedExercises.failed, preCalcAssignedExercisesTotal);
       }
 
       const clientLibAssigns = await db.query.libraryCategoryClientAssignments.findMany({
         where: eq(libraryCategoryClientAssignments.clientId, client.id),
       });
       for (const assignment of clientLibAssigns) {
-        await this.syncLibraryCategoryToClient(assignment.categoryId, client.id, consultantId);
+        const result = await this.syncLibraryCategoryToClient(assignment.categoryId, client.id, consultantId);
+        totalAssignedLibrary.total++;
+        if (result.success) {
+          totalAssignedLibrary.synced += result.synced;
+          totalAssignedLibrary.failed += result.failed;
+        } else {
+          totalAssignedLibrary.failed++;
+        }
+        syncProgressEmitter.emitItemProgress(consultantId, 'assigned_library', clientDisplayName,
+          totalAssignedLibrary.total, preCalcAssignedLibraryTotal);
       }
 
       const clientUniAssigns = await db.query.universityYearClientAssignments.findMany({
         where: eq(universityYearClientAssignments.clientId, client.id),
       });
       for (const assignment of clientUniAssigns) {
-        await this.syncUniversityYearToClient(assignment.yearId, client.id, consultantId);
+        const result = await this.syncUniversityYearToClient(assignment.yearId, client.id, consultantId);
+        totalAssignedUniversity.total++;
+        if (result.success) {
+          totalAssignedUniversity.synced += result.synced;
+          totalAssignedUniversity.failed += result.failed;
+        } else {
+          totalAssignedUniversity.failed++;
+        }
+        syncProgressEmitter.emitItemProgress(consultantId, 'assigned_university', clientDisplayName,
+          totalAssignedUniversity.total, preCalcAssignedUniversityTotal);
       }
 
       // Sync goals and tasks (aggregated documents) - always re-sync to ensure up-to-date
-      await this.syncClientGoals(client.id, consultantId);
-      await this.syncClientTasks(client.id, consultantId);
+      const goalsResult = await this.syncClientGoals(client.id, consultantId);
+      totalGoals.total++;
+      if (goalsResult.success) {
+        totalGoals.synced++;
+      } else {
+        totalGoals.failed++;
+      }
+      syncProgressEmitter.emitItemProgress(consultantId, 'goals', clientDisplayName,
+        totalGoals.synced + totalGoals.failed, preCalcGoalsTotal);
+
+      const tasksResult = await this.syncClientTasks(client.id, consultantId);
+      totalTasks.total++;
+      if (tasksResult.success) {
+        totalTasks.synced++;
+      } else {
+        totalTasks.failed++;
+      }
+      syncProgressEmitter.emitItemProgress(consultantId, 'tasks', clientDisplayName,
+        totalTasks.synced + totalTasks.failed, preCalcTasksTotal);
 
       clientsProcessed++;
       
@@ -1516,11 +1591,52 @@ export class FileSearchSyncService {
         consultantId,
       });
     }
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'assigned_exercises',
+      total: preCalcAssignedExercisesTotal,
+      current: preCalcAssignedExercisesTotal,
+      synced: totalAssignedExercises.synced,
+      consultantId,
+    });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'assigned_library',
+      total: preCalcAssignedLibraryTotal,
+      current: preCalcAssignedLibraryTotal,
+      synced: totalAssignedLibrary.synced,
+      consultantId,
+    });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'assigned_university',
+      total: preCalcAssignedUniversityTotal,
+      current: preCalcAssignedUniversityTotal,
+      synced: totalAssignedUniversity.synced,
+      consultantId,
+    });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'goals',
+      total: preCalcGoalsTotal,
+      current: preCalcGoalsTotal,
+      synced: totalGoals.synced,
+      consultantId,
+    });
+    syncProgressEmitter.emitProgress({
+      type: 'complete',
+      category: 'tasks',
+      total: preCalcTasksTotal,
+      current: preCalcTasksTotal,
+      synced: totalTasks.synced,
+      consultantId,
+    });
 
     const totalSynced = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
       universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced +
       totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced + 
-      totalFinancialData.synced;
+      totalFinancialData.synced + totalAssignedExercises.synced + totalAssignedLibrary.synced +
+      totalAssignedUniversity.synced + totalGoals.synced + totalTasks.synced;
 
     // ============================================================
     // CLEANUP SOURCE ORPHANS - Remove documents whose source was deleted
