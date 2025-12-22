@@ -2088,6 +2088,30 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     // Existing clients (effectiveUserId truthy) skip appointment booking (they use web interface)
     // MANDATORY CHECK: Agent MUST have its own calendar connected (no fallback to consultant)
     const agentHasCalendar = !!consultantConfig?.googleRefreshToken;
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // 🔍 LOG DECISIONE ANALISI BOOKING - Step 1: Pre-requisiti
+    // ═══════════════════════════════════════════════════════════════════════════════
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 [BOOKING DECISION] Valutazione pre-requisiti per analisi booking');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`   📋 PRE-REQUISITI:`);
+    console.log(`   ├── bookingEnabled: ${consultantConfig?.bookingEnabled !== false ? '✅ SÌ' : '❌ NO (disabilitato)'}`);
+    console.log(`   ├── agentHasCalendar: ${agentHasCalendar ? '✅ SÌ (Google Calendar connesso)' : '❌ NO (calendario non connesso)'}`);
+    console.log(`   ├── effectiveUserId: ${effectiveUserId ? `❌ PRESENTE (${effectiveUserId}) - è un cliente esistente, skip booking` : '✅ ASSENTE (è un lead)'}`);
+    console.log(`   └── Agent: ${consultantConfig?.agentName || 'Unknown'}`);
+    
+    const willAnalyzeBooking = consultantConfig?.bookingEnabled !== false && agentHasCalendar && !effectiveUserId;
+    console.log(`   🎯 DECISIONE: ${willAnalyzeBooking ? '✅ PROCEDERÀ con analisi booking' : '❌ SKIP analisi booking'}`);
+    if (!willAnalyzeBooking) {
+      const skipReasons: string[] = [];
+      if (consultantConfig?.bookingEnabled === false) skipReasons.push('booking disabilitato');
+      if (!agentHasCalendar) skipReasons.push('calendario non connesso');
+      if (effectiveUserId) skipReasons.push('utente è cliente esistente');
+      console.log(`   ⚠️ MOTIVO SKIP: ${skipReasons.join(', ')}`);
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    
     if (!agentHasCalendar && consultantConfig?.bookingEnabled !== false) {
       console.log(`⚠️ [BOOKING DISABLED] Agent "${consultantConfig?.agentName}" has NO Google Calendar connected`);
       console.log(`   → Booking is enabled but calendar is missing - skipping all appointment logic`);
@@ -2817,8 +2841,10 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               if (extracted && 'isConfirming' in extracted) {
                 const extractionResult = extracted as BookingExtractionResult;
                 
-                // NUOVA PRENOTAZIONE - logica esistente
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                // ═══════════════════════════════════════════════════════════════════════════════
+                // 🔍 LOG VALIDAZIONE CAMPI ESTRATTI - Analisi dettagliata di ogni campo
+                // ═══════════════════════════════════════════════════════════════════════════════
+                console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 console.log('📊 [STEP 3] Data Extraction Results');
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 console.log(`🎯 Confirmation Status: ${extractionResult.isConfirming ? '✅ YES' : '❌ NO'}`);
@@ -2828,6 +2854,92 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                 console.log(`📧 Email:    ${extractionResult.email ? `✅ ${extractionResult.email}` : '❌ MISSING'}`);
                 console.log(`💯 Confidence: ${extractionResult.confidence.toUpperCase()}`);
                 console.log(`✔️ Complete Data: ${extractionResult.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                
+                // ═══════════════════════════════════════════════════════════════════════════════
+                // 🔍 LOG VALIDAZIONE DETTAGLIATA DI OGNI CAMPO
+                // ═══════════════════════════════════════════════════════════════════════════════
+                console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('🔬 [FIELD VALIDATION] Validazione dettagliata di ogni campo');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                
+                // Validazione DATE
+                const dateValue = extractionResult.date;
+                const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+                const dateFormatValid = dateValue ? datePattern.test(dateValue) : false;
+                console.log(`\n📅 [DATE VALIDATION]`);
+                console.log(`   ├── Valore: ${dateValue || 'null/undefined'}`);
+                console.log(`   ├── Presente: ${dateValue ? '✅ SÌ' : '❌ NO'}`);
+                if (dateValue) {
+                  console.log(`   ├── Formato YYYY-MM-DD: ${dateFormatValid ? '✅ Valido' : '❌ Invalido'}`);
+                  const parsedDate = new Date(dateValue);
+                  console.log(`   ├── Parsing Date: ${!isNaN(parsedDate.getTime()) ? '✅ Valido' : '❌ Invalido (NaN)'}`);
+                  console.log(`   └── Data parsata: ${parsedDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`);
+                } else {
+                  console.log(`   └── MOTIVO MANCANZA: L'AI non ha trovato una data nella conversazione`);
+                }
+                
+                // Validazione TIME
+                const timeValue = extractionResult.time;
+                const timePattern = /^\d{2}:\d{2}$/;
+                const timeFormatValid = timeValue ? timePattern.test(timeValue) : false;
+                console.log(`\n🕐 [TIME VALIDATION]`);
+                console.log(`   ├── Valore: ${timeValue || 'null/undefined'}`);
+                console.log(`   ├── Presente: ${timeValue ? '✅ SÌ' : '❌ NO'}`);
+                if (timeValue) {
+                  console.log(`   ├── Formato HH:MM: ${timeFormatValid ? '✅ Valido' : '❌ Invalido'}`);
+                  const [hours, minutes] = timeValue.split(':').map(Number);
+                  const hoursValid = hours >= 0 && hours <= 23;
+                  const minutesValid = minutes >= 0 && minutes <= 59;
+                  console.log(`   ├── Ore (0-23): ${hoursValid ? `✅ ${hours}` : `❌ ${hours} fuori range`}`);
+                  console.log(`   └── Minuti (0-59): ${minutesValid ? `✅ ${minutes}` : `❌ ${minutes} fuori range`}`);
+                } else {
+                  console.log(`   └── MOTIVO MANCANZA: L'AI non ha trovato un orario nella conversazione`);
+                }
+                
+                // Validazione PHONE
+                const phoneValue = extractionResult.phone;
+                const phonePattern = /^[\+]?[\d\s\-\.]{8,}$/;
+                const phoneFormatValid = phoneValue ? phonePattern.test(phoneValue.replace(/\s/g, '')) : false;
+                console.log(`\n📞 [PHONE VALIDATION]`);
+                console.log(`   ├── Valore: ${phoneValue || 'null/undefined'}`);
+                console.log(`   ├── Presente: ${phoneValue ? '✅ SÌ' : '❌ NO'}`);
+                if (phoneValue) {
+                  console.log(`   ├── Lunghezza: ${phoneValue.length} caratteri`);
+                  console.log(`   ├── Formato telefono: ${phoneFormatValid ? '✅ Valido' : '⚠️ Formato non standard'}`);
+                  console.log(`   └── Prefisso internazionale: ${phoneValue.startsWith('+') ? '✅ Presente' : '⚠️ Assente'}`);
+                } else {
+                  console.log(`   └── MOTIVO MANCANZA: L'AI non ha trovato un numero di telefono nella conversazione`);
+                }
+                
+                // Validazione EMAIL
+                const emailValue = extractionResult.email;
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                const emailFormatValid = emailValue ? emailPattern.test(emailValue) : false;
+                console.log(`\n📧 [EMAIL VALIDATION]`);
+                console.log(`   ├── Valore: ${emailValue || 'null/undefined'}`);
+                console.log(`   ├── Presente: ${emailValue ? '✅ SÌ' : '❌ NO'}`);
+                if (emailValue) {
+                  console.log(`   ├── Formato email: ${emailFormatValid ? '✅ Valido' : '❌ Invalido'}`);
+                  const [localPart, domain] = emailValue.split('@');
+                  console.log(`   ├── Local part: ${localPart}`);
+                  console.log(`   └── Domain: ${domain}`);
+                } else {
+                  console.log(`   └── MOTIVO MANCANZA: L'AI non ha trovato un'email nella conversazione`);
+                }
+                
+                // Riepilogo finale
+                const missingFields: string[] = [];
+                if (!dateValue) missingFields.push('date');
+                if (!timeValue) missingFields.push('time');
+                if (!phoneValue) missingFields.push('phone');
+                if (!emailValue) missingFields.push('email');
+                
+                console.log(`\n📋 [RIEPILOGO VALIDAZIONE]`);
+                console.log(`   ├── Campi presenti: ${4 - missingFields.length}/4`);
+                console.log(`   ├── Campi mancanti: ${missingFields.length > 0 ? missingFields.join(', ') : 'nessuno'}`);
+                console.log(`   ├── hasAllData (dal servizio): ${extractionResult.hasAllData}`);
+                console.log(`   └── DECISIONE: ${extractionResult.hasAllData ? '✅ PROCEDI con prenotazione' : '❌ ATTENDI più dati dal lead'}`);
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
                 // VALIDAZIONE 1: Check che abbiamo tutti i dati
@@ -2835,7 +2947,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
 
                   // VALIDAZIONE 2: Check che la data sia >= oggi
                   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                  console.log('🔍 [STEP 4] Validating Appointment Date');
+                  console.log('🔍 [STEP 4] Validating Appointment Date (Controllo data passata/futura)');
                   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
                   const appointmentDate = new Date(extracted.date);
@@ -2845,11 +2957,14 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
 
                   console.log(`📅 Appointment date: ${extracted.date} (${appointmentDate.toLocaleDateString('it-IT')})`);
                   console.log(`📅 Today's date: ${today.toISOString().split('T')[0]} (${today.toLocaleDateString('it-IT')})`);
+                  console.log(`📊 Confronto: appointmentDate (${appointmentDate.getTime()}) vs today (${today.getTime()})`);
 
                   if (appointmentDate < today) {
+                    const daysInPast = Math.abs(Math.floor((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
                     console.log(`\n❌ VALIDATION FAILED: Date is in the past!`);
-                    console.log(`   ⏰ ${Math.abs(Math.floor((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))} days ago`);
+                    console.log(`   ⏰ ${daysInPast} ${daysInPast === 1 ? 'giorno' : 'giorni'} fa`);
                     console.log(`   🚫 Appointment REJECTED - will not be created`);
+                    console.log(`   📝 AZIONE: Inviare messaggio di errore al lead`);
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
                     // Invia messaggio WhatsApp automatico che informa l'errore
