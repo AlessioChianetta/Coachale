@@ -4041,7 +4041,7 @@ Esempio: "Secondo il documento 'Listino Prezzi 2024'..."
 `;
   }
 
-  // Calculate formattedToday for booking blocks
+  // Calculate formattedToday for booking blocks AND current date header
   const today = new Date();
   const todayFormatter = new Intl.DateTimeFormat('it-IT', {
     day: 'numeric',
@@ -4054,6 +4054,16 @@ Esempio: "Secondo il documento 'Listino Prezzi 2024'..."
   const todayMonth = parts.find(p => p.type === 'month')?.value || '';
   const todayYear = parts.find(p => p.type === 'year')?.value || '';
   const formattedToday = `${todayDay} ${todayMonth} ${todayYear}`;
+  
+  // Get day of week for complete date context
+  const dayOfWeekFormatter = new Intl.DateTimeFormat('it-IT', {
+    weekday: 'long',
+    timeZone: timezone
+  });
+  const todayDayOfWeek = dayOfWeekFormatter.format(today);
+  
+  // Build current date header block (always included in prompt)
+  const currentDateBlock = `📅 OGGI È: ${todayDayOfWeek} ${formattedToday}`;
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🔍 [TEMPLATE ENGINE] Checking agent instructions...');
@@ -4191,6 +4201,7 @@ ${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
       : '';
 
     // Assemble final prompt in correct order:
+    // 0. Current date (always included - critical for date awareness)
     // 1. Business positioning header (critical context)
     // 2. Personality instructions (tone and style)
     // 3. Authority context (social proof, credibility)
@@ -4202,7 +4213,7 @@ ${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
     // 9. Booking phases (if bookingEnabled)
     // 10. Proactive mode (if enabled)
     // 11. Disqualification block (if disqualificationEnabled)
-    let finalPrompt = businessHeader;
+    let finalPrompt = currentDateBlock + '\n\n' + businessHeader;
     finalPrompt += '\n\n' + personalityInstructions;
     finalPrompt += '\n\n' + authorityContext;
 
