@@ -40,7 +40,8 @@ import {
   AlertCircle,
   ClipboardCheck,
   Wallet,
-  Trash2
+  Trash2,
+  Target
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -2730,7 +2731,12 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       auditData.clients.map(client => {
                         const clientMissing = (client.exerciseResponses?.missing?.length || 0) + 
                                               (client.consultationNotes?.missing?.length || 0) +
-                                              (client.knowledgeDocs?.missing?.length || 0);
+                                              (client.knowledgeDocs?.missing?.length || 0) +
+                                              (client.assignedExercises?.missing?.length || 0) +
+                                              (client.assignedLibrary?.missing?.length || 0) +
+                                              (client.assignedUniversity?.missing?.length || 0) +
+                                              (client.goals?.missing?.length || 0) +
+                                              (client.tasks?.missing?.length || 0);
                         return (
                           <Collapsible key={client.clientId} open={openAuditClients[client.clientId]} onOpenChange={() => toggleAuditClient(client.clientId)}>
                             <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
@@ -2743,6 +2749,97 @@ export default function ConsultantFileSearchAnalyticsPage() {
                               </Badge>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                              {client.assignedExercises?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-blue-700 flex items-center gap-2">
+                                    <Dumbbell className="h-3 w-3" />
+                                    Esercizi Assegnati ({client.assignedExercises.missing.length})
+                                  </p>
+                                  {client.assignedExercises.missing.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <Dumbbell className="h-3 w-3 text-blue-500" />
+                                        <span className="text-sm">{item.title}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.assignedLibrary?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-indigo-700 flex items-center gap-2">
+                                    <BookOpen className="h-3 w-3" />
+                                    Documenti Libreria Assegnati ({client.assignedLibrary.missing.length})
+                                  </p>
+                                  {client.assignedLibrary.missing.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-indigo-50 rounded border border-indigo-200 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <BookOpen className="h-3 w-3 text-indigo-500" />
+                                        <span className="text-sm">{item.title}</span>
+                                        {item.categoryName && (
+                                          <Badge variant="outline" className="text-xs">{item.categoryName}</Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.assignedUniversity?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-amber-700 flex items-center gap-2">
+                                    <GraduationCap className="h-3 w-3" />
+                                    Lezioni University Assegnate ({client.assignedUniversity.missing.length})
+                                  </p>
+                                  {client.assignedUniversity.missing.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-amber-50 rounded border border-amber-200 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <GraduationCap className="h-3 w-3 text-amber-500" />
+                                        <span className="text-sm">{item.title}</span>
+                                        {item.yearName && (
+                                          <Badge variant="outline" className="text-xs">{item.yearName}</Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.goals?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-emerald-700 flex items-center gap-2">
+                                    <Target className="h-3 w-3" />
+                                    Goals ({client.goals.missing.length})
+                                  </p>
+                                  {client.goals.missing.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-emerald-50 rounded border border-emerald-200 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <Target className="h-3 w-3 text-emerald-500" />
+                                        <span className="text-sm">{item.title}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.tasks?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-orange-700 flex items-center gap-2">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    Tasks ({client.tasks.missing.length})
+                                  </p>
+                                  {client.tasks.missing.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-orange-50 rounded border border-orange-200 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-3 w-3 text-orange-500" />
+                                        <span className="text-sm">{item.title}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
                               {client.exerciseResponses?.missing?.length > 0 && (
                                 <div className="space-y-1">
                                   <p className="text-sm font-medium text-gray-700 flex items-center gap-2">

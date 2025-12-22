@@ -2551,6 +2551,11 @@ export class FileSearchSyncService {
       consultationNotes: { total: number; indexed: number; missing: Array<{ id: string; date: Date; summary: string }> };
       knowledgeDocs: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
       hasFinancialDataIndexed: boolean;
+      assignedExercises: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+      assignedLibrary: { total: number; indexed: number; missing: Array<{ id: string; title: string; categoryName: string }> };
+      assignedUniversity: { total: number; indexed: number; missing: Array<{ id: string; title: string; yearName: string }> };
+      goals: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+      tasks: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
     }>;
     whatsappAgents: Array<{
       agentId: string;
@@ -2675,7 +2680,96 @@ export class FileSearchSyncService {
       const clientKnowledge = await db.select({ id: clientKnowledgeDocuments.id, title: clientKnowledgeDocuments.title })
         .from(clientKnowledgeDocuments).where(eq(clientKnowledgeDocuments.clientId, client.id));
 
-      // Get indexed for this client - use simple query without innerJoin
+      // === NEW: Query ASSIGNED content for this client ===
+      
+      // 1. Assigned Exercises - get exercises assigned to client via exerciseAssignments
+      const assignedExerciseIds = clientAssignments.map(a => a.exerciseId);
+      let assignedExercisesList: { id: string; title: string }[] = [];
+      if (assignedExerciseIds.length > 0) {
+        assignedExercisesList = await db.select({ id: exercises.id, title: exercises.title })
+          .from(exercises).where(inArray(exercises.id, assignedExerciseIds));
+      }
+      
+      // 2. Assigned Library - get library docs from assigned categories
+      const libraryCategoryAssigns = await db.select({ 
+        categoryId: libraryCategoryClientAssignments.categoryId 
+      })
+        .from(libraryCategoryClientAssignments)
+        .where(eq(libraryCategoryClientAssignments.clientId, client.id));
+      const assignedCategoryIds = libraryCategoryAssigns.map(a => a.categoryId);
+      
+      let assignedLibraryDocs: { id: string; title: string; categoryId: string | null }[] = [];
+      let categoryNames: Map<string, string> = new Map();
+      if (assignedCategoryIds.length > 0) {
+        assignedLibraryDocs = await db.select({ 
+          id: libraryDocuments.id, 
+          title: libraryDocuments.title,
+          categoryId: libraryDocuments.categoryId
+        })
+          .from(libraryDocuments)
+          .where(inArray(libraryDocuments.categoryId, assignedCategoryIds));
+        
+        // Get category names for display
+        const categories = await db.select({ id: libraryCategories.id, name: libraryCategories.name })
+          .from(libraryCategories)
+          .where(inArray(libraryCategories.id, assignedCategoryIds));
+        categoryNames = new Map(categories.map(c => [c.id, c.name]));
+      }
+      
+      // 3. Assigned University - get lessons from assigned years
+      const universityYearAssigns = await db.select({ 
+        yearId: universityYearClientAssignments.yearId 
+      })
+        .from(universityYearClientAssignments)
+        .where(eq(universityYearClientAssignments.clientId, client.id));
+      const assignedYearIds = universityYearAssigns.map(a => a.yearId);
+      
+      let assignedLessons: { id: string; title: string; yearId: string | null }[] = [];
+      let yearNames: Map<string, string> = new Map();
+      if (assignedYearIds.length > 0) {
+        // Get trimesters for assigned years
+        const trimesters = await db.select({ id: universityTrimesters.id, yearId: universityTrimesters.yearId })
+          .from(universityTrimesters).where(inArray(universityTrimesters.yearId, assignedYearIds));
+        const trimesterIds = trimesters.map(t => t.id);
+        const trimesterToYear = new Map(trimesters.map(t => [t.id, t.yearId]));
+        
+        if (trimesterIds.length > 0) {
+          // Get modules for those trimesters
+          const modules = await db.select({ id: universityModules.id, trimesterId: universityModules.trimesterId })
+            .from(universityModules).where(inArray(universityModules.trimesterId, trimesterIds));
+          const moduleIds = modules.map(m => m.id);
+          const moduleToTrimester = new Map(modules.map(m => [m.id, m.trimesterId]));
+          
+          if (moduleIds.length > 0) {
+            // Get lessons for those modules
+            const lessons = await db.select({ id: universityLessons.id, title: universityLessons.title, moduleId: universityLessons.moduleId })
+              .from(universityLessons).where(inArray(universityLessons.moduleId, moduleIds));
+            
+            // Map lessons to their yearId
+            assignedLessons = lessons.map(l => {
+              const trimesterId = moduleToTrimester.get(l.moduleId);
+              const yearId = trimesterId ? trimesterToYear.get(trimesterId) : null;
+              return { id: l.id, title: l.title, yearId: yearId || null };
+            });
+          }
+        }
+        
+        // Get year names for display
+        const years = await db.select({ id: universityYears.id, title: universityYears.title })
+          .from(universityYears)
+          .where(inArray(universityYears.id, assignedYearIds));
+        yearNames = new Map(years.map(y => [y.id, y.title]));
+      }
+      
+      // 4. Client Goals
+      const clientGoals = await db.select({ id: goals.id, title: goals.title })
+        .from(goals).where(eq(goals.clientId, client.id));
+      
+      // 5. Client Tasks (from consultation_tasks)
+      const clientTasks = await db.select({ id: consultationTasks.id, title: consultationTasks.title })
+        .from(consultationTasks).where(eq(consultationTasks.clientId, client.id));
+
+      // Get indexed documents for this client - use simple query without innerJoin
       const clientIndexedRaw = await db.select({
         sourceType: fileSearchDocuments.sourceType,
         sourceId: fileSearchDocuments.sourceId,
@@ -2684,20 +2778,58 @@ export class FileSearchSyncService {
         .where(and(eq(fileSearchDocuments.clientId, client.id), eq(fileSearchDocuments.status, 'indexed')));
       const clientIndexed = clientIndexedRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
 
+      // Existing indexed sets
       const indexedSubmissionIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
       const indexedConsultationIds = new Set(clientIndexed.filter(d => d.sourceType === 'consultation').map(d => d.sourceId));
       const indexedClientKnowledgeIds = new Set(clientIndexed.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
+      
+      // NEW: Indexed sets for assigned content (using same sourceTypes for synced content)
+      const indexedExerciseTemplateIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
+      const indexedLibraryCopyIds = new Set(clientIndexed.filter(d => d.sourceType === 'library').map(d => d.sourceId));
+      const indexedUniversityCopyIds = new Set(clientIndexed.filter(d => d.sourceType === 'university_lesson').map(d => d.sourceId));
+      // Goals and tasks are saved with sourceId=clientId (one document per client containing all goals/tasks)
+      const hasGoalsIndexed = clientIndexed.some(d => d.sourceType === 'goal' && d.sourceId === client.id);
+      const hasTasksIndexed = clientIndexed.some(d => d.sourceType === 'task' && d.sourceId === client.id);
 
+      // Existing missing calculations
       const submissionsMissing = clientSubmissions.filter(s => !indexedSubmissionIds.has(s.id)).map(s => ({ id: s.id, exerciseTitle: 'Esercizio', submittedAt: s.submittedAt }));
       const consultationsMissing = consultationsWithContent.filter(c => !indexedConsultationIds.has(c.id)).map(c => ({ id: c.id, date: c.scheduledAt, summary: c.notes?.substring(0, 50) || '' }));
       const clientKnowledgeMissing = clientKnowledge.filter(k => !indexedClientKnowledgeIds.has(k.id)).map(k => ({ id: k.id, title: k.title }));
+      
+      // NEW: Missing calculations for assigned content
+      const assignedExercisesMissing = assignedExercisesList.filter(e => !indexedExerciseTemplateIds.has(e.id)).map(e => ({ id: e.id, title: e.title }));
+      const assignedLibraryMissing = assignedLibraryDocs.filter(d => !indexedLibraryCopyIds.has(d.id)).map(d => ({ 
+        id: d.id, 
+        title: d.title, 
+        categoryName: d.categoryId ? (categoryNames.get(d.categoryId) || 'Categoria') : 'Senza categoria'
+      }));
+      const assignedUniversityMissing = assignedLessons.filter(l => !indexedUniversityCopyIds.has(l.id)).map(l => ({ 
+        id: l.id, 
+        title: l.title, 
+        yearName: l.yearId ? (yearNames.get(l.yearId) || 'Anno') : 'Senza anno'
+      }));
+      // Goals/Tasks are synced as single aggregated document per client (not per goal/task)
+      // If goals exist but no goal document indexed, they all need syncing
+      const goalsMissing = (clientGoals.length > 0 && !hasGoalsIndexed) 
+        ? clientGoals.map(g => ({ id: g.id, title: g.title })) 
+        : [];
+      const tasksMissing = (clientTasks.length > 0 && !hasTasksIndexed) 
+        ? clientTasks.map(t => ({ id: t.id, title: t.title })) 
+        : [];
 
-      const clientMissing = submissionsMissing.length + consultationsMissing.length + clientKnowledgeMissing.length;
+      const clientMissing = submissionsMissing.length + consultationsMissing.length + clientKnowledgeMissing.length +
+                            assignedExercisesMissing.length + assignedLibraryMissing.length + assignedUniversityMissing.length +
+                            goalsMissing.length + tasksMissing.length;
       
       // Check if financial data is indexed for this client
       const hasFinancialDataIndexed = clientIndexed.some(d => d.sourceType === 'financial_data');
 
-      if (clientSubmissions.length > 0 || consultationsWithContent.length > 0 || clientKnowledge.length > 0 || hasFinancialDataIndexed) {
+      // Always include clients that have any data to audit
+      const hasAnyData = clientSubmissions.length > 0 || consultationsWithContent.length > 0 || clientKnowledge.length > 0 || 
+                         hasFinancialDataIndexed || assignedExercisesList.length > 0 || assignedLibraryDocs.length > 0 || 
+                         assignedLessons.length > 0 || clientGoals.length > 0 || clientTasks.length > 0;
+
+      if (hasAnyData) {
         clientsAudit.push({
           clientId: client.id,
           clientName: `${client.firstName} ${client.lastName}`,
@@ -2706,6 +2838,11 @@ export class FileSearchSyncService {
           consultationNotes: { total: consultationsWithContent.length, indexed: consultationsWithContent.length - consultationsMissing.length, missing: consultationsMissing },
           knowledgeDocs: { total: clientKnowledge.length, indexed: clientKnowledge.length - clientKnowledgeMissing.length, missing: clientKnowledgeMissing },
           hasFinancialDataIndexed,
+          assignedExercises: { total: assignedExercisesList.length, indexed: assignedExercisesList.length - assignedExercisesMissing.length, missing: assignedExercisesMissing },
+          assignedLibrary: { total: assignedLibraryDocs.length, indexed: assignedLibraryDocs.length - assignedLibraryMissing.length, missing: assignedLibraryMissing },
+          assignedUniversity: { total: assignedLessons.length, indexed: assignedLessons.length - assignedUniversityMissing.length, missing: assignedUniversityMissing },
+          goals: { total: clientGoals.length, indexed: clientGoals.length - goalsMissing.length, missing: goalsMissing },
+          tasks: { total: clientTasks.length, indexed: clientTasks.length - tasksMissing.length, missing: tasksMissing },
         });
         totalClientsMissing += clientMissing;
       }
@@ -2780,7 +2917,8 @@ export class FileSearchSyncService {
     const totalMissing = consultantMissing + totalClientsMissing + totalWhatsappAgentsMissing;
 
     const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total + universityResult.total +
-                      clientsAudit.reduce((sum, c) => sum + c.exerciseResponses.total + c.consultationNotes.total + c.knowledgeDocs.total, 0) +
+                      clientsAudit.reduce((sum, c) => sum + c.exerciseResponses.total + c.consultationNotes.total + c.knowledgeDocs.total +
+                        c.assignedExercises.total + c.assignedLibrary.total + c.assignedUniversity.total + c.goals.total + c.tasks.total, 0) +
                       whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.total, 0);
     const totalIndexed = (libraryResult.total - libraryResult.missing.length) + 
                          (knowledgeBaseResult.total - knowledgeBaseResult.missing.length) +
@@ -2789,7 +2927,12 @@ export class FileSearchSyncService {
                          clientsAudit.reduce((sum, c) => 
                            sum + (c.exerciseResponses.total - c.exerciseResponses.missing.length) + 
                            (c.consultationNotes.total - c.consultationNotes.missing.length) + 
-                           (c.knowledgeDocs.total - c.knowledgeDocs.missing.length), 0) +
+                           (c.knowledgeDocs.total - c.knowledgeDocs.missing.length) +
+                           (c.assignedExercises.total - c.assignedExercises.missing.length) +
+                           (c.assignedLibrary.total - c.assignedLibrary.missing.length) +
+                           (c.assignedUniversity.total - c.assignedUniversity.missing.length) +
+                           (c.goals.total - c.goals.missing.length) +
+                           (c.tasks.total - c.tasks.missing.length), 0) +
                          whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.indexed, 0);
 
     const healthScore = totalDocs > 0 ? Math.round((totalIndexed / totalDocs) * 100) : 100;
@@ -2813,6 +2956,29 @@ export class FileSearchSyncService {
     if (totalWhatsappAgentsMissing > 0) {
       recommendations.push(`Sincronizza ${totalWhatsappAgentsMissing} documenti knowledge degli agenti WhatsApp mancanti`);
     }
+    
+    // Calculate missing assigned content for detailed recommendations
+    const totalAssignedExercisesMissing = clientsAudit.reduce((sum, c) => sum + c.assignedExercises.missing.length, 0);
+    const totalAssignedLibraryMissing = clientsAudit.reduce((sum, c) => sum + c.assignedLibrary.missing.length, 0);
+    const totalAssignedUniversityMissing = clientsAudit.reduce((sum, c) => sum + c.assignedUniversity.missing.length, 0);
+    const totalGoalsMissing = clientsAudit.reduce((sum, c) => sum + c.goals.missing.length, 0);
+    const totalTasksMissing = clientsAudit.reduce((sum, c) => sum + c.tasks.missing.length, 0);
+    
+    if (totalAssignedExercisesMissing > 0) {
+      recommendations.push(`Sincronizza ${totalAssignedExercisesMissing} esercizi assegnati non indicizzati nei private store dei clienti`);
+    }
+    if (totalAssignedLibraryMissing > 0) {
+      recommendations.push(`Sincronizza ${totalAssignedLibraryMissing} documenti libreria assegnati non indicizzati nei private store dei clienti`);
+    }
+    if (totalAssignedUniversityMissing > 0) {
+      recommendations.push(`Sincronizza ${totalAssignedUniversityMissing} lezioni university assegnate non indicizzate nei private store dei clienti`);
+    }
+    if (totalGoalsMissing > 0) {
+      recommendations.push(`Sincronizza ${totalGoalsMissing} obiettivi clienti non indicizzati`);
+    }
+    if (totalTasksMissing > 0) {
+      recommendations.push(`Sincronizza ${totalTasksMissing} task clienti non indicizzati`);
+    }
 
     if (healthScore === 100) {
       recommendations.push('✅ Tutti i contenuti sono indicizzati correttamente');
@@ -2831,6 +2997,11 @@ export class FileSearchSyncService {
     console.log(`   🏋️ Exercises: ${exercisesResult.total - exercisesResult.missing.length}/${exercisesResult.total} indexed`);
     console.log(`   🎓 University: ${universityResult.total - universityResult.missing.length}/${universityResult.total} indexed`);
     console.log(`   👥 Clients: ${clientsAudit.length} with data, ${totalClientsMissing} missing`);
+    console.log(`      📝 Assigned Exercises: ${totalAssignedExercisesMissing} missing`);
+    console.log(`      📖 Assigned Library: ${totalAssignedLibraryMissing} missing`);
+    console.log(`      🎓 Assigned University: ${totalAssignedUniversityMissing} missing`);
+    console.log(`      🎯 Goals: ${totalGoalsMissing} missing`);
+    console.log(`      ✅ Tasks: ${totalTasksMissing} missing`);
     console.log(`   📱 WhatsApp Agents: ${whatsappAgentsAudit.length} agents, ${totalWhatsappAgentsMissing} missing`);
     console.log(`   🏥 Health Score: ${healthScore}%`);
     console.log(`${'═'.repeat(60)}\n`);
