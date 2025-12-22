@@ -772,6 +772,40 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
+  const resetStoresMutation = useMutation({
+    mutationFn: async (type: 'consultant' | 'clients' | 'all') => {
+      const response = await fetch("/api/file-search/reset-stores", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ type }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Reset failed");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/stores"] });
+      toast({
+        title: "Reset completato!",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore reset",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const [openAuditCategories, setOpenAuditCategories] = useState<Record<string, boolean>>({});
   const [openAuditClients, setOpenAuditClients] = useState<Record<string, boolean>>({});
   const [openAuditAgents, setOpenAuditAgents] = useState<Record<string, boolean>>({});
@@ -2285,6 +2319,74 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           {analytics?.summary.totalDocuments || 0} documenti
                         </Badge>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-red-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-red-600">
+                      <Trash2 className="h-5 w-5" />
+                      Migrazione Privacy - Reset Store
+                    </CardTitle>
+                    <CardDescription>
+                      Dopo la correzione del bug di isolamento dati, usa questi pulsanti per pulire gli store e ri-sincronizzare con la logica corretta.
+                      <strong className="block mt-2 text-amber-600">
+                        I dati sensibili dei clienti (consulenze, finanze) ora vengono salvati nei loro store privati invece che nello store condiviso.
+                      </strong>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-700 mb-3">
+                        <strong>Procedura consigliata:</strong>
+                      </p>
+                      <ol className="text-sm text-red-700 list-decimal list-inside space-y-1">
+                        <li>Clicca "Reset Tutti gli Store" per eliminare i dati con la logica vecchia</li>
+                        <li>Torna in alto e clicca "Sincronizza Tutti i Documenti"</li>
+                        <li>I nuovi dati verranno salvati con la logica corretta (privacy isolata)</li>
+                      </ol>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        variant="outline"
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                        onClick={() => resetStoresMutation.mutate('consultant')}
+                        disabled={resetStoresMutation.isPending}
+                      >
+                        {resetStoresMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        Reset Store Consulente
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                        onClick={() => resetStoresMutation.mutate('clients')}
+                        disabled={resetStoresMutation.isPending}
+                      >
+                        {resetStoresMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        Reset Store Clienti
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => resetStoresMutation.mutate('all')}
+                        disabled={resetStoresMutation.isPending}
+                      >
+                        {resetStoresMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        Reset Tutti gli Store
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

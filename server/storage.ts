@@ -1088,10 +1088,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateConsultation(id: string, updates: Partial<Consultation>): Promise<Consultation | undefined> {
+    // Get current consultation to check if status is changing to 'completed'
+    const currentConsultation = await db.select().from(schema.consultations)
+      .where(eq(schema.consultations.id, id))
+      .limit(1);
+    
     const [consultation] = await db.update(schema.consultations)
       .set(updates)
       .where(eq(schema.consultations.id, id))
       .returning();
+    
+    // AUTO-SYNC TRIGGER: When consultation is completed and has content,
+    // automatically sync to client's private File Search store
+    if (consultation && 
+        updates.status === 'completed' && 
+        currentConsultation[0]?.status !== 'completed' &&
+        (consultation.transcript || consultation.notes)) {
+      
+      // Import dynamically to avoid circular dependencies
+      import('./services/file-search-sync-service').then(({ fileSearchSyncService }) => {
+        console.log(`🔄 [AUTO-SYNC] Triggering consultation sync for completed consultation ${id}`);
+        fileSearchSyncService.syncClientConsultationNotes(
+          consultation.id,
+          consultation.clientId,
+          consultation.consultantId
+        ).then(result => {
+          if (result.success) {
+            console.log(`✅ [AUTO-SYNC] Consultation ${id} synced to client private store`);
+          } else {
+            console.warn(`⚠️ [AUTO-SYNC] Failed to sync consultation ${id}: ${result.error}`);
+          }
+        }).catch(err => {
+          console.error(`❌ [AUTO-SYNC] Error syncing consultation ${id}:`, err);
+        });
+      }).catch(err => {
+        console.error(`❌ [AUTO-SYNC] Failed to import file-search-sync-service:`, err);
+      });
+    }
+    
     return consultation || undefined;
   }
 

@@ -1226,7 +1226,28 @@ export class FileSearchService {
         )
       );
       
-      // FIX: If consultant ALSO has a consultantId (meaning they're also a client of another consultant),
+      // PRIVACY FIX: Include ALL client private stores for this consultant
+      // This allows consultants to search across all their clients' consultations,
+      // exercise responses, and other private data that's now properly isolated
+      // Get clients for this consultant and include their stores
+      const consultantClients = await db.query.users.findMany({
+        where: eq(users.consultantId, userId),
+        columns: { id: true },
+      });
+      
+      if (consultantClients.length > 0) {
+        const clientIds = consultantClients.map(c => c.id);
+        conditions.push(
+          and(
+            inArray(fileSearchStores.ownerId, clientIds),
+            eq(fileSearchStores.ownerType, 'client'),
+            eq(fileSearchStores.isActive, true)
+          )
+        );
+        console.log(`🔐 [FileSearch] Consultant ${userId} - including ${clientIds.length} client private stores`);
+      }
+      
+      // If consultant ALSO has a consultantId (meaning they're also a client of another consultant),
       // include their parent consultant's stores too
       if (consultantId && consultantId !== userId) {
         conditions.push(
@@ -1248,7 +1269,7 @@ export class FileSearchService {
         )
       );
       
-      // FIX: Also include client's own private store (where exercises and consultations are indexed)
+      // Include client's own private store (where exercises and consultations are indexed)
       conditions.push(
         and(
           eq(fileSearchStores.ownerId, userId),

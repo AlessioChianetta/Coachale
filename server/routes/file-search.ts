@@ -1509,4 +1509,136 @@ router.get('/sync-events', async (req: Request, res: Response) => {
   });
 });
 
+/**
+ * POST /api/file-search/reset-stores
+ * Reset (delete all documents from) File Search stores for privacy migration
+ * 
+ * Options:
+ * - type: 'consultant' - Reset only consultant's shared store
+ * - type: 'clients' - Reset all client private stores for this consultant
+ * - type: 'all' - Reset both consultant and all client stores
+ * 
+ * This is used after fixing the privacy isolation bug to clear old data
+ * before re-syncing with the corrected logic.
+ */
+router.post('/reset-stores', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { type = 'all' } = req.body;
+    
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`🗑️ [FileSearch Reset] Starting store reset for consultant ${consultantId}`);
+    console.log(`   Type: ${type}`);
+    console.log(`${'═'.repeat(60)}\n`);
+    
+    let consultantDocsDeleted = 0;
+    let clientDocsDeleted = 0;
+    let clientStoresReset = 0;
+    
+    // Get consultant's store
+    if (type === 'consultant' || type === 'all') {
+      const consultantStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, consultantId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+        ),
+      });
+      
+      if (consultantStore) {
+        // Get all documents in the consultant store
+        const consultantDocs = await db.query.fileSearchDocuments.findMany({
+          where: eq(fileSearchDocuments.storeId, consultantStore.id),
+        });
+        
+        console.log(`📦 [Reset] Found ${consultantDocs.length} documents in consultant store`);
+        
+        // Delete each document from Google and database
+        for (const doc of consultantDocs) {
+          try {
+            await fileSearchService.deleteDocument(doc.id, consultantId);
+            consultantDocsDeleted++;
+          } catch (err: any) {
+            console.warn(`⚠️ [Reset] Failed to delete doc ${doc.id}: ${err.message}`);
+          }
+        }
+        
+        // Update store document count
+        await db.update(fileSearchStores)
+          .set({ documentCount: 0, updatedAt: new Date() })
+          .where(eq(fileSearchStores.id, consultantStore.id));
+          
+        console.log(`✅ [Reset] Consultant store reset: ${consultantDocsDeleted} documents deleted`);
+      }
+    }
+    
+    // Get all client stores for this consultant
+    if (type === 'clients' || type === 'all') {
+      // Get all clients of this consultant
+      const clients = await db.select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
+      
+      const clientIds = clients.map(c => c.id);
+      
+      if (clientIds.length > 0) {
+        // Get all client stores
+        const clientStores = await db.query.fileSearchStores.findMany({
+          where: and(
+            inArray(fileSearchStores.ownerId, clientIds),
+            eq(fileSearchStores.ownerType, 'client'),
+          ),
+        });
+        
+        console.log(`📦 [Reset] Found ${clientStores.length} client stores to reset`);
+        
+        for (const store of clientStores) {
+          // Get all documents in this client store
+          const clientDocs = await db.query.fileSearchDocuments.findMany({
+            where: eq(fileSearchDocuments.storeId, store.id),
+          });
+          
+          // Delete each document
+          for (const doc of clientDocs) {
+            try {
+              await fileSearchService.deleteDocument(doc.id, consultantId);
+              clientDocsDeleted++;
+            } catch (err: any) {
+              console.warn(`⚠️ [Reset] Failed to delete client doc ${doc.id}: ${err.message}`);
+            }
+          }
+          
+          // Update store document count
+          await db.update(fileSearchStores)
+            .set({ documentCount: 0, updatedAt: new Date() })
+            .where(eq(fileSearchStores.id, store.id));
+            
+          clientStoresReset++;
+        }
+        
+        console.log(`✅ [Reset] Client stores reset: ${clientStoresReset} stores, ${clientDocsDeleted} documents deleted`);
+      }
+    }
+    
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`✅ [FileSearch Reset] Complete!`);
+    console.log(`   Consultant docs deleted: ${consultantDocsDeleted}`);
+    console.log(`   Client docs deleted: ${clientDocsDeleted}`);
+    console.log(`   Client stores reset: ${clientStoresReset}`);
+    console.log(`${'═'.repeat(60)}\n`);
+    
+    res.json({
+      success: true,
+      message: `Reset completato: ${consultantDocsDeleted + clientDocsDeleted} documenti eliminati`,
+      details: {
+        consultantDocsDeleted,
+        clientDocsDeleted,
+        clientStoresReset,
+      },
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error resetting stores:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

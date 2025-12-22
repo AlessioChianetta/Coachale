@@ -1988,6 +1988,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         autoGradedScore,
         questionGrades: questionGrades.length > 0 ? questionGrades : undefined
       });
+
+      // Trigger async File Search sync for this exercise response (privacy-isolated to client's private store)
+      if (submission.id && assignment.clientId && assignment.consultantId) {
+        fileSearchSyncService.syncClientExerciseResponse(submission.id, assignment.clientId, assignment.consultantId).catch(err => {
+          console.error('[Routes] Failed to sync exercise response to File Search:', err);
+        });
+      }
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }

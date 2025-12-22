@@ -1177,6 +1177,11 @@ export class FileSearchSyncService {
 
   /**
    * Bulk sync all consultations with transcripts for a consultant
+   * 
+   * PRIVACY FIX: Consultations are now synced to each CLIENT's PRIVATE store
+   * instead of the consultant's shared store. This ensures client data isolation.
+   * The consultant can still search all consultations because getStoreNamesForGeneration()
+   * includes all client stores for consultants.
    */
   static async syncAllConsultations(consultantId: string): Promise<{
     total: number;
@@ -1206,7 +1211,8 @@ export class FileSearchSyncService {
       const errors: string[] = [];
 
       console.log(`\n${'═'.repeat(60)}`);
-      console.log(`📞 [FileSync] Syncing ${consultationsWithContent.length} consultations for consultant ${consultantId}`);
+      console.log(`📞 [FileSync] Syncing ${consultationsWithContent.length} consultations to CLIENT PRIVATE stores`);
+      console.log(`🔐 [FileSync] Privacy mode: each consultation goes to the client's private store`);
       console.log(`${'═'.repeat(60)}\n`);
       syncProgressEmitter.emitStart(consultantId, 'consultations', consultationsWithContent.length);
 
@@ -1220,7 +1226,12 @@ export class FileSearchSyncService {
           continue;
         }
 
-        const result = await this.syncConsultation(consultation.id, consultantId);
+        // PRIVACY FIX: Sync to CLIENT's private store instead of consultant's shared store
+        const result = await this.syncClientConsultationNotes(
+          consultation.id, 
+          consultation.clientId, 
+          consultantId
+        );
         processed++;
         if (result.success) {
           synced++;
@@ -1238,7 +1249,7 @@ export class FileSearchSyncService {
       }
 
       console.log(`\n${'═'.repeat(60)}`);
-      console.log(`✅ [FileSync] Consultations sync complete`);
+      console.log(`✅ [FileSync] Consultations sync complete (CLIENT PRIVATE stores)`);
       console.log(`   📊 Total with content: ${consultationsWithContent.length}`);
       console.log(`   ✅ Synced: ${synced}`);
       console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
