@@ -261,7 +261,13 @@ RISPONDI SOLO con un oggetto JSON nel seguente formato:
   "email": "email@example.com" (null se non fornita),
   "name": "nome del lead" (null se non fornito),
   "confidence": "high/medium/low",
-  "hasAllData": true/false (true solo se hai data, ora, telefono ED email)
+  "hasAllData": true/false (true solo se hai data, ora, telefono ED email),
+  "reasoning": {
+    "date": "Perché hai estratto/non estratto la data - cita il messaggio esatto",
+    "time": "Perché hai estratto/non estratto l'orario - cita il messaggio esatto",
+    "phone": "Perché hai estratto/non estratto il telefono - cita il messaggio esatto",
+    "email": "Perché hai estratto/non estratto l'email - cita il messaggio esatto"
+  }
 }
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -660,7 +666,10 @@ export async function extractBookingDataFromConversation(
   console.log(`\n🔍 [BOOKING SERVICE] Extracting data from ${messages.length} messages`);
   console.log(`   Mode: ${existingBooking ? 'MODIFICATION' : 'NEW BOOKING'}`);
   console.log(`   Timezone: ${timezone}`);
-  console.log(`   Conversation context:\n${conversationContext.substring(0, 500)}...`);
+  console.log(`   📜 [FULL CONVERSATION] Messaggi passati all'AI per estrazione:`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(conversationContext);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // ACCUMULATOR: Load existing state for new bookings (not modifications)
@@ -714,9 +723,20 @@ export async function extractBookingDataFromConversation(
         return result;
       }
     } else {
-      const rawResult = parseJsonResponse<BookingExtractionResult>(responseText);
+      const rawResult = parseJsonResponse<BookingExtractionResult & { reasoning?: { date?: string; time?: string; phone?: string; email?: string } }>(responseText);
       if (rawResult) {
         console.log(`   Parsed extraction result (raw): hasAllData=${rawResult.hasAllData}, date=${rawResult.date}, time=${rawResult.time}`);
+        
+        // Log del ragionamento AI per ogni campo
+        if (rawResult.reasoning) {
+          console.log(`\n🧠 [AI REASONING] Spiegazione decisioni AI:`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`   📅 DATE:  ${rawResult.reasoning.date || 'Nessuna spiegazione'}`);
+          console.log(`   🕐 TIME:  ${rawResult.reasoning.time || 'Nessuna spiegazione'}`);
+          console.log(`   📞 PHONE: ${rawResult.reasoning.phone || 'Nessuna spiegazione'}`);
+          console.log(`   📧 EMAIL: ${rawResult.reasoning.email || 'Nessuna spiegazione'}`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        }
         
         // ═══════════════════════════════════════════════════════════════════════════════
         // ACCUMULATOR: Merge with existing state and save
