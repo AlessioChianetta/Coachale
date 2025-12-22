@@ -1,0 +1,1795 @@
+
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+
+🔔🔔🔔 [WEBHOOK] Received at 2025-12-22T20:53:34.630Z 🔔🔔🔔
+📞 From: whatsapp:+393519272875
+📱 To: whatsapp:+393500220129
+💬 Body: Eh guadagno per ora 1k al mese...
+🆔 MessageSid: SM1e986db097a3d6123865207800036a38
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ [ANTI-DUP] Messaggio SM1e986db097a3d6123865207800036a38 è nuovo, procedo con l'elaborazione
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+📞 Routing message to agent: Receptionist Principale (+393500220129)
+🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for 0b82426a-7385-419f-bd19-9b0cc923a955
+📨 Message queued for processing: +393519272875 (twilioSid: SM1e986db097a3d6123865207800036a38)
+🔍 [SCHEDULE] scheduleMessageProcessing called for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [SCHEDULE] Timer set for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, will fire in 4000ms
+8:53:35 PM [express] POST /api/whatsapp/webhook 200 in 823ms
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+8:53:35 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:53:36 PM [express] GET /api/whatsapp/conversations 304 in 1218ms :: {"conversations":[{"id":"0b824…
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:51:11.000Z
+📬 [WHATSAPP POLLING] Processing 1 new message(s) for agent Receptionist Principale
+📥 Processing message SM1e986db097a3d6123865207800036a38: whatsapp:+393519272875 -> Eh guadagno per ora 1k al mese...
+⏭️ [ANTI-DUP] Messaggio SM1e986db097a3d6123865207800036a38 già in coda (whatsappPendingMessages) - skipping
+✅ [WATERMARK] Updated for agent Receptionist Principale - latest seen: 2025-12-22T20:53:35.000Z (processed: 1)
+✅ [WHATSAPP POLLING] Poll cycle complete
+⚡ [SCHEDULE] Timer fired for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, enqueueing...
+📥 [ENQUEUE] Adding to queue: +393519272875 for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [ENQUEUE] Queue size for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: 1
+🚀 [ENQUEUE] Starting queue processing for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📋 [PENDING] Found 1 pending messages for conversation 0b82426a-7385-419f-bd19-9b0cc923a955 (phone: +393519272875)
+⏱️ [TIMING] Polling latency: 4.3s (from webhook to processing)
+🔍 [PENDING] First message twilioSid: SM1e986db097a3d6123865207800036a38, simulated: false, text: "Eh guadagno per ora 1k al mese..."
+🔍 [PARTICIPANT TYPE] unknown
+✅ [CONFIG] Using agent from conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+🎯 [AGENT TYPE] Agent type: reactive_lead, isProactive: false
+✅ AI is ENABLED and within working hours for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - proceeding with AI response
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 0b82426a-7385-419f-bd19-9b0cc923a955
+👤 User Type: LEAD
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message c80c1425-5790-4b94-8120-4394802964fd: "Eh guadagno per ora 1k al mese..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "Eh guadagno per ora 1k al mese"
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+
+🚨 Detecting objections in message...
+🔄 [OBJECTION] Attempt 1/3
+🔑 [OBJECTION] Using current API key: superadm...
+🤖 [OBJECTION] Calling detectObjection() with provider: studio
+🧠 [OBJECTION-DETECTOR] Using model: gemini-3-flash-preview with thinking: low
+8:53:41 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+8:53:42 PM [express] GET /api/whatsapp/conversations 200 in 599ms :: {"conversations":[{"id":"0b8242…
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+⚠️ [OBJECTION] ✅ SUCCESS - Objection detected: price (confidence: 0.95)
+⏱️  [TIMING] Objection detection: 3139ms
+👤 Fetching/creating lead profile...
+✅ Lead profile: difficult (difficulty: 8.1/10)
+📋 Fetching recent objections...
+✅ Found 0 recent objection(s)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+💾 [APPOINTMENT CONTEXT] Retrieved 9 saved slots from database
+📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow
+✅ [APPOINTMENT CONTEXT] Final state: 9 slots available for AI prompt
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=false, conversation.proactiveLeadId=null
+ℹ️ [PROACTIVE CHECK] This is a REACTIVE lead (isProactiveLead=false)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: true
+   agentInstructions length: 14957 chars
+   selectedTemplate: receptionist
+✅ [TEMPLATE ENGINE] Using CUSTOM TEMPLATE from database
+   Template preview: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
+━━━━━━...
+✅ [FEATURE BLOCKS] Conditional injection summary:
+   - Knowledge Base: DISABLED (no items)
+   - Booking: ENABLED
+   - Objection Handling: ENABLED
+   - Disqualification: ENABLED
+   - Upselling: DISABLED (no block yet)
+📤 [SYSTEM PROMPT] Ready (30513 chars): "📅 OGGI È: lunedì 22 dicembre 2025  Sei l'assistente di Orbitale. Il cliente è un LEAD CALDO che ha ..."
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 9 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~7,629 tokens (30,513 chars)
+   💬 User Message: ~8 tokens (30 chars)
+   📜 History: ~352 tokens (1,406 chars)
+   🔢 TOTALE INPUT: ~7,989 tokens
+
+🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: Knowledge Base Consulente
+   📦 Store: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   📄 Documents: 1002
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 2133ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ response.text is a property - using it...
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+📝 Extracted text length: 545
+📝 Extracted text preview: Capisco, quindi al momento siamo a circa 1.000€ al mese. Grazie per la sincerità, è un punto di partenza chiaro su cui lavorare. 👍
+
+Passare da 1k a 10k è un bel salto, ma il Metodo ORBITALE serve pro
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "Receptionist Principale":
+   ├── System Prompt: 7,629 tokens
+   ├── Conversation History: 442 tokens
+   ├── User Message: 8 tokens
+   └── TOTAL INPUT: 8,079 tokens
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~137 tokens (545 chars)
+   🔢 TOTALE (input + output): ~8,126 tokens
+   ⏱️  Tempo di risposta: 2133ms
+   💰 Costo stimato: $0.016252 (input + output)
+
+✅ [STEP 8] Gemini response received: "Capisco, quindi al momento siamo a circa 1.000€ al mese. Grazie per la sincerità, è un punto di part..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: 0b23f320-9654-4530-b13a-2cd948c8409f (timing: 2133ms Gemini, 6971ms total)
+🚩 [OBJECTION TRACKING] Detected price objection
+✅ [OBJECTION TRACKING] Client profile updated
+🎛️ [AUDIO DECISION] Mode: mirror, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=true, mode=mirror, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+8:53:47 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+✅ Using agent from existing conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Receptionist Principale
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Receptionist Principale)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393519272875
+   Text length: 545 chars
+
+📝 Message content:
+────────────────────────────────────────────────────────────
+Capisco, quindi al momento siamo a circa 1.000€ al mese. Grazie per la sincerità, è un punto di partenza chiaro su cui lavorare. 👍
+
+Passare da 1k a 10k è un bel salto, ma il Metodo ORBITALE serve proprio a questo: creare un sistema logico per far crescere il proprio patrimonio e le proprie entrate in modo misurabile.
+
+Prima di tutto, però, dimmi una cosa: secondo te, qual è l'ostacolo più grande che oggi ti impedisce di superare quella soglia di 1.000€? È un problema di numero di clienti, di prezzi, o magari di tempo che non basta mai? 😊
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766436827444_vq9f8o
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+💾 [APPOINTMENT BOOKING] Retrieved 9 proposed slots from database
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+8:53:47 PM [express] GET /api/whatsapp/conversations 200 in 608ms :: {"conversations":[{"id":"0b8242…
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+   ⏭️ [PRE-CHECK] No clear booking indicators - skipping
+   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "Eh guadagno per ora 1k al mese..."
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 Objection Detection:      3139ms  (36.1%)
+🤖 Gemini API Call:          2133ms  (24.5%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:               8695ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:53:52 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+8:53:53 PM [express] GET /api/whatsapp/conversations 304 in 609ms :: {"conversations":[{"id":"0b8242…
+
+🔔🔔🔔 [WEBHOOK] Received at 2025-12-22T20:53:58.001Z 🔔🔔🔔
+📞 From: whatsapp:+393519272875
+📱 To: whatsapp:+393500220129
+💬 Body: Non so come fare...
+🆔 MessageSid: SM7daf1d421cbd1090abeaa5a9cffe1c47
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [ANTI-DUP] Messaggio SM7daf1d421cbd1090abeaa5a9cffe1c47 è nuovo, procedo con l'elaborazione
+📞 Routing message to agent: Receptionist Principale (+393500220129)
+🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for 0b82426a-7385-419f-bd19-9b0cc923a955
+📨 Message queued for processing: +393519272875 (twilioSid: SM7daf1d421cbd1090abeaa5a9cffe1c47)
+🔍 [SCHEDULE] scheduleMessageProcessing called for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [SCHEDULE] Timer set for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, will fire in 4000ms
+8:53:58 PM [express] POST /api/whatsapp/webhook 200 in 816ms
+8:53:59 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:53:59 PM [express] GET /api/whatsapp/conversations 304 in 503ms :: {"conversations":[{"id":"0b8242…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚡ [SCHEDULE] Timer fired for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, enqueueing...
+📥 [ENQUEUE] Adding to queue: +393519272875 for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [ENQUEUE] Queue size for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: 1
+🚀 [ENQUEUE] Starting queue processing for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📋 [PENDING] Found 1 pending messages for conversation 0b82426a-7385-419f-bd19-9b0cc923a955 (phone: +393519272875)
+⏱️ [TIMING] Polling latency: 4.3s (from webhook to processing)
+🔍 [PENDING] First message twilioSid: SM7daf1d421cbd1090abeaa5a9cffe1c47, simulated: false, text: "Non so come fare..."
+🔍 [PARTICIPANT TYPE] unknown
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+✅ [CONFIG] Using agent from conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+🎯 [AGENT TYPE] Agent type: reactive_lead, isProactive: false
+✅ AI is ENABLED and within working hours for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - proceeding with AI response
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 0b82426a-7385-419f-bd19-9b0cc923a955
+👤 User Type: LEAD
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message 002b423d-8cf2-41d7-b3ff-d23707ac86cf: "Non so come fare..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "Non so come fare"
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+
+🚨 Detecting objections in message...
+🔄 [OBJECTION] Attempt 1/3
+🔑 [OBJECTION] Using current API key: superadm...
+🤖 [OBJECTION] Calling detectObjection() with provider: studio
+🧠 [OBJECTION-DETECTOR] Using model: gemini-3-flash-preview with thinking: low
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+8:54:04 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+8:54:05 PM [express] GET /api/whatsapp/conversations 200 in 498ms :: {"conversations":[{"id":"0b8242…
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:53:58.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T20:53:58.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+⚠️ [OBJECTION] ✅ SUCCESS - Objection detected: other (confidence: 0.9)
+⏱️  [TIMING] Objection detection: 5306ms
+👤 Fetching/creating lead profile...
+✅ Lead profile: difficult (difficulty: 8.1/10)
+📋 Fetching recent objections...
+✅ Found 1 recent objection(s)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+💾 [APPOINTMENT CONTEXT] Retrieved 9 saved slots from database
+📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow
+✅ [APPOINTMENT CONTEXT] Final state: 9 slots available for AI prompt
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=false, conversation.proactiveLeadId=null
+ℹ️ [PROACTIVE CHECK] This is a REACTIVE lead (isProactiveLead=false)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: true
+   agentInstructions length: 14957 chars
+   selectedTemplate: receptionist
+✅ [TEMPLATE ENGINE] Using CUSTOM TEMPLATE from database
+   Template preview: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
+━━━━━━...
+✅ [FEATURE BLOCKS] Conditional injection summary:
+   - Knowledge Base: DISABLED (no items)
+   - Booking: ENABLED
+   - Objection Handling: ENABLED
+   - Disqualification: ENABLED
+   - Upselling: DISABLED (no block yet)
+📤 [SYSTEM PROMPT] Ready (30715 chars): "📅 OGGI È: lunedì 22 dicembre 2025  Sei l'assistente di Orbitale. Il cliente è un LEAD CALDO che ha ..."
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 11 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~7,679 tokens (30,715 chars)
+   💬 User Message: ~4 tokens (16 chars)
+   📜 History: ~492 tokens (1,967 chars)
+   🔢 TOTALE INPUT: ~8,175 tokens
+
+🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: Knowledge Base Consulente
+   📦 Store: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   📄 Documents: 1002
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+8:54:10 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:54:11 PM [express] GET /api/whatsapp/conversations 304 in 501ms :: {"conversations":[{"id":"0b8242…
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 1701ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ response.text is a property - using it...
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+📝 Extracted text length: 490
+📝 Extracted text preview: Ti capisco perfettamente, a volte ci si sente proprio in un vicolo cieco quando manca un sistema chiaro da seguire. È frustrante avere la voglia di fare ma non avere la "mappa" per orientarsi. 🧭
+
+Per
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "Receptionist Principale":
+   ├── System Prompt: 7,679 tokens
+   ├── Conversation History: 602 tokens
+   ├── User Message: 4 tokens
+   └── TOTAL INPUT: 8,285 tokens
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~123 tokens (490 chars)
+   🔢 TOTALE (input + output): ~8,298 tokens
+   ⏱️  Tempo di risposta: 1702ms
+   💰 Costo stimato: $0.016596 (input + output)
+
+✅ [STEP 8] Gemini response received: "Ti capisco perfettamente, a volte ci si sente proprio in un vicolo cieco quando manca un sistema chi..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: c039b05d-89f6-4ed1-a6f6-a26e69a5ce4b (timing: 1702ms Gemini, 8514ms total)
+🚩 [OBJECTION TRACKING] Detected other objection
+✅ [OBJECTION TRACKING] Client profile updated
+🎛️ [AUDIO DECISION] Mode: mirror, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=true, mode=mirror, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+✅ Using agent from existing conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Receptionist Principale
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Receptionist Principale)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393519272875
+   Text length: 486 chars
+
+📝 Message content:
+────────────────────────────────────────────────────────────
+Ti capisco perfettamente, a volte ci si sente proprio in un vicolo cieco quando manca un sistema chiaro da seguire. È frustrante avere la voglia di fare ma non avere la "mappa" per orientarsi. 🧭
+
+Però guarda, se potessimo aiutarti ad arrivare anche solo alla metà del tuo obiettivo – quindi a 5.000€ al mese – ci dedicheresti 30 minuti del tuo tempo in una consulenza gratuita per capire insieme se e come il Metodo ORBITALE può aiutarti concretamente a sbloccare questa situazione? 😊
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766436852257_eqzj7s
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+💾 [APPOINTMENT BOOKING] Retrieved 9 proposed slots from database
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+   ⏭️ [PRE-CHECK] No clear booking indicators - skipping
+   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "Non so come fare..."
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 Objection Detection:      5306ms  (52.2%)
+🤖 Gemini API Call:          1701ms  (16.7%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:              10157ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:54:16 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+8:54:17 PM [express] GET /api/whatsapp/conversations 200 in 605ms :: {"conversations":[{"id":"0b8242…
+8:54:22 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:54:23 PM [express] GET /api/whatsapp/conversations 304 in 506ms :: {"conversations":[{"id":"0b8242…
+8:54:28 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:54:28 PM [express] GET /api/whatsapp/conversations 304 in 510ms :: {"conversations":[{"id":"0b8242…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+8:54:33 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:54:34 PM [express] GET /api/whatsapp/conversations 304 in 535ms :: {"conversations":[{"id":"0b8242…
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:53:58.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T20:53:58.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+🔔🔔🔔 [WEBHOOK] Received at 2025-12-22T20:54:37.281Z 🔔🔔🔔
+📞 From: whatsapp:+393519272875
+📱 To: whatsapp:+393500220129
+💬 Body: Si...
+🆔 MessageSid: SM22d09f9e7a15d07f59b111db27a2f603
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [ANTI-DUP] Messaggio SM22d09f9e7a15d07f59b111db27a2f603 è nuovo, procedo con l'elaborazione
+📞 Routing message to agent: Receptionist Principale (+393500220129)
+🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for 0b82426a-7385-419f-bd19-9b0cc923a955
+📨 Message queued for processing: +393519272875 (twilioSid: SM22d09f9e7a15d07f59b111db27a2f603)
+🔍 [SCHEDULE] scheduleMessageProcessing called for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [SCHEDULE] Timer set for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, will fire in 4000ms
+8:54:38 PM [express] POST /api/whatsapp/webhook 200 in 835ms
+8:54:39 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:54:40 PM [express] GET /api/whatsapp/conversations 304 in 600ms :: {"conversations":[{"id":"0b8242…
+⚡ [SCHEDULE] Timer fired for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, enqueueing...
+📥 [ENQUEUE] Adding to queue: +393519272875 for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [ENQUEUE] Queue size for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: 1
+🚀 [ENQUEUE] Starting queue processing for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📋 [PENDING] Found 1 pending messages for conversation 0b82426a-7385-419f-bd19-9b0cc923a955 (phone: +393519272875)
+⏱️ [TIMING] Polling latency: 4.3s (from webhook to processing)
+🔍 [PENDING] First message twilioSid: SM22d09f9e7a15d07f59b111db27a2f603, simulated: false, text: "Si..."
+🔍 [PARTICIPANT TYPE] unknown
+✅ [CONFIG] Using agent from conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+🎯 [AGENT TYPE] Agent type: reactive_lead, isProactive: false
+✅ AI is ENABLED and within working hours for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - proceeding with AI response
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 0b82426a-7385-419f-bd19-9b0cc923a955
+👤 User Type: LEAD
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message 06fa6320-5a57-4deb-bfe9-5146d9778be0: "Si..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "Si"
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+
+🚨 Detecting objections in message...
+🔄 [OBJECTION] Attempt 1/3
+🔑 [OBJECTION] Using current API key: superadm...
+🤖 [OBJECTION] Calling detectObjection() with provider: studio
+🧠 [OBJECTION-DETECTOR] Using model: gemini-3-flash-preview with thinking: low
+8:54:45 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ [OBJECTION] ✅ SUCCESS - No objections detected
+⏱️  [TIMING] Objection detection: 2974ms
+👤 Fetching/creating lead profile...
+8:54:46 PM [express] GET /api/whatsapp/conversations 200 in 597ms :: {"conversations":[{"id":"0b8242…
+✅ Lead profile: difficult (difficulty: 8.5/10)
+📋 Fetching recent objections...
+✅ Found 2 recent objection(s)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+💾 [APPOINTMENT CONTEXT] Retrieved 9 saved slots from database
+📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow
+✅ [APPOINTMENT CONTEXT] Final state: 9 slots available for AI prompt
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=false, conversation.proactiveLeadId=null
+ℹ️ [PROACTIVE CHECK] This is a REACTIVE lead (isProactiveLead=false)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: true
+   agentInstructions length: 14957 chars
+   selectedTemplate: receptionist
+✅ [TEMPLATE ENGINE] Using CUSTOM TEMPLATE from database
+   Template preview: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
+━━━━━━...
+✅ [FEATURE BLOCKS] Conditional injection summary:
+   - Knowledge Base: DISABLED (no items)
+   - Booking: ENABLED
+   - Objection Handling: ENABLED
+   - Disqualification: ENABLED
+   - Upselling: DISABLED (no block yet)
+📤 [SYSTEM PROMPT] Ready (30788 chars): "📅 OGGI È: lunedì 22 dicembre 2025  Sei l'assistente di Orbitale. Il cliente è un LEAD CALDO che ha ..."
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 13 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~7,697 tokens (30,788 chars)
+   💬 User Message: ~1 tokens (2 chars)
+   📜 History: ~615 tokens (2,459 chars)
+   🔢 TOTALE INPUT: ~8,313 tokens
+
+🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: Knowledge Base Consulente
+   📦 Store: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   📄 Documents: 1002
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 1021ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ response.text is a property - using it...
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+📝 Extracted text length: 108
+📝 Extracted text preview: Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze.
+
+Ti va meglio mattina o pomeriggio? 😊
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "Receptionist Principale":
+   ├── System Prompt: 7,697 tokens
+   ├── Conversation History: 745 tokens
+   ├── User Message: 1 tokens
+   └── TOTAL INPUT: 8,443 tokens
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~27 tokens (108 chars)
+   🔢 TOTALE (input + output): ~8,340 tokens
+   ⏱️  Tempo di risposta: 1021ms
+   💰 Costo stimato: $0.016680 (input + output)
+
+✅ [STEP 8] Gemini response received: "Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze.
+
+Ti va meglio mattina o pomeri..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: c147537a-2ad6-4593-a0ed-fc8c8782f989 (timing: 1021ms Gemini, 6290ms total)
+🎛️ [AUDIO DECISION] Mode: mirror, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=true, mode=mirror, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+✅ Using agent from existing conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Receptionist Principale
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Receptionist Principale)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393519272875
+   Text length: 108 chars
+
+📝 Message content:
+────────────────────────────────────────────────────────────
+Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze.
+
+Ti va meglio mattina o pomeriggio? 😊
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766436888811_63ys3s
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+💾 [APPOINTMENT BOOKING] Retrieved 9 proposed slots from database
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+   ⏭️ [PRE-CHECK] Short message without booking context - skipping
+   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "Si..."
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 Objection Detection:      2974ms  (40.1%)
+🤖 Gemini API Call:          1021ms  (13.8%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:               7412ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:54:51 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+8:54:52 PM [express] GET /api/whatsapp/conversations 200 in 602ms :: {"conversations":[{"id":"0b8242…
+8:54:56 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:54:58 PM [express] GET /api/whatsapp/conversations 304 in 603ms :: {"conversations":[{"id":"0b8242…
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-12-22T20:55:00.031Z
+⏰ [FOLLOWUP-SCHEDULER] HOT/WARM evaluation cycle triggered
+🔍 [FOLLOWUP-SCHEDULER] Starting HOT/WARM follow-up evaluation cycle...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [CALENDAR SYNC] Syncing 1 consultant(s)...
+
+🔄 [CALENDAR SYNC] Starting sync for consultant c2146759-f08a-430a-afdf-701bbc674300
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+🔗 [GOOGLE CALENDAR] Using GLOBAL OAuth credentials. Redirect URI: https://d510e8a5-b707-48d3-8108-750de3aaa9d9-00-3bx3nu4sv28lx.janeway.replit.dev/api/calendar-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+🧠 [FOLLOWUP-SCHEDULER] AI-ONLY mode: Found 5 consultants with active WhatsApp configs
+✅ [FILTER-CHECK] Excluding closed states: 'closed_won', 'closed_lost' from candidate search
+🌡️ [FOLLOWUP-SCHEDULER] Filtering by temperature: hot, warm
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+📊 [CANDIDATE] 63f57f54-4687-4442-b35d-9feb17d0a105: leadNeverResponded=false, hoursSinceLastInbound=2.9h, lastInbound=2025-12-22T17:59:50.700Z
+✅ [CALENDAR SYNC] No confirmed appointments to sync for consultant c2146759-f08a-430a-afdf-701bbc674300 in the next 90 days
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+📊 [CANDIDATE] 0b82426a-7385-419f-bd19-9b0cc923a955: leadNeverResponded=false, hoursSinceLastInbound=0.0h, lastInbound=2025-12-22T20:54:42.935Z
+
+✅ [CALENDAR SYNC] Sync cycle complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 [CANDIDATE] 543129a3-2425-4a46-b85f-99de1d5546ca: leadNeverResponded=false, hoursSinceLastInbound=1.6h, lastInbound=2025-12-22T19:21:08.362Z
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+📊 [FOLLOWUP-SCHEDULER] Found 1 HOT/WARM candidate conversations
+🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation 0b82426a-7385-419f-bd19-9b0cc923a955
+   State: new, Days silent: 0, Hours silent: 0.1
+   📊 Follow-ups: 0 total | 🆕 Consecutive no-reply: 0/3 → Dormancy
+   😴 Status: ACTIVE
+   📋 Applicable rules: 0 (Sistema AI attivo - le regole sono opzionali)
+🤖 [FOLLOWUP-SCHEDULER] Nessuna regola esplicita - Sistema AI "Marco" attivo per 0b82426a-7385-419f-bd19-9b0cc923a955
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+8:55:02 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+🧑‍💼 [FOLLOWUP-ENGINE] Human-Like AI evaluation for conversation 0b82426a-7385-419f-bd19-9b0cc923a955
+   State: new, Days silent: 0, Follow-ups: 0/5
+   Mode: AI-ONLY (no hardcoded rules)
+📜 [FOLLOWUP-ENGINE] Found 3 previous evaluations for context
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🚀 [FOLLOWUP-ENGINE] Using Google AI Studio for evaluation
+[AI] Using model: gemini-3-flash-preview with thinking: low
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+8:55:04 PM [express] GET /api/whatsapp/conversations 304 in 612ms :: {"conversations":[{"id":"0b8242…
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ [FOLLOWUP-ENGINE] Decision: skip (confidence: 0.98)
+   Reasoning: Tempo dall'ultimo messaggio: 0.08 ore. Il lead ha risposto positivamente all'invito per la consulenza meno di 10 minuti fa. L'AI ha già inviato l'ultima domanda per definire la fascia oraria ('mattina o pomeriggio'). Inviare un altro messaggio ora risulterebbe pressante e ridondante. Si attende la risposta del lead.
+   Latency: 2472ms
+⚠️ [FOLLOWUP-SCHEDULER] Invalid stateTransition suggested by AI: "discovery" - ignoring
+📝 [AI-UPDATES] Applying 2 AI-suggested update(s) for 0b82426a-7385-419f-bd19-9b0cc923a955:
+   • engagementScore: 50 → 85
+   • conversionProbability: 0.50 → 0.85
+🔄 [FOLLOWUP-ENGINE] Updating conversation state for 0b82426a-7385-419f-bd19-9b0cc923a955
+   Updates: {
+  "engagementScore": 85,
+  "conversionProbability": 0.85
+}
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+✅ [FOLLOWUP-ENGINE] Conversation state updated successfully
+📝 [FOLLOWUP-ENGINE] Logging decision for conversation 0b82426a-7385-419f-bd19-9b0cc923a955
+✅ [FOLLOWUP-ENGINE] Decision logged successfully
+🔄 [FOLLOWUP-ENGINE] Updating conversation state for 0b82426a-7385-419f-bd19-9b0cc923a955
+   Updates: {
+  "lastAiEvaluationAt": "2025-12-22T20:55:06.083Z",
+  "aiRecommendation": "Tempo dall'ultimo messaggio: 0.08 ore. Il lead ha risposto positivamente all'invito per la consulenza meno di 10 minuti fa. L'AI ha già inviato l'ultima domanda per definire la fascia oraria ('mattina o pomeriggio'). Inviare un altro messaggio ora risulterebbe pressante e ridondante. Si attende la risposta del lead."
+}
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:54:38.000Z
+✅ [FOLLOWUP-ENGINE] Conversation state updated successfully
+⏭️ [FOLLOWUP-SCHEDULER] Skipped follow-up for 0b82426a-7385-419f-bd19-9b0cc923a955: Tempo dall'ultimo messaggio: 0.08 ore. Il lead ha risposto positivamente all'invito per la consulenza meno di 10 minuti fa. L'AI ha già inviato l'ultima domanda per definire la fascia oraria ('mattina o pomeriggio'). Inviare un altro messaggio ora risulterebbe pressante e ridondante. Si attende la risposta del lead.
+[FOLLOWUP-SCHEDULER] Evaluation Cycle cycle_1766436900034_a0t79c: 6.252s
+📈 [FOLLOWUP-SCHEDULER] HOT/WARM evaluation cycle completed
+   ⏱️  Duration: 6252ms
+   📊 Processed: 1/1
+   🌡️  Temperature updates: 0
+   📅 Scheduled: 0
+   ⏭️  Skipped: 1
+   🛑 Stopped: 0
+   ❌ Errors: 0
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+📊 [FOLLOWUP-SCHEDULER] Cycle Metrics Report
+📊 [FOLLOWUP-SCHEDULER] ───────────────────────────────────────
+📊 [FOLLOWUP-SCHEDULER] Timestamp: 2025-12-22T20:55:06.286Z
+📊 [FOLLOWUP-SCHEDULER] Cycle ID: cycle_1766436900034_a0t79c
+📊 [FOLLOWUP-SCHEDULER] Type: evaluation_hot/warm
+📊 [FOLLOWUP-SCHEDULER] Duration: 6252ms
+📊 [FOLLOWUP-SCHEDULER] Processed: 1
+📊 [FOLLOWUP-SCHEDULER] Success: 0
+📊 [FOLLOWUP-SCHEDULER] Errors: 0
+📊 [FOLLOWUP-SCHEDULER] Skipped: 1
+📊 [FOLLOWUP-SCHEDULER] Rate Limited: 0
+📊 [FOLLOWUP-SCHEDULER] Error Rate: 0.0%
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T20:54:38.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+8:55:08 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:55:09 PM [express] GET /api/whatsapp/conversations 304 in 607ms :: {"conversations":[{"id":"0b8242…
+8:55:13 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:55:15 PM [express] GET /api/whatsapp/conversations 304 in 605ms :: {"conversations":[{"id":"0b8242…
+8:55:19 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:55:21 PM [express] GET /api/whatsapp/conversations 304 in 604ms :: {"conversations":[{"id":"0b8242…
+8:55:25 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:55:27 PM [express] GET /api/whatsapp/conversations 304 in 606ms :: {"conversations":[{"id":"0b8242…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+8:55:31 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+8:55:33 PM [express] GET /api/whatsapp/conversations 304 in 609ms :: {"conversations":[{"id":"0b8242…
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:54:38.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T20:54:38.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+8:55:37 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:55:39 PM [express] GET /api/whatsapp/conversations 304 in 606ms :: {"conversations":[{"id":"0b8242…
+8:55:42 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+
+🔔🔔🔔 [WEBHOOK] Received at 2025-12-22T20:55:43.710Z 🔔🔔🔔
+📞 From: whatsapp:+393519272875
+📱 To: whatsapp:+393500220129
+💬 Body: Mattina...
+🆔 MessageSid: SMaf42ed40d249d2d54de8f65bdbf9c463
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [ANTI-DUP] Messaggio SMaf42ed40d249d2d54de8f65bdbf9c463 è nuovo, procedo con l'elaborazione
+📞 Routing message to agent: Receptionist Principale (+393500220129)
+🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for 0b82426a-7385-419f-bd19-9b0cc923a955
+📨 Message queued for processing: +393519272875 (twilioSid: SMaf42ed40d249d2d54de8f65bdbf9c463)
+🔍 [SCHEDULE] scheduleMessageProcessing called for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [SCHEDULE] Timer set for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, will fire in 4000ms
+8:55:44 PM [express] POST /api/whatsapp/webhook 200 in 809ms
+8:55:44 PM [express] GET /api/whatsapp/conversations 304 in 409ms :: {"conversations":[{"id":"0b8242…
+8:55:48 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+⚡ [SCHEDULE] Timer fired for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, enqueueing...
+📥 [ENQUEUE] Adding to queue: +393519272875 for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [ENQUEUE] Queue size for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: 1
+🚀 [ENQUEUE] Starting queue processing for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📋 [PENDING] Found 1 pending messages for conversation 0b82426a-7385-419f-bd19-9b0cc923a955 (phone: +393519272875)
+⏱️ [TIMING] Polling latency: 4.3s (from webhook to processing)
+🔍 [PENDING] First message twilioSid: SMaf42ed40d249d2d54de8f65bdbf9c463, simulated: false, text: "Mattina..."
+🔍 [PARTICIPANT TYPE] unknown
+✅ [CONFIG] Using agent from conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+🎯 [AGENT TYPE] Agent type: reactive_lead, isProactive: false
+✅ AI is ENABLED and within working hours for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - proceeding with AI response
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 0b82426a-7385-419f-bd19-9b0cc923a955
+👤 User Type: LEAD
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message f9ef46ec-97c3-4aab-828e-e67bc40b4f02: "Mattina..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "Mattina"
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+
+🚨 Detecting objections in message...
+🔄 [OBJECTION] Attempt 1/3
+🔑 [OBJECTION] Using current API key: superadm...
+🤖 [OBJECTION] Calling detectObjection() with provider: studio
+🧠 [OBJECTION-DETECTOR] Using model: gemini-3-flash-preview with thinking: low
+8:55:50 PM [express] GET /api/whatsapp/conversations 200 in 598ms :: {"conversations":[{"id":"0b8242…
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ [OBJECTION] ✅ SUCCESS - No objections detected
+⏱️  [TIMING] Objection detection: 2908ms
+👤 Fetching/creating lead profile...
+✅ Lead profile: difficult (difficulty: 8.5/10)
+📋 Fetching recent objections...
+✅ Found 2 recent objection(s)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+💾 [APPOINTMENT CONTEXT] Retrieved 9 saved slots from database
+📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow
+✅ [APPOINTMENT CONTEXT] Final state: 9 slots available for AI prompt
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=false, conversation.proactiveLeadId=null
+ℹ️ [PROACTIVE CHECK] This is a REACTIVE lead (isProactiveLead=false)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: true
+   agentInstructions length: 14957 chars
+   selectedTemplate: receptionist
+✅ [TEMPLATE ENGINE] Using CUSTOM TEMPLATE from database
+   Template preview: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
+━━━━━━...
+✅ [FEATURE BLOCKS] Conditional injection summary:
+   - Knowledge Base: DISABLED (no items)
+   - Booking: ENABLED
+   - Objection Handling: ENABLED
+   - Disqualification: ENABLED
+   - Upselling: DISABLED (no block yet)
+📤 [SYSTEM PROMPT] Ready (30788 chars): "📅 OGGI È: lunedì 22 dicembre 2025  Sei l'assistente di Orbitale. Il cliente è un LEAD CALDO che ha ..."
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 15 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~7,697 tokens (30,788 chars)
+   💬 User Message: ~2 tokens (7 chars)
+   📜 History: ~644 tokens (2,574 chars)
+   🔢 TOTALE INPUT: ~8,343 tokens
+
+🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: Knowledge Base Consulente
+   📦 Store: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   📄 Documents: 1002
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+8:55:54 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 1242ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ response.text is a property - using it...
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+📝 Extracted text length: 175
+📝 Extracted text preview: Perfetto! Per la mattina di giovedì 25 dicembre ho questi orari disponibili:
+
+• Giovedì 25 dicembre alle 10:00
+• Giovedì 25 dicembre alle 11:00
+
+Quale preferisci tra i due? 😊
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "Receptionist Principale":
+   ├── System Prompt: 7,697 tokens
+   ├── Conversation History: 794 tokens
+   ├── User Message: 2 tokens
+   └── TOTAL INPUT: 8,493 tokens
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~44 tokens (175 chars)
+   🔢 TOTALE (input + output): ~8,387 tokens
+   ⏱️  Tempo di risposta: 1242ms
+   💰 Costo stimato: $0.016774 (input + output)
+
+✅ [STEP 8] Gemini response received: "Perfetto! Per la mattina di giovedì 25 dicembre ho questi orari disponibili:
+
+• Giovedì 25 dicembre ..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: 53c99c0b-0cf8-4c65-97ac-40289b557c5f (timing: 1242ms Gemini, 6434ms total)
+🎛️ [AUDIO DECISION] Mode: mirror, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=true, mode=mirror, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+✅ Using agent from existing conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Receptionist Principale
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Receptionist Principale)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393519272875
+   Text length: 175 chars
+
+📝 Message content:
+────────────────────────────────────────────────────────────
+Perfetto! Per la mattina di giovedì 25 dicembre ho questi orari disponibili:
+
+• Giovedì 25 dicembre alle 10:00
+• Giovedì 25 dicembre alle 11:00
+
+Quale preferisci tra i due? 😊
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766436955362_pe9t8o
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+💾 [APPOINTMENT BOOKING] Retrieved 9 proposed slots from database
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+   ⏭️ [PRE-CHECK] Short message without booking context - skipping
+   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "Mattina..."
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 Objection Detection:      2908ms  (38.5%)
+🤖 Gemini API Call:          1242ms  (16.4%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:               7562ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:55:56 PM [express] GET /api/whatsapp/conversations 200 in 607ms :: {"conversations":[{"id":"0b8242…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+8:56:01 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+8:56:02 PM [express] GET /api/whatsapp/conversations 304 in 601ms :: {"conversations":[{"id":"0b8242…
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:55:44.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T20:55:44.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+8:56:06 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:56:08 PM [express] GET /api/whatsapp/conversations 304 in 603ms :: {"conversations":[{"id":"0b8242…
+8:56:12 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+
+🔔🔔🔔 [WEBHOOK] Received at 2025-12-22T20:56:14.302Z 🔔🔔🔔
+📞 From: whatsapp:+393519272875
+📱 To: whatsapp:+393500220129
+💬 Body: Alle 10...
+🆔 MessageSid: SM181b268cf935ef44fcd231e3bc6621c5
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:56:14 PM [express] GET /api/whatsapp/conversations 304 in 602ms :: {"conversations":[{"id":"0b8242…
+✅ [ANTI-DUP] Messaggio SM181b268cf935ef44fcd231e3bc6621c5 è nuovo, procedo con l'elaborazione
+📞 Routing message to agent: Receptionist Principale (+393500220129)
+🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for 0b82426a-7385-419f-bd19-9b0cc923a955
+📨 Message queued for processing: +393519272875 (twilioSid: SM181b268cf935ef44fcd231e3bc6621c5)
+🔍 [SCHEDULE] scheduleMessageProcessing called for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [SCHEDULE] Timer set for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, will fire in 4000ms
+8:56:15 PM [express] POST /api/whatsapp/webhook 200 in 1424ms
+8:56:18 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+⚡ [SCHEDULE] Timer fired for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, enqueueing...
+📥 [ENQUEUE] Adding to queue: +393519272875 for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [ENQUEUE] Queue size for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: 1
+🚀 [ENQUEUE] Starting queue processing for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📋 [PENDING] Found 1 pending messages for conversation 0b82426a-7385-419f-bd19-9b0cc923a955 (phone: +393519272875)
+⏱️ [TIMING] Polling latency: 4.3s (from webhook to processing)
+🔍 [PENDING] First message twilioSid: SM181b268cf935ef44fcd231e3bc6621c5, simulated: false, text: "Alle 10..."
+🔍 [PARTICIPANT TYPE] unknown
+8:56:20 PM [express] GET /api/whatsapp/conversations 304 in 604ms :: {"conversations":[{"id":"0b8242…
+✅ [CONFIG] Using agent from conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+🎯 [AGENT TYPE] Agent type: reactive_lead, isProactive: false
+✅ AI is ENABLED and within working hours for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - proceeding with AI response
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 0b82426a-7385-419f-bd19-9b0cc923a955
+👤 User Type: LEAD
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message d7fabd4e-5eb8-424a-94e3-060b8e29f8a8: "Alle 10..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "Alle 10"
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+
+🚨 Detecting objections in message...
+🔄 [OBJECTION] Attempt 1/3
+🔑 [OBJECTION] Using current API key: superadm...
+🤖 [OBJECTION] Calling detectObjection() with provider: studio
+🧠 [OBJECTION-DETECTOR] Using model: gemini-3-flash-preview with thinking: low
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ [OBJECTION] ✅ SUCCESS - No objections detected
+⏱️  [TIMING] Objection detection: 2679ms
+👤 Fetching/creating lead profile...
+✅ Lead profile: difficult (difficulty: 8.5/10)
+📋 Fetching recent objections...
+✅ Found 2 recent objection(s)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+💾 [APPOINTMENT CONTEXT] Retrieved 9 saved slots from database
+📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow
+✅ [APPOINTMENT CONTEXT] Final state: 9 slots available for AI prompt
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=false, conversation.proactiveLeadId=null
+ℹ️ [PROACTIVE CHECK] This is a REACTIVE lead (isProactiveLead=false)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: true
+   agentInstructions length: 14957 chars
+   selectedTemplate: receptionist
+✅ [TEMPLATE ENGINE] Using CUSTOM TEMPLATE from database
+   Template preview: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
+━━━━━━...
+✅ [FEATURE BLOCKS] Conditional injection summary:
+   - Knowledge Base: DISABLED (no items)
+   - Booking: ENABLED
+   - Objection Handling: ENABLED
+   - Disqualification: ENABLED
+   - Upselling: DISABLED (no block yet)
+📤 [SYSTEM PROMPT] Ready (30788 chars): "📅 OGGI È: lunedì 22 dicembre 2025  Sei l'assistente di Orbitale. Il cliente è un LEAD CALDO che ha ..."
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 17 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~7,697 tokens (30,788 chars)
+   💬 User Message: ~2 tokens (7 chars)
+   📜 History: ~689 tokens (2,756 chars)
+   🔢 TOTALE INPUT: ~8,388 tokens
+
+8:56:23 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: Knowledge Base Consulente
+   📦 Store: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   📄 Documents: 1002
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 1442ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ response.text is a property - using it...
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+📝 Extracted text length: 117
+📝 Extracted text preview: Perfetto! Giovedì 25 dicembre alle 10:00 📅
+
+Per confermare l'appuntamento, mi confermi il tuo numero di telefono? 😊
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "Receptionist Principale":
+   ├── System Prompt: 7,697 tokens
+   ├── Conversation History: 860 tokens
+   ├── User Message: 2 tokens
+   └── TOTAL INPUT: 8,559 tokens
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~30 tokens (117 chars)
+   🔢 TOTALE (input + output): ~8,418 tokens
+   ⏱️  Tempo di risposta: 1442ms
+   💰 Costo stimato: $0.016836 (input + output)
+
+✅ [STEP 8] Gemini response received: "Perfetto! Giovedì 25 dicembre alle 10:00 📅
+
+Per confermare l'appuntamento, mi confermi il tuo numer..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: 9778bbfb-5140-46d7-8e01-69b09d3cefd2 (timing: 1442ms Gemini, 5638ms total)
+🎛️ [AUDIO DECISION] Mode: mirror, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=true, mode=mirror, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+✅ Using agent from existing conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Receptionist Principale
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Receptionist Principale)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393519272875
+   Text length: 117 chars
+
+📝 Message content:
+────────────────────────────────────────────────────────────
+Perfetto! Giovedì 25 dicembre alle 10:00 📅
+
+Per confermare l'appuntamento, mi confermi il tuo numero di telefono? 😊
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766436985771_rah1dt
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+8:56:26 PM [express] GET /api/whatsapp/conversations 200 in 603ms :: {"conversations":[{"id":"0b8242…
+💾 [APPOINTMENT BOOKING] Retrieved 9 proposed slots from database
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+   ⏭️ [PRE-CHECK] Short message without booking context - skipping
+   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "Alle 10..."
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 Objection Detection:      2679ms  (39.6%)
+🤖 Gemini API Call:          1442ms  (21.3%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:               6757ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:56:29 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+8:56:30 PM [express] POST /api/activity/session/heartbeat 200 in 313ms :: {"success":true,"lastActiv…
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+8:56:31 PM [express] GET /api/whatsapp/conversations 304 in 415ms :: {"conversations":[{"id":"0b8242…
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+8:56:35 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:56:15.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T20:56:15.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+8:56:37 PM [express] GET /api/whatsapp/conversations 304 in 604ms :: {"conversations":[{"id":"0b8242…
+8:56:40 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:56:43 PM [express] GET /api/whatsapp/conversations 304 in 604ms :: {"conversations":[{"id":"0b8242…
+8:56:46 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:56:49 PM [express] GET /api/whatsapp/conversations 304 in 615ms :: {"conversations":[{"id":"0b8242…
+
+🔔🔔🔔 [WEBHOOK] Received at 2025-12-22T20:56:49.328Z 🔔🔔🔔
+📞 From: whatsapp:+393519272875
+📱 To: whatsapp:+393500220129
+💬 Body: 3890566422...
+🆔 MessageSid: SM666fff2dd41601a6bb9b4ca1081b2577
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [ANTI-DUP] Messaggio SM666fff2dd41601a6bb9b4ca1081b2577 è nuovo, procedo con l'elaborazione
+📞 Routing message to agent: Receptionist Principale (+393500220129)
+🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for 0b82426a-7385-419f-bd19-9b0cc923a955
+📨 Message queued for processing: +393519272875 (twilioSid: SM666fff2dd41601a6bb9b4ca1081b2577)
+🔍 [SCHEDULE] scheduleMessageProcessing called for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [SCHEDULE] Timer set for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, will fire in 4000ms
+8:56:50 PM [express] POST /api/whatsapp/webhook 200 in 1360ms
+8:56:52 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+⚡ [SCHEDULE] Timer fired for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, enqueueing...
+📥 [ENQUEUE] Adding to queue: +393519272875 for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [ENQUEUE] Queue size for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: 1
+🚀 [ENQUEUE] Starting queue processing for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+8:56:55 PM [express] GET /api/whatsapp/conversations 304 in 607ms :: {"conversations":[{"id":"0b8242…
+📋 [PENDING] Found 1 pending messages for conversation 0b82426a-7385-419f-bd19-9b0cc923a955 (phone: +393519272875)
+⏱️ [TIMING] Polling latency: 4.9s (from webhook to processing)
+🔍 [PENDING] First message twilioSid: SM666fff2dd41601a6bb9b4ca1081b2577, simulated: false, text: "3890566422..."
+🔍 [PARTICIPANT TYPE] unknown
+✅ [CONFIG] Using agent from conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+🎯 [AGENT TYPE] Agent type: reactive_lead, isProactive: false
+✅ AI is ENABLED and within working hours for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - proceeding with AI response
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 0b82426a-7385-419f-bd19-9b0cc923a955
+👤 User Type: LEAD
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message 3e5048b7-570b-4c16-8629-869a7b728be2: "3890566422..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "3890566422"
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+
+🚨 Detecting objections in message...
+🔄 [OBJECTION] Attempt 1/3
+🔑 [OBJECTION] Using current API key: superadm...
+🤖 [OBJECTION] Calling detectObjection() with provider: studio
+🧠 [OBJECTION-DETECTOR] Using model: gemini-3-flash-preview with thinking: low
+8:56:57 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ [OBJECTION] ✅ SUCCESS - No objections detected
+⏱️  [TIMING] Objection detection: 2703ms
+👤 Fetching/creating lead profile...
+✅ Lead profile: difficult (difficulty: 8.5/10)
+📋 Fetching recent objections...
+✅ Found 2 recent objection(s)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+💾 [APPOINTMENT CONTEXT] Retrieved 9 saved slots from database
+📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow
+✅ [APPOINTMENT CONTEXT] Final state: 9 slots available for AI prompt
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=false, conversation.proactiveLeadId=null
+ℹ️ [PROACTIVE CHECK] This is a REACTIVE lead (isProactiveLead=false)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: true
+   agentInstructions length: 14957 chars
+   selectedTemplate: receptionist
+✅ [TEMPLATE ENGINE] Using CUSTOM TEMPLATE from database
+   Template preview: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
+━━━━━━...
+✅ [FEATURE BLOCKS] Conditional injection summary:
+   - Knowledge Base: DISABLED (no items)
+   - Booking: ENABLED
+   - Objection Handling: ENABLED
+   - Disqualification: ENABLED
+   - Upselling: DISABLED (no block yet)
+📤 [SYSTEM PROMPT] Ready (30788 chars): "📅 OGGI È: lunedì 22 dicembre 2025  Sei l'assistente di Orbitale. Il cliente è un LEAD CALDO che ha ..."
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 19 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~7,697 tokens (30,788 chars)
+   💬 User Message: ~3 tokens (10 chars)
+   📜 History: ~721 tokens (2,883 chars)
+   🔢 TOTALE INPUT: ~8,421 tokens
+
+🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: Knowledge Base Consulente
+   📦 Store: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   📄 Documents: 1002
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 1118ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ response.text is a property - using it...
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+📝 Extracted text length: 151
+📝 Extracted text preview: Grazie! 👍
+
+E mi lasci anche la tua email? Te la aggiungo all'invito del calendario così riceverai l'evento Google Calendar con il link per la call. 😊
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "Receptionist Principale":
+   ├── System Prompt: 7,697 tokens
+   ├── Conversation History: 911 tokens
+   ├── User Message: 3 tokens
+   └── TOTAL INPUT: 8,611 tokens
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~38 tokens (151 chars)
+   🔢 TOTALE (input + output): ~8,459 tokens
+   ⏱️  Tempo di risposta: 1117ms
+   💰 Costo stimato: $0.016918 (input + output)
+
+✅ [STEP 8] Gemini response received: "Grazie! 👍
+
+E mi lasci anche la tua email? Te la aggiungo all'invito del calendario così riceverai l..."
+💾 [STEP 9] Saving AI response to database
+8:57:01 PM [express] GET /api/whatsapp/conversations 200 in 624ms :: {"conversations":[{"id":"0b8242…
+✅ [STEP 9] AI response saved with ID: 696cd952-08ae-4563-938f-36b328938502 (timing: 1117ms Gemini, 6284ms total)
+🎛️ [AUDIO DECISION] Mode: mirror, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=true, mode=mirror, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+✅ Using agent from existing conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Receptionist Principale
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Receptionist Principale)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393519272875
+   Text length: 151 chars
+
+📝 Message content:
+────────────────────────────────────────────────────────────
+Grazie! 👍
+
+E mi lasci anche la tua email? Te la aggiungo all'invito del calendario così riceverai l'evento Google Calendar con il link per la call. 😊
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766437021287_k47y7i
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+💾 [APPOINTMENT BOOKING] Retrieved 9 proposed slots from database
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+   ✅ [PRE-CHECK] Booking data detected (email: false, phone: true, date/time: false)
+   ✅ [AI PRE-CHECK] Proceeding with booking analysis
+📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message
+📊 [EXTRACTION] Retrieved 10 messages for extraction
+📅 [NEW BOOKING] Using extractBookingDataFromConversation() - aligned with public-share-router.ts
+   📚 Analyzing 10 messages for new booking...
+
+🔍 [BOOKING SERVICE] Extracting data from 10 messages
+   Mode: NEW BOOKING
+   Timezone: Europe/Rome
+   🧠 [AI] Using model: gemini-2.5-flash, thinking: disabled
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+8:57:03 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:56:50.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T20:56:50.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+8:57:06 PM [express] GET /api/whatsapp/conversations 200 in 616ms :: {"conversations":[{"id":"0b8242…
+8:57:09 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+   AI Response length: 188 chars
+   Parsed extraction result: hasAllData=false, date=2025-12-25, time=10:00
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [STEP 3] Data Extraction Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 Confirmation Status: ✅ YES
+📅 Date:     ✅ 2025-12-25
+🕐 Time:     ✅ 10:00
+📞 Phone:    ✅ 3890566422
+📧 Email:    ❌ MISSING
+💯 Confidence: MEDIUM
+✔️ Complete Data: ❌ NO - Missing fields
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ [APPOINTMENT BOOKING] Lead is confirming but missing data: email
+📋 [APPOINTMENT BOOKING] Current data - Date: 2025-12-25, Time: 10:00, Phone: 3890566422, Email: MISSING
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 Objection Detection:      2703ms  (17.7%)
+🤖 Gemini API Call:          1118ms  (7.3%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:              15252ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:57:12 PM [express] GET /api/whatsapp/conversations 304 in 610ms :: {"conversations":[{"id":"0b8242…
+8:57:14 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:57:18 PM [express] GET /api/whatsapp/conversations 304 in 617ms :: {"conversations":[{"id":"0b8242…
+8:57:20 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:57:24 PM [express] GET /api/whatsapp/conversations 304 in 614ms :: {"conversations":[{"id":"0b8242…
+
+🔔🔔🔔 [WEBHOOK] Received at 2025-12-22T20:57:24.713Z 🔔🔔🔔
+📞 From: whatsapp:+393519272875
+📱 To: whatsapp:+393500220129
+💬 Body: chianettaalessio@gmail.com...
+🆔 MessageSid: SM586117e2fb2342c28be1affd90b1b612
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [ANTI-DUP] Messaggio SM586117e2fb2342c28be1affd90b1b612 è nuovo, procedo con l'elaborazione
+📞 Routing message to agent: Receptionist Principale (+393500220129)
+🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for 0b82426a-7385-419f-bd19-9b0cc923a955
+📨 Message queued for processing: +393519272875 (twilioSid: SM586117e2fb2342c28be1affd90b1b612)
+🔍 [SCHEDULE] scheduleMessageProcessing called for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [SCHEDULE] Timer set for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, will fire in 4000ms
+8:57:25 PM [express] POST /api/whatsapp/webhook 200 in 731ms
+8:57:26 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+⚡ [SCHEDULE] Timer fired for +393519272875_0c73bbe5-51e1-4108-866b-6be7a52fce3b, enqueueing...
+📥 [ENQUEUE] Adding to queue: +393519272875 for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [ENQUEUE] Queue size for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: 1
+🚀 [ENQUEUE] Starting queue processing for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📋 [PENDING] Found 1 pending messages for conversation 0b82426a-7385-419f-bd19-9b0cc923a955 (phone: +393519272875)
+⏱️ [TIMING] Polling latency: 4.3s (from webhook to processing)
+🔍 [PENDING] First message twilioSid: SM586117e2fb2342c28be1affd90b1b612, simulated: false, text: "chianettaalessio@gmail.com..."
+🔍 [PARTICIPANT TYPE] unknown
+✅ [CONFIG] Using agent from conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+🎯 [AGENT TYPE] Agent type: reactive_lead, isProactive: false
+✅ AI is ENABLED and within working hours for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - proceeding with AI response
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 0b82426a-7385-419f-bd19-9b0cc923a955
+👤 User Type: LEAD
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message e51150fe-8a29-4a90-8166-40335e2786c0: "chianettaalessio@gmail.com..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "chianettaalessio@gmail.com"
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+
+🚨 Detecting objections in message...
+🔄 [OBJECTION] Attempt 1/3
+🔑 [OBJECTION] Using current API key: superadm...
+🤖 [OBJECTION] Calling detectObjection() with provider: studio
+🧠 [OBJECTION-DETECTOR] Using model: gemini-3-flash-preview with thinking: low
+8:57:31 PM [express] GET /api/whatsapp/conversations 200 in 1226ms :: {"conversations":[{"id":"0b824…
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+8:57:31 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ [OBJECTION] ✅ SUCCESS - No objections detected
+⏱️  [TIMING] Objection detection: 2557ms
+👤 Fetching/creating lead profile...
+✅ Lead profile: difficult (difficulty: 8.5/10)
+📋 Fetching recent objections...
+✅ Found 2 recent objection(s)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+💾 [APPOINTMENT CONTEXT] Retrieved 9 saved slots from database
+📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow
+✅ [APPOINTMENT CONTEXT] Final state: 9 slots available for AI prompt
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=false, conversation.proactiveLeadId=null
+ℹ️ [PROACTIVE CHECK] This is a REACTIVE lead (isProactiveLead=false)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: true
+   agentInstructions length: 14957 chars
+   selectedTemplate: receptionist
+✅ [TEMPLATE ENGINE] Using CUSTOM TEMPLATE from database
+   Template preview: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
+━━━━━━...
+✅ [FEATURE BLOCKS] Conditional injection summary:
+   - Knowledge Base: DISABLED (no items)
+   - Booking: ENABLED
+   - Objection Handling: ENABLED
+   - Disqualification: ENABLED
+   - Upselling: DISABLED (no block yet)
+📤 [SYSTEM PROMPT] Ready (30788 chars): "📅 OGGI È: lunedì 22 dicembre 2025  Sei l'assistente di Orbitale. Il cliente è un LEAD CALDO che ha ..."
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 20 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~7,697 tokens (30,788 chars)
+   💬 User Message: ~7 tokens (26 chars)
+   📜 History: ~764 tokens (3,056 chars)
+   🔢 TOTALE INPUT: ~8,468 tokens
+
+🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: Knowledge Base Consulente
+   📦 Store: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   📄 Documents: 1002
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 963ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ response.text is a property - using it...
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+📝 Extracted text length: 79
+📝 Extracted text preview: Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "Receptionist Principale":
+   ├── System Prompt: 7,697 tokens
+   ├── Conversation History: 965 tokens
+   ├── User Message: 7 tokens
+   └── TOTAL INPUT: 8,669 tokens
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~20 tokens (79 chars)
+   🔢 TOTALE (input + output): ~8,488 tokens
+   ⏱️  Tempo di risposta: 963ms
+   💰 Costo stimato: $0.016976 (input + output)
+
+✅ [STEP 8] Gemini response received: "Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: 44d60642-2418-4f77-8304-45d9ff69cb70 (timing: 963ms Gemini, 5055ms total)
+🎛️ [AUDIO DECISION] Mode: mirror, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=true, mode=mirror, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ Using agent from existing conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Receptionist Principale
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Receptionist Principale)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393519272875
+   Text length: 79 chars
+
+📝 Message content:
+────────────────────────────────────────────────────────────
+Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766437054902_a2c2bn
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+💾 [APPOINTMENT BOOKING] Retrieved 9 proposed slots from database
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+   ✅ [PRE-CHECK] Booking data detected (email: true, phone: false, date/time: false)
+   ✅ [AI PRE-CHECK] Proceeding with booking analysis
+📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+📊 [EXTRACTION] Retrieved 10 messages for extraction
+📅 [NEW BOOKING] Using extractBookingDataFromConversation() - aligned with public-share-router.ts
+   📚 Analyzing 10 messages for new booking...
+
+🔍 [BOOKING SERVICE] Extracting data from 10 messages
+   Mode: NEW BOOKING
+   Timezone: Europe/Rome
+   🧠 [AI] Using model: gemini-2.5-flash, thinking: disabled
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:57:25.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T20:57:25.000Z) is older than watermark - keeping current
+8:57:36 PM [express] GET /api/whatsapp/conversations 200 in 503ms :: {"conversations":[{"id":"0b8242…
+✅ [WHATSAPP POLLING] Poll cycle complete
+8:57:37 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 2…
+8:57:42 PM [express] GET /api/whatsapp/conversations 304 in 599ms :: {"conversations":[{"id":"0b8242…
+8:57:43 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:57:48 PM [express] GET /api/whatsapp/conversations 304 in 609ms :: {"conversations":[{"id":"0b8242…
+8:57:49 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+8:57:54 PM [express] GET /api/whatsapp/conversations 304 in 613ms :: {"conversations":[{"id":"0b8242…
+8:57:55 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+   AI Response length: 207 chars
+   Parsed extraction result: hasAllData=false, date=2025-12-25, time=null
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [STEP 3] Data Extraction Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 Confirmation Status: ❌ NO
+📅 Date:     ✅ 2025-12-25
+🕐 Time:     ❌ MISSING
+📞 Phone:    ✅ 3890566422
+📧 Email:    ✅ chianettaalessio@gmail.com
+💯 Confidence: LOW
+✔️ Complete Data: ❌ NO - Missing fields
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️ [APPOINTMENT BOOKING] Lead is not confirming appointment yet - continue conversation
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 Objection Detection:      2557ms  (9.4%)
+🤖 Gemini API Call:           963ms  (3.6%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:              27076ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+8:58:00 PM [express] GET /api/whatsapp/conversations 304 in 605ms :: {"conversations":[{"id":"0b8242…
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+8:58:00 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-22T19:21:04.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-22T19:21:04.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T20:57:25.000Z
+8:58:06 PM [express] GET /api/whatsapp/conversations 304 in 611ms :: {"conversations":[{"id":"0b8242…
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T20:57:25.000Z) is older than watermark - keeping current
+8:58:06 PM [express] GET /api/whatsapp/conversations/0b82426a-7385-419f-bd19-9b0cc923a955/messages 3…
+✅ [WHATSAPP POLLING] Poll cycle complete
+8:58:12 PM [express] GET /api/whatsapp/conversations 304 in 613ms :: {"conversations":[{"id":"0b8242…
+8:58:12 PM [express] GET /api/whatsapp/conversations
