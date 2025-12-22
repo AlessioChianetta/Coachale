@@ -35,6 +35,11 @@ import {
   whatsappAgentKnowledgeItems,
   consultantWhatsappConfig,
   fileSearchSettings,
+  dailyReflections,
+  clientProgress,
+  clientLibraryProgress,
+  clientEmailJourneyProgress,
+  emailJourneyTemplates,
 } from "../../shared/schema";
 import { PercorsoCapitaleClient } from "../percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
@@ -4473,6 +4478,326 @@ export class FileSearchSyncService {
         : { success: false, synced: 0, error: uploadResult.error };
     } catch (error: any) {
       console.error('[FileSync] Error syncing client tasks:', error);
+      return { success: false, synced: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Sync client's daily reflections to their private store
+   */
+  static async syncClientDailyReflections(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; synced: number; error?: string }> {
+    try {
+      const reflections = await db.query.dailyReflections.findMany({
+        where: eq(dailyReflections.clientId, clientId),
+        orderBy: [desc(dailyReflections.date)],
+      });
+
+      if (reflections.length === 0) {
+        return { success: true, synced: 0 };
+      }
+
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, synced: 0, error: 'Failed to get or create client private store' };
+      }
+
+      let content = `# Diario Riflessioni del Cliente\n\n`;
+      content += `Data aggiornamento: ${new Date().toLocaleDateString('it-IT')}\n`;
+      content += `Totale riflessioni: ${reflections.length}\n\n`;
+
+      for (const reflection of reflections) {
+        const date = new Date(reflection.date).toLocaleDateString('it-IT');
+        content += `## ${date}\n\n`;
+
+        if (reflection.grateful && Array.isArray(reflection.grateful) && reflection.grateful.length > 0) {
+          content += `### 🙏 Cose di cui sono grato:\n`;
+          for (const item of reflection.grateful) {
+            content += `- ${item}\n`;
+          }
+          content += '\n';
+        }
+
+        if (reflection.makeGreat && Array.isArray(reflection.makeGreat) && reflection.makeGreat.length > 0) {
+          content += `### ⭐ Cose che renderebbero oggi grandioso:\n`;
+          for (const item of reflection.makeGreat) {
+            content += `- ${item}\n`;
+          }
+          content += '\n';
+        }
+
+        if (reflection.doBetter) {
+          content += `### 📈 Cosa potevo fare meglio:\n${reflection.doBetter}\n\n`;
+        }
+
+        content += '---\n\n';
+      }
+
+      await fileSearchService.deleteDocumentBySource('daily_reflection' as any, clientId);
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[RIFLESSIONI] Diario Riflessioni`,
+        storeId: clientStore.storeId,
+        sourceType: 'daily_reflection' as any,
+        sourceId: clientId,
+        clientId: clientId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Daily reflections synced to client ${clientId.substring(0, 8)} private store (${reflections.length} entries)`);
+      }
+
+      return uploadResult.success
+        ? { success: true, synced: reflections.length }
+        : { success: false, synced: 0, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing client daily reflections:', error);
+      return { success: false, synced: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Sync client's progress history to their private store
+   */
+  static async syncClientProgress(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; synced: number; error?: string }> {
+    try {
+      const progressEntries = await db.query.clientProgress.findMany({
+        where: eq(clientProgress.clientId, clientId),
+        orderBy: [desc(clientProgress.date)],
+      });
+
+      if (progressEntries.length === 0) {
+        return { success: true, synced: 0 };
+      }
+
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, synced: 0, error: 'Failed to get or create client private store' };
+      }
+
+      let content = `# Storico Avanzamento del Cliente\n\n`;
+      content += `Data aggiornamento: ${new Date().toLocaleDateString('it-IT')}\n`;
+      content += `Totale registrazioni: ${progressEntries.length}\n\n`;
+
+      for (const entry of progressEntries) {
+        const date = new Date(entry.date).toLocaleDateString('it-IT');
+        content += `## ${date}\n`;
+        content += `- Esercizi completati: ${entry.exercisesCompleted || 0}/${entry.totalExercises || 0}\n`;
+        content += `- Giorni consecutivi (streak): ${entry.streakDays || 0}\n`;
+        if (entry.notes) {
+          content += `- Note: ${entry.notes}\n`;
+        }
+        content += '\n';
+      }
+
+      await fileSearchService.deleteDocumentBySource('client_progress' as any, clientId);
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[PROGRESSO] Storico Avanzamento`,
+        storeId: clientStore.storeId,
+        sourceType: 'client_progress' as any,
+        sourceId: clientId,
+        clientId: clientId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Progress history synced to client ${clientId.substring(0, 8)} private store (${progressEntries.length} entries)`);
+      }
+
+      return uploadResult.success
+        ? { success: true, synced: progressEntries.length }
+        : { success: false, synced: 0, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing client progress:', error);
+      return { success: false, synced: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Sync client's library reading progress to their private store
+   */
+  static async syncClientLibraryProgress(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; synced: number; error?: string }> {
+    try {
+      const libraryProgressEntries = await db
+        .select({
+          id: clientLibraryProgress.id,
+          documentId: clientLibraryProgress.documentId,
+          isRead: clientLibraryProgress.isRead,
+          readAt: clientLibraryProgress.readAt,
+          timeSpent: clientLibraryProgress.timeSpent,
+          documentTitle: libraryDocuments.title,
+        })
+        .from(clientLibraryProgress)
+        .leftJoin(libraryDocuments, eq(clientLibraryProgress.documentId, libraryDocuments.id))
+        .where(eq(clientLibraryProgress.clientId, clientId));
+
+      if (libraryProgressEntries.length === 0) {
+        return { success: true, synced: 0 };
+      }
+
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, synced: 0, error: 'Failed to get or create client private store' };
+      }
+
+      let content = `# Progresso Letture Libreria\n\n`;
+      content += `Data aggiornamento: ${new Date().toLocaleDateString('it-IT')}\n`;
+      content += `Totale documenti tracciati: ${libraryProgressEntries.length}\n\n`;
+
+      const readEntries = libraryProgressEntries.filter(e => e.isRead);
+      const unreadEntries = libraryProgressEntries.filter(e => !e.isRead);
+
+      if (readEntries.length > 0) {
+        content += `## ✅ Documenti Letti (${readEntries.length})\n\n`;
+        for (const entry of readEntries) {
+          content += `### ${entry.documentTitle || 'Documento sconosciuto'}\n`;
+          if (entry.readAt) {
+            content += `- Letto il: ${new Date(entry.readAt).toLocaleDateString('it-IT')}\n`;
+          }
+          if (entry.timeSpent) {
+            const minutes = Math.round(entry.timeSpent / 60);
+            content += `- Tempo di lettura: ${minutes} minuti\n`;
+          }
+          content += '\n';
+        }
+      }
+
+      if (unreadEntries.length > 0) {
+        content += `## 📖 In Lettura (${unreadEntries.length})\n\n`;
+        for (const entry of unreadEntries) {
+          content += `- ${entry.documentTitle || 'Documento sconosciuto'}`;
+          if (entry.timeSpent) {
+            const minutes = Math.round(entry.timeSpent / 60);
+            content += ` (${minutes} min spesi)`;
+          }
+          content += '\n';
+        }
+      }
+
+      await fileSearchService.deleteDocumentBySource('library_progress' as any, clientId);
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[LIBRERIA] Progresso Letture`,
+        storeId: clientStore.storeId,
+        sourceType: 'library_progress' as any,
+        sourceId: clientId,
+        clientId: clientId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Library progress synced to client ${clientId.substring(0, 8)} private store (${libraryProgressEntries.length} entries)`);
+      }
+
+      return uploadResult.success
+        ? { success: true, synced: libraryProgressEntries.length }
+        : { success: false, synced: 0, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing client library progress:', error);
+      return { success: false, synced: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Sync client's email journey progress to their private store
+   */
+  static async syncClientEmailJourneyProgress(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; synced: number; error?: string }> {
+    try {
+      const journeyProgressEntries = await db
+        .select({
+          id: clientEmailJourneyProgress.id,
+          currentDay: clientEmailJourneyProgress.currentDay,
+          monthStartDate: clientEmailJourneyProgress.monthStartDate,
+          lastEmailSentAt: clientEmailJourneyProgress.lastEmailSentAt,
+          lastEmailSubject: clientEmailJourneyProgress.lastEmailSubject,
+          templateId: clientEmailJourneyProgress.lastTemplateUsedId,
+          templateTitle: emailJourneyTemplates.title,
+          templateEmailType: emailJourneyTemplates.emailType,
+          templateDayOfMonth: emailJourneyTemplates.dayOfMonth,
+        })
+        .from(clientEmailJourneyProgress)
+        .leftJoin(emailJourneyTemplates, eq(clientEmailJourneyProgress.lastTemplateUsedId, emailJourneyTemplates.id))
+        .where(eq(clientEmailJourneyProgress.clientId, clientId));
+
+      if (journeyProgressEntries.length === 0) {
+        return { success: true, synced: 0 };
+      }
+
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, synced: 0, error: 'Failed to get or create client private store' };
+      }
+
+      let content = `# Email Journey - Email Ricevute\n\n`;
+      content += `Data aggiornamento: ${new Date().toLocaleDateString('it-IT')}\n\n`;
+
+      for (const entry of journeyProgressEntries) {
+        content += `## Stato Journey\n`;
+        content += `- Giorno corrente nel ciclo: ${entry.currentDay}/28\n`;
+        if (entry.monthStartDate) {
+          content += `- Inizio ciclo: ${new Date(entry.monthStartDate).toLocaleDateString('it-IT')}\n`;
+        }
+        content += '\n';
+
+        if (entry.lastEmailSentAt) {
+          content += `## Ultima Email Ricevuta\n`;
+          if (entry.lastEmailSubject) {
+            content += `- Oggetto: ${entry.lastEmailSubject}\n`;
+          }
+          if (entry.templateTitle) {
+            content += `- Template: ${entry.templateTitle}\n`;
+          }
+          if (entry.templateEmailType) {
+            content += `- Tipo: ${entry.templateEmailType}\n`;
+          }
+          if (entry.templateDayOfMonth) {
+            content += `- Giorno del mese: ${entry.templateDayOfMonth}\n`;
+          }
+          content += `- Inviata il: ${new Date(entry.lastEmailSentAt).toLocaleDateString('it-IT')}\n`;
+        } else {
+          content += `## Email\n`;
+          content += `- Nessuna email inviata ancora nel journey corrente\n`;
+        }
+        content += '\n';
+      }
+
+      await fileSearchService.deleteDocumentBySource('email_journey' as any, clientId);
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[EMAIL JOURNEY] Email Ricevute`,
+        storeId: clientStore.storeId,
+        sourceType: 'email_journey' as any,
+        sourceId: clientId,
+        clientId: clientId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Email journey progress synced to client ${clientId.substring(0, 8)} private store`);
+      }
+
+      return uploadResult.success
+        ? { success: true, synced: journeyProgressEntries.length }
+        : { success: false, synced: 0, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing client email journey progress:', error);
       return { success: false, synced: 0, error: error.message };
     }
   }
