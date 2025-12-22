@@ -41,7 +41,9 @@ import {
   ClipboardCheck,
   Wallet,
   Trash2,
-  Target
+  Target,
+  Heart,
+  Mail
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -2839,7 +2841,11 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                               (client.assignedLibrary?.missing?.length || 0) +
                                               (client.assignedUniversity?.missing?.length || 0) +
                                               (client.goals?.missing?.length || 0) +
-                                              (client.tasks?.missing?.length || 0);
+                                              (client.tasks?.missing?.length || 0) +
+                                              (client.dailyReflections?.missing?.length || 0) +
+                                              (client.clientProgressHistory?.missing?.length || 0) +
+                                              (client.libraryProgress?.missing?.length || 0) +
+                                              (client.emailJourneyProgress?.missing?.length || 0);
                         return (
                           <Collapsible key={client.clientId} open={openAuditClients[client.clientId]} onOpenChange={() => toggleAuditClient(client.clientId)}>
                             <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
@@ -2937,6 +2943,74 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                       <div className="flex items-center gap-2">
                                         <CheckCircle2 className="h-3 w-3 text-orange-500" />
                                         <span className="text-sm">{item.title}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.dailyReflections?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-pink-700 flex items-center gap-2">
+                                    <Heart className="h-3 w-3" />
+                                    Riflessioni Giornaliere ({client.dailyReflections.missing.length})
+                                  </p>
+                                  {client.dailyReflections.missing.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-pink-50 rounded border border-pink-200 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <Heart className="h-3 w-3 text-pink-500" />
+                                        <span className="text-sm">{item.date ? new Date(item.date).toLocaleDateString('it-IT') : 'Data non disponibile'}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.clientProgressHistory?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-teal-700 flex items-center gap-2">
+                                    <TrendingUp className="h-3 w-3" />
+                                    Storico Progresso ({client.clientProgressHistory.missing.length})
+                                  </p>
+                                  {client.clientProgressHistory.missing.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-teal-50 rounded border border-teal-200 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <TrendingUp className="h-3 w-3 text-teal-500" />
+                                        <span className="text-sm">{item.date ? new Date(item.date).toLocaleDateString('it-IT') : 'Data non disponibile'}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.libraryProgress?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-cyan-700 flex items-center gap-2">
+                                    <BookOpen className="h-3 w-3" />
+                                    Progresso Libreria ({client.libraryProgress.missing.length})
+                                  </p>
+                                  {client.libraryProgress.missing.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-cyan-50 rounded border border-cyan-200 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <BookOpen className="h-3 w-3 text-cyan-500" />
+                                        <span className="text-sm">{item.documentTitle || 'Documento'}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.emailJourneyProgress?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-violet-700 flex items-center gap-2">
+                                    <Mail className="h-3 w-3" />
+                                    Email Journey ({client.emailJourneyProgress.missing.length})
+                                  </p>
+                                  {client.emailJourneyProgress.missing.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-violet-50 rounded border border-violet-200 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <Mail className="h-3 w-3 text-violet-500" />
+                                        <span className="text-sm">{item.templateTitle || 'Email'}</span>
                                       </div>
                                     </div>
                                   ))}
