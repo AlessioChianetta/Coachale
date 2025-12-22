@@ -9981,8 +9981,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       }
 
       // Try to fetch events from the agent's calendar
-      const { getAgentCalendarService } = await import("./google-calendar-service");
-      const calendar = await getAgentCalendarService(agentId);
+      const { getAgentCalendarClient } = await import("./google-calendar-service");
+      const calendar = await getAgentCalendarClient(agentId);
 
       if (!calendar) {
         return res.status(400).json({ 
