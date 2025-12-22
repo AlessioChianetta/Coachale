@@ -2126,15 +2126,16 @@ router.get("/consultant/journey-templates", authenticateToken, requireRole("cons
     const consultantId = req.user!.id;
     const smtpSettings = await storage.getConsultantSmtpSettings(consultantId);
     
+    // Always check if custom templates exist in the database
+    const customTemplates = await storage.getConsultantJourneyTemplates(consultantId);
+    const hasCustomTemplates = customTemplates.length > 0;
+    
     let templates;
     let isCustom = false;
     
-    if (smtpSettings?.useCustomTemplates) {
-      const customTemplates = await storage.getConsultantJourneyTemplates(consultantId);
-      if (customTemplates.length > 0) {
-        templates = customTemplates;
-        isCustom = true;
-      }
+    if (smtpSettings?.useCustomTemplates && hasCustomTemplates) {
+      templates = customTemplates;
+      isCustom = true;
     }
     
     if (!templates) {
@@ -2146,6 +2147,7 @@ router.get("/consultant/journey-templates", authenticateToken, requireRole("cons
       data: {
         templates,
         isCustom,
+        hasCustomTemplates,
         businessContext: smtpSettings?.businessContext || null,
         useCustomTemplates: smtpSettings?.useCustomTemplates || false,
         lastGeneratedAt: smtpSettings?.lastTemplatesGeneratedAt || null

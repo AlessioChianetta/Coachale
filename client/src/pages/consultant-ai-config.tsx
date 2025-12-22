@@ -3140,14 +3140,16 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     )}
                   </Button>
 
-                  {(customGenerationSuccess || customJourneyData?.lastGeneratedAt) && (
+                  {(customGenerationSuccess || customJourneyData?.hasCustomTemplates) && (
                     <div className="p-3 bg-violet-100 border border-violet-200 rounded-lg">
                       <div className="flex items-center gap-2 text-violet-800">
                         <CheckCircle className="h-4 w-4" />
                         <span className="text-sm font-medium">
                           {customGenerationSuccess 
                             ? `${customGenerationSuccess.count} template generati con successo!`
-                            : customJourneyData?.lastGeneratedAt && `Generati il: ${new Date(customJourneyData.lastGeneratedAt).toLocaleString("it-IT")}`
+                            : customJourneyData?.lastGeneratedAt 
+                              ? `Generati il: ${new Date(customJourneyData.lastGeneratedAt).toLocaleString("it-IT")}`
+                              : "Template personalizzati disponibili"
                           }
                         </span>
                       </div>
@@ -3167,12 +3169,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       id="useCustomTemplates"
                       checked={customJourneyData?.useCustomTemplates ?? false}
                       onCheckedChange={(checked) => updateCustomSettingsMutation.mutate({ useCustomTemplates: checked })}
-                      disabled={updateCustomSettingsMutation.isPending || !customJourneyData?.lastGeneratedAt}
+                      disabled={updateCustomSettingsMutation.isPending || !customJourneyData?.hasCustomTemplates}
                       className="data-[state=checked]:bg-violet-600"
                     />
                   </div>
 
-                  {customJourneyData?.lastGeneratedAt && (
+                  {customJourneyData?.hasCustomTemplates && (
                     <Button
                       variant="outline"
                       onClick={() => resetCustomTemplatesMutation.mutate()}
