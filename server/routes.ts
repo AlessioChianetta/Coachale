@@ -9892,7 +9892,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       const { code, state } = req.query;
 
       if (!code || !state) {
-        return res.redirect("/consultant/whatsapp-wizard?calendar_error=missing_params");
+        return res.redirect("/consultant/whatsapp?calendar_error=missing_params");
       }
 
       const agentId = state as string;
@@ -9903,14 +9903,14 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
       if (result.success) {
         console.log(`✅ Agent ${agentId} calendar connected successfully, email: ${result.email}`);
-        res.redirect(`/consultant/whatsapp-wizard?agent=${agentId}&calendar_connected=true&email=${encodeURIComponent(result.email || '')}`);
+        res.redirect(`/consultant/whatsapp?agent=${agentId}&calendar_connected=true&email=${encodeURIComponent(result.email || '')}`);
       } else {
         console.error(`❌ Failed to connect calendar for agent ${agentId}:`, result.error);
-        res.redirect(`/consultant/whatsapp-wizard?agent=${agentId}&calendar_error=${encodeURIComponent(result.error || 'unknown')}`);
+        res.redirect(`/consultant/whatsapp?agent=${agentId}&calendar_error=${encodeURIComponent(result.error || 'unknown')}`);
       }
     } catch (error: any) {
       console.error("❌ Error in agent calendar OAuth callback:", error);
-      res.redirect(`/consultant/whatsapp-wizard?calendar_error=${encodeURIComponent(error.message)}`);
+      res.redirect(`/consultant/whatsapp?calendar_error=${encodeURIComponent(error.message)}`);
     }
   });
 

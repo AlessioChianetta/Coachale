@@ -705,7 +705,20 @@ export async function exchangeAgentCodeForTokens(
       redirectUri
     );
 
+    console.log(`[AGENT CALENDAR] Exchanging code for tokens, redirect URI: ${redirectUri}`);
+    
     const { tokens } = await oauth2Client.getToken(code);
+    
+    console.log(`[AGENT CALENDAR] Tokens received:`, {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      expiryDate: tokens.expiry_date
+    });
+
+    if (!tokens.access_token) {
+      console.error(`[AGENT CALENDAR] No access token received from Google`);
+      return { success: false, error: 'Nessun access token ricevuto da Google. Riprova il collegamento.' };
+    }
 
     // Get user email from Google
     oauth2Client.setCredentials(tokens);
