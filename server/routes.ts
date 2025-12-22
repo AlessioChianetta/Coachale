@@ -9973,7 +9973,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         return res.status(404).json({ message: "Agent not found" });
       }
 
-      if (!agentConfig.calendarAccessToken || !agentConfig.calendarRefreshToken) {
+      if (!agentConfig.googleAccessToken || !agentConfig.googleRefreshToken) {
         return res.status(400).json({ 
           success: false, 
           message: "Nessun calendario collegato a questo agente" 
@@ -10009,7 +10009,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         success: true, 
         message: "Connessione al calendario verificata con successo",
         eventsCount: events.data.items?.length || 0,
-        calendarEmail: agentConfig.calendarEmail
+        calendarEmail: agentConfig.googleCalendarEmail
       });
     } catch (error: any) {
       console.error("❌ Error testing agent calendar:", error);
