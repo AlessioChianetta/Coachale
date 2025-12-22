@@ -44,6 +44,10 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Video Copilot Turn-Taking System**: Prevents API bombardment during video meetings via intelligent turn-taking using a state machine and client-side VAD.
 - **WebRTC/WebSocket Resilience System**: Implements heartbeat, exponential backoff reconnection, and network change detection for robust connectivity.
 - **AI-Driven Follow-up Automation System**: 100% AI-driven follow-up system without hardcoded rules. AI acts as an expert sales consultant, guided by per-consultant preferences (max follow-ups, delay, aggressiveness, custom instructions, etc.) but maintains decision autonomy.
+- **Booking Extraction Accumulator Pattern (Dec 2025)**: Prevents booking data loss during AI re-extraction cycles. Uses `booking_extraction_state` table to progressively accumulate extracted fields (date, time, phone, email, name) across multiple extraction attempts. Key features:
+  - **Merge Strategy**: New extracted values only overwrite if non-null, preserving previously captured data
+  - **Auto-Cleanup**: State marked completed after successful booking creation, auto-expires after 24h of inactivity
+  - **Integration**: Applied to both WhatsApp conversations and public link flows via `extractBookingDataFromConversation()` options
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
