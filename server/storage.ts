@@ -4095,6 +4095,94 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Consultant Journey Templates operations (custom templates per consultant)
+  async getConsultantJourneyTemplate(consultantId: string, dayOfMonth: number): Promise<schema.ConsultantJourneyTemplate | null> {
+    try {
+      const [template] = await db.select()
+        .from(schema.consultantJourneyTemplates)
+        .where(
+          and(
+            eq(schema.consultantJourneyTemplates.consultantId, consultantId),
+            eq(schema.consultantJourneyTemplates.dayOfMonth, dayOfMonth),
+            eq(schema.consultantJourneyTemplates.isActive, true)
+          )
+        );
+      return template || null;
+    } catch (error: any) {
+      console.error(`Error fetching consultant journey template for day ${dayOfMonth}:`, error);
+      return null;
+    }
+  }
+
+  async getConsultantJourneyTemplates(consultantId: string): Promise<schema.ConsultantJourneyTemplate[]> {
+    try {
+      return await db.select()
+        .from(schema.consultantJourneyTemplates)
+        .where(
+          and(
+            eq(schema.consultantJourneyTemplates.consultantId, consultantId),
+            eq(schema.consultantJourneyTemplates.isActive, true)
+          )
+        )
+        .orderBy(asc(schema.consultantJourneyTemplates.dayOfMonth));
+    } catch (error: any) {
+      console.error(`Error fetching consultant journey templates:`, error);
+      return [];
+    }
+  }
+
+  async upsertConsultantJourneyTemplate(templateData: schema.InsertConsultantJourneyTemplate): Promise<schema.ConsultantJourneyTemplate> {
+    try {
+      const existing = await this.getConsultantJourneyTemplate(templateData.consultantId, templateData.dayOfMonth);
+      
+      if (existing) {
+        const [updated] = await db.update(schema.consultantJourneyTemplates)
+          .set({ ...templateData, updatedAt: new Date() })
+          .where(eq(schema.consultantJourneyTemplates.id, existing.id))
+          .returning();
+        return updated;
+      } else {
+        const [created] = await db.insert(schema.consultantJourneyTemplates)
+          .values(templateData)
+          .returning();
+        return created;
+      }
+    } catch (error: any) {
+      console.error(`Error upserting consultant journey template:`, error);
+      throw error;
+    }
+  }
+
+  async deleteConsultantJourneyTemplates(consultantId: string): Promise<void> {
+    try {
+      await db.delete(schema.consultantJourneyTemplates)
+        .where(eq(schema.consultantJourneyTemplates.consultantId, consultantId));
+    } catch (error: any) {
+      console.error(`Error deleting consultant journey templates:`, error);
+      throw error;
+    }
+  }
+
+  async updateConsultantSmtpBusinessContext(
+    consultantId: string, 
+    businessContext: string, 
+    useCustomTemplates: boolean
+  ): Promise<void> {
+    try {
+      await db.update(schema.consultantSmtpSettings)
+        .set({ 
+          businessContext, 
+          useCustomTemplates,
+          lastTemplatesGeneratedAt: new Date(),
+          updatedAt: new Date() 
+        })
+        .where(eq(schema.consultantSmtpSettings.consultantId, consultantId));
+    } catch (error: any) {
+      console.error(`Error updating consultant business context:`, error);
+      throw error;
+    }
+  }
+
   // Client Email Journey Progress operations
   async getClientEmailJourneyProgress(consultantId: string, clientId: string): Promise<schema.ClientEmailJourneyProgress | null> {
     try {

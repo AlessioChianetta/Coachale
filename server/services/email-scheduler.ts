@@ -336,12 +336,28 @@ async function sendAutomatedEmailToClient(client: {
       console.log(`📅 Dynamic template: using template ${templateDay} for day ${currentDay} (${daysUntilEnd} giorni alla fine)`);
     }
     
-    const journeyTemplate = await storage.getEmailJourneyTemplate(templateDay);
+    // Check for custom templates first, then fall back to defaults
+    let journeyTemplate = null;
+    
+    if (smtpSettings?.useCustomTemplates) {
+      journeyTemplate = await storage.getConsultantJourneyTemplate(client.consultantId, templateDay);
+      if (journeyTemplate) {
+        console.log(`📝 Using CUSTOM journey template: "${journeyTemplate.title}" (${journeyTemplate.emailType})`);
+      }
+    }
+    
+    // Fall back to default template if no custom template found
+    if (!journeyTemplate) {
+      journeyTemplate = await storage.getEmailJourneyTemplate(templateDay);
+      if (journeyTemplate) {
+        console.log(`📝 Using DEFAULT journey template: "${journeyTemplate.title}" (${journeyTemplate.emailType})`);
+      }
+    }
     
     if (!journeyTemplate) {
       console.warn(`⚠️  No journey template found for day ${templateDay} - will use generic email`);
     } else {
-      console.log(`📝 Using journey template: "${journeyTemplate.title}" (${journeyTemplate.emailType})`);
+      // Log is already done above
     }
     
     // 2.6. Check if there's already a draft for TODAY's template (same templateDay)

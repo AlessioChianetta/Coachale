@@ -2120,4 +2120,261 @@ router.get("/consultant/scheduler/logs", authenticateToken, requireRole("consult
   }
 });
 
+// GET /api/consultant/journey-templates - Get consultant's journey templates (custom or default)
+router.get("/consultant/journey-templates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const smtpSettings = await storage.getConsultantSmtpSettings(consultantId);
+    
+    let templates;
+    let isCustom = false;
+    
+    if (smtpSettings?.useCustomTemplates) {
+      const customTemplates = await storage.getConsultantJourneyTemplates(consultantId);
+      if (customTemplates.length > 0) {
+        templates = customTemplates;
+        isCustom = true;
+      }
+    }
+    
+    if (!templates) {
+      templates = await storage.getAllEmailJourneyTemplates();
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        templates,
+        isCustom,
+        businessContext: smtpSettings?.businessContext || null,
+        useCustomTemplates: smtpSettings?.useCustomTemplates || false,
+        lastGeneratedAt: smtpSettings?.lastTemplatesGeneratedAt || null
+      }
+    });
+  } catch (error: any) {
+    console.error("❌ [JOURNEY TEMPLATES] Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch journey templates"
+    });
+  }
+});
+
+// POST /api/consultant/journey-templates/generate - Generate custom templates with AI
+router.post("/consultant/journey-templates/generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { businessContext } = req.body;
+    
+    if (!businessContext || businessContext.trim().length < 20) {
+      return res.status(400).json({
+        success: false,
+        message: "Descrivi la tua attività in almeno 20 caratteri",
+        error: "Descrivi la tua attività in almeno 20 caratteri"
+      });
+    }
+    
+    console.log(`🤖 [JOURNEY TEMPLATES] Generating custom templates for consultant ${consultantId}`);
+    
+    // Get default templates to use as base
+    const defaultTemplates = await storage.getAllEmailJourneyTemplates();
+    
+    if (defaultTemplates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Nessun template di default disponibile",
+        error: "Nessun template di default disponibile"
+      });
+    }
+    
+    // Get AI configuration
+    const { getGeminiClient } = await import("../gemini");
+    const aiClient = await getGeminiClient(consultantId);
+    
+    if (!aiClient) {
+      return res.status(500).json({
+        success: false,
+        message: "Configurazione AI non disponibile",
+        error: "Configurazione AI non disponibile"
+      });
+    }
+    
+    // Delete existing custom templates
+    await storage.deleteConsultantJourneyTemplates(consultantId);
+    
+    // Process templates in batches to avoid rate limits
+    const batchSize = 5;
+    const generatedTemplates = [];
+    
+    for (let i = 0; i < defaultTemplates.length; i += batchSize) {
+      const batch = defaultTemplates.slice(i, i + batchSize);
+      
+      const batchPromises = batch.map(async (template) => {
+        try {
+          const prompt = `Sei un esperto di copywriting e email marketing. Riscrivi questo template email per adattarlo al seguente business:
+
+BUSINESS DEL CONSULTANT:
+${businessContext}
+
+TEMPLATE ORIGINALE:
+- Titolo: ${template.title}
+- Tipo: ${template.emailType}
+- Descrizione: ${template.description || "N/A"}
+- Prompt Template: ${template.promptTemplate}
+
+ISTRUZIONI:
+1. Mantieni la STESSA struttura e gli stessi placeholder (es. {{nomeCliente}}, {{esercizi}}, {{momentum}})
+2. Adatta il linguaggio e gli esempi al business specifico
+3. Mantieni il tono ${template.tone}
+4. Il risultato deve essere un prompt che genera email personalizzate per il business indicato
+
+Rispondi SOLO con il nuovo prompt template, senza spiegazioni aggiuntive.`;
+
+          const result = await aiClient.generateContent(prompt);
+          const newPromptTemplate = result.response.text().trim();
+          
+          return {
+            consultantId,
+            dayOfMonth: template.dayOfMonth,
+            title: template.title,
+            description: template.description,
+            emailType: template.emailType,
+            promptTemplate: newPromptTemplate,
+            tone: template.tone,
+            priority: template.priority,
+            isActive: true,
+            generatedFromDefault: true
+          };
+        } catch (error: any) {
+          console.error(`❌ [JOURNEY TEMPLATES] Error generating template for day ${template.dayOfMonth}:`, error);
+          // Fallback to original template
+          return {
+            consultantId,
+            dayOfMonth: template.dayOfMonth,
+            title: template.title,
+            description: template.description,
+            emailType: template.emailType,
+            promptTemplate: template.promptTemplate,
+            tone: template.tone,
+            priority: template.priority,
+            isActive: true,
+            generatedFromDefault: false
+          };
+        }
+      });
+      
+      const batchResults = await Promise.all(batchPromises);
+      
+      // Save each template
+      for (const templateData of batchResults) {
+        const saved = await storage.upsertConsultantJourneyTemplate(templateData);
+        generatedTemplates.push(saved);
+      }
+      
+      // Small delay between batches to avoid rate limits
+      if (i + batchSize < defaultTemplates.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
+    // Update consultant settings
+    await storage.updateConsultantSmtpBusinessContext(consultantId, businessContext, true);
+    
+    console.log(`✅ [JOURNEY TEMPLATES] Generated ${generatedTemplates.length} custom templates for consultant ${consultantId}`);
+    
+    res.json({
+      success: true,
+      data: {
+        templatesGenerated: generatedTemplates.length,
+        templates: generatedTemplates
+      }
+    });
+  } catch (error: any) {
+    console.error("❌ [JOURNEY TEMPLATES] Error generating templates:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to generate custom templates",
+      error: error.message || "Failed to generate custom templates"
+    });
+  }
+});
+
+// PUT /api/consultant/journey-templates/settings - Update template settings
+router.put("/consultant/journey-templates/settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { useCustomTemplates, businessContext } = req.body;
+    
+    // Update settings
+    const smtpSettings = await storage.getConsultantSmtpSettings(consultantId);
+    
+    if (!smtpSettings) {
+      return res.status(400).json({
+        success: false,
+        message: "Configura prima le impostazioni SMTP",
+        error: "Configura prima le impostazioni SMTP"
+      });
+    }
+    
+    await db.update(systemSettings)
+      .set({ updatedAt: new Date() })
+      .where(eq(systemSettings.id, systemSettings.id));
+    
+    // Use raw SQL for this update since we need specific fields
+    await db.execute(sql`
+      UPDATE consultant_smtp_settings 
+      SET use_custom_templates = ${useCustomTemplates || false},
+          business_context = ${businessContext || null},
+          updated_at = now()
+      WHERE consultant_id = ${consultantId}
+    `);
+    
+    res.json({
+      success: true,
+      message: useCustomTemplates ? "Template personalizzati attivati" : "Template di default attivati"
+    });
+  } catch (error: any) {
+    console.error("❌ [JOURNEY TEMPLATES] Error updating settings:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update template settings",
+      error: error.message || "Failed to update template settings"
+    });
+  }
+});
+
+// DELETE /api/consultant/journey-templates - Reset to default templates
+router.delete("/consultant/journey-templates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    // Delete all custom templates
+    await storage.deleteConsultantJourneyTemplates(consultantId);
+    
+    // Reset settings
+    await db.execute(sql`
+      UPDATE consultant_smtp_settings 
+      SET use_custom_templates = false,
+          business_context = null,
+          last_templates_generated_at = null,
+          updated_at = now()
+      WHERE consultant_id = ${consultantId}
+    `);
+    
+    console.log(`✅ [JOURNEY TEMPLATES] Reset to default templates for consultant ${consultantId}`);
+    
+    res.json({
+      success: true,
+      message: "Template ripristinati ai valori predefiniti"
+    });
+  } catch (error: any) {
+    console.error("❌ [JOURNEY TEMPLATES] Error resetting templates:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to reset templates",
+      error: error.message || "Failed to reset templates"
+    });
+  }
+});
+
 export default router;

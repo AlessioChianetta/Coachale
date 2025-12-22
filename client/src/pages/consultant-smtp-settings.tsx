@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Mail, 
@@ -19,7 +20,12 @@ import {
   AlertCircle,
   Loader2,
   Save,
-  TestTube
+  TestTube,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  RotateCcw,
+  Calendar
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -58,6 +64,9 @@ export default function ConsultantSMTPSettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("not-configured");
   const [showPassword, setShowPassword] = useState(false);
+  const [journeyTemplatesOpen, setJourneyTemplatesOpen] = useState(false);
+  const [businessContext, setBusinessContext] = useState("");
+  const [generationSuccess, setGenerationSuccess] = useState<{ count: number } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -191,6 +200,129 @@ export default function ConsultantSMTPSettingsPage() {
       toast({
         title: "Errore di Connessione",
         description: error.message || "Impossibile connettersi al server SMTP",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Journey Templates Query
+  const { data: journeyTemplatesData, isLoading: isLoadingJourneyTemplates } = useQuery({
+    queryKey: ["/api/consultant/journey-templates"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/journey-templates", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error("Failed to fetch journey templates");
+      }
+      const result = await response.json();
+      return result.data || result; // Extract data field if present
+    },
+  });
+
+  // Update businessContext when journey templates data is loaded
+  useEffect(() => {
+    if (journeyTemplatesData?.businessContext) {
+      setBusinessContext(journeyTemplatesData.businessContext);
+    }
+  }, [journeyTemplatesData]);
+
+  // Generate Journey Templates Mutation
+  const generateTemplatesMutation = useMutation({
+    mutationFn: async (context: string) => {
+      const response = await fetch("/api/consultant/journey-templates/generate", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ businessContext: context }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to generate templates");
+      }
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/journey-templates"] });
+      const data = result.data || result;
+      const count = data.templatesGenerated || data.count || 10;
+      setGenerationSuccess({ count });
+      toast({
+        title: "Template Generati",
+        description: `${count} template email personalizzati sono stati creati con successo`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore Generazione",
+        description: error.message || "Errore durante la generazione dei template",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update Journey Templates Settings Mutation
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (settings: { useCustomTemplates?: boolean; businessContext?: string }) => {
+      const response = await fetch("/api/consultant/journey-templates/settings", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(settings),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update settings");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/journey-templates"] });
+      toast({
+        title: "Impostazioni Aggiornate",
+        description: "Le impostazioni dei template sono state aggiornate",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'aggiornamento delle impostazioni",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reset Journey Templates Mutation
+  const resetTemplatesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/consultant/journey-templates", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to reset templates");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/journey-templates"] });
+      setGenerationSuccess(null);
+      setBusinessContext("");
+      toast({
+        title: "Template Ripristinati",
+        description: "I template email sono stati ripristinati ai valori predefiniti",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante il ripristino dei template",
         variant: "destructive",
       });
     },
@@ -512,6 +644,155 @@ export default function ConsultantSMTPSettingsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Journey Email Templates Section */}
+            <Collapsible
+              open={journeyTemplatesOpen}
+              onOpenChange={setJourneyTemplatesOpen}
+              className="mt-6"
+            >
+              <Card className="border-violet-200 shadow-lg overflow-hidden">
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white cursor-pointer hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700 transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
+                          <Sparkles className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-white text-xl">Personalizza Journey Email</CardTitle>
+                          <CardDescription className="text-violet-100">
+                            Genera template email personalizzati con l'AI
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {journeyTemplatesData?.useCustomTemplates && (
+                          <Badge className="bg-white/20 text-white border-0">
+                            Template Personalizzati Attivi
+                          </Badge>
+                        )}
+                        {journeyTemplatesOpen ? (
+                          <ChevronUp className="h-6 w-6 text-white" />
+                        ) : (
+                          <ChevronDown className="h-6 w-6 text-white" />
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="pt-6 space-y-6">
+                    {/* Business Context Textarea */}
+                    <div className="space-y-2">
+                      <Label htmlFor="businessContext" className="text-violet-900 font-medium">
+                        Descrivi la tua attività
+                      </Label>
+                      <Textarea
+                        id="businessContext"
+                        placeholder="Descrivi in dettaglio la tua attività, i servizi che offri, il tuo target di clienti e il tono di comunicazione che preferisci. Ad esempio: 'Sono un consulente finanziario specializzato in pianificazione patrimoniale per famiglie. Offro servizi di investimento, protezione del patrimonio e pianificazione successoria. Il mio target sono famiglie con patrimonio medio-alto che cercano una consulenza personalizzata e a lungo termine.'"
+                        rows={5}
+                        value={businessContext}
+                        onChange={(e) => setBusinessContext(e.target.value)}
+                        className="border-violet-200 focus:border-violet-400 focus:ring-violet-400"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Più dettagli fornisci, più i template saranno personalizzati per la tua attività
+                      </p>
+                    </div>
+
+                    {/* Generate Button */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        onClick={() => generateTemplatesMutation.mutate(businessContext)}
+                        disabled={generateTemplatesMutation.isPending || !businessContext.trim()}
+                        className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                      >
+                        {generateTemplatesMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generazione in corso... (~30 secondi)
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Genera Template Personalizzati
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Generation Success Message */}
+                    {(generationSuccess || journeyTemplatesData?.lastGeneratedAt) && (
+                      <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                        <div className="flex items-center gap-2 text-green-800">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="font-medium">
+                            {generationSuccess 
+                              ? `${generationSuccess.count} template generati con successo!`
+                              : "Template personalizzati disponibili"}
+                          </span>
+                        </div>
+                        {journeyTemplatesData?.lastGeneratedAt && (
+                          <div className="flex items-center gap-2 mt-2 text-sm text-green-700">
+                            <Calendar className="h-4 w-4" />
+                            <span>
+                              Generati il: {new Date(journeyTemplatesData.lastGeneratedAt).toLocaleString("it-IT")}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Use Custom Templates Switch */}
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-violet-50 border border-violet-200">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="useCustomTemplates" className="text-violet-900 font-medium">
+                          Usa Template Personalizzati
+                        </Label>
+                        <p className="text-sm text-violet-700">
+                          Abilita l'uso dei template generati con l'AI per le email di journey
+                        </p>
+                      </div>
+                      <Switch
+                        id="useCustomTemplates"
+                        checked={journeyTemplatesData?.useCustomTemplates ?? false}
+                        onCheckedChange={(checked) => 
+                          updateSettingsMutation.mutate({ useCustomTemplates: checked })
+                        }
+                        disabled={updateSettingsMutation.isPending || !journeyTemplatesData?.lastGeneratedAt}
+                        className="data-[state=checked]:bg-violet-600"
+                      />
+                    </div>
+
+                    {/* Reset Button */}
+                    <div className="pt-4 border-t border-violet-100">
+                      <Button
+                        onClick={() => resetTemplatesMutation.mutate()}
+                        disabled={resetTemplatesMutation.isPending}
+                        variant="outline"
+                        className="border-violet-300 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                      >
+                        {resetTemplatesMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Ripristino in corso...
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Ripristina Default
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Ripristina i template email ai valori predefiniti del sistema
+                      </p>
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
           </div>
         </div>
       </div>
