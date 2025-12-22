@@ -16,7 +16,7 @@ import {
   AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
   RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
   BookOpen, ChevronDown, ChevronUp, Shield, Database, Plug, Copy, Check, Filter,
-  MapPin, Tag, Settings, Send, User
+  MapPin, Tag, Settings, Send, User, Zap
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
