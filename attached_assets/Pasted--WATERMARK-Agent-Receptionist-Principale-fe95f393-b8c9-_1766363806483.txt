@@ -1,0 +1,124 @@
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+12:36:33 AM [express] POST /api/whatsapp/agents/760bb513-098f-4722-b02a-a700160c2fc3/calendar/oauth/s…
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+[AGENT CALENDAR] Exchanging code for tokens, redirect URI: https://02a4b77d-09e8-42b8-b7c8-390a20e9763d-00-3763jtri3g4ym.spock.replit.dev/api/whatsapp/agents/calendar/oauth/callback
+[AGENT CALENDAR] Tokens received: {
+  hasAccessToken: true,
+  hasRefreshToken: true,
+  expiryDate: 1766367400699
+}
+❌ [AGENT CALENDAR] Failed to exchange code for agent 760bb513-098f-4722-b02a-a700160c2fc3: GaxiosError: Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.
+    at Gaxios._request (/home/runner/workspace/node_modules/gaxios/src/gaxios.ts:211:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async OAuth2Client.requestAsync (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/oauth2client.js:463:20)
+    at async createAPIRequestAsync (/home/runner/workspace/node_modules/googleapis-common/build/src/apirequest.js:308:25)
+    at async exchangeAgentCodeForTokens (/home/runner/workspace/server/google-calendar-service.ts:726:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:9902:22) {
+  config: {
+    url: URL {
+      href: 'https://www.googleapis.com/oauth2/v2/userinfo',
+      origin: 'https://www.googleapis.com',
+      protocol: 'https:',
+      username: '',
+      password: '',
+      host: 'www.googleapis.com',
+      hostname: 'www.googleapis.com',
+      port: '',
+      pathname: '/oauth2/v2/userinfo',
+      search: '',
+      searchParams: URLSearchParams {},
+      hash: ''
+    },
+    method: 'GET',
+    apiVersion: '',
+    userAgentDirectives: [ [Object] ],
+    headers: Headers {
+      'accept-encoding': 'gzip',
+      authorization: '<<REDACTED> - See `errorRedactor` option in `gaxios` for configuration>.',
+      'user-agent': 'google-api-nodejs-client/8.0.0 (gzip)',
+      'x-goog-api-client': 'gdcl/8.0.0 gl-node/20.19.3'
+    },
+    validateStatus: [Function (anonymous)],
+    retry: true,
+    responseType: 'unknown',
+    errorRedactor: [Function: defaultErrorRedactor],
+    retryConfig: {
+      currentRetryAttempt: 0,
+      retry: 3,
+      httpMethodsToRetry: [Array],
+      noResponseRetries: 2,
+      retryDelayMultiplier: 2,
+      timeOfFirstRequest: 1766363801732,
+      totalTimeout: 9007199254740991,
+      maxRetryDelay: 9007199254740991,
+      statusCodesToRetry: [Array]
+    }
+  },
+  response: Response {
+    size: 0,
+    data: { error: [Object] },
+    config: {
+      url: URL {},
+      method: 'GET',
+      apiVersion: '',
+      userAgentDirectives: [Array],
+      headers: Headers {
+        'accept-encoding': 'gzip',
+        authorization: '<<REDACTED> - See `errorRedactor` option in `gaxios` for configuration>.',
+        'user-agent': 'google-api-nodejs-client/8.0.0 (gzip)',
+        'x-goog-api-client': 'gdcl/8.0.0 gl-node/20.19.3'
+      },
+      validateStatus: [Function (anonymous)],
+      retry: true,
+      responseType: 'unknown',
+      errorRedactor: [Function: defaultErrorRedactor]
+    },
+    [Symbol(Body internals)]: {
+      body: [Gunzip],
+      stream: [Gunzip],
+      boundary: null,
+      disturbed: true,
+      error: null
+    },
+    [Symbol(Response internals)]: {
+      type: 'default',
+      url: 'https://www.googleapis.com/oauth2/v2/userinfo',
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: [Object],
+      counter: 0,
+      highWaterMark: 16384
+    }
+  },
+  code: 401,
+  status: 401,
+  error: undefined,
+  [Symbol(gaxios-gaxios-error)]: '7.1.2',
+  [cause]: {
+    message: 'Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.',
+    code: 401,
+    status: 'UNAUTHENTICATED',
+    errors: [ [Object] ]
+  }
+}
+❌ Failed to connect calendar for agent 760bb513-098f-4722-b02a-a700160c2fc3: Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.
+12:36:41 AM [express] GET /api/whatsapp/agents/calendar/oauth/callback 302 in 588ms
+12:36:47 AM [express] GET /api/whatsapp/conversations/stats 200 in 13ms
+12:36:48 AM [express] GET /api/auth/my-profiles 304 in 433ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+12:36:48 AM [express] GET /api/consultant/onboarding/knowledge-documents 304 in 1289ms :: {"success":…
+12:36:48 AM [express] GET /api/consultant/onboarding/ai-ideas 304 in 1287ms :: {"success":true,"data"…
+12:36:48 AM [express] GET /api/whatsapp/api-keys 304 in 1292ms :: {"keys":[],"count":0,"maxKeys":50}
+12:36:49 AM [express] GET /api/whatsapp/config 304 in 1573ms :: {"configured":true,"configs":[{"id":"…
+12:36:50 AM [express] GET /api/whatsapp/agents/leaderboard 304 in 855ms :: [{"id":"3e3aedc9-1a8f-42b1…
+12:36:50 AM [express] GET /api/whatsapp/agents/activity-feed 304 in 855ms :: [{"id":"9a732881-96c6-47…
+12:36:50 AM [express] GET /api/whatsapp/agents/stats 304 in 1001ms :: {"totalAgents":3,"activeAgents"…
+12:36:51 AM [express] GET /api/whatsapp/agents/760bb513-098f-4722-b02a-a700160c2fc3/calendar/status 3…
+12:36:53 AM [express] GET /api/whatsapp/agents/760bb513-098f-4722-b02a-a700160c2fc3/analytics 304 in …
+12:36:56 AM [express] POST /api/activity/session/heartbeat 200 in 430ms :: {"success":true,"lastActiv…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered

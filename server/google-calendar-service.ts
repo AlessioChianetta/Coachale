@@ -33,10 +33,11 @@ function extractJsonbString(value: any): string | null {
   return String(value);
 }
 
-// Scopes needed for Google Calendar
+// Scopes needed for Google Calendar + email for user identification
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
-  'https://www.googleapis.com/auth/calendar.events'
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/userinfo.email'
 ];
 
 /**
