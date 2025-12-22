@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthHeaders } from "@/lib/auth";
 
 interface AgentAvailabilityProps {
   formData: any;
@@ -117,7 +118,7 @@ export default function AgentAvailability({ formData, onChange, errors, agentId 
     setIsLoadingCalendar(true);
     try {
       const response = await fetch(`/api/whatsapp/agents/${agentId}/calendar/status`, {
-        credentials: 'include'
+        headers: getAuthHeaders()
       });
       if (response.ok) {
         const data = await response.json();
@@ -144,7 +145,7 @@ export default function AgentAvailability({ formData, onChange, errors, agentId 
     try {
       const response = await fetch(`/api/whatsapp/agents/${agentId}/calendar/oauth/start`, {
         method: 'POST',
-        credentials: 'include'
+        headers: getAuthHeaders()
       });
       
       if (!response.ok) {
@@ -171,7 +172,7 @@ export default function AgentAvailability({ formData, onChange, errors, agentId 
     try {
       const response = await fetch(`/api/whatsapp/agents/${agentId}/calendar/disconnect`, {
         method: 'POST',
-        credentials: 'include'
+        headers: getAuthHeaders()
       });
       
       if (!response.ok) {
