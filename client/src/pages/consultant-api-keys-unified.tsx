@@ -432,7 +432,7 @@ export default function ConsultantApiKeysUnified() {
   const [showLeadApiKey, setShowLeadApiKey] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [leadImportConfigId, setLeadImportConfigId] = useState<string | null>(null);
-  const [selectedIntegration, setSelectedIntegration] = useState<"crmale" | "hubdigital">("crmale");
+  const [selectedIntegration, setSelectedIntegration] = useState<"crmale" | "hubdigital" | "activecampaign">("crmale");
   const [leadImportFormData, setLeadImportFormData] = useState({
     configName: "Importazione Lead",
     apiKey: "",
@@ -459,6 +459,19 @@ export default function ConsultantApiKeysUnified() {
   const [isCreatingNewConfig, setIsCreatingNewConfig] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [hubdigitalCopied, setHubdigitalCopied] = useState<string | null>(null);
+
+  // ActiveCampaign Webhook state - Multi-config support
+  const [activecampaignFormData, setActivecampaignFormData] = useState({
+    configName: "",
+    agentConfigId: "",
+    targetCampaignId: "",
+    defaultSource: "",
+    isActive: true,
+  });
+  const [selectedACWebhookConfigId, setSelectedACWebhookConfigId] = useState<string | null>(null);
+  const [isCreatingNewACConfig, setIsCreatingNewACConfig] = useState(false);
+  const [isDuplicatingAC, setIsDuplicatingAC] = useState(false);
+  const [activecampaignCopied, setActivecampaignCopied] = useState<string | null>(null);
 
   const { data: vertexAiData, isLoading: isLoadingVertex } = useQuery({
     queryKey: ["/api/vertex-ai/settings"],
@@ -626,6 +639,9 @@ export default function ConsultantApiKeysUnified() {
   // Filter all hubdigital configs from webhook configs
   const hubdigitalConfigs = webhookConfigs?.filter((c: any) => c.providerName === "hubdigital") || [];
   
+  // Filter all activecampaign configs from webhook configs
+  const activecampaignConfigs = webhookConfigs?.filter((c: any) => c.providerName === "activecampaign") || [];
+  
   // Query for proactive WhatsApp agents (only agents with isProactiveAgent=true AND Twilio configured)
   const { data: proactiveAgentsData } = useQuery({
     queryKey: ["/api/whatsapp/config/proactive"],
@@ -777,6 +793,146 @@ export default function ConsultantApiKeysUnified() {
       toast({
         title: "Webhook Eliminato",
         description: "La configurazione Hubdigital.io è stata rimossa",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // ActiveCampaign Webhook mutations
+  const createActivecampaignMutation = useMutation({
+    mutationFn: async (data: { configName: string; agentConfigId: string; targetCampaignId: string; defaultSource?: string; isActive: boolean }) => {
+      const response = await fetch("/api/external-api/webhook-configs", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          providerName: "activecampaign",
+          displayName: "ActiveCampaign",
+          configName: data.configName,
+          agentConfigId: data.agentConfigId,
+          targetCampaignId: data.targetCampaignId,
+          defaultSource: data.defaultSource || null,
+          isActive: data.isActive,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || error.error || "Errore durante la creazione del webhook");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Webhook Creato",
+        description: "La configurazione ActiveCampaign è stata creata con successo",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+      setIsCreatingNewACConfig(false);
+      setIsDuplicatingAC(false);
+      setActivecampaignFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateActivecampaignMutation = useMutation({
+    mutationFn: async (data: { id: string; configName?: string; agentConfigId?: string; targetCampaignId?: string; defaultSource?: string | null; isActive?: boolean }) => {
+      const response = await fetch(`/api/external-api/webhook-configs/${data.id}`, {
+        method: "PATCH",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          configName: data.configName,
+          agentConfigId: data.agentConfigId,
+          targetCampaignId: data.targetCampaignId,
+          defaultSource: data.defaultSource,
+          isActive: data.isActive,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || error.error || "Errore durante l'aggiornamento");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Configurazione Aggiornata",
+        description: "Le modifiche sono state salvate",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+      setSelectedACWebhookConfigId(null);
+      setActivecampaignFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const regenerateActivecampaignKeyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/external-api/webhook-configs/${id}/regenerate-key`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante la rigenerazione della chiave");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Chiave Rigenerata",
+        description: "La nuova chiave webhook è stata generata. Aggiorna l'URL in ActiveCampaign.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteActivecampaignMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/external-api/webhook-configs/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante l'eliminazione");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Webhook Eliminato",
+        description: "La configurazione ActiveCampaign è stata rimossa",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
     },
@@ -2947,7 +3103,7 @@ export default function ConsultantApiKeysUnified() {
               {/* Lead Import Tab Content */}
               <TabsContent value="lead-import">
                 {/* Integration Selector Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   {/* CrmAle Card */}
                   <Card 
                     className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
@@ -3013,6 +3169,43 @@ export default function ConsultantApiKeysUnified() {
                           }
                         >
                           {hubdigitalConfigs.length > 0 ? `${hubdigitalConfigs.length} Config.` : "Da configurare"}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                        <Sparkles className="h-3 w-3" />
+                        <span>Push istantaneo</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* ActiveCampaign Card */}
+                  <Card 
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                      selectedIntegration === "activecampaign" 
+                        ? "border-2 border-purple-500 bg-purple-50/50 shadow-md" 
+                        : "border border-gray-200 bg-white hover:border-purple-300"
+                    }`}
+                    onClick={() => setSelectedIntegration("activecampaign")}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${selectedIntegration === "activecampaign" ? "bg-purple-100" : "bg-purple-50"}`}>
+                            <Zap className="h-6 w-6 text-purple-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">ActiveCampaign</h3>
+                            <p className="text-sm text-gray-500">Ricezione lead via Webhook</p>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={activecampaignConfigs.length > 0 
+                            ? "bg-green-50 text-green-700 border-green-300" 
+                            : "bg-gray-50 text-gray-500 border-gray-300"
+                          }
+                        >
+                          {activecampaignConfigs.length > 0 ? `${activecampaignConfigs.length} Config.` : "Da configurare"}
                         </Badge>
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
@@ -4559,6 +4752,507 @@ export default function ConsultantApiKeysUnified() {
                           )}
                         </CardContent>
                       </Card>
+                    )}
+                  </>
+                )}
+
+                {/* ActiveCampaign Configuration */}
+                {selectedIntegration === "activecampaign" && (
+                  <>
+                    <Alert className="mb-4 bg-purple-50 border-purple-200">
+                      <Zap className="h-5 w-5 text-purple-600" />
+                      <AlertDescription className="text-sm text-purple-800">
+                        <strong>Webhook Push Istantaneo da ActiveCampaign</strong> - I lead vengono ricevuti in tempo reale quando un contatto viene aggiunto o si iscrive in ActiveCampaign. Configura il webhook in ActiveCampaign: Settings → Developer → Webhooks.
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* ActiveCampaign Field Mapping Legend */}
+                    <Collapsible className="mb-6">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full justify-between bg-purple-50 border-purple-200 hover:bg-purple-100">
+                          <span className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-purple-600" />
+                            <span className="text-purple-800">Legenda Campi Mappati da ActiveCampaign</span>
+                          </span>
+                          <ChevronDown className="h-4 w-4 text-purple-600" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <Card className="border-purple-200 bg-purple-50/50">
+                          <CardContent className="pt-4 space-y-4">
+                            <p className="text-sm text-purple-800">
+                              Campi che ActiveCampaign invia via webhook:
+                            </p>
+                            
+                            <div>
+                              <h4 className="text-xs font-semibold text-purple-700 uppercase mb-2">Dati Contatto</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border border-green-300">
+                                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 shrink-0">phone *</Badge>
+                                  <span className="text-gray-700">Telefono (obbligatorio) → phoneNumber</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">firstName</Badge>
+                                  <span className="text-gray-700">Nome del contatto</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">lastName</Badge>
+                                  <span className="text-gray-700">Cognome del contatto</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">email</Badge>
+                                  <span className="text-gray-700">Email → leadInfo.email</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 className="text-xs font-semibold text-purple-700 uppercase mb-2">Metadati</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">contact.id</Badge>
+                                  <span className="text-gray-700">ID contatto AC → leadInfo.acContactId</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">contact.tags</Badge>
+                                  <span className="text-gray-700">Tags → leadInfo.tags</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">contact.fieldValues</Badge>
+                                  <span className="text-gray-700">Campi custom → leadInfo.customFields</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 text-xs pt-2 border-t">
+                              <div className="flex items-center gap-1">
+                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-[10px] px-1">*</Badge>
+                                <span className="text-gray-600">Obbligatorio</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </CollapsibleContent>
+                    </Collapsible>
+
+                    {/* Header with New Config Button */}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Configurazioni Webhook ActiveCampaign</h3>
+                      <Button
+                        onClick={() => {
+                          setIsCreatingNewACConfig(true);
+                          setSelectedACWebhookConfigId(null);
+                          setIsDuplicatingAC(false);
+                          setActivecampaignFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
+                        }}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nuova Configurazione
+                      </Button>
+                    </div>
+
+                    {/* Create/Edit Form */}
+                    {(isCreatingNewACConfig || selectedACWebhookConfigId) && (
+                      <Card className="border-2 border-purple-300 shadow-xl bg-gradient-to-br from-purple-50 to-violet-50 mb-6">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="p-3 bg-gradient-to-br from-purple-100 to-violet-100 rounded-xl">
+                                <Zap className="h-6 w-6 text-purple-600" />
+                              </div>
+                              <div>
+                                <CardTitle>
+                                  {isDuplicatingAC ? "Duplica Configurazione" : selectedACWebhookConfigId ? "Modifica Configurazione" : "Nuova Configurazione"}
+                                </CardTitle>
+                                <CardDescription>
+                                  {isDuplicatingAC ? "Crea una copia con una nuova chiave segreta" : selectedACWebhookConfigId ? "Modifica i dettagli del webhook" : "Crea un nuovo endpoint webhook per ricevere lead da ActiveCampaign"}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setIsCreatingNewACConfig(false);
+                                setSelectedACWebhookConfigId(null);
+                                setIsDuplicatingAC(false);
+                                setActivecampaignFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
+                              }}
+                            >
+                              <XCircle className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {/* Validation Warning */}
+                          {activecampaignFormData.agentConfigId && activecampaignFormData.targetCampaignId && (
+                            (() => {
+                              const duplicate = activecampaignConfigs.find((c: any) => 
+                                c.id !== selectedACWebhookConfigId &&
+                                c.agentConfigId === activecampaignFormData.agentConfigId &&
+                                c.targetCampaignId === activecampaignFormData.targetCampaignId &&
+                                c.isActive
+                              );
+                              if (duplicate) {
+                                return (
+                                  <Alert className="bg-yellow-50 border-yellow-300">
+                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                    <AlertDescription className="text-sm text-yellow-800">
+                                      <strong>Attenzione:</strong> Esiste già una configurazione ATTIVA con lo stesso agente e campagna. I lead potrebbero essere duplicati.
+                                    </AlertDescription>
+                                  </Alert>
+                                );
+                              }
+                              return null;
+                            })()
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="activecampaignConfigName">Nome Configurazione *</Label>
+                              <Input
+                                id="activecampaignConfigName"
+                                value={activecampaignFormData.configName}
+                                onChange={(e) => setActivecampaignFormData({ ...activecampaignFormData, configName: e.target.value })}
+                                placeholder="es. Campagna Newsletter Gennaio"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="activecampaignAgent">Agente WhatsApp Proattivo *</Label>
+                              <Select
+                                value={activecampaignFormData.agentConfigId}
+                                onValueChange={(value) => setActivecampaignFormData({ ...activecampaignFormData, agentConfigId: value })}
+                              >
+                                <SelectTrigger id="activecampaignAgent">
+                                  <SelectValue placeholder="Seleziona un agente proattivo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {!proactiveAgents || proactiveAgents.length === 0 ? (
+                                    <div className="p-3 text-sm text-muted-foreground space-y-1">
+                                      <p className="font-medium">Nessun agente proattivo configurato</p>
+                                      <p className="text-xs">Per usare questa funzione, crea un agente WhatsApp e abilita la modalità proattiva nelle sue impostazioni.</p>
+                                    </div>
+                                  ) : (
+                                    proactiveAgents.map((agent: any) => (
+                                      <SelectItem key={agent.id} value={agent.id}>
+                                        {agent.agentName || agent.whatsappNumber}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="activecampaignCampaign">Campagna di destinazione *</Label>
+                              <Select
+                                value={activecampaignFormData.targetCampaignId}
+                                onValueChange={(value) => setActivecampaignFormData({ ...activecampaignFormData, targetCampaignId: value })}
+                              >
+                                <SelectTrigger id="activecampaignCampaign">
+                                  <SelectValue placeholder="Seleziona una campagna" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {campaignsLoading ? (
+                                    <div className="p-2 text-sm text-muted-foreground">Caricamento...</div>
+                                  ) : campaigns.length === 0 ? (
+                                    <div className="p-2 text-sm text-muted-foreground">
+                                      Nessuna campagna disponibile
+                                    </div>
+                                  ) : (
+                                    campaigns.map((campaign: any) => (
+                                      <SelectItem key={campaign.id} value={campaign.id}>
+                                        {campaign.campaignName}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="activecampaignSource">Fonte Lead (opzionale)</Label>
+                              <Input
+                                id="activecampaignSource"
+                                value={activecampaignFormData.defaultSource}
+                                onChange={(e) => setActivecampaignFormData({ ...activecampaignFormData, defaultSource: e.target.value })}
+                                placeholder="es. activecampaign, newsletter"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Se impostato, sovrascrive la fonte. Default: "activecampaign"
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-3 pt-6">
+                              <Switch
+                                id="activecampaignIsActive"
+                                checked={activecampaignFormData.isActive}
+                                onCheckedChange={(checked) => setActivecampaignFormData({ ...activecampaignFormData, isActive: checked })}
+                              />
+                              <Label htmlFor="activecampaignIsActive">Webhook Attivo</Label>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 pt-4">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setIsCreatingNewACConfig(false);
+                                setSelectedACWebhookConfigId(null);
+                                setIsDuplicatingAC(false);
+                                setActivecampaignFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
+                              }}
+                              className="flex-1"
+                            >
+                              Annulla
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                if (selectedACWebhookConfigId && !isDuplicatingAC) {
+                                  updateActivecampaignMutation.mutate({
+                                    id: selectedACWebhookConfigId,
+                                    configName: activecampaignFormData.configName,
+                                    agentConfigId: activecampaignFormData.agentConfigId,
+                                    targetCampaignId: activecampaignFormData.targetCampaignId,
+                                    defaultSource: activecampaignFormData.defaultSource || null,
+                                    isActive: activecampaignFormData.isActive,
+                                  });
+                                } else {
+                                  createActivecampaignMutation.mutate({
+                                    configName: activecampaignFormData.configName || "Nuova Configurazione AC",
+                                    agentConfigId: activecampaignFormData.agentConfigId,
+                                    targetCampaignId: activecampaignFormData.targetCampaignId,
+                                    defaultSource: activecampaignFormData.defaultSource || null,
+                                    isActive: activecampaignFormData.isActive,
+                                  });
+                                }
+                              }}
+                              disabled={
+                                !activecampaignFormData.agentConfigId ||
+                                !activecampaignFormData.targetCampaignId ||
+                                createActivecampaignMutation.isPending ||
+                                updateActivecampaignMutation.isPending
+                              }
+                              className="flex-1 bg-purple-600 hover:bg-purple-700"
+                            >
+                              {createActivecampaignMutation.isPending || updateActivecampaignMutation.isPending ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Salvataggio...
+                                </>
+                              ) : (
+                                <>
+                                  <Save className="h-4 w-4 mr-2" />
+                                  {selectedACWebhookConfigId && !isDuplicatingAC ? "Salva Modifiche" : "Crea Webhook"}
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Configs List */}
+                    {activecampaignConfigs.length === 0 && !isCreatingNewACConfig ? (
+                      <Card className="border-0 shadow-xl bg-gradient-to-br from-gray-50 to-slate-50 backdrop-blur-sm">
+                        <CardContent className="py-12 text-center">
+                          <Zap className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                          <p className="text-lg font-medium text-gray-600">Nessuna configurazione webhook ActiveCampaign</p>
+                          <p className="text-sm text-gray-500 mt-1">Clicca "Nuova Configurazione" per iniziare a ricevere lead</p>
+                        </CardContent>
+                      </Card>
+                    ) : activecampaignConfigs.length > 0 && (
+                      <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-purple-600" />
+                            Configurazioni Attive ({activecampaignConfigs.length})
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Nome</TableHead>
+                                  <TableHead>Agente</TableHead>
+                                  <TableHead>Campagna</TableHead>
+                                  <TableHead>Fonte</TableHead>
+                                  <TableHead>Stato</TableHead>
+                                  <TableHead className="text-center">Importati</TableHead>
+                                  <TableHead>URL Webhook</TableHead>
+                                  <TableHead className="text-right">Azioni</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {activecampaignConfigs.map((config: any) => (
+                                  <TableRow key={config.id}>
+                                    <TableCell className="font-medium">
+                                      {config.configName || config.displayName || "ActiveCampaign"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                                        {getAgentName(config.agentConfigId)}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      {campaigns.find((c: any) => c.id === config.targetCampaignId)?.campaignName || "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      {config.defaultSource ? (
+                                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 font-mono text-xs">
+                                          {config.defaultSource}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-gray-400 text-xs">activecampaign</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant={config.isActive ? "default" : "secondary"}
+                                        className={config.isActive ? "bg-green-500" : "bg-gray-400"}
+                                      >
+                                        {config.isActive ? "Attivo" : "Inattivo"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center font-bold text-green-700">
+                                      {config.totalLeadsReceived || 0}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <code className="text-xs bg-gray-100 px-2 py-1 rounded truncate max-w-[200px]">
+                                          .../{config.secretKey?.substring(0, 8)}...
+                                        </code>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(
+                                              `https://${window.location.host}/api/webhook/activecampaign/${config.secretKey}`
+                                            );
+                                            setActivecampaignCopied(config.id);
+                                            setTimeout(() => setActivecampaignCopied(null), 2000);
+                                            toast({
+                                              title: "URL Copiato",
+                                              description: "L'URL webhook è stato copiato. Incollalo in ActiveCampaign: Settings → Developer → Webhooks",
+                                            });
+                                          }}
+                                        >
+                                          {activecampaignCopied === config.id ? (
+                                            <Check className="h-4 w-4 text-green-600" />
+                                          ) : (
+                                            <Copy className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            setSelectedACWebhookConfigId(config.id);
+                                            setIsCreatingNewACConfig(false);
+                                            setIsDuplicatingAC(false);
+                                            setActivecampaignFormData({
+                                              configName: config.configName || config.displayName || "",
+                                              agentConfigId: config.agentConfigId || "",
+                                              targetCampaignId: config.targetCampaignId || "",
+                                              defaultSource: config.defaultSource || "",
+                                              isActive: config.isActive,
+                                            });
+                                          }}
+                                          title="Modifica"
+                                        >
+                                          <Server className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            setIsCreatingNewACConfig(true);
+                                            setSelectedACWebhookConfigId(null);
+                                            setIsDuplicatingAC(true);
+                                            setActivecampaignFormData({
+                                              configName: (config.configName || config.displayName || "Config") + " (Copia)",
+                                              agentConfigId: config.agentConfigId || "",
+                                              targetCampaignId: config.targetCampaignId || "",
+                                              defaultSource: config.defaultSource || "",
+                                              isActive: true,
+                                            });
+                                          }}
+                                          title="Duplica"
+                                        >
+                                          <Copy className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => updateActivecampaignMutation.mutate({
+                                            id: config.id,
+                                            isActive: !config.isActive,
+                                          })}
+                                          title={config.isActive ? "Disattiva" : "Attiva"}
+                                        >
+                                          {config.isActive ? (
+                                            <XCircle className="h-4 w-4 text-yellow-600" />
+                                          ) : (
+                                            <CheckCircle className="h-4 w-4 text-green-600" />
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            if (confirm("Sei sicuro di voler rigenerare la chiave? Dovrai aggiornare l'URL in ActiveCampaign.")) {
+                                              regenerateActivecampaignKeyMutation.mutate(config.id);
+                                            }
+                                          }}
+                                          title="Rigenera Chiave"
+                                        >
+                                          <RefreshCw className="h-4 w-4 text-blue-600" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            if (confirm("Sei sicuro di voler eliminare questa configurazione? I lead non verranno più ricevuti.")) {
+                                              deleteActivecampaignMutation.mutate(config.id);
+                                            }
+                                          }}
+                                          title="Elimina"
+                                        >
+                                          <Trash2 className="h-4 w-4 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Setup Instructions */}
+                    {activecampaignConfigs.length > 0 && (
+                      <Alert className="mt-4 bg-blue-50 border-blue-200">
+                        <AlertCircle className="h-4 w-4 text-blue-600" />
+                        <AlertDescription className="text-sm text-blue-800">
+                          <strong>Come configurare in ActiveCampaign:</strong>
+                          <ol className="list-decimal list-inside mt-2 space-y-1">
+                            <li>Vai su Settings → Developer → Manage Webhooks</li>
+                            <li>Clicca "Add" per aggiungere un nuovo webhook</li>
+                            <li>Incolla l'URL copiato nel campo "URL"</li>
+                            <li>Seleziona l'evento "Contact added" o "Subscribes"</li>
+                            <li>Salva il webhook</li>
+                          </ol>
+                        </AlertDescription>
+                      </Alert>
                     )}
                   </>
                 )}

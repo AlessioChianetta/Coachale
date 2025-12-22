@@ -301,4 +301,232 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
   }
 });
 
+// ActiveCampaign Webhook Payload Interface
+interface ActiveCampaignPayload {
+  // Event metadata
+  type?: string; // 'subscribe', 'contact_add', 'contact_update', etc.
+  date_time?: string;
+  initiated_from?: string;
+  initiated_by?: string;
+  
+  // Contact data (can be nested or flat depending on webhook type)
+  contact?: {
+    id?: string | number;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    tags?: string[];
+    fieldValues?: Array<{ field: string | number; value: any }>;
+    orgname?: string;
+    orgid?: string | number;
+  };
+  
+  // Flat contact data (some webhooks send data this way)
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  
+  // List/subscription data
+  list?: string;
+  
+  // Additional metadata
+  id?: string;
+}
+
+// ActiveCampaign Webhook Test Endpoint
+router.get('/activecampaign/:secretKey/test', async (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'ActiveCampaign webhook endpoint is active',
+    provider: 'activecampaign',
+  });
+});
+
+// ActiveCampaign Webhook Handler
+router.post('/activecampaign/:secretKey', async (req: Request, res: Response) => {
+  try {
+    const { secretKey } = req.params;
+    const payload: ActiveCampaignPayload = req.body;
+
+    console.log(`📨 [AC-WEBHOOK] Received ActiveCampaign webhook with secretKey: ${secretKey.substring(0, 8)}...`);
+    console.log(`📨 [AC-WEBHOOK] Payload type: ${payload.type}`);
+    console.log(`📨 [AC-WEBHOOK] Full payload:`, JSON.stringify(payload, null, 2));
+
+    // Validate webhook config
+    const webhookConfig = await storage.getWebhookConfigBySecret(secretKey);
+    
+    if (!webhookConfig) {
+      console.log(`❌ [AC-WEBHOOK] Invalid secretKey: ${secretKey.substring(0, 8)}...`);
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+      });
+    }
+
+    if (!webhookConfig.isActive) {
+      console.log(`⛔ [AC-WEBHOOK] Webhook config is inactive for consultant: ${webhookConfig.consultantId}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden - Webhook is inactive',
+      });
+    }
+
+    // Accept relevant event types from ActiveCampaign
+    const acceptedTypes = ['subscribe', 'contact_add', 'contact_update', undefined, ''];
+    if (payload.type && !acceptedTypes.includes(payload.type.toLowerCase())) {
+      console.log(`ℹ️ [AC-WEBHOOK] Ignoring event type: ${payload.type}`);
+      return res.json({
+        success: true,
+        message: `Event type '${payload.type}' ignored`,
+      });
+    }
+
+    // Extract contact data - ActiveCampaign can send data in different formats
+    const contact = payload.contact || {};
+    
+    // Get name - try multiple field variations
+    let firstName = contact.firstName || contact.first_name || payload.firstName || payload.first_name || '';
+    let lastName = contact.lastName || contact.last_name || payload.lastName || payload.last_name || '';
+    
+    if (!firstName) {
+      firstName = 'Lead';
+    }
+
+    // Get phone - critical field
+    const rawPhone = contact.phone || payload.phone || '';
+    const phoneNumber = normalizePhone(rawPhone);
+    
+    if (!phoneNumber) {
+      console.log(`❌ [AC-WEBHOOK] Missing phone number in payload`);
+      return res.status(400).json({
+        success: false,
+        error: 'Phone number is required',
+      });
+    }
+
+    // Get email
+    const email = contact.email || payload.email || '';
+
+    // Use the configured agent if specified, otherwise fall back to first available
+    let agentConfigId = webhookConfig.agentConfigId;
+    
+    if (!agentConfigId) {
+      const agents = await db.select()
+        .from(schema.consultantWhatsappConfig)
+        .where(eq(schema.consultantWhatsappConfig.consultantId, webhookConfig.consultantId));
+
+      if (agents.length === 0) {
+        console.log(`❌ [AC-WEBHOOK] No WhatsApp agent configured for consultant: ${webhookConfig.consultantId}`);
+        return res.status(500).json({
+          success: false,
+          error: 'No WhatsApp agent configured',
+        });
+      }
+      agentConfigId = agents[0].id;
+      console.log(`ℹ️ [AC-WEBHOOK] Using fallback agent: ${agentConfigId}`);
+    } else {
+      console.log(`✅ [AC-WEBHOOK] Using configured agent: ${agentConfigId}`);
+    }
+
+    // Determine source
+    const source = webhookConfig.defaultSource || 'activecampaign';
+
+    // Fetch campaign to apply defaults
+    let campaign: any = null;
+    if (webhookConfig.targetCampaignId) {
+      const campaigns = await db.select()
+        .from(schema.marketingCampaigns)
+        .where(eq(schema.marketingCampaigns.id, webhookConfig.targetCampaignId));
+      
+      if (campaigns.length > 0) {
+        campaign = campaigns[0];
+        console.log(`📣 [AC-WEBHOOK] Found campaign: ${campaign.campaignName} - applying defaults`);
+      }
+    }
+
+    // Fetch agent config for fallback defaults
+    const agentConfigs = await db.select()
+      .from(schema.consultantWhatsappConfig)
+      .where(eq(schema.consultantWhatsappConfig.id, agentConfigId));
+    const agentConfig = agentConfigs.length > 0 ? agentConfigs[0] : null;
+
+    // Build lead info
+    const leadInfo: {
+      obiettivi?: string;
+      desideri?: string;
+      uncino?: string;
+      fonte?: string;
+      email?: string;
+      acContactId?: string;
+      tags?: string[];
+      customFields?: Array<{ field: string | number; value: any }>;
+      companyName?: string;
+      list?: string;
+    } = {
+      fonte: source,
+      obiettivi: campaign?.defaultObiettivi || agentConfig?.defaultObiettivi || undefined,
+      desideri: campaign?.implicitDesires || agentConfig?.defaultDesideri || undefined,
+      uncino: campaign?.hookText || agentConfig?.defaultUncino || undefined,
+    };
+
+    // Add contact data
+    if (email) leadInfo.email = email;
+    if (contact.id) leadInfo.acContactId = String(contact.id);
+    if (contact.tags && Array.isArray(contact.tags)) leadInfo.tags = contact.tags;
+    if (contact.fieldValues) leadInfo.customFields = contact.fieldValues;
+    if (contact.orgname) leadInfo.companyName = contact.orgname;
+    if (payload.list) leadInfo.list = payload.list;
+
+    // Apply idealState from campaign or agent config
+    const idealState = campaign?.idealStateDescription || agentConfig?.defaultIdealState || undefined;
+
+    const leadData: schema.InsertProactiveLead = {
+      consultantId: webhookConfig.consultantId,
+      agentConfigId: agentConfigId,
+      firstName: firstName,
+      lastName: lastName,
+      phoneNumber: phoneNumber,
+      leadInfo: leadInfo,
+      idealState: idealState,
+      contactSchedule: new Date(),
+      status: 'pending',
+      campaignId: webhookConfig.targetCampaignId || undefined,
+    };
+
+    console.log(`📝 [AC-WEBHOOK] Creating proactive lead: ${firstName} ${lastName} (${phoneNumber})`);
+
+    const lead = await storage.createProactiveLead(leadData);
+
+    await storage.incrementWebhookLeadsCount(webhookConfig.id);
+
+    console.log(`✅ [AC-WEBHOOK] Lead created successfully: ${lead.id}`);
+
+    res.json({
+      success: true,
+      leadId: lead.id,
+      message: 'Lead imported from ActiveCampaign',
+    });
+  } catch (error: any) {
+    console.error('❌ [AC-WEBHOOK] Error processing webhook:', error);
+    
+    if (error.message?.includes('duplicate') || error.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        error: 'Lead with this phone number already exists',
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
 export default router;
