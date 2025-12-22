@@ -2187,15 +2187,22 @@ router.post("/consultant/journey-templates/generate", authenticateToken, require
       });
     }
     
-    // Get AI configuration
-    const { getGeminiClient } = await import("../gemini");
-    const aiClient = await getGeminiClient(consultantId);
+    // Get AI configuration using provider factory (same as email-template-generator)
+    const { getAIProvider } = await import("../ai/provider-factory");
+    let aiClient: any;
+    let cleanup: (() => void) | undefined;
     
-    if (!aiClient) {
+    try {
+      const result = await getAIProvider(null, consultantId);
+      aiClient = result.client;
+      cleanup = result.cleanup;
+      console.log(`✅ [JOURNEY TEMPLATES] AI provider selected: ${result.metadata.name}`);
+    } catch (providerError: any) {
+      console.error(`❌ [JOURNEY TEMPLATES] Failed to get AI provider:`, providerError);
       return res.status(500).json({
         success: false,
-        message: "Configurazione AI non disponibile",
-        error: "Configurazione AI non disponibile"
+        message: "Configurazione AI non disponibile. Configura le chiavi API Gemini.",
+        error: providerError.message
       });
     }
     
@@ -2280,6 +2287,9 @@ Rispondi SOLO con il nuovo prompt template, senza spiegazioni aggiuntive.`;
     // Update consultant settings
     await storage.updateConsultantSmtpBusinessContext(consultantId, businessContext, true);
     
+    // Cleanup AI provider resources
+    if (cleanup) cleanup();
+    
     console.log(`✅ [JOURNEY TEMPLATES] Generated ${generatedTemplates.length} custom templates for consultant ${consultantId}`);
     
     res.json({
@@ -2290,6 +2300,9 @@ Rispondi SOLO con il nuovo prompt template, senza spiegazioni aggiuntive.`;
       }
     });
   } catch (error: any) {
+    // Cleanup AI provider resources on error
+    if (typeof cleanup === 'function') cleanup();
+    
     console.error("❌ [JOURNEY TEMPLATES] Error generating templates:", error);
     res.status(500).json({
       success: false,
