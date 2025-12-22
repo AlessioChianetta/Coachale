@@ -1488,6 +1488,8 @@ export default function ConsultantAIConfigPage() {
   const { data: customJourneyData, isLoading: customJourneyLoading } = useQuery<{
     templates: EmailJourneyTemplate[];
     isCustom: boolean;
+    hasCustomTemplates: boolean;
+    hasSmtpSettings: boolean;
     businessContext: string | null;
     useCustomTemplates: boolean;
     lastGeneratedAt: string | null;
@@ -3220,24 +3222,49 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {templatesLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                    </div>
-                  ) : journeyTemplates.length > 0 ? (
-                    <>
-                      <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <Sparkles className="h-5 w-5 text-blue-600 mt-0.5" />
-                          <div className="text-sm text-blue-800">
-                            <p className="font-semibold mb-1">Sistema Email Journey Attivo</p>
-                            <p>Il sistema utilizza <strong>{journeyTemplates.length} template specifici</strong> (28 standard + 3 extra per mesi lunghi) con prompt AI personalizzati per ogni giorno del mese. Clicca su ogni giorno per vedere il prompt completo.</p>
+                  {(() => {
+                    // Use custom templates when available and enabled, otherwise default templates
+                    const displayTemplates = customJourneyData?.isCustom && customJourneyData.templates?.length > 0 
+                      ? customJourneyData.templates 
+                      : journeyTemplates;
+                    const isLoading = templatesLoading || customJourneyLoading;
+                    
+                    if (isLoading) {
+                      return (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                        </div>
+                      );
+                    }
+                    
+                    if (displayTemplates.length === 0) {
+                      return (
+                        <div className="text-center py-12">
+                          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-lg font-semibold text-muted-foreground">Nessun template trovato</p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Esegui lo script di seeding per creare i template journey
+                          </p>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <>
+                        <div className={`mb-4 p-4 border rounded-lg ${customJourneyData?.isCustom ? 'bg-gradient-to-r from-violet-50 to-purple-50 border-violet-200' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'}`}>
+                          <div className="flex items-start gap-3">
+                            <Sparkles className={`h-5 w-5 mt-0.5 ${customJourneyData?.isCustom ? 'text-violet-600' : 'text-blue-600'}`} />
+                            <div className={`text-sm ${customJourneyData?.isCustom ? 'text-violet-800' : 'text-blue-800'}`}>
+                              <p className="font-semibold mb-1">
+                                {customJourneyData?.isCustom ? 'Template Personalizzati Attivi' : 'Sistema Email Journey Attivo'}
+                              </p>
+                              <p>Il sistema utilizza <strong>{displayTemplates.length} template specifici</strong> {customJourneyData?.isCustom ? 'personalizzati per il tuo business' : '(28 standard + 3 extra per mesi lunghi)'}. Clicca su ogni giorno per vedere il prompt completo.</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <Accordion type="single" collapsible className="w-full">
-                        {journeyTemplates.sort((a, b) => a.dayOfMonth - b.dayOfMonth).map((template) => {
+                        <Accordion type="single" collapsible className="w-full">
+                          {displayTemplates.sort((a, b) => a.dayOfMonth - b.dayOfMonth).map((template) => {
                           const isExtraDay = template.dayOfMonth > 28;
                           let badgeClass = '';
 
@@ -3316,17 +3343,10 @@ Non limitarti a stato attuale/ideale. Attingi da:
                             </AccordionItem>
                           );
                         })}
-                      </Accordion>
-                    </>
-                  ) : (
-                    <div className="text-center py-12">
-                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-lg font-semibold text-muted-foreground">Nessun template trovato</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Esegui lo script di seeding per creare i template journey
-                      </p>
-                    </div>
-                  )}
+                        </Accordion>
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>
