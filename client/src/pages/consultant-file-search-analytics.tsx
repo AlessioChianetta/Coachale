@@ -538,136 +538,51 @@ export default function ConsultantFileSearchAnalyticsPage() {
     }
   };
 
-  const startResetAndResync = async () => {
+  const startResetOnly = async () => {
     setShowResetDialog(false);
     setIsResetting(true);
     setSyncConsoleOpen(true);
     setSyncLogs([]);
     setCategoryProgress({});
     
-    addSyncLog('info', '🗑️ Avvio reset completo di tutti gli store...');
-    
-    let eventSource: EventSource | null = null;
-    let sseConnected = false;
+    addSyncLog('info', '🗑️ Avvio eliminazione di tutti i documenti da Google File Search...');
     
     try {
-      const tokenResponse = await fetch("/api/file-search/sync-token", {
+      const response = await fetch("/api/file-search/reset-stores", {
         method: "POST",
-        headers: getAuthHeaders(),
-      });
-      
-      if (tokenResponse.ok) {
-        const { token } = await tokenResponse.json();
-        eventSource = new EventSource(`/api/file-search/sync-events?token=${token}`);
-        
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            
-            if (data.type === 'connected') {
-              sseConnected = true;
-              addSyncLog('info', 'Console in tempo reale attiva');
-            } else if (data.type === 'start') {
-              setCategoryProgress(prev => ({
-                ...prev,
-                [data.category]: { current: 0, total: data.total, status: 'syncing' }
-              }));
-            } else if (data.type === 'progress') {
-              setCategoryProgress(prev => ({
-                ...prev,
-                [data.category]: { 
-                  ...prev[data.category],
-                  current: data.current, 
-                  total: data.total, 
-                  status: 'syncing',
-                  lastItem: data.item 
-                }
-              }));
-            } else if (data.type === 'complete') {
-              const synced = data.synced || data.current || 0;
-              setCategoryProgress(prev => ({
-                ...prev,
-                [data.category]: { 
-                  ...prev[data.category],
-                  current: data.total, 
-                  total: data.total, 
-                  status: 'complete',
-                  synced 
-                }
-              }));
-              addSyncLog('success', `✅ ${CATEGORY_LABELS[data.category]?.label || data.category}: ${synced}/${data.total} sincronizzati`);
-            } else if (data.type === 'orphan_complete') {
-              setCategoryProgress(prev => ({
-                ...prev,
-                orphans: { 
-                  current: data.storesChecked, 
-                  total: data.storesChecked, 
-                  status: 'complete',
-                  synced: data.orphansRemoved 
-                }
-              }));
-            } else if (data.type === 'all_complete') {
-              addSyncLog('complete', `🎉 Reset e risincronizzazione completati! Totale: ${data.totalSynced} documenti`);
-              eventSource?.close();
-              setIsResetting(false);
-              queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
-              queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
-              queryClient.invalidateQueries({ queryKey: ["/api/file-search/stores"] });
-              toast({
-                title: "Reset e risincronizzazione completati",
-                description: `${data.totalSynced} documenti risincronizzati con successo.`,
-              });
-            }
-          } catch (e) {
-            console.error('Error parsing SSE:', e);
-          }
-        };
-        
-        eventSource.onerror = () => {
-          eventSource?.close();
-          eventSource = null;
-        };
-      }
-    } catch (e) {
-      addSyncLog('info', 'Reset e risincronizzazione senza console in tempo reale...');
-    }
-    
-    try {
-      addSyncLog('info', 'Eliminazione di tutti i documenti dagli store...');
-      
-      const response = await fetch("/api/file-search/reset-and-resync", {
-        method: "POST",
-        headers: getAuthHeaders(),
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'all' }),
       });
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Reset and resync failed");
+        throw new Error(error.error || "Reset failed");
       }
       
       const result = await response.json();
       
-      setTimeout(() => {
-        eventSource?.close();
-        setIsResetting(false);
-        if (!sseConnected) {
-          addSyncLog('complete', `Reset e risincronizzazione completati! ${result.resetPhase.totalDeleted} eliminati, poi risincronizzati`);
-        }
-        queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/file-search/stores"] });
-        toast({
-          title: "Reset e risincronizzazione completati",
-          description: `${result.resetPhase.totalDeleted} documenti eliminati e poi risincronizzati`,
-        });
-      }, 1000);
+      addSyncLog('success', `✅ Store consulente: ${result.details.consultantDocsDeleted} documenti eliminati`);
+      addSyncLog('success', `✅ Store clienti: ${result.details.clientDocsDeleted} documenti eliminati (${result.details.clientStoresReset} store)`);
+      addSyncLog('complete', `🎉 Reset completato! Totale: ${result.details.consultantDocsDeleted + result.details.clientDocsDeleted} documenti eliminati`);
+      
+      setIsResetting(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/stores"] });
+      
+      toast({
+        title: "Reset completato",
+        description: `${result.details.consultantDocsDeleted + result.details.clientDocsDeleted} documenti eliminati. Ora puoi risincronizzare.`,
+      });
       
     } catch (error: any) {
-      eventSource?.close();
       setIsResetting(false);
       addSyncLog('error', `Errore: ${error.message}`);
       toast({
-        title: "Errore reset e risincronizzazione",
+        title: "Errore reset",
         description: error.message,
         variant: "destructive",
       });
@@ -2374,7 +2289,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <AlertDialogTrigger asChild>
                             <Button
                               variant="outline"
-                              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                              className="border-red-300 text-red-700 hover:bg-red-50"
                               disabled={isSyncing || isResetting}
                             >
                               {isResetting ? (
@@ -2382,22 +2297,22 @@ export default function ConsultantFileSearchAnalyticsPage() {
                               ) : (
                                 <Trash2 className="h-4 w-4 mr-2" />
                               )}
-                              Reset e Risincronizza
+                              Reset Completo
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Confermi reset e risincronizzazione?</AlertDialogTitle>
+                              <AlertDialogTitle>Confermi eliminazione di tutti i documenti?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Questa operazione eliminerà TUTTI i documenti da tutti gli store (consulente e clienti) e poi risincronizzerà tutto da zero.
+                                Questa operazione eliminerà TUTTI i documenti da Google File Search (store consulente e clienti).
                                 <br /><br />
-                                Usa questa opzione se vuoi garantire che tutti i contenuti siano perfettamente allineati con la logica di privacy isolation.
+                                I dati originali nel database rimangono intatti. Dopo il reset, clicca "Sincronizza Tutti i Documenti" per ricaricare tutto.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Annulla</AlertDialogCancel>
-                              <AlertDialogAction onClick={startResetAndResync} className="bg-amber-600 hover:bg-amber-700">
-                                Conferma Reset e Risincronizza
+                              <AlertDialogAction onClick={startResetOnly} className="bg-red-600 hover:bg-red-700">
+                                Conferma Reset
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
