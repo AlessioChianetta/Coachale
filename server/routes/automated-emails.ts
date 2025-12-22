@@ -2188,15 +2188,17 @@ router.post("/consultant/journey-templates/generate", authenticateToken, require
     }
     
     // Get AI configuration using provider factory (same as email-template-generator)
-    const { getAIProvider } = await import("../ai/provider-factory");
+    const { getAIProvider, getModelWithThinking } = await import("../ai/provider-factory");
     let aiClient: any;
     let cleanup: (() => void) | undefined;
+    let providerName: string;
     
     try {
       const result = await getAIProvider(null, consultantId);
       aiClient = result.client;
       cleanup = result.cleanup;
-      console.log(`✅ [JOURNEY TEMPLATES] AI provider selected: ${result.metadata.name}`);
+      providerName = result.metadata.name;
+      console.log(`✅ [JOURNEY TEMPLATES] AI provider selected: ${providerName}`);
     } catch (providerError: any) {
       console.error(`❌ [JOURNEY TEMPLATES] Failed to get AI provider:`, providerError);
       return res.status(500).json({
@@ -2205,6 +2207,9 @@ router.post("/consultant/journey-templates/generate", authenticateToken, require
         error: providerError.message
       });
     }
+    
+    // Get model name based on provider
+    const { model: modelName } = getModelWithThinking(providerName);
     
     // Delete existing custom templates
     await storage.deleteConsultantJourneyTemplates(consultantId);
@@ -2218,7 +2223,7 @@ router.post("/consultant/journey-templates/generate", authenticateToken, require
       
       const batchPromises = batch.map(async (template) => {
         try {
-          const prompt = `Sei un esperto di copywriting e email marketing. Riscrivi questo template email per adattarlo al seguente business:
+          const promptText = `Sei un esperto di copywriting e email marketing. Riscrivi questo template email per adattarlo al seguente business:
 
 BUSINESS DEL CONSULTANT:
 ${businessContext}
@@ -2237,7 +2242,14 @@ ISTRUZIONI:
 
 Rispondi SOLO con il nuovo prompt template, senza spiegazioni aggiuntive.`;
 
-          const result = await aiClient.generateContent(prompt);
+          const result = await aiClient.generateContent({
+            model: modelName,
+            contents: [{ role: "user", parts: [{ text: promptText }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2000,
+            }
+          });
           const newPromptTemplate = result.response.text().trim();
           
           return {
