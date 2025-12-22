@@ -3033,12 +3033,12 @@ export class FileSearchSyncService {
 
       // Daily Reflections missing (aggregated, so if any exist and not indexed, all are missing)
       const reflectionsMissing = (clientReflections.length > 0 && !hasReflectionsIndexed)
-        ? clientReflections.map(r => ({ id: r.id, date: r.date?.toISOString() || '' }))
+        ? clientReflections.map(r => ({ id: r.id, date: r.date ? (r.date instanceof Date ? r.date.toISOString() : String(r.date)) : '' }))
         : [];
 
       // Progress history missing  
       const progressHistoryMissing = (clientProgressHist.length > 0 && !hasProgressHistoryIndexed)
-        ? clientProgressHist.map(p => ({ id: p.id, date: p.date?.toISOString() || '' }))
+        ? clientProgressHist.map(p => ({ id: p.id, date: p.date ? (p.date instanceof Date ? p.date.toISOString() : String(p.date)) : '' }))
         : [];
 
       // Library progress missing
