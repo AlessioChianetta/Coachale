@@ -2804,6 +2804,41 @@ export const insertProposedAppointmentSlotsSchema = createInsertSchema(proposedA
   createdAt: true,
 });
 
+// Booking Extraction State - Accumulator pattern for progressive data extraction
+// Stores partially extracted booking data to prevent field loss during re-extraction
+export const bookingExtractionState = pgTable("booking_extraction_state", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }),
+  publicConversationId: varchar("public_conversation_id"), // For public link conversations
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Accumulated extracted data (null = not yet extracted, empty string = explicitly empty)
+  extractedDate: text("extracted_date"),
+  extractedTime: text("extracted_time"),
+  extractedPhone: text("extracted_phone"),
+  extractedEmail: text("extracted_email"),
+  extractedName: text("extracted_name"),
+  
+  // Last extraction confidence
+  confidence: text("confidence").$type<"high" | "medium" | "low">(),
+  
+  // State management
+  completedAt: timestamp("completed_at"), // Set when booking is completed
+  expiresAt: timestamp("expires_at").notNull(), // Auto-expire after 24h of inactivity
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  uniqueWhatsappConversation: unique().on(table.conversationId),
+  uniquePublicConversation: unique().on(table.publicConversationId),
+}));
+
+export const insertBookingExtractionStateSchema = createInsertSchema(bookingExtractionState).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Marketing Campaigns - Configurazione campagne di marketing
 export const marketingCampaigns = pgTable("marketing_campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -3223,6 +3258,8 @@ export type AppointmentBooking = typeof appointmentBookings.$inferSelect;
 export type InsertAppointmentBooking = z.infer<typeof insertAppointmentBookingSchema>;
 export type ProposedAppointmentSlots = typeof proposedAppointmentSlots.$inferSelect;
 export type InsertProposedAppointmentSlots = z.infer<typeof insertProposedAppointmentSlotsSchema>;
+export type BookingExtractionState = typeof bookingExtractionState.$inferSelect;
+export type InsertBookingExtractionState = z.infer<typeof insertBookingExtractionStateSchema>;
 
 // External API Configuration - for importing leads from external systems
 export const externalApiConfigs = pgTable("external_api_configs", {
