@@ -8873,6 +8873,18 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           // Integration Mode and Proactive Agent
           integrationMode: config.integrationMode,
           isProactiveAgent: config.isProactiveAgent,
+          // Agent-specific Google Calendar Integration
+          googleCalendarId: config.googleCalendarId,
+          googleCalendarEmail: config.googleCalendarEmail,
+          calendarConnectedAt: config.calendarConnectedAt,
+          // Agent-specific Availability Settings
+          availabilityTimezone: config.availabilityTimezone,
+          availabilityAppointmentDuration: config.availabilityAppointmentDuration,
+          availabilityBufferBefore: config.availabilityBufferBefore,
+          availabilityBufferAfter: config.availabilityBufferAfter,
+          availabilityMaxDaysAhead: config.availabilityMaxDaysAhead,
+          availabilityMinHoursNotice: config.availabilityMinHoursNotice,
+          availabilityWorkingHours: config.availabilityWorkingHours,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         },
@@ -8938,7 +8950,15 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         customBusinessHeader,
         integrationMode,
         isProactiveAgent,
-        isActive
+        isActive,
+        // Agent-specific Availability Settings
+        availabilityTimezone,
+        availabilityAppointmentDuration,
+        availabilityBufferBefore,
+        availabilityBufferAfter,
+        availabilityMaxDaysAhead,
+        availabilityMinHoursNotice,
+        availabilityWorkingHours
       } = req.body;
 
       // Verify agent belongs to consultant
@@ -9071,6 +9091,15 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       
       // Active Status
       if (isActive !== undefined) updateData.isActive = isActive;
+      
+      // Agent-specific Availability Settings
+      if (availabilityTimezone !== undefined) updateData.availabilityTimezone = availabilityTimezone;
+      if (availabilityAppointmentDuration !== undefined) updateData.availabilityAppointmentDuration = availabilityAppointmentDuration;
+      if (availabilityBufferBefore !== undefined) updateData.availabilityBufferBefore = availabilityBufferBefore;
+      if (availabilityBufferAfter !== undefined) updateData.availabilityBufferAfter = availabilityBufferAfter;
+      if (availabilityMaxDaysAhead !== undefined) updateData.availabilityMaxDaysAhead = availabilityMaxDaysAhead;
+      if (availabilityMinHoursNotice !== undefined) updateData.availabilityMinHoursNotice = availabilityMinHoursNotice;
+      if (availabilityWorkingHours !== undefined) updateData.availabilityWorkingHours = availabilityWorkingHours;
 
       // Handle useCentralCredentials - copy Twilio credentials from users table
       const { useCentralCredentials } = req.body;
@@ -13494,26 +13523,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
         console.log(`   ⚙️ Agent availability: duration=${appointmentDuration}min, buffer=${bufferBefore}/${bufferAfter}min, tz=${timezone}`);
       } else {
-        // Fallback to consultant settings (legacy - deprecated)
-        console.warn(`⚠️ [AVAILABLE-SLOTS] DEPRECATED: Using consultant settings instead of agent. Please provide agentConfigId.`);
-        
-        const [settings] = await db
-          .select()
-          .from(schema.consultantAvailabilitySettings)
-          .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId as string))
-          .limit(1);
-
-        if (!settings) {
-          return res.status(404).json({ message: "Consultant settings not found. Please provide agentConfigId for agent-specific availability." });
-        }
-
-        workingHours = settings.workingHours;
-        appointmentDuration = settings.appointmentDuration;
-        bufferBefore = settings.bufferBefore;
-        bufferAfter = settings.bufferAfter;
-        minHoursNotice = settings.minHoursNotice;
-        maxDaysAhead = settings.maxDaysAhead;
-        timezone = settings.timezone;
+        // NO FALLBACK: Agent-independent calendar system requires agentConfigId
+        console.error(`❌ [AVAILABLE-SLOTS] agentConfigId is REQUIRED. Consultant-level fallback has been removed.`);
+        return res.status(400).json({ 
+          message: "agentConfigId is required. Each agent must have its own calendar and availability settings configured.",
+          code: "AGENT_CONFIG_REQUIRED"
+        });
       }
 
       // 2. Generate theoretical slots based on working hours
@@ -13588,56 +13603,58 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         slot.start >= minNoticeDate && slot.start <= maxAdvanceDate
       );
 
-      // 5. Get already booked slots from consultations
-      const bookedConsultations = await db
-        .select()
-        .from(schema.consultations)
-        .where(
-          and(
-            eq(schema.consultations.consultantId, consultantId as string),
-            eq(schema.consultations.status, 'scheduled'),
-            sql`${schema.consultations.scheduledAt} >= ${start}`,
-            sql`${schema.consultations.scheduledAt} <= ${end}`
+      // 5. Get already booked slots - AGENT-FIRST APPROACH
+      let bookedAppointments: Array<{ appointmentDate: string; appointmentTime: string; appointmentEndTime: string | null; status: string }> = [];
+      
+      if (agentConfigId) {
+        // AGENT MODE: Get bookings from appointmentBookings via agent's conversations only
+        // This ensures agent isolation - no consultant-level booking leakage
+        const agentBookings = await db
+          .select({
+            appointmentDate: schema.appointmentBookings.appointmentDate,
+            appointmentTime: schema.appointmentBookings.appointmentTime,
+            appointmentEndTime: schema.appointmentBookings.appointmentEndTime,
+            status: schema.appointmentBookings.status,
+          })
+          .from(schema.appointmentBookings)
+          .innerJoin(
+            schema.whatsappConversations,
+            eq(schema.appointmentBookings.conversationId, schema.whatsappConversations.id)
           )
-        );
+          .where(
+            and(
+              eq(schema.whatsappConversations.agentConfigId, agentConfigId as string),
+              sql`${schema.appointmentBookings.status} IN ('confirmed', 'pending')`,
+              sql`${schema.appointmentBookings.appointmentDate} >= ${start.toISOString().split('T')[0]}`,
+              sql`${schema.appointmentBookings.appointmentDate} <= ${end.toISOString().split('T')[0]}`
+            )
+          );
+        
+        bookedAppointments = agentBookings;
+        console.log(`📅 [AGENT-SLOTS] Found ${bookedAppointments.length} existing bookings for agent ${agentConfigId}`);
+      }
+      // Note: The else branch has been removed - agentConfigId is now mandatory 
+      // and the endpoint returns 400 error earlier if not provided
 
-      // 6. Get already booked slots from Google Calendar sync
-      const googleSyncedEvents = await db
-        .select()
-        .from(schema.consultantCalendarSync)
-        .where(
-          and(
-            eq(schema.consultantCalendarSync.consultantId, consultantId as string),
-            sql`${schema.consultantCalendarSync.startTime} >= ${start}`,
-            sql`${schema.consultantCalendarSync.endTime} <= ${end}`
-          )
-        );
-
-      // 7. Filter out occupied slots (considering buffer times)
+      // 6. Filter out occupied slots (considering buffer times)
       const availableSlots = validSlots.filter(slot => {
         const slotStartWithBuffer = new Date(slot.start.getTime() - bufferBefore * 60000);
         const slotEndWithBuffer = new Date(slot.end.getTime() + bufferAfter * 60000);
 
-        // Check consultations
-        const hasConsultationConflict = bookedConsultations.some(consultation => {
-          const consultationEnd = new Date(consultation.scheduledAt);
-          consultationEnd.setMinutes(consultationEnd.getMinutes() + consultation.duration);
+        // Check agent/consultant bookings
+        const hasBookingConflict = bookedAppointments.some(booking => {
+          const bookingStart = new Date(`${booking.appointmentDate}T${booking.appointmentTime}:00`);
+          const bookingEnd = booking.appointmentEndTime 
+            ? new Date(`${booking.appointmentDate}T${booking.appointmentEndTime}:00`)
+            : new Date(bookingStart.getTime() + appointmentDuration * 60000);
           
           return (
-            slotStartWithBuffer < consultationEnd &&
-            slotEndWithBuffer > new Date(consultation.scheduledAt)
+            slotStartWithBuffer < bookingEnd &&
+            slotEndWithBuffer > bookingStart
           );
         });
 
-        // Check Google synced events
-        const hasGoogleSyncConflict = googleSyncedEvents.some(event => {
-          return (
-            slotStartWithBuffer < new Date(event.endTime) &&
-            slotEndWithBuffer > new Date(event.startTime)
-          );
-        });
-
-        // Check if slot overlaps with any existing Google Calendar event
+        // Check if slot overlaps with any existing Google Calendar event (already agent-specific)
         const hasGoogleCalendarConflict = existingEvents.some(event => {
           return (
             (slotStartWithBuffer >= event.start && slotStartWithBuffer < event.end) ||
@@ -13646,7 +13663,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           );
         });
 
-        return !hasConsultationConflict && !hasGoogleSyncConflict && !hasGoogleCalendarConflict;
+        return !hasBookingConflict && !hasGoogleCalendarConflict;
       });
 
       console.log(`✅ Filtered to ${availableSlots.length} truly available slots (excluding conflicts)`);

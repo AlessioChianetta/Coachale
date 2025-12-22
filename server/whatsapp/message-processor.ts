@@ -3017,18 +3017,19 @@ Per favore scegli una data futura tra quelle che ti ho proposto. 😊`;
                     console.log(`📞 Phone: ${extracted.phone}`);
                     console.log(`📧 Email: ${extracted.email}`);
 
-                    // Get consultant availability settings for duration and timezone
-                    const [settings] = await db
+                    // Get AGENT availability settings for duration and timezone (NOT consultant)
+                    const [agentForBooking] = await db
                       .select()
-                      .from(consultantAvailabilitySettings)
-                      .where(eq(consultantAvailabilitySettings.consultantId, conversation.consultantId))
+                      .from(consultantWhatsappConfig)
+                      .where(eq(consultantWhatsappConfig.id, conversation.agentConfigId!))
                       .limit(1);
 
-                    const duration = settings?.appointmentDuration || 60;
-                    const timezone = settings?.timezone || "Europe/Rome";
+                    const duration = agentForBooking?.availabilityAppointmentDuration || 60;
+                    const timezone = agentForBooking?.availabilityTimezone || "Europe/Rome";
 
-                    console.log(`\n📊 [APPOINTMENT DURATION] Configurazione durata appuntamento:`);
-                    console.log(`   ⚙️ appointmentDuration dal DB: ${settings?.appointmentDuration} minuti`);
+                    console.log(`\n📊 [APPOINTMENT DURATION] Using AGENT availability settings:`);
+                    console.log(`   🤖 Agent: ${agentForBooking?.agentName || 'Unknown'}`);
+                    console.log(`   ⚙️ appointmentDuration: ${agentForBooking?.availabilityAppointmentDuration} minuti`);
                     console.log(`   ✅ Durata finale utilizzata: ${duration} minuti`);
                     console.log(`   🌍 Timezone: ${timezone}`);
 

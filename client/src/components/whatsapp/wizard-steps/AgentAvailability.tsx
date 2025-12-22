@@ -16,8 +16,12 @@ import {
   Shield,
   TrendingUp,
   AlertCircle,
-  Volume2
+  Volume2,
+  Globe,
+  Timer,
+  CalendarDays
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface AgentAvailabilityProps {
@@ -359,6 +363,232 @@ export default function AgentAvailability({ formData, onChange, errors }: AgentA
           </div>
         </CardContent>
       </Card>
+
+      {/* Appointment Availability Settings - Only shown when booking is enabled */}
+      {formData.bookingEnabled && (
+        <Card className="border-2 border-green-500/20 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-green-500/5 to-green-500/10">
+            <CardTitle className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-green-500" />
+              Configurazione Appuntamenti
+            </CardTitle>
+            <CardDescription>
+              Configura la disponibilità del calendario per le prenotazioni
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
+            {/* Timezone */}
+            <div>
+              <Label className="flex items-center gap-2 mb-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                Fuso Orario
+              </Label>
+              <Select
+                value={formData.availabilityTimezone || "Europe/Rome"}
+                onValueChange={(value) => onChange("availabilityTimezone", value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleziona fuso orario" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Europe/Rome">Europa/Roma (CET)</SelectItem>
+                  <SelectItem value="Europe/London">Europa/Londra (GMT)</SelectItem>
+                  <SelectItem value="Europe/Paris">Europa/Parigi (CET)</SelectItem>
+                  <SelectItem value="Europe/Berlin">Europa/Berlino (CET)</SelectItem>
+                  <SelectItem value="Europe/Madrid">Europa/Madrid (CET)</SelectItem>
+                  <SelectItem value="Europe/Zurich">Europa/Zurigo (CET)</SelectItem>
+                  <SelectItem value="America/New_York">America/New York (EST)</SelectItem>
+                  <SelectItem value="America/Los_Angeles">America/Los Angeles (PST)</SelectItem>
+                  <SelectItem value="Asia/Dubai">Asia/Dubai (GST)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Appointment Duration & Buffers */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label className="flex items-center gap-2 mb-2">
+                  <Timer className="h-4 w-4 text-muted-foreground" />
+                  Durata Appuntamento
+                </Label>
+                <Select
+                  value={String(formData.availabilityAppointmentDuration || 60)}
+                  onValueChange={(value) => onChange("availabilityAppointmentDuration", parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 minuti</SelectItem>
+                    <SelectItem value="30">30 minuti</SelectItem>
+                    <SelectItem value="45">45 minuti</SelectItem>
+                    <SelectItem value="60">1 ora</SelectItem>
+                    <SelectItem value="90">1 ora 30 min</SelectItem>
+                    <SelectItem value="120">2 ore</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Buffer Prima</Label>
+                <Select
+                  value={String(formData.availabilityBufferBefore || 15)}
+                  onValueChange={(value) => onChange("availabilityBufferBefore", parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Nessuno</SelectItem>
+                    <SelectItem value="5">5 minuti</SelectItem>
+                    <SelectItem value="10">10 minuti</SelectItem>
+                    <SelectItem value="15">15 minuti</SelectItem>
+                    <SelectItem value="30">30 minuti</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Tempo prima dell'appuntamento</p>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Buffer Dopo</Label>
+                <Select
+                  value={String(formData.availabilityBufferAfter || 15)}
+                  onValueChange={(value) => onChange("availabilityBufferAfter", parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Nessuno</SelectItem>
+                    <SelectItem value="5">5 minuti</SelectItem>
+                    <SelectItem value="10">10 minuti</SelectItem>
+                    <SelectItem value="15">15 minuti</SelectItem>
+                    <SelectItem value="30">30 minuti</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Tempo dopo l'appuntamento</p>
+              </div>
+            </div>
+
+            {/* Booking Constraints */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="mb-2 block">Preavviso Minimo</Label>
+                <Select
+                  value={String(formData.availabilityMinHoursNotice || 24)}
+                  onValueChange={(value) => onChange("availabilityMinHoursNotice", parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 ora</SelectItem>
+                    <SelectItem value="2">2 ore</SelectItem>
+                    <SelectItem value="4">4 ore</SelectItem>
+                    <SelectItem value="12">12 ore</SelectItem>
+                    <SelectItem value="24">24 ore (1 giorno)</SelectItem>
+                    <SelectItem value="48">48 ore (2 giorni)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Quanto anticipo serve per prenotare</p>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Prenotazione Massima</Label>
+                <Select
+                  value={String(formData.availabilityMaxDaysAhead || 30)}
+                  onValueChange={(value) => onChange("availabilityMaxDaysAhead", parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">1 settimana</SelectItem>
+                    <SelectItem value="14">2 settimane</SelectItem>
+                    <SelectItem value="30">1 mese</SelectItem>
+                    <SelectItem value="60">2 mesi</SelectItem>
+                    <SelectItem value="90">3 mesi</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Quanto avanti si può prenotare</p>
+              </div>
+            </div>
+
+            {/* Working Hours per Day */}
+            <div>
+              <Label className="flex items-center gap-2 mb-3">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                Orari Disponibilità per Giorno
+              </Label>
+              <div className="space-y-3">
+                {daysOfWeek.map((day) => {
+                  const workingHours = formData.availabilityWorkingHours || {};
+                  const dayConfig = workingHours[day.id] || { enabled: day.id !== 'saturday' && day.id !== 'sunday', start: "09:00", end: "18:00" };
+                  
+                  return (
+                    <div key={day.id} className={cn(
+                      "flex items-center gap-4 p-3 rounded-lg border transition-all",
+                      dayConfig.enabled ? "bg-green-500/5 border-green-500/20" : "bg-muted/30 border-muted"
+                    )}>
+                      <Checkbox
+                        checked={dayConfig.enabled}
+                        onCheckedChange={(checked) => {
+                          const newWorkingHours = {
+                            ...workingHours,
+                            [day.id]: { ...dayConfig, enabled: checked as boolean }
+                          };
+                          onChange("availabilityWorkingHours", newWorkingHours);
+                        }}
+                      />
+                      <span className="w-24 font-medium text-sm">{day.label}</span>
+                      {dayConfig.enabled && (
+                        <>
+                          <Input
+                            type="time"
+                            value={dayConfig.start}
+                            onChange={(e) => {
+                              const newWorkingHours = {
+                                ...workingHours,
+                                [day.id]: { ...dayConfig, start: e.target.value }
+                              };
+                              onChange("availabilityWorkingHours", newWorkingHours);
+                            }}
+                            className="w-28"
+                          />
+                          <span className="text-muted-foreground">-</span>
+                          <Input
+                            type="time"
+                            value={dayConfig.end}
+                            onChange={(e) => {
+                              const newWorkingHours = {
+                                ...workingHours,
+                                [day.id]: { ...dayConfig, end: e.target.value }
+                              };
+                              onChange("availabilityWorkingHours", newWorkingHours);
+                            }}
+                            className="w-28"
+                          />
+                        </>
+                      )}
+                      {!dayConfig.enabled && (
+                        <span className="text-sm text-muted-foreground italic">Non disponibile</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Alert className="border-green-500/30 bg-green-500/5">
+              <CalendarDays className="h-4 w-4 text-green-600" />
+              <AlertDescription>
+                Queste impostazioni definiscono quando il cliente può prenotare un appuntamento tramite questo agente.
+                Assicurati di collegare un calendario Google nelle impostazioni dell'agente.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      )}
 
       <Alert className="border-blue-500/50 bg-blue-500/5">
         <MessageSquare className="h-4 w-4 text-blue-500" />
