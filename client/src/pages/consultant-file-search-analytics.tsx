@@ -806,6 +806,66 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
+  const migrateClientMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const response = await fetch(`/api/file-search/migrate-client/${clientId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Migration failed");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/stores"] });
+      toast({
+        title: "Migrazione completata!",
+        description: `Client ${data.clientName} migrato con successo.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore migrazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const migrateAllClientsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/file-search/migrate-all-clients", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Migration failed");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/stores"] });
+      toast({
+        title: "Migrazione bulk completata!",
+        description: `${data.summary.clientsMigrated} client migrati con successo.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore migrazione bulk",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const [openAuditCategories, setOpenAuditCategories] = useState<Record<string, boolean>>({});
   const [openAuditClients, setOpenAuditClients] = useState<Record<string, boolean>>({});
   const [openAuditAgents, setOpenAuditAgents] = useState<Record<string, boolean>>({});
@@ -949,6 +1009,10 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       {totalMissing}
                     </Badge>
                   )}
+                </TabsTrigger>
+                <TabsTrigger value="migration">
+                  <Users className="h-4 w-4 mr-1" />
+                  Migrazione
                 </TabsTrigger>
               </TabsList>
 
@@ -3065,6 +3129,117 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     </Button>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="migration" className="space-y-6">
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="text-blue-800 flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Migrazione Client - Architettura Privacy Isolata
+                    </CardTitle>
+                    <CardDescription className="text-blue-700">
+                      Ogni client ha il proprio store privato con SOLO i contenuti assegnati. 
+                      Questa migrazione sincronizza tutti i contenuti assegnati (esercizi, libreria, university) 
+                      negli store privati dei client esistenti.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="bg-white p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-semibold text-blue-800 mb-2">Nuova Architettura Privacy</h4>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          Client vede SOLO il proprio store privato
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          Contenuti copiati automaticamente quando assegnati
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          Isolamento totale tra client diversi
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          Consulente vede tutti gli store (proprio + client)
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <Card className="flex-1">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg">Migrazione Bulk</CardTitle>
+                          <CardDescription>
+                            Migra tutti i client esistenti alla nuova architettura
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <Button 
+                            onClick={() => migrateAllClientsMutation.mutate()}
+                            disabled={migrateAllClientsMutation.isPending}
+                            className="w-full"
+                          >
+                            {migrateAllClientsMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Users className="h-4 w-4 mr-2" />
+                            )}
+                            Migra Tutti i Client
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {auditData?.clientStores && (
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-gray-800">Client Singoli</h4>
+                        <div className="grid gap-3">
+                          {auditData.clientStores.map((clientStore: any) => (
+                            <div 
+                              key={clientStore.clientId} 
+                              className="flex items-center justify-between p-3 bg-white rounded-lg border"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="bg-gray-100 p-2 rounded-full">
+                                  <User className="h-4 w-4 text-gray-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">{clientStore.clientName}</p>
+                                  <p className="text-xs text-gray-500">{clientStore.clientEmail}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {clientStore.hasStore ? (
+                                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                    Store Attivo
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                                    No Store
+                                  </Badge>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => migrateClientMutation.mutate(clientStore.clientId)}
+                                  disabled={migrateClientMutation.isPending}
+                                >
+                                  {migrateClientMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>
