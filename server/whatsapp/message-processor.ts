@@ -2604,15 +2604,16 @@ LEAD: grazie per l'appuntamento, a presto!
 
                   console.log(`✅ [MODIFY APPOINTMENT] Confirmed ${extracted.confirmedTimes} time(s) - proceeding with modification`);
 
-                  // Get settings for timezone and duration
-                  const [settings] = await db
+                  // Get settings for timezone and duration FROM AGENT (not consultant)
+                  const [agentForModify] = await db
                     .select()
-                    .from(consultantAvailabilitySettings)
-                    .where(eq(consultantAvailabilitySettings.consultantId, conversation.consultantId))
+                    .from(consultantWhatsappConfig)
+                    .where(eq(consultantWhatsappConfig.id, conversation.agentConfigId!))
                     .limit(1);
 
-                  const timezone = settings?.timezone || "Europe/Rome";
-                  const duration = settings?.appointmentDuration || 60;
+                  const timezone = agentForModify?.availabilityTimezone || "Europe/Rome";
+                  const duration = agentForModify?.availabilityAppointmentDuration || 60;
+                  console.log(`   📅 [MODIFY] Using AGENT settings: tz=${timezone}, duration=${duration}min`);
 
                   // Update Google Calendar event if exists
                   if (existingBookingForModification.googleEventId) {

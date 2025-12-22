@@ -13438,10 +13438,6 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           message: "Missing required parameters: consultantId, startDate, endDate" 
         });
       }
-      
-      if (agentConfigId) {
-        console.log(`📅 [AVAILABLE-SLOTS] Using agent calendar: ${agentConfigId}`);
-      }
 
       const start = new Date(startDate as string);
       const end = new Date(endDate as string);
@@ -13450,30 +13446,75 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         return res.status(400).json({ message: "Invalid date format" });
       }
 
-      // 1. Get consultant availability settings
-      const [settings] = await db
-        .select()
-        .from(schema.consultantAvailabilitySettings)
-        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId as string))
-        .limit(1);
+      // AGENT-FIRST: Use agent's availability settings when agentConfigId is provided
+      let workingHours: any;
+      let appointmentDuration: number;
+      let bufferBefore: number;
+      let bufferAfter: number;
+      let minHoursNotice: number;
+      let maxDaysAhead: number;
+      let timezone: string;
 
-      if (!settings) {
-        return res.status(404).json({ message: "Consultant settings not found" });
+      if (agentConfigId) {
+        // Load agent-specific availability settings
+        const [agentConfig] = await db
+          .select()
+          .from(schema.consultantWhatsappConfig)
+          .where(eq(schema.consultantWhatsappConfig.id, agentConfigId as string))
+          .limit(1);
+
+        if (!agentConfig) {
+          return res.status(404).json({ message: "Agent configuration not found" });
+        }
+
+        if (!agentConfig.googleRefreshToken) {
+          return res.status(400).json({ 
+            message: "Agent does not have a calendar connected. Please connect a Google Calendar to this agent first.",
+            code: "AGENT_NO_CALENDAR"
+          });
+        }
+
+        console.log(`📅 [AVAILABLE-SLOTS] Using AGENT settings: ${agentConfig.agentName} (${agentConfigId})`);
+
+        workingHours = agentConfig.availabilityWorkingHours || {
+          monday: { enabled: true, start: "09:00", end: "18:00" },
+          tuesday: { enabled: true, start: "09:00", end: "18:00" },
+          wednesday: { enabled: true, start: "09:00", end: "18:00" },
+          thursday: { enabled: true, start: "09:00", end: "18:00" },
+          friday: { enabled: true, start: "09:00", end: "18:00" },
+          saturday: { enabled: false, start: "09:00", end: "13:00" },
+          sunday: { enabled: false, start: "09:00", end: "13:00" }
+        };
+        appointmentDuration = agentConfig.availabilityAppointmentDuration || 60;
+        bufferBefore = agentConfig.availabilityBufferBefore || 15;
+        bufferAfter = agentConfig.availabilityBufferAfter || 15;
+        minHoursNotice = agentConfig.availabilityMinHoursNotice || 24;
+        maxDaysAhead = agentConfig.availabilityMaxDaysAhead || 30;
+        timezone = agentConfig.availabilityTimezone || "Europe/Rome";
+
+        console.log(`   ⚙️ Agent availability: duration=${appointmentDuration}min, buffer=${bufferBefore}/${bufferAfter}min, tz=${timezone}`);
+      } else {
+        // Fallback to consultant settings (legacy - deprecated)
+        console.warn(`⚠️ [AVAILABLE-SLOTS] DEPRECATED: Using consultant settings instead of agent. Please provide agentConfigId.`);
+        
+        const [settings] = await db
+          .select()
+          .from(schema.consultantAvailabilitySettings)
+          .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId as string))
+          .limit(1);
+
+        if (!settings) {
+          return res.status(404).json({ message: "Consultant settings not found. Please provide agentConfigId for agent-specific availability." });
+        }
+
+        workingHours = settings.workingHours;
+        appointmentDuration = settings.appointmentDuration;
+        bufferBefore = settings.bufferBefore;
+        bufferAfter = settings.bufferAfter;
+        minHoursNotice = settings.minHoursNotice;
+        maxDaysAhead = settings.maxDaysAhead;
+        timezone = settings.timezone;
       }
-
-      const {
-        workingHours,
-        morningSlotStart,
-        morningSlotEnd,
-        afternoonSlotStart,
-        afternoonSlotEnd,
-        appointmentDuration,
-        bufferBefore,
-        bufferAfter,
-        minHoursNotice,
-        maxDaysAhead,
-        timezone
-      } = settings;
 
       // 2. Generate theoretical slots based on working hours
       const theoreticalSlots: Array<{ start: Date; end: Date }> = [];

@@ -2298,6 +2298,23 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   googleTokenExpiry: timestamp("google_token_expiry"), // Token expiration timestamp
   calendarConnectedAt: timestamp("calendar_connected_at"), // When calendar was connected
 
+  // Agent-specific Availability Settings (independent from consultant settings)
+  availabilityTimezone: text("availability_timezone").default("Europe/Rome"),
+  availabilityAppointmentDuration: integer("availability_appointment_duration").default(60), // minutes
+  availabilityBufferBefore: integer("availability_buffer_before").default(15), // minutes before appointment
+  availabilityBufferAfter: integer("availability_buffer_after").default(15), // minutes after appointment
+  availabilityMaxDaysAhead: integer("availability_max_days_ahead").default(30), // max days in advance for booking
+  availabilityMinHoursNotice: integer("availability_min_hours_notice").default(24), // minimum hours notice
+  availabilityWorkingHours: jsonb("availability_working_hours").$type<{
+    monday?: { enabled: boolean; start: string; end: string };
+    tuesday?: { enabled: boolean; start: string; end: string };
+    wednesday?: { enabled: boolean; start: string; end: string };
+    thursday?: { enabled: boolean; start: string; end: string };
+    friday?: { enabled: boolean; start: string; end: string };
+    saturday?: { enabled: boolean; start: string; end: string };
+    sunday?: { enabled: boolean; start: string; end: string };
+  }>().default(sql`'{"monday":{"enabled":true,"start":"09:00","end":"18:00"},"tuesday":{"enabled":true,"start":"09:00","end":"18:00"},"wednesday":{"enabled":true,"start":"09:00","end":"18:00"},"thursday":{"enabled":true,"start":"09:00","end":"18:00"},"friday":{"enabled":true,"start":"09:00","end":"18:00"},"saturday":{"enabled":false,"start":"09:00","end":"13:00"},"sunday":{"enabled":false,"start":"09:00","end":"13:00"}}'::jsonb`),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
