@@ -1,0 +1,49 @@
+pe: all
+════════════════════════════════════════════════════════════
+
+📦 [Reset] Found 1253 documents in consultant store
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] Google delete failed: Cannot read properties of undefined (reading 'documents')
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
