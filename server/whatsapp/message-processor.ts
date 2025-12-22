@@ -44,6 +44,15 @@ import { fileSearchService } from "../ai/file-search-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
 import { shouldRespondWithAudio } from "./audio-response-utils";
 import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction, ActionDetails } from "../booking/booking-intent-detector";
+import {
+  extractBookingDataFromConversation,
+  validateBookingData,
+  createBookingRecord,
+  createGoogleCalendarBooking,
+  sendBookingConfirmationEmail,
+  BookingExtractionResult,
+  ConversationMessage,
+} from "../booking/booking-service";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as path from "path";
@@ -2252,7 +2261,9 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
       }
 
       // Proceed with extraction for NEW bookings OR MODIFICATIONS/CANCELLATIONS
-      if (((!alreadyConfirmed && retrievedSlots && retrievedSlots.length > 0) || alreadyConfirmed)) {
+      // ALLINEATO A PUBLIC SHARE: Non richiediamo più slot salvati per nuovi booking
+      // shouldAnalyzeForBooking() filtra già i messaggi non rilevanti
+      if (true) {
 
         // AI PRE-CHECK: Skip heavy extraction if message is not booking-related
         const preCheckAi = new GoogleGenAI({ apiKey });
@@ -2293,8 +2304,11 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
               .map(m => `${m.sender === 'client' ? 'LEAD' : 'AI'}: ${m.messageText}`)
               .join('\n');
 
+            // SPLIT: Different extraction methods for MODIFY/CANCEL vs NEW BOOKING
+            if (alreadyConfirmed) {
             // Use AI to extract appointment intent and data from ENTIRE recent conversation
-            const extractionPrompt = alreadyConfirmed ? `
+            // MODIFY/CANCEL prompt for existing appointments
+            const extractionPrompt = `
 Analizza questa conversazione recente di un lead che ha GIÀ un appuntamento confermato:
 
 APPUNTAMENTO ESISTENTE:
@@ -2431,97 +2445,6 @@ LEAD: grazie per l'appuntamento, a presto!
 16. Per ADD_ATTENDEES: confirmedTimes = 0 (nessuna conferma necessaria)
 17. Se non ha ancora confermato esplicitamente: confirmedTimes = 0
 18. IMPORTANTE: Le richieste dirette ("mettilo alle 10", "spostalo alle 14") NON contano come conferma - confirmedTimes=0 finché il lead non conferma esplicitamente
-` : `
-Analizza questa conversazione recente di un lead che sta prenotando un appuntamento:
-
-CONVERSAZIONE RECENTE:
-${conversationContext}
-
-TASK: Estrai TUTTI i dati forniti dal lead durante la conversazione (anche se in messaggi separati).
-
-RISPONDI SOLO con un oggetto JSON nel seguente formato:
-{
-  "isConfirming": true/false,
-  "date": "YYYY-MM-DD" (null se non confermato),
-  "time": "HH:MM" (null se non confermato),
-  "phone": "numero di telefono" (null se non fornito),
-  "email": "email@example.com" (null se non fornita),
-  "confidence": "high/medium/low",
-  "hasAllData": true/false (true solo se hai data, ora, telefono ED email)
-}
-
-ESEMPI DI CONVERSAZIONI (LEGGI ATTENTAMENTE):
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Esempio 1 - FLUSSO COMPLETO step-by-step (CASO TIPICO):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AI: Ti va meglio mattina o pomeriggio?
-LEAD: Pomeriggio
-AI: Perfetto! Ti propongo: Mercoledì 6 novembre alle 15:00, Giovedì 7 novembre alle 16:30. Quale preferisci?
-LEAD: Mercoledì alle 15
-AI: Perfetto! Mercoledì 6 novembre alle 15:00. Per confermare, mi confermi il tuo numero di telefono?
-LEAD: 3331234567
-AI: Grazie! E mi lasci anche la tua email? Te la aggiungo all'invito del calendario.
-LEAD: mario@test.it
-
-→ {"isConfirming": true, "date": "2025-11-06", "time": "15:00", "phone": "3331234567", "email": "mario@test.it", "confidence": "high", "hasAllData": true}
-
-⚠️ NOTA: Questo è il flusso STANDARD - telefono PRIMA, poi email
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Esempio 2 - Dati parziali (MANCA EMAIL):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AI: Quale orario preferisci?
-LEAD: Martedì alle 15:30
-AI: Perfetto! Mi confermi il tuo telefono?
-LEAD: 3331234567
-
-→ {"isConfirming": true, "date": "2025-11-05", "time": "15:30", "phone": "3331234567", "email": null, "confidence": "medium", "hasAllData": false}
-
-⚠️ NOTA: hasAllData = FALSE perché manca l'email
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Esempio 3 - Dati parziali (MANCA TELEFONO E EMAIL):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AI: Ti propongo: Lunedì 4 novembre alle 10:00, Martedì 5 alle 14:00
-LEAD: Lunedì alle 10 va bene
-
-→ {"isConfirming": true, "date": "2025-11-04", "time": "10:00", "phone": null, "email": null, "confidence": "low", "hasAllData": false}
-
-⚠️ NOTA: hasAllData = FALSE perché mancano telefono ED email
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Esempio 4 - Tutto in un messaggio:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LEAD: Ok martedì alle 15:30, il mio numero è 3331234567 e la mail mario@test.it
-
-→ {"isConfirming": true, "date": "2025-11-05", "time": "15:30", "phone": "3331234567", "email": "mario@test.it", "confidence": "high", "hasAllData": true}
-
-⚠️ NOTA: Anche se tutto in un messaggio, estrai correttamente tutti i campi
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🎯 REGOLE CRITICHE DI ESTRAZIONE:
-1. Cerca i dati in TUTTA la conversazione (ultimi 10 messaggi), NON solo l'ultimo messaggio
-2. Il telefono viene quasi SEMPRE fornito PRIMA dell'email nel flusso normale
-3. hasAllData = true SOLO se hai TUTTI E 4 i campi: date, time, phone, email
-4. Se anche 1 solo campo è null → hasAllData = FALSE
-5. Non importa se i dati sono sparsi su 5 messaggi diversi - estraili tutti
-
-🗓️ DATA CORRENTE: ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
-
-⚠️ ATTENZIONE ALLE DATE:
-- Se vedi date come "maggio 2024", "28 maggio 2024" o altre date del 2024, sono nel PASSATO
-- Devi estrarre solo date FUTURE a partire da oggi (${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })})
-- Se il lead ha confermato una data passata (es: maggio 2024), impostala comunque ma il sistema la rifiuterà automaticamente
-
-REGOLE VALIDAZIONE hasAllData:
-- hasAllData = false se manca anche 1 solo campo
-- hasAllData = false se date è null
-- hasAllData = false se time è null  
-- hasAllData = false se phone è null
-- hasAllData = false se email è null
-- hasAllData = true SOLO se tutti e 4 sono presenti e non-null
 `;
 
             console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -2975,18 +2898,48 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                   console.log('💬 [APPOINTMENT MANAGEMENT] No modification/cancellation/add attendees intent detected - continuing normal conversation');
                 }
 
-              } else if (!alreadyConfirmed) {
+              }
+            } // end if (jsonMatch)
+            } // end if (alreadyConfirmed) - MODIFY/CANCEL extraction block
+            else {
+              // ═══════════════════════════════════════════════════════════════════════════════
+              // NUOVA PRENOTAZIONE - Allineato a public-share-router.ts
+              // Usa extractBookingDataFromConversation() invece del prompt inline
+              // ═══════════════════════════════════════════════════════════════════════════════
+              console.log('📅 [NEW BOOKING] Using extractBookingDataFromConversation() - aligned with public-share-router.ts');
+              
+              // Converti messaggi in formato ConversationMessage[] (come public-share-router.ts)
+              const conversationMessages: ConversationMessage[] = recentMessages
+                .reverse()
+                .map(m => ({
+                  sender: m.sender === 'client' ? 'client' as const : 'ai' as const,
+                  messageText: m.messageText || ''
+                }));
+              
+              console.log(`   📚 Analyzing ${conversationMessages.length} messages for new booking...`);
+              
+              // Estrai dati booking dalla conversazione usando il servizio centralizzato
+              const extracted = await extractBookingDataFromConversation(
+                conversationMessages,
+                undefined, // Nessun booking esistente
+                preCheckAi, // GoogleGenAI client già creato
+                'Europe/Rome'
+              );
+              
+              if (extracted && 'isConfirming' in extracted) {
+                const extractionResult = extracted as BookingExtractionResult;
+                
                 // NUOVA PRENOTAZIONE - logica esistente
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 console.log('📊 [STEP 3] Data Extraction Results');
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                console.log(`🎯 Confirmation Status: ${extracted.isConfirming ? '✅ YES' : '❌ NO'}`);
-                console.log(`📅 Date:     ${extracted.date ? `✅ ${extracted.date}` : '❌ MISSING'}`);
-                console.log(`🕐 Time:     ${extracted.time ? `✅ ${extracted.time}` : '❌ MISSING'}`);
-                console.log(`📞 Phone:    ${extracted.phone ? `✅ ${extracted.phone}` : '❌ MISSING'}`);
-                console.log(`📧 Email:    ${extracted.email ? `✅ ${extracted.email}` : '❌ MISSING'}`);
-                console.log(`💯 Confidence: ${extracted.confidence.toUpperCase()}`);
-                console.log(`✔️ Complete Data: ${extracted.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
+                console.log(`🎯 Confirmation Status: ${extractionResult.isConfirming ? '✅ YES' : '❌ NO'}`);
+                console.log(`📅 Date:     ${extractionResult.date ? `✅ ${extractionResult.date}` : '❌ MISSING'}`);
+                console.log(`🕐 Time:     ${extractionResult.time ? `✅ ${extractionResult.time}` : '❌ MISSING'}`);
+                console.log(`📞 Phone:    ${extractionResult.phone ? `✅ ${extractionResult.phone}` : '❌ MISSING'}`);
+                console.log(`📧 Email:    ${extractionResult.email ? `✅ ${extractionResult.email}` : '❌ MISSING'}`);
+                console.log(`💯 Confidence: ${extractionResult.confidence.toUpperCase()}`);
+                console.log(`✔️ Complete Data: ${extractionResult.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
                 // VALIDAZIONE 1: Check che abbiamo tutti i dati
