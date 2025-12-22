@@ -678,6 +678,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               workPlatform: customPlatformLinks && customPlatformLinks[clientId] ? customPlatformLinks[clientId] : null
             });
             assignments.push(assignment);
+            
+            // PRIVACY ISOLATION: Sync exercise to client's private store
+            fileSearchSyncService.syncExerciseToClient(exercise.id, clientId, req.user!.id).catch(err => {
+              console.error(`[FileSync] Failed to sync exercise to client ${clientId}:`, err.message);
+            });
           } catch (assignmentError: any) {
             console.error(`Failed to create assignment for client ${clientId}:`, assignmentError.message);
             skippedClients.push(clientId);
@@ -981,6 +986,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 assignmentId: assignment.id,
                 clientId,
                 exerciseId: req.params.id
+              });
+              
+              // PRIVACY ISOLATION: Sync exercise to client's private store
+              fileSearchSyncService.syncExerciseToClient(req.params.id, clientId, req.user!.id).catch(err => {
+                console.error(`[FileSync] Failed to sync exercise to client ${clientId}:`, err.message);
               });
             } catch (assignmentError: any) {
               console.error(`❌ Failed to create assignment for client ${clientId}:`, assignmentError.message);
@@ -1348,6 +1358,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const assignment = await storage.createExerciseAssignment(validatedData);
+      
+      // PRIVACY ISOLATION: Sync exercise to client's private store
+      fileSearchSyncService.syncExerciseToClient(validatedData.exerciseId, validatedData.clientId, req.user!.id).catch(err => {
+        console.error(`[FileSync] Failed to sync exercise to client:`, err.message);
+      });
+      
       res.status(201).json(assignment);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -4750,6 +4766,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.assignCategoryToClients(req.params.id, clientIds || [], req.user!.id);
+      
+      // PRIVACY ISOLATION: Sync library docs to each client's private store
+      if (clientIds && clientIds.length > 0) {
+        for (const clientId of clientIds) {
+          fileSearchSyncService.syncLibraryCategoryToClient(req.params.id, clientId, req.user!.id).catch(err => {
+            console.error(`[FileSync] Failed to sync library category to client ${clientId}:`, err.message);
+          });
+        }
+      }
+      
       res.json({ message: "Category assignments updated successfully" });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -6012,6 +6038,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
         )
       );
+      
+      // PRIVACY ISOLATION: Sync university lessons to each client's private store
+      for (const clientId of clientIds) {
+        fileSearchSyncService.syncUniversityYearToClient(yearId, clientId, req.user!.id).catch(err => {
+          console.error(`[FileSync] Failed to sync university year to client ${clientId}:`, err.message);
+        });
+      }
 
       res.status(201).json(assignments);
     } catch (error: any) {
