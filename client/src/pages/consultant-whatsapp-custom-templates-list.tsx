@@ -483,12 +483,20 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
       return true;
     });
 
-    // Separate opening template (Hero) from others
+    // Find opening template for highlighting (but keep it in its category)
     const openingTemplate = deduplicatedTemplates.find(t => t.templateType === 'opening');
-    const nonOpeningTemplates = deduplicatedTemplates.filter(t => t.templateType !== 'opening');
     
-    const localDrafts = nonOpeningTemplates.filter(t => !t.activeVersion?.twilioContentSid);
-    const onTwilio = nonOpeningTemplates.filter(t => !!t.activeVersion?.twilioContentSid);
+    // Separate by Twilio status - opening template stays in its appropriate category
+    const localDraftsRaw = deduplicatedTemplates.filter(t => !t.activeVersion?.twilioContentSid);
+    const onTwilio = deduplicatedTemplates.filter(t => !!t.activeVersion?.twilioContentSid);
+    
+    // Sort localDrafts to put opening template first
+    const localDrafts = localDraftsRaw.sort((a, b) => {
+      if (a.templateType === 'opening') return -1;
+      if (b.templateType === 'opening') return 1;
+      return 0;
+    });
+    
     const approved = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'approved');
     const pending = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'pending_approval');
     const rejected = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'rejected');
@@ -851,14 +859,27 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     const typeConfig = getTypeConfig(template.templateType);
     const statusConfig = getTwilioStatusConfig(template.activeVersion?.twilioStatus || null);
     const StatusIcon = statusConfig.icon;
+    const isOpeningTemplate = template.templateType === 'opening';
 
     return (
       <Card
         key={template.id}
-        className={`group relative overflow-hidden border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 animate-in fade-in-50 ${template.archivedAt ? "opacity-60 hover:opacity-100" : ""
-          }`}
+        className={`group relative overflow-hidden border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 animate-in fade-in-50 ${
+          isOpeningTemplate 
+            ? "border-amber-400 bg-gradient-to-br from-amber-50/80 via-yellow-50/50 to-orange-50/30 shadow-lg ring-2 ring-amber-200/50 col-span-full sm:col-span-2" 
+            : ""
+        } ${template.archivedAt ? "opacity-60 hover:opacity-100" : ""}`}
       >
-        <div className={`absolute top-0 left-0 right-0 h-2 bg-gradient-to-r ${typeConfig.gradient}`} />
+        {/* Special badge for opening template */}
+        {isOpeningTemplate && (
+          <div className="absolute top-3 right-3 z-10">
+            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-md text-xs font-semibold">
+              <Star className="h-3 w-3 mr-1 fill-white" />
+              PRIMO MESSAGGIO
+            </Badge>
+          </div>
+        )}
+        <div className={`absolute top-0 left-0 right-0 h-2 bg-gradient-to-r ${isOpeningTemplate ? 'from-amber-400 via-yellow-400 to-orange-400' : typeConfig.gradient}`} />
 
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
@@ -1576,125 +1597,6 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
 
             {!isLoading && filteredAndSortedTemplates.length > 0 && (
               <div className="space-y-6">
-                {/* HERO SECTION - Template di Apertura (Primo Messaggio) */}
-                {groupedTemplates.openingTemplate && (
-                  <Card className="border-2 border-amber-300 bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 shadow-xl overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-200/40 to-transparent rounded-bl-full" />
-                    <CardHeader className="pb-4 relative">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg">
-                            <Star className="h-8 w-8 text-white fill-white" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge className="bg-amber-500 text-white border-0 text-xs">
-                                <Rocket className="h-3 w-3 mr-1" />
-                                PRIMO MESSAGGIO
-                              </Badge>
-                              {groupedTemplates.openingTemplate.activeVersion?.twilioStatus === 'approved' && (
-                                <Badge className="bg-green-500 text-white border-0 text-xs">
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  Approvato
-                                </Badge>
-                              )}
-                              {groupedTemplates.openingTemplate.activeVersion?.twilioStatus === 'pending_approval' && (
-                                <Badge className="bg-yellow-500 text-white border-0 text-xs">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  In Attesa
-                                </Badge>
-                              )}
-                            </div>
-                            <CardTitle className="text-xl text-amber-900">
-                              {groupedTemplates.openingTemplate.templateName}
-                            </CardTitle>
-                            <p className="text-sm text-amber-700 mt-1">
-                              Il messaggio che avvia la conversazione! Questo è il template più strategico.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/consultant/whatsapp/custom-templates/${groupedTemplates.openingTemplate!.id}/edit`)}
-                            className="bg-white/80 border-amber-300 text-amber-700 hover:bg-amber-100"
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Modifica
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/consultant/whatsapp/custom-templates/${groupedTemplates.openingTemplate!.id}/versions`)}
-                            className="bg-white/80 border-amber-300 text-amber-700 hover:bg-amber-100"
-                          >
-                            <History className="h-4 w-4 mr-1" />
-                            Versioni
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-amber-200/60 shadow-inner">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center flex-shrink-0">
-                            <MessageSquare className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="flex-1 bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-gray-100">
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                              {groupedTemplates.openingTemplate.activeVersion?.bodyText || groupedTemplates.openingTemplate.description || "Nessun testo disponibile"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-sm text-amber-700">
-                          <span className="flex items-center gap-1">
-                            <FileText className="h-4 w-4" />
-                            {(groupedTemplates.openingTemplate.activeVersion?.bodyText?.length || 0)} caratteri
-                          </span>
-                          {groupedTemplates.openingTemplate.activeVersion?.twilioContentSid && (
-                            <span className="flex items-center gap-1">
-                              <Cloud className="h-4 w-4" />
-                              Su Twilio
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-amber-600 italic">
-                          💡 La prima impressione conta - determina il tasso di risposta dei tuoi lead!
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {/* Se non c'è un template di apertura, mostra un placeholder per crearlo */}
-                {!groupedTemplates.openingTemplate && (
-                  <Card className="border-2 border-dashed border-amber-300 bg-gradient-to-br from-amber-50/50 to-orange-50/50">
-                    <CardContent className="py-8">
-                      <div className="text-center">
-                        <div className="inline-flex p-4 rounded-full bg-amber-100 mb-4">
-                          <Star className="h-8 w-8 text-amber-500" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-amber-900 mb-2">
-                          Crea il tuo Primo Messaggio
-                        </h3>
-                        <p className="text-sm text-amber-700 mb-4 max-w-md mx-auto">
-                          Il template di apertura è il messaggio più importante! È quello che avvia la conversazione con i tuoi lead.
-                        </p>
-                        <Button 
-                          onClick={() => navigate("/consultant/whatsapp/custom-templates/new?type=opening")}
-                          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Crea Template di Apertura
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
                 {/* Template presenti su Twilio - Mostrati per primi */}
                 {twilioTemplatesData?.twilioTemplates && twilioTemplatesData.twilioTemplates.length > 0 && (
                   <Collapsible open={twilioRemoteSectionOpen} onOpenChange={setTwilioRemoteSectionOpen}>
