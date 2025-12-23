@@ -77,15 +77,15 @@ export const consultantGuides: ConsultantGuides = {
         ]
       },
       {
-        title: "FASE 1: INFRASTRUTTURA",
+        title: "FASE 1: INFRASTRUTTURA BASE + WHATSAPP",
         icon: "🔧",
-        description: "Configurazione delle integrazioni tecniche di base necessarie per il funzionamento della piattaforma.",
+        description: "Configurazione delle integrazioni tecniche di base, WhatsApp/Twilio e la prima campagna. Questa fase è ESSENZIALE per iniziare a contattare i lead.",
         steps: [
           {
             title: "1.1 Vertex AI (Obbligatorio)",
             content: "Configura l'intelligenza artificiale che alimenta l'assistente AI, la generazione email e l'analisi clienti. Vai su Impostazioni → API Esterne → Google Vertex AI.",
             actionText: "Configura Vertex AI",
-            actionHref: "/consultant/api-keys-unified",
+            actionHref: "/consultant/api-keys-unified?tab=ai",
             tips: ["Richiede un progetto Google Cloud con Vertex AI abilitato", "Scarica il file JSON delle credenziali service account"],
             warnings: ["Senza Vertex AI, l'assistente AI e molte funzionalità non funzioneranno"]
           },
@@ -93,7 +93,7 @@ export const consultantGuides: ConsultantGuides = {
             title: "1.2 SMTP Email (Obbligatorio)",
             content: "Configura il server email per inviare email ai clienti, email di follow-up dopo le consulenze e il journey email automatico.",
             actionText: "Configura SMTP",
-            actionHref: "/consultant/ai-config",
+            actionHref: "/consultant/api-keys-unified?tab=email",
             tips: ["Puoi usare Gmail, Outlook, o qualsiasi provider SMTP", "Per Gmail: abilita 'App Password' nelle impostazioni sicurezza Google"],
             warnings: ["Senza SMTP non puoi inviare email ai clienti"]
           },
@@ -102,39 +102,41 @@ export const consultantGuides: ConsultantGuides = {
             content: "Collega Google Calendar ai tuoi agenti WhatsApp per sincronizzare automaticamente gli appuntamenti prenotati.",
             actionText: "Vai agli Agenti",
             actionHref: "/consultant/whatsapp",
-            tips: ["Ogni agente può avere il proprio Google Calendar", "Collega il calendario dal pannello laterale dell'agente", "Gli appuntamenti prenotati via WhatsApp appaiono sul calendario dell'agente"]
+            tips: ["Ogni agente può avere il proprio Google Calendar", "Collega il calendario dal pannello laterale dell'agente"]
           },
           {
-            title: "1.4 Video Meeting (Opzionale)",
-            content: "Configura l'integrazione per le videochiamate con Google Meet o altre piattaforme.",
-            actionText: "Configura Video",
-            actionHref: "/consultant/calendar-settings",
-            tips: ["I link Meet vengono generati automaticamente per le consulenze", "Integrazione con Fathom per trascrizioni automatiche"]
+            title: "1.4 Configurazione Twilio + WhatsApp (Obbligatorio per WhatsApp)",
+            content: "Configura Twilio per abilitare l'invio e ricezione di messaggi WhatsApp. Necessario per usare gli agenti AI e le campagne marketing.",
+            actionText: "Configura Twilio",
+            actionHref: "/consultant/api-keys-unified?tab=twilio",
+            tips: ["Crea account su twilio.com", "Richiedi WhatsApp Business API", "Inserisci Account SID, Auth Token e numero WhatsApp"],
+            warnings: ["Processo di approvazione Meta può richiedere alcuni giorni", "Senza Twilio non puoi usare WhatsApp"]
           },
           {
-            title: "1.5 Import Lead (Opzionale)",
-            content: "Importa i tuoi contatti esistenti da file CSV/Excel per iniziare subito con una base di lead.",
-            actionText: "Importa Lead",
-            actionHref: "/consultant/proactive-leads",
-            tips: ["Formato: nome, cognome, telefono, email", "Puoi mappare colonne personalizzate"]
+            title: "1.5 Template WhatsApp Approvato (ESSENZIALE)",
+            content: "Crea e fai approvare almeno un template WhatsApp da Twilio. I template sono OBBLIGATORI per inviare messaggi proattivi ai lead. Twilio deve approvare i template prima che possano essere usati.",
+            actionText: "Crea Template",
+            actionHref: "/consultant/whatsapp-templates",
+            tips: ["Crea un template con categoria 'Primo Contatto' o 'Setter'", "Usa variabili come {{1}} per personalizzare i messaggi", "L'approvazione Twilio richiede da pochi minuti a 24 ore"],
+            warnings: ["SENZA TEMPLATE APPROVATO non puoi inviare messaggi proattivi", "I template rifiutati devono essere corretti e ri-sottomessi"]
+          },
+          {
+            title: "1.6 Crea la tua Prima Campagna (ESSENZIALE)",
+            content: "Configura la tua prima campagna marketing usando il wizard a 3 step. La campagna collega: Fonti Lead → Template WhatsApp → Agente AI.",
+            actionText: "Crea Campagna",
+            actionHref: "/consultant/campaigns",
+            tips: ["Scegli un nome descrittivo per la campagna", "Seleziona l'agente WhatsApp che gestirà le conversazioni", "Scegli il template approvato per il primo messaggio", "Definisci l'uncino e la descrizione per personalizzare i messaggi"],
+            warnings: ["Richiede almeno un template approvato", "L'agente deve avere Twilio configurato"]
           }
         ]
       },
       {
-        title: "FASE 2: AGENTI WHATSAPP",
+        title: "FASE 2: AGENTI WHATSAPP AVANZATI",
         icon: "🤖",
-        description: "Configurazione degli agenti AI che gestiscono le conversazioni WhatsApp con i lead.",
+        description: "Creazione di agenti AI specializzati per diversi tipi di conversazioni WhatsApp.",
         steps: [
           {
-            title: "2.1 Twilio WhatsApp (Obbligatorio per WhatsApp)",
-            content: "Configura Twilio per abilitare l'invio e ricezione di messaggi WhatsApp. Necessario per usare gli agenti AI.",
-            actionText: "Configura Twilio",
-            actionHref: "/consultant/api-keys-unified",
-            tips: ["Crea account su twilio.com", "Richiedi WhatsApp Business API", "Inserisci Account SID, Auth Token e numero WhatsApp"],
-            warnings: ["Processo di approvazione Meta può richiedere alcuni giorni"]
-          },
-          {
-            title: "2.2 Agente Inbound",
+            title: "2.1 Agente Inbound",
             content: "L'agente Inbound risponde automaticamente ai lead che ti contattano. Gestisce domande frequenti, qualifica i lead e può prenotare appuntamenti.",
             actionText: "Crea Agente Inbound",
             actionHref: "/consultant/whatsapp/agent/new?type=inbound",
@@ -142,67 +144,67 @@ export const consultantGuides: ConsultantGuides = {
             warnings: ["Richiede Twilio configurato"]
           },
           {
-            title: "2.3 Agente Outbound",
+            title: "2.2 Agente Outbound",
             content: "L'agente Outbound contatta proattivamente i lead delle tue campagne. Segue script personalizzati per qualificare e convertire.",
             actionText: "Crea Agente Outbound",
             actionHref: "/consultant/whatsapp/agent/new?type=outbound",
             tips: ["Usalo con le campagne marketing", "Definisci 'uncini' per catturare l'attenzione"]
           },
           {
-            title: "2.4 Agente Consultivo",
+            title: "2.3 Agente Consulenziale",
             content: "L'agente Consultivo assiste durante le sessioni con i clienti. Può rispondere a domande tecniche usando la knowledge base.",
             actionText: "Crea Agente Consultivo",
             actionHref: "/consultant/whatsapp/agent/new?type=consultative",
             tips: ["Collega alla Knowledge Base per risposte accurate", "Utile per supporto post-consulenza"]
           },
           {
-            title: "2.5 Link Pubblico Agente",
+            title: "2.4 Link Pubblico Agente",
             content: "Una volta creato un agente, genera un link pubblico che i potenziali clienti possono usare per iniziare una conversazione con il tuo bot.",
             actionText: "Gestisci Agenti",
             actionHref: "/consultant/whatsapp-agents-chat",
             tips: ["Il link può essere condiviso su social, sito web, biglietti da visita", "Il lead viene automaticamente aggiunto alla pipeline"]
+          },
+          {
+            title: "2.5 Idee AI Generate",
+            content: "L'AI può generare idee creative per i tuoi agenti basandosi sul tuo settore e target.",
+            actionText: "Genera Idee",
+            actionHref: "/consultant/whatsapp?tab=ideas",
+            tips: ["Descrivi il tuo target e l'AI suggerirà contenuti", "Puoi modificare e personalizzare i suggerimenti"]
+          },
+          {
+            title: "2.6 Altri Template WhatsApp",
+            content: "Crea template aggiuntivi per follow-up, promemoria appuntamenti, e altre comunicazioni automatiche.",
+            actionText: "Gestisci Template",
+            actionHref: "/consultant/whatsapp-templates",
+            tips: ["Usa categorie diverse: Follow-up, Appuntamenti, Generale", "Ogni template deve essere approvato da Twilio"]
           }
         ]
       },
       {
         title: "FASE 3: CONTENUTI",
         icon: "📚",
-        description: "Creazione dei contenuti per personalizzare l'esperienza dei tuoi clienti.",
+        description: "Creazione dei contenuti formativi per i tuoi clienti.",
         steps: [
           {
-            title: "3.1 Idee Generate dall'AI",
-            content: "L'AI può generare idee per corsi, esercizi e contenuti basandosi sul tuo settore e target. Vai nella sezione Formazione per attivare questa funzione.",
-            actionText: "Genera Idee",
-            actionHref: "/consultant/university",
-            tips: ["Descrivi il tuo target e l'AI suggerirà contenuti", "Puoi modificare e personalizzare i suggerimenti"]
-          },
-          {
-            title: "3.2 Template Email Personalizzato",
-            content: "Crea template email personalizzati per il journey automatico dei tuoi clienti. Definisci tono, struttura e call-to-action.",
-            actionText: "Crea Template",
-            actionHref: "/consultant/templates",
-            tips: ["I template supportano variabili come {{nome_cliente}}", "Puoi creare template per diverse fasi del journey"]
-          },
-          {
-            title: "3.3 Primo Corso",
+            title: "3.1 Primo Corso",
             content: "Crea il tuo primo corso formativo per i clienti. Struttura in moduli e lezioni con video, testo e quiz.",
             actionText: "Crea Corso",
             actionHref: "/consultant/university",
             tips: ["I clienti possono seguire i corsi dalla loro area", "Traccia i progressi e il completamento"]
           },
           {
-            title: "3.4 Primo Esercizio",
+            title: "3.2 Primo Esercizio",
             content: "Crea esercizi pratici che i clienti devono completare. Ricevi notifiche quando vengono consegnati per la revisione.",
             actionText: "Crea Esercizio",
             actionHref: "/consultant/exercise-templates",
             tips: ["Gli esercizi aiutano i clienti ad applicare quanto appreso", "Puoi impostare scadenze e priorità"]
           },
           {
-            title: "3.5 Prima Email Summary",
-            content: "Dopo una consulenza, genera automaticamente un'email di riepilogo con i punti chiave discussi e i prossimi passi.",
-            actionText: "Vedi Consulenze",
-            actionHref: "/consultant/appointments",
-            tips: ["L'AI genera la bozza basandosi sulle note della consulenza", "Puoi modificare prima di inviare"]
+            title: "3.3 Base di Conoscenza",
+            content: "Carica documenti, PDF, e contenuti che l'AI userà per rispondere alle domande. Più informazioni carichi, più accurate saranno le risposte.",
+            actionText: "Gestisci Knowledge Base",
+            actionHref: "/consultant/knowledge-documents",
+            tips: ["Carica PDF, documenti Word, o testo", "L'AI indicizza automaticamente i contenuti", "Usato sia dall'assistente che dagli agenti WhatsApp"]
           }
         ]
       },
@@ -212,25 +214,25 @@ export const consultantGuides: ConsultantGuides = {
         description: "Funzionalità avanzate per ottimizzare e automatizzare il tuo business.",
         steps: [
           {
-            title: "4.1 Knowledge Base",
-            content: "Carica documenti, PDF, e contenuti che l'AI userà per rispondere alle domande. Più informazioni carichi, più accurate saranno le risposte.",
-            actionText: "Gestisci Knowledge Base",
-            actionHref: "/consultant/knowledge-documents",
-            tips: ["Carica PDF, documenti Word, o testo", "L'AI indicizza automaticamente i contenuti", "Usato sia dall'assistente che dagli agenti WhatsApp"]
+            title: "4.1 Prima Email Riassuntiva",
+            content: "Dopo una consulenza, genera automaticamente un'email di riepilogo con i punti chiave discussi e i prossimi passi.",
+            actionText: "Vedi Consulenze",
+            actionHref: "/consultant/appointments",
+            tips: ["L'AI genera la bozza basandosi sulle note della consulenza", "Puoi modificare prima di inviare"]
           },
           {
-            title: "4.2 Automazioni Avanzate",
-            content: "Configura regole automatiche per follow-up, reminder e azioni basate su trigger specifici.",
-            actionText: "Configura Automazioni",
-            actionHref: "/consultant/automations",
-            tips: ["Esempio: se un lead non risponde dopo 3 giorni, invia follow-up", "Le automazioni lavorano 24/7"]
+            title: "4.2 Video Meeting (TURN)",
+            content: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti.",
+            actionText: "Configura Video",
+            actionHref: "/consultant/api-keys-unified?tab=video-meeting",
+            tips: ["I link Meet vengono generati automaticamente per le consulenze", "Integrazione con Fathom per trascrizioni automatiche"]
           },
           {
-            title: "4.3 Campagne Marketing",
-            content: "Crea campagne WhatsApp per raggiungere gruppi di lead con messaggi personalizzati. Traccia conversioni e performance.",
-            actionText: "Crea Campagna",
-            actionHref: "/consultant/campaigns",
-            tips: ["Ogni campagna ha un 'uncino' - la frase che cattura l'attenzione", "Segmenta i lead per interesse o fonte"]
+            title: "4.3 Import Lead Automatico",
+            content: "Configura API esterne per importare lead automaticamente da altre piattaforme nel sistema.",
+            actionText: "Configura Import",
+            actionHref: "/consultant/api-keys-unified?tab=lead-import",
+            tips: ["Connetti fonti come Facebook Ads, Google Ads, landing page"]
           }
         ]
       },

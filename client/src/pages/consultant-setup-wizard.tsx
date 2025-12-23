@@ -116,6 +116,10 @@ interface OnboardingStatus {
   generatedIdeasCount: number;
   hasCustomTemplate: boolean;
   customTemplatesCount: number;
+  hasApprovedTemplate: boolean;
+  approvedTemplatesCount: number;
+  hasFirstCampaign: boolean;
+  campaignsCount: number;
   hasCreatedCourse: boolean;
   coursesCount: number;
   hasCreatedExercise: boolean;
@@ -656,18 +660,12 @@ export default function ConsultantSetupWizard() {
           configLink: "/consultant/whatsapp",
           testEndpoint: "/api/consultant/onboarding/test/google-calendar",
         },
-      ],
-    },
-    {
-      id: "whatsapp_agents",
-      title: "FASE 2: WhatsApp & Agenti",
-      steps: [
         {
           id: "twilio_config",
           stepNumber: 4,
           title: "Configurazione Twilio + WhatsApp",
           description: "Collega il tuo numero italiano a WhatsApp Business tramite Twilio",
-          icon: <MessageSquare className="h-4 w-4" />,
+          icon: <Phone className="h-4 w-4" />,
           status: status?.hasTwilioConfiguredAgent ? "verified" : (status?.whatsappAiStatus || "pending"),
           testedAt: status?.twilioAgentTestedAt || status?.whatsappAiTestedAt,
           errorMessage: status?.twilioAgentErrorMessage || status?.whatsappAiErrorMessage,
@@ -675,8 +673,36 @@ export default function ConsultantSetupWizard() {
           testEndpoint: "/api/consultant/onboarding/test/twilio-agent",
         },
         {
-          id: "inbound_agent",
+          id: "approved_template",
           stepNumber: 5,
+          title: "Template WhatsApp Approvato",
+          description: "Crea e fatti approvare almeno un template da Twilio per inviare messaggi proattivi",
+          icon: <MessageSquare className="h-4 w-4" />,
+          status: status?.hasApprovedTemplate ? "verified" : (status?.hasCustomTemplate ? "configured" : "pending"),
+          configLink: "/consultant/whatsapp-templates",
+          count: status?.approvedTemplatesCount,
+          countLabel: "approvati",
+        },
+        {
+          id: "first_campaign",
+          stepNumber: 6,
+          title: "Crea la tua Prima Campagna",
+          description: "Configura la tua prima campagna marketing per contattare i lead automaticamente",
+          icon: <Rocket className="h-4 w-4" />,
+          status: status?.hasFirstCampaign ? "verified" : "pending",
+          configLink: "/consultant/campaigns",
+          count: status?.campaignsCount,
+          countLabel: "campagne",
+        },
+      ],
+    },
+    {
+      id: "whatsapp_agents",
+      title: "FASE 2: WhatsApp & Agenti",
+      steps: [
+        {
+          id: "inbound_agent",
+          stepNumber: 7,
           title: "Agente Inbound",
           description: "Crea un agente per gestire le richieste in entrata dei clienti",
           icon: <ArrowDownToLine className="h-4 w-4" />,
@@ -685,7 +711,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "outbound_agent",
-          stepNumber: 6,
+          stepNumber: 8,
           title: "Agente Outbound",
           description: "Crea un agente per le campagne di contatto proattivo",
           icon: <ArrowUpFromLine className="h-4 w-4" />,
@@ -694,7 +720,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "consultative_agent",
-          stepNumber: 7,
+          stepNumber: 9,
           title: "Agente Consulenziale",
           description: "Crea un agente specializzato per consulenze e supporto avanzato",
           icon: <Briefcase className="h-4 w-4" />,
@@ -703,7 +729,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "public_agent_link",
-          stepNumber: 8,
+          stepNumber: 10,
           title: "Link Pubblico Agente",
           description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
           icon: <LinkIcon className="h-4 w-4" />,
@@ -714,7 +740,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "ai_ideas",
-          stepNumber: 9,
+          stepNumber: 11,
           title: "Idee AI Generate",
           description: "Genera idee creative per gli agenti usando l'intelligenza artificiale",
           icon: <Lightbulb className="h-4 w-4" />,
@@ -725,9 +751,9 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "whatsapp_template",
-          stepNumber: 10,
-          title: "Template WhatsApp",
-          description: "Crea almeno un template WhatsApp per i tuoi messaggi automatici",
+          stepNumber: 12,
+          title: "Altri Template WhatsApp",
+          description: "Crea altri template WhatsApp per diversi tipi di messaggi automatici",
           icon: <MessageSquare className="h-4 w-4" />,
           status: status?.hasCustomTemplate ? "verified" : "pending",
           configLink: "/consultant/whatsapp-templates",
@@ -742,7 +768,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_course",
-          stepNumber: 11,
+          stepNumber: 13,
           title: "Primo Corso",
           description: "Crea il tuo primo corso formativo per i clienti",
           icon: <BookOpen className="h-4 w-4" />,
@@ -753,7 +779,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "first_exercise",
-          stepNumber: 12,
+          stepNumber: 14,
           title: "Primo Esercizio",
           description: "Crea il tuo primo esercizio pratico per i clienti",
           icon: <ClipboardList className="h-4 w-4" />,
@@ -764,7 +790,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "knowledge_base",
-          stepNumber: 13,
+          stepNumber: 15,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -782,7 +808,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_summary_email",
-          stepNumber: 14,
+          stepNumber: 16,
           title: "Prima Email Riassuntiva",
           description: "Invia la tua prima email riassuntiva dopo una consulenza",
           icon: <MailCheck className="h-4 w-4" />,
@@ -793,7 +819,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "video_meeting",
-          stepNumber: 15,
+          stepNumber: 17,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -805,7 +831,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "lead_import",
-          stepNumber: 16,
+          stepNumber: 18,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,
@@ -841,12 +867,14 @@ export default function ConsultantSetupWizard() {
     smtp: "Email SMTP",
     google_calendar: "Google Calendar",
     twilio_config: "Configurazione Twilio + WhatsApp",
+    approved_template: "Template WhatsApp Approvato",
+    first_campaign: "Prima Campagna",
     inbound_agent: "Agente Inbound",
     outbound_agent: "Agente Outbound",
     consultative_agent: "Agente Consulenziale",
     public_agent_link: "Link Pubblico Agente",
     ai_ideas: "Idee AI Generate",
-    whatsapp_template: "Template WhatsApp",
+    whatsapp_template: "Altri Template WhatsApp",
     first_course: "Primo Corso",
     first_exercise: "Primo Esercizio",
     knowledge_base: "Knowledge Base",

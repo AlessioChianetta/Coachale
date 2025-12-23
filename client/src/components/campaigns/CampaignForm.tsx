@@ -158,7 +158,10 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     enabled: !!selectedAgentId,
   });
 
-  const assignedTemplates = assignmentsData?.assignments || [];
+  const allAssignedTemplates = assignmentsData?.assignments || [];
+  // Filter out Twilio templates (HX prefix) - only show custom templates for campaign selection
+  // Twilio templates can't be saved to marketing_campaigns.opening_template_id (FK constraint)
+  const assignedTemplates = allAssignedTemplates.filter((t: any) => !t.isTwilioTemplate && !t.templateId?.startsWith('HX'));
   const selectedTemplate = assignedTemplates.find((t: any) => t.templateId === selectedTemplateId);
 
   useEffect(() => {

@@ -20,6 +20,7 @@ import {
   whatsappCustomTemplates,
   superadminVertexConfig,
   consultantVertexAccess,
+  marketingCampaigns,
 } from '@shared/schema';
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
@@ -149,6 +150,23 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     const customTemplatesCount = Number(customTemplatesResult[0]?.count || 0);
     const hasCustomTemplate = customTemplatesCount > 0;
     
+    // Count approved WhatsApp templates
+    const approvedTemplatesResult = await db.select({ count: count() })
+      .from(whatsappCustomTemplates)
+      .where(and(
+        eq(whatsappCustomTemplates.consultantId, consultantId),
+        eq(whatsappCustomTemplates.twilioStatus, 'approved')
+      ));
+    const approvedTemplatesCount = Number(approvedTemplatesResult[0]?.count || 0);
+    const hasApprovedTemplate = approvedTemplatesCount > 0;
+    
+    // Count marketing campaigns
+    const campaignsResult = await db.select({ count: count() })
+      .from(marketingCampaigns)
+      .where(eq(marketingCampaigns.consultantId, consultantId));
+    const campaignsCount = Number(campaignsResult[0]?.count || 0);
+    const hasFirstCampaign = campaignsCount > 0;
+    
     // Update the status record with calculated values
     await db.update(consultantOnboardingStatus)
       .set({
@@ -191,6 +209,10 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       summaryEmailsCount,
       hasCustomTemplate,
       customTemplatesCount,
+      hasApprovedTemplate,
+      approvedTemplatesCount,
+      hasFirstCampaign,
+      campaignsCount,
     };
     
     res.json({
