@@ -122,7 +122,23 @@ export function validateStep(
     case 2: // Step 3: Brand Voice - All optional
       break;
 
-    case 3: // Step 4: AI Instructions - Handled by component
+    case 3: // Step 4: AI Instructions
+      // For proactive agents, require the 4 default fields
+      const isProactive = data.agentType === "proactive_setter" || data.isProactiveAgent === true;
+      if (isProactive) {
+        if (!data.defaultObiettivi?.trim()) {
+          errors.defaultObiettivi = "Gli obiettivi default sono obbligatori per agenti proattivi";
+        }
+        if (!data.defaultDesideri?.trim()) {
+          errors.defaultDesideri = "I desideri default sono obbligatori per agenti proattivi";
+        }
+        if (!data.defaultUncino?.trim()) {
+          errors.defaultUncino = "L'uncino default è obbligatorio per agenti proattivi";
+        }
+        if (!data.defaultIdealState?.trim()) {
+          errors.defaultIdealState = "Lo stato ideale default è obbligatorio per agenti proattivi";
+        }
+      }
       break;
   }
 
