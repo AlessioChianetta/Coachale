@@ -648,12 +648,12 @@ export default function ConsultantSetupWizard() {
           id: "google_calendar",
           stepNumber: 3,
           title: "Google Calendar",
-          description: "Collega il tuo Google Calendar per sincronizzare appuntamenti e consulenze",
+          description: "Collega Google Calendar ai tuoi agenti per sincronizzare appuntamenti e consulenze",
           icon: <Calendar className="h-4 w-4" />,
           status: status?.googleCalendarStatus || "pending",
           testedAt: status?.googleCalendarTestedAt,
           errorMessage: status?.googleCalendarErrorMessage,
-          configLink: "/consultant/api-keys-unified?tab=calendar",
+          configLink: "/consultant/whatsapp",
           testEndpoint: "/api/consultant/onboarding/test/google-calendar",
         },
       ],
@@ -1229,17 +1229,17 @@ export default function ConsultantSetupWizard() {
                           <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-blue-600" />
-                              Collegamento Google Calendar
+                              Collegamento Google Calendar agli Agenti
                             </h4>
                             <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                              <li>Vai alla pagina di configurazione</li>
-                              <li>Clicca "Connetti Google Calendar"</li>
-                              <li>Accedi con il tuo account Google</li>
-                              <li>Autorizza l'accesso al calendario</li>
-                              <li>Seleziona il calendario principale da sincronizzare</li>
+                              <li>Vai alla sezione Dipendenti/Agenti WhatsApp</li>
+                              <li>Seleziona un agente dalla lista</li>
+                              <li>Nel pannello laterale, trova la sezione "Google Calendar"</li>
+                              <li>Clicca "Collega Google Calendar"</li>
+                              <li>Accedi con l'account Google dell'agente e autorizza</li>
                             </ol>
                             <p className="text-xs text-muted-foreground mt-3 italic">
-                              Gli appuntamenti creati nella piattaforma appariranno automaticamente nel tuo Google Calendar.
+                              Ogni agente può avere il proprio Google Calendar per gestire appuntamenti separati.
                             </p>
                           </div>
                           <CredentialNotesCard stepId="google_calendar" />

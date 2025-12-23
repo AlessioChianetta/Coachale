@@ -493,8 +493,35 @@ router.post('/test/google-calendar', authenticateToken, requireRole('consultant'
   try {
     const consultantId = req.user!.id;
     
+    // Check if any agent has Google Calendar connected
+    const agentsWithCalendar = await db.query.consultantWhatsappConfig.findMany({
+      where: and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        sql`${consultantWhatsappConfig.googleRefreshToken} IS NOT NULL`
+      ),
+    });
+    
+    if (agentsWithCalendar.length === 0) {
+      await db.update(consultantOnboardingStatus)
+        .set({
+          googleCalendarStatus: 'error',
+          googleCalendarTestedAt: new Date(),
+          googleCalendarErrorMessage: 'Nessun agente ha Google Calendar connesso',
+          updatedAt: new Date(),
+        })
+        .where(eq(consultantOnboardingStatus.consultantId, consultantId));
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Nessun agente ha Google Calendar connesso. Vai nella sezione Dipendenti/Agenti e collega il calendario a un agente.',
+      });
+    }
+    
+    // Test the first agent's calendar connection
+    const firstAgent = agentsWithCalendar[0];
     try {
-      const calendar = await getCalendarClient(consultantId);
+      const { getAgentCalendarClient } = await import('../google-calendar-service');
+      const calendar = await getAgentCalendarClient(firstAgent.id);
       const calendarList = await calendar.calendarList.list();
       const calendarsCount = calendarList.data.items?.length || 0;
       
@@ -507,10 +534,15 @@ router.post('/test/google-calendar', authenticateToken, requireRole('consultant'
         })
         .where(eq(consultantOnboardingStatus.consultantId, consultantId));
       
+      const agentNames = agentsWithCalendar.map(a => a.agentName).join(', ');
       res.json({
         success: true,
-        message: `Google Calendar connesso con successo! Il tuo account ha ${calendarsCount} calendari (es. primario, compleanni, festività).`,
-        details: { calendarsCount },
+        message: `Google Calendar connesso! ${agentsWithCalendar.length} agente/i con calendario: ${agentNames}`,
+        details: { 
+          calendarsCount,
+          agentsWithCalendar: agentsWithCalendar.length,
+          agentNames 
+        },
       });
     } catch (calendarError: any) {
       await db.update(consultantOnboardingStatus)
@@ -524,7 +556,7 @@ router.post('/test/google-calendar', authenticateToken, requireRole('consultant'
       
       res.status(400).json({
         success: false,
-        message: `Test Google Calendar fallito: ${calendarError.message}`,
+        message: `Test Google Calendar fallito per agente "${firstAgent.agentName}": ${calendarError.message}`,
       });
     }
   } catch (error: any) {
