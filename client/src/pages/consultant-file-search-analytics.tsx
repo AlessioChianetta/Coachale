@@ -233,27 +233,46 @@ interface AnalyticsData {
   geminiApiKeyConfigured: boolean;
 }
 
+interface OutdatedDocument {
+  id: string;
+  title: string;
+  indexedAt: string;
+  sourceUpdatedAt: string;
+  type?: string;
+  lessonTitle?: string;
+}
+
 interface AuditData {
   consultant: {
     library: {
       total: number;
       indexed: number;
       missing: Array<{ id: string; title: string; type: string }>;
+      outdated?: OutdatedDocument[];
     };
     knowledgeBase: {
       total: number;
       indexed: number;
       missing: Array<{ id: string; title: string }>;
+      outdated?: OutdatedDocument[];
     };
     exercises: {
       total: number;
       indexed: number;
       missing: Array<{ id: string; title: string }>;
+      outdated?: OutdatedDocument[];
     };
     university: {
       total: number;
       indexed: number;
       missing: Array<{ id: string; title: string; lessonTitle: string }>;
+      outdated?: OutdatedDocument[];
+    };
+    consultantGuide?: {
+      total: number;
+      indexed: number;
+      missing: Array<{ id: string; title: string }>;
+      outdated?: OutdatedDocument[];
     };
   };
   clients: Array<{
@@ -281,6 +300,9 @@ interface AuditData {
     consultantMissing: number;
     clientsMissing: number;
     healthScore: number;
+    totalOutdated?: number;
+    consultantOutdated?: number;
+    clientsOutdated?: number;
   };
   recommendations: string[];
 }
@@ -3016,12 +3038,18 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                        <p className="text-2xl font-bold text-amber-700">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                      <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                        <p className="text-2xl font-bold text-red-700">
                           {auditData?.summary?.totalMissing || 0}
                         </p>
-                        <p className="text-sm text-amber-600">Elementi Mancanti Totali</p>
+                        <p className="text-sm text-red-600">Elementi Mancanti</p>
+                      </div>
+                      <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <p className="text-2xl font-bold text-amber-700">
+                          {auditData?.summary?.totalOutdated || 0}
+                        </p>
+                        <p className="text-sm text-amber-600">Documenti Obsoleti</p>
                       </div>
                       <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                         <p className="text-2xl font-bold text-blue-700">
@@ -3116,41 +3144,96 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         {openAuditCategories['library'] ? <ChevronDown className="h-4 w-4 text-blue-600" /> : <ChevronRight className="h-4 w-4 text-blue-600" />}
                         <BookOpen className="h-4 w-4 text-blue-600" />
                         <span className="font-medium text-blue-900">Libreria</span>
-                        <Badge className={`ml-auto ${(auditData?.consultant?.library?.missing?.length || 0) > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
-                          {auditData?.consultant?.library?.missing?.length || 0} mancanti
-                        </Badge>
+                        <div className="ml-auto flex items-center gap-2">
+                          {(auditData?.consultant?.library?.missing?.length || 0) > 0 && (
+                            <Badge className="bg-red-200 text-red-800">
+                              {auditData?.consultant?.library?.missing?.length || 0} mancanti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.library?.outdated?.length || 0) > 0 && (
+                            <Badge className="bg-amber-200 text-amber-800">
+                              {auditData?.consultant?.library?.outdated?.length || 0} obsoleti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.library?.missing?.length || 0) === 0 && (auditData?.consultant?.library?.outdated?.length || 0) === 0 && (
+                            <Badge className="bg-emerald-200 text-emerald-800">
+                              Sincronizzato
+                            </Badge>
+                          )}
+                        </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2 space-y-1">
-                        {auditData?.consultant?.library?.missing?.length === 0 ? (
+                        {auditData?.consultant?.library?.missing?.length === 0 && auditData?.consultant?.library?.outdated?.length === 0 ? (
                           <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                            Tutti i documenti della libreria sono indicizzati
+                            Tutti i documenti della libreria sono indicizzati e aggiornati
                           </p>
                         ) : (
-                          auditData?.consultant?.library?.missing?.map(doc => (
-                            <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">{doc.title}</span>
-                                <Badge variant="outline" className="text-xs">{doc.type}</Badge>
+                          <>
+                            {auditData?.consultant?.library?.missing?.map(doc => (
+                              <div key={doc.id} className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-4 w-4 text-red-400" />
+                                  <span className="text-sm">{doc.title}</span>
+                                  <Badge variant="outline" className="text-xs">{doc.type}</Badge>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="border-red-300 text-red-700"
+                                  onClick={() => syncSingleMutation.mutate({ type: 'library', id: doc.id })}
+                                  disabled={syncSingleMutation.isPending}
+                                >
+                                  {syncSingleMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Sync
+                                    </>
+                                  )}
+                                </Button>
                               </div>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => syncSingleMutation.mutate({ type: 'library', id: doc.id })}
-                                disabled={syncSingleMutation.isPending}
-                              >
-                                {syncSingleMutation.isPending ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Sync
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          ))
+                            ))}
+                            {(auditData?.consultant?.library?.outdated?.length || 0) > 0 && (
+                              <div className="mt-4 border-t pt-4">
+                                <h5 className="text-sm font-medium text-amber-700 mb-2 flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  Documenti da aggiornare
+                                </h5>
+                                {auditData?.consultant?.library?.outdated?.map(doc => (
+                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-amber-50 rounded border border-amber-200 mb-1">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-amber-500" />
+                                        <span className="text-sm font-medium">{doc.title}</span>
+                                        {doc.type && <Badge variant="outline" className="text-xs">{doc.type}</Badge>}
+                                      </div>
+                                      <p className="text-xs text-amber-600 mt-1">
+                                        Sincronizzato: {new Date(doc.indexedAt).toLocaleDateString('it-IT')} | Modificato: {new Date(doc.sourceUpdatedAt).toLocaleDateString('it-IT')}
+                                      </p>
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                                      onClick={() => syncSingleMutation.mutate({ type: 'library', id: doc.id })}
+                                      disabled={syncSingleMutation.isPending}
+                                    >
+                                      {syncSingleMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <RefreshCw className="h-3 w-3 mr-1" />
+                                          Aggiorna
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                       </CollapsibleContent>
                     </Collapsible>
@@ -3160,40 +3243,94 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         {openAuditCategories['kb'] ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
                         <Brain className="h-4 w-4 text-purple-600" />
                         <span className="font-medium text-purple-900">Knowledge Base</span>
-                        <Badge className={`ml-auto ${(auditData?.consultant?.knowledgeBase?.missing?.length || 0) > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
-                          {auditData?.consultant?.knowledgeBase?.missing?.length || 0} mancanti
-                        </Badge>
+                        <div className="ml-auto flex items-center gap-2">
+                          {(auditData?.consultant?.knowledgeBase?.missing?.length || 0) > 0 && (
+                            <Badge className="bg-red-200 text-red-800">
+                              {auditData?.consultant?.knowledgeBase?.missing?.length || 0} mancanti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.knowledgeBase?.outdated?.length || 0) > 0 && (
+                            <Badge className="bg-amber-200 text-amber-800">
+                              {auditData?.consultant?.knowledgeBase?.outdated?.length || 0} obsoleti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.knowledgeBase?.missing?.length || 0) === 0 && (auditData?.consultant?.knowledgeBase?.outdated?.length || 0) === 0 && (
+                            <Badge className="bg-emerald-200 text-emerald-800">
+                              Sincronizzato
+                            </Badge>
+                          )}
+                        </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2 space-y-1">
-                        {auditData?.consultant?.knowledgeBase?.missing?.length === 0 ? (
+                        {auditData?.consultant?.knowledgeBase?.missing?.length === 0 && auditData?.consultant?.knowledgeBase?.outdated?.length === 0 ? (
                           <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                            Tutti i documenti della knowledge base sono indicizzati
+                            Tutti i documenti della knowledge base sono indicizzati e aggiornati
                           </p>
                         ) : (
-                          auditData?.consultant?.knowledgeBase?.missing?.map(doc => (
-                            <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">{doc.title}</span>
+                          <>
+                            {auditData?.consultant?.knowledgeBase?.missing?.map(doc => (
+                              <div key={doc.id} className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-4 w-4 text-red-400" />
+                                  <span className="text-sm">{doc.title}</span>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="border-red-300 text-red-700"
+                                  onClick={() => syncSingleMutation.mutate({ type: 'knowledge_base', id: doc.id })}
+                                  disabled={syncSingleMutation.isPending}
+                                >
+                                  {syncSingleMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Sync
+                                    </>
+                                  )}
+                                </Button>
                               </div>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => syncSingleMutation.mutate({ type: 'knowledge_base', id: doc.id })}
-                                disabled={syncSingleMutation.isPending}
-                              >
-                                {syncSingleMutation.isPending ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Sync
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          ))
+                            ))}
+                            {(auditData?.consultant?.knowledgeBase?.outdated?.length || 0) > 0 && (
+                              <div className="mt-4 border-t pt-4">
+                                <h5 className="text-sm font-medium text-amber-700 mb-2 flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  Documenti da aggiornare
+                                </h5>
+                                {auditData?.consultant?.knowledgeBase?.outdated?.map(doc => (
+                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-amber-50 rounded border border-amber-200 mb-1">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-amber-500" />
+                                        <span className="text-sm font-medium">{doc.title}</span>
+                                      </div>
+                                      <p className="text-xs text-amber-600 mt-1">
+                                        Sincronizzato: {new Date(doc.indexedAt).toLocaleDateString('it-IT')} | Modificato: {new Date(doc.sourceUpdatedAt).toLocaleDateString('it-IT')}
+                                      </p>
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                                      onClick={() => syncSingleMutation.mutate({ type: 'knowledge_base', id: doc.id })}
+                                      disabled={syncSingleMutation.isPending}
+                                    >
+                                      {syncSingleMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <RefreshCw className="h-3 w-3 mr-1" />
+                                          Aggiorna
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                       </CollapsibleContent>
                     </Collapsible>
@@ -3203,83 +3340,191 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         {openAuditCategories['exercises'] ? <ChevronDown className="h-4 w-4 text-green-600" /> : <ChevronRight className="h-4 w-4 text-green-600" />}
                         <Dumbbell className="h-4 w-4 text-green-600" />
                         <span className="font-medium text-green-900">Esercizi</span>
-                        <Badge className={`ml-auto ${(auditData?.consultant?.exercises?.missing?.length || 0) > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
-                          {auditData?.consultant?.exercises?.missing?.length || 0} mancanti
-                        </Badge>
+                        <div className="ml-auto flex items-center gap-2">
+                          {(auditData?.consultant?.exercises?.missing?.length || 0) > 0 && (
+                            <Badge className="bg-red-200 text-red-800">
+                              {auditData?.consultant?.exercises?.missing?.length || 0} mancanti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.exercises?.outdated?.length || 0) > 0 && (
+                            <Badge className="bg-amber-200 text-amber-800">
+                              {auditData?.consultant?.exercises?.outdated?.length || 0} obsoleti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.exercises?.missing?.length || 0) === 0 && (auditData?.consultant?.exercises?.outdated?.length || 0) === 0 && (
+                            <Badge className="bg-emerald-200 text-emerald-800">
+                              Sincronizzato
+                            </Badge>
+                          )}
+                        </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2 space-y-1">
-                        {auditData?.consultant?.exercises?.missing?.length === 0 ? (
+                        {auditData?.consultant?.exercises?.missing?.length === 0 && auditData?.consultant?.exercises?.outdated?.length === 0 ? (
                           <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                            Tutti gli esercizi sono indicizzati
+                            Tutti gli esercizi sono indicizzati e aggiornati
                           </p>
                         ) : (
-                          auditData?.consultant?.exercises?.missing?.map(doc => (
-                            <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                              <div className="flex items-center gap-2">
-                                <Dumbbell className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">{doc.title}</span>
+                          <>
+                            {auditData?.consultant?.exercises?.missing?.map(doc => (
+                              <div key={doc.id} className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
+                                <div className="flex items-center gap-2">
+                                  <Dumbbell className="h-4 w-4 text-red-400" />
+                                  <span className="text-sm">{doc.title}</span>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="border-red-300 text-red-700"
+                                  onClick={() => syncSingleMutation.mutate({ type: 'exercise', id: doc.id })}
+                                  disabled={syncSingleMutation.isPending}
+                                >
+                                  {syncSingleMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Sync
+                                    </>
+                                  )}
+                                </Button>
                               </div>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => syncSingleMutation.mutate({ type: 'exercise', id: doc.id })}
-                                disabled={syncSingleMutation.isPending}
-                              >
-                                {syncSingleMutation.isPending ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Sync
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          ))
+                            ))}
+                            {(auditData?.consultant?.exercises?.outdated?.length || 0) > 0 && (
+                              <div className="mt-4 border-t pt-4">
+                                <h5 className="text-sm font-medium text-amber-700 mb-2 flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  Esercizi da aggiornare
+                                </h5>
+                                {auditData?.consultant?.exercises?.outdated?.map(doc => (
+                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-amber-50 rounded border border-amber-200 mb-1">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <Dumbbell className="h-4 w-4 text-amber-500" />
+                                        <span className="text-sm font-medium">{doc.title}</span>
+                                      </div>
+                                      <p className="text-xs text-amber-600 mt-1">
+                                        Sincronizzato: {new Date(doc.indexedAt).toLocaleDateString('it-IT')} | Modificato: {new Date(doc.sourceUpdatedAt).toLocaleDateString('it-IT')}
+                                      </p>
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                                      onClick={() => syncSingleMutation.mutate({ type: 'exercise', id: doc.id })}
+                                      disabled={syncSingleMutation.isPending}
+                                    >
+                                      {syncSingleMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <RefreshCw className="h-3 w-3 mr-1" />
+                                          Aggiorna
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                       </CollapsibleContent>
                     </Collapsible>
 
                     <Collapsible open={openAuditCategories['university']} onOpenChange={() => toggleAuditCategory('university')}>
-                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors">
-                        {openAuditCategories['university'] ? <ChevronDown className="h-4 w-4 text-amber-600" /> : <ChevronRight className="h-4 w-4 text-amber-600" />}
-                        <GraduationCap className="h-4 w-4 text-amber-600" />
-                        <span className="font-medium text-amber-900">University</span>
-                        <Badge className={`ml-auto ${(auditData?.consultant?.university?.missing?.length || 0) > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
-                          {auditData?.consultant?.university?.missing?.length || 0} mancanti
-                        </Badge>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg border border-yellow-200 transition-colors">
+                        {openAuditCategories['university'] ? <ChevronDown className="h-4 w-4 text-yellow-600" /> : <ChevronRight className="h-4 w-4 text-yellow-600" />}
+                        <GraduationCap className="h-4 w-4 text-yellow-600" />
+                        <span className="font-medium text-yellow-900">University</span>
+                        <div className="ml-auto flex items-center gap-2">
+                          {(auditData?.consultant?.university?.missing?.length || 0) > 0 && (
+                            <Badge className="bg-red-200 text-red-800">
+                              {auditData?.consultant?.university?.missing?.length || 0} mancanti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.university?.outdated?.length || 0) > 0 && (
+                            <Badge className="bg-amber-200 text-amber-800">
+                              {auditData?.consultant?.university?.outdated?.length || 0} obsoleti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.university?.missing?.length || 0) === 0 && (auditData?.consultant?.university?.outdated?.length || 0) === 0 && (
+                            <Badge className="bg-emerald-200 text-emerald-800">
+                              Sincronizzato
+                            </Badge>
+                          )}
+                        </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2 space-y-1">
-                        {auditData?.consultant?.university?.missing?.length === 0 ? (
+                        {auditData?.consultant?.university?.missing?.length === 0 && auditData?.consultant?.university?.outdated?.length === 0 ? (
                           <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                            Tutte le lezioni university sono indicizzate
+                            Tutte le lezioni university sono indicizzate e aggiornate
                           </p>
                         ) : (
-                          auditData?.consultant?.university?.missing?.map(doc => (
-                            <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                              <div className="flex items-center gap-2">
-                                <GraduationCap className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">{doc.title} - {doc.lessonTitle}</span>
+                          <>
+                            {auditData?.consultant?.university?.missing?.map(doc => (
+                              <div key={doc.id} className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
+                                <div className="flex items-center gap-2">
+                                  <GraduationCap className="h-4 w-4 text-red-400" />
+                                  <span className="text-sm">{doc.title} - {doc.lessonTitle}</span>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="border-red-300 text-red-700"
+                                  onClick={() => syncSingleMutation.mutate({ type: 'university_lesson', id: doc.id })}
+                                  disabled={syncSingleMutation.isPending}
+                                >
+                                  {syncSingleMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Sync
+                                    </>
+                                  )}
+                                </Button>
                               </div>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => syncSingleMutation.mutate({ type: 'university_lesson', id: doc.id })}
-                                disabled={syncSingleMutation.isPending}
-                              >
-                                {syncSingleMutation.isPending ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Sync
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          ))
+                            ))}
+                            {(auditData?.consultant?.university?.outdated?.length || 0) > 0 && (
+                              <div className="mt-4 border-t pt-4">
+                                <h5 className="text-sm font-medium text-amber-700 mb-2 flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  Lezioni da aggiornare
+                                </h5>
+                                {auditData?.consultant?.university?.outdated?.map(doc => (
+                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-amber-50 rounded border border-amber-200 mb-1">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <GraduationCap className="h-4 w-4 text-amber-500" />
+                                        <span className="text-sm font-medium">{doc.title}{doc.lessonTitle ? ` - ${doc.lessonTitle}` : ''}</span>
+                                      </div>
+                                      <p className="text-xs text-amber-600 mt-1">
+                                        Sincronizzato: {new Date(doc.indexedAt).toLocaleDateString('it-IT')} | Modificato: {new Date(doc.sourceUpdatedAt).toLocaleDateString('it-IT')}
+                                      </p>
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                                      onClick={() => syncSingleMutation.mutate({ type: 'university_lesson', id: doc.id })}
+                                      disabled={syncSingleMutation.isPending}
+                                    >
+                                      {syncSingleMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <RefreshCw className="h-3 w-3 mr-1" />
+                                          Aggiorna
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                       </CollapsibleContent>
                     </Collapsible>

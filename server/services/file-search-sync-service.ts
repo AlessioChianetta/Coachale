@@ -44,7 +44,8 @@ import {
 import { PercorsoCapitaleClient } from "../percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
 import { fileSearchService, FileSearchService } from "../ai/file-search-service";
-import { eq, and, desc, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, desc, isNotNull, inArray, or } from "drizzle-orm";
+import crypto from "crypto";
 import { scrapeGoogleDoc } from "../web-scraper";
 import { extractTextFromFile } from "./document-processor";
 import { getGuideAsDocument } from "../consultant-guides";
@@ -2945,17 +2946,19 @@ export class FileSearchSyncService {
   /**
    * Run a COMPREHENSIVE Post-Import Audit to verify indexing status of ALL content
    * Returns full object details (not just titles) for the audit UI
+   * OPTIMIZED: Uses bulk queries instead of per-client queries for better performance
+   * ENHANCED: Detects outdated documents (source updated after indexing)
    * 
    * @param consultantId - The consultant's user ID
-   * @returns Detailed audit with full object info for each missing item
+   * @returns Detailed audit with full object info for each missing and outdated item
    */
   static async runComprehensiveAudit(consultantId: string): Promise<{
     consultant: {
-      library: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
-      knowledgeBase: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
-      exercises: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
-      university: { total: number; indexed: number; missing: Array<{ id: string; title: string; lessonTitle: string }> };
-      consultantGuide: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+      library: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }>; outdated: Array<{ id: string; title: string; type: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> };
+      knowledgeBase: { total: number; indexed: number; missing: Array<{ id: string; title: string }>; outdated: Array<{ id: string; title: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> };
+      exercises: { total: number; indexed: number; missing: Array<{ id: string; title: string }>; outdated: Array<{ id: string; title: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> };
+      university: { total: number; indexed: number; missing: Array<{ id: string; title: string; lessonTitle: string }>; outdated: Array<{ id: string; title: string; lessonTitle: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> };
+      consultantGuide: { total: number; indexed: number; missing: Array<{ id: string; title: string }>; outdated: Array<{ id: string; title: string; indexedAt: Date | null }> };
     };
     clients: Array<{
       clientId: string;
@@ -2980,40 +2983,50 @@ export class FileSearchSyncService {
       agentName: string;
       knowledgeItems: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
     }>;
-    summary: { totalMissing: number; consultantMissing: number; clientsMissing: number; whatsappAgentsMissing: number; healthScore: number };
+    summary: { totalMissing: number; totalOutdated: number; consultantMissing: number; consultantOutdated: number; clientsMissing: number; clientsOutdated: number; whatsappAgentsMissing: number; healthScore: number };
     recommendations: string[];
   }> {
+    const auditStartTime = Date.now();
     console.log(`\n${'═'.repeat(60)}`);
-    console.log(`🔍 [FileSync] Running FAST Audit for consultant ${consultantId}`);
+    console.log(`🔍 [FileSync] Running OPTIMIZED Comprehensive Audit for consultant ${consultantId}`);
     console.log(`${'═'.repeat(60)}\n`);
 
-    // FAST APPROACH: Count from DB and compare with file_search_documents table
-    // Instead of calling API for each document, just use SQL counts
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 1: BULK LOAD CONSULTANT DATA (library, knowledge, exercises, university)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const phase1Start = Date.now();
+    console.log(`📊 [Audit] Phase 1: Loading consultant source documents...`);
     
-    console.log(`📊 [Audit] Step 1: Fetching library documents...`);
-    // Count items in source tables
-    const libraryDocs = await db.select({ id: libraryDocuments.id, title: libraryDocuments.title, contentType: libraryDocuments.contentType })
+    // Load all source tables with updatedAt for staleness detection
+    const libraryDocs = await db.select({ 
+      id: libraryDocuments.id, 
+      title: libraryDocuments.title, 
+      contentType: libraryDocuments.contentType,
+      updatedAt: libraryDocuments.updatedAt
+    })
       .from(libraryDocuments).where(eq(libraryDocuments.createdBy, consultantId));
-    console.log(`📊 [Audit] Found ${libraryDocs.length} library docs`);
     
-    console.log(`📊 [Audit] Step 2: Fetching knowledge documents...`);
-    const knowledgeDocs = await db.select({ id: consultantKnowledgeDocuments.id, title: consultantKnowledgeDocuments.title })
+    const knowledgeDocs = await db.select({ 
+      id: consultantKnowledgeDocuments.id, 
+      title: consultantKnowledgeDocuments.title,
+      updatedAt: consultantKnowledgeDocuments.updatedAt
+    })
       .from(consultantKnowledgeDocuments).where(eq(consultantKnowledgeDocuments.consultantId, consultantId));
-    console.log(`📊 [Audit] Found ${knowledgeDocs.length} knowledge docs`);
     
-    console.log(`📊 [Audit] Step 3: Fetching exercises...`);
-    const allExercises = await db.select({ id: exercises.id, title: exercises.title })
+    // Note: exercises table doesn't have updatedAt, use createdAt as fallback
+    const allExercises = await db.select({ 
+      id: exercises.id, 
+      title: exercises.title,
+      createdAt: exercises.createdAt
+    })
       .from(exercises).where(eq(exercises.createdBy, consultantId));
-    console.log(`📊 [Audit] Found ${allExercises.length} exercises`);
     
-    console.log(`📊 [Audit] Step 4: Fetching university years...`);
-    // University lessons via join - get all years for consultant first, then get lessons
+    // University lessons with updatedAt
     const consultantYears = await db.select({ id: universityYears.id })
       .from(universityYears).where(eq(universityYears.createdBy, consultantId));
-    console.log(`📊 [Audit] Found ${consultantYears.length} university years`);
     const yearIds = consultantYears.map(y => y.id);
     
-    let universityLessonsList: { id: string; title: string }[] = [];
+    let universityLessonsList: { id: string; title: string; updatedAt: Date | null }[] = [];
     if (yearIds.length > 0) {
       const trimesters = await db.select({ id: universityTrimesters.id })
         .from(universityTrimesters).where(inArray(universityTrimesters.yearId, yearIds));
@@ -3025,241 +3038,479 @@ export class FileSearchSyncService {
         const moduleIds = modules.map(m => m.id);
         
         if (moduleIds.length > 0) {
-          universityLessonsList = await db.select({ id: universityLessons.id, title: universityLessons.title })
+          universityLessonsList = await db.select({ 
+            id: universityLessons.id, 
+            title: universityLessons.title,
+            updatedAt: universityLessons.updatedAt
+          })
             .from(universityLessons).where(inArray(universityLessons.moduleId, moduleIds));
         }
       }
     }
+    
+    console.log(`📊 [Audit] Phase 1 complete in ${Date.now() - phase1Start}ms - Library: ${libraryDocs.length}, Knowledge: ${knowledgeDocs.length}, Exercises: ${allExercises.length}, University: ${universityLessonsList.length}`);
 
-    // Get indexed documents from file_search_documents for this consultant
-    // First get the consultant's store(s)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 2: LOAD INDEXED DOCUMENTS WITH indexedAt AND contentHash
+    // ═══════════════════════════════════════════════════════════════════════════
+    const phase2Start = Date.now();
+    console.log(`📊 [Audit] Phase 2: Loading indexed documents...`);
+    
     const consultantStores = await db.select({ id: fileSearchStores.id })
       .from(fileSearchStores)
       .where(eq(fileSearchStores.ownerId, consultantId));
     
     const storeIds = consultantStores.map(s => s.id);
     
-    let indexedDocs: { sourceType: string | null; sourceId: string | null }[] = [];
+    // Enhanced indexed docs query with indexedAt and contentHash for staleness detection
+    let indexedDocs: { sourceType: string | null; sourceId: string | null; indexedAt: Date | null; contentHash: string | null; clientId: string | null }[] = [];
     if (storeIds.length > 0) {
       const indexedDocsRaw = await db.select({
         sourceType: fileSearchDocuments.sourceType,
         sourceId: fileSearchDocuments.sourceId,
+        indexedAt: fileSearchDocuments.indexedAt,
+        contentHash: fileSearchDocuments.contentHash,
+        clientId: fileSearchDocuments.clientId,
       })
         .from(fileSearchDocuments)
         .where(and(
           inArray(fileSearchDocuments.storeId, storeIds),
           eq(fileSearchDocuments.status, 'indexed')
         ));
-      indexedDocs = indexedDocsRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
+      indexedDocs = indexedDocsRaw;
     }
 
-    const indexedLibraryIds = new Set(indexedDocs.filter(d => d.sourceType === 'library').map(d => d.sourceId));
-    const indexedKnowledgeIds = new Set(indexedDocs.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
-    const indexedExerciseIds = new Set(indexedDocs.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
-    const indexedUniversityIds = new Set(indexedDocs.filter(d => d.sourceType === 'university_lesson').map(d => d.sourceId));
-    const indexedGuideIds = new Set(indexedDocs.filter(d => d.sourceType === 'consultant_guide').map(d => d.sourceId));
-
-    // Calculate missing
-    const libraryMissing = libraryDocs.filter(d => !indexedLibraryIds.has(d.id)).map(d => ({ id: d.id, title: d.title, type: d.contentType || 'document' }));
-    const knowledgeMissing = knowledgeDocs.filter(d => !indexedKnowledgeIds.has(d.id)).map(d => ({ id: d.id, title: d.title }));
-    const exercisesMissing = allExercises.filter(d => !indexedExerciseIds.has(d.id)).map(d => ({ id: d.id, title: d.title }));
-    const universityMissing = universityLessonsList.filter(d => !indexedUniversityIds.has(d.id)).map(d => ({ id: d.id, title: d.title, lessonTitle: d.title }));
+    // Build Maps for O(1) lookup with indexedAt for staleness check
+    const indexedLibraryMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
+    const indexedKnowledgeMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
+    const indexedExerciseMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
+    const indexedUniversityMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
+    const indexedGuideMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
     
-    // Check consultant guide
+    for (const doc of indexedDocs) {
+      if (!doc.sourceId) continue;
+      const entry = { indexedAt: doc.indexedAt, contentHash: doc.contentHash };
+      switch (doc.sourceType) {
+        case 'library': indexedLibraryMap.set(doc.sourceId, entry); break;
+        case 'knowledge_base': indexedKnowledgeMap.set(doc.sourceId, entry); break;
+        case 'exercise': indexedExerciseMap.set(doc.sourceId, entry); break;
+        case 'university_lesson': indexedUniversityMap.set(doc.sourceId, entry); break;
+        case 'consultant_guide': indexedGuideMap.set(doc.sourceId, entry); break;
+      }
+    }
+    
+    console.log(`📊 [Audit] Phase 2 complete in ${Date.now() - phase2Start}ms - Found ${indexedDocs.length} indexed docs`);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 3: CALCULATE MISSING AND OUTDATED FOR CONSULTANT DOCUMENTS
+    // ═══════════════════════════════════════════════════════════════════════════
+    const phase3Start = Date.now();
+    console.log(`📊 [Audit] Phase 3: Calculating missing and outdated...`);
+    
+    // Library: missing and outdated
+    const libraryMissing: Array<{ id: string; title: string; type: string }> = [];
+    const libraryOutdated: Array<{ id: string; title: string; type: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> = [];
+    for (const doc of libraryDocs) {
+      const indexed = indexedLibraryMap.get(doc.id);
+      if (!indexed) {
+        libraryMissing.push({ id: doc.id, title: doc.title, type: doc.contentType || 'document' });
+      } else if (doc.updatedAt && indexed.indexedAt && doc.updatedAt > indexed.indexedAt) {
+        libraryOutdated.push({ id: doc.id, title: doc.title, type: doc.contentType || 'document', indexedAt: indexed.indexedAt, sourceUpdatedAt: doc.updatedAt });
+      }
+    }
+    
+    // Knowledge: missing and outdated
+    const knowledgeMissing: Array<{ id: string; title: string }> = [];
+    const knowledgeOutdated: Array<{ id: string; title: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> = [];
+    for (const doc of knowledgeDocs) {
+      const indexed = indexedKnowledgeMap.get(doc.id);
+      if (!indexed) {
+        knowledgeMissing.push({ id: doc.id, title: doc.title });
+      } else if (doc.updatedAt && indexed.indexedAt && doc.updatedAt > indexed.indexedAt) {
+        knowledgeOutdated.push({ id: doc.id, title: doc.title, indexedAt: indexed.indexedAt, sourceUpdatedAt: doc.updatedAt });
+      }
+    }
+    
+    // Exercises: missing and outdated (use createdAt as source doesn't have updatedAt)
+    const exercisesMissing: Array<{ id: string; title: string }> = [];
+    const exercisesOutdated: Array<{ id: string; title: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> = [];
+    for (const ex of allExercises) {
+      const indexed = indexedExerciseMap.get(ex.id);
+      if (!indexed) {
+        exercisesMissing.push({ id: ex.id, title: ex.title });
+      }
+      // Note: exercises don't have updatedAt, so we can't detect outdated for them
+    }
+    
+    // University: missing and outdated
+    const universityMissing: Array<{ id: string; title: string; lessonTitle: string }> = [];
+    const universityOutdated: Array<{ id: string; title: string; lessonTitle: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> = [];
+    for (const lesson of universityLessonsList) {
+      const indexed = indexedUniversityMap.get(lesson.id);
+      if (!indexed) {
+        universityMissing.push({ id: lesson.id, title: lesson.title, lessonTitle: lesson.title });
+      } else if (lesson.updatedAt && indexed.indexedAt && lesson.updatedAt > indexed.indexedAt) {
+        universityOutdated.push({ id: lesson.id, title: lesson.title, lessonTitle: lesson.title, indexedAt: indexed.indexedAt, sourceUpdatedAt: lesson.updatedAt });
+      }
+    }
+    
+    // Consultant Guide: check with MD5 hash
     const guideSourceId = `consultant-guide-${consultantId}`;
-    const isGuideIndexed = indexedGuideIds.has(guideSourceId);
-    const consultantGuideMissing = isGuideIndexed ? [] : [{ id: guideSourceId, title: 'Guida Completa Piattaforma' }];
+    const guideIndexed = indexedGuideMap.get(guideSourceId);
+    const consultantGuideMissing: Array<{ id: string; title: string }> = [];
+    const consultantGuideOutdated: Array<{ id: string; title: string; indexedAt: Date | null }> = [];
+    
+    if (!guideIndexed) {
+      consultantGuideMissing.push({ id: guideSourceId, title: 'Guida Completa Piattaforma' });
+    } else {
+      // Check if guide content has changed using MD5 hash
+      try {
+        const guideDoc = getGuideAsDocument();
+        const currentHash = crypto.createHash('md5').update(guideDoc.content).digest('hex');
+        if (guideIndexed.contentHash && guideIndexed.contentHash !== currentHash) {
+          consultantGuideOutdated.push({ id: guideSourceId, title: 'Guida Completa Piattaforma', indexedAt: guideIndexed.indexedAt });
+        }
+      } catch (e) {
+        // If we can't get the guide, don't flag as outdated
+      }
+    }
 
-    const libraryResult = { total: libraryDocs.length, indexed: libraryDocs.length - libraryMissing.length, missing: libraryMissing };
-    const knowledgeBaseResult = { total: knowledgeDocs.length, indexed: knowledgeDocs.length - knowledgeMissing.length, missing: knowledgeMissing };
-    const exercisesResult = { total: allExercises.length, indexed: allExercises.length - exercisesMissing.length, missing: exercisesMissing };
-    const universityResult = { total: universityLessonsList.length, indexed: universityLessonsList.length - universityMissing.length, missing: universityMissing };
-    const consultantGuideResult = { total: 1, indexed: isGuideIndexed ? 1 : 0, missing: consultantGuideMissing };
+    const libraryResult = { total: libraryDocs.length, indexed: libraryDocs.length - libraryMissing.length, missing: libraryMissing, outdated: libraryOutdated };
+    const knowledgeBaseResult = { total: knowledgeDocs.length, indexed: knowledgeDocs.length - knowledgeMissing.length, missing: knowledgeMissing, outdated: knowledgeOutdated };
+    const exercisesResult = { total: allExercises.length, indexed: allExercises.length - exercisesMissing.length, missing: exercisesMissing, outdated: exercisesOutdated };
+    const universityResult = { total: universityLessonsList.length, indexed: universityLessonsList.length - universityMissing.length, missing: universityMissing, outdated: universityOutdated };
+    const consultantGuideResult = { total: 1, indexed: guideIndexed ? 1 : 0, missing: consultantGuideMissing, outdated: consultantGuideOutdated };
+    
+    console.log(`📊 [Audit] Phase 3 complete in ${Date.now() - phase3Start}ms`);
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 4: BULK LOAD CLIENT DATA (instead of per-client queries)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const phase4Start = Date.now();
+    console.log(`📊 [Audit] Phase 4: Bulk loading client data...`);
+    
     // Get all clients
     const clientUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email })
       .from(users).where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
+    const allClientIds = clientUsers.map(c => c.id);
+    
+    if (allClientIds.length === 0) {
+      console.log(`📊 [Audit] No clients found, skipping client phase`);
+    }
+    
+    // BULK QUERIES - One query per entity type
+    const allExerciseAssignments = allClientIds.length > 0 
+      ? await db.select({ id: exerciseAssignments.id, clientId: exerciseAssignments.clientId, exerciseId: exerciseAssignments.exerciseId })
+          .from(exerciseAssignments).where(inArray(exerciseAssignments.clientId, allClientIds))
+      : [];
+    
+    const allAssignmentIds = allExerciseAssignments.map(a => a.id);
+    const allExerciseSubmissions = allAssignmentIds.length > 0
+      ? await db.select({ id: exerciseSubmissions.id, assignmentId: exerciseSubmissions.assignmentId, submittedAt: exerciseSubmissions.submittedAt })
+          .from(exerciseSubmissions).where(and(inArray(exerciseSubmissions.assignmentId, allAssignmentIds), isNotNull(exerciseSubmissions.submittedAt)))
+      : [];
+    
+    const allConsultations = allClientIds.length > 0
+      ? await db.select({ id: consultations.id, clientId: consultations.clientId, scheduledAt: consultations.scheduledAt, notes: consultations.notes, status: consultations.status })
+          .from(consultations).where(and(inArray(consultations.clientId, allClientIds), eq(consultations.status, 'completed')))
+      : [];
+    
+    const allClientKnowledge = allClientIds.length > 0
+      ? await db.select({ id: clientKnowledgeDocuments.id, clientId: clientKnowledgeDocuments.clientId, title: clientKnowledgeDocuments.title })
+          .from(clientKnowledgeDocuments).where(inArray(clientKnowledgeDocuments.clientId, allClientIds))
+      : [];
+    
+    const allGoals = allClientIds.length > 0
+      ? await db.select({ id: goals.id, clientId: goals.clientId, title: goals.title })
+          .from(goals).where(inArray(goals.clientId, allClientIds))
+      : [];
+    
+    const allTasks = allClientIds.length > 0
+      ? await db.select({ id: consultationTasks.id, clientId: consultationTasks.clientId, title: consultationTasks.title })
+          .from(consultationTasks).where(inArray(consultationTasks.clientId, allClientIds))
+      : [];
+    
+    const allReflections = allClientIds.length > 0
+      ? await db.select({ id: dailyReflections.id, clientId: dailyReflections.clientId, date: dailyReflections.date })
+          .from(dailyReflections).where(inArray(dailyReflections.clientId, allClientIds))
+      : [];
+    
+    const allProgressHistory = allClientIds.length > 0
+      ? await db.select({ id: clientProgress.id, clientId: clientProgress.clientId, date: clientProgress.date })
+          .from(clientProgress).where(inArray(clientProgress.clientId, allClientIds))
+      : [];
+    
+    const allLibProgress = allClientIds.length > 0
+      ? await db.select({ id: clientLibraryProgress.id, clientId: clientLibraryProgress.clientId, documentId: clientLibraryProgress.documentId })
+          .from(clientLibraryProgress).where(inArray(clientLibraryProgress.clientId, allClientIds))
+      : [];
+    
+    const allEmailProgress = allClientIds.length > 0
+      ? await db.select({ id: clientEmailJourneyProgress.id, clientId: clientEmailJourneyProgress.clientId })
+          .from(clientEmailJourneyProgress).where(inArray(clientEmailJourneyProgress.clientId, allClientIds))
+      : [];
+    
+    const allLibraryCategoryAssigns = allClientIds.length > 0
+      ? await db.select({ clientId: libraryCategoryClientAssignments.clientId, categoryId: libraryCategoryClientAssignments.categoryId })
+          .from(libraryCategoryClientAssignments).where(inArray(libraryCategoryClientAssignments.clientId, allClientIds))
+      : [];
+    
+    const allUniversityYearAssigns = allClientIds.length > 0
+      ? await db.select({ clientId: universityYearClientAssignments.clientId, yearId: universityYearClientAssignments.yearId })
+          .from(universityYearClientAssignments).where(inArray(universityYearClientAssignments.clientId, allClientIds))
+      : [];
+    
+    // Get all indexed documents for all clients in one query
+    const allClientIndexedDocs = allClientIds.length > 0
+      ? await db.select({
+          sourceType: fileSearchDocuments.sourceType,
+          sourceId: fileSearchDocuments.sourceId,
+          clientId: fileSearchDocuments.clientId,
+        })
+          .from(fileSearchDocuments)
+          .where(and(inArray(fileSearchDocuments.clientId, allClientIds), eq(fileSearchDocuments.status, 'indexed')))
+      : [];
+    
+    // Build Maps keyed by clientId for O(1) lookup
+    const assignmentsByClient = new Map<string, typeof allExerciseAssignments>();
+    for (const a of allExerciseAssignments) {
+      if (!assignmentsByClient.has(a.clientId)) assignmentsByClient.set(a.clientId, []);
+      assignmentsByClient.get(a.clientId)!.push(a);
+    }
+    
+    const submissionsByAssignment = new Map<string, typeof allExerciseSubmissions>();
+    for (const s of allExerciseSubmissions) {
+      if (!submissionsByAssignment.has(s.assignmentId)) submissionsByAssignment.set(s.assignmentId, []);
+      submissionsByAssignment.get(s.assignmentId)!.push(s);
+    }
+    
+    const consultationsByClient = new Map<string, typeof allConsultations>();
+    for (const c of allConsultations) {
+      if (!consultationsByClient.has(c.clientId)) consultationsByClient.set(c.clientId, []);
+      consultationsByClient.get(c.clientId)!.push(c);
+    }
+    
+    const knowledgeByClient = new Map<string, typeof allClientKnowledge>();
+    for (const k of allClientKnowledge) {
+      if (!knowledgeByClient.has(k.clientId)) knowledgeByClient.set(k.clientId, []);
+      knowledgeByClient.get(k.clientId)!.push(k);
+    }
+    
+    const goalsByClient = new Map<string, typeof allGoals>();
+    for (const g of allGoals) {
+      if (!goalsByClient.has(g.clientId)) goalsByClient.set(g.clientId, []);
+      goalsByClient.get(g.clientId)!.push(g);
+    }
+    
+    const tasksByClient = new Map<string, typeof allTasks>();
+    for (const t of allTasks) {
+      if (!tasksByClient.has(t.clientId)) tasksByClient.set(t.clientId, []);
+      tasksByClient.get(t.clientId)!.push(t);
+    }
+    
+    const reflectionsByClient = new Map<string, typeof allReflections>();
+    for (const r of allReflections) {
+      if (!reflectionsByClient.has(r.clientId)) reflectionsByClient.set(r.clientId, []);
+      reflectionsByClient.get(r.clientId)!.push(r);
+    }
+    
+    const progressByClient = new Map<string, typeof allProgressHistory>();
+    for (const p of allProgressHistory) {
+      if (!progressByClient.has(p.clientId)) progressByClient.set(p.clientId, []);
+      progressByClient.get(p.clientId)!.push(p);
+    }
+    
+    const libProgressByClient = new Map<string, typeof allLibProgress>();
+    for (const l of allLibProgress) {
+      if (!libProgressByClient.has(l.clientId)) libProgressByClient.set(l.clientId, []);
+      libProgressByClient.get(l.clientId)!.push(l);
+    }
+    
+    const emailProgressByClient = new Map<string, typeof allEmailProgress>();
+    for (const e of allEmailProgress) {
+      if (!emailProgressByClient.has(e.clientId)) emailProgressByClient.set(e.clientId, []);
+      emailProgressByClient.get(e.clientId)!.push(e);
+    }
+    
+    const libraryCategoryAssignsByClient = new Map<string, string[]>();
+    for (const a of allLibraryCategoryAssigns) {
+      if (!libraryCategoryAssignsByClient.has(a.clientId)) libraryCategoryAssignsByClient.set(a.clientId, []);
+      libraryCategoryAssignsByClient.get(a.clientId)!.push(a.categoryId);
+    }
+    
+    const universityYearAssignsByClient = new Map<string, string[]>();
+    for (const a of allUniversityYearAssigns) {
+      if (!universityYearAssignsByClient.has(a.clientId)) universityYearAssignsByClient.set(a.clientId, []);
+      universityYearAssignsByClient.get(a.clientId)!.push(a.yearId);
+    }
+    
+    const indexedDocsByClient = new Map<string, Array<{ sourceType: string | null; sourceId: string | null }>>();
+    for (const d of allClientIndexedDocs) {
+      if (!d.clientId) continue;
+      if (!indexedDocsByClient.has(d.clientId)) indexedDocsByClient.set(d.clientId, []);
+      indexedDocsByClient.get(d.clientId)!.push({ sourceType: d.sourceType, sourceId: d.sourceId });
+    }
+    
+    // Pre-load exercises by ID for assigned exercises lookup
+    const allAssignedExerciseIds = new Set(allExerciseAssignments.map(a => a.exerciseId));
+    const exercisesById = new Map<string, { id: string; title: string }>();
+    if (allAssignedExerciseIds.size > 0) {
+      const assignedExercisesList = await db.select({ id: exercises.id, title: exercises.title })
+        .from(exercises).where(inArray(exercises.id, Array.from(allAssignedExerciseIds)));
+      for (const ex of assignedExercisesList) {
+        exercisesById.set(ex.id, ex);
+      }
+    }
+    
+    // Pre-load library documents and categories
+    const allAssignedCategoryIds = new Set(allLibraryCategoryAssigns.map(a => a.categoryId));
+    const libraryDocsByCategoryId = new Map<string, Array<{ id: string; title: string; categoryId: string | null }>>();
+    const categoryNamesById = new Map<string, string>();
+    if (allAssignedCategoryIds.size > 0) {
+      const assignedLibDocs = await db.select({ id: libraryDocuments.id, title: libraryDocuments.title, categoryId: libraryDocuments.categoryId })
+        .from(libraryDocuments).where(inArray(libraryDocuments.categoryId, Array.from(allAssignedCategoryIds)));
+      for (const doc of assignedLibDocs) {
+        if (!doc.categoryId) continue;
+        if (!libraryDocsByCategoryId.has(doc.categoryId)) libraryDocsByCategoryId.set(doc.categoryId, []);
+        libraryDocsByCategoryId.get(doc.categoryId)!.push(doc);
+      }
+      const cats = await db.select({ id: libraryCategories.id, name: libraryCategories.name })
+        .from(libraryCategories).where(inArray(libraryCategories.id, Array.from(allAssignedCategoryIds)));
+      for (const c of cats) {
+        categoryNamesById.set(c.id, c.name);
+      }
+    }
+    
+    // Pre-load university structure for assigned years
+    const allAssignedYearIds = new Set(allUniversityYearAssigns.map(a => a.yearId));
+    const lessonsByYearId = new Map<string, Array<{ id: string; title: string }>>();
+    const yearNamesById = new Map<string, string>();
+    if (allAssignedYearIds.size > 0) {
+      const trimesters = await db.select({ id: universityTrimesters.id, yearId: universityTrimesters.yearId })
+        .from(universityTrimesters).where(inArray(universityTrimesters.yearId, Array.from(allAssignedYearIds)));
+      const trimesterIds = trimesters.map(t => t.id);
+      const trimesterToYear = new Map(trimesters.map(t => [t.id, t.yearId]));
+      
+      if (trimesterIds.length > 0) {
+        const modules = await db.select({ id: universityModules.id, trimesterId: universityModules.trimesterId })
+          .from(universityModules).where(inArray(universityModules.trimesterId, trimesterIds));
+        const moduleIds = modules.map(m => m.id);
+        const moduleToTrimester = new Map(modules.map(m => [m.id, m.trimesterId]));
+        
+        if (moduleIds.length > 0) {
+          const lessons = await db.select({ id: universityLessons.id, title: universityLessons.title, moduleId: universityLessons.moduleId })
+            .from(universityLessons).where(inArray(universityLessons.moduleId, moduleIds));
+          
+          for (const l of lessons) {
+            const trimesterId = moduleToTrimester.get(l.moduleId);
+            const yearId = trimesterId ? trimesterToYear.get(trimesterId) : null;
+            if (yearId) {
+              if (!lessonsByYearId.has(yearId)) lessonsByYearId.set(yearId, []);
+              lessonsByYearId.get(yearId)!.push({ id: l.id, title: l.title });
+            }
+          }
+        }
+      }
+      
+      const years = await db.select({ id: universityYears.id, title: universityYears.title })
+        .from(universityYears).where(inArray(universityYears.id, Array.from(allAssignedYearIds)));
+      for (const y of years) {
+        yearNamesById.set(y.id, y.title);
+      }
+    }
+    
+    console.log(`📊 [Audit] Phase 4 complete in ${Date.now() - phase4Start}ms`);
 
-    // For clients - simplified counts
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 5: PROCESS CLIENTS (using pre-loaded Maps - O(1) lookups)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const phase5Start = Date.now();
+    console.log(`📊 [Audit] Phase 5: Processing ${clientUsers.length} clients...`);
+    
     const clientsAudit = [];
     let totalClientsMissing = 0;
 
     for (const client of clientUsers) {
-      // Count exercise submissions for this client
-      const clientAssignments = await db.select({ id: exerciseAssignments.id, exerciseId: exerciseAssignments.exerciseId })
-        .from(exerciseAssignments).where(eq(exerciseAssignments.clientId, client.id));
+      const clientAssignments = assignmentsByClient.get(client.id) || [];
       const assignmentIds = clientAssignments.map(a => a.id);
       
-      const clientSubmissions = assignmentIds.length > 0 
-        ? await db.select({ id: exerciseSubmissions.id, assignmentId: exerciseSubmissions.assignmentId, submittedAt: exerciseSubmissions.submittedAt })
-            .from(exerciseSubmissions).where(isNotNull(exerciseSubmissions.submittedAt))
-            .then(subs => subs.filter(s => assignmentIds.includes(s.assignmentId)))
-        : [];
+      // Get submissions for this client's assignments
+      const clientSubmissions: Array<{ id: string; assignmentId: string; submittedAt: Date | null }> = [];
+      for (const aId of assignmentIds) {
+        const subs = submissionsByAssignment.get(aId) || [];
+        clientSubmissions.push(...subs);
+      }
 
-      // Count consultations
-      const clientConsultations = await db.select({ id: consultations.id, scheduledAt: consultations.scheduledAt, notes: consultations.notes })
-        .from(consultations).where(and(eq(consultations.clientId, client.id), eq(consultations.status, 'completed')));
-      const consultationsWithContent = clientConsultations.filter(c => c.notes);
+      const clientConsultationsList = consultationsByClient.get(client.id) || [];
+      const consultationsWithContent = clientConsultationsList.filter(c => c.notes);
 
-      // Count client knowledge docs
-      const clientKnowledge = await db.select({ id: clientKnowledgeDocuments.id, title: clientKnowledgeDocuments.title })
-        .from(clientKnowledgeDocuments).where(eq(clientKnowledgeDocuments.clientId, client.id));
+      const clientKnowledge = knowledgeByClient.get(client.id) || [];
 
-      // === NEW: Query ASSIGNED content for this client ===
-      
-      // 1. Assigned Exercises - get exercises assigned to client via exerciseAssignments
+      // Assigned Exercises
       const assignedExerciseIds = clientAssignments.map(a => a.exerciseId);
-      let assignedExercisesList: { id: string; title: string }[] = [];
-      if (assignedExerciseIds.length > 0) {
-        assignedExercisesList = await db.select({ id: exercises.id, title: exercises.title })
-          .from(exercises).where(inArray(exercises.id, assignedExerciseIds));
+      const assignedExercisesList: Array<{ id: string; title: string }> = [];
+      for (const exId of assignedExerciseIds) {
+        const ex = exercisesById.get(exId);
+        if (ex) assignedExercisesList.push(ex);
       }
       
-      // 2. Assigned Library - get library docs from assigned categories
-      const libraryCategoryAssigns = await db.select({ 
-        categoryId: libraryCategoryClientAssignments.categoryId 
-      })
-        .from(libraryCategoryClientAssignments)
-        .where(eq(libraryCategoryClientAssignments.clientId, client.id));
-      const assignedCategoryIds = libraryCategoryAssigns.map(a => a.categoryId);
-      
-      let assignedLibraryDocs: { id: string; title: string; categoryId: string | null }[] = [];
-      let categoryNames: Map<string, string> = new Map();
-      if (assignedCategoryIds.length > 0) {
-        assignedLibraryDocs = await db.select({ 
-          id: libraryDocuments.id, 
-          title: libraryDocuments.title,
-          categoryId: libraryDocuments.categoryId
-        })
-          .from(libraryDocuments)
-          .where(inArray(libraryDocuments.categoryId, assignedCategoryIds));
-        
-        // Get category names for display
-        const categories = await db.select({ id: libraryCategories.id, name: libraryCategories.name })
-          .from(libraryCategories)
-          .where(inArray(libraryCategories.id, assignedCategoryIds));
-        categoryNames = new Map(categories.map(c => [c.id, c.name]));
+      // Assigned Library
+      const assignedCategoryIds = libraryCategoryAssignsByClient.get(client.id) || [];
+      const assignedLibraryDocs: Array<{ id: string; title: string; categoryId: string | null }> = [];
+      for (const catId of assignedCategoryIds) {
+        const docs = libraryDocsByCategoryId.get(catId) || [];
+        assignedLibraryDocs.push(...docs);
       }
       
-      // 3. Assigned University - get lessons from assigned years
-      const universityYearAssigns = await db.select({ 
-        yearId: universityYearClientAssignments.yearId 
-      })
-        .from(universityYearClientAssignments)
-        .where(eq(universityYearClientAssignments.clientId, client.id));
-      const assignedYearIds = universityYearAssigns.map(a => a.yearId);
-      
-      let assignedLessons: { id: string; title: string; yearId: string | null }[] = [];
-      let yearNames: Map<string, string> = new Map();
-      if (assignedYearIds.length > 0) {
-        // Get trimesters for assigned years
-        const trimesters = await db.select({ id: universityTrimesters.id, yearId: universityTrimesters.yearId })
-          .from(universityTrimesters).where(inArray(universityTrimesters.yearId, assignedYearIds));
-        const trimesterIds = trimesters.map(t => t.id);
-        const trimesterToYear = new Map(trimesters.map(t => [t.id, t.yearId]));
-        
-        if (trimesterIds.length > 0) {
-          // Get modules for those trimesters
-          const modules = await db.select({ id: universityModules.id, trimesterId: universityModules.trimesterId })
-            .from(universityModules).where(inArray(universityModules.trimesterId, trimesterIds));
-          const moduleIds = modules.map(m => m.id);
-          const moduleToTrimester = new Map(modules.map(m => [m.id, m.trimesterId]));
-          
-          if (moduleIds.length > 0) {
-            // Get lessons for those modules
-            const lessons = await db.select({ id: universityLessons.id, title: universityLessons.title, moduleId: universityLessons.moduleId })
-              .from(universityLessons).where(inArray(universityLessons.moduleId, moduleIds));
-            
-            // Map lessons to their yearId
-            assignedLessons = lessons.map(l => {
-              const trimesterId = moduleToTrimester.get(l.moduleId);
-              const yearId = trimesterId ? trimesterToYear.get(trimesterId) : null;
-              return { id: l.id, title: l.title, yearId: yearId || null };
-            });
-          }
+      // Assigned University
+      const assignedYearIds = universityYearAssignsByClient.get(client.id) || [];
+      const assignedLessons: Array<{ id: string; title: string; yearId: string | null }> = [];
+      for (const yearId of assignedYearIds) {
+        const lessons = lessonsByYearId.get(yearId) || [];
+        for (const l of lessons) {
+          assignedLessons.push({ id: l.id, title: l.title, yearId });
         }
-        
-        // Get year names for display
-        const years = await db.select({ id: universityYears.id, title: universityYears.title })
-          .from(universityYears)
-          .where(inArray(universityYears.id, assignedYearIds));
-        yearNames = new Map(years.map(y => [y.id, y.title]));
       }
       
-      // 4. Client Goals
-      const clientGoals = await db.select({ id: goals.id, title: goals.title })
-        .from(goals).where(eq(goals.clientId, client.id));
-      
-      // 5. Client Tasks (from consultation_tasks)
-      const clientTasks = await db.select({ id: consultationTasks.id, title: consultationTasks.title })
-        .from(consultationTasks).where(eq(consultationTasks.clientId, client.id));
+      const clientGoals = goalsByClient.get(client.id) || [];
+      const clientTasks = tasksByClient.get(client.id) || [];
+      const clientReflections = reflectionsByClient.get(client.id) || [];
+      const clientProgressHist = progressByClient.get(client.id) || [];
+      const clientLibProgress = libProgressByClient.get(client.id) || [];
+      const clientEmailProgress = emailProgressByClient.get(client.id) || [];
 
-      // 6. Client Daily Reflections
-      const clientReflections = await db.select({ id: dailyReflections.id, date: dailyReflections.date })
-        .from(dailyReflections).where(eq(dailyReflections.clientId, client.id));
+      const clientIndexed = indexedDocsByClient.get(client.id) || [];
 
-      // 7. Client Progress History
-      const clientProgressHist = await db.select({ id: clientProgress.id, date: clientProgress.date })
-        .from(clientProgress).where(eq(clientProgress.clientId, client.id));
-
-      // 8. Client Library Progress
-      const clientLibProgress = await db.select({ 
-          id: clientLibraryProgress.id, 
-          documentId: clientLibraryProgress.documentId
-        })
-        .from(clientLibraryProgress).where(eq(clientLibraryProgress.clientId, client.id));
-
-      // 9. Client Email Journey Progress  
-      const clientEmailProgress = await db.select({ id: clientEmailJourneyProgress.id })
-        .from(clientEmailJourneyProgress).where(eq(clientEmailJourneyProgress.clientId, client.id));
-
-      // Get indexed documents for this client - use simple query without innerJoin
-      const clientIndexedRaw = await db.select({
-        sourceType: fileSearchDocuments.sourceType,
-        sourceId: fileSearchDocuments.sourceId,
-      })
-        .from(fileSearchDocuments)
-        .where(and(eq(fileSearchDocuments.clientId, client.id), eq(fileSearchDocuments.status, 'indexed')));
-      const clientIndexed = clientIndexedRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
-
-      // Existing indexed sets
+      // Build indexed sets
       const indexedSubmissionIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
       const indexedConsultationIds = new Set(clientIndexed.filter(d => d.sourceType === 'consultation').map(d => d.sourceId));
       const indexedClientKnowledgeIds = new Set(clientIndexed.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
-      
-      // NEW: Indexed sets for assigned content (using same sourceTypes for synced content)
       const indexedExerciseTemplateIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
       const indexedLibraryCopyIds = new Set(clientIndexed.filter(d => d.sourceType === 'library').map(d => d.sourceId));
       const indexedUniversityCopyIds = new Set(clientIndexed.filter(d => d.sourceType === 'university_lesson').map(d => d.sourceId));
-      // Goals and tasks are saved with sourceId=clientId (one document per client containing all goals/tasks)
       const hasGoalsIndexed = clientIndexed.some(d => d.sourceType === 'goal' && d.sourceId === client.id);
       const hasTasksIndexed = clientIndexed.some(d => d.sourceType === 'task' && d.sourceId === client.id);
-      
-      // New categories - one aggregated document per client
       const hasReflectionsIndexed = clientIndexed.some(d => d.sourceType === 'daily_reflection' && d.sourceId === client.id);
       const hasProgressHistoryIndexed = clientIndexed.some(d => d.sourceType === 'client_progress' && d.sourceId === client.id);
       const hasLibraryProgressIndexed = clientIndexed.some(d => d.sourceType === 'library_progress' && d.sourceId === client.id);
       const hasEmailJourneyIndexed = clientIndexed.some(d => d.sourceType === 'email_journey' && d.sourceId === client.id);
 
-      // Existing missing calculations
+      // Calculate missing
       const submissionsMissing = clientSubmissions.filter(s => !indexedSubmissionIds.has(s.id)).map(s => ({ id: s.id, exerciseTitle: 'Esercizio', submittedAt: s.submittedAt }));
       const consultationsMissing = consultationsWithContent.filter(c => !indexedConsultationIds.has(c.id)).map(c => ({ id: c.id, date: c.scheduledAt, summary: c.notes?.substring(0, 50) || '' }));
       const clientKnowledgeMissing = clientKnowledge.filter(k => !indexedClientKnowledgeIds.has(k.id)).map(k => ({ id: k.id, title: k.title }));
       
-      // NEW: Missing calculations for assigned content
       const assignedExercisesMissing = assignedExercisesList.filter(e => !indexedExerciseTemplateIds.has(e.id)).map(e => ({ id: e.id, title: e.title }));
       const assignedLibraryMissing = assignedLibraryDocs.filter(d => !indexedLibraryCopyIds.has(d.id)).map(d => ({ 
         id: d.id, 
         title: d.title, 
-        categoryName: d.categoryId ? (categoryNames.get(d.categoryId) || 'Categoria') : 'Senza categoria'
+        categoryName: d.categoryId ? (categoryNamesById.get(d.categoryId) || 'Categoria') : 'Senza categoria'
       }));
       const assignedUniversityMissing = assignedLessons.filter(l => !indexedUniversityCopyIds.has(l.id)).map(l => ({ 
         id: l.id, 
         title: l.title, 
-        yearName: l.yearId ? (yearNames.get(l.yearId) || 'Anno') : 'Senza anno'
+        yearName: l.yearId ? (yearNamesById.get(l.yearId) || 'Anno') : 'Senza anno'
       }));
-      // Goals/Tasks are synced as single aggregated document per client (not per goal/task)
-      // If goals exist but no goal document indexed, they all need syncing
       const goalsMissing = (clientGoals.length > 0 && !hasGoalsIndexed) 
         ? clientGoals.map(g => ({ id: g.id, title: g.title })) 
         : [];
@@ -3267,22 +3518,18 @@ export class FileSearchSyncService {
         ? clientTasks.map(t => ({ id: t.id, title: t.title })) 
         : [];
 
-      // Daily Reflections missing (aggregated, so if any exist and not indexed, all are missing)
       const reflectionsMissing = (clientReflections.length > 0 && !hasReflectionsIndexed)
         ? clientReflections.map(r => ({ id: r.id, date: r.date ? (r.date instanceof Date ? r.date.toISOString() : String(r.date)) : '' }))
         : [];
 
-      // Progress history missing  
       const progressHistoryMissing = (clientProgressHist.length > 0 && !hasProgressHistoryIndexed)
         ? clientProgressHist.map(p => ({ id: p.id, date: p.date ? (p.date instanceof Date ? p.date.toISOString() : String(p.date)) : '' }))
         : [];
 
-      // Library progress missing
       const libraryProgressMissing = (clientLibProgress.length > 0 && !hasLibraryProgressIndexed)
         ? clientLibProgress.map(l => ({ id: l.id, documentTitle: l.documentId || 'Documento' }))
         : [];
 
-      // Email journey missing
       const emailJourneyMissing = (clientEmailProgress.length > 0 && !hasEmailJourneyIndexed)
         ? clientEmailProgress.map(e => ({ id: e.id, templateTitle: 'Email Journey' }))
         : [];
@@ -3291,10 +3538,8 @@ export class FileSearchSyncService {
                             assignedExercisesMissing.length + assignedLibraryMissing.length + assignedUniversityMissing.length +
                             goalsMissing.length + tasksMissing.length + reflectionsMissing.length + progressHistoryMissing.length + libraryProgressMissing.length + emailJourneyMissing.length;
       
-      // Check if financial data is indexed for this client
       const hasFinancialDataIndexed = clientIndexed.some(d => d.sourceType === 'financial_data');
 
-      // Always include clients that have any data to audit
       const hasAnyData = clientSubmissions.length > 0 || consultationsWithContent.length > 0 || clientKnowledge.length > 0 || 
                          hasFinancialDataIndexed || assignedExercisesList.length > 0 || assignedLibraryDocs.length > 0 || 
                          assignedLessons.length > 0 || clientGoals.length > 0 || clientTasks.length > 0 ||
@@ -3322,6 +3567,11 @@ export class FileSearchSyncService {
         totalClientsMissing += clientMissing;
       }
     }
+    
+    console.log(`📊 [Audit] Phase 5 complete in ${Date.now() - phase5Start}ms`);
+    
+    // Calculate total outdated for clients (currently 0 as we don't track updatedAt for client data)
+    const totalClientsOutdated = 0;
 
     // Audit WhatsApp Agents
     const whatsappAgentsAudit: Array<{
@@ -3387,9 +3637,18 @@ export class FileSearchSyncService {
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 6: WHATSAPP AGENTS AUDIT
+    // ═══════════════════════════════════════════════════════════════════════════
+    const phase6Start = Date.now();
+    console.log(`📊 [Audit] Phase 6: Auditing WhatsApp agents...`);
+    
     const consultantMissing = libraryResult.missing.length + knowledgeBaseResult.missing.length + 
                               exercisesResult.missing.length + universityResult.missing.length + consultantGuideResult.missing.length;
+    const consultantOutdated = libraryResult.outdated.length + knowledgeBaseResult.outdated.length + 
+                               exercisesResult.outdated.length + universityResult.outdated.length + consultantGuideResult.outdated.length;
     const totalMissing = consultantMissing + totalClientsMissing + totalWhatsappAgentsMissing;
+    const totalOutdated = consultantOutdated + totalClientsOutdated;
 
     const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total + universityResult.total + 
                       consultantGuideResult.total +
@@ -3412,9 +3671,19 @@ export class FileSearchSyncService {
                            (c.tasks.total - c.tasks.missing.length), 0) +
                          whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.indexed, 0);
 
-    const healthScore = totalDocs > 0 ? Math.round((totalIndexed / totalDocs) * 100) : 100;
+    // Health score: penalize missing fully (1.0) and outdated partially (0.5)
+    const effectiveIssues = totalMissing + (totalOutdated * 0.5);
+    const healthScore = totalDocs > 0 ? Math.round(((totalIndexed - (totalOutdated * 0.5)) / totalDocs) * 100) : 100;
+    const clampedHealthScore = Math.max(0, Math.min(100, healthScore));
 
+    console.log(`📊 [Audit] Phase 6 complete in ${Date.now() - phase6Start}ms`);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 7: BUILD RECOMMENDATIONS
+    // ═══════════════════════════════════════════════════════════════════════════
     const recommendations: string[] = [];
+    
+    // Missing recommendations
     if (libraryResult.missing.length > 0) {
       recommendations.push(`Sincronizza ${libraryResult.missing.length} documenti libreria mancanti`);
     }
@@ -3435,6 +3704,23 @@ export class FileSearchSyncService {
     }
     if (totalWhatsappAgentsMissing > 0) {
       recommendations.push(`Sincronizza ${totalWhatsappAgentsMissing} documenti knowledge degli agenti WhatsApp mancanti`);
+    }
+    
+    // NEW: Outdated recommendations
+    if (totalOutdated > 0) {
+      recommendations.push(`⏰ ${totalOutdated} documenti sono stati modificati e devono essere ri-sincronizzati`);
+    }
+    if (libraryResult.outdated.length > 0) {
+      recommendations.push(`⏰ ${libraryResult.outdated.length} documenti libreria sono obsoleti (aggiornati dopo l'indicizzazione)`);
+    }
+    if (knowledgeBaseResult.outdated.length > 0) {
+      recommendations.push(`⏰ ${knowledgeBaseResult.outdated.length} documenti knowledge base sono obsoleti`);
+    }
+    if (universityResult.outdated.length > 0) {
+      recommendations.push(`⏰ ${universityResult.outdated.length} lezioni university sono obsolete`);
+    }
+    if (consultantGuideResult.outdated.length > 0) {
+      recommendations.push(`⏰ La guida piattaforma consulente è stata aggiornata e deve essere ri-sincronizzata`);
     }
     
     // Calculate missing assigned content for detailed recommendations
@@ -3460,23 +3746,26 @@ export class FileSearchSyncService {
       recommendations.push(`Sincronizza ${totalTasksMissing} task clienti non indicizzati`);
     }
 
-    if (healthScore === 100) {
-      recommendations.push('✅ Tutti i contenuti sono indicizzati correttamente');
-    } else if (healthScore >= 80) {
+    if (clampedHealthScore === 100 && totalOutdated === 0) {
+      recommendations.push('✅ Tutti i contenuti sono indicizzati e aggiornati correttamente');
+    } else if (clampedHealthScore >= 80 && totalOutdated === 0) {
       recommendations.push('💡 Quasi completo - sincronizza i contenuti mancanti per il 100%');
-    } else if (healthScore >= 50) {
+    } else if (clampedHealthScore >= 80 && totalOutdated > 0) {
+      recommendations.push('💡 Quasi completo - ri-sincronizza i contenuti obsoleti');
+    } else if (clampedHealthScore >= 50) {
       recommendations.push('⚠️ Sincronizzazione parziale - consigliato completare');
     } else {
       recommendations.push('🚨 Health Score basso - esegui sincronizzazione completa');
     }
 
+    const totalAuditTime = Date.now() - auditStartTime;
     console.log(`\n${'═'.repeat(60)}`);
-    console.log(`✅ [FileSync] Comprehensive Audit Complete`);
-    console.log(`   📖 Consultant Guide: ${consultantGuideResult.indexed}/${consultantGuideResult.total} indexed`);
-    console.log(`   📚 Library: ${libraryResult.total - libraryResult.missing.length}/${libraryResult.total} indexed`);
-    console.log(`   📖 Knowledge Base: ${knowledgeBaseResult.total - knowledgeBaseResult.missing.length}/${knowledgeBaseResult.total} indexed`);
-    console.log(`   🏋️ Exercises: ${exercisesResult.total - exercisesResult.missing.length}/${exercisesResult.total} indexed`);
-    console.log(`   🎓 University: ${universityResult.total - universityResult.missing.length}/${universityResult.total} indexed`);
+    console.log(`✅ [FileSync] OPTIMIZED Comprehensive Audit Complete in ${totalAuditTime}ms`);
+    console.log(`   📖 Consultant Guide: ${consultantGuideResult.indexed}/${consultantGuideResult.total} indexed, ${consultantGuideResult.outdated.length} outdated`);
+    console.log(`   📚 Library: ${libraryResult.total - libraryResult.missing.length}/${libraryResult.total} indexed, ${libraryResult.outdated.length} outdated`);
+    console.log(`   📖 Knowledge Base: ${knowledgeBaseResult.total - knowledgeBaseResult.missing.length}/${knowledgeBaseResult.total} indexed, ${knowledgeBaseResult.outdated.length} outdated`);
+    console.log(`   🏋️ Exercises: ${exercisesResult.total - exercisesResult.missing.length}/${exercisesResult.total} indexed, ${exercisesResult.outdated.length} outdated`);
+    console.log(`   🎓 University: ${universityResult.total - universityResult.missing.length}/${universityResult.total} indexed, ${universityResult.outdated.length} outdated`);
     console.log(`   👥 Clients: ${clientsAudit.length} with data, ${totalClientsMissing} missing`);
     console.log(`      📝 Assigned Exercises: ${totalAssignedExercisesMissing} missing`);
     console.log(`      📖 Assigned Library: ${totalAssignedLibraryMissing} missing`);
@@ -3484,7 +3773,8 @@ export class FileSearchSyncService {
     console.log(`      🎯 Goals: ${totalGoalsMissing} missing`);
     console.log(`      ✅ Tasks: ${totalTasksMissing} missing`);
     console.log(`   📱 WhatsApp Agents: ${whatsappAgentsAudit.length} agents, ${totalWhatsappAgentsMissing} missing`);
-    console.log(`   🏥 Health Score: ${healthScore}%`);
+    console.log(`   📊 Summary: ${totalMissing} missing, ${totalOutdated} outdated`);
+    console.log(`   🏥 Health Score: ${clampedHealthScore}%`);
     console.log(`${'═'.repeat(60)}\n`);
 
     return {
@@ -3499,10 +3789,13 @@ export class FileSearchSyncService {
       whatsappAgents: whatsappAgentsAudit,
       summary: {
         totalMissing,
+        totalOutdated,
         consultantMissing,
+        consultantOutdated,
         clientsMissing: totalClientsMissing,
+        clientsOutdated: totalClientsOutdated,
         whatsappAgentsMissing: totalWhatsappAgentsMissing,
-        healthScore,
+        healthScore: clampedHealthScore,
       },
       recommendations,
     };
