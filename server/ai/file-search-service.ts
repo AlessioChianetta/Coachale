@@ -43,7 +43,7 @@ export interface FileSearchStoreInfo {
   documentCount: number;
   createdAt: Date;
   ownerId: string;
-  ownerType: 'consultant' | 'client' | 'client_pool' | 'system' | 'whatsapp_agent';
+  ownerType: 'consultant' | 'client' | 'system' | 'whatsapp_agent';
 }
 
 export interface FileSearchDocumentInfo {
@@ -131,10 +131,6 @@ export class FileSearchService {
           }
           console.warn(`⚠️ [FileSearch] Agent config ${store.ownerId} not found, falling back to SuperAdmin`);
           return null;
-
-        case 'client_pool':
-          // ownerId is the consultant's userId (pool stores are owned by consultants)
-          return store.ownerId;
 
         case 'system':
           // System stores use SuperAdmin keys
@@ -304,7 +300,7 @@ export class FileSearchService {
   async createStore(params: {
     displayName: string;
     ownerId: string;
-    ownerType: 'consultant' | 'client' | 'client_pool' | 'system' | 'whatsapp_agent';
+    ownerType: 'consultant' | 'client' | 'system' | 'whatsapp_agent';
     description?: string;
     userId?: string;
   }): Promise<{ success: boolean; storeId?: string; storeName?: string; error?: string }> {
@@ -1209,17 +1205,26 @@ export class FileSearchService {
         )
       );
       
-      // CLIENT POOL ARCHITECTURE: Use consolidated pool store instead of individual client stores
-      // This solves the Google API 5 store limit problem - instead of N client stores (which can be 50+),
-      // we use just 1 client pool store that contains ALL client documents
-      conditions.push(
-        and(
-          eq(fileSearchStores.ownerId, userId),
-          eq(fileSearchStores.ownerType, 'client_pool'),
-          eq(fileSearchStores.isActive, true)
-        )
-      );
-      console.log(`🏊 [FileSearch] Consultant ${userId} - using consolidated client pool store (not individual client stores)`);
+      // PRIVACY FIX: Include ALL client private stores for this consultant
+      // This allows consultants to search across all their clients' consultations,
+      // exercise responses, and other private data that's now properly isolated
+      // Get clients for this consultant and include their stores
+      const consultantClients = await db.query.users.findMany({
+        where: eq(users.consultantId, userId),
+        columns: { id: true },
+      });
+      
+      if (consultantClients.length > 0) {
+        const clientIds = consultantClients.map(c => c.id);
+        conditions.push(
+          and(
+            inArray(fileSearchStores.ownerId, clientIds),
+            eq(fileSearchStores.ownerType, 'client'),
+            eq(fileSearchStores.isActive, true)
+          )
+        );
+        console.log(`🔐 [FileSearch] Consultant ${userId} - including ${clientIds.length} client private stores`);
+      }
       
       // If consultant ALSO has a consultantId (meaning they're also a client of another consultant),
       // include their parent consultant's stores too
@@ -1286,7 +1291,6 @@ export class FileSearchService {
     const conditions = [];
     
     if (userRole === 'consultant') {
-      // Consultant's own store
       conditions.push(
         and(
           eq(fileSearchStores.ownerId, userId),
@@ -1295,15 +1299,21 @@ export class FileSearchService {
         )
       );
       
-      // CLIENT POOL ARCHITECTURE: Use consolidated pool store instead of individual client stores
-      // This solves the Google API 5 store limit problem
-      conditions.push(
-        and(
-          eq(fileSearchStores.ownerId, userId),
-          eq(fileSearchStores.ownerType, 'client_pool'),
-          eq(fileSearchStores.isActive, true)
-        )
-      );
+      const consultantClients = await db.query.users.findMany({
+        where: eq(users.consultantId, userId),
+        columns: { id: true, firstName: true, lastName: true },
+      });
+      
+      if (consultantClients.length > 0) {
+        const clientIds = consultantClients.map(c => c.id);
+        conditions.push(
+          and(
+            inArray(fileSearchStores.ownerId, clientIds),
+            eq(fileSearchStores.ownerType, 'client'),
+            eq(fileSearchStores.isActive, true)
+          )
+        );
+      }
       
       if (consultantId && consultantId !== userId) {
         conditions.push(
@@ -1315,7 +1325,6 @@ export class FileSearchService {
         );
       }
     } else if (userRole === 'client') {
-      // Client sees ONLY their own private store
       conditions.push(
         and(
           eq(fileSearchStores.ownerId, userId),
@@ -1476,108 +1485,26 @@ export class FileSearchService {
 
   /**
    * Build FileSearch tool configuration for generateContent
-   * Architecture: 1 consultant store + 1 client pool store (max 2 stores)
+   * Note: Google File Search has a limit of 5 corpora (stores) max
    */
   buildFileSearchTool(storeNames: string[]): any {
     if (storeNames.length === 0) {
       return null;
     }
 
+    // Google File Search limit: max 5 corpora
+    const MAX_STORES = 5;
+    const limitedStoreNames = storeNames.slice(0, MAX_STORES);
+    
+    if (storeNames.length > MAX_STORES) {
+      console.warn(`⚠️ [FileSearch] Limiting stores from ${storeNames.length} to ${MAX_STORES} (Google API limit)`);
+    }
+
     return {
       fileSearch: {
-        fileSearchStoreNames: storeNames,
+        fileSearchStoreNames: limitedStoreNames,
       }
     };
-  }
-
-  /**
-   * Execute an async operation with exponential backoff retry logic
-   * Specifically designed for File Search API calls that may encounter 503/rate limit errors
-   * 
-   * @param operation - The async function to execute
-   * @param options - Retry configuration options
-   * @returns The result of the operation
-   * @throws The last error if all retries fail
-   */
-  async executeWithRetry<T>(
-    operation: () => Promise<T>,
-    options: {
-      maxAttempts?: number;
-      initialDelayMs?: number;
-      operationName?: string;
-    } = {}
-  ): Promise<T> {
-    const maxAttempts = options.maxAttempts ?? 3;
-    const initialDelayMs = options.initialDelayMs ?? 1000;
-    const operationName = options.operationName ?? 'FileSearch operation';
-    
-    let lastError: Error | null = null;
-    
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await operation();
-      } catch (error: any) {
-        lastError = error;
-        
-        // Check if this is a retryable error (503, rate limit, etc.)
-        const isRetryable = this.isRetryableError(error);
-        
-        if (!isRetryable || attempt === maxAttempts) {
-          console.error(`❌ [FileSearch] ${operationName} failed after ${attempt} attempt(s):`, error.message);
-          throw error;
-        }
-        
-        // Calculate exponential backoff delay: 1s, 2s, 4s, etc.
-        const delayMs = initialDelayMs * Math.pow(2, attempt - 1);
-        console.warn(`⚠️ [FileSearch] ${operationName} attempt ${attempt}/${maxAttempts} failed (${error.message}). Retrying in ${delayMs}ms...`);
-        
-        await this.delay(delayMs);
-      }
-    }
-    
-    throw lastError;
-  }
-
-  /**
-   * Check if an error is retryable (503, rate limit, transient errors)
-   */
-  private isRetryableError(error: any): boolean {
-    const message = error?.message?.toLowerCase() || '';
-    const status = error?.status || error?.code || 0;
-    
-    // HTTP 503 Service Unavailable
-    if (status === 503 || message.includes('503')) {
-      return true;
-    }
-    
-    // HTTP 429 Too Many Requests (rate limit)
-    if (status === 429 || message.includes('429') || message.includes('rate limit') || message.includes('quota exceeded')) {
-      return true;
-    }
-    
-    // HTTP 500 Internal Server Error (transient)
-    if (status === 500 || message.includes('500')) {
-      return true;
-    }
-    
-    // Network/timeout errors
-    if (message.includes('timeout') || message.includes('network') || message.includes('connection')) {
-      return true;
-    }
-    
-    // Google API specific transient errors
-    if (message.includes('unavailable') || message.includes('temporarily')) {
-      return true;
-    }
-    
-    return false;
-  }
-
-  /**
-   * Helper method to delay execution
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -1641,67 +1568,6 @@ export class FileSearchService {
       };
     } catch (error: any) {
       console.error(`❌ [FileSearch] Error in getOrCreateClientStore:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Get or create a Client Pool Store for a consultant
-   * 
-   * A Client Pool Store is a consolidated store that contains ALL client documents
-   * for a single consultant. This solves the Google API 5 store limit problem.
-   * Instead of having N individual client stores (which can exceed 5), we have:
-   * - 1 consultant store (for consultant's own documents)
-   * - 1 client pool store (for ALL clients' documents)
-   * 
-   * Documents in the pool store include clientId in their metadata to track ownership.
-   * 
-   * @param consultantId - The consultant's user ID
-   * @returns Store ID and name, or null if creation fails
-   */
-  async getOrCreateClientPoolStore(consultantId: string): Promise<{ storeId: string; storeName: string } | null> {
-    try {
-      // Check if consultant already has a client pool store
-      let poolStore = await db.query.fileSearchStores.findFirst({
-        where: and(
-          eq(fileSearchStores.ownerId, consultantId),
-          eq(fileSearchStores.ownerType, 'client_pool'),
-          eq(fileSearchStores.isActive, true),
-        ),
-      });
-
-      if (poolStore) {
-        console.log(`📦 [FileSearch] Found existing client pool store for consultant ${consultantId}: ${poolStore.googleStoreName}`);
-        return {
-          storeId: poolStore.id,
-          storeName: poolStore.googleStoreName,
-        };
-      }
-
-      // Create new client pool store for the consultant
-      console.log(`🏊 [FileSearch] Creating CLIENT POOL store for consultant ${consultantId}`);
-      
-      const result = await this.createStore({
-        displayName: `Client Pool - ${consultantId.substring(0, 8)}`,
-        ownerId: consultantId,
-        ownerType: 'client_pool',
-        description: `Consolidated pool store containing all client documents for consultant ${consultantId}`,
-        userId: consultantId,
-      });
-
-      if (!result.success || !result.storeId) {
-        console.error(`❌ [FileSearch] Failed to create client pool store: ${result.error}`);
-        return null;
-      }
-
-      console.log(`✅ [FileSearch] Created CLIENT POOL store: ${result.storeName} (ID: ${result.storeId})`);
-      
-      return {
-        storeId: result.storeId,
-        storeName: result.storeName!,
-      };
-    } catch (error: any) {
-      console.error(`❌ [FileSearch] Error in getOrCreateClientPoolStore:`, error);
       return null;
     }
   }
