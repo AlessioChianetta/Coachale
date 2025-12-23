@@ -861,7 +861,7 @@ export default function ConsultantSetupWizard() {
               </ScrollArea>
             </aside>
 
-            <section className="col-span-5 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50">
+            <section className="col-span-8 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50">
               <div className="p-6">
                 <AnimatePresence mode="wait">
                   {activeStepData && (
@@ -985,6 +985,42 @@ export default function ConsultantSetupWizard() {
                               )}
                             </Button>
                           )}
+
+                          <Button 
+                            variant="outline"
+                            className="w-full border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-900/30"
+                            onClick={() => {
+                              const stepMessages: Record<string, string> = {
+                                vertex_ai: "Aiutami a configurare Vertex AI per la mia piattaforma. Come ottengo le credenziali Google Cloud?",
+                                smtp: "Come configuro il server SMTP per inviare email automatiche ai clienti?",
+                                google_calendar: "Aiutami a collegare Google Calendar per sincronizzare gli appuntamenti.",
+                                whatsapp_ai: "Spiegami come configurare credenziali AI separate per gli agenti WhatsApp.",
+                                inbound_agent: "Come creo un agente Inbound efficace per gestire le richieste dei clienti?",
+                                outbound_agent: "Come configuro un agente Outbound per le campagne proattive?",
+                                consultative_agent: "Come funziona l'agente Consulenziale e come posso configurarlo?",
+                                public_agent_link: "Come genero e condivido un link pubblico per i miei agenti WhatsApp?",
+                                ai_ideas: "Come posso usare l'AI per generare idee creative per i miei agenti?",
+                                whatsapp_template: "Come creo template WhatsApp personalizzati per i messaggi automatici?",
+                                first_course: "Aiutami a creare il mio primo corso formativo per i clienti.",
+                                first_exercise: "Come creo un esercizio pratico efficace per i miei clienti?",
+                                knowledge_base: "Come carico documenti nella Knowledge Base per migliorare le risposte dell'AI?",
+                                first_summary_email: "Come invio email riassuntive dopo le consulenze?",
+                                video_meeting: "Come configuro le credenziali TURN di Metered.ca per le videochiamate?",
+                                lead_import: "Come posso importare lead automaticamente da API esterne?",
+                                twilio_config: "Come configuro Twilio per WhatsApp Business?",
+                              };
+                              const message = stepMessages[activeStep] || "Aiutami con la configurazione della piattaforma.";
+                              window.dispatchEvent(new CustomEvent('ai:open-and-ask', { 
+                                detail: { 
+                                  document: { id: activeStep, title: activeStepData?.title || 'Setup Wizard' },
+                                  autoMessage: message 
+                                } 
+                              }));
+                            }}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Chiedimi qualcosa
+                          </Button>
                         </div>
                       </div>
 
@@ -1280,112 +1316,6 @@ export default function ConsultantSetupWizard() {
                 </AnimatePresence>
               </div>
             </section>
-
-            <aside className="col-span-3 border-l bg-white dark:bg-slate-900 overflow-auto">
-              <div className="p-4 border-b">
-                <h2 className="font-semibold flex items-center gap-2">
-                  <Bot className="h-4 w-4" />
-                  Assistente AI
-                </h2>
-              </div>
-              <div className="p-4">
-                <Card className="border-dashed">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
-                        <Sparkles className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Ciao! Sono qui per aiutarti</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {activeStep === "vertex_ai" && "Vertex AI è il cuore della piattaforma. Ti permette di usare Gemini per tutte le funzionalità AI."}
-                          {activeStep === "smtp" && "L'email è fondamentale per comunicare con i tuoi clienti. Configura SMTP per email automatiche."}
-                          {activeStep === "google_calendar" && "Collega il calendario per sincronizzare appuntamenti automaticamente."}
-                          {activeStep === "whatsapp_ai" && "Gli agenti WhatsApp usano credenziali AI separate per non consumare le tue."}
-                          {activeStep === "inbound_agent" && "L'agente Inbound risponde automaticamente ai messaggi in arrivo dei clienti."}
-                          {activeStep === "outbound_agent" && "L'agente Outbound è perfetto per campagne proattive e follow-up."}
-                          {activeStep === "consultative_agent" && "L'agente Consulenziale offre supporto avanzato prima della consulenza umana."}
-                          {activeStep === "public_agent_link" && "I link pubblici permettono ai clienti di contattarti facilmente ovunque."}
-                          {activeStep === "ai_ideas" && "Genera idee creative per migliorare le conversazioni dei tuoi agenti."}
-                          {activeStep === "whatsapp_template" && "I template WhatsApp personalizzano i messaggi automatici per ogni scenario."}
-                          {activeStep === "first_course" && "I corsi formativi aiutano i clienti a crescere e aumentano la loro fidelizzazione."}
-                          {activeStep === "first_exercise" && "Gli esercizi pratici consolidano l'apprendimento dei tuoi clienti."}
-                          {activeStep === "knowledge_base" && "Carica documenti per far rispondere l'AI con informazioni specifiche sul tuo business."}
-                          {activeStep === "first_summary_email" && "Le email riassuntive post-consulenza migliorano la retention dei clienti."}
-                          {activeStep === "video_meeting" && "I server TURN garantiscono videochiamate stabili anche con firewall restrittivi."}
-                          {activeStep === "lead_import" && "Importa lead automaticamente da CRM esterni o landing page."}
-                        </p>
-                        <Button 
-                          size="sm"
-                          className="mt-3 w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                          onClick={() => {
-                            const stepMessages: Record<string, string> = {
-                              vertex_ai: "Aiutami a configurare Vertex AI per la mia piattaforma. Come ottengo le credenziali Google Cloud?",
-                              smtp: "Come configuro il server SMTP per inviare email automatiche ai clienti?",
-                              google_calendar: "Aiutami a collegare Google Calendar per sincronizzare gli appuntamenti.",
-                              whatsapp_ai: "Spiegami come configurare credenziali AI separate per gli agenti WhatsApp.",
-                              inbound_agent: "Come creo un agente Inbound efficace per gestire le richieste dei clienti?",
-                              outbound_agent: "Come configuro un agente Outbound per le campagne proattive?",
-                              consultative_agent: "Come funziona l'agente Consulenziale e come posso configurarlo?",
-                              public_agent_link: "Come genero e condivido un link pubblico per i miei agenti WhatsApp?",
-                              ai_ideas: "Come posso usare l'AI per generare idee creative per i miei agenti?",
-                              whatsapp_template: "Come creo template WhatsApp personalizzati per i messaggi automatici?",
-                              first_course: "Aiutami a creare il mio primo corso formativo per i clienti.",
-                              first_exercise: "Come creo un esercizio pratico efficace per i miei clienti?",
-                              knowledge_base: "Come carico documenti nella Knowledge Base per migliorare le risposte dell'AI?",
-                              first_summary_email: "Come invio email riassuntive dopo le consulenze?",
-                              video_meeting: "Come configuro le credenziali TURN di Metered.ca per le videochiamate?",
-                              lead_import: "Come posso importare lead automaticamente da API esterne?",
-                            };
-                            const message = stepMessages[activeStep] || "Aiutami con la configurazione della piattaforma.";
-                            window.dispatchEvent(new CustomEvent('ai:open-and-ask', { 
-                              detail: { 
-                                document: { id: activeStep, title: activeStepData?.title || 'Setup Wizard' },
-                                autoMessage: message 
-                              } 
-                            }));
-                          }}
-                        >
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Chiedimi qualcosa
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="mt-6">
-                  <h3 className="text-sm font-medium mb-3">Prossimi Step da Completare</h3>
-                  <div className="space-y-2">
-                    {allSteps
-                      .filter(s => s.status === "pending")
-                      .slice(0, 3)
-                      .map(step => (
-                        <button
-                          key={step.id}
-                          onClick={() => setActiveStep(step.id)}
-                          className="w-full text-left p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <StepNumberBadge number={step.stepNumber} status={step.status} />
-                            <span className="text-sm flex-1">{step.title}</span>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </button>
-                      ))}
-                  </div>
-                </div>
-
-                {completedSteps === totalSteps && (
-                  <Alert className="mt-6 bg-emerald-50 border-emerald-200">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    <AlertDescription className="text-emerald-800">
-                      🎉 Tutti i 17 step sono completati! La piattaforma è pronta all'uso.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </aside>
           </div>
         </div>
       </main>
