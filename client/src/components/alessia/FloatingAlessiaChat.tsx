@@ -154,7 +154,7 @@ export function FloatingAlessiaChat() {
           </div>
         </div>
 
-        <div className="h-[calc(100%-52px)] overflow-hidden">
+        <div className="h-[calc(100%-52px)] overflow-hidden relative">
           <Suspense fallback={
             <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
               <div className="text-center">
