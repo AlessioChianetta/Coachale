@@ -357,6 +357,35 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     },
   });
 
+  // Mutation to import the optimized opening message template
+  const importOpeningMessageMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/whatsapp/custom-templates/import-opening-message", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to import opening message");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "🚀 Messaggio di Apertura Importato!",
+        description: data.message || "Il template è pronto per essere esportato su Twilio.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/custom-templates"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: templatesData, isLoading, error } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates"],
     queryFn: async () => {
@@ -1558,22 +1587,135 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
             )}
 
             {showEmptyState && (
-              <div className="text-center py-20 bg-white rounded-2xl shadow-sm border animate-in fade-in-50">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
-                  <FileText className="h-10 w-10 text-white" />
+              <div className="py-12 bg-white rounded-2xl shadow-sm border animate-in fade-in-50">
+                <div className="text-center mb-10">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+                    <FileText className="h-10 w-10 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-3">Nessun Template Trovato</h2>
+                  <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+                    Importa i template predefiniti per il tuo tipo di agente o crea il tuo primo template personalizzato.
+                  </p>
                 </div>
-                <h2 className="text-2xl font-bold mb-3">Nessun Template Trovato</h2>
-                <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                  Non hai ancora creato nessun template custom. Inizia creando il tuo primo template personalizzato per WhatsApp Business!
-                </p>
-                <Button
-                  onClick={() => navigate("/consultant/whatsapp/custom-templates")}
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Crea il Tuo Primo Template
-                </Button>
+
+                {/* Pulsante Bonus - Messaggio di Apertura Ottimizzato */}
+                <div className="max-w-2xl mx-auto px-6 mb-8">
+                  <div className="relative p-6 rounded-2xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 border-2 border-amber-300 shadow-lg">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-md px-4 py-1">
+                        <Star className="h-3 w-3 mr-1 fill-white" />
+                        CONSIGLIATO
+                      </Badge>
+                    </div>
+                    <div className="text-center">
+                      <h3 className="text-lg font-bold text-amber-900 mb-2 mt-2">
+                        Messaggio di Apertura Ottimizzato
+                      </h3>
+                      <p className="text-sm text-amber-700 mb-4">
+                        Il primo messaggio che ricevono i tuoi lead. Ottimizzato per massimizzare le risposte!
+                      </p>
+                      <Button
+                        onClick={() => importOpeningMessageMutation.mutate()}
+                        disabled={importOpeningMessageMutation.isPending}
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md"
+                      >
+                        {importOpeningMessageMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Importazione...
+                          </>
+                        ) : (
+                          <>
+                            <Rocket className="h-4 w-4 mr-2" />
+                            Importa Messaggio di Apertura
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5 Pulsanti per i Tipi di Agente */}
+                <div className="max-w-4xl mx-auto px-6">
+                  <h3 className="text-center text-sm font-semibold text-slate-600 mb-4">
+                    Oppure importa i template per tipo di agente:
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => loadDefaultsMutation.mutate("receptionist")}
+                      disabled={loadDefaultsMutation.isPending}
+                      className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-blue-50 hover:border-blue-300"
+                    >
+                      <span className="text-2xl">📞</span>
+                      <span className="text-xs font-medium">Receptionist</span>
+                      <span className="text-[10px] text-muted-foreground">Inbound</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => loadDefaultsMutation.mutate("proactive_setter")}
+                      disabled={loadDefaultsMutation.isPending}
+                      className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-purple-50 hover:border-purple-300"
+                    >
+                      <span className="text-2xl">🎯</span>
+                      <span className="text-xs font-medium">Setter</span>
+                      <span className="text-[10px] text-muted-foreground">Outbound</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => loadDefaultsMutation.mutate("informative_advisor")}
+                      disabled={loadDefaultsMutation.isPending}
+                      className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-green-50 hover:border-green-300"
+                    >
+                      <span className="text-2xl">📚</span>
+                      <span className="text-xs font-medium">Advisor</span>
+                      <span className="text-[10px] text-muted-foreground">Educativo</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => loadDefaultsMutation.mutate("customer_success")}
+                      disabled={loadDefaultsMutation.isPending}
+                      className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-red-50 hover:border-red-300"
+                    >
+                      <span className="text-2xl">❤️</span>
+                      <span className="text-xs font-medium">Customer Success</span>
+                      <span className="text-[10px] text-muted-foreground">Post-vendita</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => loadDefaultsMutation.mutate("intake_coordinator")}
+                      disabled={loadDefaultsMutation.isPending}
+                      className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-indigo-50 hover:border-indigo-300"
+                    >
+                      <span className="text-2xl">📋</span>
+                      <span className="text-xs font-medium">Intake</span>
+                      <span className="text-[10px] text-muted-foreground">Coordinatore</span>
+                    </Button>
+                  </div>
+                  {loadDefaultsMutation.isPending && (
+                    <div className="text-center mt-4">
+                      <Loader2 className="h-5 w-5 animate-spin inline mr-2" />
+                      <span className="text-sm text-muted-foreground">Caricamento template...</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Separatore e pulsante crea manuale */}
+                <div className="max-w-md mx-auto px-6 mt-8">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="flex-1 h-px bg-slate-200" />
+                    <span className="text-xs text-slate-400">oppure</span>
+                    <div className="flex-1 h-px bg-slate-200" />
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate("/consultant/whatsapp/custom-templates")}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crea Template Manualmente
+                  </Button>
+                </div>
               </div>
             )}
 
