@@ -6658,6 +6658,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           consultantType,
           pageContext,
           focusedDocument,
+          // Email Condivisa: Pass active profile role and consultantId for mixed-role users
+          userRole: req.user!.role as 'consultant' | 'client',
+          activeConsultantId: req.user!.consultantId,
         })) {
           // Send chunk as SSE event and flush immediately
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);

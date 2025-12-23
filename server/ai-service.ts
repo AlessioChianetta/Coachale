@@ -546,6 +546,10 @@ export interface ChatRequest {
   consultantType?: ConsultantType;
   pageContext?: PageContext;
   focusedDocument?: { id: string; title: string; category: string };
+  // Email Condivisa: Pass active profile role instead of relying on DB lookup
+  userRole?: 'consultant' | 'client';
+  // Email Condivisa: Pass consultant ID from active profile for mixed-role users
+  activeConsultantId?: string;
 }
 
 export interface ChatResponse {
@@ -1186,7 +1190,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
 }
 
 export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerator<ChatStreamChunk> {
-  const { clientId, message, conversationId, mode, consultantType, pageContext, focusedDocument } = request;
+  const { clientId, message, conversationId, mode, consultantType, pageContext, focusedDocument, userRole, activeConsultantId } = request;
 
   // ========================================
   // PERFORMANCE TIMING TRACKING
@@ -1234,15 +1238,20 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
   let conversationHistory: ChatMessage[] = []; // Inizializza subito come array vuoto
 
   try {
-    // Extract consultantId (from user.consultantId or fallback to clientId)
-    const consultantId = user.consultantId || clientId;
+    // Email Condivisa: Use passed role/consultantId from active profile, fallback to DB values
+    // This is critical for mixed-role users (consultants who are also clients of another consultant)
+    const effectiveRole = userRole || (user.role as 'consultant' | 'client');
+    const effectiveConsultantId = activeConsultantId || user.consultantId || clientId;
+    
+    // Extract consultantId (from active profile or user.consultantId or fallback to clientId)
+    const consultantId = effectiveConsultantId;
 
     // 🔍 FILE SEARCH: Check if consultant has FileSearchStore with ACTUAL DOCUMENTS
     // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
-    const consultantIdForFileSearch = user.consultantId || clientId;
+    const consultantIdForFileSearch = effectiveConsultantId;
     const { storeNames: fileSearchStoreNames, breakdown: fileSearchBreakdown } = await fileSearchService.getStoreBreakdownForGeneration(
       clientId,
-      user.role as 'consultant' | 'client',
+      effectiveRole,
       consultantIdForFileSearch
     );
     // FIX: Only consider File Search active if stores have actual documents
