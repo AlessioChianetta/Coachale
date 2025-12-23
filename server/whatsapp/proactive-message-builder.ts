@@ -11,6 +11,10 @@ interface AgentConfig {
   agentName: string;
   consultantDisplayName?: string | null;
   businessName?: string | null;
+  defaultUncino?: string | null;
+  defaultIdealState?: string | null;
+  defaultObiettivi?: string | null;
+  defaultDesideri?: string | null;
 }
 
 /**

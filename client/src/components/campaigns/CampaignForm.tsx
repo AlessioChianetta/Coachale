@@ -128,53 +128,78 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   const selectedAgentId = watchedValues.preferredAgentConfigId;
   const selectedAgent = agents.find((a: any) => a.id === selectedAgentId);
 
-  // Fetch Twilio templates
-  const { data: twilioTemplatesData, isLoading: templatesLoading } = useQuery({
-    queryKey: ["/api/whatsapp/templates"],
+  // Fetch template assignments for selected agent
+  const { data: assignmentsData, isLoading: templatesLoading } = useQuery({
+    queryKey: ["/api/whatsapp/template-assignments", selectedAgentId],
     queryFn: async () => {
-      const response = await fetch("/api/whatsapp/templates", {
+      if (!selectedAgentId) return { assignments: [] };
+      const response = await fetch(`/api/whatsapp/template-assignments/${selectedAgentId}`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
-        if (response.status === 404) return { templates: [] };
-        throw new Error("Failed to fetch templates");
+        if (response.status === 404) return { assignments: [] };
+        throw new Error("Failed to fetch template assignments");
       }
       return response.json();
     },
+    enabled: !!selectedAgentId,
   });
 
-  const allTwilioTemplates = twilioTemplatesData?.templates || [];
+  const assignedTemplates = assignmentsData?.assignments || [];
   
-  // Get assigned template SIDs from selected agent
-  const assignedTemplateSids = {
-    opening: selectedAgent?.whatsappTemplates?.openingMessageContentSid,
-    followup_gentle: selectedAgent?.whatsappTemplates?.followUpGentleContentSid,
-    followup_value: selectedAgent?.whatsappTemplates?.followUpValueContentSid,
-    followup_final: selectedAgent?.whatsappTemplates?.followUpFinalContentSid,
+  // Group templates by category
+  const detectCategory = (text: string): string => {
+    const normalized = text.toLowerCase();
+    if (normalized.includes("setter") || normalized.includes("proattivo")) return "Setter";
+    if (normalized.includes("follow") || normalized.includes("riattiv") || normalized.includes("ripresa")) return "Follow-up";
+    if (normalized.includes("apertura") || normalized.includes("primo") || normalized.includes("benvenuto")) return "Primo Contatto";
+    if (normalized.includes("appuntament") || normalized.includes("booking")) return "Appuntamenti";
+    return "Generale";
   };
 
-  // Find the actual template objects
-  const assignedTemplates = {
-    opening: allTwilioTemplates.find((t: any) => t.sid === assignedTemplateSids.opening),
-    followup_gentle: allTwilioTemplates.find((t: any) => t.sid === assignedTemplateSids.followup_gentle),
-    followup_value: allTwilioTemplates.find((t: any) => t.sid === assignedTemplateSids.followup_value),
-    followup_final: allTwilioTemplates.find((t: any) => t.sid === assignedTemplateSids.followup_final),
+  const templatesByCategory = assignedTemplates.reduce((acc: Record<string, any[]>, template: any) => {
+    const category = detectCategory(template.useCase || template.templateName || "");
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(template);
+    return acc;
+  }, {} as Record<string, any[]>);
+  
+  const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
+    "Setter": { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200" },
+    "Follow-up": { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
+    "Primo Contatto": { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
+    "Appuntamenti": { bg: "bg-pink-50", text: "text-pink-700", border: "border-pink-200" },
+    "Generale": { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" },
   };
 
-  // Function to replace Twilio template variables {{1}}, {{2}}, etc with form values
-  const replaceTwilioVariables = (bodyText: string) => {
+  // Function to replace template variables ${variable} or {{N}} with form values
+  const replaceTemplateVariables = (bodyText: string) => {
     if (!bodyText) return "";
     
-    // Map Twilio {{1}}, {{2}} to actual values
     const nome_lead = "Mario";
     const nome_consulente = selectedAgent?.consultantDisplayName || selectedAgent?.agentName || "Consulente";
-    const nome_azienda = selectedAgent?.businessName || "Orbitale";
-    const uncino = watchedValues.hookText || selectedAgent?.defaultUncino || "ci siamo conosciuti all'evento";
-    const stato_ideale = watchedValues.idealStateDescription || selectedAgent?.defaultIdealState || "raddoppiare il fatturato";
-    const obiettivi = watchedValues.defaultObiettivi || selectedAgent?.defaultObiettivi || "crescita aziendale";
-    const desideri = watchedValues.implicitDesires || selectedAgent?.defaultDesideri || "più tempo libero";
+    const nome_azienda = selectedAgent?.businessName || "";
+    const uncino = watchedValues.hookText || selectedAgent?.defaultUncino || "";
+    const stato_ideale = watchedValues.idealStateDescription || selectedAgent?.defaultIdealState || "";
+    const obiettivi = watchedValues.defaultObiettivi || selectedAgent?.defaultObiettivi || "";
+    const desideri = watchedValues.implicitDesires || selectedAgent?.defaultDesideri || "";
     
     let preview = bodyText;
+    
+    // Replace ${variable} format (custom templates)
+    preview = preview.replace(/\$\{nome_lead\}/g, nome_lead);
+    preview = preview.replace(/\$\{firstName\}/g, nome_lead);
+    preview = preview.replace(/\$\{nome_consulente\}/g, nome_consulente);
+    preview = preview.replace(/\$\{consultantDisplayName\}/g, nome_consulente);
+    preview = preview.replace(/\$\{nome_azienda\}/g, nome_azienda);
+    preview = preview.replace(/\$\{businessName\}/g, nome_azienda);
+    preview = preview.replace(/\$\{uncino\}/g, uncino);
+    preview = preview.replace(/\$\{stato_ideale\}/g, stato_ideale);
+    preview = preview.replace(/\$\{idealState\}/g, stato_ideale);
+    preview = preview.replace(/\$\{obiettivi\}/g, obiettivi);
+    preview = preview.replace(/\$\{desideri\}/g, desideri);
+    
+    // Also support {{N}} format for backward compatibility
     preview = preview.replace(/\{\{1\}\}/g, nome_lead);
     preview = preview.replace(/\{\{2\}\}/g, nome_consulente);
     preview = preview.replace(/\{\{3\}\}/g, nome_azienda);
@@ -423,129 +448,78 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
               </div>
             ) : (
               <div className="p-4 bg-muted/50 rounded-lg space-y-4">
-                <h3 className="text-sm font-medium">Template WhatsApp Assegnati</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium">Template WhatsApp Assegnati</h3>
+                  {assignedTemplates.length > 0 && (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                      {assignedTemplates.length} template
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Questi template sono configurati per l'agente selezionato. Le anteprime si aggiornano in base ai campi compilati.
+                  Template configurati per l'agente selezionato, raggruppati per categoria.
                 </p>
                 {templatesLoading ? (
                   <div className="text-sm text-muted-foreground">Caricamento template...</div>
+                ) : assignedTemplates.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-4 border-2 border-dashed rounded-lg">
+                    <p className="mb-2">Nessun template assegnato a questo agente</p>
+                    <p className="text-xs">Vai in "Template WhatsApp" per assegnare i template all'agente</p>
+                  </div>
                 ) : (
-                  <>
-                    {/* Template Apertura */}
-                    {assignedTemplates.opening && (
-                      <div className="space-y-2">
-                        <div className="text-xs font-medium text-gray-700">Template Apertura</div>
-                        <div className="border-2 border-blue-200 rounded-lg p-3 bg-white">
-                          <div className="text-sm font-semibold text-blue-900 mb-2">
-                            {assignedTemplates.opening.friendlyName}
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                    {Object.entries(templatesByCategory).map(([category, templates]) => {
+                      const colors = categoryColors[category] || categoryColors["Generale"];
+                      return (
+                        <div key={category} className={`rounded-lg border ${colors.border} ${colors.bg} p-3`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`font-medium text-sm ${colors.text}`}>{category}</span>
+                            <span className={`text-xs ${colors.text} opacity-70`}>
+                              ({templates.length} template)
+                            </span>
                           </div>
-                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                            <div className="flex justify-end mb-2">
-                              <div className="max-w-[85%]">
-                                <div className="bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-gray-100 rounded-xl rounded-tr-none p-3 shadow-sm">
-                                  <p className="text-sm whitespace-pre-wrap break-words">
-                                    {replaceTwilioVariables(assignedTemplates.opening.bodyText)}
-                                  </p>
-                                  <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground mt-1">
-                                    <span>ora</span>
-                                    <span className="text-green-600">✓✓</span>
+                          <div className="space-y-2">
+                            {templates.map((template: any) => {
+                              const bodyText = template.body || template.activeVersion?.bodyText || "";
+                              const previewText = bodyText ? replaceTemplateVariables(bodyText) : null;
+                              
+                              return (
+                                <div key={template.templateId || template.assignmentId} className="bg-white rounded-lg p-3 border border-gray-100">
+                                  <div className="text-xs font-semibold text-gray-800 mb-1">
+                                    {template.templateName}
                                   </div>
+                                  {template.useCase && (
+                                    <div className="text-xs text-gray-500 mb-2">
+                                      {template.useCase}
+                                    </div>
+                                  )}
+                                  {previewText ? (
+                                    <div className="bg-green-50 rounded-lg p-2 border border-green-100">
+                                      <p className="text-xs text-gray-700 whitespace-pre-wrap line-clamp-3">
+                                        {previewText}
+                                      </p>
+                                    </div>
+                                  ) : template.isTwilioTemplate ? (
+                                    <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
+                                      <p className="text-xs text-blue-700">
+                                        Template Twilio pre-approvato (anteprima disponibile in "Template WhatsApp")
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                                      <p className="text-xs text-gray-500 italic">
+                                        Anteprima non disponibile
+                                      </p>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Template Followup Gentile */}
-                    {assignedTemplates.followup_gentle && (
-                      <div className="space-y-2">
-                        <div className="text-xs font-medium text-gray-700">Template Followup Gentile</div>
-                        <div className="border-2 border-green-200 rounded-lg p-3 bg-white">
-                          <div className="text-sm font-semibold text-green-900 mb-2">
-                            {assignedTemplates.followup_gentle.friendlyName}
-                          </div>
-                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                            <div className="flex justify-end mb-2">
-                              <div className="max-w-[85%]">
-                                <div className="bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-gray-100 rounded-xl rounded-tr-none p-3 shadow-sm">
-                                  <p className="text-sm whitespace-pre-wrap break-words">
-                                    {replaceTwilioVariables(assignedTemplates.followup_gentle.bodyText)}
-                                  </p>
-                                  <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground mt-1">
-                                    <span>ora</span>
-                                    <span className="text-green-600">✓✓</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Template Followup Valore */}
-                    {assignedTemplates.followup_value && (
-                      <div className="space-y-2">
-                        <div className="text-xs font-medium text-gray-700">Template Followup Valore</div>
-                        <div className="border-2 border-purple-200 rounded-lg p-3 bg-white">
-                          <div className="text-sm font-semibold text-purple-900 mb-2">
-                            {assignedTemplates.followup_value.friendlyName}
-                          </div>
-                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                            <div className="flex justify-end mb-2">
-                              <div className="max-w-[85%]">
-                                <div className="bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-gray-100 rounded-xl rounded-tr-none p-3 shadow-sm">
-                                  <p className="text-sm whitespace-pre-wrap break-words">
-                                    {replaceTwilioVariables(assignedTemplates.followup_value.bodyText)}
-                                  </p>
-                                  <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground mt-1">
-                                    <span>ora</span>
-                                    <span className="text-green-600">✓✓</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Template Followup Finale */}
-                    {assignedTemplates.followup_final && (
-                      <div className="space-y-2">
-                        <div className="text-xs font-medium text-gray-700">Template Followup Finale</div>
-                        <div className="border-2 border-red-200 rounded-lg p-3 bg-white">
-                          <div className="text-sm font-semibold text-red-900 mb-2">
-                            {assignedTemplates.followup_final.friendlyName}
-                          </div>
-                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                            <div className="flex justify-end mb-2">
-                              <div className="max-w-[85%]">
-                                <div className="bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-gray-100 rounded-xl rounded-tr-none p-3 shadow-sm">
-                                  <p className="text-sm whitespace-pre-wrap break-words">
-                                    {replaceTwilioVariables(assignedTemplates.followup_final.bodyText)}
-                                  </p>
-                                  <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground mt-1">
-                                    <span>ora</span>
-                                    <span className="text-green-600">✓✓</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {!assignedTemplates.opening && !assignedTemplates.followup_gentle && !assignedTemplates.followup_value && !assignedTemplates.followup_final && (
-                      <div className="text-sm text-muted-foreground text-center py-4 border-2 border-dashed rounded-lg">
-                        <p className="mb-2">⚠️ Nessun template assegnato a questo agente</p>
-                        <p className="text-xs">Vai in "Template WhatsApp" per assegnare i template Twilio all'agente</p>
-                      </div>
-                    )}
-                  </>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             )}
