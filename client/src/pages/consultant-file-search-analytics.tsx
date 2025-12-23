@@ -3054,6 +3054,47 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    <Collapsible open={openAuditCategories['consultantGuide']} onOpenChange={() => toggleAuditCategory('consultantGuide')}>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors">
+                        {openAuditCategories['consultantGuide'] ? <ChevronDown className="h-4 w-4 text-indigo-600" /> : <ChevronRight className="h-4 w-4 text-indigo-600" />}
+                        <BookOpen className="h-4 w-4 text-indigo-600" />
+                        <span className="font-medium text-indigo-900">Guida Piattaforma</span>
+                        <Badge className={`ml-auto ${(auditData?.consultant?.consultantGuide?.indexed || 0) < (auditData?.consultant?.consultantGuide?.total || 1) ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                          {auditData?.consultant?.consultantGuide?.indexed || 0}/{auditData?.consultant?.consultantGuide?.total || 1}
+                        </Badge>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-1">
+                        {(auditData?.consultant?.consultantGuide?.indexed || 0) >= (auditData?.consultant?.consultantGuide?.total || 1) ? (
+                          <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            Guida piattaforma sincronizzata
+                          </p>
+                        ) : (
+                          <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="h-4 w-4 text-indigo-400" />
+                              <span className="text-sm">Guida Completa Piattaforma</span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => syncSingleMutation.mutate({ type: 'consultant_guide', id: 'guide' })}
+                              disabled={syncSingleMutation.isPending}
+                            >
+                              {syncSingleMutation.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Sync
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+
                     <Collapsible open={openAuditCategories['library']} onOpenChange={() => toggleAuditCategory('library')}>
                       <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors">
                         {openAuditCategories['library'] ? <ChevronDown className="h-4 w-4 text-blue-600" /> : <ChevronRight className="h-4 w-4 text-blue-600" />}
