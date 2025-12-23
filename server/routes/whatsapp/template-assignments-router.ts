@@ -54,6 +54,40 @@ router.get(
         .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId));
 
       const formattedAssignments = [];
+      const existingTemplateIds = new Set(allAssignments.map(a => a.templateId));
+
+      // LEGACY FALLBACK: Include templates from old 4-slot system if not in new assignments table
+      const config = agentConfig[0];
+      const legacyTemplates = config.whatsappTemplates as any || {};
+      const legacySlots = [
+        { sid: legacyTemplates.openingMessageContentSid, type: "opening", label: "Messaggio apertura" },
+        { sid: legacyTemplates.followUpGentleContentSid, type: "follow_up_gentle", label: "Follow-up gentile" },
+        { sid: legacyTemplates.followUpValueContentSid, type: "follow_up_value", label: "Follow-up valore" },
+        { sid: legacyTemplates.followUpFinalContentSid, type: "follow_up_final", label: "Follow-up finale" },
+      ];
+
+      for (const slot of legacySlots) {
+        if (slot.sid && !existingTemplateIds.has(slot.sid)) {
+          formattedAssignments.push({
+            assignmentId: `legacy-${slot.type}`,
+            templateId: slot.sid,
+            templateName: slot.sid,
+            templateDescription: slot.label,
+            useCase: slot.type,
+            priority: 0,
+            assignedAt: null,
+            body: null,
+            isTwilioTemplate: true,
+            isLegacy: true,
+            activeVersion: {
+              id: null,
+              versionNumber: null,
+              bodyText: null,
+              twilioStatus: "approved",
+            },
+          });
+        }
+      }
 
       for (const assignment of allAssignments) {
         const isTwilioTemplate = assignment.templateId.startsWith('HX');
@@ -70,6 +104,7 @@ router.get(
             assignedAt: assignment.assignedAt,
             body: null, // Body fetched from Twilio when needed
             isTwilioTemplate: true,
+            isLegacy: false,
             activeVersion: {
               id: null,
               versionNumber: null,
@@ -118,6 +153,7 @@ router.get(
               assignedAt: assignment.assignedAt,
               body: t.body || t.activeVersionBody,
               isTwilioTemplate: false,
+              isLegacy: false,
               activeVersion: t.activeVersionId
                 ? {
                     id: t.activeVersionId,

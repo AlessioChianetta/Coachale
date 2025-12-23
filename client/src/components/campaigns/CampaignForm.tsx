@@ -147,12 +147,14 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
 
   const assignedTemplates = assignmentsData?.assignments || [];
   
-  // Group templates by category
+  // Group templates by category (supports both new useCase values and legacy slot types)
   const detectCategory = (text: string): string => {
     const normalized = text.toLowerCase();
+    // Legacy slot types from old 4-slot system
+    if (normalized === "opening" || normalized.includes("apertura") || normalized.includes("primo") || normalized.includes("benvenuto")) return "Primo Contatto";
+    if (normalized.startsWith("follow_up") || normalized.includes("follow") || normalized.includes("riattiv") || normalized.includes("ripresa")) return "Follow-up";
+    // New template categories
     if (normalized.includes("setter") || normalized.includes("proattivo")) return "Setter";
-    if (normalized.includes("follow") || normalized.includes("riattiv") || normalized.includes("ripresa")) return "Follow-up";
-    if (normalized.includes("apertura") || normalized.includes("primo") || normalized.includes("benvenuto")) return "Primo Contatto";
     if (normalized.includes("appuntament") || normalized.includes("booking")) return "Appuntamenti";
     return "Generale";
   };
