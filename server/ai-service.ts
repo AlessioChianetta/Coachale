@@ -585,7 +585,7 @@ export interface ChatStreamChunk {
 }
 
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
-  const { clientId, message, conversationId, mode, consultantType, pageContext } = request;
+  const { clientId, message, conversationId, mode, consultantType, pageContext, userRole, activeConsultantId } = request;
 
   // Verify user exists (role already verified by middleware - supports Email Condivisa profiles)
   const [user] = await db
@@ -598,8 +598,13 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     throw new Error("Utente non trovato");
   }
 
-  // Extract consultantId (from user.consultantId or fallback to clientId)
-  const consultantId = user.consultantId || clientId;
+  // Email Condivisa: Use passed role/consultantId from active profile, fallback to DB values
+  // This is critical for mixed-role users (consultants who are also clients of another consultant)
+  const effectiveRole = userRole || (user.role as 'consultant' | 'client');
+  const effectiveConsultantId = activeConsultantId || user.consultantId || clientId;
+  
+  // Extract consultantId (from active profile or user.consultantId or fallback to clientId)
+  const consultantId = effectiveConsultantId;
 
   // Get AI provider using 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
   let aiProviderResult: AiProviderResult;
@@ -617,10 +622,10 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   const intent = detectIntent(message);
   
   // 🔍 FILE SEARCH: Check if consultant has FileSearchStore with ACTUAL DOCUMENTS
-  const consultantIdForFileSearch = user.consultantId || clientId;
+  const consultantIdForFileSearch = effectiveConsultantId;
   const { storeNames: fileSearchStoreNames, breakdown: fileSearchBreakdown } = await fileSearchService.getStoreBreakdownForGeneration(
     clientId,
-    user.role as 'consultant' | 'client',
+    effectiveRole,
     consultantIdForFileSearch
   );
   // FIX: Only consider File Search active if stores have actual documents
