@@ -1422,6 +1422,36 @@ export class FileSearchService {
   }
 
   /**
+   * Get document index info including indexedAt and contentHash
+   * Used for staleness detection during sync
+   */
+  async getDocumentIndexInfo(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide', sourceId: string): Promise<{
+    exists: boolean;
+    documentId?: string;
+    indexedAt?: Date;
+    contentHash?: string;
+  }> {
+    const doc = await db.query.fileSearchDocuments.findFirst({
+      where: and(
+        eq(fileSearchDocuments.sourceType, sourceType),
+        eq(fileSearchDocuments.sourceId, sourceId),
+        eq(fileSearchDocuments.status, 'indexed')
+      ),
+    });
+
+    if (!doc) {
+      return { exists: false };
+    }
+
+    return {
+      exists: true,
+      documentId: doc.id,
+      indexedAt: doc.indexedAt ?? undefined,
+      contentHash: doc.contentHash ?? undefined,
+    };
+  }
+
+  /**
    * Parse citations from Gemini response
    */
   parseCitations(response: any): Citation[] {

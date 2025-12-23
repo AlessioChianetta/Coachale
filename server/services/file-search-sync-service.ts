@@ -170,11 +170,12 @@ export const syncProgressEmitter = SyncProgressEmitter.getInstance();
 export class FileSearchSyncService {
   /**
    * Sync a library document to FileSearchStore
+   * ENHANCED: Auto-detects and re-syncs outdated documents by comparing updatedAt timestamps
    */
   static async syncLibraryDocument(
     documentId: string,
     consultantId: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; updated?: boolean }> {
     try {
       const doc = await db.query.libraryDocuments.findFirst({
         where: eq(libraryDocuments.id, documentId),
@@ -184,10 +185,24 @@ export class FileSearchSyncService {
         return { success: false, error: 'Document not found' };
       }
 
-      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('library', documentId);
-      if (isAlreadyIndexed) {
-        console.log(`📌 [FileSync] Document already indexed: ${documentId}`);
-        return { success: true };
+      // Check if document exists and get its metadata for staleness detection
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('library', documentId);
+      
+      if (indexInfo.exists) {
+        // Check if outdated by comparing source updatedAt vs indexedAt
+        const sourceUpdatedAt = doc.updatedAt;
+        const indexedAt = indexInfo.indexedAt;
+        
+        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
+          console.log(`📌 [FileSync] Document already indexed and up-to-date: ${documentId}`);
+          return { success: true, updated: false };
+        }
+        
+        // Document is outdated - delete and re-upload
+        if (indexInfo.documentId) {
+          console.log(`🔄 [FileSync] Library document "${doc.title}" outdated - re-syncing...`);
+          await fileSearchService.deleteDocument(indexInfo.documentId);
+        }
       }
 
       let consultantStore = await db.query.fileSearchStores.findFirst({
@@ -227,6 +242,8 @@ export class FileSearchSyncService {
         userId: consultantId,
       });
 
+      const wasUpdated = indexInfo.exists; // If it existed before, this was an update
+      
       // CASCADE: Se questo documento è collegato a una lezione universitaria, sincronizza anche quella
       if (uploadResult.success) {
         const linkedLesson = await db.query.universityLessons.findFirst({
@@ -241,7 +258,7 @@ export class FileSearchSyncService {
       }
 
       return uploadResult.success 
-        ? { success: true }
+        ? { success: true, updated: wasUpdated }
         : { success: false, error: uploadResult.error };
     } catch (error: any) {
       console.error('[FileSync] Error syncing document:', error);
@@ -251,11 +268,14 @@ export class FileSearchSyncService {
 
   /**
    * Bulk sync all library documents for a consultant
+   * ENHANCED: Relies on individual sync function for staleness detection
    */
   static async syncAllLibraryDocuments(consultantId: string): Promise<{
     total: number;
     synced: number;
+    updated: number;
     failed: number;
+    skipped: number;
     errors: string[];
   }> {
     try {
@@ -264,7 +284,9 @@ export class FileSearchSyncService {
       });
 
       let synced = 0;
+      let updated = 0;
       let failed = 0;
+      let skipped = 0;
       const errors: string[] = [];
       let processed = 0;
 
@@ -275,7 +297,13 @@ export class FileSearchSyncService {
         const result = await this.syncLibraryDocument(doc.id, consultantId);
         processed++;
         if (result.success) {
-          synced++;
+          if (result.updated === false) {
+            skipped++; // Already indexed and up-to-date
+          } else if (result.updated === true) {
+            updated++; // Was outdated and got refreshed
+          } else {
+            synced++; // Newly synced
+          }
           syncProgressEmitter.emitItemProgress(consultantId, 'library', doc.title, processed, docs.length);
         } else {
           failed++;
@@ -284,13 +312,15 @@ export class FileSearchSyncService {
         }
       }
 
-      console.log(`✅ [FileSync] Complete - Synced: ${synced}/${docs.length}, Failed: ${failed}`);
+      console.log(`✅ [FileSync] Library sync complete - Synced: ${synced}, Updated: ${updated}, Skipped: ${skipped}, Failed: ${failed}`);
       syncProgressEmitter.emitComplete(consultantId, 'library', docs.length);
 
       return {
         total: docs.length,
         synced,
+        updated,
         failed,
+        skipped,
         errors,
       };
     } catch (error: any) {
@@ -299,7 +329,9 @@ export class FileSearchSyncService {
       return {
         total: 0,
         synced: 0,
+        updated: 0,
         failed: 1,
+        skipped: 0,
         errors: [error.message],
       };
     }
@@ -322,12 +354,13 @@ export class FileSearchSyncService {
   /**
    * Sync a consultant knowledge document to FileSearchStore
    * Includes retry logic to handle race conditions when called right after document indexing
+   * ENHANCED: Auto-detects and re-syncs outdated documents by comparing updatedAt timestamps
    */
   static async syncConsultantKnowledgeDocument(
     documentId: string,
     consultantId: string,
     maxRetries: number = 3,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; updated?: boolean }> {
     let doc = null;
     let lastStatus = 'unknown';
     
@@ -362,11 +395,24 @@ export class FileSearchSyncService {
     }
     
     try {
-
-      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', documentId);
-      if (isAlreadyIndexed) {
-        console.log(`📌 [FileSync] Knowledge document already indexed: ${documentId}`);
-        return { success: true };
+      // Check if document exists and get its metadata for staleness detection
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('knowledge_base', documentId);
+      
+      if (indexInfo.exists) {
+        // Check if outdated by comparing source updatedAt vs indexedAt
+        const sourceUpdatedAt = doc.updatedAt;
+        const indexedAt = indexInfo.indexedAt;
+        
+        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
+          console.log(`📌 [FileSync] Knowledge document already indexed and up-to-date: ${documentId}`);
+          return { success: true, updated: false };
+        }
+        
+        // Document is outdated - delete and re-upload
+        if (indexInfo.documentId) {
+          console.log(`🔄 [FileSync] Knowledge document "${doc.title}" outdated - re-syncing...`);
+          await fileSearchService.deleteDocument(indexInfo.documentId);
+        }
       }
 
       let consultantStore = await db.query.fileSearchStores.findFirst({
@@ -408,12 +454,13 @@ export class FileSearchSyncService {
         userId: consultantId,
       });
 
+      const wasUpdated = indexInfo.exists; // If it existed before, this was an update
       if (uploadResult.success) {
-        console.log(`✅ [FileSync] Knowledge document synced: ${doc.title}`);
+        console.log(`✅ [FileSync] Knowledge document ${wasUpdated ? 'UPDATED' : 'synced'}: ${doc.title}`);
       }
 
       return uploadResult.success 
-        ? { success: true }
+        ? { success: true, updated: wasUpdated }
         : { success: false, error: uploadResult.error };
     } catch (error: any) {
       console.error('[FileSync] Error syncing knowledge document:', error);
@@ -423,10 +470,12 @@ export class FileSearchSyncService {
 
   /**
    * Bulk sync all consultant knowledge documents
+   * ENHANCED: Relies on individual sync function for staleness detection
    */
   static async syncAllConsultantKnowledgeDocuments(consultantId: string): Promise<{
     total: number;
     synced: number;
+    updated: number;
     failed: number;
     skipped: number;
     errors: string[];
@@ -441,6 +490,7 @@ export class FileSearchSyncService {
       });
 
       let synced = 0;
+      let updated = 0;
       let failed = 0;
       let skipped = 0;
       let processed = 0;
@@ -450,18 +500,16 @@ export class FileSearchSyncService {
       syncProgressEmitter.emitStart(consultantId, 'knowledge_base', docs.length);
 
       for (const doc of docs) {
-        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
-        if (isAlreadyIndexed) {
-          skipped++;
-          processed++;
-          syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', doc.title, processed, docs.length);
-          continue;
-        }
-
         const result = await this.syncConsultantKnowledgeDocument(doc.id, consultantId);
         processed++;
         if (result.success) {
-          synced++;
+          if (result.updated === false) {
+            skipped++; // Already indexed and up-to-date
+          } else if (result.updated === true) {
+            updated++; // Was outdated and got refreshed
+          } else {
+            synced++; // Newly synced
+          }
           syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', doc.title, processed, docs.length);
         } else {
           failed++;
@@ -470,12 +518,13 @@ export class FileSearchSyncService {
         }
       }
 
-      console.log(`✅ [FileSync] Knowledge Base sync complete - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+      console.log(`✅ [FileSync] Knowledge Base sync complete - Synced: ${synced}, Updated: ${updated}, Skipped: ${skipped}, Failed: ${failed}`);
       syncProgressEmitter.emitComplete(consultantId, 'knowledge_base', docs.length);
 
       return {
         total: docs.length,
         synced,
+        updated,
         failed,
         skipped,
         errors,
@@ -486,6 +535,7 @@ export class FileSearchSyncService {
       return {
         total: 0,
         synced: 0,
+        updated: 0,
         failed: 1,
         skipped: 0,
         errors: [error.message],
@@ -510,19 +560,32 @@ export class FileSearchSyncService {
   /**
    * Sync the Consultant Platform Guide to FileSearchStore
    * This guide documents all pages and features and is automatically synced for all consultants
+   * ENHANCED: Auto-detects and re-syncs outdated guides using MD5 hash comparison
    */
-  static async syncConsultantGuide(consultantId: string): Promise<{ success: boolean; error?: string }> {
+  static async syncConsultantGuide(consultantId: string): Promise<{ success: boolean; error?: string; updated?: boolean }> {
     try {
       const guide = getGuideAsDocument();
       const guideSourceId = `consultant-guide-${consultantId}`;
+      const currentHash = crypto.createHash('md5').update(guide.content).digest('hex');
       
       // Emit start event for SSE progress tracking
       syncProgressEmitter.emitStart(consultantId, 'consultant_guide', 1);
       
-      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultant_guide', guideSourceId);
-      if (isAlreadyIndexed) {
-        console.log(`📌 [FileSync] Consultant guide already indexed for: ${consultantId}`);
-        return { success: true };
+      // Check if document exists and get its metadata
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('consultant_guide', guideSourceId);
+      
+      if (indexInfo.exists) {
+        // Check if outdated by comparing content hash
+        if (indexInfo.contentHash && indexInfo.contentHash === currentHash) {
+          console.log(`📌 [FileSync] Consultant guide already indexed and up-to-date for: ${consultantId}`);
+          return { success: true, updated: false };
+        }
+        
+        // Guide is outdated - delete and re-upload
+        if (indexInfo.documentId) {
+          console.log(`🔄 [FileSync] Consultant guide outdated for ${consultantId} - re-syncing...`);
+          await fileSearchService.deleteDocument(indexInfo.documentId);
+        }
       }
 
       let consultantStore = await db.query.fileSearchStores.findFirst({
@@ -562,8 +625,9 @@ export class FileSearchSyncService {
         userId: consultantId,
       });
 
+      const wasUpdated = indexInfo.exists; // If it existed before, this was an update
       if (uploadResult.success) {
-        console.log(`✅ [FileSync] Consultant guide synced for: ${consultantId}`);
+        console.log(`✅ [FileSync] Consultant guide ${wasUpdated ? 'UPDATED' : 'synced'} for: ${consultantId}`);
         syncProgressEmitter.emitProgress({
           type: 'complete',
           category: 'consultant_guide',
@@ -574,7 +638,7 @@ export class FileSearchSyncService {
       }
 
       return uploadResult.success 
-        ? { success: true }
+        ? { success: true, updated: wasUpdated }
         : { success: false, error: uploadResult.error };
     } catch (error: any) {
       console.error('[FileSync] Error syncing consultant guide:', error);
@@ -707,11 +771,12 @@ export class FileSearchSyncService {
 
   /**
    * Sync a single exercise to FileSearchStore
+   * ENHANCED: Auto-detects and re-syncs outdated exercises by comparing updatedAt timestamps
    */
   static async syncExercise(
     exerciseId: string,
     consultantId: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; updated?: boolean }> {
     try {
       const exercise = await db.query.exercises.findFirst({
         where: eq(exercises.id, exerciseId),
@@ -721,10 +786,24 @@ export class FileSearchSyncService {
         return { success: false, error: 'Exercise not found' };
       }
 
-      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', exerciseId);
-      if (isAlreadyIndexed) {
-        console.log(`📌 [FileSync] Exercise already indexed: ${exerciseId}`);
-        return { success: true };
+      // Check if document exists and get its metadata for staleness detection
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('exercise', exerciseId);
+      
+      if (indexInfo.exists) {
+        // Check if outdated by comparing source updatedAt vs indexedAt
+        const sourceUpdatedAt = exercise.updatedAt;
+        const indexedAt = indexInfo.indexedAt;
+        
+        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
+          console.log(`📌 [FileSync] Exercise already indexed and up-to-date: ${exerciseId}`);
+          return { success: true, updated: false };
+        }
+        
+        // Exercise is outdated - delete and re-upload
+        if (indexInfo.documentId) {
+          console.log(`🔄 [FileSync] Exercise "${exercise.title}" outdated - re-syncing...`);
+          await fileSearchService.deleteDocument(indexInfo.documentId);
+        }
       }
 
       // Get or create consultant store
@@ -782,12 +861,13 @@ export class FileSearchSyncService {
         userId: consultantId,
       });
 
+      const wasUpdated = indexInfo.exists; // If it existed before, this was an update
       if (uploadResult.success) {
-        console.log(`✅ [FileSync] Exercise synced: ${exercise.title}`);
+        console.log(`✅ [FileSync] Exercise ${wasUpdated ? 'UPDATED' : 'synced'}: ${exercise.title}`);
       }
 
       return uploadResult.success 
-        ? { success: true }
+        ? { success: true, updated: wasUpdated }
         : { success: false, error: uploadResult.error };
     } catch (error: any) {
       console.error('[FileSync] Error syncing exercise:', error);
@@ -841,10 +921,12 @@ export class FileSearchSyncService {
 
   /**
    * Bulk sync all exercises for a consultant
+   * ENHANCED: Relies on individual sync function for staleness detection
    */
   static async syncAllExercises(consultantId: string): Promise<{
     total: number;
     synced: number;
+    updated: number;
     failed: number;
     skipped: number;
     errors: string[];
@@ -855,6 +937,7 @@ export class FileSearchSyncService {
       });
 
       let synced = 0;
+      let updated = 0;
       let failed = 0;
       let skipped = 0;
       let processed = 0;
@@ -869,21 +952,16 @@ export class FileSearchSyncService {
       const PROGRESS_INTERVAL = Math.max(5, Math.floor(allExercises.length / 30)); // Max ~30 progress events
       
       for (const exercise of allExercises) {
-        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', exercise.id);
-        if (isAlreadyIndexed) {
-          skipped++;
-          processed++;
-          // Emit progress only every N items
-          if (processed % PROGRESS_INTERVAL === 0 || processed === allExercises.length) {
-            syncProgressEmitter.emitItemProgress(consultantId, 'exercises', exercise.title, processed, allExercises.length);
-          }
-          continue;
-        }
-
         const result = await this.syncExercise(exercise.id, consultantId);
         processed++;
         if (result.success) {
-          synced++;
+          if (result.updated === false) {
+            skipped++; // Already indexed and up-to-date
+          } else if (result.updated === true) {
+            updated++; // Was outdated and got refreshed
+          } else {
+            synced++; // Newly synced
+          }
           if (processed % PROGRESS_INTERVAL === 0 || processed === allExercises.length) {
             syncProgressEmitter.emitItemProgress(consultantId, 'exercises', exercise.title, processed, allExercises.length);
           }
@@ -894,7 +972,7 @@ export class FileSearchSyncService {
         }
         
         // Small delay to avoid rate limiting
-        if (synced % 10 === 0) {
+        if ((synced + updated) % 10 === 0) {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
@@ -903,6 +981,7 @@ export class FileSearchSyncService {
       console.log(`✅ [FileSync] Exercises sync complete`);
       console.log(`   📊 Total: ${allExercises.length}`);
       console.log(`   ✅ Synced: ${synced}`);
+      console.log(`   🔄 Updated: ${updated}`);
       console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
       console.log(`   ❌ Failed: ${failed}`);
       console.log(`${'═'.repeat(60)}\n`);
@@ -911,6 +990,7 @@ export class FileSearchSyncService {
       return {
         total: allExercises.length,
         synced,
+        updated,
         failed,
         skipped,
         errors,
@@ -921,6 +1001,7 @@ export class FileSearchSyncService {
       return {
         total: 0,
         synced: 0,
+        updated: 0,
         failed: 1,
         skipped: 0,
         errors: [error.message],
@@ -935,12 +1016,13 @@ export class FileSearchSyncService {
   /**
    * Sync a single university lesson to FileSearchStore
    * INCLUDES linked library document content for full-text search
+   * ENHANCED: Auto-detects and re-syncs outdated lessons by comparing updatedAt timestamps
    */
   static async syncUniversityLesson(
     lessonId: string,
     consultantId: string,
     forceUpdate: boolean = false,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; updated?: boolean }> {
     try {
       const lesson = await db.query.universityLessons.findFirst({
         where: eq(universityLessons.id, lessonId),
@@ -977,16 +1059,28 @@ export class FileSearchSyncService {
         }
       }
 
-      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('university_lesson', lessonId);
-      if (isAlreadyIndexed && !forceUpdate) {
-        console.log(`📌 [FileSync] Lesson already indexed: ${lessonId}`);
-        return { success: true };
+      // Check if document exists and get its metadata for staleness detection
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('university_lesson', lessonId);
+      let shouldResync = forceUpdate;
+      
+      if (indexInfo.exists && !forceUpdate) {
+        // Check if outdated by comparing source updatedAt vs indexedAt
+        const sourceUpdatedAt = lesson.updatedAt;
+        const indexedAt = indexInfo.indexedAt;
+        
+        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt > indexedAt) {
+          console.log(`🔄 [FileSync] Lesson "${lesson.title}" outdated - auto-triggering re-sync...`);
+          shouldResync = true;
+        } else if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
+          console.log(`📌 [FileSync] Lesson already indexed and up-to-date: ${lessonId}`);
+          return { success: true, updated: false };
+        }
       }
 
-      // Se forceUpdate, elimina il documento esistente prima di ricreare
-      if (isAlreadyIndexed && forceUpdate) {
-        console.log(`🔄 [FileSync] Force updating lesson: ${lessonId} - deleting old version`);
-        await fileSearchService.deleteDocumentBySource('university_lesson', lessonId);
+      // Delete existing document if re-syncing (force or outdated)
+      if (indexInfo.exists && shouldResync && indexInfo.documentId) {
+        console.log(`🔄 [FileSync] Deleting old lesson version: ${lessonId}`);
+        await fileSearchService.deleteDocument(indexInfo.documentId);
       }
 
       // CRITICAL FIX: Load the linked library document content if exists
@@ -1047,13 +1141,14 @@ export class FileSearchSyncService {
         userId: consultantId,
       });
 
+      const wasUpdated = indexInfo.exists && shouldResync; // Was updated if existed and we re-synced
       if (uploadResult.success) {
         const contentSize = content.length;
-        console.log(`✅ [FileSync] Lesson synced: ${lessonWithHierarchy.title} (${contentSize} chars${linkedDocument ? ', includes library doc' : ''})`);
+        console.log(`✅ [FileSync] Lesson ${wasUpdated ? 'UPDATED' : 'synced'}: ${lessonWithHierarchy.title} (${contentSize} chars${linkedDocument ? ', includes library doc' : ''})`);
       }
 
       return uploadResult.success 
-        ? { success: true }
+        ? { success: true, updated: wasUpdated }
         : { success: false, error: uploadResult.error };
     } catch (error: any) {
       console.error('[FileSync] Error syncing lesson:', error);
@@ -1113,10 +1208,12 @@ export class FileSearchSyncService {
 
   /**
    * Bulk sync all university lessons for a consultant
+   * ENHANCED: Relies on individual sync function for staleness detection
    */
   static async syncAllUniversityLessons(consultantId: string): Promise<{
     total: number;
     synced: number;
+    updated: number;
     failed: number;
     skipped: number;
     errors: string[];
@@ -1129,6 +1226,7 @@ export class FileSearchSyncService {
       const allLessons = await db.query.universityLessons.findMany();
 
       let synced = 0;
+      let updated = 0;
       let failed = 0;
       let skipped = 0;
       let processed = 0;
@@ -1143,22 +1241,16 @@ export class FileSearchSyncService {
       const PROGRESS_INTERVAL = Math.max(10, Math.floor(allLessons.length / 50)); // Max ~50 progress events
       
       for (const lesson of allLessons) {
-        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('university_lesson', lesson.id);
-        if (isAlreadyIndexed) {
-          skipped++;
-          processed++;
-          // Emit progress only every N items to reduce SSE load
-          if (processed % PROGRESS_INTERVAL === 0 || processed === allLessons.length) {
-            syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processed, allLessons.length);
-          }
-          continue;
-        }
-
         const result = await this.syncUniversityLesson(lesson.id, consultantId);
         processed++;
         if (result.success) {
-          synced++;
-          // Emit progress only every N items
+          if (result.updated === false) {
+            skipped++; // Already indexed and up-to-date
+          } else if (result.updated === true) {
+            updated++; // Was outdated and got refreshed
+          } else {
+            synced++; // Newly synced
+          }
           if (processed % PROGRESS_INTERVAL === 0 || processed === allLessons.length) {
             syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processed, allLessons.length);
           }
@@ -1169,7 +1261,7 @@ export class FileSearchSyncService {
         }
         
         // Small delay to avoid rate limiting
-        if (synced % 10 === 0) {
+        if ((synced + updated) % 10 === 0) {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
@@ -1178,6 +1270,7 @@ export class FileSearchSyncService {
       console.log(`✅ [FileSync] University lessons sync complete`);
       console.log(`   📊 Total: ${allLessons.length}`);
       console.log(`   ✅ Synced: ${synced}`);
+      console.log(`   🔄 Updated: ${updated}`);
       console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
       console.log(`   ❌ Failed: ${failed}`);
       console.log(`${'═'.repeat(60)}\n`);
@@ -1186,6 +1279,7 @@ export class FileSearchSyncService {
       return {
         total: allLessons.length,
         synced,
+        updated,
         failed,
         skipped,
         errors,
@@ -1196,6 +1290,7 @@ export class FileSearchSyncService {
       return {
         total: 0,
         synced: 0,
+        updated: 0,
         failed: 1,
         skipped: 0,
         errors: [error.message],
