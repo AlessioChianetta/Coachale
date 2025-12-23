@@ -1,0 +1,457 @@
+📝 Message content:
+────────────────────────────────────────────────────────────
+Capisco perfettamente, avere qualcuno che ti guidi e ti dia la strada giusta fa tutta la differenza, specialmente quando hai un obiettivo così importante per una gara. 💪
+
+Senti, facciamo così: se potessimo aiutarti ad arrivare anche solo alla metà del tuo obiettivo – quindi mettere su 5 kg di massa muscolare solida – ci dedicheresti 30 minuti del tuo tempo in una consulenza gratuita per capire insieme come impostare il lavoro? 😊
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766448688330_5c2xqc
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [BOOKING DECISION] Valutazione pre-requisiti per analisi booking
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 PRE-REQUISITI:
+   ├── bookingEnabled: ✅ SÌ
+   ├── agentHasCalendar: ✅ SÌ (Google Calendar connesso)
+   ├── effectiveUserId: ✅ ASSENTE (è un lead)
+   └── Agent: FRT Agent
+   🎯 DECISIONE: ✅ PROCEDERÀ con analisi booking
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [APPOINTMENT BOOKING] Retrieved 9 proposed slots from database
+   ✅ [ACCUMULATOR] Always proceeding with booking analysis (no pre-check skip)
+📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message
+📊 [EXTRACTION] Retrieved 10 messages for extraction
+📅 [NEW BOOKING] Using extractBookingDataFromConversation() - aligned with public-share-router.ts
+   📚 Analyzing 10 messages for new booking...
+🔍 Finding AI provider for client 7cdfb7ae-d06b-40f6-9840-91f72772a390 (consultant: 7cdfb7ae-d06b-40f6-9840-91f72772a390)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+
+🔍 [BOOKING SERVICE] Extracting data from 10 messages
+   Mode: NEW BOOKING
+   Timezone: Europe/Rome
+   📜 [FULL CONVERSATION] Messaggi passati all'AI per estrazione:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI: Capisco perfettamente, avere qualcuno che ti guidi e ti dia la strada giusta fa tutta la differenza, specialmente quando hai un obiettivo così importante per una gara. 💪
+
+Senti, facciamo così: se potessimo aiutarti ad arrivare anche solo alla metà del tuo obiettivo – quindi mettere su 5 kg di massa muscolare solida – ci dedicheresti 30 minuti del tuo tempo in una consulenza gratuita per capire insieme come impostare il lavoro? 😊
+LEAD: il fatto di non avere un mentore
+AI: Un obiettivo ambizioso, ma con il giusto piano di lavoro e recupero si può fare un gran bel percorso! 💪 10 kg di massa muscolare cambierebbero completamente la tua struttura per la gara.
+
+Oltre alla stanchezza che mi dicevi prima, cosa senti che ti sta bloccando davvero dal raggiungere questi 10 kg in più oggi? Qual è l'ostacolo più grande che trovi nel quotidiano? 😊
+LEAD: almeno 10 kg
+AI: Capisco bene, tra il lavoro fisico e la corsa è normale sentirsi un po' svuotati se non c'è il giusto equilibrio. 💪
+
+Immagina di risolvere questo problema delle energie: che risultato concreto vorresti raggiungere per la tua gara? Ad esempio, quanti kg di massa muscolare vorresti aggiungere esattamente per sentirti pronto? 😊
+LEAD: si mi mancano le enerrgie e cerco una mano
+AI: Lavoro impegnativo quello del falegname, immagino che tu sia sempre in movimento! 💪
+
+Tra il lavoro e la corsa, sicuramente consumi tantissime energie. Qual è la difficoltà più grande che trovi nel cercare di mettere su massa? Senti che ti mancano le energie, non riesci a essere costante con i pesi o magari è difficile gestire l'alimentazione con i tuoi ritmi? 😊
+LEAD: faccio il falegname corro già tanto ma voglio mettere su massa per una gara
+AI: Capisco perfettamente, è un obiettivo super stimolante! 💪 Aumentare il tono muscolare è proprio la nostra specialità.
+
+Per capire meglio come aiutarti, di cosa ti occupi esattamente nella vita? E qual è il problema principale che stai riscontrando oggi nel provare a mettere su massa? 😊
+LEAD: volevo capire come mettere su massa muscolare
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 [ACCUMULATOR] Loading existing extraction state...
+   📦 [ACCUMULATOR] Loaded existing state: date=null, time=null, phone=null, email=null
+   🧠 [AI] Using model: gemini-2.5-flash, thinking: disabled
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T22:54:28.000Z
+12:11:33 AM [express] GET /api/whatsapp/conversations/036159c0-707c-4e10-b20d-fef4b8099256/messages 2…
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T22:54:28.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-23T00:02:54.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-23T00:02:54.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+✅ [WHATSAPP POLLING] Poll cycle complete
+   AI Response length: 849 chars
+   AI Response preview: ```json
+{
+  "isConfirming": false,
+  "date": null,
+  "time": null,
+  "phone": null,
+  "email": null,
+  "name": null,
+  "confidence": "low",
+  "hasAllData": false,
+  "reasoning": {
+    "isConfirming": "L'AI ha proposto una consulenza gratuita (\"ci dedicheresti 30 minuti del tuo tempo in una consulen
+   Parsed extraction result (raw): hasAllData=false, date=null, time=null
+
+🧠 [AI REASONING] Spiegazione decisioni AI:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 CONFIRMING: L'AI ha proposto una consulenza gratuita ("ci dedicheresti 30 minuti del tuo tempo in una consulenza gratuita"), ma il lead non ha ancora confermato l'appuntamento, continuando a esprimere le sue difficoltà ("il fatto di non avere un mentore").
+   📅 DATE:  Nessuna data specifica per un appuntamento è stata menzionata o concordata dal lead o dall'AI.
+   🕐 TIME:  Nessun orario specifico per un appuntamento è stato menzionato o concordato dal lead o dall'AI.
+   📞 PHONE: Il lead non ha fornito alcun numero di telefono durante la conversazione.
+   📧 EMAIL: Il lead non ha fornito alcuna email durante la conversazione.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 [ACCUMULATOR] Merged result: date=null, time=null, hasAllData=false
+   💾 [ACCUMULATOR] Updated state: date=null, time=null
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [STEP 3] Data Extraction Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 Confirmation Status: ❌ NO
+📅 Date:     ❌ MISSING
+🕐 Time:     ❌ MISSING
+📞 Phone:    ❌ MISSING
+📧 Email:    ❌ MISSING
+💯 Confidence: LOW
+✔️ Complete Data: ❌ NO - Missing fields
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 [FIELD VALIDATION] Validazione dettagliata di ogni campo
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 [DATE VALIDATION]
+   ├── Valore: null/undefined
+   ├── Presente: ❌ NO
+   └── MOTIVO MANCANZA: L'AI non ha trovato una data nella conversazione
+
+🕐 [TIME VALIDATION]
+   ├── Valore: null/undefined
+   ├── Presente: ❌ NO
+   └── MOTIVO MANCANZA: L'AI non ha trovato un orario nella conversazione
+
+📞 [PHONE VALIDATION]
+   ├── Valore: null/undefined
+   ├── Presente: ❌ NO
+   └── MOTIVO MANCANZA: L'AI non ha trovato un numero di telefono nella conversazione
+
+📧 [EMAIL VALIDATION]
+   ├── Valore: null/undefined
+   ├── Presente: ❌ NO
+   └── MOTIVO MANCANZA: L'AI non ha trovato un'email nella conversazione
+
+📋 [RIEPILOGO VALIDAZIONE]
+   ├── Campi presenti: 0/4
+   ├── Campi mancanti: date, time, phone, email
+   ├── hasAllData (dal servizio): false
+   └── DECISIONE: ❌ ATTENDI più dati dal lead
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️ [APPOINTMENT BOOKING] Lead is not confirming appointment yet - continue conversation
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 Gemini API Call:          1693ms  (13.7%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:              12348ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+12:11:37 AM [express] GET /api/whatsapp/conversations 200 in 507ms :: {"conversations":[{"id":"036159…
+12:11:39 AM [express] GET /api/whatsapp/conversations/036159c0-707c-4e10-b20d-fef4b8099256/messages 3…
+🧪 [DRY RUN SIMULATOR] Simulated customer message queued for conversation 036159c0-707c-4e10-b20d-fef4b8099256: "ok..."
+🧪 [DRY RUN SIMULATOR] Pending message ID: 9c0c56fd-e3a6-47c2-afc2-62be785f25b5, twilioSid: simulated-9N7BLMTogCVnhtr5Nvmrn
+🤖 [DRY RUN SIMULATOR] Triggering AI processing for conversation 036159c0-707c-4e10-b20d-fef4b8099256
+🔍 [SCHEDULE] scheduleMessageProcessing called for +393519272875_7cdfb7ae-d06b-40f6-9840-91f72772a390
+✅ [SCHEDULE] Timer set for +393519272875_7cdfb7ae-d06b-40f6-9840-91f72772a390, will fire in 4000ms
+12:11:40 AM [express] POST /api/whatsapp/conversations/036159c0-707c-4e10-b20d-fef4b8099256/simulate …
+12:11:41 AM [express] GET /api/whatsapp/conversations/036159c0-707c-4e10-b20d-fef4b8099256/messages 3…
+12:11:41 AM [express] GET /api/whatsapp/conversations 304 in 409ms :: {"conversations":[{"id":"036159…
+12:11:42 AM [express] GET /api/whatsapp/conversations/036159c0-707c-4e10-b20d-fef4b8099256/messages 3…
+⚡ [SCHEDULE] Timer fired for +393519272875_7cdfb7ae-d06b-40f6-9840-91f72772a390, enqueueing...
+📥 [ENQUEUE] Adding to queue: +393519272875 for consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390
+📊 [ENQUEUE] Queue size for consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390: 1
+🚀 [ENQUEUE] Starting queue processing for consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390
+📋 [PENDING] Found 1 pending messages for conversation 036159c0-707c-4e10-b20d-fef4b8099256 (phone: +393519272875)
+⏱️ [TIMING] Polling latency: 4.3s (from webhook to processing)
+🔍 [PENDING] First message twilioSid: simulated-9N7BLMTogCVnhtr5Nvmrn, simulated: true, text: "ok..."
+🔍 [PARTICIPANT TYPE] unknown
+✅ [CONFIG] Using agent from conversation: FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6)
+🎯 [AGENT TYPE] Agent type: reactive_lead, isProactive: false
+✅ AI is ENABLED and within working hours for consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - proceeding with AI response
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 036159c0-707c-4e10-b20d-fef4b8099256
+👤 User Type: LEAD
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message 1fcac50c-4f4b-4b0b-9974-796fa2b387a3: "ok..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "ok"
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+⏭️ [OBJECTION] Objection detection DISABLED (aligned with public share)
+👤 Fetching/creating lead profile...
+✅ Lead profile: difficult (difficulty: 8.5/10)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+💾 [APPOINTMENT CONTEXT] Retrieved 9 saved slots from database
+📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow
+✅ [APPOINTMENT CONTEXT] Final state: 9 slots available for AI prompt
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=false, conversation.proactiveLeadId=null
+ℹ️ [PROACTIVE CHECK] This is a REACTIVE lead (isProactiveLead=false)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: true
+   agentInstructions length: 14957 chars
+   selectedTemplate: receptionist
+✅ [TEMPLATE ENGINE] Using CUSTOM TEMPLATE from database
+   Template preview: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
+━━━━━━...
+✅ [FEATURE BLOCKS] Conditional injection summary:
+   - Knowledge Base: DISABLED (no items)
+   - Booking: ENABLED
+   - Objection Handling: DISABLED (removed Dec 2025)
+   - Disqualification: ENABLED
+   - Upselling: DISABLED (no block yet)
+📤 [SYSTEM PROMPT] Ready (26287 chars): "📅 OGGI È: martedì 23 dicembre 2025  Sei l'assistente di Protocollo 3M. Il cliente è un LEAD CALDO c..."
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 15 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~6,572 tokens (26,287 chars)
+   💬 User Message: ~1 tokens (2 chars)
+   📜 History: ~599 tokens (2,395 chars)
+   🔢 TOTALE INPUT: ~7,172 tokens
+
+ℹ️ [FILE SEARCH] No FileSearchStore available (no agent or consultant store)
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+12:11:47 AM [express] GET /api/whatsapp/conversations 200 in 409ms :: {"conversations":[{"id":"036159…
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 1133ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ response.text is a property - using it...
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+📝 Extracted text length: 108
+📝 Extracted text preview: Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze.
+
+Ti va meglio mattina o pomeriggio? 😊
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "FRT Agent":
+   ├── System Prompt: 6,572 tokens
+   ├── Conversation History: 747 tokens
+   ├── User Message: 1 tokens
+   └── TOTAL INPUT: 7,320 tokens
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~27 tokens (108 chars)
+   🔢 TOTALE (input + output): ~7,199 tokens
+   ⏱️  Tempo di risposta: 1134ms
+   💰 Costo stimato: $0.014398 (input + output)
+
+✅ [STEP 8] Gemini response received: "Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze.
+
+Ti va meglio mattina o pomeri..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: 3fbeece5-cc82-4172-b7a5-eb806394dee3 (timing: 1134ms Gemini, 2731ms total)
+🎛️ [AUDIO DECISION] Mode: always_text, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=false, mode=always_text, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+12:11:47 AM [express] GET /api/whatsapp/conversations/036159c0-707c-4e10-b20d-fef4b8099256/messages 2…
+✅ Using agent from existing conversation: FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: FRT Agent
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393505720813 (Agent: FRT Agent)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+393505720813
+   To: whatsapp:+393519272875
+   Text length: 108 chars
+
+📝 Message content:
+────────────────────────────────────────────────────────────
+Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze.
+
+Ti va meglio mattina o pomeriggio? 😊
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766448707959_hl21k
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [BOOKING DECISION] Valutazione pre-requisiti per analisi booking
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 PRE-REQUISITI:
+   ├── bookingEnabled: ✅ SÌ
+   ├── agentHasCalendar: ✅ SÌ (Google Calendar connesso)
+   ├── effectiveUserId: ✅ ASSENTE (è un lead)
+   └── Agent: FRT Agent
+   🎯 DECISIONE: ✅ PROCEDERÀ con analisi booking
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [APPOINTMENT BOOKING] Retrieved 9 proposed slots from database
+   ✅ [ACCUMULATOR] Always proceeding with booking analysis (no pre-check skip)
+📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message
+📊 [EXTRACTION] Retrieved 10 messages for extraction
+📅 [NEW BOOKING] Using extractBookingDataFromConversation() - aligned with public-share-router.ts
+   📚 Analyzing 10 messages for new booking...
+🔍 Finding AI provider for client 7cdfb7ae-d06b-40f6-9840-91f72772a390 (consultant: 7cdfb7ae-d06b-40f6-9840-91f72772a390)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+
+🔍 [BOOKING SERVICE] Extracting data from 10 messages
+   Mode: NEW BOOKING
+   Timezone: Europe/Rome
+   📜 [FULL CONVERSATION] Messaggi passati all'AI per estrazione:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI: Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze.
+
+Ti va meglio mattina o pomeriggio? 😊
+LEAD: ok
+AI: Capisco perfettamente, avere qualcuno che ti guidi e ti dia la strada giusta fa tutta la differenza, specialmente quando hai un obiettivo così importante per una gara. 💪
+
+Senti, facciamo così: se potessimo aiutarti ad arrivare anche solo alla metà del tuo obiettivo – quindi mettere su 5 kg di massa muscolare solida – ci dedicheresti 30 minuti del tuo tempo in una consulenza gratuita per capire insieme come impostare il lavoro? 😊
+LEAD: il fatto di non avere un mentore
+AI: Un obiettivo ambizioso, ma con il giusto piano di lavoro e recupero si può fare un gran bel percorso! 💪 10 kg di massa muscolare cambierebbero completamente la tua struttura per la gara.
+
+Oltre alla stanchezza che mi dicevi prima, cosa senti che ti sta bloccando davvero dal raggiungere questi 10 kg in più oggi? Qual è l'ostacolo più grande che trovi nel quotidiano? 😊
+LEAD: almeno 10 kg
+AI: Capisco bene, tra il lavoro fisico e la corsa è normale sentirsi un po' svuotati se non c'è il giusto equilibrio. 💪
+
+Immagina di risolvere questo problema delle energie: che risultato concreto vorresti raggiungere per la tua gara? Ad esempio, quanti kg di massa muscolare vorresti aggiungere esattamente per sentirti pronto? 😊
+LEAD: si mi mancano le enerrgie e cerco una mano
+AI: Lavoro impegnativo quello del falegname, immagino che tu sia sempre in movimento! 💪
+
+Tra il lavoro e la corsa, sicuramente consumi tantissime energie. Qual è la difficoltà più grande che trovi nel cercare di mettere su massa? Senti che ti mancano le energie, non riesci a essere costante con i pesi o magari è difficile gestire l'alimentazione con i tuoi ritmi? 😊
+LEAD: faccio il falegname corro già tanto ma voglio mettere su massa per una gara
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 [ACCUMULATOR] Loading existing extraction state...
+   📦 [ACCUMULATOR] Loaded existing state: date=null, time=null, phone=null, email=null
+   🧠 [AI] Using model: gemini-2.5-flash, thinking: disabled
+12:11:52 AM [express] GET /api/whatsapp/conversations 200 in 504ms :: {"conversations":[{"id":"036159…
+12:11:53 AM [express] GET /api/whatsapp/conversations/036159c0-707c-4e10-b20d-fef4b8099256/messages 2…
+12:11:54 AM [express] POST /api/activity/session/heartbeat 200 in 304ms :: {"success":true,"lastActiv…
+12:11:58 AM [express] GET /api/whatsapp/conversations 304 in 508ms :: {"conversations":[{"id":"036159…
+   AI Response length: 1142 chars
+   AI Response preview: ```json
+{
+  "isConfirming": false,
+  "date": null,
+  "time": null,
+  "phone": null,
+  "email": null,
+  "name": null,
+  "confidence": "low",
+  "hasAllData": false,
+  "reasoning": {
+    "isConfirming": "Il lead risponde 'ok' alla domanda generica dell'AI 'Ti va meglio mattina o pomeriggio?', ma la con
+   Parsed extraction result (raw): hasAllData=false, date=null, time=null
+
+🧠 [AI REASONING] Spiegazione decisioni AI:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 CONFIRMING: Il lead risponde 'ok' alla domanda generica dell'AI 'Ti va meglio mattina o pomeriggio?', ma la conversazione non prosegue con la proposta e la conferma di uno slot specifico per un appuntamento. L'AI successivamente devia su domande di qualificazione ('ci dedicheresti 30 minuti del tuo tempo') e il lead continua a descrivere i suoi obiettivi e difficoltà, senza mai confermare una data o un orario. Di conseguenza, nessun appuntamento è stato confermato.
+   📅 DATE:  Nessuna data specifica per un appuntamento è stata menzionata o confermata dal lead o dall'AI nella conversazione.
+   🕐 TIME:  Nessun orario specifico per un appuntamento è stato menzionato o confermato dal lead o dall'AI nella conversazione.
+   📞 PHONE: Il numero di telefono non è stato fornito dal lead in nessun messaggio della conversazione.
+   📧 EMAIL: L'indirizzo email non è stato fornito dal lead in nessun messaggio della conversazione.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 [ACCUMULATOR] Merged result: date=null, time=null, hasAllData=false
+12:11:59 AM [express] GET /api/whatsapp/conversations/036159c0-707c-4e10-b20d-fef4b8099256/messages 3…
+   💾 [ACCUMULATOR] Updated state: date=null, time=null
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [STEP 3] Data Extraction Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 Confirmation Status: ❌ NO
+📅 Date:     ❌ MISSING
+🕐 Time:     ❌ MISSING
+📞 Phone:    ❌ MISSING
+📧 Email:    ❌ MISSING
+💯 Confidence: LOW
+✔️ Complete Data: ❌ NO - Missing fields
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 [FIELD VALIDATION] Validazione dettagliata di ogni campo
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 [DATE VALIDATION]
+   ├── Valore: null/undefined
+   ├── Presente: ❌ NO
+   └── MOTIVO MANCANZA: L'AI non ha trovato una data nella conversazione
+
+🕐 [TIME VALIDATION]
+   ├── Valore: null/undefined
+   ├── Presente: ❌ NO
+   └── MOTIVO MANCANZA: L'AI non ha trovato un orario nella conversazione
+
+📞 [PHONE VALIDATION]
+   ├── Valore: null/undefined
+   ├── Presente: ❌ NO
+   └── MOTIVO MANCANZA: L'AI non ha trovato un numero di telefono nella conversazione
+
+📧 [EMAIL VALIDATION]
+   ├── Valore: null/undefined
+   ├── Presente: ❌ NO
+   └── MOTIVO MANCANZA: L'AI non ha trovato un'email nella conversazione
+
+📋 [RIEPILOGO VALIDAZIONE]
+   ├── Campi presenti: 0/4
+   ├── Campi mancanti: date, time, phone, email
+   ├── hasAllData (dal servizio): false
+   └── DECISIONE: ❌ ATTENDI più dati dal lead
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️ [APPOINTMENT BOOKING] Lead is not confirming appointment yet - continue conversation
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

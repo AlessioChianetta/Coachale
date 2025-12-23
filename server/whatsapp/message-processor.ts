@@ -2182,7 +2182,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
             console.log('📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message');
           }
           try {
-            // Get last 10 messages to have full context (not just current batch)
+            // Get last 20 messages to have full context (not just current batch)
             // CRITICAL: Filter by lastResetAt to prevent AI from seeing pre-reset data
             const recentMessagesConditions = [eq(whatsappMessages.conversationId, conversation.id)];
 
@@ -2196,12 +2196,14 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
               .from(whatsappMessages)
               .where(and(...recentMessagesConditions))
               .orderBy(desc(whatsappMessages.createdAt))
-              .limit(10);
+              .limit(20);
 
             console.log(`📊 [EXTRACTION] Retrieved ${recentMessages.length} messages for extraction${conversation.lastResetAt ? ' (after reset)' : ''}`);
 
             // Build conversation context for extraction
+            // IMPORTANTE: Usa .slice().reverse() per NON mutare l'array originale
             const conversationContext = recentMessages
+              .slice()
               .reverse()
               .map(m => `${m.sender === 'client' ? 'LEAD' : 'AI'}: ${m.messageText}`)
               .join('\n');
@@ -2812,7 +2814,9 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               console.log('📅 [NEW BOOKING] Using extractBookingDataFromConversation() - aligned with public-share-router.ts');
               
               // Converti messaggi in formato ConversationMessage[] (come public-share-router.ts)
+              // IMPORTANTE: Usa .slice().reverse() per NON mutare l'array originale
               const conversationMessages: ConversationMessage[] = recentMessages
+                .slice()
                 .reverse()
                 .map(m => ({
                   sender: m.sender === 'client' ? 'client' as const : 'ai' as const,
