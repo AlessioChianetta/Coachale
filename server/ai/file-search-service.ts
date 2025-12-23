@@ -579,6 +579,13 @@ export class FileSearchService {
     try {
       const client = await this.ensureClientAsync(params.userId);
       
+      // Debug: Log client properties
+      console.log(`🔍 [FileSearch] Client type: ${typeof client}, has fileSearchStores: ${!!client?.fileSearchStores}`);
+      if (!client?.fileSearchStores) {
+        console.error(`❌ [FileSearch] Client missing fileSearchStores. Client keys: ${Object.keys(client || {}).join(', ')}`);
+        return { success: false, error: 'GoogleGenAI client does not have fileSearchStores property' };
+      }
+      
       const store = await db.query.fileSearchStores.findFirst({
         where: eq(fileSearchStores.id, params.storeId),
       });
