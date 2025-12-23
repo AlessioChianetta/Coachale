@@ -3103,38 +3103,96 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         {openAuditCategories['consultantGuide'] ? <ChevronDown className="h-4 w-4 text-indigo-600" /> : <ChevronRight className="h-4 w-4 text-indigo-600" />}
                         <BookOpen className="h-4 w-4 text-indigo-600" />
                         <span className="font-medium text-indigo-900">Guida Piattaforma</span>
-                        <Badge className={`ml-auto ${(auditData?.consultant?.consultantGuide?.indexed || 0) < (auditData?.consultant?.consultantGuide?.total || 1) ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
-                          {auditData?.consultant?.consultantGuide?.indexed || 0}/{auditData?.consultant?.consultantGuide?.total || 1}
-                        </Badge>
+                        <div className="ml-auto flex items-center gap-2">
+                          {(auditData?.consultant?.consultantGuide?.missing?.length || 0) > 0 && (
+                            <Badge className="bg-red-200 text-red-800">
+                              {auditData?.consultant?.consultantGuide?.missing?.length || 0} mancanti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.consultantGuide?.outdated?.length || 0) > 0 && (
+                            <Badge className="bg-amber-200 text-amber-800">
+                              {auditData?.consultant?.consultantGuide?.outdated?.length || 0} obsoleti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.consultantGuide?.missing?.length || 0) === 0 && (auditData?.consultant?.consultantGuide?.outdated?.length || 0) === 0 && (
+                            <Badge className="bg-emerald-200 text-emerald-800">
+                              Sincronizzato
+                            </Badge>
+                          )}
+                        </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2 space-y-1">
-                        {(auditData?.consultant?.consultantGuide?.indexed || 0) >= (auditData?.consultant?.consultantGuide?.total || 1) ? (
+                        {(auditData?.consultant?.consultantGuide?.missing?.length || 0) === 0 && (auditData?.consultant?.consultantGuide?.outdated?.length || 0) === 0 ? (
                           <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                            Guida piattaforma sincronizzata
+                            Guida piattaforma sincronizzata e aggiornata
                           </p>
                         ) : (
-                          <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                            <div className="flex items-center gap-2">
-                              <BookOpen className="h-4 w-4 text-indigo-400" />
-                              <span className="text-sm">Guida Completa Piattaforma</span>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => syncSingleMutation.mutate({ type: 'consultant_guide', id: 'guide' })}
-                              disabled={syncSingleMutation.isPending}
-                            >
-                              {syncSingleMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <>
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Sync
-                                </>
-                              )}
-                            </Button>
-                          </div>
+                          <>
+                            {(auditData?.consultant?.consultantGuide?.missing?.length || 0) > 0 && (
+                              <div className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
+                                <div className="flex items-center gap-2">
+                                  <BookOpen className="h-4 w-4 text-red-400" />
+                                  <span className="text-sm">Guida Completa Piattaforma</span>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="border-red-300 text-red-700"
+                                  onClick={() => syncSingleMutation.mutate({ type: 'consultant_guide', id: 'guide' })}
+                                  disabled={syncSingleMutation.isPending}
+                                >
+                                  {syncSingleMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Sync
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            )}
+                            {(auditData?.consultant?.consultantGuide?.outdated?.length || 0) > 0 && (
+                              <div className="mt-2">
+                                <h5 className="text-sm font-medium text-amber-700 mb-2 flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  Guida da aggiornare
+                                </h5>
+                                {auditData?.consultant?.consultantGuide?.outdated?.map(doc => (
+                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-amber-50 rounded border border-amber-200">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <BookOpen className="h-4 w-4 text-amber-500" />
+                                        <span className="text-sm font-medium">{doc.title}</span>
+                                      </div>
+                                      {doc.indexedAt && (
+                                        <p className="text-xs text-amber-600 mt-1">
+                                          Ultima sincronizzazione: {new Date(doc.indexedAt).toLocaleDateString('it-IT')}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                                      onClick={() => syncSingleMutation.mutate({ type: 'consultant_guide', id: 'guide' })}
+                                      disabled={syncSingleMutation.isPending}
+                                    >
+                                      {syncSingleMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <RefreshCw className="h-3 w-3 mr-1" />
+                                          Aggiorna
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                       </CollapsibleContent>
                     </Collapsible>
