@@ -787,13 +787,15 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       storeId: consultantStoreRecord?.id || '',
       storeName: consultantStoreRecord?.displayName || 'Store Globale Consulente',
       documents: {
+        consultantGuide: consultantDocs.filter(d => d.sourceType === 'consultant_guide'),
         library: consultantDocs.filter(d => d.sourceType === 'library'),
         knowledgeBase: consultantDocs.filter(d => d.sourceType === 'knowledge_base'),
         exercises: consultantDocs.filter(d => d.sourceType === 'exercise'),
         university: consultantDocs.filter(d => d.sourceType === 'university' || d.sourceType === 'university_lesson'),
-        other: consultantDocs.filter(d => !['library', 'knowledge_base', 'exercise', 'university', 'university_lesson'].includes(d.sourceType)),
+        other: consultantDocs.filter(d => !['consultant_guide', 'library', 'knowledge_base', 'exercise', 'university', 'university_lesson'].includes(d.sourceType)),
       },
       totals: {
+        consultantGuide: consultantDocs.filter(d => d.sourceType === 'consultant_guide').length,
         library: consultantDocs.filter(d => d.sourceType === 'library').length,
         knowledgeBase: consultantDocs.filter(d => d.sourceType === 'knowledge_base').length,
         exercises: consultantDocs.filter(d => d.sourceType === 'exercise').length,
