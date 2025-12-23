@@ -490,7 +490,8 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
 
   useEffect(() => {
     if (!hasAutoSynced && agents.length > 0 && templates.length > 0) {
-      const agentWithTwilio = agents.find((a: any) => a.twilioAccountSid && a.twilioAuthToken);
+      // Check only for twilioAccountSid - twilioAuthToken is not returned by the API for security
+      const agentWithTwilio = agents.find((a: any) => a.twilioAccountSid);
       if (agentWithTwilio) {
         syncTwilioMutation.mutate(agentWithTwilio.id);
         setHasAutoSynced(true);
@@ -503,10 +504,11 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
       hasAutoFetchedTwilio,
       agentsFetched,
       agentsCount: agents.length,
-      agents: agents.map((a: any) => ({ id: a.id, name: a.agentName, hasTwilio: !!(a.twilioAccountSid && a.twilioAuthToken) }))
+      agents: agents.map((a: any) => ({ id: a.id, name: a.agentName, hasTwilioSid: !!a.twilioAccountSid }))
     });
     if (!hasAutoFetchedTwilio && agentsFetched && agents.length > 0) {
-      const agentWithTwilio = agents.find((a: any) => a.twilioAccountSid && a.twilioAuthToken);
+      // Check only for twilioAccountSid - twilioAuthToken is not returned by the API for security
+      const agentWithTwilio = agents.find((a: any) => a.twilioAccountSid);
       console.log("[TWILIO AUTO-FETCH] Found agent with Twilio:", agentWithTwilio?.agentName || "NONE");
       if (agentWithTwilio) {
         console.log("[TWILIO AUTO-FETCH] Starting auto-fetch for agent:", agentWithTwilio.agentName);
