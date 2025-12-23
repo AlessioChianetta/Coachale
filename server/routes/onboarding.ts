@@ -18,6 +18,7 @@ import {
   exercises,
   emailDrafts,
   whatsappCustomTemplates,
+  whatsappTemplateVersions,
   superadminVertexConfig,
   consultantVertexAccess,
   marketingCampaigns,
@@ -150,14 +151,19 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     const customTemplatesCount = Number(customTemplatesResult[0]?.count || 0);
     const hasCustomTemplate = customTemplatesCount > 0;
     
-    // Count approved WhatsApp templates
-    const approvedTemplatesResult = await db.select({ count: count() })
+    // Count approved WhatsApp templates (check via template versions)
+    const approvedTemplatesResult = await db
+      .selectDistinct({ templateId: whatsappCustomTemplates.id })
       .from(whatsappCustomTemplates)
+      .innerJoin(
+        whatsappTemplateVersions,
+        eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id)
+      )
       .where(and(
         eq(whatsappCustomTemplates.consultantId, consultantId),
-        eq(whatsappCustomTemplates.twilioStatus, 'approved')
+        eq(whatsappTemplateVersions.twilioStatus, 'approved')
       ));
-    const approvedTemplatesCount = Number(approvedTemplatesResult[0]?.count || 0);
+    const approvedTemplatesCount = approvedTemplatesResult.length;
     const hasApprovedTemplate = approvedTemplatesCount > 0;
     
     // Count marketing campaigns
