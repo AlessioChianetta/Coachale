@@ -5,6 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChatPanel } from "./ChatPanel";
 import { useLocation } from "wouter";
 
+declare global {
+  interface Window {
+    __alessiaPendingOpen?: boolean;
+    __alessiaReady?: boolean;
+  }
+}
+
 interface ClientFloatingAssistantProps {
   forceOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -33,11 +40,19 @@ export function ClientFloatingAssistant({ forceOpen, onOpenChange }: ClientFloat
   }, []);
 
   useEffect(() => {
+    window.__alessiaReady = true;
+    
+    if (window.__alessiaPendingOpen) {
+      setIsOpen(true);
+      window.__alessiaPendingOpen = false;
+    }
+    
     const handleOpenAlessia = (event: CustomEvent<{ autoMessage?: string }>) => {
       setIsOpen(true);
     };
     window.addEventListener('alessia:open', handleOpenAlessia as EventListener);
     return () => {
+      window.__alessiaReady = false;
       window.removeEventListener('alessia:open', handleOpenAlessia as EventListener);
     };
   }, []);
@@ -154,5 +169,9 @@ export function ClientFloatingAssistant({ forceOpen, onOpenChange }: ClientFloat
 }
 
 export function triggerOpenAlessia() {
-  window.dispatchEvent(new CustomEvent('alessia:open', { detail: {} }));
+  if (window.__alessiaReady) {
+    window.dispatchEvent(new CustomEvent('alessia:open', { detail: {} }));
+  } else {
+    window.__alessiaPendingOpen = true;
+  }
 }
