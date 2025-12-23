@@ -263,6 +263,7 @@ RISPONDI SOLO con un oggetto JSON nel seguente formato:
   "confidence": "high/medium/low",
   "hasAllData": true/false (true solo se hai data, ora, telefono ED email),
   "reasoning": {
+    "isConfirming": "Perché il lead sta/non sta confermando un appuntamento - cita il messaggio esatto",
     "date": "Perché hai estratto/non estratto la data - cita il messaggio esatto",
     "time": "Perché hai estratto/non estratto l'orario - cita il messaggio esatto",
     "phone": "Perché hai estratto/non estratto il telefono - cita il messaggio esatto",
@@ -723,7 +724,7 @@ export async function extractBookingDataFromConversation(
         return result;
       }
     } else {
-      const rawResult = parseJsonResponse<BookingExtractionResult & { reasoning?: { date?: string; time?: string; phone?: string; email?: string } }>(responseText);
+      const rawResult = parseJsonResponse<BookingExtractionResult & { reasoning?: { isConfirming?: string; date?: string; time?: string; phone?: string; email?: string } }>(responseText);
       if (rawResult) {
         console.log(`   Parsed extraction result (raw): hasAllData=${rawResult.hasAllData}, date=${rawResult.date}, time=${rawResult.time}`);
         
@@ -731,6 +732,7 @@ export async function extractBookingDataFromConversation(
         if (rawResult.reasoning) {
           console.log(`\n🧠 [AI REASONING] Spiegazione decisioni AI:`);
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`   🎯 CONFIRMING: ${rawResult.reasoning.isConfirming || 'Nessuna spiegazione'}`);
           console.log(`   📅 DATE:  ${rawResult.reasoning.date || 'Nessuna spiegazione'}`);
           console.log(`   🕐 TIME:  ${rawResult.reasoning.time || 'Nessuna spiegazione'}`);
           console.log(`   📞 PHONE: ${rawResult.reasoning.phone || 'Nessuna spiegazione'}`);
