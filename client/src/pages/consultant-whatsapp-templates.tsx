@@ -384,24 +384,49 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
   const templatesByCategory = useMemo(() => {
     const categories: Record<string, CustomTemplate[]> = {};
     
-    otherTemplates.forEach(template => {
-      const category = template.useCase || template.templateType || "Generale";
-      // Normalize category names for grouping
-      const normalizedCategory = category.toLowerCase();
+    // Helper function to detect category from text (useCase, templateType, or templateName)
+    const detectCategory = (text: string): string => {
+      const normalized = text.toLowerCase();
       
+      if (normalized.includes("setter") || normalized.includes("proattivo") || normalized.includes("proactive")) {
+        return "Setter";
+      }
+      if (normalized.includes("receptionist") || normalized.includes("customer") || normalized.includes("servizio") || normalized.includes("assistente")) {
+        return "Customer Service";
+      }
+      if (normalized.includes("follow") || normalized.includes("riattiv") || normalized.includes("check") || normalized.includes("reminder")) {
+        return "Follow-up";
+      }
+      if (normalized.includes("apertura") || normalized.includes("primo") || normalized.includes("benvenuto") || normalized.includes("iscritto") || normalized.includes("welcome")) {
+        return "Primo Contatto";
+      }
+      if (normalized.includes("conferma") || normalized.includes("appuntamento") || normalized.includes("booking") || normalized.includes("calendario")) {
+        return "Appuntamenti";
+      }
+      
+      return "";
+    };
+    
+    otherTemplates.forEach(template => {
+      // Try to detect category from multiple sources
       let groupKey = "Generale";
-      if (normalizedCategory.includes("setter") || normalizedCategory.includes("proattivo")) {
-        groupKey = "Setter";
-      } else if (normalizedCategory.includes("receptionist") || normalizedCategory.includes("customer") || normalizedCategory.includes("servizio")) {
-        groupKey = "Customer Service";
-      } else if (normalizedCategory.includes("follow") || normalizedCategory.includes("riattiv")) {
-        groupKey = "Follow-up";
-      } else if (normalizedCategory.includes("apertura") || normalizedCategory.includes("primo") || normalizedCategory.includes("benvenuto")) {
-        groupKey = "Primo Contatto";
-      } else if (normalizedCategory.includes("conferma") || normalizedCategory.includes("appuntamento") || normalizedCategory.includes("booking")) {
-        groupKey = "Appuntamenti";
-      } else if (category !== "Generale") {
-        groupKey = category; // Use original category if not matching known patterns
+      
+      // First check useCase
+      if (template.useCase) {
+        const fromUseCase = detectCategory(template.useCase);
+        if (fromUseCase) groupKey = fromUseCase;
+      }
+      
+      // Then check templateType if still Generale
+      if (groupKey === "Generale" && template.templateType) {
+        const fromType = detectCategory(template.templateType);
+        if (fromType) groupKey = fromType;
+      }
+      
+      // Finally check templateName if still Generale
+      if (groupKey === "Generale" && template.templateName) {
+        const fromName = detectCategory(template.templateName);
+        if (fromName) groupKey = fromName;
       }
       
       if (!categories[groupKey]) {
