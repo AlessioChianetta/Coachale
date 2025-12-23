@@ -449,8 +449,39 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   }, [templates, filterMode, selectedCategory, selectedAgentType, searchQuery, sortBy]);
 
   const groupedTemplates = useMemo(() => {
-    const localDrafts = filteredAndSortedTemplates.filter(t => !t.activeVersion?.twilioContentSid);
-    const onTwilio = filteredAndSortedTemplates.filter(t => !!t.activeVersion?.twilioContentSid);
+    // Normalize template name for matching: lowercase, remove spaces/underscores/dashes, strip explicit version suffixes
+    const normalizeName = (name: string | null | undefined): string => {
+      if (!name) return '';
+      return name
+        .toLowerCase()
+        .replace(/[_\s-]+/g, '')       // Remove spaces, underscores, dashes
+        .replace(/v\d+$/i, '');        // Remove only version suffix at end like v1, v2
+    };
+
+    // De-duplicate templates by twilioContentSid or normalized name
+    const seenSids = new Set<string>();
+    const seenNormalizedNames = new Set<string>();
+    
+    const deduplicatedTemplates = filteredAndSortedTemplates.filter(t => {
+      const sid = t.activeVersion?.twilioContentSid;
+      const normalizedName = normalizeName(t.templateName);
+      
+      // If has SID, check SID uniqueness
+      if (sid) {
+        if (seenSids.has(sid)) return false;
+        seenSids.add(sid);
+        seenNormalizedNames.add(normalizedName); // Also track name for cross-matching
+        return true;
+      }
+      
+      // For templates without SID, check normalized name wasn't already seen (from a SID-based template)
+      if (normalizedName && seenNormalizedNames.has(normalizedName)) return false;
+      seenNormalizedNames.add(normalizedName);
+      return true;
+    });
+
+    const localDrafts = deduplicatedTemplates.filter(t => !t.activeVersion?.twilioContentSid);
+    const onTwilio = deduplicatedTemplates.filter(t => !!t.activeVersion?.twilioContentSid);
     const approved = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'approved');
     const pending = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'pending_approval');
     const rejected = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'rejected');
