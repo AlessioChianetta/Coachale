@@ -1756,9 +1756,35 @@ router.post(
         twilioTemplates.map(async (t) => {
           let approvalStatus = "unknown";
           try {
+            // PATH 1: Try approvalRequests.whatsapp.status (most common)
             const approvalRequests = t.approvalRequests as any;
             if (approvalRequests?.whatsapp?.status) {
               approvalStatus = approvalRequests.whatsapp.status;
+            }
+            // PATH 2: Try types['twilio/whatsapp'] structure
+            if (approvalStatus === "unknown" && t.types) {
+              const types = t.types as any;
+              if (types['twilio/whatsapp']?.approval?.status) {
+                approvalStatus = types['twilio/whatsapp'].approval.status;
+              } else if (types['twilio/whatsapp']?.status) {
+                approvalStatus = types['twilio/whatsapp'].status;
+              }
+            }
+            // PATH 3: If still unknown, fetch individual approval status
+            if (approvalStatus === "unknown") {
+              try {
+                const approvalFetch = await twilioClient.content.v1
+                  .contents(t.sid)
+                  .approvalFetch()
+                  .fetch();
+                const approvalData = approvalFetch as any;
+                if (approvalData.whatsapp?.status) {
+                  approvalStatus = approvalData.whatsapp.status;
+                  console.log(`✅ [APPROVAL FETCH] Template ${t.friendlyName} (${t.sid}): ${approvalStatus}`);
+                }
+              } catch (approvalError: any) {
+                // Silently continue - template may not have been submitted for approval
+              }
             }
           } catch (e) { }
 
