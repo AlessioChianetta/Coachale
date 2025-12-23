@@ -582,7 +582,8 @@ router.post(
                             startTime: modificationResult.newTime,
                             duration: duration,
                             timezone: timezone
-                          }
+                          },
+                          agentConfig.id  // Use agent's calendar
                         );
                         
                         if (success) {
@@ -680,7 +681,8 @@ Ci vediamo alla nuova data! 🚀`;
                       try {
                         const success = await deleteGoogleCalendarEvent(
                           agentConfig.consultantId,
-                          existingBooking.googleEventId
+                          existingBooking.googleEventId,
+                          agentConfig.id  // Use agent's calendar
                         );
                         
                         if (success) {
@@ -773,7 +775,8 @@ Se vuoi riprogrammare in futuro, scrivimi! 😊`;
                       const result = await addAttendeesToGoogleCalendarEvent(
                         agentConfig.consultantId,
                         existingBooking.googleEventId,
-                        modificationResult.attendees
+                        modificationResult.attendees,
+                        agentConfig.id  // Use agent's calendar
                       );
                       
                       console.log(`   ✅ [ADD_ATTENDEES] Google Calendar updated - ${result.added} added, ${result.skipped} already invited`);

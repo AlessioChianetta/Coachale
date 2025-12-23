@@ -2521,7 +2521,8 @@ LEAD: grazie per l'appuntamento, a presto!
                           startTime: extracted.newTime,
                           duration: duration,
                           timezone: timezone
-                        }
+                        },
+                        conversation.agentConfigId || undefined  // Use agent's calendar
                       );
 
                       if (success) {
@@ -2620,7 +2621,8 @@ Ci vediamo alla nuova data! 🚀`;
                     try {
                       const success = await deleteGoogleCalendarEvent(
                         conversation.consultantId,
-                        existingBookingForModification.googleEventId
+                        existingBookingForModification.googleEventId,
+                        conversation.agentConfigId || undefined  // Use agent's calendar
                       );
 
                       if (success) {
@@ -2710,7 +2712,8 @@ Se vuoi riprogrammare in futuro, scrivimi! 😊`;
                       const result = await addAttendeesToGoogleCalendarEvent(
                         conversation.consultantId,
                         existingBookingForModification.googleEventId,
-                        extracted.attendees
+                        extracted.attendees,
+                        conversation.agentConfigId || undefined  // Use agent's calendar
                       );
 
                       console.log(`✅ [ADD ATTENDEES] Google Calendar updated - ${result.added} added, ${result.skipped} already invited`);
@@ -2763,8 +2766,8 @@ Nessuna modifica necessaria! ✅`;
 
                     } catch (gcalError: any) {
                       console.error('⚠️ [ADD ATTENDEES] Failed to add attendees to Google Calendar');
-                      console.error(`   Event ID: ${googleEvent.googleCalendarEventId}`);
-                      console.error(`   Attendee email: ${extracted.email}`);
+                      console.error(`   Event ID: ${existingBookingForModification.googleEventId}`);
+                      console.error(`   Attendees: ${extracted.attendees?.join(', ') || 'none'}`);
                       console.error(`   Error type: ${gcalError?.name || 'Unknown'}`);
                       console.error(`   Error message: ${gcalError?.message || gcalError}`);
                       if (gcalError?.stack) {
