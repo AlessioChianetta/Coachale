@@ -74,9 +74,9 @@ export function PhoneCallLayout({
   return (
     <>
       <style>{pulseKeyframes}</style>
-      <div className={`${isEmbedded ? 'absolute inset-0' : 'fixed inset-0'} bg-gradient-to-b from-gray-900 via-gray-800 to-black flex flex-col`}>
+      <div className={`${isEmbedded ? 'absolute inset-0' : 'fixed inset-0'} bg-gradient-to-b from-gray-900 via-gray-800 to-black flex flex-col ${isEmbedded ? 'overflow-hidden' : ''}`}>
       {/* Header - Stato Chiamata */}
-      <div className="pt-8 pb-6 px-6 text-center">
+      <div className={`${isEmbedded ? 'pt-3 pb-2 px-4' : 'pt-8 pb-6 px-6'} text-center`}>
         {/* Badge Test Mode */}
         {isTestMode && (
           <motion.div
@@ -119,9 +119,9 @@ export function PhoneCallLayout({
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-semibold text-white mb-1"
+          className={`${isEmbedded ? 'text-lg' : 'text-3xl'} font-semibold text-white mb-1`}
         >
-          Assistente AI
+          {isEmbedded ? 'Alessia' : 'Assistente AI'}
         </motion.h1>
 
         {/* Sottotitolo Stato */}
@@ -146,14 +146,14 @@ export function PhoneCallLayout({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="mt-4 text-5xl font-light text-white tabular-nums"
+          className={`${isEmbedded ? 'mt-1 text-2xl' : 'mt-4 text-5xl'} font-light text-white tabular-nums`}
         >
           {formatDuration(conversationDuration)}
         </motion.div>
       </div>
 
       {/* Avatar / Visualizzazione Vocale - Centro Schermo */}
-      <div className="flex-1 flex items-center justify-center px-6">
+      <div className={`flex-1 flex items-center justify-center ${isEmbedded ? 'px-3' : 'px-6'}`}>
         <div className="relative">
           
           {/* Glow di sfondo semplificato - solo transizione opacity */}
@@ -172,7 +172,7 @@ export function PhoneCallLayout({
 
           {/* Avatar principale - solo transizioni CSS */}
           <div
-            className={`relative w-40 h-40 rounded-full flex items-center justify-center transition-all duration-300 ${
+            className={`relative ${isEmbedded ? 'w-20 h-20' : 'w-40 h-40'} rounded-full flex items-center justify-center transition-all duration-300 ${
               isLoading 
                 ? 'bg-gradient-to-br from-gray-600 to-gray-700' 
                 : isUserSpeaking 
@@ -195,10 +195,10 @@ export function PhoneCallLayout({
             
             {isLoading ? (
               <div className="animate-spin">
-                <Loader2 className="w-16 h-16 text-white drop-shadow-lg" />
+                <Loader2 className={`${isEmbedded ? 'w-8 h-8' : 'w-16 h-16'} text-white drop-shadow-lg`} />
               </div>
             ) : (
-              <User className="w-20 h-20 text-white drop-shadow-lg" />
+              <User className={`${isEmbedded ? 'w-10 h-10' : 'w-20 h-20'} text-white drop-shadow-lg`} />
             )}
           </div>
 
@@ -234,11 +234,11 @@ export function PhoneCallLayout({
       </div>
 
       {/* Pulsante Espandi Trascrizione - sopra la trascrizione */}
-      <div className="px-6 py-2 shrink-0">
+      <div className={`${isEmbedded ? 'px-3 py-1' : 'px-6 py-2'} shrink-0`}>
         <Button
           variant="ghost"
           onClick={() => setShowTranscript(!showTranscript)}
-          className="w-full text-gray-400 hover:text-white hover:bg-gray-800/50 border border-gray-700/50"
+          className={`w-full text-gray-400 hover:text-white hover:bg-gray-800/50 border border-gray-700/50 ${isEmbedded ? 'text-xs py-1' : ''}`}
         >
           {showTranscript ? (
             <>
@@ -300,23 +300,23 @@ export function PhoneCallLayout({
       </AnimatePresence>
 
       {/* Controlli Chiamata - Bottom */}
-      <div className="pb-10 px-6">
-        <div className="flex items-center justify-center gap-8">
+      <div className={`${isEmbedded ? 'pb-3 px-3' : 'pb-10 px-6'}`}>
+        <div className={`flex items-center justify-center ${isEmbedded ? 'gap-4' : 'gap-8'}`}>
           {/* Mute Button */}
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={onToggleMute}
             disabled={sessionClosing}
-            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+            className={`${isEmbedded ? 'w-10 h-10' : 'w-16 h-16'} rounded-full flex items-center justify-center transition-all ${
               isMuted
                 ? 'bg-red-500 shadow-lg shadow-red-500/50'
                 : 'bg-gray-700 hover:bg-gray-600'
             }`}
           >
             {isMuted ? (
-              <MicOff className="w-7 h-7 text-white" />
+              <MicOff className={`${isEmbedded ? 'w-5 h-5' : 'w-7 h-7'} text-white`} />
             ) : (
-              <Mic className="w-7 h-7 text-white" />
+              <Mic className={`${isEmbedded ? 'w-5 h-5' : 'w-7 h-7'} text-white`} />
             )}
           </motion.button>
 
@@ -331,33 +331,35 @@ export function PhoneCallLayout({
               }
             }}
             disabled={sessionClosing}
-            className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center justify-center shadow-2xl shadow-red-500/50 transition-all disabled:opacity-50"
+            className={`${isEmbedded ? 'w-12 h-12' : 'w-20 h-20'} rounded-full bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center justify-center shadow-2xl shadow-red-500/50 transition-all disabled:opacity-50`}
           >
-            <Phone className="w-9 h-9 text-white transform rotate-135" />
+            <Phone className={`${isEmbedded ? 'w-5 h-5' : 'w-9 h-9'} text-white transform rotate-135`} />
           </motion.button>
 
-          {/* Keypad Button (estetico) */}
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setShowKeypad(!showKeypad)}
-            disabled={sessionClosing}
-            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-              showKeypad
-                ? 'bg-blue-600 shadow-lg shadow-blue-600/50'
-                : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-          >
-            <Grid3x3 className="w-7 h-7 text-white" />
-          </motion.button>
+          {/* Keypad Button (estetico) - Nascosto in embedded */}
+          {!isEmbedded && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowKeypad(!showKeypad)}
+              disabled={sessionClosing}
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                showKeypad
+                  ? 'bg-blue-600 shadow-lg shadow-blue-600/50'
+                  : 'bg-gray-700 hover:bg-gray-600'
+              }`}
+            >
+              <Grid3x3 className="w-7 h-7 text-white" />
+            </motion.button>
+          )}
         </div>
 
         {/* Label sotto i pulsanti */}
-        <div className="flex items-center justify-center gap-8 mt-3">
-          <span className="w-16 text-center text-xs text-gray-400">
+        <div className={`flex items-center justify-center ${isEmbedded ? 'gap-4 mt-1' : 'gap-8 mt-3'}`}>
+          <span className={`${isEmbedded ? 'w-10 text-[10px]' : 'w-16 text-xs'} text-center text-gray-400`}>
             {isMuted ? 'Riattiva' : 'Muto'}
           </span>
-          <span className="w-20 text-center text-xs text-gray-400">Chiudi</span>
-          <span className="w-16 text-center text-xs text-gray-400">Tastiera</span>
+          <span className={`${isEmbedded ? 'w-12 text-[10px]' : 'w-20 text-xs'} text-center text-gray-400`}>Chiudi</span>
+          {!isEmbedded && <span className="w-16 text-center text-xs text-gray-400">Tastiera</span>}
         </div>
       </div>
 
