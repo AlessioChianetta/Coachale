@@ -1277,18 +1277,18 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
 
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
-                      onClick={handleFetchTwilioTemplates}
+                      onClick={() => importOpeningMessageMutation.mutate()}
                       size="lg"
                       variant="outline"
-                      disabled={fetchTwilioTemplatesMutation.isPending}
-                      className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                      disabled={importOpeningMessageMutation.isPending}
+                      className="bg-amber-500/20 border-amber-300/50 text-white hover:bg-amber-500/30"
                     >
-                      {fetchTwilioTemplatesMutation.isPending ? (
+                      {importOpeningMessageMutation.isPending ? (
                         <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                       ) : (
-                        <ExternalLink className="h-5 w-5 mr-2" />
+                        <Star className="h-5 w-5 mr-2 fill-amber-300" />
                       )}
-                      Vedi Template Twilio
+                      Aggiungi Template di Benvenuto
                     </Button>
                     <Button
                       onClick={handleSyncTwilioStatus}
