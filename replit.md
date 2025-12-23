@@ -49,6 +49,11 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Merge Strategy**: New extracted values only overwrite if non-null, preserving previously captured data
   - **Auto-Cleanup**: State marked completed after successful booking creation, auto-expires after 24h of inactivity
   - **Integration**: Applied to both WhatsApp conversations and public link flows via `extractBookingDataFromConversation()` options
+- **Client Floating AI Assistant "Alessia" (Dec 2025)**: Persistent floating AI assistant for client users across all `/client/*` pages.
+  - **Component**: `ClientFloatingAssistant.tsx` with pink/purple gradient "Parla con Alessia" button
+  - **Dashboard Integration**: Prominent card on client dashboard with button to open chat
+  - **Cross-Component Communication**: Uses custom event system (`alessia:open`) with pending state pattern for lazy-loaded components
+  - **Branding**: Client AI uses "Alessia" (pink/purple) vs consultant "Alessio" (blue/purple)
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.

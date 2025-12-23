@@ -825,9 +825,6 @@ export default function ClientDashboard() {
           </div>
         </div>
       </div>
-
-      {/* AI Assistant - always available */}
-      <AIAssistant pageContext={pageContext} />
     </div>
   );
 }
