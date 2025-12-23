@@ -491,6 +491,121 @@ router.post(
 );
 
 /**
+ * POST /api/whatsapp/custom-templates/import-opening-message
+ * Import the optimized opening message template with pre-mapped variables
+ */
+router.post(
+  "/whatsapp/custom-templates/import-opening-message",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const OPENING_TEMPLATE = {
+        templateName: "Messaggio di Apertura Ottimizzato",
+        description: "Il primo messaggio che ricevono i tuoi lead. Ottimizzato per massimizzare le risposte.",
+        body: "Ciao {nome_lead}! 👋 \nSono {nome_consulente} di {nome_azienda}. Ho visto il tuo interesse per {uncino}.\nCosa ti ha spinto a iscriverti? Mi aiuta a capire come posso esserti utile! 😊",
+        useCase: "opening" as const,
+        targetAgentType: "proactive_setter" as const,
+        templateType: "opening" as const,
+        variables: ["nome_lead", "nome_consulente", "nome_azienda", "uncino"],
+      };
+
+      // Check if already exists
+      const existingTemplate = await db
+        .select({ id: schema.whatsappCustomTemplates.id })
+        .from(schema.whatsappCustomTemplates)
+        .where(
+          and(
+            eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+            eq(schema.whatsappCustomTemplates.templateName, OPENING_TEMPLATE.templateName)
+          )
+        );
+
+      if (existingTemplate.length > 0) {
+        return res.json({
+          success: true,
+          message: "Il Messaggio di Apertura Ottimizzato è già stato importato",
+          created: false,
+        });
+      }
+
+      // Load variable catalog for mapping
+      const catalogVariables = await db
+        .select({
+          id: whatsappVariableCatalog.id,
+          variableKey: whatsappVariableCatalog.variableKey,
+        })
+        .from(whatsappVariableCatalog);
+      
+      const catalogMap = new Map(catalogVariables.map(v => [v.variableKey, v.id]));
+
+      // Create the template
+      const [newTemplate] = await db
+        .insert(schema.whatsappCustomTemplates)
+        .values({
+          consultantId,
+          templateName: OPENING_TEMPLATE.templateName,
+          description: OPENING_TEMPLATE.description,
+          body: OPENING_TEMPLATE.body,
+          useCase: OPENING_TEMPLATE.useCase,
+          targetAgentType: OPENING_TEMPLATE.targetAgentType,
+          templateType: OPENING_TEMPLATE.templateType,
+          isSystemTemplate: true,
+          isActive: true,
+        })
+        .returning();
+
+      console.log(`✅ [OPENING MESSAGE] Created template ID: ${newTemplate.id}`);
+
+      // Create version
+      const [newVersion] = await db
+        .insert(whatsappTemplateVersions)
+        .values({
+          templateId: newTemplate.id,
+          versionNumber: 1,
+          bodyText: OPENING_TEMPLATE.body,
+          isActive: true,
+          createdBy: consultantId,
+        })
+        .returning();
+
+      // Create variable mappings in order
+      for (let i = 0; i < OPENING_TEMPLATE.variables.length; i++) {
+        const variableKey = OPENING_TEMPLATE.variables[i];
+        const catalogId = catalogMap.get(variableKey);
+        if (catalogId) {
+          await db
+            .insert(whatsappTemplateVariables)
+            .values({
+              templateVersionId: newVersion.id,
+              variableCatalogId: catalogId,
+              position: i + 1,
+            });
+          console.log(`  ✅ Mapped variable {${variableKey}} -> position ${i + 1}`);
+        } else {
+          console.log(`  ⚠️ Variable {${variableKey}} not found in catalog`);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: "Messaggio di Apertura Ottimizzato importato con successo!",
+        created: true,
+        templateId: newTemplate.id,
+      });
+    } catch (error: any) {
+      console.error("❌ [OPENING MESSAGE] Error importing:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to import opening message",
+      });
+    }
+  }
+);
+
+/**
  * POST /api/whatsapp/custom-templates/fix-missing-variables
  * Fix templates that are missing variable mappings (for already loaded templates)
  */
