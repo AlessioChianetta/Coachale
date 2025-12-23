@@ -576,12 +576,9 @@ export class FileSearchService {
       tags?: string[];
     };
   }): Promise<FileSearchUploadResult> {
-    const client = await this.getClientForUser(params.userId);
-    if (!client) {
-      return { success: false, error: 'FileSearch client not available. Configure Gemini API keys in /consultant/api-keys-unified' };
-    }
-
     try {
+      const client = await this.ensureClientAsync(params.userId);
+      
       const store = await db.query.fileSearchStores.findFirst({
         where: eq(fileSearchStores.id, params.storeId),
       });
