@@ -1254,6 +1254,22 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-indigo-100 p-2 rounded-lg">
+                            <BookOpen className="h-5 w-5 text-indigo-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-indigo-900">Guida Piattaforma</p>
+                            <p className="text-sm text-indigo-600">{auditData?.consultant?.consultantGuide?.indexed || 0} guida indicizzata</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-indigo-700">~{((auditData?.consultant?.consultantGuide?.indexed || 0) * 12000).toLocaleString()}</p>
+                          <p className="text-xs text-indigo-500">token risparmiati</p>
+                        </div>
+                      </div>
+
                       <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
                         <div className="flex items-center gap-3">
                           <div className="bg-purple-100 p-2 rounded-lg">
