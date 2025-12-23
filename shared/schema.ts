@@ -5704,7 +5704,7 @@ export const fileSearchDocuments = pgTable("file_search_documents", {
   displayName: text("display_name").notNull(),
   mimeType: text("mime_type").notNull(),
   status: text("status").$type<"pending" | "processing" | "indexed" | "failed">().default("pending").notNull(),
-  sourceType: text("source_type").$type<"library" | "knowledge_base" | "exercise" | "consultation" | "university" | "manual" | "financial_data" | "whatsapp_agent_knowledge" | "exercise_response">().notNull(),
+  sourceType: text("source_type").$type<"library" | "knowledge_base" | "exercise" | "consultation" | "university" | "university_lesson" | "manual" | "financial_data" | "whatsapp_agent_knowledge" | "exercise_response" | "consultant_guide">().notNull(),
   sourceId: varchar("source_id"),
   contentHash: text("content_hash"),
   contentSize: integer("content_size"),

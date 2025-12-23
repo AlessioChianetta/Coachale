@@ -3760,17 +3760,17 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <SelectValue placeholder="Seleziona uno store..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {analytics?.hierarchicalData?.consultantStore && (
+                          {analytics?.hierarchicalData?.consultantStore?.storeId && (
                             <SelectItem value={analytics.hierarchicalData.consultantStore.storeId}>
                               {analytics.hierarchicalData.consultantStore.storeName} (Consulente)
                             </SelectItem>
                           )}
-                          {(analytics?.hierarchicalData as any)?.whatsappAgentStores?.map((agent: any) => (
+                          {(analytics?.hierarchicalData as any)?.whatsappAgentStores?.filter((agent: any) => agent.storeId && agent.storeId !== "").map((agent: any) => (
                             <SelectItem key={agent.storeId} value={agent.storeId}>
                               {agent.storeName} (WhatsApp)
                             </SelectItem>
                           ))}
-                          {analytics?.hierarchicalData?.clientStores?.filter(client => client.storeId).map(client => (
+                          {analytics?.hierarchicalData?.clientStores?.filter(client => client.storeId && client.storeId !== "").map(client => (
                             <SelectItem key={client.storeId} value={client.storeId!}>
                               {client.clientName} (Cliente)
                             </SelectItem>

@@ -47,6 +47,7 @@ import { fileSearchService, FileSearchService } from "../ai/file-search-service"
 import { eq, and, desc, isNotNull, inArray } from "drizzle-orm";
 import { scrapeGoogleDoc } from "../web-scraper";
 import { extractTextFromFile } from "./document-processor";
+import { getGuideAsDocument } from "../consultant-guides";
 
 export type SyncEventType = 'start' | 'progress' | 'error' | 'complete' | 'all_complete' | 'orphan_start' | 'orphan_progress' | 'orphan_complete';
 
@@ -57,7 +58,7 @@ export interface SyncProgressEvent {
   total?: number;
   synced?: number;
   totalSynced?: number;
-  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'whatsapp_agents' | 'exercise_responses' | 'client_knowledge' | 'client_consultations' | 'financial_data' | 'orphans' | 'assigned_exercises' | 'assigned_library' | 'assigned_university' | 'goals' | 'tasks' | 'daily_reflections' | 'client_progress' | 'library_progress' | 'email_journey';
+  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'whatsapp_agents' | 'exercise_responses' | 'client_knowledge' | 'client_consultations' | 'financial_data' | 'orphans' | 'assigned_exercises' | 'assigned_library' | 'assigned_university' | 'goals' | 'tasks' | 'daily_reflections' | 'client_progress' | 'library_progress' | 'email_journey' | 'consultant_guide';
   error?: string;
   consultantId: string;
   orphansRemoved?: number;
@@ -502,6 +503,142 @@ export class FileSearchSyncService {
       }
     } catch (error) {
       console.error('[FileSync] Knowledge auto-sync error:', error);
+    }
+  }
+
+  /**
+   * Sync the Consultant Platform Guide to FileSearchStore
+   * This guide documents all pages and features and is automatically synced for all consultants
+   */
+  static async syncConsultantGuide(consultantId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const guide = getGuideAsDocument();
+      const guideSourceId = `consultant-guide-${consultantId}`;
+      
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultant_guide', guideSourceId);
+      if (isAlreadyIndexed) {
+        console.log(`📌 [FileSync] Consultant guide already indexed for: ${consultantId}`);
+        return { success: true };
+      }
+
+      let consultantStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, consultantId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+        ),
+      });
+
+      if (!consultantStore) {
+        const result = await fileSearchService.createStore({
+          displayName: `Knowledge Base Consulente`,
+          ownerId: consultantId,
+          ownerType: 'consultant',
+          description: 'Documenti Knowledge Base sincronizzati per AI semantic search',
+        });
+
+        if (!result.success || !result.storeId) {
+          return { success: false, error: 'Failed to create FileSearchStore' };
+        }
+
+        consultantStore = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, result.storeId),
+        });
+
+        if (!consultantStore) {
+          return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: guide.content,
+        displayName: `[GUIDA] ${guide.title}`,
+        storeId: consultantStore.id,
+        sourceType: 'consultant_guide',
+        sourceId: guideSourceId,
+        userId: consultantId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Consultant guide synced for: ${consultantId}`);
+        syncProgressEmitter.emitProgress({
+          type: 'complete',
+          category: 'consultant_guide',
+          total: 1,
+          current: 1,
+          consultantId,
+        });
+      }
+
+      return uploadResult.success 
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing consultant guide:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Force re-sync the Consultant Platform Guide (delete and re-upload)
+   * Use this when the guide content is updated
+   */
+  static async resyncConsultantGuide(consultantId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const guideSourceId = `consultant-guide-${consultantId}`;
+      
+      // Find and delete existing guide document
+      const existingDoc = await db.query.fileSearchDocuments.findFirst({
+        where: and(
+          eq(fileSearchDocuments.sourceType, 'consultant_guide'),
+          eq(fileSearchDocuments.sourceId, guideSourceId)
+        )
+      });
+      
+      if (existingDoc) {
+        await fileSearchService.deleteDocument(existingDoc.id);
+        console.log(`🗑️ [FileSync] Deleted old consultant guide for: ${consultantId}`);
+      }
+      
+      // Re-sync with new content
+      return await this.syncConsultantGuide(consultantId);
+    } catch (error: any) {
+      console.error('[FileSync] Error re-syncing consultant guide:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Sync the Consultant Guide for ALL consultants
+   * Call this when the guide is updated to distribute to everyone
+   */
+  static async syncGuideForAllConsultants(): Promise<{ synced: number; failed: number; errors: string[] }> {
+    try {
+      const consultants = await db.select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'consultant'));
+      
+      let synced = 0;
+      let failed = 0;
+      const errors: string[] = [];
+      
+      console.log(`📚 [FileSync] Syncing consultant guide for ${consultants.length} consultants...`);
+      
+      for (const consultant of consultants) {
+        const result = await this.resyncConsultantGuide(consultant.id);
+        if (result.success) {
+          synced++;
+        } else {
+          failed++;
+          errors.push(`${consultant.id}: ${result.error}`);
+        }
+      }
+      
+      console.log(`✅ [FileSync] Consultant guide sync complete - Synced: ${synced}, Failed: ${failed}`);
+      
+      return { synced, failed, errors };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing guide for all consultants:', error);
+      return { synced: 0, failed: 1, errors: [error.message] };
     }
   }
 
@@ -1317,6 +1454,10 @@ export class FileSearchSyncService {
 
     // Get file search settings to check autoSyncWhatsappAgents
     const [settings] = await db.select().from(fileSearchSettings).where(eq(fileSearchSettings.consultantId, consultantId)).limit(1);
+
+    // Sync the consultant platform guide first
+    console.log(`📚 [FileSync] Syncing CONSULTANT GUIDE...`);
+    await this.syncConsultantGuide(consultantId);
 
     // Sync consultant's global resources
     const libraryResult = await this.syncAllLibraryDocuments(consultantId);

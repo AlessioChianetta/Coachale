@@ -55,7 +55,7 @@ export interface FileSearchDocumentInfo {
   mimeType: string;
   status: 'pending' | 'processing' | 'indexed' | 'failed';
   uploadedAt: Date;
-  sourceType: 'library' | 'knowledge_base' | 'manual';
+  sourceType: 'library' | 'knowledge_base' | 'manual' | 'consultant_guide';
   sourceId?: string;
 }
 
@@ -353,7 +353,7 @@ export class FileSearchService {
     filePath: string;
     displayName: string;
     storeId: string;
-    sourceType: 'library' | 'knowledge_base' | 'manual';
+    sourceType: 'library' | 'knowledge_base' | 'manual' | 'consultant_guide';
     sourceId?: string;
     userId?: string;
     chunkingConfig?: ChunkingConfig;
@@ -496,7 +496,7 @@ export class FileSearchService {
     content: string;
     displayName: string;
     storeId: string;
-    sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual';
+    sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide';
     sourceId?: string;
     clientId?: string;
     userId?: string;
@@ -1395,7 +1395,7 @@ export class FileSearchService {
       mimeType: doc.mimeType,
       status: doc.status as 'pending' | 'processing' | 'indexed' | 'failed',
       uploadedAt: doc.uploadedAt!,
-      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual',
+      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide',
       sourceId: doc.sourceId || undefined,
       contentHash: doc.contentHash || undefined,
       clientId: doc.clientId || undefined,
@@ -1405,7 +1405,7 @@ export class FileSearchService {
   /**
    * Check if a document is already indexed
    */
-  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual', sourceId: string): Promise<boolean> {
+  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide', sourceId: string): Promise<boolean> {
     const doc = await db.query.fileSearchDocuments.findFirst({
       where: and(
         eq(fileSearchDocuments.sourceType, sourceType),
