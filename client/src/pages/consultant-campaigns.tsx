@@ -51,7 +51,10 @@ import {
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { CampaignsList } from "@/components/campaigns/CampaignsList";
+import { CampaignCardHub } from "@/components/campaigns/CampaignCardHub";
 import { CampaignForm } from "@/components/campaigns/CampaignForm";
+import { EducationalBanner } from "@/components/campaigns/EducationalBanner";
+import { ConnectedSourcesStrip } from "@/components/campaigns/ConnectedSourcesStrip";
 import CampaignDetailAnalytics from "@/components/campaigns/CampaignDetailAnalytics";
 import {
   useCampaigns,
@@ -347,6 +350,22 @@ export default function ConsultantCampaignsPage() {
               </Alert>
             )}
 
+            {/* Educational Banner - spiega il flusso Fonti → Campagne → WhatsApp */}
+            <EducationalBanner />
+
+            {/* Fonti Collegate - versione compatta */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Plug className="h-4 w-4" />
+                Fonti Collegate
+              </h3>
+              <ConnectedSourcesStrip
+                crmConfigs={activeCrmConfigs}
+                hubdigitalConfig={hubdigitalConfig}
+                externalSources={externalSources}
+              />
+            </div>
+
             <Collapsible open={isGuidedFlowOpen} onOpenChange={setIsGuidedFlowOpen}>
               <Card className={cn(
                 "border-2 border-dashed transition-all duration-200",
@@ -467,277 +486,47 @@ export default function ConsultantCampaignsPage() {
               </Card>
             </Collapsible>
 
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background border-blue-200/50 dark:border-blue-800/30">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/30">
-                      <Megaphone className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Campagne Totali</p>
-                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                        {campaigns.length}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    {activeCampaigns} attive
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-background border-green-200/50 dark:border-green-800/30">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-500 text-white shadow-lg shadow-green-500/30">
-                      <Users className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Lead Totali</p>
-                      <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                        {totalLeads}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    da tutte le campagne
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border-purple-200/50 dark:border-purple-800/30">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500 text-white shadow-lg shadow-purple-500/30">
-                      <Target className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Lead Convertiti</p>
-                      <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                        {convertedLeads}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    clienti acquisiti
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/20 dark:to-background border-orange-200/50 dark:border-orange-800/30">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500 text-white shadow-lg shadow-orange-500/30">
-                      <TrendingUp className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Tasso Conversione</p>
-                      <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                        {avgConversionRate}%
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    media globale
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="shadow-md border bg-card">
-              <CardHeader className="border-b bg-muted/30">
-                <CardTitle className="flex items-center gap-2">
-                  <Plug className="h-5 w-5 text-primary" />
-                  Fonti Collegate
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {activeCrmConfigs.length > 0 ? (
-                    activeCrmConfigs.map((config) => (
-                      <div
-                        key={config.id}
-                        className="flex items-start gap-3 p-4 rounded-lg border bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white shrink-0">
-                          <Database className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <p className="font-medium text-sm truncate">
-                            {config.configName && config.configName !== "API CRM Personalizzata" ? config.configName : "CrmAle"}
-                          </p>
-                          <div className="flex items-center gap-2 flex-wrap text-xs">
-                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Connesso
-                            </span>
-                            <span className="text-muted-foreground">|</span>
-                            {config.pollingEnabled ? (
-                              <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                                <RefreshCw className="h-3 w-3" />
-                                Polling Attivo (ogni {config.pollingIntervalMinutes} min)
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground flex items-center gap-1">
-                                <Circle className="h-3 w-3" />
-                                Polling Inattivo
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>
-                              Ultima:{" "}
-                              {config.lastImportAt
-                                ? new Date(config.lastImportAt).toLocaleString("it-IT", {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })
-                                : "Mai importato"}
-                            </span>
-                            {config.lastImportStatus && (
-                              <span
-                                className={cn(
-                                  "inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium",
-                                  config.lastImportStatus === "success"
-                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                    : config.lastImportStatus === "partial"
-                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                )}
-                              >
-                                {config.lastImportStatus === "success" && "✅"}
-                                {config.lastImportStatus === "partial" && "⚠️"}
-                                {config.lastImportStatus === "error" && "❌"}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <Link href="/consultant/knowledge/apis">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                        <Database className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">CrmAle</p>
-                        <p className="text-xs text-muted-foreground">Polling non configurato</p>
-                      </div>
-                      <Link href="/consultant/knowledge/apis">
-                        <Button variant="outline" size="sm">
-                          Configura
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
-
-                  {hubdigitalConfig?.isActive ? (
-                    <div className="flex items-start gap-3 p-4 rounded-lg border bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white shrink-0">
-                        <Plug className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <p className="font-medium text-sm truncate">Hubdigital.io</p>
-                        <div className="flex items-center gap-2 flex-wrap text-xs">
-                          <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Connesso
-                          </span>
-                          <span className="text-muted-foreground">|</span>
-                          <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                            <Zap className="h-3 w-3" />
-                            Webhook Push
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>Lead ricevuti: {hubdigitalConfig.totalLeadsReceived || 0}</span>
-                          {hubdigitalConfig.lastLeadReceivedAt && (
-                            <>
-                              <span className="text-muted-foreground">|</span>
-                              <span>
-                                Ultimo:{" "}
-                                {new Date(hubdigitalConfig.lastLeadReceivedAt).toLocaleString("it-IT", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <Link href="/consultant/knowledge/apis?tab=lead-import">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                        <Plug className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">Hubdigital.io</p>
-                        <p className="text-xs text-muted-foreground">Webhook non configurato</p>
-                      </div>
-                      <Link href="/consultant/knowledge/apis?tab=lead-import">
-                        <Button variant="outline" size="sm">
-                          Configura
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
-                  
-                  {externalSources.map((source) => (
-                    <div
-                      key={source.name}
-                      className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30"
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-xl">
-                        {source.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{source.name}</p>
-                        <p className="text-xs text-muted-foreground">{source.description}</p>
-                      </div>
-                      <Button variant="outline" size="sm" disabled>
-                        Presto
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-lg border-0 bg-card">
-              <CardHeader className="border-b bg-muted/30">
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-primary" />
+            {/* Le Tue Campagne - Card Hub Layout con KPI inline */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <Megaphone className="h-5 w-5 text-primary" />
                   Le Tue Campagne
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <CampaignsList
-                  campaigns={campaigns}
-                  isLoading={isLoading}
-                  onEdit={handleEditClick}
-                  onDelete={handleDeleteCampaign}
-                  onViewAnalytics={handleViewAnalytics}
-                />
-              </CardContent>
-            </Card>
+                </h2>
+                {/* KPI compatti inline */}
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50">
+                    <Megaphone className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">{campaigns.length}</span>
+                    <span className="text-blue-600/70 dark:text-blue-400/70 text-xs">campagne</span>
+                    <span className="text-blue-500 dark:text-blue-400 text-xs">({activeCampaigns} attive)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50">
+                    <Users className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    <span className="font-semibold text-green-700 dark:text-green-300">{totalLeads}</span>
+                    <span className="text-green-600/70 dark:text-green-400/70 text-xs">lead</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50">
+                    <Target className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                    <span className="font-semibold text-purple-700 dark:text-purple-300">{convertedLeads}</span>
+                    <span className="text-purple-600/70 dark:text-purple-400/70 text-xs">convertiti</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50">
+                    <TrendingUp className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                    <span className="font-semibold text-orange-700 dark:text-orange-300">{avgConversionRate}%</span>
+                    <span className="text-orange-600/70 dark:text-orange-400/70 text-xs">conv.</span>
+                  </div>
+                </div>
+              </div>
+              <CampaignCardHub
+                campaigns={campaigns}
+                isLoading={isLoading}
+                onEdit={handleEditClick}
+                onDelete={handleDeleteCampaign}
+                onViewAnalytics={handleViewAnalytics}
+                onCreateCampaign={handleCreateClick}
+              />
+            </div>
           </div>
         </main>
       </div>
