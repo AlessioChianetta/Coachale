@@ -1485,15 +1485,24 @@ export class FileSearchService {
 
   /**
    * Build FileSearch tool configuration for generateContent
+   * Note: Google File Search has a limit of 5 corpora (stores) max
    */
   buildFileSearchTool(storeNames: string[]): any {
     if (storeNames.length === 0) {
       return null;
     }
 
+    // Google File Search limit: max 5 corpora
+    const MAX_STORES = 5;
+    const limitedStoreNames = storeNames.slice(0, MAX_STORES);
+    
+    if (storeNames.length > MAX_STORES) {
+      console.warn(`⚠️ [FileSearch] Limiting stores from ${storeNames.length} to ${MAX_STORES} (Google API limit)`);
+    }
+
     return {
       fileSearch: {
-        fileSearchStoreNames: storeNames,
+        fileSearchStoreNames: limitedStoreNames,
       }
     };
   }
