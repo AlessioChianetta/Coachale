@@ -21,6 +21,7 @@ interface PhoneCallLayoutProps {
   isTestMode?: boolean;
   sessionClosing?: boolean;
   sessionType?: 'weekly_consultation';
+  isEmbedded?: boolean;
 }
 
 // Aggiungi stile CSS per animazione barre
@@ -47,6 +48,7 @@ export function PhoneCallLayout({
   isTestMode,
   sessionClosing,
   sessionType,
+  isEmbedded = false,
 }: PhoneCallLayoutProps) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [showKeypad, setShowKeypad] = useState(false);
@@ -72,7 +74,7 @@ export function PhoneCallLayout({
   return (
     <>
       <style>{pulseKeyframes}</style>
-      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 via-gray-800 to-black flex flex-col">
+      <div className={`${isEmbedded ? 'absolute inset-0' : 'fixed inset-0'} bg-gradient-to-b from-gray-900 via-gray-800 to-black flex flex-col`}>
       {/* Header - Stato Chiamata */}
       <div className="pt-8 pb-6 px-6 text-center">
         {/* Badge Test Mode */}

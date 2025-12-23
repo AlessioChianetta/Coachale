@@ -35,6 +35,7 @@ interface LiveModeScreenProps {
   inviteToken?: string;
   consultationInviteConversationId?: string;
   layoutMode?: 'immersive' | 'phone_call'; // NUOVO: Switch layout
+  isEmbedded?: boolean; // NUOVO: Per widget fluttuante
   onClose: () => void;
   onConversationSaved?: (conversationId: string) => void;
 }
@@ -45,7 +46,7 @@ interface TranscriptEntry {
   timestamp: number;
 }
 
-export function LiveModeScreen({ mode, consultantType, customPrompt, useFullPrompt, voiceName, sessionType, isTestMode, consultationId, shareToken, salesAgentConversationId, inviteToken, consultationInviteConversationId, layoutMode = 'phone_call', onClose, onConversationSaved }: LiveModeScreenProps) {
+export function LiveModeScreen({ mode, consultantType, customPrompt, useFullPrompt, voiceName, sessionType, isTestMode, consultationId, shareToken, salesAgentConversationId, inviteToken, consultationInviteConversationId, layoutMode = 'phone_call', isEmbedded = false, onClose, onConversationSaved }: LiveModeScreenProps) {
   const { toast } = useToast();
   // Refs per timer: uno per websocket session, uno per conversazione totale
   const websocketSessionTimeRef = useRef<number>(Date.now()); // Resettato al refresh
@@ -2327,6 +2328,7 @@ registerProcessor('pcm-processor', PCMProcessor);
         isTestMode={isTestMode}
         sessionClosing={isSessionClosing}
         sessionType={sessionType}
+        isEmbedded={isEmbedded}
       />
     );
   }

@@ -10,6 +10,8 @@ import { PageLoader } from "@/components/page-loader";
 import AuthGuard from "@/components/auth-guard";
 import RoleBasedRedirect from "@/components/role-based-redirect";
 import { TourProvider } from "@/contexts/TourContext";
+import { AlessiaSessionProvider } from "@/contexts/AlessiaSessionContext";
+import { FloatingAlessiaChat } from "@/components/alessia/FloatingAlessiaChat";
 import { useActivityTracker } from "@/hooks/use-activity-tracker";
 import { getAuthUser } from "@/lib/auth";
 
@@ -732,6 +734,8 @@ function Router() {
           <AIAssistant />
         </Suspense>
       )}
+
+      {isClient && <FloatingAlessiaChat />}
     </>
   );
 }
@@ -747,12 +751,14 @@ function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="app-theme-mode">
       <QueryClientProvider client={queryClient}>
-        <TourProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </TourProvider>
+        <AlessiaSessionProvider>
+          <TourProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </TourProvider>
+        </AlessiaSessionProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );
