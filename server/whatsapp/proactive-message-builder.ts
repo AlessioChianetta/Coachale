@@ -63,9 +63,9 @@ export function buildOpeningTemplateVariables(
   agentConfig: AgentConfig
 ): Record<string, string> {
   const consultantName = agentConfig.consultantDisplayName || agentConfig.agentName || `${consultant.firstName} ${consultant.lastName}`;
-  const businessName = agentConfig.businessName || "la nostra azienda";
-  const uncino = lead.leadInfo?.uncino || "sono interessato a offrirti una consulenza personalizzata";
-  const idealStateText = lead.idealState || lead.leadInfo?.obiettivi || "i tuoi obiettivi";
+  const businessName = agentConfig.businessName || "";
+  const uncino = lead.leadInfo?.uncino || agentConfig.defaultUncino || "";
+  const idealStateText = lead.idealState || lead.leadInfo?.obiettivi || agentConfig.defaultIdealState || "";
 
   return {
     "1": lead.firstName,
@@ -87,7 +87,7 @@ export function buildGentleFollowUpTemplateVariables(
   agentConfig: AgentConfig
 ): Record<string, string> {
   const consultantName = agentConfig.consultantDisplayName || agentConfig.agentName || consultant.firstName;
-  const idealStateText = lead.idealState || lead.leadInfo?.obiettivi || "i tuoi obiettivi";
+  const idealStateText = lead.idealState || lead.leadInfo?.obiettivi || agentConfig.defaultIdealState || "";
 
   return {
     "1": lead.firstName,
@@ -107,7 +107,7 @@ export function buildValueFollowUpTemplateVariables(
   agentConfig: AgentConfig
 ): Record<string, string> {
   const consultantName = agentConfig.consultantDisplayName || agentConfig.agentName || consultant.firstName;
-  const idealStateText = lead.idealState || lead.leadInfo?.obiettivi || "raggiungere i loro obiettivi";
+  const idealStateText = lead.idealState || lead.leadInfo?.obiettivi || agentConfig.defaultIdealState || "";
 
   return {
     "1": lead.firstName,
@@ -122,9 +122,10 @@ export function buildValueFollowUpTemplateVariables(
  *  Se {{2}} è ancora importante per te, sono qui. Altrimenti capisco e ti lascio in pace. Fammi sapere!"
  */
 export function buildFinalFollowUpTemplateVariables(
-  lead: ProactiveLead
+  lead: ProactiveLead,
+  agentConfig?: AgentConfig
 ): Record<string, string> {
-  const idealStateText = lead.idealState || lead.leadInfo?.obiettivi || "raggiungere i tuoi obiettivi";
+  const idealStateText = lead.idealState || lead.leadInfo?.obiettivi || agentConfig?.defaultIdealState || "";
 
   return {
     "1": lead.firstName,

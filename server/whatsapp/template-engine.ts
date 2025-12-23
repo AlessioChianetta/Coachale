@@ -105,15 +105,15 @@ export function resolveInstructionVariables(
   const idealState = data.clientState?.idealState ||
                      data.proactiveLead?.idealState ||
                      data.consultantConfig?.defaultIdealState ||
-                     'i tuoi obiettivi';
+                     '';
   result = result.replace(/\$\{idealState\}/g, idealState);
 
   // Sostituisci ${currentState}
-  const currentState = data.clientState?.currentState || 'la tua situazione attuale';
+  const currentState = data.clientState?.currentState || '';
   result = result.replace(/\$\{currentState\}/g, currentState);
 
   // Sostituisci ${mainObstacle}
-  const mainObstacle = data.clientState?.mainObstacle || 'gli ostacoli che stai affrontando';
+  const mainObstacle = data.clientState?.mainObstacle || '';
   result = result.replace(/\$\{mainObstacle\}/g, mainObstacle);
 
   // Sostituisci ${firstName}
@@ -125,19 +125,19 @@ export function resolveInstructionVariables(
   result = result.replace(/\$\{lastName\}/g, lastName);
 
   // Sostituisci ${uncino}
-  const uncino = data.consultantConfig?.defaultUncino || 'il valore che possiamo offrirti';
+  const uncino = data.consultantConfig?.defaultUncino || '';
   result = result.replace(/\$\{uncino\}/g, uncino);
 
   // Sostituisci ${obiettivi}
   const obiettivi = data.clientState?.obiettivi || 
                     data.consultantConfig?.defaultObiettivi || 
-                    'i tuoi obiettivi';
+                    '';
   result = result.replace(/\$\{obiettivi\}/g, obiettivi);
 
   // Sostituisci ${desideri}
   const desideri = data.clientState?.desideri || 
                    data.consultantConfig?.defaultDesideri || 
-                   'ciò che desideri';
+                   '';
   result = result.replace(/\$\{desideri\}/g, desideri);
 
   // Sostituisci ${vision}
