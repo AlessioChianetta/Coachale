@@ -307,6 +307,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(true);
   const [localDraftsSectionOpen, setLocalDraftsSectionOpen] = useState(true);
   const [twilioOnlySectionOpen, setTwilioOnlySectionOpen] = useState(true);
+  const [twilioRemoteSectionOpen, setTwilioRemoteSectionOpen] = useState(true);
 
   // NEW: Filter mode (category vs agent) and selected agent type
   const [filterMode, setFilterMode] = useState<FilterMode>("category");
@@ -1569,6 +1570,103 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
 
             {!isLoading && filteredAndSortedTemplates.length > 0 && (
               <div className="space-y-6">
+                {/* Template presenti su Twilio - Mostrati per primi */}
+                {twilioTemplatesData?.twilioTemplates && twilioTemplatesData.twilioTemplates.length > 0 && (
+                  <Collapsible open={twilioRemoteSectionOpen} onOpenChange={setTwilioRemoteSectionOpen}>
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl cursor-pointer hover:from-purple-600 hover:to-indigo-700 transition-colors shadow-lg">
+                        <div className="flex items-center gap-3 text-white">
+                          <Cloud className="h-6 w-6" />
+                          <h2 className="text-lg font-bold">Template presenti su Twilio</h2>
+                          <Badge className="bg-white/20 text-white border-0">
+                            {twilioTemplatesData.twilioTemplates.length} template
+                          </Badge>
+                        </div>
+                        <ChevronDown className={`h-5 w-5 text-white transition-transform duration-200 ${twilioRemoteSectionOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-4">
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {twilioTemplatesData.twilioTemplates.map((template: any) => {
+                          const isApproved = template.approvalStatus === 'approved';
+                          const isPending = template.approvalStatus === 'pending' || template.approvalStatus === 'received';
+                          const isRejected = template.approvalStatus === 'rejected';
+
+                          return (
+                            <Card
+                              key={template.sid}
+                              className={`border-2 transition-colors ${isApproved ? 'border-green-200 hover:border-green-300' :
+                                isPending ? 'border-yellow-200 hover:border-yellow-300' :
+                                  isRejected ? 'border-red-200 hover:border-red-300' :
+                                    'border-slate-200 hover:border-slate-300'
+                                }`}
+                            >
+                              <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <CardTitle className="text-base truncate">
+                                      {template.friendlyName}
+                                    </CardTitle>
+                                    <div className="text-xs text-muted-foreground mt-1 font-mono">
+                                      SID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{template.sid}</code>
+                                    </div>
+                                  </div>
+                                  <Badge className={`text-xs text-white flex-shrink-0 ${isApproved ? 'bg-green-500' :
+                                    isPending ? 'bg-yellow-500' :
+                                      isRejected ? 'bg-red-500' :
+                                        'bg-gray-500'
+                                    }`}>
+                                    {isApproved ? (
+                                      <><CheckCircle2 className="h-3 w-3 mr-1" />Approvato</>
+                                    ) : isPending ? (
+                                      <><Clock className="h-3 w-3 mr-1" />In Attesa</>
+                                    ) : isRejected ? (
+                                      <><XCircle className="h-3 w-3 mr-1" />Rifiutato</>
+                                    ) : (
+                                      template.approvalStatus
+                                    )}
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                {template.bodyPreview && (
+                                  <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 p-3 rounded-lg border border-slate-200/60 text-sm text-slate-700 whitespace-pre-wrap max-h-[100px] overflow-hidden mb-3">
+                                    {template.bodyPreview}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {template.linkedToLocal && (
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                      <Zap className="h-3 w-3 mr-1" />
+                                      Collegato
+                                    </Badge>
+                                  )}
+                                  {!isApproved && template.linkedToLocal && template.localTemplateId && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleExportToTwilio(template.localTemplateId)}
+                                      disabled={exportMutation.isPending}
+                                      className="text-xs h-7 bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                                    >
+                                      {exportMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                      ) : (
+                                        <ExternalLink className="h-3 w-3 mr-1" />
+                                      )}
+                                      Invia per Approvazione
+                                    </Button>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
                 {groupedTemplates.onTwilio.length > 0 && (
                   <Collapsible open={twilioSectionOpen} onOpenChange={setTwilioSectionOpen}>
                     <CollapsibleTrigger asChild>
@@ -1823,102 +1921,6 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                     </Collapsible>
                   );
                 })()}
-
-                {twilioTemplatesData?.twilioTemplates && twilioTemplatesData.twilioTemplates.length > 0 && (
-                  <Collapsible open={twilioSectionOpen} onOpenChange={setTwilioSectionOpen}>
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl cursor-pointer hover:from-purple-600 hover:to-indigo-700 transition-colors shadow-lg">
-                        <div className="flex items-center gap-3 text-white">
-                          <Cloud className="h-6 w-6" />
-                          <h2 className="text-lg font-bold">Template presenti su Twilio</h2>
-                          <Badge className="bg-white/20 text-white border-0">
-                            {twilioTemplatesData.twilioTemplates.length} template
-                          </Badge>
-                        </div>
-                        <ChevronDown className={`h-5 w-5 text-white transition-transform duration-200 ${twilioSectionOpen ? 'rotate-180' : ''}`} />
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-4">
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {twilioTemplatesData.twilioTemplates.map((template: any) => {
-                          const isApproved = template.approvalStatus === 'approved';
-                          const isPending = template.approvalStatus === 'pending' || template.approvalStatus === 'received';
-                          const isRejected = template.approvalStatus === 'rejected';
-
-                          return (
-                            <Card
-                              key={template.sid}
-                              className={`border-2 transition-colors ${isApproved ? 'border-green-200 hover:border-green-300' :
-                                isPending ? 'border-yellow-200 hover:border-yellow-300' :
-                                  isRejected ? 'border-red-200 hover:border-red-300' :
-                                    'border-slate-200 hover:border-slate-300'
-                                }`}
-                            >
-                              <CardHeader className="pb-3">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1 min-w-0">
-                                    <CardTitle className="text-base truncate">
-                                      {template.friendlyName}
-                                    </CardTitle>
-                                    <div className="text-xs text-muted-foreground mt-1 font-mono">
-                                      SID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{template.sid}</code>
-                                    </div>
-                                  </div>
-                                  <Badge className={`text-xs text-white flex-shrink-0 ${isApproved ? 'bg-green-500' :
-                                    isPending ? 'bg-yellow-500' :
-                                      isRejected ? 'bg-red-500' :
-                                        'bg-gray-500'
-                                    }`}>
-                                    {isApproved ? (
-                                      <><CheckCircle2 className="h-3 w-3 mr-1" />Approvato</>
-                                    ) : isPending ? (
-                                      <><Clock className="h-3 w-3 mr-1" />In Attesa</>
-                                    ) : isRejected ? (
-                                      <><XCircle className="h-3 w-3 mr-1" />Rifiutato</>
-                                    ) : (
-                                      template.approvalStatus
-                                    )}
-                                  </Badge>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="pt-0">
-                                {template.bodyPreview && (
-                                  <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 p-3 rounded-lg border border-slate-200/60 text-sm text-slate-700 whitespace-pre-wrap max-h-[100px] overflow-hidden mb-3">
-                                    {template.bodyPreview}
-                                  </div>
-                                )}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {template.linkedToLocal && (
-                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                                      <Zap className="h-3 w-3 mr-1" />
-                                      Collegato
-                                    </Badge>
-                                  )}
-                                  {!isApproved && template.linkedToLocal && template.localTemplateId && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleExportToTwilio(template.localTemplateId)}
-                                      disabled={exportMutation.isPending}
-                                      className="text-xs h-7 bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
-                                    >
-                                      {exportMutation.isPending ? (
-                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                      ) : (
-                                        <ExternalLink className="h-3 w-3 mr-1" />
-                                      )}
-                                      Invia per Approvazione
-                                    </Button>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
 
                 {renderPagination()}
               </div>

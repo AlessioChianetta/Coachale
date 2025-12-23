@@ -380,6 +380,52 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
   const mainTemplate = approvedTemplates.find(t => t.templateType === "opening");
   const otherTemplates = approvedTemplates.filter(t => t.templateType !== "opening");
   
+  // Group templates by category for better organization
+  const templatesByCategory = useMemo(() => {
+    const categories: Record<string, CustomTemplate[]> = {};
+    
+    otherTemplates.forEach(template => {
+      const category = template.useCase || template.templateType || "Generale";
+      // Normalize category names for grouping
+      const normalizedCategory = category.toLowerCase();
+      
+      let groupKey = "Generale";
+      if (normalizedCategory.includes("setter") || normalizedCategory.includes("proattivo")) {
+        groupKey = "Setter";
+      } else if (normalizedCategory.includes("receptionist") || normalizedCategory.includes("customer") || normalizedCategory.includes("servizio")) {
+        groupKey = "Customer Service";
+      } else if (normalizedCategory.includes("follow") || normalizedCategory.includes("riattiv")) {
+        groupKey = "Follow-up";
+      } else if (normalizedCategory.includes("apertura") || normalizedCategory.includes("primo") || normalizedCategory.includes("benvenuto")) {
+        groupKey = "Primo Contatto";
+      } else if (normalizedCategory.includes("conferma") || normalizedCategory.includes("appuntamento") || normalizedCategory.includes("booking")) {
+        groupKey = "Appuntamenti";
+      } else if (category !== "Generale") {
+        groupKey = category; // Use original category if not matching known patterns
+      }
+      
+      if (!categories[groupKey]) {
+        categories[groupKey] = [];
+      }
+      categories[groupKey].push(template);
+    });
+    
+    // Sort categories: known categories first, then alphabetically
+    const orderedKeys = Object.keys(categories).sort((a, b) => {
+      const order = ["Setter", "Customer Service", "Primo Contatto", "Follow-up", "Appuntamenti", "Generale"];
+      const aIndex = order.indexOf(a);
+      const bIndex = order.indexOf(b);
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.localeCompare(b);
+    });
+    
+    return { categories, orderedKeys };
+  }, [otherTemplates]);
+  
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(templatesByCategory.orderedKeys));
+  
   const assignedNonApprovedTemplates = customTemplates.filter(
     (t) => configSelectedTemplates.has(t.id) && 
            t.approvalStatus?.toLowerCase() !== "approved" && 
@@ -517,54 +563,110 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
             )}
             
             {otherTemplates.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                  <span className="text-sm font-semibold text-gray-700">Altri Template Approvati ({otherTemplates.length})</span>
+                  <span className="text-sm font-semibold text-gray-700">Template per Categoria ({otherTemplates.length} totali)</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {otherTemplates.map((template) => {
-                    const isSelected = configSelectedTemplates.has(template.id);
-                    const displayUseCase = template.useCase || template.templateType || "Generale";
-                    
-                    return (
-                      <label
-                        key={template.id}
-                        className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          isSelected
-                            ? "border-blue-400 bg-blue-50 shadow-md"
-                            : "border-gray-200 bg-white hover:border-blue-200 hover:bg-gray-50"
-                        }`}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(checked) =>
-                            handleTemplateToggle(selectedAgentId, template.id, checked === true)
+                
+                {templatesByCategory.orderedKeys.map((categoryName) => {
+                  const categoryTemplates = templatesByCategory.categories[categoryName];
+                  const isOpen = openCategories.has(categoryName);
+                  const selectedInCategory = categoryTemplates.filter(t => configSelectedTemplates.has(t.id)).length;
+                  
+                  // Category colors
+                  const categoryColors: Record<string, { bg: string; text: string; border: string; icon: string }> = {
+                    "Setter": { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200", icon: "bg-orange-500" },
+                    "Customer Service": { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", icon: "bg-blue-500" },
+                    "Follow-up": { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", icon: "bg-purple-500" },
+                    "Primo Contatto": { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", icon: "bg-green-500" },
+                    "Appuntamenti": { bg: "bg-pink-50", text: "text-pink-700", border: "border-pink-200", icon: "bg-pink-500" },
+                    "Generale": { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200", icon: "bg-gray-500" },
+                  };
+                  
+                  const colors = categoryColors[categoryName] || categoryColors["Generale"];
+                  
+                  return (
+                    <Collapsible
+                      key={categoryName}
+                      open={isOpen}
+                      onOpenChange={(open) => {
+                        setOpenCategories(prev => {
+                          const newSet = new Set(prev);
+                          if (open) {
+                            newSet.add(categoryName);
+                          } else {
+                            newSet.delete(categoryName);
                           }
-                          className="mt-1"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 truncate">
-                            {template.templateName}
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-300">
-                              {displayUseCase}
+                          return newSet;
+                        });
+                      }}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <div className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${colors.bg} ${colors.border} border hover:opacity-90`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${colors.icon}`}></div>
+                            <span className={`font-semibold ${colors.text}`}>{categoryName}</span>
+                            <Badge variant="outline" className={`text-xs ${colors.bg} ${colors.text} ${colors.border}`}>
+                              {categoryTemplates.length} template
                             </Badge>
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
-                              Approvato
-                            </Badge>
+                            {selectedInCategory > 0 && (
+                              <Badge className="bg-blue-500 text-white text-xs">
+                                {selectedInCategory} selezionati
+                              </Badge>
+                            )}
                           </div>
-                          {template.description && (
-                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                              {template.description}
-                            </p>
-                          )}
+                          <ChevronDown className={`h-4 w-4 ${colors.text} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                         </div>
-                      </label>
-                    );
-                  })}
-                </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {categoryTemplates.map((template) => {
+                            const isSelected = configSelectedTemplates.has(template.id);
+                            const displayUseCase = template.useCase || template.templateType || "Generale";
+                            
+                            return (
+                              <label
+                                key={template.id}
+                                className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                                  isSelected
+                                    ? "border-blue-400 bg-blue-50 shadow-md"
+                                    : "border-gray-200 bg-white hover:border-blue-200 hover:bg-gray-50"
+                                }`}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) =>
+                                    handleTemplateToggle(selectedAgentId, template.id, checked === true)
+                                  }
+                                  className="mt-1"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-gray-900 truncate">
+                                    {template.templateName}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-300">
+                                      {displayUseCase}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                                      Approvato
+                                    </Badge>
+                                  </div>
+                                  {template.description && (
+                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                      {template.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
               </div>
             )}
             
