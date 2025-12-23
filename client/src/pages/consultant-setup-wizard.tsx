@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -13,6 +13,9 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Check,
@@ -401,6 +404,166 @@ const triggerMiniConfetti = () => {
     scalar: 0.8,
   });
 };
+
+const CREDENTIAL_NOTES_STEPS = ["vertex_ai", "smtp", "google_calendar", "twilio_config"];
+
+function CredentialNotesCard({ stepId }: { stepId: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [accountReference, setAccountReference] = useState("");
+  const [notes, setNotes] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const { toast } = useToast();
+
+  const { data, isLoading } = useQuery<{ accountReference: string | null; notes: string | null }>({
+    queryKey: ["/api/consultant/credential-notes", stepId],
+    queryFn: async () => {
+      const res = await fetch(`/api/consultant/credential-notes/${stepId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch credential notes");
+      return res.json();
+    },
+    enabled: CREDENTIAL_NOTES_STEPS.includes(stepId),
+  });
+
+  useEffect(() => {
+    if (data) {
+      setAccountReference(data.accountReference || "");
+      setNotes(data.notes || "");
+    }
+  }, [data]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (payload: { accountReference: string; notes: string }) => {
+      const res = await fetch(`/api/consultant/credential-notes/${stepId}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Note salvate",
+        description: "Le note sono state salvate correttamente",
+      });
+      setIsSaving(false);
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare le note",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    },
+  });
+
+  const handleChange = useCallback((field: "accountReference" | "notes", value: string) => {
+    if (field === "accountReference") {
+      setAccountReference(value);
+    } else {
+      setNotes(value);
+    }
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    setIsSaving(true);
+    debounceRef.current = setTimeout(() => {
+      const payload = {
+        accountReference: field === "accountReference" ? value : accountReference,
+        notes: field === "notes" ? value : notes,
+      };
+      saveMutation.mutate(payload);
+    }, 1000);
+  }, [accountReference, notes, saveMutation]);
+
+  if (!CREDENTIAL_NOTES_STEPS.includes(stepId)) return null;
+
+  return (
+    <div className="mt-4">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger className="w-full">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📝</span>
+              <span className="font-medium text-sm">Note e Riferimento Account</span>
+              {(accountReference || notes) && (
+                <Badge variant="secondary" className="text-xs bg-amber-100 dark:bg-amber-900/30">
+                  Compilato
+                </Badge>
+              )}
+            </div>
+            <motion.div
+              animate={{ rotate: isOpen ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="h-4 w-4 text-amber-600" />
+            </motion.div>
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-2 p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-900 space-y-4"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor={`account-ref-${stepId}`} className="text-sm font-medium">
+                    Riferimento Account
+                  </Label>
+                  <Input
+                    id={`account-ref-${stepId}`}
+                    placeholder="Es: Account principale Google Cloud - console.cloud.google.com"
+                    value={accountReference}
+                    onChange={(e) => handleChange("accountReference", e.target.value)}
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    A quale account/progetto sono riferite queste credenziali?
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`notes-${stepId}`} className="text-sm font-medium">
+                    Note Aggiuntive
+                  </Label>
+                  <Textarea
+                    id={`notes-${stepId}`}
+                    placeholder="Aggiungi note, promemoria o dettagli importanti..."
+                    value={notes}
+                    onChange={(e) => handleChange("notes", e.target.value)}
+                    className="text-sm min-h-[80px]"
+                  />
+                </div>
+                <div className="flex items-center justify-end">
+                  {isSaving && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Salvataggio...
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </motion.div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
 
 export default function ConsultantSetupWizard() {
   const [activeStep, setActiveStep] = useState<string>("vertex_ai");
@@ -1025,53 +1188,84 @@ export default function ConsultantSetupWizard() {
                       </div>
 
                       {activeStep === "vertex_ai" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-blue-600" />
-                            Come ottenere le credenziali Vertex AI
-                          </h4>
-                          <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                            <li>Vai su <a href="https://console.cloud.google.com" target="_blank" rel="noopener" className="text-blue-600 underline">Google Cloud Console</a></li>
-                            <li>Crea un nuovo progetto o seleziona uno esistente</li>
-                            <li>Abilita l'API Vertex AI nel progetto</li>
-                            <li>Crea un Service Account con ruolo "Vertex AI User"</li>
-                            <li>Scarica il file JSON delle credenziali</li>
-                            <li>Copia il contenuto JSON nella configurazione</li>
-                          </ol>
-                        </div>
+                        <>
+                          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                              <Sparkles className="h-4 w-4 text-blue-600" />
+                              Come ottenere le credenziali Vertex AI
+                            </h4>
+                            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                              <li>Vai su <a href="https://console.cloud.google.com" target="_blank" rel="noopener" className="text-blue-600 underline">Google Cloud Console</a></li>
+                              <li>Crea un nuovo progetto o seleziona uno esistente</li>
+                              <li>Abilita l'API Vertex AI nel progetto</li>
+                              <li>Crea un Service Account con ruolo "Vertex AI User"</li>
+                              <li>Scarica il file JSON delle credenziali</li>
+                              <li>Copia il contenuto JSON nella configurazione</li>
+                            </ol>
+                          </div>
+                          <CredentialNotesCard stepId="vertex_ai" />
+                        </>
                       )}
 
                       {activeStep === "smtp" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                            <Mail className="h-4 w-4 text-blue-600" />
-                            Configurazione SMTP Comune
-                          </h4>
-                          <div className="text-sm text-muted-foreground space-y-2">
-                            <p><strong>Gmail:</strong> smtp.gmail.com, porta 587, usa App Password</p>
-                            <p><strong>Outlook:</strong> smtp.office365.com, porta 587</p>
-                            <p><strong>Custom:</strong> Usa i dati del tuo provider email</p>
+                        <>
+                          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-blue-600" />
+                              Configurazione SMTP Comune
+                            </h4>
+                            <div className="text-sm text-muted-foreground space-y-2">
+                              <p><strong>Gmail:</strong> smtp.gmail.com, porta 587, usa App Password</p>
+                              <p><strong>Outlook:</strong> smtp.office365.com, porta 587</p>
+                              <p><strong>Custom:</strong> Usa i dati del tuo provider email</p>
+                            </div>
                           </div>
-                        </div>
+                          <CredentialNotesCard stepId="smtp" />
+                        </>
                       )}
 
                       {activeStep === "google_calendar" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-blue-600" />
-                            Collegamento Google Calendar
-                          </h4>
-                          <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                            <li>Vai alla pagina di configurazione</li>
-                            <li>Clicca "Connetti Google Calendar"</li>
-                            <li>Accedi con il tuo account Google</li>
-                            <li>Autorizza l'accesso al calendario</li>
-                            <li>Seleziona il calendario principale da sincronizzare</li>
-                          </ol>
-                          <p className="text-xs text-muted-foreground mt-3 italic">
-                            Gli appuntamenti creati nella piattaforma appariranno automaticamente nel tuo Google Calendar.
-                          </p>
-                        </div>
+                        <>
+                          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-blue-600" />
+                              Collegamento Google Calendar
+                            </h4>
+                            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                              <li>Vai alla pagina di configurazione</li>
+                              <li>Clicca "Connetti Google Calendar"</li>
+                              <li>Accedi con il tuo account Google</li>
+                              <li>Autorizza l'accesso al calendario</li>
+                              <li>Seleziona il calendario principale da sincronizzare</li>
+                            </ol>
+                            <p className="text-xs text-muted-foreground mt-3 italic">
+                              Gli appuntamenti creati nella piattaforma appariranno automaticamente nel tuo Google Calendar.
+                            </p>
+                          </div>
+                          <CredentialNotesCard stepId="google_calendar" />
+                        </>
+                      )}
+
+                      {activeStep === "twilio_config" && (
+                        <>
+                          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-blue-600" />
+                              Configurazione Twilio + WhatsApp
+                            </h4>
+                            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                              <li>Registrati su <a href="https://www.twilio.com/console" target="_blank" rel="noopener" className="text-blue-600 underline">Twilio Console</a></li>
+                              <li>Acquista un numero italiano con capacità WhatsApp</li>
+                              <li>Vai su Messaging → WhatsApp Senders e configura il numero</li>
+                              <li>Copia Account SID e Auth Token dalla Dashboard</li>
+                              <li>Incolla le credenziali nella configurazione</li>
+                            </ol>
+                            <p className="text-xs text-muted-foreground mt-3 italic">
+                              Twilio permette di inviare e ricevere messaggi WhatsApp dal tuo numero italiano.
+                            </p>
+                          </div>
+                          <CredentialNotesCard stepId="twilio_config" />
+                        </>
                       )}
 
                       {activeStep === "whatsapp_ai" && (

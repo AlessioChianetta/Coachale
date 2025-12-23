@@ -532,6 +532,9 @@ export const consultantSmtpSettings = pgTable("consultant_smtp_settings", {
   useCustomTemplates: boolean("use_custom_templates").default(false), // Use consultant-specific templates instead of defaults
   businessContext: text("business_context"), // Description of consultant's business for AI template generation
   lastTemplatesGeneratedAt: timestamp("last_templates_generated_at"), // When custom templates were last generated
+  // Account reference and notes for credential tracking
+  accountReference: text("account_reference"), // Which account these credentials belong to (e.g., "Gmail aziendale marketing@company.com")
+  notes: text("notes"), // Additional notes about this configuration
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -551,6 +554,9 @@ export const vertexAiSettings = pgTable("vertex_ai_settings", {
   expiresAt: timestamp("expires_at").notNull(), // Calculated: activatedAt + 90 days
   lastUsedAt: timestamp("last_used_at"), // Last time this config was used for AI generation
   usageCount: integer("usage_count").notNull().default(0), // Number of times this config was used
+  // Account reference and notes for credential tracking
+  accountReference: text("account_reference"), // Which Google Cloud project/account (e.g., "Progetto GCP principale - console.cloud.google.com")
+  notes: text("notes"), // Additional notes about this configuration
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -2314,6 +2320,12 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
     saturday?: { enabled: boolean; start: string; end: string };
     sunday?: { enabled: boolean; start: string; end: string };
   }>().default(sql`'{"monday":{"enabled":true,"start":"09:00","end":"18:00"},"tuesday":{"enabled":true,"start":"09:00","end":"18:00"},"wednesday":{"enabled":true,"start":"09:00","end":"18:00"},"thursday":{"enabled":true,"start":"09:00","end":"18:00"},"friday":{"enabled":true,"start":"09:00","end":"18:00"},"saturday":{"enabled":false,"start":"09:00","end":"13:00"},"sunday":{"enabled":false,"start":"09:00","end":"13:00"}}'::jsonb`),
+
+  // Account references and notes for credential tracking (per service)
+  twilioAccountReference: text("twilio_account_reference"), // Which Twilio account (e.g., "Account Twilio principale - console.twilio.com")
+  twilioNotes: text("twilio_notes"), // Notes about Twilio configuration
+  googleCalendarAccountReference: text("google_calendar_account_reference"), // Which Google account for calendar (e.g., "villonbajana2021@gmail.com")
+  googleCalendarNotes: text("google_calendar_notes"), // Notes about Google Calendar configuration
 
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

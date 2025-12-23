@@ -7292,6 +7292,128 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // Consultant Onboarding routes
   app.use("/api/consultant/onboarding", onboardingRouter);
 
+  // Consultant Credential Notes - GET and PUT for account reference and notes per step
+  app.get("/api/consultant/credential-notes/:stepId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { stepId } = req.params;
+      const consultantId = req.user!.id;
+
+      let result: { accountReference: string | null; notes: string | null } = { accountReference: null, notes: null };
+
+      switch (stepId) {
+        case "vertex_ai": {
+          const [settings] = await db.select({
+            accountReference: schema.vertexAiSettings.accountReference,
+            notes: schema.vertexAiSettings.notes,
+          }).from(schema.vertexAiSettings).where(eq(schema.vertexAiSettings.userId, consultantId));
+          if (settings) {
+            result = { accountReference: settings.accountReference, notes: settings.notes };
+          }
+          break;
+        }
+        case "smtp": {
+          const [settings] = await db.select({
+            accountReference: schema.consultantSmtpSettings.accountReference,
+            notes: schema.consultantSmtpSettings.notes,
+          }).from(schema.consultantSmtpSettings).where(eq(schema.consultantSmtpSettings.consultantId, consultantId));
+          if (settings) {
+            result = { accountReference: settings.accountReference, notes: settings.notes };
+          }
+          break;
+        }
+        case "twilio_config": {
+          const [config] = await db.select({
+            accountReference: schema.consultantWhatsappConfig.twilioAccountReference,
+            notes: schema.consultantWhatsappConfig.twilioNotes,
+          }).from(schema.consultantWhatsappConfig).where(eq(schema.consultantWhatsappConfig.consultantId, consultantId)).limit(1);
+          if (config) {
+            result = { accountReference: config.accountReference, notes: config.notes };
+          }
+          break;
+        }
+        case "google_calendar": {
+          const [config] = await db.select({
+            accountReference: schema.consultantWhatsappConfig.googleCalendarAccountReference,
+            notes: schema.consultantWhatsappConfig.googleCalendarNotes,
+          }).from(schema.consultantWhatsappConfig).where(eq(schema.consultantWhatsappConfig.consultantId, consultantId)).limit(1);
+          if (config) {
+            result = { accountReference: config.accountReference, notes: config.notes };
+          }
+          break;
+        }
+        default:
+          return res.status(400).json({ message: "Step non supportato" });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("[CREDENTIAL-NOTES] Error fetching:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/consultant/credential-notes/:stepId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { stepId } = req.params;
+      const consultantId = req.user!.id;
+      const { accountReference, notes } = req.body;
+
+      switch (stepId) {
+        case "vertex_ai": {
+          const [existing] = await db.select({ id: schema.vertexAiSettings.id }).from(schema.vertexAiSettings).where(eq(schema.vertexAiSettings.userId, consultantId));
+          if (existing) {
+            await db.update(schema.vertexAiSettings).set({
+              accountReference,
+              notes,
+              updatedAt: new Date(),
+            }).where(eq(schema.vertexAiSettings.userId, consultantId));
+          }
+          break;
+        }
+        case "smtp": {
+          const [existing] = await db.select({ id: schema.consultantSmtpSettings.id }).from(schema.consultantSmtpSettings).where(eq(schema.consultantSmtpSettings.consultantId, consultantId));
+          if (existing) {
+            await db.update(schema.consultantSmtpSettings).set({
+              accountReference,
+              notes,
+              updatedAt: new Date(),
+            }).where(eq(schema.consultantSmtpSettings.consultantId, consultantId));
+          }
+          break;
+        }
+        case "twilio_config": {
+          const [existing] = await db.select({ id: schema.consultantWhatsappConfig.id }).from(schema.consultantWhatsappConfig).where(eq(schema.consultantWhatsappConfig.consultantId, consultantId)).limit(1);
+          if (existing) {
+            await db.update(schema.consultantWhatsappConfig).set({
+              twilioAccountReference: accountReference,
+              twilioNotes: notes,
+              updatedAt: new Date(),
+            }).where(eq(schema.consultantWhatsappConfig.id, existing.id));
+          }
+          break;
+        }
+        case "google_calendar": {
+          const [existing] = await db.select({ id: schema.consultantWhatsappConfig.id }).from(schema.consultantWhatsappConfig).where(eq(schema.consultantWhatsappConfig.consultantId, consultantId)).limit(1);
+          if (existing) {
+            await db.update(schema.consultantWhatsappConfig).set({
+              googleCalendarAccountReference: accountReference,
+              googleCalendarNotes: notes,
+              updatedAt: new Date(),
+            }).where(eq(schema.consultantWhatsappConfig.id, existing.id));
+          }
+          break;
+        }
+        default:
+          return res.status(400).json({ message: "Step non supportato" });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[CREDENTIAL-NOTES] Error saving:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Follow-up Automation API routes
   app.use("/api/followup", followupApiRouter);
 
