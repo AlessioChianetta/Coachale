@@ -1539,9 +1539,9 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl cursor-pointer hover:from-green-600 hover:to-emerald-700 transition-colors shadow-lg">
                         <div className="flex items-center gap-3 text-white">
                           <Cloud className="h-6 w-6" />
-                          <h2 className="text-lg font-bold">Su Twilio</h2>
+                          <h2 className="text-lg font-bold">Template Locali su Twilio</h2>
                           <Badge className="bg-white/20 text-white border-0">
-                            {groupedTemplates.onTwilio.length} template
+                            {groupedTemplates.onTwilio.length} inviati
                           </Badge>
                         </div>
                         <ChevronDown className={`h-5 w-5 text-white transition-transform duration-200 ${twilioSectionOpen ? 'rotate-180' : ''}`} />

@@ -125,11 +125,13 @@ interface CustomTemplate {
   description?: string | null;
   body?: string | null;
   isActive: boolean;
+  approvalStatus?: string | null;
   activeVersion?: {
     id: string;
     versionNumber: number;
     bodyText: string;
     twilioStatus: string;
+    twilioContentSid?: string | null;
   } | null;
 }
 
@@ -187,26 +189,62 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
     .filter(t => t.approvalStatus?.toLowerCase() === 'approved')
     .map(t => ({
       id: t.sid,
-      templateName: t.friendlyName,
+      templateName: t.friendlyName || t.sid,
       useCase: t.useCase || null,
       templateType: t.templateType || null,
       description: null,
       body: t.bodyText,
       isActive: true,
+      approvalStatus: t.approvalStatus,
       activeVersion: {
         id: t.sid,
         versionNumber: 1,
         bodyText: t.bodyText || '',
         twilioStatus: 'approved',
+        twilioContentSid: t.sid,
       },
     }));
   
-  // Combine both sources, preferring Twilio templates for approval status
+  // Normalize template name for matching: lowercase, remove spaces/underscores/dashes, strip explicit version suffixes
+  // Only removes explicit version markers like _v1, _v2, not arbitrary trailing numbers (to preserve "Follow-up Giorno 1")
+  const normalizeName = (name: string | null | undefined): string => {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .replace(/[_\s-]+/g, '')       // Remove spaces, underscores, dashes
+      .replace(/v\d+$/i, '');        // Remove only version suffix at end like v1, v2
+  };
+
+  // Create Sets for de-duplication: by SID and by normalized name
+  const twilioSids = new Set(
+    twilioAsCustomTemplates
+      .map(t => t.activeVersion?.twilioContentSid)
+      .filter(Boolean)
+  );
+  const twilioNormalizedNames = new Set(
+    twilioAsCustomTemplates
+      .map(t => normalizeName(t.templateName))
+      .filter(Boolean)
+  );
+  
+  // Combine both sources, de-duplicating by twilioContentSid OR normalized name
+  // A template from DB is excluded if:
+  // 1. Its activeVersion.twilioContentSid matches a Twilio template, OR
+  // 2. Its normalized name matches a Twilio template (fallback for legacy records)
   const customTemplates: CustomTemplate[] = [
     ...twilioAsCustomTemplates,
-    ...customTemplatesFromDb.filter(ct => 
-      !twilioAsCustomTemplates.some(tt => tt.templateName === ct.templateName)
-    ),
+    ...customTemplatesFromDb.filter(ct => {
+      const localSid = ct.activeVersion?.twilioContentSid;
+      const localNormalizedName = normalizeName(ct.templateName);
+      
+      // Exclude if SID matches Twilio
+      if (localSid && twilioSids.has(localSid)) return false;
+      
+      // Exclude if normalized name matches Twilio (handles "Riattivazione Setter" vs "riattivazione_setter_v1")
+      if (localNormalizedName && twilioNormalizedNames.has(localNormalizedName)) return false;
+      
+      return true;
+    }),
   ];
   const selectedAgent = configs.find(c => c.id === selectedAgentId);
   const isProactiveAgentSelected = selectedAgent ? isAgentProactive(selectedAgent) : false;
