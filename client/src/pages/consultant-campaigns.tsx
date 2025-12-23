@@ -53,6 +53,7 @@ import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { CampaignsList } from "@/components/campaigns/CampaignsList";
 import { CampaignForm } from "@/components/campaigns/CampaignForm";
 import CampaignDetailAnalytics from "@/components/campaigns/CampaignDetailAnalytics";
+import { EducationalBanner } from "@/components/campaigns/EducationalBanner";
 import {
   useCampaigns,
   useCreateCampaign,
@@ -325,6 +326,8 @@ export default function ConsultantCampaignsPage() {
               <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
               <div className="absolute -left-10 -top-10 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
             </div>
+
+            <EducationalBanner />
 
             {hasAgentsWithMissingTemplates && (
               <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-900/30 dark:bg-yellow-950/20">

@@ -56,16 +56,28 @@ export async function createCampaign(data: Omit<InsertMarketingCampaign, "consul
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Failed to create campaign" }));
-    throw new Error(error.message || "Failed to create campaign");
+    const error = await response.json().catch(() => ({ message: "Errore durante la creazione della campagna" }));
+    const errorMessage = error.error || error.message || "";
+    
+    if (response.status === 409 || error.code === "DUPLICATE_CAMPAIGN_NAME" || 
+        errorMessage.includes("duplicate") || errorMessage.includes("già")) {
+      throw new Error(`Esiste già una campagna con questo nome. Scegli un nome diverso.`);
+    }
+    
+    throw new Error(errorMessage || "Errore durante la creazione della campagna");
   }
 
   const json = await response.json();
   if (!json.success) {
-    throw new Error(json.error || "Failed to create campaign");
+    const errorMessage = json.error || "";
+    
+    if (errorMessage.includes("duplicate key") || errorMessage.includes("already exists")) {
+      throw new Error(`Esiste già una campagna con questo nome. Scegli un nome diverso.`);
+    }
+    
+    throw new Error(errorMessage || "Errore durante la creazione della campagna");
   }
   
-  // Return campaign directly (mutations resolve to domain object)
   return json.data;
 }
 

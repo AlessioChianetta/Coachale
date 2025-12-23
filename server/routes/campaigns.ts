@@ -57,10 +57,11 @@ router.post("/campaigns", authenticateToken, requireRole("consultant"), async (r
     }
     
     // Handle unique constraint violation (duplicate campaign name for consultant)
-    if (error.code === '23505' && error.constraint === 'marketing_campaigns_consultant_id_campaign_name_unique') {
+    if (error.code === '23505' || (error.constraint && error.constraint.includes('campaign_name'))) {
       return res.status(409).json({
         success: false,
-        error: "A campaign with this name already exists. Please choose a different name."
+        error: "Esiste già una campagna con questo nome. Scegli un nome diverso.",
+        code: "DUPLICATE_CAMPAIGN_NAME"
       });
     }
     

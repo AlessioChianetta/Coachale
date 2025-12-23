@@ -100,6 +100,10 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   });
 
   const handleFormSubmit = (data: CampaignFormData) => {
+    if (currentStep < WIZARD_STEPS.length) {
+      return;
+    }
+    
     const cleanedData = {
       ...data,
       openingTemplateId: data.openingTemplateId || undefined,
@@ -108,6 +112,12 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
       followupFinalTemplateId: data.followupFinalTemplateId || undefined,
     };
     onSubmit(cleanedData);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && currentStep < WIZARD_STEPS.length) {
+      e.preventDefault();
+    }
   };
 
   const { data: agentsData, isLoading: agentsLoading } = useQuery({
@@ -151,7 +161,21 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
 
   useEffect(() => {
     setSelectedTemplateId(null);
+    form.setValue("openingTemplateId", "");
   }, [selectedAgentId]);
+
+  useEffect(() => {
+    form.setValue("openingTemplateId", selectedTemplateId || "");
+  }, [selectedTemplateId]);
+
+  useEffect(() => {
+    if (initialData?.openingTemplateId && assignedTemplates.length > 0) {
+      const exists = assignedTemplates.some((t: any) => t.templateId === initialData.openingTemplateId);
+      if (exists) {
+        setSelectedTemplateId(initialData.openingTemplateId);
+      }
+    }
+  }, [initialData?.openingTemplateId, assignedTemplates]);
 
   const handleInsertDefaults = () => {
     if (selectedAgent) {
@@ -249,7 +273,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
       case 1:
         return watchedValues.campaignName?.length >= 3 && watchedValues.campaignType && watchedValues.leadCategory;
       case 2:
-        return !!watchedValues.preferredAgentConfigId;
+        return !!watchedValues.preferredAgentConfigId && !!watchedValues.openingTemplateId;
       case 3:
         return watchedValues.hookText && watchedValues.idealStateDescription && watchedValues.implicitDesires && watchedValues.defaultObiettivi;
       default:
@@ -271,7 +295,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="h-full">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} onKeyDown={handleKeyDown} className="h-full">
         <div className="flex gap-6 h-full">
           {/* Left: Wizard Steps & Form */}
           <div className="flex-1 flex flex-col min-w-0">
