@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -147,6 +147,15 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
 
   const assignedTemplates = assignmentsData?.assignments || [];
   
+  // State for selected template preview
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const selectedTemplate = assignedTemplates.find((t: any) => t.templateId === selectedTemplateId);
+  
+  // Reset selected template when agent changes
+  useEffect(() => {
+    setSelectedTemplateId(null);
+  }, [selectedAgentId]);
+  
   // Group templates by category (supports both new useCase values and legacy slot types)
   const detectCategory = (text: string): string => {
     const normalized = text.toLowerCase();
@@ -220,10 +229,22 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     desideri: watchedValues.implicitDesires || "",
   };
 
-  const previewTemplate =
-    watchedValues.hookText && watchedValues.idealStateDescription
-      ? `Ciao {{leadName}}! 👋\n\nSono {{consultantName}}, ${watchedValues.hookText}.\n\nTi scrivo perché molte persone come te desiderano ${watchedValues.idealStateDescription}.\n\n${watchedValues.defaultObiettivi ? `Obiettivo: ${watchedValues.defaultObiettivi}` : ""}\n\nVuoi che ti racconti di più?`
-      : "Configura i campi del form per vedere un'anteprima del messaggio WhatsApp...";
+  // Use selected template body or fallback to generated preview
+  const getPreviewTemplate = () => {
+    if (selectedTemplate) {
+      const bodyText = selectedTemplate.body || selectedTemplate.activeVersion?.bodyText;
+      if (bodyText) {
+        return replaceTemplateVariables(bodyText);
+      }
+    }
+    // Fallback to auto-generated preview
+    if (watchedValues.hookText && watchedValues.idealStateDescription) {
+      return `Ciao {{leadName}}! 👋\n\nSono {{consultantName}}, ${watchedValues.hookText}.\n\nTi scrivo perché molte persone come te desiderano ${watchedValues.idealStateDescription}.\n\n${watchedValues.defaultObiettivi ? `Obiettivo: ${watchedValues.defaultObiettivi}` : ""}\n\nVuoi che ti racconti di più?`;
+    }
+    return "Seleziona un template dalla lista sopra o configura i campi del form per vedere un'anteprima...";
+  };
+
+  const previewTemplate = getPreviewTemplate();
 
   return (
     <Form {...form}>
@@ -484,11 +505,27 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                             {templates.map((template: any) => {
                               const bodyText = template.body || template.activeVersion?.bodyText || "";
                               const previewText = bodyText ? replaceTemplateVariables(bodyText) : null;
+                              const isSelected = selectedTemplateId === template.templateId;
                               
                               return (
-                                <div key={template.templateId || template.assignmentId} className="bg-white rounded-lg p-3 border border-gray-100">
-                                  <div className="text-xs font-semibold text-gray-800 mb-1">
-                                    {template.templateName}
+                                <div 
+                                  key={template.templateId || template.assignmentId} 
+                                  className={`bg-white rounded-lg p-3 border-2 cursor-pointer transition-all duration-200 ${
+                                    isSelected 
+                                      ? "border-blue-500 ring-2 ring-blue-200 shadow-md" 
+                                      : "border-gray-100 hover:border-blue-300 hover:shadow-sm"
+                                  }`}
+                                  onClick={() => setSelectedTemplateId(template.templateId)}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="text-xs font-semibold text-gray-800">
+                                      {template.templateName}
+                                    </div>
+                                    {isSelected && (
+                                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                        Selezionato
+                                      </span>
+                                    )}
                                   </div>
                                   {template.useCase && (
                                     <div className="text-xs text-gray-500 mb-2">
@@ -496,7 +533,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                                     </div>
                                   )}
                                   {previewText ? (
-                                    <div className="bg-green-50 rounded-lg p-2 border border-green-100">
+                                    <div className={`rounded-lg p-2 border ${isSelected ? "bg-blue-50 border-blue-200" : "bg-green-50 border-green-100"}`}>
                                       <p className="text-xs text-gray-700 whitespace-pre-wrap line-clamp-3">
                                         {previewText}
                                       </p>
@@ -526,12 +563,28 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
               </div>
             )}
 
-            <WhatsAppPreview
-              templateBody={previewTemplate}
-              variables={previewVariables}
-              campaignType={watchedValues.campaignType}
-              leadCategory={watchedValues.leadCategory}
-            />
+            <div className="space-y-2">
+              {selectedTemplate && (
+                <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                  <span className="text-sm text-blue-800">
+                    📋 Anteprima: <strong>{selectedTemplate.templateName}</strong>
+                  </span>
+                  <button 
+                    type="button"
+                    onClick={() => setSelectedTemplateId(null)}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Deseleziona
+                  </button>
+                </div>
+              )}
+              <WhatsAppPreview
+                templateBody={previewTemplate}
+                variables={previewVariables}
+                campaignType={watchedValues.campaignType}
+                leadCategory={watchedValues.leadCategory}
+              />
+            </div>
           </div>
         </div>
 
