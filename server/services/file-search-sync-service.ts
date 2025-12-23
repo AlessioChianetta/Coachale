@@ -2074,10 +2074,10 @@ export class FileSearchSyncService {
         return { success: false, error: 'Exercise not found' };
       }
 
-      // Get or create the client's PRIVATE store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
-      if (!clientStore) {
-        return { success: false, error: 'Failed to get or create client private store' };
+      // Get or create the consultant's CLIENT POOL store (consolidated store for all client data)
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
+      if (!clientPoolStore) {
+        return { success: false, error: 'Failed to get or create client pool store' };
       }
 
       // Extract text from uploaded files (Word, PDF, etc.)
@@ -2132,11 +2132,11 @@ export class FileSearchSyncService {
       // Build content from the submission (including extracted file contents)
       const content = this.buildExerciseSubmissionContent(exercise, submission, assignment, extractedFileContents);
 
-      // Upload to client's PRIVATE store
+      // Upload to consultant's CLIENT POOL store
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[RISPOSTA] ${exercise.title}`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'exercise',
         sourceId: submissionId,
         clientId: clientId,
@@ -2144,7 +2144,7 @@ export class FileSearchSyncService {
       });
 
       if (uploadResult.success) {
-        console.log(`✅ [FileSync] Client exercise response synced to PRIVATE store: ${exercise.title} (client: ${clientId.substring(0, 8)})`);
+        console.log(`✅ [FileSync] Client exercise response synced to POOL store: ${exercise.title} (client: ${clientId.substring(0, 8)})`);
       }
 
       return uploadResult.success
@@ -2259,9 +2259,9 @@ export class FileSearchSyncService {
       }
 
       // Get or create the client's PRIVATE store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
-      if (!clientStore) {
-        return { success: false, error: 'Failed to get or create client private store' };
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
+      if (!clientPoolStore) {
+        return { success: false, error: 'Failed to get or create client pool store' };
       }
 
       // Build content from the consultation
@@ -2272,7 +2272,7 @@ export class FileSearchSyncService {
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[CONSULENZA PRIVATA] ${date}`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'consultation',
         sourceId: consultationId,
         clientId: clientId,
@@ -2743,9 +2743,9 @@ export class FileSearchSyncService {
       }
 
       // Get or create the client's PRIVATE store (NOT the consultant's store)
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
-      if (!clientStore) {
-        return { success: false, error: 'Failed to get or create client private store' };
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
+      if (!clientPoolStore) {
+        return { success: false, error: 'Failed to get or create client pool store' };
       }
 
       // Build content from the document
@@ -2755,7 +2755,7 @@ export class FileSearchSyncService {
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[CLIENT KB] ${doc.title}`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'knowledge_base',
         sourceId: documentId,
         clientId: clientId,
@@ -3794,16 +3794,16 @@ export class FileSearchSyncService {
       });
 
       // Get or create the client's PRIVATE store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
-      if (!clientStore) {
-        return { success: false, error: 'Failed to get or create client private store' };
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
+      if (!clientPoolStore) {
+        return { success: false, error: 'Failed to get or create client pool store' };
       }
 
       // Upload to client's PRIVATE store
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[FINANCIAL DATA] Dati Finanziari - ${new Date().toLocaleDateString('it-IT')}`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'financial_data',
         sourceId: clientId,
         clientId: clientId,
@@ -4413,9 +4413,9 @@ export class FileSearchSyncService {
       }
 
       // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
-      if (!clientStore) {
-        return { success: false, error: 'Failed to get or create client private store' };
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
+      if (!clientPoolStore) {
+        return { success: false, error: 'Failed to get or create client pool store' };
       }
 
       // Build exercise content
@@ -4434,7 +4434,7 @@ export class FileSearchSyncService {
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[ESERCIZIO ASSEGNATO] ${exercise.title}`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'exercise',
         sourceId: exerciseId,
         clientId: clientId,
@@ -4492,7 +4492,7 @@ export class FileSearchSyncService {
       console.log(`${'═'.repeat(60)}\n`);
 
       // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
       if (!clientStore) {
         return { success: false, synced: 0, failed: 0, error: 'Failed to get or create client private store' };
       }
@@ -4518,7 +4518,7 @@ export class FileSearchSyncService {
         const uploadResult = await fileSearchService.uploadDocumentFromContent({
           content: doc.content || `${doc.title}\n\n${doc.description || ''}`,
           displayName: `[LIBRERIA] ${doc.title}`,
-          storeId: clientStore.storeId,
+          storeId: clientPoolStore.storeId,
           sourceType: 'library',
           sourceId: doc.id,
           clientId: clientId,
@@ -4590,7 +4590,7 @@ export class FileSearchSyncService {
       console.log(`${'═'.repeat(60)}\n`);
 
       // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
       if (!clientStore) {
         return { success: false, synced: 0, failed: 0, error: 'Failed to get or create client private store' };
       }
@@ -4637,7 +4637,7 @@ export class FileSearchSyncService {
         const uploadResult = await fileSearchService.uploadDocumentFromContent({
           content: content,
           displayName: `[LEZIONE] ${lesson.title}`,
-          storeId: clientStore.storeId,
+          storeId: clientPoolStore.storeId,
           sourceType: 'university_lesson',
           sourceId: lesson.id,
           clientId: clientId,
@@ -4682,7 +4682,7 @@ export class FileSearchSyncService {
       }
 
       // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -4707,7 +4707,7 @@ export class FileSearchSyncService {
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[OBIETTIVI] Obiettivi del Cliente`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'goal' as any,
         sourceId: clientId,
         clientId: clientId,
@@ -4744,7 +4744,7 @@ export class FileSearchSyncService {
       }
 
       // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -4783,7 +4783,7 @@ export class FileSearchSyncService {
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[TASK] Task del Cliente`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'task' as any,
         sourceId: clientId,
         clientId: clientId,
@@ -4820,7 +4820,7 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -4861,7 +4861,7 @@ export class FileSearchSyncService {
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[RIFLESSIONI] Diario Riflessioni`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'daily_reflection' as any,
         sourceId: clientId,
         clientId: clientId,
@@ -4898,7 +4898,7 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -4923,7 +4923,7 @@ export class FileSearchSyncService {
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[PROGRESSO] Storico Avanzamento`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'client_progress' as any,
         sourceId: clientId,
         clientId: clientId,
@@ -4968,7 +4968,7 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -5012,7 +5012,7 @@ export class FileSearchSyncService {
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[LIBRERIA] Progresso Letture`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'library_progress' as any,
         sourceId: clientId,
         clientId: clientId,
@@ -5060,7 +5060,7 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      const clientPoolStore = await fileSearchService.getOrCreateClientPoolStore(consultantId);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -5103,7 +5103,7 @@ export class FileSearchSyncService {
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[EMAIL JOURNEY] Email Ricevute`,
-        storeId: clientStore.storeId,
+        storeId: clientPoolStore.storeId,
         sourceType: 'email_journey' as any,
         sourceId: clientId,
         clientId: clientId,
