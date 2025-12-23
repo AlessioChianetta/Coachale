@@ -248,6 +248,102 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
   ];
   const selectedAgent = configs.find(c => c.id === selectedAgentId);
   const isProactiveAgentSelected = selectedAgent ? isAgentProactive(selectedAgent) : false;
+  
+  // State for collapsible categories - must be declared before any conditional returns
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(["Setter", "Customer Service", "Primo Contatto", "Follow-up", "Appuntamenti", "Generale"]));
+  
+  // All useMemo hooks MUST be declared before any conditional returns
+  const approvedTemplates = useMemo(() => {
+    return customTemplates.filter(
+      (t) => t.approvalStatus?.toLowerCase() === "approved" || t.activeVersion?.twilioStatus?.toLowerCase() === "approved"
+    );
+  }, [customTemplates]);
+  
+  const mainTemplate = useMemo(() => {
+    return approvedTemplates.find(t => t.templateType === "opening");
+  }, [approvedTemplates]);
+  
+  const otherTemplates = useMemo(() => {
+    return approvedTemplates.filter(t => t.templateType !== "opening");
+  }, [approvedTemplates]);
+  
+  // Group templates by category for better organization - MUST be before conditional returns
+  const templatesByCategory = useMemo(() => {
+    const categories: Record<string, CustomTemplate[]> = {};
+    
+    // Helper function to detect category from text (useCase, templateType, or templateName)
+    const detectCategory = (text: string): string => {
+      const normalized = text.toLowerCase();
+      
+      if (normalized.includes("setter") || normalized.includes("proattivo") || normalized.includes("proactive")) {
+        return "Setter";
+      }
+      if (normalized.includes("receptionist") || normalized.includes("customer") || normalized.includes("servizio") || normalized.includes("assistente")) {
+        return "Customer Service";
+      }
+      if (normalized.includes("follow") || normalized.includes("riattiv") || normalized.includes("check") || normalized.includes("reminder")) {
+        return "Follow-up";
+      }
+      if (normalized.includes("apertura") || normalized.includes("primo") || normalized.includes("benvenuto") || normalized.includes("iscritto") || normalized.includes("welcome")) {
+        return "Primo Contatto";
+      }
+      if (normalized.includes("conferma") || normalized.includes("appuntamento") || normalized.includes("booking") || normalized.includes("calendario")) {
+        return "Appuntamenti";
+      }
+      
+      return "";
+    };
+    
+    otherTemplates.forEach(template => {
+      // Try to detect category from multiple sources
+      let groupKey = "Generale";
+      
+      // First check useCase
+      if (template.useCase) {
+        const fromUseCase = detectCategory(template.useCase);
+        if (fromUseCase) groupKey = fromUseCase;
+      }
+      
+      // Then check templateType if still Generale
+      if (groupKey === "Generale" && template.templateType) {
+        const fromType = detectCategory(template.templateType);
+        if (fromType) groupKey = fromType;
+      }
+      
+      // Finally check templateName if still Generale
+      if (groupKey === "Generale" && template.templateName) {
+        const fromName = detectCategory(template.templateName);
+        if (fromName) groupKey = fromName;
+      }
+      
+      if (!categories[groupKey]) {
+        categories[groupKey] = [];
+      }
+      categories[groupKey].push(template);
+    });
+    
+    // Sort categories: known categories first, then alphabetically
+    const orderedKeys = Object.keys(categories).sort((a, b) => {
+      const order = ["Setter", "Customer Service", "Primo Contatto", "Follow-up", "Appuntamenti", "Generale"];
+      const aIndex = order.indexOf(a);
+      const bIndex = order.indexOf(b);
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.localeCompare(b);
+    });
+    
+    return { categories, orderedKeys };
+  }, [otherTemplates]);
+  
+  const assignedNonApprovedTemplates = useMemo(() => {
+    const configSelectedTemplates = selectedTemplates.get(selectedAgentId || '') || new Set();
+    return customTemplates.filter(
+      (t) => configSelectedTemplates.has(t.id) && 
+             t.approvalStatus?.toLowerCase() !== "approved" && 
+             t.activeVersion?.twilioStatus?.toLowerCase() !== "approved"
+    );
+  }, [customTemplates, selectedTemplates, selectedAgentId]);
 
   useEffect(() => {
     const loadAssignments = async () => {
@@ -372,90 +468,6 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
 
   const isLoading = loadingAssignments.has(selectedAgentId);
   const configSelectedTemplates = selectedTemplates.get(selectedAgentId) || new Set();
-  
-  const approvedTemplates = customTemplates.filter(
-    (t) => t.approvalStatus?.toLowerCase() === "approved" || t.activeVersion?.twilioStatus?.toLowerCase() === "approved"
-  );
-  
-  const mainTemplate = approvedTemplates.find(t => t.templateType === "opening");
-  const otherTemplates = approvedTemplates.filter(t => t.templateType !== "opening");
-  
-  // Group templates by category for better organization
-  const templatesByCategory = useMemo(() => {
-    const categories: Record<string, CustomTemplate[]> = {};
-    
-    // Helper function to detect category from text (useCase, templateType, or templateName)
-    const detectCategory = (text: string): string => {
-      const normalized = text.toLowerCase();
-      
-      if (normalized.includes("setter") || normalized.includes("proattivo") || normalized.includes("proactive")) {
-        return "Setter";
-      }
-      if (normalized.includes("receptionist") || normalized.includes("customer") || normalized.includes("servizio") || normalized.includes("assistente")) {
-        return "Customer Service";
-      }
-      if (normalized.includes("follow") || normalized.includes("riattiv") || normalized.includes("check") || normalized.includes("reminder")) {
-        return "Follow-up";
-      }
-      if (normalized.includes("apertura") || normalized.includes("primo") || normalized.includes("benvenuto") || normalized.includes("iscritto") || normalized.includes("welcome")) {
-        return "Primo Contatto";
-      }
-      if (normalized.includes("conferma") || normalized.includes("appuntamento") || normalized.includes("booking") || normalized.includes("calendario")) {
-        return "Appuntamenti";
-      }
-      
-      return "";
-    };
-    
-    otherTemplates.forEach(template => {
-      // Try to detect category from multiple sources
-      let groupKey = "Generale";
-      
-      // First check useCase
-      if (template.useCase) {
-        const fromUseCase = detectCategory(template.useCase);
-        if (fromUseCase) groupKey = fromUseCase;
-      }
-      
-      // Then check templateType if still Generale
-      if (groupKey === "Generale" && template.templateType) {
-        const fromType = detectCategory(template.templateType);
-        if (fromType) groupKey = fromType;
-      }
-      
-      // Finally check templateName if still Generale
-      if (groupKey === "Generale" && template.templateName) {
-        const fromName = detectCategory(template.templateName);
-        if (fromName) groupKey = fromName;
-      }
-      
-      if (!categories[groupKey]) {
-        categories[groupKey] = [];
-      }
-      categories[groupKey].push(template);
-    });
-    
-    // Sort categories: known categories first, then alphabetically
-    const orderedKeys = Object.keys(categories).sort((a, b) => {
-      const order = ["Setter", "Customer Service", "Primo Contatto", "Follow-up", "Appuntamenti", "Generale"];
-      const aIndex = order.indexOf(a);
-      const bIndex = order.indexOf(b);
-      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-      if (aIndex !== -1) return -1;
-      if (bIndex !== -1) return 1;
-      return a.localeCompare(b);
-    });
-    
-    return { categories, orderedKeys };
-  }, [otherTemplates]);
-  
-  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(templatesByCategory.orderedKeys));
-  
-  const assignedNonApprovedTemplates = customTemplates.filter(
-    (t) => configSelectedTemplates.has(t.id) && 
-           t.approvalStatus?.toLowerCase() !== "approved" && 
-           t.activeVersion?.twilioStatus?.toLowerCase() !== "approved"
-  );
 
   if (customTemplates.length === 0) {
     return (
