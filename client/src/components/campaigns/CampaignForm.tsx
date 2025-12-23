@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -25,7 +24,12 @@ import {
 import { WhatsAppPreview } from "./WhatsAppPreview";
 import { useQuery } from "@tanstack/react-query";
 import { getAuthHeaders } from "@/lib/auth";
-import { Loader2, Megaphone, Target, Users, Zap, HandshakeIcon, StoreIcon } from "lucide-react";
+import { 
+  Loader2, Megaphone, Target, Users, Zap, HandshakeIcon, StoreIcon,
+  ChevronLeft, ChevronRight, Check, Sparkles, MessageSquare, Settings2
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 
 const campaignFormSchema = z.object({
   campaignName: z.string().min(3, "Il nome deve contenere almeno 3 caratteri"),
@@ -51,23 +55,32 @@ interface CampaignFormProps {
 }
 
 const campaignTypeOptions = [
-  { value: "outbound_ads", label: "Pubblicità Esterna", icon: Megaphone },
-  { value: "inbound_form", label: "Form Inbound", icon: Target },
-  { value: "referral", label: "Referral", icon: Users },
-  { value: "recovery", label: "Recupero", icon: Zap },
-  { value: "partner", label: "Partner", icon: HandshakeIcon },
-  { value: "walk_in", label: "Walk-In", icon: StoreIcon },
+  { value: "outbound_ads", label: "Pubblicità Esterna", icon: Megaphone, description: "Lead da campagne ads" },
+  { value: "inbound_form", label: "Form Inbound", icon: Target, description: "Lead da form sul sito" },
+  { value: "referral", label: "Referral", icon: Users, description: "Lead da passaparola" },
+  { value: "recovery", label: "Recupero", icon: Zap, description: "Lead da ricontattare" },
+  { value: "partner", label: "Partner", icon: HandshakeIcon, description: "Lead da partnership" },
+  { value: "walk_in", label: "Walk-In", icon: StoreIcon, description: "Lead da punto vendita" },
 ];
 
 const leadCategoryOptions = [
-  { value: "freddo", label: "Freddo", color: "text-blue-600" },
-  { value: "tiepido", label: "Tiepido", color: "text-yellow-600" },
-  { value: "caldo", label: "Caldo", color: "text-red-600" },
-  { value: "recupero", label: "Recupero", color: "text-purple-600" },
-  { value: "referral", label: "Referral", color: "text-green-600" },
+  { value: "freddo", label: "Freddo", color: "bg-blue-500", description: "Non conosce il brand" },
+  { value: "tiepido", label: "Tiepido", color: "bg-yellow-500", description: "Ha mostrato interesse" },
+  { value: "caldo", label: "Caldo", color: "bg-red-500", description: "Pronto all'acquisto" },
+  { value: "recupero", label: "Recupero", color: "bg-purple-500", description: "Da riattivare" },
+  { value: "referral", label: "Referral", color: "bg-green-500", description: "Arriva da referral" },
+];
+
+const WIZARD_STEPS = [
+  { id: 1, title: "Info Base", icon: Settings2, description: "Nome e tipo campagna" },
+  { id: 2, title: "Agente WhatsApp", icon: MessageSquare, description: "Chi contatterà i lead" },
+  { id: 3, title: "Personalizzazione", icon: Sparkles, description: "Uncino e messaggi" },
 ];
 
 export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormProps) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
   const form = useForm<CampaignFormData>({
     resolver: zodResolver(campaignFormSchema),
     defaultValues: {
@@ -87,7 +100,6 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   });
 
   const handleFormSubmit = (data: CampaignFormData) => {
-    // Convert empty strings to undefined for optional template fields
     const cleanedData = {
       ...data,
       openingTemplateId: data.openingTemplateId || undefined,
@@ -96,15 +108,6 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
       followupFinalTemplateId: data.followupFinalTemplateId || undefined,
     };
     onSubmit(cleanedData);
-  };
-
-  const handleInsertDefaults = () => {
-    if (selectedAgent) {
-      form.setValue("hookText", selectedAgent.defaultUncino || "");
-      form.setValue("idealStateDescription", selectedAgent.defaultIdealState || "");
-      form.setValue("implicitDesires", selectedAgent.defaultDesideri || "");
-      form.setValue("defaultObiettivi", selectedAgent.defaultObiettivi || "");
-    }
   };
 
   const { data: agentsData, isLoading: agentsLoading } = useQuery({
@@ -121,14 +124,12 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     },
   });
 
-  // Filter only proactive agents
   const agents = (agentsData?.configs || []).filter((agent: any) => agent.agentType === "proactive_setter");
 
   const watchedValues = form.watch();
   const selectedAgentId = watchedValues.preferredAgentConfigId;
   const selectedAgent = agents.find((a: any) => a.id === selectedAgentId);
 
-  // Fetch template assignments for selected agent
   const { data: assignmentsData, isLoading: templatesLoading } = useQuery({
     queryKey: ["/api/whatsapp/template-assignments", selectedAgentId],
     queryFn: async () => {
@@ -146,23 +147,25 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   });
 
   const assignedTemplates = assignmentsData?.assignments || [];
-  
-  // State for selected template preview
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const selectedTemplate = assignedTemplates.find((t: any) => t.templateId === selectedTemplateId);
-  
-  // Reset selected template when agent changes
+
   useEffect(() => {
     setSelectedTemplateId(null);
   }, [selectedAgentId]);
-  
-  // Group templates by category (supports both new useCase values and legacy slot types)
+
+  const handleInsertDefaults = () => {
+    if (selectedAgent) {
+      form.setValue("hookText", selectedAgent.defaultUncino || "");
+      form.setValue("idealStateDescription", selectedAgent.defaultIdealState || "");
+      form.setValue("implicitDesires", selectedAgent.defaultDesideri || "");
+      form.setValue("defaultObiettivi", selectedAgent.defaultObiettivi || "");
+    }
+  };
+
   const detectCategory = (text: string): string => {
     const normalized = text.toLowerCase();
-    // Legacy slot types from old 4-slot system
     if (normalized === "opening" || normalized.includes("apertura") || normalized.includes("primo") || normalized.includes("benvenuto")) return "Primo Contatto";
     if (normalized.startsWith("follow_up") || normalized.includes("follow") || normalized.includes("riattiv") || normalized.includes("ripresa")) return "Follow-up";
-    // New template categories
     if (normalized.includes("setter") || normalized.includes("proattivo")) return "Setter";
     if (normalized.includes("appuntament") || normalized.includes("booking")) return "Appuntamenti";
     return "Generale";
@@ -174,7 +177,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     acc[category].push(template);
     return acc;
   }, {} as Record<string, any[]>);
-  
+
   const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
     "Setter": { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200" },
     "Follow-up": { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
@@ -183,7 +186,6 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     "Generale": { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" },
   };
 
-  // Function to replace template variables ${variable} or {{N}} with form values
   const replaceTemplateVariables = (bodyText: string) => {
     if (!bodyText) return "";
     
@@ -197,7 +199,6 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     
     let preview = bodyText;
     
-    // Replace ${variable} format (custom templates)
     preview = preview.replace(/\$\{nome_lead\}/g, nome_lead);
     preview = preview.replace(/\$\{firstName\}/g, nome_lead);
     preview = preview.replace(/\$\{nome_consulente\}/g, nome_consulente);
@@ -210,7 +211,6 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     preview = preview.replace(/\$\{obiettivi\}/g, obiettivi);
     preview = preview.replace(/\$\{desideri\}/g, desideri);
     
-    // Also support {{N}} format for backward compatibility
     preview = preview.replace(/\{\{1\}\}/g, nome_lead);
     preview = preview.replace(/\{\{2\}\}/g, nome_consulente);
     preview = preview.replace(/\{\{3\}\}/g, nome_azienda);
@@ -229,7 +229,6 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     desideri: watchedValues.implicitDesires || "",
   };
 
-  // Use selected template body or fallback to generated preview
   const getPreviewTemplate = () => {
     if (selectedTemplate) {
       const bodyText = selectedTemplate.body || selectedTemplate.activeVersion?.bodyText;
@@ -237,362 +236,547 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
         return replaceTemplateVariables(bodyText);
       }
     }
-    // Fallback to auto-generated preview
     if (watchedValues.hookText && watchedValues.idealStateDescription) {
-      return `Ciao {{leadName}}! 👋\n\nSono {{consultantName}}, ${watchedValues.hookText}.\n\nTi scrivo perché molte persone come te desiderano ${watchedValues.idealStateDescription}.\n\n${watchedValues.defaultObiettivi ? `Obiettivo: ${watchedValues.defaultObiettivi}` : ""}\n\nVuoi che ti racconti di più?`;
+      return `Ciao {{leadName}}!\n\nSono {{consultantName}}, ${watchedValues.hookText}.\n\nTi scrivo perché molte persone come te desiderano ${watchedValues.idealStateDescription}.\n\n${watchedValues.defaultObiettivi ? `Obiettivo: ${watchedValues.defaultObiettivi}` : ""}\n\nVuoi che ti racconti di più?`;
     }
-    return "Seleziona un template dalla lista sopra o configura i campi del form per vedere un'anteprima...";
+    return "Compila i campi a sinistra per vedere l'anteprima del messaggio WhatsApp...";
   };
 
   const previewTemplate = getPreviewTemplate();
 
+  const canProceed = () => {
+    switch (currentStep) {
+      case 1:
+        return watchedValues.campaignName?.length >= 3 && watchedValues.campaignType && watchedValues.leadCategory;
+      case 2:
+        return !!watchedValues.preferredAgentConfigId;
+      case 3:
+        return watchedValues.hookText && watchedValues.idealStateDescription && watchedValues.implicitDesires && watchedValues.defaultObiettivi;
+      default:
+        return false;
+    }
+  };
+
+  const nextStep = () => {
+    if (currentStep < WIZARD_STEPS.length && canProceed()) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column - Campaign Details */}
-          <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="campaignName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome Campagna *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Es: Campagna LinkedIn Q1 2025" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="campaignType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo Campagna *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona tipo" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {campaignTypeOptions.map((option) => {
-                        const Icon = option.icon;
-                        return (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div className="flex items-center gap-2">
-                              <Icon className="h-4 w-4" />
-                              <span>{option.label}</span>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="leadCategory"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoria Lead *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona categoria" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {leadCategoryOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${option.color}`} />
-                            <span>{option.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="preferredAgentConfigId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Agente WhatsApp *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona agente" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {agentsLoading ? (
-                        <SelectItem value="loading" disabled>
-                          Caricamento...
-                        </SelectItem>
-                      ) : (
-                        agents.map((agent: any) => (
-                          <SelectItem key={agent.id} value={agent.id}>
-                            {agent.agentName} - {agent.twilioWhatsappNumber}
-                          </SelectItem>
-                        ))
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="h-full">
+        <div className="flex gap-6 h-full">
+          {/* Left: Wizard Steps & Form */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Step Indicator */}
+            <div className="flex items-center justify-between mb-6 px-1">
+              {WIZARD_STEPS.map((step, index) => {
+                const StepIcon = step.icon;
+                const isCompleted = currentStep > step.id;
+                const isCurrent = currentStep === step.id;
+                
+                return (
+                  <div key={step.id} className="flex items-center flex-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Allow backward navigation or staying on current
+                        // Forward navigation only if previous steps are completed
+                        if (step.id <= currentStep || isCompleted) {
+                          setCurrentStep(step.id);
+                        }
+                      }}
+                      disabled={step.id > currentStep && !isCompleted}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-xl transition-all w-full",
+                        isCurrent && "bg-primary/10 ring-2 ring-primary/30",
+                        isCompleted && "bg-green-50 dark:bg-green-950/20 cursor-pointer",
+                        !isCurrent && !isCompleted && step.id < currentStep && "hover:bg-muted/50 cursor-pointer",
+                        step.id > currentStep && !isCompleted && "opacity-50 cursor-not-allowed"
                       )}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    L'agente da utilizzare per i lead di questa campagna
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {selectedAgentId && (selectedAgent?.defaultUncino || selectedAgent?.defaultIdealState || selectedAgent?.defaultDesideri || selectedAgent?.defaultObiettivi) && (
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleInsertDefaults}
-                  className="w-full"
-                >
-                  <Zap className="mr-2 h-4 w-4" />
-                  Inserisci Valori Predefiniti dall'Agente
-                </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Compila automaticamente i campi sottostanti con i valori predefiniti configurati nell'agente selezionato
-                </p>
-              </div>
-            )}
-
-            <FormField
-              control={form.control}
-              name="hookText"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Uncino (Hook) *</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Es: ho visto che sei interessato alla crescita personale"
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Il gancio principale per catturare l'attenzione
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="idealStateDescription"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Stato Ideale *</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Es: la libertà finanziaria"
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Lo stato ideale che il lead desidera raggiungere
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="implicitDesires"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Desideri Impliciti *</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Es: generare rendita passiva"
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    I desideri non detti del lead
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="defaultObiettivi"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Obiettivi Predefiniti *</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Es: creare un patrimonio solido"
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Gli obiettivi tipici dei lead di questa campagna
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Right Column - Templates & Preview */}
-          <div className="space-y-4">
-            {!selectedAgentId ? (
-              <div className="p-4 bg-muted/50 rounded-lg border-2 border-dashed">
-                <p className="text-sm text-muted-foreground text-center">
-                  Seleziona un agente WhatsApp per vedere i template
-                </p>
-              </div>
-            ) : (
-              <div className="p-4 bg-muted/50 rounded-lg space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium">Template WhatsApp Assegnati</h3>
-                  {assignedTemplates.length > 0 && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                      {assignedTemplates.length} template
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Template configurati per l'agente selezionato, raggruppati per categoria.
-                </p>
-                {templatesLoading ? (
-                  <div className="text-sm text-muted-foreground">Caricamento template...</div>
-                ) : assignedTemplates.length === 0 ? (
-                  <div className="text-sm text-muted-foreground text-center py-4 border-2 border-dashed rounded-lg">
-                    <p className="mb-2">Nessun template assegnato a questo agente</p>
-                    <p className="text-xs">Vai in "Template WhatsApp" per assegnare i template all'agente</p>
+                    >
+                      <div className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors",
+                        isCompleted && "bg-green-500 text-white",
+                        isCurrent && "bg-primary text-primary-foreground",
+                        !isCurrent && !isCompleted && "bg-muted text-muted-foreground"
+                      )}>
+                        {isCompleted ? <Check className="h-5 w-5" /> : <StepIcon className="h-5 w-5" />}
+                      </div>
+                      <div className="text-left min-w-0">
+                        <p className={cn(
+                          "text-sm font-semibold truncate",
+                          isCurrent && "text-primary",
+                          isCompleted && "text-green-700 dark:text-green-400"
+                        )}>
+                          {step.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{step.description}</p>
+                      </div>
+                    </button>
+                    {index < WIZARD_STEPS.length - 1 && (
+                      <div className={cn(
+                        "h-0.5 w-8 mx-2 shrink-0",
+                        isCompleted ? "bg-green-500" : "bg-muted"
+                      )} />
+                    )}
                   </div>
-                ) : (
-                  <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                    {Object.entries(templatesByCategory).map(([category, templates]) => {
-                      const colors = categoryColors[category] || categoryColors["Generale"];
-                      return (
-                        <div key={category} className={`rounded-lg border ${colors.border} ${colors.bg} p-3`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`font-medium text-sm ${colors.text}`}>{category}</span>
-                            <span className={`text-xs ${colors.text} opacity-70`}>
-                              ({templates.length} template)
-                            </span>
-                          </div>
-                          <div className="space-y-2">
-                            {templates.map((template: any) => {
-                              const bodyText = template.body || template.activeVersion?.bodyText || "";
-                              const previewText = bodyText ? replaceTemplateVariables(bodyText) : null;
-                              const isSelected = selectedTemplateId === template.templateId;
-                              
+                );
+              })}
+            </div>
+
+            {/* Step Content */}
+            <Card className="flex-1 overflow-auto">
+              <CardContent className="p-6">
+                {/* Step 1: Info Base */}
+                {currentStep === 1 && (
+                  <div className="space-y-6 animate-in fade-in duration-300">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1">Informazioni Base</h3>
+                      <p className="text-sm text-muted-foreground">Dai un nome alla campagna e definisci il tipo di lead</p>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="campaignName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome Campagna *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Es: Campagna LinkedIn Q1 2025" 
+                              className="text-lg h-12"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormDescription>Un nome descrittivo per identificare questa campagna</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="campaignType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo Campagna *</FormLabel>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                            {campaignTypeOptions.map((option) => {
+                              const Icon = option.icon;
+                              const isSelected = field.value === option.value;
                               return (
-                                <div 
-                                  key={template.templateId || template.assignmentId} 
-                                  className={`bg-white rounded-lg p-3 border-2 cursor-pointer transition-all duration-200 ${
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  onClick={() => field.onChange(option.value)}
+                                  className={cn(
+                                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
                                     isSelected 
-                                      ? "border-blue-500 ring-2 ring-blue-200 shadow-md" 
-                                      : "border-gray-100 hover:border-blue-300 hover:shadow-sm"
-                                  }`}
-                                  onClick={() => setSelectedTemplateId(template.templateId)}
+                                      ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                                      : "border-muted hover:border-primary/50 hover:bg-muted/50"
+                                  )}
                                 >
-                                  <div className="flex items-center justify-between mb-1">
-                                    <div className="text-xs font-semibold text-gray-800">
-                                      {template.templateName}
-                                    </div>
-                                    {isSelected && (
-                                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                                        Selezionato
-                                      </span>
-                                    )}
-                                  </div>
-                                  {template.useCase && (
-                                    <div className="text-xs text-gray-500 mb-2">
-                                      {template.useCase}
-                                    </div>
-                                  )}
-                                  {previewText ? (
-                                    <div className={`rounded-lg p-2 border ${isSelected ? "bg-blue-50 border-blue-200" : "bg-green-50 border-green-100"}`}>
-                                      <p className="text-xs text-gray-700 whitespace-pre-wrap line-clamp-3">
-                                        {previewText}
-                                      </p>
-                                    </div>
-                                  ) : template.isTwilioTemplate ? (
-                                    <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
-                                      <p className="text-xs text-blue-700">
-                                        Template Twilio pre-approvato (anteprima disponibile in "Template WhatsApp")
-                                      </p>
-                                    </div>
-                                  ) : (
-                                    <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
-                                      <p className="text-xs text-gray-500 italic">
-                                        Anteprima non disponibile
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
+                                  <Icon className={cn("h-6 w-6", isSelected ? "text-primary" : "text-muted-foreground")} />
+                                  <span className={cn("text-sm font-medium", isSelected && "text-primary")}>{option.label}</span>
+                                  <span className="text-xs text-muted-foreground text-center">{option.description}</span>
+                                </button>
                               );
                             })}
                           </div>
-                        </div>
-                      );
-                    })}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="leadCategory"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Temperatura Lead *</FormLabel>
+                          <div className="grid grid-cols-5 gap-2 mt-2">
+                            {leadCategoryOptions.map((option) => {
+                              const isSelected = field.value === option.value;
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  onClick={() => field.onChange(option.value)}
+                                  className={cn(
+                                    "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                                    isSelected 
+                                      ? "border-primary bg-primary/5" 
+                                      : "border-muted hover:border-primary/50"
+                                  )}
+                                >
+                                  <div className={cn("w-4 h-4 rounded-full", option.color)} />
+                                  <span className={cn("text-xs font-medium", isSelected && "text-primary")}>{option.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <FormDescription>Quanto è "caldo" il lead quando arriva</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 )}
-              </div>
-            )}
 
-            <div className="space-y-2">
-              {selectedTemplate && (
-                <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                  <span className="text-sm text-blue-800">
-                    📋 Anteprima: <strong>{selectedTemplate.templateName}</strong>
-                  </span>
-                  <button 
+                {/* Step 2: Agente WhatsApp */}
+                {currentStep === 2 && (
+                  <div className="space-y-6 animate-in fade-in duration-300">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1">Agente WhatsApp</h3>
+                      <p className="text-sm text-muted-foreground">Seleziona l'agente che contatterà i lead di questa campagna</p>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="preferredAgentConfigId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Agente WhatsApp *</FormLabel>
+                          {agentsLoading ? (
+                            <div className="flex items-center gap-2 p-4 border rounded-lg">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span className="text-sm text-muted-foreground">Caricamento agenti...</span>
+                            </div>
+                          ) : agents.length === 0 ? (
+                            <div className="p-4 border-2 border-dashed rounded-lg text-center">
+                              <p className="text-sm text-muted-foreground mb-2">Nessun agente WhatsApp configurato</p>
+                              <p className="text-xs text-muted-foreground">Vai in "Agenti WhatsApp" per crearne uno</p>
+                            </div>
+                          ) : (
+                            <div className="grid gap-3">
+                              {agents.map((agent: any) => {
+                                const isSelected = field.value === agent.id;
+                                return (
+                                  <button
+                                    key={agent.id}
+                                    type="button"
+                                    onClick={() => field.onChange(agent.id)}
+                                    className={cn(
+                                      "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                                      isSelected 
+                                        ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                                        : "border-muted hover:border-primary/50"
+                                    )}
+                                  >
+                                    <div className={cn(
+                                      "flex h-12 w-12 items-center justify-center rounded-full",
+                                      isSelected ? "bg-primary text-white" : "bg-muted"
+                                    )}>
+                                      <MessageSquare className="h-6 w-6" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className={cn("font-semibold", isSelected && "text-primary")}>{agent.agentName}</p>
+                                      <p className="text-sm text-muted-foreground">{agent.twilioWhatsappNumber}</p>
+                                    </div>
+                                    {isSelected && (
+                                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white">
+                                        <Check className="h-4 w-4" />
+                                      </div>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {selectedAgentId && (selectedAgent?.defaultUncino || selectedAgent?.defaultIdealState) && (
+                      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500 text-white">
+                            <Zap className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-900 dark:text-blue-100">Valori predefiniti disponibili</p>
+                            <p className="text-sm text-blue-700 dark:text-blue-300">Questo agente ha valori configurati che puoi usare</p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleInsertDefaults}
+                          className="w-full bg-white dark:bg-blue-900/50"
+                        >
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Usa Valori Predefiniti dell'Agente
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Template Preview in Step 2 */}
+                    {selectedAgentId && assignedTemplates.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium mb-3">Template Disponibili ({assignedTemplates.length})</p>
+                        <p className="text-xs text-muted-foreground mb-3">Clicca su un template per vedere l'anteprima a destra</p>
+                        <div className="grid gap-3 max-h-[350px] overflow-y-auto pr-2">
+                          {Object.entries(templatesByCategory).map(([category, templates]) => {
+                            const colors = categoryColors[category] || categoryColors["Generale"];
+                            return (
+                              <div key={category} className={cn("rounded-xl border p-4", colors.border, colors.bg)}>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <span className={cn("text-sm font-semibold", colors.text)}>{category}</span>
+                                  <span className={cn("text-xs px-2 py-0.5 rounded-full", colors.bg, colors.text, "border", colors.border)}>
+                                    {(templates as any[]).length}
+                                  </span>
+                                </div>
+                                <div className="space-y-2">
+                                  {(templates as any[]).map((template: any) => {
+                                    const isSelected = selectedTemplateId === template.templateId;
+                                    const bodyText = template.body || template.activeVersion?.bodyText || "";
+                                    const previewText = bodyText ? replaceTemplateVariables(bodyText) : null;
+                                    
+                                    return (
+                                      <button
+                                        key={template.templateId}
+                                        type="button"
+                                        onClick={() => setSelectedTemplateId(template.templateId)}
+                                        className={cn(
+                                          "w-full text-left p-3 rounded-lg transition-all",
+                                          isSelected 
+                                            ? "bg-white border-2 border-primary shadow-md ring-2 ring-primary/20" 
+                                            : "bg-white/80 border border-gray-200 hover:bg-white hover:border-primary/50 hover:shadow-sm"
+                                        )}
+                                      >
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className={cn("text-sm font-medium", isSelected && "text-primary")}>
+                                            {template.templateName}
+                                          </span>
+                                          {isSelected && (
+                                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                              Selezionato
+                                            </span>
+                                          )}
+                                        </div>
+                                        {previewText && (
+                                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                            {previewText.substring(0, 100)}...
+                                          </p>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 3: Personalizzazione */}
+                {currentStep === 3 && (
+                  <div className="space-y-5 animate-in fade-in duration-300">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1">Personalizzazione Messaggi</h3>
+                      <p className="text-sm text-muted-foreground">Configura i valori che verranno usati nei template WhatsApp</p>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="hookText"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-orange-600 text-xs font-bold">1</span>
+                            Uncino (Hook) *
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Es: ho visto che sei interessato alla crescita personale"
+                              className="min-h-[80px] resize-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>Il gancio per catturare l'attenzione del lead</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="idealStateDescription"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-green-600 text-xs font-bold">2</span>
+                            Stato Ideale *
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Es: la libertà finanziaria"
+                              className="min-h-[80px] resize-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>Lo stato ideale che il lead desidera raggiungere</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="implicitDesires"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-purple-600 text-xs font-bold">3</span>
+                            Desideri Impliciti *
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Es: generare rendita passiva"
+                              className="min-h-[80px] resize-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>I desideri non detti del lead</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="defaultObiettivi"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-xs font-bold">4</span>
+                            Obiettivi *
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Es: creare un patrimonio solido"
+                              className="min-h-[80px] resize-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>Gli obiettivi tipici dei lead di questa campagna</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Navigation Buttons */}
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={prevStep}
+                disabled={currentStep === 1}
+                className="gap-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Indietro
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Step {currentStep} di {WIZARD_STEPS.length}
+                </span>
+              </div>
+
+              {currentStep < WIZARD_STEPS.length ? (
+                <Button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={!canProceed()}
+                  className="gap-2"
+                >
+                  Avanti
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button type="submit" disabled={isLoading || !canProceed()} className="gap-2">
+                  {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  <Check className="h-4 w-4" />
+                  {initialData ? "Aggiorna Campagna" : "Crea Campagna"}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Live Preview (Sticky) */}
+          <div className="w-[380px] shrink-0 hidden lg:block">
+            <div className="sticky top-0 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Anteprima Live</h3>
+                {selectedTemplate && (
+                  <button
                     type="button"
                     onClick={() => setSelectedTemplateId(null)}
-                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    className="text-xs text-primary hover:underline"
                   >
-                    Deseleziona
+                    Deseleziona template
                   </button>
+                )}
+              </div>
+              
+              {selectedTemplate && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary truncate">{selectedTemplate.templateName}</span>
                 </div>
               )}
+
               <WhatsAppPreview
                 templateBody={previewTemplate}
                 variables={previewVariables}
                 campaignType={watchedValues.campaignType}
                 leadCategory={watchedValues.leadCategory}
               />
+
+              {/* Variable Status */}
+              <Card className="border-dashed">
+                <CardContent className="p-4">
+                  <p className="text-xs font-medium text-muted-foreground mb-3">Stato Variabili</p>
+                  <div className="space-y-2">
+                    {[
+                      { key: "hook", label: "Uncino", value: watchedValues.hookText },
+                      { key: "idealState", label: "Stato Ideale", value: watchedValues.idealStateDescription },
+                      { key: "desideri", label: "Desideri", value: watchedValues.implicitDesires },
+                      { key: "obiettivi", label: "Obiettivi", value: watchedValues.defaultObiettivi },
+                    ].map((item) => (
+                      <div key={item.key} className="flex items-center gap-2">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          item.value ? "bg-green-500" : "bg-gray-300"
+                        )} />
+                        <span className="text-xs text-muted-foreground">{item.label}</span>
+                        {item.value && (
+                          <span className="text-xs text-green-600 ml-auto">Configurato</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {initialData ? "Aggiorna Campagna" : "Crea Campagna"}
-          </Button>
         </div>
       </form>
     </Form>
