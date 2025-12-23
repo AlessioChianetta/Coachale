@@ -499,9 +499,17 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   }, [agents, templates, hasAutoSynced]);
 
   useEffect(() => {
+    console.log("[TWILIO AUTO-FETCH] Check:", {
+      hasAutoFetchedTwilio,
+      agentsFetched,
+      agentsCount: agents.length,
+      agents: agents.map((a: any) => ({ id: a.id, name: a.agentName, hasTwilio: !!(a.twilioAccountSid && a.twilioAuthToken) }))
+    });
     if (!hasAutoFetchedTwilio && agentsFetched && agents.length > 0) {
       const agentWithTwilio = agents.find((a: any) => a.twilioAccountSid && a.twilioAuthToken);
+      console.log("[TWILIO AUTO-FETCH] Found agent with Twilio:", agentWithTwilio?.agentName || "NONE");
       if (agentWithTwilio) {
+        console.log("[TWILIO AUTO-FETCH] Starting auto-fetch for agent:", agentWithTwilio.agentName);
         fetchTwilioTemplatesMutation.mutate(agentWithTwilio.id);
         setHasAutoFetchedTwilio(true);
       }
