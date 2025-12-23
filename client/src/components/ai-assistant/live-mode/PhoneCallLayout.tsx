@@ -22,6 +22,7 @@ interface PhoneCallLayoutProps {
   sessionClosing?: boolean;
   sessionType?: 'weekly_consultation';
   isEmbedded?: boolean;
+  widgetSize?: 'small' | 'medium' | 'large';
 }
 
 // Aggiungi stile CSS per animazione barre
@@ -49,6 +50,7 @@ export function PhoneCallLayout({
   sessionClosing,
   sessionType,
   isEmbedded = false,
+  widgetSize = 'small',
 }: PhoneCallLayoutProps) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [showKeypad, setShowKeypad] = useState(false);
