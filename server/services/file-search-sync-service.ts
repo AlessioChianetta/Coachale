@@ -515,6 +515,9 @@ export class FileSearchSyncService {
       const guide = getGuideAsDocument();
       const guideSourceId = `consultant-guide-${consultantId}`;
       
+      // Emit start event for SSE progress tracking
+      syncProgressEmitter.emitStart(consultantId, 'consultant_guide', 1);
+      
       const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultant_guide', guideSourceId);
       if (isAlreadyIndexed) {
         console.log(`📌 [FileSync] Consultant guide already indexed for: ${consultantId}`);
@@ -1455,9 +1458,13 @@ export class FileSearchSyncService {
     // Get file search settings to check autoSyncWhatsappAgents
     const [settings] = await db.select().from(fileSearchSettings).where(eq(fileSearchSettings.consultantId, consultantId)).limit(1);
 
-    // Sync the consultant platform guide first
-    console.log(`📚 [FileSync] Syncing CONSULTANT GUIDE...`);
-    await this.syncConsultantGuide(consultantId);
+    // Sync the consultant platform guide if enabled
+    if (settings?.autoSyncConsultantGuides !== false) {
+      console.log(`📚 [FileSync] Syncing CONSULTANT GUIDE...`);
+      await this.syncConsultantGuide(consultantId);
+    } else {
+      console.log(`⏭️ [FileSync] Skipping CONSULTANT GUIDE (disabled in settings)`);
+    }
 
     // Sync consultant's global resources
     const libraryResult = await this.syncAllLibraryDocuments(consultantId);
@@ -2948,6 +2955,7 @@ export class FileSearchSyncService {
       knowledgeBase: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
       exercises: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
       university: { total: number; indexed: number; missing: Array<{ id: string; title: string; lessonTitle: string }> };
+      consultantGuide: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
     };
     clients: Array<{
       clientId: string;
@@ -3049,17 +3057,24 @@ export class FileSearchSyncService {
     const indexedKnowledgeIds = new Set(indexedDocs.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
     const indexedExerciseIds = new Set(indexedDocs.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
     const indexedUniversityIds = new Set(indexedDocs.filter(d => d.sourceType === 'university_lesson').map(d => d.sourceId));
+    const indexedGuideIds = new Set(indexedDocs.filter(d => d.sourceType === 'consultant_guide').map(d => d.sourceId));
 
     // Calculate missing
     const libraryMissing = libraryDocs.filter(d => !indexedLibraryIds.has(d.id)).map(d => ({ id: d.id, title: d.title, type: d.contentType || 'document' }));
     const knowledgeMissing = knowledgeDocs.filter(d => !indexedKnowledgeIds.has(d.id)).map(d => ({ id: d.id, title: d.title }));
     const exercisesMissing = allExercises.filter(d => !indexedExerciseIds.has(d.id)).map(d => ({ id: d.id, title: d.title }));
     const universityMissing = universityLessonsList.filter(d => !indexedUniversityIds.has(d.id)).map(d => ({ id: d.id, title: d.title, lessonTitle: d.title }));
+    
+    // Check consultant guide
+    const guideSourceId = `consultant-guide-${consultantId}`;
+    const isGuideIndexed = indexedGuideIds.has(guideSourceId);
+    const consultantGuideMissing = isGuideIndexed ? [] : [{ id: guideSourceId, title: 'Guida Completa Piattaforma' }];
 
     const libraryResult = { total: libraryDocs.length, indexed: libraryDocs.length - libraryMissing.length, missing: libraryMissing };
     const knowledgeBaseResult = { total: knowledgeDocs.length, indexed: knowledgeDocs.length - knowledgeMissing.length, missing: knowledgeMissing };
     const exercisesResult = { total: allExercises.length, indexed: allExercises.length - exercisesMissing.length, missing: exercisesMissing };
     const universityResult = { total: universityLessonsList.length, indexed: universityLessonsList.length - universityMissing.length, missing: universityMissing };
+    const consultantGuideResult = { total: 1, indexed: isGuideIndexed ? 1 : 0, missing: consultantGuideMissing };
 
     // Get all clients
     const clientUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email })
@@ -3373,10 +3388,11 @@ export class FileSearchSyncService {
     }
 
     const consultantMissing = libraryResult.missing.length + knowledgeBaseResult.missing.length + 
-                              exercisesResult.missing.length + universityResult.missing.length;
+                              exercisesResult.missing.length + universityResult.missing.length + consultantGuideResult.missing.length;
     const totalMissing = consultantMissing + totalClientsMissing + totalWhatsappAgentsMissing;
 
-    const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total + universityResult.total +
+    const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total + universityResult.total + 
+                      consultantGuideResult.total +
                       clientsAudit.reduce((sum, c) => sum + c.exerciseResponses.total + c.consultationNotes.total + c.knowledgeDocs.total +
                         c.assignedExercises.total + c.assignedLibrary.total + c.assignedUniversity.total + c.goals.total + c.tasks.total, 0) +
                       whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.total, 0);
@@ -3384,6 +3400,7 @@ export class FileSearchSyncService {
                          (knowledgeBaseResult.total - knowledgeBaseResult.missing.length) +
                          (exercisesResult.total - exercisesResult.missing.length) + 
                          (universityResult.total - universityResult.missing.length) +
+                         consultantGuideResult.indexed +
                          clientsAudit.reduce((sum, c) => 
                            sum + (c.exerciseResponses.total - c.exerciseResponses.missing.length) + 
                            (c.consultationNotes.total - c.consultationNotes.missing.length) + 
@@ -3409,6 +3426,9 @@ export class FileSearchSyncService {
     }
     if (universityResult.missing.length > 0) {
       recommendations.push(`Sincronizza ${universityResult.missing.length} lezioni university mancanti`);
+    }
+    if (consultantGuideResult.missing.length > 0) {
+      recommendations.push(`Sincronizza la guida piattaforma consulente`);
     }
     if (totalClientsMissing > 0) {
       recommendations.push(`Sincronizza ${totalClientsMissing} documenti privati dei clienti mancanti`);
@@ -3452,6 +3472,7 @@ export class FileSearchSyncService {
 
     console.log(`\n${'═'.repeat(60)}`);
     console.log(`✅ [FileSync] Comprehensive Audit Complete`);
+    console.log(`   📖 Consultant Guide: ${consultantGuideResult.indexed}/${consultantGuideResult.total} indexed`);
     console.log(`   📚 Library: ${libraryResult.total - libraryResult.missing.length}/${libraryResult.total} indexed`);
     console.log(`   📖 Knowledge Base: ${knowledgeBaseResult.total - knowledgeBaseResult.missing.length}/${knowledgeBaseResult.total} indexed`);
     console.log(`   🏋️ Exercises: ${exercisesResult.total - exercisesResult.missing.length}/${exercisesResult.total} indexed`);
@@ -3472,6 +3493,7 @@ export class FileSearchSyncService {
         knowledgeBase: knowledgeBaseResult,
         exercises: exercisesResult,
         university: universityResult,
+        consultantGuide: consultantGuideResult,
       },
       clients: clientsAudit,
       whatsappAgents: whatsappAgentsAudit,

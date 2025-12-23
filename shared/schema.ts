@@ -5780,6 +5780,7 @@ export const fileSearchSettings = pgTable("file_search_settings", {
   autoSyncAssignedExercises: boolean("auto_sync_assigned_exercises").default(false).notNull(),
   autoSyncAssignedLibrary: boolean("auto_sync_assigned_library").default(false).notNull(),
   autoSyncAssignedUniversity: boolean("auto_sync_assigned_university").default(false).notNull(),
+  autoSyncConsultantGuides: boolean("auto_sync_consultant_guides").default(true).notNull(),
   scheduledSyncEnabled: boolean("scheduled_sync_enabled").default(false).notNull(),
   scheduledSyncHour: integer("scheduled_sync_hour").default(3).notNull(),
   lastScheduledSync: timestamp("last_scheduled_sync"),

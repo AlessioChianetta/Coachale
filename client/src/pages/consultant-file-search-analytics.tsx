@@ -118,7 +118,7 @@ interface SyncedDocument {
   displayName: string;
   mimeType: string;
   status: 'pending' | 'processing' | 'indexed' | 'failed';
-  sourceType: 'library' | 'knowledge_base' | 'manual' | 'exercise' | 'consultation' | 'university';
+  sourceType: 'library' | 'knowledge_base' | 'manual' | 'exercise' | 'consultation' | 'university' | 'consultant_guide';
   sourceId: string | null;
   uploadedAt: string;
   storeDisplayName?: string;
@@ -134,6 +134,7 @@ interface HierarchicalData {
       knowledgeBase: SyncedDocument[];
       exercises: SyncedDocument[];
       university: SyncedDocument[];
+      consultantGuide: SyncedDocument[];
       other: SyncedDocument[];
     };
     totals: {
@@ -141,6 +142,7 @@ interface HierarchicalData {
       knowledgeBase: number;
       exercises: number;
       university: number;
+      consultantGuide: number;
     };
   };
   clientStores: Array<{
@@ -339,6 +341,7 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: stri
   client_progress: { label: 'Storico Progressi', icon: '📈', color: 'bg-emerald-400' },
   library_progress: { label: 'Progressi Libreria', icon: '📚', color: 'bg-blue-400' },
   email_journey: { label: 'Email Journey', icon: '📧', color: 'bg-purple-400' },
+  consultant_guide: { label: 'Guide Consulente', icon: '📖', color: 'bg-indigo-400' },
 };
 
 export default function ConsultantFileSearchAnalyticsPage() {
@@ -1342,6 +1345,12 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             {auditData?.consultant?.exercises?.indexed || 0}/{auditData?.consultant?.exercises?.total || 0}
                           </span>
                         </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Guide Piattaforma</span>
+                          <span className={(auditData?.consultant?.consultantGuide?.indexed || 0) < (auditData?.consultant?.consultantGuide?.total || 0) ? "text-amber-600" : "text-emerald-600"}>
+                            {auditData?.consultant?.consultantGuide?.indexed || 0}/{auditData?.consultant?.consultantGuide?.total || 0}
+                          </span>
+                        </div>
                       </div>
 
                       {totalMissing > 0 && (
@@ -1588,7 +1597,8 @@ export default function ConsultantFileSearchAnalyticsPage() {
                   const consultantTotal = (hData?.consultantStore.totals.library || 0) + 
                                           (hData?.consultantStore.totals.knowledgeBase || 0) + 
                                           (hData?.consultantStore.totals.exercises || 0) + 
-                                          (hData?.consultantStore.totals.university || 0);
+                                          (hData?.consultantStore.totals.university || 0) +
+                                          (hData?.consultantStore.totals.consultantGuide || 0);
                   const clientsTotal = hData?.clientStores.reduce((sum, c) => sum + c.totals.total, 0) || 0;
                   
                   const groupByDocumentType = (docs: SyncedDocument[]) => {
@@ -1732,6 +1742,31 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent className="mt-2 ml-4 space-y-2">
                                   
+                                  <Collapsible open={openCategories['consultantGuide']} onOpenChange={() => toggleCategory('consultantGuide')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100">
+                                      {openCategories['consultantGuide'] ? <ChevronDown className="h-4 w-4 text-indigo-600" /> : <ChevronRight className="h-4 w-4 text-indigo-600" />}
+                                      <BookOpen className="h-5 w-5 text-indigo-600" />
+                                      <span className="font-medium text-gray-800">Guide Piattaforma</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.consultantGuide || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.consultantGuide || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.consultantGuide || []).length > 0 ? (
+                                        (hData.consultantStore.documents.consultantGuide || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessuna guida piattaforma</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
                                   <Collapsible open={openCategories['library']} onOpenChange={() => toggleCategory('library')}>
                                     <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100">
                                       {openCategories['library'] ? <ChevronDown className="h-4 w-4 text-blue-600" /> : <ChevronRight className="h-4 w-4 text-blue-600" />}
@@ -2397,6 +2432,18 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
                       <h5 className="font-medium mb-3 text-gray-700">Sorgenti da Sincronizzare</h5>
                       <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Guide Consulente</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente le guide della piattaforma</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncConsultantGuides ?? true}
+                            onCheckedChange={(checked) => handleToggle('autoSyncConsultantGuides', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
                         <div className="flex items-center justify-between">
                           <div>
                             <Label>Libreria Documenti</Label>
