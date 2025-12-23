@@ -370,7 +370,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
 
   const templates: CustomTemplate[] = templatesData?.data || [];
 
-  const { data: agentsData } = useQuery({
+  const { data: agentsData, isFetched: agentsFetched } = useQuery({
     queryKey: ["/api/whatsapp/config"],
     queryFn: async () => {
       const response = await fetch("/api/whatsapp/config", {
@@ -499,18 +499,14 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   }, [agents, templates, hasAutoSynced]);
 
   useEffect(() => {
-    if (!hasAutoFetchedTwilio && agents.length > 0) {
+    if (!hasAutoFetchedTwilio && agentsFetched && agents.length > 0) {
       const agentWithTwilio = agents.find((a: any) => a.twilioAccountSid && a.twilioAuthToken);
       if (agentWithTwilio) {
-        fetchTwilioTemplatesMutation.mutate(agentWithTwilio.id, {
-          onSuccess: (data) => {
-            setTwilioTemplatesData(data);
-          }
-        });
+        fetchTwilioTemplatesMutation.mutate(agentWithTwilio.id);
         setHasAutoFetchedTwilio(true);
       }
     }
-  }, [agents, hasAutoFetchedTwilio]);
+  }, [agents, hasAutoFetchedTwilio, agentsFetched]);
 
   const totalPages = Math.ceil(filteredAndSortedTemplates.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -674,7 +670,6 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     },
     onSuccess: (data) => {
       setTwilioTemplatesData(data);
-      setTwilioTemplatesDialogOpen(true);
     },
     onError: (error: Error) => {
       toast({
