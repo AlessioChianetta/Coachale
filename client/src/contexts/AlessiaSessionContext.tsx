@@ -29,7 +29,7 @@ const defaultState: AlessiaSessionState = {
   isActive: false,
   isMinimized: false,
   position: getDefaultPosition(),
-  voiceName: 'Archernar',
+  voiceName: 'Achernar',
   sessionStartTime: null,
 };
 
@@ -41,7 +41,7 @@ export function AlessiaSessionProvider({ children }: { children: ReactNode }) {
     return {
       ...defaultState,
       position: getDefaultPosition(),
-      voiceName: savedVoice || 'Archernar',
+      voiceName: savedVoice || 'Achernar',
     };
   });
 
