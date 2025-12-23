@@ -1018,6 +1018,9 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
         }
         result = await fileSearchSyncService.syncSingleWhatsappKnowledgeItem(id, agentId);
         break;
+      case 'consultant_guide':
+        result = await fileSearchSyncService.syncConsultantGuide(consultantId);
+        break;
       default:
         return res.status(400).json({ error: `Unknown type: ${type}` });
     }
