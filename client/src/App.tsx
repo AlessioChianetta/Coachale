@@ -15,7 +15,6 @@ import { getAuthUser } from "@/lib/auth";
 
 // Lazy load heavy components
 const AIAssistant = lazy(() => import("@/components/ai-assistant/AIAssistant").then(m => ({ default: m.AIAssistant })));
-const ClientFloatingAssistant = lazy(() => import("@/components/ai-assistant/ClientFloatingAssistant").then(m => ({ default: m.ClientFloatingAssistant })));
 const Login = lazy(() => import("@/pages/login"));
 const Register = lazy(() => import("@/pages/register"));
 
@@ -730,7 +729,7 @@ function Router() {
 
       {isClient && (
         <Suspense fallback={null}>
-          <ClientFloatingAssistant />
+          <AIAssistant />
         </Suspense>
       )}
     </>

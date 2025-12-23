@@ -40,8 +40,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
 import BadgeDisplay from "@/components/BadgeDisplay";
+import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
 import { usePageContext } from "@/hooks/use-page-context";
-import { triggerOpenAlessia } from "@/components/ai-assistant/ClientFloatingAssistant";
 import { useToast } from "@/hooks/use-toast";
 import { useTour } from "@/contexts/TourContext";
 import { PlayCircle, RotateCcw } from "lucide-react";
@@ -398,34 +398,6 @@ export default function ClientDashboard() {
                 <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
                   <Library className="h-6 w-6 mx-auto mb-2 text-green-600" />
                   <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">E altro...</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Parla con Alessia - AI Assistant Card */}
-          <Card className="mb-6 overflow-hidden border-2 border-pink-400 shadow-2xl bg-gradient-to-br from-pink-50 via-purple-50 to-fuchsia-50 dark:from-pink-950/20 dark:via-purple-950/20 dark:to-fuchsia-950/20" data-tour="dashboard-alessia-card">
-            <CardContent className="p-6 md:p-8">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-gradient-to-br from-pink-500 to-purple-600 rounded-2xl shadow-lg">
-                  <Sparkles className="h-8 w-8 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                    Parla con Alessia
-                  </h2>
-                  <p className="text-gray-700 dark:text-gray-300 text-base md:text-lg mb-4">
-                    Hai domande? Alessia è la tua assistente AI personale, sempre disponibile per aiutarti 
-                    con esercizi, consulenze, e qualsiasi dubbio sul tuo percorso.
-                  </p>
-                  <Button
-                    size="lg"
-                    onClick={triggerOpenAlessia}
-                    className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold shadow-xl hover:shadow-2xl transition-all duration-300"
-                  >
-                    <MessageCircle className="mr-2 h-5 w-5" />
-                    Chatta con Alessia
-                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -825,6 +797,9 @@ export default function ClientDashboard() {
           </div>
         </div>
       </div>
+
+      {/* AI Assistant - always available */}
+      <AIAssistant pageContext={pageContext} />
     </div>
   );
 }
