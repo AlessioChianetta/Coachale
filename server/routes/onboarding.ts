@@ -23,7 +23,7 @@ import {
 } from '@shared/schema';
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
-import { getCalendarClient } from '../google-calendar-service';
+import { getCalendarClient, getAgentCalendarClient } from '../google-calendar-service';
 import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 import nodemailer from 'nodemailer';
 import { decryptForConsultant } from '../encryption';
@@ -493,11 +493,12 @@ router.post('/test/google-calendar', authenticateToken, requireRole('consultant'
   try {
     const consultantId = req.user!.id;
     
-    // Check if any agent has Google Calendar connected
+    // Check if any agent has Google Calendar connected (requires both tokens)
     const agentsWithCalendar = await db.query.consultantWhatsappConfig.findMany({
       where: and(
         eq(consultantWhatsappConfig.consultantId, consultantId),
-        sql`${consultantWhatsappConfig.googleRefreshToken} IS NOT NULL`
+        sql`${consultantWhatsappConfig.googleRefreshToken} IS NOT NULL`,
+        sql`${consultantWhatsappConfig.googleAccessToken} IS NOT NULL`
       ),
     });
     
@@ -520,7 +521,6 @@ router.post('/test/google-calendar', authenticateToken, requireRole('consultant'
     // Test the first agent's calendar connection
     const firstAgent = agentsWithCalendar[0];
     try {
-      const { getAgentCalendarClient } = await import('../google-calendar-service');
       const calendar = await getAgentCalendarClient(firstAgent.id);
       const calendarList = await calendar.calendarList.list();
       const calendarsCount = calendarList.data.items?.length || 0;
@@ -598,7 +598,6 @@ router.post('/test/google-calendar-agent/:agentId', authenticateToken, requireRo
     }
     
     try {
-      const { getAgentCalendarClient } = await import('../google-calendar-service');
       const calendar = await getAgentCalendarClient(agentId);
       const calendarList = await calendar.calendarList.list();
       const calendarsCount = calendarList.data.items?.length || 0;

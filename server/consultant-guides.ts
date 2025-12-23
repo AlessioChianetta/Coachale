@@ -99,10 +99,10 @@ export const consultantGuides: ConsultantGuides = {
           },
           {
             title: "1.3 Google Calendar (Opzionale)",
-            content: "Collega il tuo Google Calendar per sincronizzare automaticamente le consulenze e gestire la disponibilità.",
-            actionText: "Collega Calendar",
-            actionHref: "/consultant/calendar-settings",
-            tips: ["Permette ai clienti di vedere la tua disponibilità", "Le consulenze create qui appaiono sul tuo calendario"]
+            content: "Collega Google Calendar ai tuoi agenti WhatsApp per sincronizzare automaticamente gli appuntamenti prenotati.",
+            actionText: "Vai agli Agenti",
+            actionHref: "/consultant/whatsapp",
+            tips: ["Ogni agente può avere il proprio Google Calendar", "Collega il calendario dal pannello laterale dell'agente", "Gli appuntamenti prenotati via WhatsApp appaiono sul calendario dell'agente"]
           },
           {
             title: "1.4 Video Meeting (Opzionale)",
@@ -2289,25 +2289,25 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📅",
     title: "Impostazioni Calendario",
     path: "/consultant/calendar-settings",
-    description: "Configura integrazione Google Calendar, disponibilità, durata slot.",
+    description: "Configura integrazione Google Calendar per gli agenti, disponibilità, durata slot.",
     category: "settings",
     sections: [
       {
-        title: "GOOGLE CALENDAR",
+        title: "GOOGLE CALENDAR AGENTI",
         icon: "🔗",
-        description: "Collegamento con Google Calendar.",
+        description: "Collegamento Google Calendar a livello di agente WhatsApp.",
         steps: [
           {
-            title: "Connetti Account",
-            content: "Autorizza l'accesso al tuo Google Calendar."
+            title: "Collega Calendar all'Agente",
+            content: "Vai nella sezione Dipendenti/Agenti, seleziona un agente e clicca 'Collega Google Calendar' nel pannello laterale."
           },
           {
             title: "Sincronizzazione",
-            content: "Le consulenze create qui appaiono sul tuo Google Calendar e viceversa."
+            content: "Gli appuntamenti prenotati tramite l'agente WhatsApp appaiono automaticamente sul Google Calendar collegato."
           },
           {
-            title: "Calendario Specifico",
-            content: "Scegli quale calendario usare (se ne hai più di uno)."
+            title: "Calendario per Agente",
+            content: "Ogni agente può avere il proprio Google Calendar, permettendo di gestire calendari separati per diversi servizi o team."
           }
         ]
       },
