@@ -536,6 +536,65 @@ router.post('/test/google-calendar', authenticateToken, requireRole('consultant'
   }
 });
 
+// Test Google Calendar for a specific agent
+router.post('/test/google-calendar-agent/:agentId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { agentId } = req.params;
+    
+    // Verify the agent belongs to this consultant
+    const agent = await db.query.consultantWhatsappConfig.findFirst({
+      where: and(
+        eq(consultantWhatsappConfig.id, agentId),
+        eq(consultantWhatsappConfig.consultantId, consultantId)
+      ),
+    });
+    
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Agente non trovato o non appartenente a questo consultant.',
+      });
+    }
+    
+    // Check if agent has calendar connected
+    if (!agent.googleAccessToken || !agent.googleRefreshToken) {
+      return res.status(400).json({
+        success: false,
+        message: `L'agente "${agent.agentName}" non ha Google Calendar connesso. Vai nelle impostazioni dell'agente per collegare il calendario.`,
+      });
+    }
+    
+    try {
+      const { getAgentCalendarClient } = await import('../google-calendar-service');
+      const calendar = await getAgentCalendarClient(agentId);
+      const calendarList = await calendar.calendarList.list();
+      const calendarsCount = calendarList.data.items?.length || 0;
+      
+      res.json({
+        success: true,
+        message: `Google Calendar dell'agente "${agent.agentName}" connesso con successo! Account: ${agent.googleCalendarEmail || 'N/A'}, ${calendarsCount} calendari disponibili.`,
+        details: { 
+          calendarsCount, 
+          agentName: agent.agentName,
+          calendarEmail: agent.googleCalendarEmail 
+        },
+      });
+    } catch (calendarError: any) {
+      res.status(400).json({
+        success: false,
+        message: `Test Google Calendar per agente "${agent.agentName}" fallito: ${calendarError.message}`,
+      });
+    }
+  } catch (error: any) {
+    console.error('Error testing agent Google Calendar:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Errore durante il test Google Calendar per agente',
+    });
+  }
+});
+
 router.post('/test/video-meeting', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
