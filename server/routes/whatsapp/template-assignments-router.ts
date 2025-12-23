@@ -8,8 +8,63 @@ import {
   consultantWhatsappConfig,
 } from "../../../shared/schema";
 import { authenticateToken, requireRole, type AuthRequest } from "../../middleware/auth";
+import twilio from "twilio";
 
 const router = Router();
+
+interface TwilioTemplateInfo {
+  friendlyName: string;
+  bodyText: string;
+  approvalStatus?: string;
+}
+
+async function fetchTwilioTemplatesInfo(
+  accountSid: string,
+  authToken: string,
+  templateSids: string[]
+): Promise<Map<string, TwilioTemplateInfo>> {
+  const templateMap = new Map<string, TwilioTemplateInfo>();
+  
+  if (templateSids.length === 0 || !accountSid || !authToken) {
+    return templateMap;
+  }
+
+  const extractWhatsAppBody = (types: any): string => {
+    if (types?.['twilio/whatsapp']?.template?.components) {
+      const bodyComponent = types['twilio/whatsapp'].template.components.find(
+        (component: any) => component.type === 'BODY'
+      );
+      return bodyComponent?.text || '';
+    }
+    return types?.['twilio/text']?.body || '';
+  };
+
+  try {
+    const twilioClient = twilio(accountSid, authToken);
+    
+    // Fetch each template directly by SID to avoid pagination issues
+    const fetchPromises = templateSids.map(async (sid) => {
+      try {
+        const content = await twilioClient.content.v1.contents(sid).fetch();
+        templateMap.set(sid, {
+          friendlyName: content.friendlyName || sid,
+          bodyText: extractWhatsAppBody(content.types),
+          approvalStatus: 'approved',
+        });
+      } catch (err: any) {
+        console.warn(`[TEMPLATE ASSIGNMENTS] Failed to fetch template ${sid}: ${err.message}`);
+      }
+    });
+
+    await Promise.all(fetchPromises);
+
+    console.log(`[TEMPLATE ASSIGNMENTS] Fetched ${templateMap.size}/${templateSids.length} Twilio templates info`);
+  } catch (error: any) {
+    console.error("[TEMPLATE ASSIGNMENTS] Error fetching Twilio templates info:", error.message);
+  }
+
+  return templateMap;
+}
 
 /**
  * GET /api/whatsapp/template-assignments/:agentConfigId
@@ -66,23 +121,44 @@ router.get(
         { sid: legacyTemplates.followUpFinalContentSid, type: "follow_up_final", label: "Follow-up finale" },
       ];
 
+      // Collect all Twilio template SIDs to fetch their details
+      const twilioTemplateSids: string[] = [];
+      for (const assignment of allAssignments) {
+        if (assignment.templateId.startsWith('HX')) {
+          twilioTemplateSids.push(assignment.templateId);
+        }
+      }
+      for (const slot of legacySlots) {
+        if (slot.sid && slot.sid.startsWith('HX') && !existingTemplateIds.has(slot.sid)) {
+          twilioTemplateSids.push(slot.sid);
+        }
+      }
+
+      // Fetch Twilio template details (friendlyName, bodyText) if there are any HX templates
+      const twilioTemplatesMap = await fetchTwilioTemplatesInfo(
+        config.twilioAccountSid || '',
+        config.twilioAuthToken || '',
+        twilioTemplateSids
+      );
+
       for (const slot of legacySlots) {
         if (slot.sid && !existingTemplateIds.has(slot.sid)) {
+          const twilioInfo = twilioTemplatesMap.get(slot.sid);
           formattedAssignments.push({
             assignmentId: `legacy-${slot.type}`,
             templateId: slot.sid,
-            templateName: slot.sid,
+            templateName: twilioInfo?.friendlyName || slot.sid,
             templateDescription: slot.label,
             useCase: slot.type,
             priority: 0,
             assignedAt: null,
-            body: null,
+            body: twilioInfo?.bodyText || null,
             isTwilioTemplate: true,
             isLegacy: true,
             activeVersion: {
               id: null,
               versionNumber: null,
-              bodyText: null,
+              bodyText: twilioInfo?.bodyText || null,
               twilioStatus: "approved",
             },
           });
@@ -93,23 +169,24 @@ router.get(
         const isTwilioTemplate = assignment.templateId.startsWith('HX');
 
         if (isTwilioTemplate) {
-          // For Twilio templates (HX prefix), return basic metadata
+          // For Twilio templates (HX prefix), use enriched data from Twilio API
+          const twilioInfo = twilioTemplatesMap.get(assignment.templateId);
           formattedAssignments.push({
             assignmentId: assignment.id,
             templateId: assignment.templateId,
-            templateName: assignment.templateId, // Use SID as name
-            templateDescription: "Twilio pre-approved template",
+            templateName: twilioInfo?.friendlyName || assignment.templateId,
+            templateDescription: twilioInfo ? "Template Twilio approvato" : "Twilio pre-approved template",
             useCase: assignment.templateType || "twilio",
             priority: assignment.priority || 0,
             assignedAt: assignment.assignedAt,
-            body: null, // Body fetched from Twilio when needed
+            body: twilioInfo?.bodyText || null,
             isTwilioTemplate: true,
             isLegacy: false,
             activeVersion: {
               id: null,
               versionNumber: null,
-              bodyText: null,
-              twilioStatus: "approved", // Twilio templates are pre-approved
+              bodyText: twilioInfo?.bodyText || null,
+              twilioStatus: "approved",
             },
           });
         } else {
