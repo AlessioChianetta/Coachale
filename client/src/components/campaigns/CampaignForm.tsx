@@ -99,11 +99,13 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     },
   });
 
-  const handleFormSubmit = (data: CampaignFormData) => {
-    if (currentStep < WIZARD_STEPS.length) {
+  const handleFinalSubmit = () => {
+    if (currentStep !== WIZARD_STEPS.length) {
+      console.warn("Attempted submit before final step");
       return;
     }
     
+    const data = form.getValues();
     const cleanedData = {
       ...data,
       openingTemplateId: data.openingTemplateId || undefined,
@@ -115,7 +117,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && currentStep < WIZARD_STEPS.length) {
+    if (e.key === "Enter") {
       e.preventDefault();
     }
   };
@@ -295,7 +297,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} onKeyDown={handleKeyDown} className="h-full">
+      <div onKeyDown={handleKeyDown} className="h-full">
         <div className="flex gap-6 h-full">
           {/* Left: Wizard Steps & Form */}
           <div className="flex-1 flex flex-col min-w-0">
@@ -735,7 +737,12 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={isLoading || !canProceed()} className="gap-2">
+                <Button 
+                  type="button" 
+                  onClick={handleFinalSubmit}
+                  disabled={isLoading || !canProceed()} 
+                  className="gap-2"
+                >
                   {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                   <Check className="h-4 w-4" />
                   {initialData ? "Aggiorna Campagna" : "Crea Campagna"}
@@ -802,7 +809,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
             </div>
           </div>
         </div>
-      </form>
+      </div>
     </Form>
   );
 }
