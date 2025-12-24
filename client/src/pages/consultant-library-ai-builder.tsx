@@ -94,6 +94,7 @@ export default function ConsultantLibraryAIBuilder() {
   const [saveSettings, setSaveSettings] = useState(true);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStatus, setGenerationStatus] = useState<string[]>([]);
+  const [generationLogs, setGenerationLogs] = useState<{ time: string; message: string }[]>([]);
   const [generatedLessons, setGeneratedLessons] = useState<any[]>([]);
   const [generationErrors, setGenerationErrors] = useState<string[]>([]);
   const [generatingVideos, setGeneratingVideos] = useState<Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; error?: string }>>(new Map());
@@ -308,6 +309,7 @@ export default function ConsultantLibraryAIBuilder() {
     setGenerationProgress(0);
     setGeneratedLessons([]);
     setGenerationErrors([]);
+    setGenerationLogs([]);
     setIsGenerating(true);
     
     const initialStatus = new Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; error?: string }>();
@@ -362,9 +364,17 @@ export default function ConsultantLibraryAIBuilder() {
           try {
             const data = JSON.parse(line.slice(6));
             
+            const addLog = (message: string) => {
+              setGenerationLogs(prev => [...prev, {
+                time: new Date().toLocaleTimeString('it-IT'),
+                message
+              }]);
+            };
+
             if (data.type === 'progress') {
               setGenerationProgress(Math.round((data.current / data.total) * 100));
               setGenerationStatus(prev => [...prev, `Generando: ${data.videoTitle}`]);
+              if (data.log) addLog(data.log);
               setGeneratingVideos(prev => {
                 const next = new Map(prev);
                 savedVideos.forEach(v => {
@@ -375,6 +385,7 @@ export default function ConsultantLibraryAIBuilder() {
                 return next;
               });
             } else if (data.type === 'video_complete') {
+              if (data.log) addLog(data.log);
               setGeneratingVideos(prev => {
                 const next = new Map(prev);
                 savedVideos.forEach(v => {
@@ -385,6 +396,7 @@ export default function ConsultantLibraryAIBuilder() {
                 return next;
               });
             } else if (data.type === 'video_error') {
+              if (data.log) addLog(data.log);
               setGeneratingVideos(prev => {
                 const next = new Map(prev);
                 savedVideos.forEach(v => {
@@ -896,7 +908,24 @@ export default function ConsultantLibraryAIBuilder() {
                     })}
                   </div>
                   
-                  {isGenerating && (
+                  {generationLogs.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Log in tempo reale:
+                      </h3>
+                      <div className="bg-muted/50 rounded-lg p-3 max-h-48 overflow-y-auto font-mono text-xs space-y-1">
+                        {generationLogs.map((log, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <span className="text-muted-foreground">[{log.time}]</span>
+                            <span>{log.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {isGenerating && generationLogs.length === 0 && (
                     <div className="text-center py-4">
                       <p className="text-muted-foreground">
                         L'AI sta analizzando le trascrizioni e creando le lezioni...
@@ -948,6 +977,8 @@ export default function ConsultantLibraryAIBuilder() {
                           setGeneratedLessons([]);
                           setGenerationErrors([]);
                           setGenerationProgress(0);
+                          setGenerationLogs([]);
+                          setGeneratingVideos(new Map());
                         }}
                       >
                         Crea Altre Lezioni
