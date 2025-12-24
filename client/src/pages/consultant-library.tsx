@@ -1195,8 +1195,8 @@ export default function ConsultantLibrary() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-3">
+      <ScrollArea className="flex-1 min-h-0 overflow-hidden">
+        <div className="p-3 overflow-hidden max-w-full">
           <button
             onClick={handleAllCoursesClick}
             className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-3 ${
@@ -1209,7 +1209,7 @@ export default function ConsultantLibrary() {
             Tutti i corsi
           </button>
 
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-hidden">
             {categories.map((category: LibraryCategory) => {
               const categorySubcats = subcategories.filter((s: LibrarySubcategory) => s.categoryId === category.id);
               const isExpanded = expandedCourses.has(category.id);
