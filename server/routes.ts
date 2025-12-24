@@ -4853,7 +4853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Fetch video info and transcript
   app.post("/api/youtube/video", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { url } = req.body;
+      const { url, transcriptMode = 'auto' } = req.body;
       if (!url) {
         return res.status(400).json({ message: "URL is required" });
       }
@@ -4865,7 +4865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid YouTube URL" });
       }
 
-      const result = await saveVideoWithTranscript(req.user!.id, url);
+      const result = await saveVideoWithTranscript(req.user!.id, url, undefined, undefined, transcriptMode);
       
       if (!result.success) {
         return res.status(400).json({ message: result.error });
@@ -4913,7 +4913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Save selected videos from playlist
   app.post("/api/youtube/playlist/save", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { videos, playlistId, playlistTitle } = req.body;
+      const { videos, playlistId, playlistTitle, transcriptMode = 'auto' } = req.body;
       if (!videos || !Array.isArray(videos)) {
         return res.status(400).json({ message: "Videos array is required" });
       }
@@ -4928,7 +4928,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user!.id, 
           video.videoUrl, 
           playlistId, 
-          playlistTitle
+          playlistTitle,
+          transcriptMode
         );
         
         if (result.success) {

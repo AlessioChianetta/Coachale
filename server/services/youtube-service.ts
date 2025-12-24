@@ -456,21 +456,37 @@ async function fetchTranscriptWithSubtitles(videoId: string, lang: string = 'it'
 
 // ==================== FUNZIONE PRINCIPALE ====================
 
-export async function fetchTranscript(videoId: string, lang: string = 'it'): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
-  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId}`);
+export type TranscriptMode = 'auto' | 'gemini' | 'subtitles';
+
+export async function fetchTranscript(
+  videoId: string, 
+  lang: string = 'it',
+  mode: TranscriptMode = 'auto'
+): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
+  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId} (modalità: ${mode})`);
   
-  // METODO 1: Gemini (download audio + trascrizione AI) - Qualità premium
-  const geminiResult = await fetchTranscriptWithGemini(videoId);
-  if (geminiResult) {
-    console.log(`✅ [TRANSCRIPT] Metodo Gemini completato: ${geminiResult.transcript.length} caratteri`);
-    return { transcript: geminiResult.transcript, segments: geminiResult.segments };
+  if (mode === 'gemini' || mode === 'auto') {
+    // METODO 1: Gemini (download audio + trascrizione AI) - Qualità premium
+    const geminiResult = await fetchTranscriptWithGemini(videoId);
+    if (geminiResult) {
+      console.log(`✅ [TRANSCRIPT] Metodo Gemini completato: ${geminiResult.transcript.length} caratteri`);
+      return { transcript: geminiResult.transcript, segments: geminiResult.segments };
+    }
+    
+    // Se modalità è "gemini" e fallisce, non fare fallback
+    if (mode === 'gemini') {
+      console.log(`❌ [TRANSCRIPT] Modalità Gemini richiesta ma fallita per video: ${videoId}`);
+      return null;
+    }
   }
   
-  // METODO 2: Sottotitoli (yt-dlp + librerie JS) - Fallback
-  const subtitlesResult = await fetchTranscriptWithSubtitles(videoId, lang);
-  if (subtitlesResult) {
-    console.log(`✅ [TRANSCRIPT] Metodo Sottotitoli completato: ${subtitlesResult.transcript.length} caratteri`);
-    return { transcript: subtitlesResult.transcript, segments: subtitlesResult.segments };
+  if (mode === 'subtitles' || mode === 'auto') {
+    // METODO 2: Sottotitoli (yt-dlp + librerie JS) - Fallback
+    const subtitlesResult = await fetchTranscriptWithSubtitles(videoId, lang);
+    if (subtitlesResult) {
+      console.log(`✅ [TRANSCRIPT] Metodo Sottotitoli completato: ${subtitlesResult.transcript.length} caratteri`);
+      return { transcript: subtitlesResult.transcript, segments: subtitlesResult.segments };
+    }
   }
   
   console.log(`❌ [TRANSCRIPT] Nessuna trascrizione disponibile per video: ${videoId}`);
@@ -540,7 +556,8 @@ export async function saveVideoWithTranscript(
   consultantId: string,
   videoUrl: string,
   playlistId?: string,
-  playlistTitle?: string
+  playlistTitle?: string,
+  transcriptMode: TranscriptMode = 'auto'
 ): Promise<{ success: boolean; video?: any; error?: string }> {
   try {
     const videoId = extractVideoId(videoUrl);
@@ -549,7 +566,7 @@ export async function saveVideoWithTranscript(
       return { success: false, error: 'Invalid YouTube URL' };
     }
     
-    console.log(`📥 [SAVE-VIDEO] Caricando metadati per video: ${videoId}`);
+    console.log(`📥 [SAVE-VIDEO] Caricando metadati per video: ${videoId} (modalità trascrizione: ${transcriptMode})`);
     const metadata = await fetchVideoMetadata(videoId);
     if (!metadata) {
       console.log(`❌ [SAVE-VIDEO] Impossibile ottenere metadati per: ${videoId}`);
@@ -572,8 +589,8 @@ export async function saveVideoWithTranscript(
       playlistTitle,
     }).returning();
     
-    console.log(`🔍 [SAVE-VIDEO] Cercando trascrizione per: "${metadata.title}"...`);
-    const transcriptResult = await fetchTranscript(videoId);
+    console.log(`🔍 [SAVE-VIDEO] Cercando trascrizione (${transcriptMode}) per: "${metadata.title}"...`);
+    const transcriptResult = await fetchTranscript(videoId, 'it', transcriptMode);
     
     if (transcriptResult) {
       await db.update(youtubeVideos)
