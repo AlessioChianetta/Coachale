@@ -14,12 +14,14 @@ export async function trackAiUsage(params: {
   lessonId?: string;
 }) {
   try {
+    const inputTkns = params.inputTokens ?? 0;
+    const outputTkns = params.outputTokens ?? 0;
     await db.insert(aiUsageStats).values({
       consultantId: params.consultantId,
       operationType: params.operationType,
-      inputTokens: params.inputTokens || 0,
-      outputTokens: params.outputTokens || 0,
-      totalTokens: params.totalTokens || params.inputTokens || 0 + (params.outputTokens || 0),
+      inputTokens: inputTkns,
+      outputTokens: outputTkns,
+      totalTokens: params.totalTokens ?? (inputTkns + outputTkns),
       modelUsed: params.modelUsed,
       videoId: params.videoId,
       lessonId: params.lessonId,

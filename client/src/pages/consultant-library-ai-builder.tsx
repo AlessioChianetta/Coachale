@@ -1168,6 +1168,10 @@ export default function ConsultantLibraryAIBuilder() {
                         {lessonOrder.map((lessonId, index) => {
                           const lesson = generatedLessons.find((l: any) => l.id === lessonId);
                           if (!lesson) return null;
+                          const sourceVideo = savedVideos.find(v => v.id === lesson.youtubeVideoId);
+                          const transcriptQuality = sourceVideo 
+                            ? evaluateTranscriptQuality(sourceVideo.transcript, sourceVideo.duration)
+                            : null;
                           return (
                             <div 
                               key={lesson.id} 
@@ -1184,6 +1188,11 @@ export default function ConsultantLibraryAIBuilder() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2">
+                                {transcriptQuality && (
+                                  <Badge variant="outline" className={`text-xs ${transcriptQuality.color}`}>
+                                    Fonte: {transcriptQuality.label}
+                                  </Badge>
+                                )}
                                 {lesson.level && (
                                   <Badge variant="outline" className="text-xs">
                                     {lesson.level}

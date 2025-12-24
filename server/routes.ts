@@ -5023,6 +5023,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Regenerate a single lesson (uses existing transcript)
+  app.post("/api/library/ai-regenerate/:lessonId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { lessonId } = req.params;
+      const { customInstructions, level, contentType } = req.body;
+
+      const [existingLesson] = await db.select()
+        .from(schema.libraryDocuments)
+        .where(and(
+          eq(schema.libraryDocuments.id, lessonId),
+          eq(schema.libraryDocuments.createdBy, req.user!.id)
+        ));
+
+      if (!existingLesson) {
+        return res.status(404).json({ message: "Lezione non trovata" });
+      }
+
+      if (!existingLesson.youtubeVideoId) {
+        return res.status(400).json({ message: "Questa lezione non ha un video sorgente associato" });
+      }
+
+      const { generateLessonFromVideo } = await import("./services/ai-lesson-generator");
+      
+      const result = await generateLessonFromVideo({
+        consultantId: req.user!.id,
+        youtubeVideoId: existingLesson.youtubeVideoId,
+        categoryId: existingLesson.categoryId,
+        subcategoryId: existingLesson.subcategoryId || undefined,
+        customInstructions,
+        level: level || existingLesson.level,
+        contentType: contentType || existingLesson.contentType,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      await db.delete(schema.libraryDocuments)
+        .where(eq(schema.libraryDocuments.id, lessonId));
+
+      res.json({ 
+        message: "Lezione rigenerata con successo", 
+        oldLessonId: lessonId,
+        newLesson: result.lesson 
+      });
+    } catch (error: any) {
+      console.error('Error regenerating lesson:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get AI lesson settings
   app.get("/api/library/ai-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
