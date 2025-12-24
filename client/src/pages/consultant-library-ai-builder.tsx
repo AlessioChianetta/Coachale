@@ -452,6 +452,7 @@ export default function ConsultantLibraryAIBuilder() {
   const [previewLesson, setPreviewLesson] = useState<any>(null);
   const [lessonOrder, setLessonOrder] = useState<string[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isNewGenerationSession, setIsNewGenerationSession] = useState(false); // Blocca reload lezioni precedenti
   
   // Step 4.5: Module organization states
   const [moduleAssignments, setModuleAssignments] = useState<Map<string, string>>(new Map());
@@ -495,12 +496,22 @@ export default function ConsultantLibraryAIBuilder() {
   });
 
   // Carica le lezioni non pubblicate quando si accede allo Step 5 o all'avvio
+  // MA blocca il caricamento durante una nuova sessione di generazione
   useEffect(() => {
-    if (unpublishedLessons.length > 0 && generatedLessons.length === 0) {
+    console.log('[AI Builder] useEffect unpublishedLessons:', {
+      unpublishedLessonsCount: unpublishedLessons.length,
+      generatedLessonsCount: generatedLessons.length,
+      isNewGenerationSession,
+    });
+    
+    if (unpublishedLessons.length > 0 && generatedLessons.length === 0 && !isNewGenerationSession) {
+      console.log('[AI Builder] Caricamento lezioni precedenti dal database:', unpublishedLessons.length);
       setGeneratedLessons(unpublishedLessons);
       setLessonOrder(unpublishedLessons.map((l: any) => l.id));
+    } else if (isNewGenerationSession) {
+      console.log('[AI Builder] Blocco caricamento lezioni precedenti - nuova sessione di generazione attiva');
     }
-  }, [unpublishedLessons, generatedLessons.length]);
+  }, [unpublishedLessons, generatedLessons.length, isNewGenerationSession]);
 
   useEffect(() => {
     if (aiSettings) {
@@ -878,10 +889,17 @@ export default function ConsultantLibraryAIBuilder() {
   };
 
   const handleStartGeneration = async () => {
+    console.log('[AI Builder] handleStartGeneration - Inizio nuova generazione');
+    console.log('[AI Builder] Video selezionati:', selectedVideoIds.length);
+    
     if (selectedVideoIds.length === 0) {
       toast({ title: "Nessun video selezionato", variant: "destructive" });
       return;
     }
+    
+    // CRITICO: Imposta flag per bloccare reload lezioni precedenti
+    setIsNewGenerationSession(true);
+    console.log('[AI Builder] isNewGenerationSession = true (blocco lezioni precedenti)');
     
     setCurrentStep(4);
     setGenerationProgress(0);
@@ -934,19 +952,36 @@ export default function ConsultantLibraryAIBuilder() {
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
+      let sseBuffer = ''; // Buffer per gestire chunk parziali
+      
+      console.log('[AI Builder] SSE - Inizio lettura stream');
       
       while (reader) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('[AI Builder] SSE - Stream completato');
+          break;
+        }
         
-        const text = decoder.decode(value);
-        const lines = text.split('\n').filter(line => line.startsWith('data: '));
+        const text = decoder.decode(value, { stream: true });
+        sseBuffer += text;
+        console.log('[AI Builder] SSE - Chunk ricevuto, buffer totale:', sseBuffer.length, 'chars');
+        
+        // Processa solo eventi completi (terminano con \n\n)
+        const events = sseBuffer.split('\n\n');
+        // L'ultimo elemento potrebbe essere incompleto, lo teniamo nel buffer
+        sseBuffer = events.pop() || '';
+        
+        const lines = events.flatMap(event => event.split('\n').filter(line => line.startsWith('data: ')));
+        console.log('[AI Builder] SSE - Eventi completi trovati:', lines.length);
         
         for (const line of lines) {
           try {
             const data = JSON.parse(line.slice(6));
+            console.log('[AI Builder] SSE - Evento ricevuto:', data.type, data.log || data.videoTitle || '');
             
             const addLog = (message: string) => {
+              console.log('[AI Builder] Aggiunta log:', message);
               setGenerationLogs(prev => [...prev, {
                 time: new Date().toLocaleTimeString('it-IT'),
                 message
@@ -989,6 +1024,7 @@ export default function ConsultantLibraryAIBuilder() {
                 return next;
               });
             } else if (data.type === 'complete') {
+              console.log('[AI Builder] SSE - Generazione completata, lezioni:', data.lessons.length);
               setGeneratedLessons(data.lessons);
               setGenerationErrors(data.errors);
               setGenerationProgress(100);
@@ -1007,13 +1043,19 @@ export default function ConsultantLibraryAIBuilder() {
             } else if (data.type === 'error') {
               toast({ title: "Errore", description: data.message, variant: "destructive" });
             }
-          } catch (e) {}
+          } catch (e) {
+            console.warn('[AI Builder] SSE - Errore parsing:', e);
+          }
         }
       }
     } catch (error: any) {
+      console.error('[AI Builder] Errore generazione:', error);
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     } finally {
+      console.log('[AI Builder] Generazione terminata, reset isNewGenerationSession');
       setIsGenerating(false);
+      // Mantieni isNewGenerationSession = true fino a pubblicazione o reset manuale
+      // per evitare che le vecchie lezioni vengano ricaricate
     }
   };
 
@@ -1048,6 +1090,8 @@ export default function ConsultantLibraryAIBuilder() {
       setModuleCreationMode(null);
       setNewModuleNames([]);
       setSelectedModuleId("");
+      setIsNewGenerationSession(false); // Reset flag per permettere reload lezioni future
+      console.log('[AI Builder] Pubblicazione completata, isNewGenerationSession = false');
       
       toast({ 
         title: "Lezioni pubblicate!", 
@@ -2217,12 +2261,20 @@ export default function ConsultantLibraryAIBuilder() {
                                   : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
                               }`}
                               onClick={() => {
+                                console.log('[AI Builder] Step 4.5: Modulo selezionato:', sub.name);
                                 setSelectedModuleId(sub.id);
                                 const assignments = new Map<string, string>();
                                 generatedLessons.forEach((lesson: any) => {
                                   assignments.set(lesson.id, sub.id);
                                 });
                                 setModuleAssignments(assignments);
+                                
+                                // Auto-navigazione al Riepilogo dopo 1 secondo
+                                toast({ title: "Modulo selezionato!", description: `${generatedLessons.length} lezioni assegnate a "${sub.name}"` });
+                                setTimeout(() => {
+                                  console.log('[AI Builder] Step 4.5 -> Step 5: Auto-navigazione al Riepilogo');
+                                  setCurrentStep(5);
+                                }, 1000);
                               }}
                             >
                               <CardContent className="p-4 flex items-center gap-3">
@@ -2469,6 +2521,7 @@ export default function ConsultantLibraryAIBuilder() {
                       <Button 
                         variant="outline"
                         onClick={() => {
+                          console.log('[AI Builder] Reset wizard per nuova creazione');
                           setCurrentStep(1);
                           setYoutubeUrl("");
                           setSavedVideos([]);
@@ -2480,6 +2533,7 @@ export default function ConsultantLibraryAIBuilder() {
                           setGenerationLogs([]);
                           setGeneratingVideos(new Map());
                           setLessonOrder([]);
+                          setIsNewGenerationSession(false); // Reset flag per permettere reload
                         }}
                       >
                         <Plus className="w-4 h-4 mr-2" />

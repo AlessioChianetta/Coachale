@@ -5251,6 +5251,7 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
       const { generateMultipleLessons } = await import("./services/ai-lesson-generator");
       
       const onProgress = (current: number, total: number, status: string, videoTitle?: string, errorMessage?: string, logMessage?: string) => {
+        console.log(`[SSE] onProgress: ${status} ${current}/${total} - ${videoTitle || ''} - ${logMessage || ''}`);
         if (status === 'generating') {
           res.write(`data: ${JSON.stringify({ type: 'progress', current, total, videoTitle, status, log: logMessage })}\n\n`);
         } else if (status === 'completed') {
@@ -5258,7 +5259,11 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         } else if (status === 'error') {
           res.write(`data: ${JSON.stringify({ type: 'video_error', current, total, videoTitle, error: errorMessage, log: logMessage })}\n\n`);
         }
-        if (res.flush) (res as any).flush();
+        // Force flush to send SSE event immediately
+        if (res.flush) {
+          console.log('[SSE] Flushing response');
+          (res as any).flush();
+        }
       };
 
       const result = await generateMultipleLessons(
