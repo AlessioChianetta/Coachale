@@ -1,0 +1,42 @@
+✅ Restoring existing session: 82fc5117-6fbd-4c36-9b9e-199ce8673368
+injected.js:37 Heartbeat sent successfully
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] Caricamento lezioni precedenti dal database: 6
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] handleStartGeneration - Inizio nuova generazione
+injected.js:37 [AI Builder] Video selezionati: 2
+injected.js:37 [AI Builder] isNewGenerationSession = true (blocco lezioni precedenti)
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] Blocco caricamento lezioni precedenti - nuova sessione di generazione attiva
+injected.js:37 [AI Builder] SSE - Inizio lettura stream
+injected.js:37 [AI Builder] SSE - Chunk ricevuto, buffer totale: 184 chars
+injected.js:37 [AI Builder] SSE - Eventi completi trovati: 1
+injected.js:37 [AI Builder] SSE - Evento ricevuto: progress 🔍 Trascrizione: 2256 caratteri - Invio a Gemini...
+injected.js:37 [AI Builder] Aggiunta log: 🔍 Trascrizione: 2256 caratteri - Invio a Gemini...
+injected.js:37 [AI Builder] SSE - Chunk ricevuto, buffer totale: 195 chars
+injected.js:37 [AI Builder] SSE - Eventi completi trovati: 1
+injected.js:37 [AI Builder] SSE - Evento ricevuto: video_complete ✅ Lezione creata: "Come si smette di subire le emozioni? La Risposta Flash!"
+injected.js:37 [AI Builder] Aggiunta log: ✅ Lezione creata: "Come si smette di subire le emozioni? La Risposta Flash!"
+injected.js:37 [AI Builder] SSE - Chunk ricevuto, buffer totale: 192 chars
+injected.js:37 [AI Builder] SSE - Eventi completi trovati: 1
+injected.js:37 [AI Builder] SSE - Evento ricevuto: progress 🔍 Trascrizione: 2269 caratteri - Invio a Gemini...
+injected.js:37 [AI Builder] Aggiunta log: 🔍 Trascrizione: 2269 caratteri - Invio a Gemini...
+injected.js:37 [AI Builder] SSE - Chunk ricevuto, buffer totale: 4061 chars
+injected.js:37 [AI Builder] SSE - Eventi completi trovati: 1
+injected.js:37 [AI Builder] SSE - Evento ricevuto: video_complete ✅ Lezione creata: "Accettare: Subire o Crescere? La Vera Natura dell'Accettazione"
+injected.js:37 [AI Builder] Aggiunta log: ✅ Lezione creata: "Accettare: Subire o Crescere? La Vera Natura dell'Accettazione"
+injected.js:37 [AI Builder] SSE - Chunk ricevuto, buffer totale: 20106 chars
+injected.js:37 [AI Builder] SSE - Eventi completi trovati: 0
+injected.js:37 [AI Builder] SSE - Chunk ricevuto, buffer totale: 24265 chars
+injected.js:37 [AI Builder] SSE - Eventi completi trovati: 1
+injected.js:37 [AI Builder] SSE - Evento ricevuto: complete 
+injected.js:37 [AI Builder] SSE - Generazione completata, lezioni: 2
+injected.js:37 [AI Builder] SSE - Stream completato
+injected.js:37 [AI Builder] Generazione terminata, reset isNewGenerationSession
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] Blocco caricamento lezioni precedenti - nuova sessione di generazione attiva
+injected.js:37 Heartbeat sent successfully

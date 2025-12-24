@@ -2154,6 +2154,12 @@ export default function ConsultantLibraryAIBuilder() {
                       {moduleCreationMode && (
                         <Button 
                           onClick={async () => {
+                            console.log('[AI Builder] Step 4.5: Click Crea Modulo', {
+                              moduleCreationMode,
+                              newModuleNames,
+                              generatedLessonsCount: generatedLessons.length
+                            });
+                            
                             if (newModuleNames.length === 0 || newModuleNames.some(n => !n.trim())) {
                               toast({ title: "Inserisci i nomi dei moduli", variant: "destructive" });
                               return;
@@ -2162,6 +2168,7 @@ export default function ConsultantLibraryAIBuilder() {
                             try {
                               const createdModules: Subcategory[] = [];
                               for (const moduleName of newModuleNames) {
+                                console.log('[AI Builder] Creazione modulo:', moduleName);
                                 const result = await apiRequest("POST", "/api/library/subcategories", {
                                   categoryId: selectedCategoryId,
                                   name: moduleName.trim()
@@ -2172,18 +2179,21 @@ export default function ConsultantLibraryAIBuilder() {
                               
                               // Assign all lessons to first module if single, or let user choose if multiple
                               if (createdModules.length === 1) {
+                                console.log('[AI Builder] Singolo modulo creato, assegno tutte le lezioni e navigo a Step 5');
                                 const assignments = new Map<string, string>();
                                 generatedLessons.forEach((lesson: any) => {
                                   assignments.set(lesson.id, createdModules[0].id);
                                 });
                                 setModuleAssignments(assignments);
-                                toast({ title: "Modulo creato!", description: `"${createdModules[0].name}" creato con successo` });
+                                toast({ title: "Modulo creato!", description: `"${createdModules[0].name}" creato - Procedo al riepilogo` });
                                 setCurrentStep(5);
                               } else {
+                                console.log('[AI Builder] Multipli moduli creati, utente deve assegnare lezioni');
                                 toast({ title: "Moduli creati!", description: `${createdModules.length} moduli creati. Ora assegna le lezioni.` });
                                 setAssignmentMode('distribute');
                               }
                             } catch (error: any) {
+                              console.error('[AI Builder] Errore creazione modulo:', error);
                               toast({ title: "Errore", description: error.message, variant: "destructive" });
                             }
                             setIsCreatingModules(false);
@@ -2386,25 +2396,37 @@ export default function ConsultantLibraryAIBuilder() {
                     </Button>
                     <Button 
                       onClick={() => {
+                        console.log('[AI Builder] Step 4.5: Click Continua al Riepilogo', {
+                          moduleAssignmentsSize: moduleAssignments.size,
+                          assignmentMode,
+                          generatedLessonsCount: generatedLessons.length
+                        });
                         // Validate assignments
                         if (moduleAssignments.size === 0) {
+                          console.log('[AI Builder] Step 4.5: BLOCCATO - Nessun modulo assegnato');
                           toast({ title: "Seleziona un modulo", description: "Devi assegnare le lezioni a un modulo", variant: "destructive" });
                           return;
                         }
                         if (assignmentMode === 'distribute') {
                           const allAssigned = generatedLessons.every((lesson: any) => moduleAssignments.has(lesson.id));
                           if (!allAssigned) {
+                            console.log('[AI Builder] Step 4.5: BLOCCATO - Non tutte le lezioni assegnate');
                             toast({ title: "Assegnazioni incomplete", description: "Assegna tutte le lezioni a un modulo", variant: "destructive" });
                             return;
                           }
                         }
+                        console.log('[AI Builder] Step 4.5 -> Step 5: Navigazione al Riepilogo');
                         setCurrentStep(5);
                       }}
                       disabled={moduleAssignments.size === 0}
                       className="bg-gradient-to-r from-purple-600 to-indigo-600"
+                      title={moduleAssignments.size === 0 ? "Devi prima creare e selezionare un modulo" : ""}
                     >
                       <ArrowRight className="w-4 h-4 mr-2" />
                       Continua al Riepilogo
+                      {moduleAssignments.size === 0 && (
+                        <span className="ml-2 text-xs opacity-70">(seleziona un modulo)</span>
+                      )}
                     </Button>
                   </div>
                 </CardContent>
