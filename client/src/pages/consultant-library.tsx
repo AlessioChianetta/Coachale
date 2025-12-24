@@ -1217,7 +1217,7 @@ export default function ConsultantLibrary() {
               const lessonCount = documents.filter((d: LibraryDocument) => d.categoryId === category.id).length;
 
               return (
-                <div key={category.id} className="mb-3">
+                <div key={category.id} className="mb-3 overflow-hidden">
                   <Card className={`overflow-hidden transition-all duration-200 hover:shadow-md ${
                     isSelected ? 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'bg-white dark:bg-slate-800'
                   }`}>
@@ -1284,8 +1284,8 @@ export default function ConsultantLibrary() {
                   </Card>
                   
                   {isExpanded && categorySubcats.length > 0 && (
-                    <div className="ml-3 mt-2 space-y-1 overflow-hidden w-full">
-                      <div className={`border-l-2 pl-3 space-y-1 ${getColorBorder(category.color)}`}>
+                    <div className="mt-2 pl-3 space-y-1 overflow-hidden">
+                      <div className={`border-l-2 pl-3 space-y-1 overflow-hidden ${getColorBorder(category.color)}`}>
                         {categorySubcats.map((subcategory: LibrarySubcategory) => {
                           const isSubSelected = selectedCategory === category.id && selectedSubcategory === subcategory.id;
                           const subDocCount = documents.filter((d: LibraryDocument) => d.subcategoryId === subcategory.id).length;
