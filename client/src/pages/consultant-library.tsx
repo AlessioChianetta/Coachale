@@ -52,6 +52,7 @@ import {
   ChevronDown,
   Menu,
   AlertTriangle,
+  MoreVertical,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -1539,36 +1540,35 @@ export default function ConsultantLibrary() {
                                   </div>
                                 </div>
 
-                                {/* Actions - sotto su mobile, a destra su desktop */}
-                                <div className="flex items-center gap-1 flex-shrink-0 mt-2 sm:mt-0">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleViewDocument(document.id)}
-                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600"
-                                    title="Visualizza"
-                                  >
-                                    <Eye size={16} />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditDocument(document)}
-                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-600"
-                                    title="Modifica"
-                                  >
-                                    <Edit3 size={16} />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setDeletingDocument(document.id)}
-                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 text-destructive"
-                                    title="Elimina"
-                                  >
-                                    <Trash2 size={16} />
-                                  </Button>
-                                </div>
+                                {/* Actions - menu a 3 puntini */}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 flex-shrink-0"
+                                    >
+                                      <MoreVertical size={16} />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleViewDocument(document.id)}>
+                                      <Eye size={16} className="mr-2 text-blue-600" />
+                                      Visualizza
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleEditDocument(document)}>
+                                      <Edit3 size={16} className="mr-2 text-amber-600" />
+                                      Modifica
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => setDeletingDocument(document.id)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 size={16} className="mr-2" />
+                                      Elimina
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </div>
                           </CardContent>
