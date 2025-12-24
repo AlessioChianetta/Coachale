@@ -1169,7 +1169,7 @@ export default function ConsultantLibrary() {
               const isSelected = selectedCategory === category.id && selectedSubcategory === "all";
 
               return (
-                <div key={category.id}>
+                <div key={category.id} className="group/course">
                   <div className="flex items-center">
                     {categorySubcats.length > 0 && (
                       <button
@@ -1195,7 +1195,7 @@ export default function ConsultantLibrary() {
                     </button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover/course:opacity-100 transition-opacity">
                           <Settings size={12} />
                         </Button>
                       </DropdownMenuTrigger>
