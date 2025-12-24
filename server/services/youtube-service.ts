@@ -1,7 +1,7 @@
 import { db } from "../db";
 import { youtubeVideos, consultantAiLessonSettings } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
-import { YoutubeTranscript } from 'youtube-transcript';
+import { YoutubeTranscript } from '@danielxceron/youtube-transcript';
 
 interface VideoMetadata {
   videoId: string;
@@ -76,57 +76,44 @@ export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata
 }
 
 export async function fetchTranscript(videoId: string, lang: string = 'it'): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
-  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId}`);
+  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId} (usando InnerTube API fallback)`);
   
-  try {
-    // Prima prova con la lingua richiesta
-    let transcriptData;
+  const languagesToTry = [lang, 'en', undefined];
+  
+  for (const tryLang of languagesToTry) {
     try {
-      console.log(`🔍 [TRANSCRIPT] Tentativo con lingua: ${lang}`);
-      transcriptData = await YoutubeTranscript.fetchTranscript(videoId, { lang });
-    } catch (langError: any) {
-      console.log(`⚠️ [TRANSCRIPT] Lingua ${lang} non disponibile, provo inglese...`);
-      try {
-        transcriptData = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
-      } catch (enError: any) {
-        console.log(`⚠️ [TRANSCRIPT] Inglese non disponibile, provo qualsiasi lingua...`);
-        transcriptData = await YoutubeTranscript.fetchTranscript(videoId);
+      const langLabel = tryLang || 'qualsiasi';
+      console.log(`🔍 [TRANSCRIPT] Tentativo con lingua: ${langLabel}`);
+      
+      const config = tryLang ? { lang: tryLang } : undefined;
+      const transcriptData = await YoutubeTranscript.fetchTranscript(videoId, config);
+      
+      if (!transcriptData || transcriptData.length === 0) {
+        console.log(`⚠️ [TRANSCRIPT] Nessun dato per lingua ${langLabel}, provo altra lingua...`);
+        continue;
       }
+      
+      const segments: TranscriptSegment[] = transcriptData.map((item: any) => ({
+        text: item.text || '',
+        start: parseFloat(item.offset) / 1000 || 0,
+        duration: parseFloat(item.duration) / 1000 || 0,
+      }));
+      
+      const fullTranscript = segments.map(s => s.text).join(' ').trim();
+      
+      if (fullTranscript.length > 0) {
+        console.log(`✅ [TRANSCRIPT] Trascrizione trovata (${langLabel}): ${fullTranscript.length} caratteri, ${segments.length} segmenti`);
+        return { transcript: fullTranscript, segments };
+      }
+    } catch (error: any) {
+      const langLabel = tryLang || 'qualsiasi';
+      console.log(`⚠️ [TRANSCRIPT] Lingua ${langLabel} fallita: ${error.message?.substring(0, 100)}`);
+      continue;
     }
-    
-    if (!transcriptData || transcriptData.length === 0) {
-      console.log(`❌ [TRANSCRIPT] Nessuna trascrizione trovata per video: ${videoId}`);
-      return null;
-    }
-    
-    const segments: TranscriptSegment[] = transcriptData.map((item: any) => ({
-      text: item.text || '',
-      start: parseFloat(item.offset) / 1000 || 0,
-      duration: parseFloat(item.duration) / 1000 || 0,
-    }));
-    
-    const fullTranscript = segments.map(s => s.text).join(' ').trim();
-    
-    console.log(`✅ [TRANSCRIPT] Trascrizione trovata: ${fullTranscript.length} caratteri, ${segments.length} segmenti`);
-    
-    return {
-      transcript: fullTranscript,
-      segments,
-    };
-  } catch (error: any) {
-    console.error(`❌ [TRANSCRIPT] Errore per video ${videoId}:`, error.message || error);
-    
-    // Log più dettagliato per capire il tipo di errore
-    if (error.message?.includes('disabled')) {
-      console.log(`❌ [TRANSCRIPT] Trascrizioni disabilitate per questo video`);
-    } else if (error.message?.includes('unavailable')) {
-      console.log(`❌ [TRANSCRIPT] Video non disponibile o privato`);
-    } else if (error.message?.includes('Too Many Requests')) {
-      console.log(`❌ [TRANSCRIPT] Rate limiting da YouTube - attendi prima di riprovare`);
-    }
-    
-    return null;
   }
+  
+  console.log(`❌ [TRANSCRIPT] Nessuna trascrizione disponibile per video: ${videoId}`);
+  return null;
 }
 
 export async function fetchPlaylistVideos(playlistId: string): Promise<PlaylistVideo[]> {

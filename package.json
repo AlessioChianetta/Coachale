@@ -11,6 +11,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@danielxceron/youtube-transcript": "^1.2.3",
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "@fullcalendar/core": "^6.1.19",
     "@fullcalendar/daygrid": "^6.1.19",
