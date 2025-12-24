@@ -91,6 +91,7 @@ export default function ConsultantLibraryAIBuilder() {
   );
   const [contentType, setContentType] = useState<"text" | "video" | "both">("both");
   const [level, setLevel] = useState<"base" | "intermedio" | "avanzato">("base");
+  const [transcriptMode, setTranscriptMode] = useState<"auto" | "gemini" | "subtitles">("auto");
   const [saveSettings, setSaveSettings] = useState(true);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStatus, setGenerationStatus] = useState<string[]>([]);
@@ -135,7 +136,7 @@ export default function ConsultantLibraryAIBuilder() {
 
   const fetchVideoMutation = useMutation({
     mutationFn: async (url: string) => {
-      return await apiRequest("POST", "/api/youtube/video", { url });
+      return await apiRequest("POST", "/api/youtube/video", { url, transcriptMode });
     },
     onSuccess: (video) => {
       setSavedVideos([video]);
@@ -168,6 +169,7 @@ export default function ConsultantLibraryAIBuilder() {
       return await apiRequest("POST", "/api/youtube/playlist/save", {
         videos,
         playlistId: youtubeUrl,
+        transcriptMode,
       });
     },
     onSuccess: (data) => {
@@ -664,6 +666,20 @@ export default function ConsultantLibraryAIBuilder() {
                         </Select>
                       </div>
                     )}
+
+                    <div className="space-y-2">
+                      <Label>Modalità Trascrizione</Label>
+                      <Select value={transcriptMode} onValueChange={(v: any) => setTranscriptMode(v)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">🤖 Automatico (Gemini → Sottotitoli)</SelectItem>
+                          <SelectItem value="gemini">🎵 Solo Gemini AI (qualità premium)</SelectItem>
+                          <SelectItem value="subtitles">📝 Solo Sottotitoli (più veloce)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                     <Button 
                       onClick={handleLoadContent}
