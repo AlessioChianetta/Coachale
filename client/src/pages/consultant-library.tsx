@@ -1223,25 +1223,25 @@ export default function ConsultantLibrary() {
                   }`}>
                     <div className={`h-1.5 bg-gradient-to-r ${getColorGradient(category.color || 'purple')}`} />
                     
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2 mb-2">
+                    <CardContent className="p-3 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 min-w-0">
                         {categorySubcats.length > 0 && (
                           <button 
                             onClick={() => toggleCourseExpansion(category.id)} 
-                            className="p-1 hover:bg-muted rounded transition-colors"
+                            className="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
                           >
                             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                           </button>
                         )}
                         <button 
                           onClick={() => handleCourseClick(category.id)} 
-                          className={`flex-1 text-left ${categorySubcats.length === 0 ? 'ml-6' : ''}`}
+                          className={`flex-1 text-left min-w-0 ${categorySubcats.length === 0 ? 'ml-6' : ''}`}
                         >
-                          <h4 className="font-semibold text-sm line-clamp-2">{category.name}</h4>
+                          <h4 className="font-semibold text-sm line-clamp-2 break-words">{category.name}</h4>
                         </button>
                       </div>
                       
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3 flex-wrap">
                         <span className="flex items-center gap-1">
                           <FileText size={12} />
                           {lessonCount} lezioni
@@ -1439,7 +1439,7 @@ export default function ConsultantLibrary() {
 
           <div className="flex-1 flex overflow-hidden">
             {!isMobile && (
-              <div className="w-80 min-w-80 border-r bg-muted/30 hidden md:flex flex-col min-h-0 overflow-hidden">
+              <div className="w-80 min-w-80 border-r bg-muted/30 hidden md:flex flex-col min-h-0">
                 <NavigationSidebar />
               </div>
             )}
