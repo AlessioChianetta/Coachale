@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -862,6 +862,13 @@ export default function ConsultantLibraryAIBuilder() {
                     <CardDescription>{savedVideos.length} video pronti per la generazione</CardDescription>
                   </CardHeader>
                   <CardContent>
+                    {savedVideos.some(v => v.transcriptStatus === 'pending' || v.transcriptStatus === 'failed') && (
+                      <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          <strong>Inserisci le trascrizioni mancanti</strong> cliccando sull'icona ✏️ accanto a ogni video prima di generare le lezioni.
+                        </p>
+                      </div>
+                    )}
                     <div className="space-y-3 max-h-[300px] overflow-y-auto">
                       {savedVideos.map((video) => (
                         <div key={video.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/50 dark:bg-gray-800/50">
@@ -873,19 +880,20 @@ export default function ConsultantLibraryAIBuilder() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{video.title}</p>
                             <Badge 
-                              variant={video.transcriptStatus === 'completed' ? 'default' : 'destructive'}
-                              className="text-xs"
+                              variant={video.transcriptStatus === 'completed' ? 'default' : video.transcriptStatus === 'pending' ? 'secondary' : 'destructive'}
+                              className={`text-xs ${video.transcriptStatus === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' : ''}`}
                             >
-                              {video.transcriptStatus === 'completed' ? 'Trascrizione OK' : 'No trascrizione'}
+                              {video.transcriptStatus === 'completed' ? 'Trascrizione OK' : video.transcriptStatus === 'pending' ? 'Da inserire' : 'No trascrizione'}
                             </Badge>
                           </div>
                           <Button 
-                            variant="ghost" 
+                            variant={video.transcriptStatus === 'completed' ? 'ghost' : 'outline'}
                             size="sm"
                             onClick={(e) => { e.stopPropagation(); handlePreviewTranscript(video); }}
-                            title="Anteprima trascrizione"
+                            title={video.transcriptStatus === 'completed' ? 'Anteprima trascrizione' : 'Inserisci trascrizione'}
+                            className={video.transcriptStatus !== 'completed' ? 'border-amber-300 text-amber-700 hover:bg-amber-50' : ''}
                           >
-                            <Eye className="w-4 h-4" />
+                            {video.transcriptStatus === 'completed' ? <Eye className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
                           </Button>
                         </div>
                       ))}
