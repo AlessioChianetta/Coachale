@@ -123,50 +123,63 @@ export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata
 
 // ==================== METODO 1: GEMINI (Audio Transcription) ====================
 
-async function downloadAudioWithYtDlp(videoId: string): Promise<string | null> {
+async function downloadAudioWithYtDlp(videoId: string, maxRetries: number = 3): Promise<string | null> {
   const tempDir = '/tmp/yt-audio';
-  const outputPath = path.join(tempDir, `${videoId}.mp3`);
   
-  try {
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-    
-    // Pulisci file vecchi per questo video
+  for (let retry = 0; retry < maxRetries; retry++) {
     try {
-      const oldFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId));
-      oldFiles.forEach(f => fs.unlinkSync(path.join(tempDir, f)));
-    } catch {}
-    
-    console.log(`   🎵 Scaricando audio per video: ${videoId}`);
-    
-    // Usa python -m yt_dlp per la versione aggiornata (pip install -U yt-dlp)
-    const cmd = `python -m yt_dlp -x --audio-format mp3 --audio-quality 5 -o "${path.join(tempDir, videoId)}.%(ext)s" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
-    
-    const { stdout, stderr } = await execAsync(cmd, { timeout: 180000 }); // 3 minuti timeout
-    const output = stdout + stderr;
-    
-    if (output.includes('429') || output.includes('Too Many Requests')) {
-      console.log(`   ⚠️ Rate limit (429) per download audio`);
-      return null;
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      // Pulisci file vecchi per questo video
+      try {
+        const oldFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId));
+        oldFiles.forEach(f => fs.unlinkSync(path.join(tempDir, f)));
+      } catch {}
+      
+      if (retry > 0) {
+        console.log(`   🔄 Retry ${retry}/${maxRetries - 1} download audio per: ${videoId}`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * retry)); // Wait 2s, 4s, etc
+      } else {
+        console.log(`   🎵 Scaricando audio per video: ${videoId}`);
+      }
+      
+      // Usa python -m yt_dlp per la versione aggiornata (pip install -U yt-dlp)
+      const cmd = `python -m yt_dlp -x --audio-format mp3 --audio-quality 5 -o "${path.join(tempDir, videoId)}.%(ext)s" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
+      
+      const { stdout, stderr } = await execAsync(cmd, { timeout: 180000 }); // 3 minuti timeout
+      const output = stdout + stderr;
+      
+      if (output.includes('429') || output.includes('Too Many Requests')) {
+        console.log(`   ⚠️ Rate limit (429) per download audio - attendo prima di riprovare`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        continue;
+      }
+      
+      // Cerca il file mp3 scaricato
+      const audioFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId) && f.endsWith('.mp3'));
+      
+      if (audioFiles.length > 0) {
+        const audioPath = path.join(tempDir, audioFiles[0]);
+        const stats = fs.statSync(audioPath);
+        console.log(`   ✅ Audio scaricato: ${audioFiles[0]} (${Math.round(stats.size / 1024)} KB)`);
+        return audioPath;
+      }
+      
+      console.log(`   ⚠️ Nessun file audio trovato dopo download`);
+    } catch (error: any) {
+      const errorMsg = error.message || String(error);
+      console.log(`   ⚠️ Errore download audio (tentativo ${retry + 1}): ${errorMsg.substring(0, 150)}`);
+      
+      if (error.stderr) {
+        console.log(`   📋 Dettagli: ${error.stderr.substring(0, 200)}`);
+      }
     }
-    
-    // Cerca il file mp3 scaricato
-    const audioFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId) && f.endsWith('.mp3'));
-    
-    if (audioFiles.length > 0) {
-      const audioPath = path.join(tempDir, audioFiles[0]);
-      const stats = fs.statSync(audioPath);
-      console.log(`   ✅ Audio scaricato: ${audioFiles[0]} (${Math.round(stats.size / 1024)} KB)`);
-      return audioPath;
-    }
-    
-    console.log(`   ⚠️ Nessun file audio trovato dopo download`);
-    return null;
-  } catch (error: any) {
-    console.log(`   ⚠️ Errore download audio: ${error.message?.substring(0, 80)}`);
-    return null;
   }
+  
+  console.log(`   ❌ Download audio fallito dopo ${maxRetries} tentativi`);
+  return null;
 }
 
 async function transcribeAudioWithGemini(audioPath: string): Promise<TranscriptResult | null> {
