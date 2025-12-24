@@ -200,6 +200,7 @@ export default function ConsultantLibraryAIBuilder() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [previewLesson, setPreviewLesson] = useState<any>(null);
   const [lessonOrder, setLessonOrder] = useState<string[]>([]);
+  const [isPublishing, setIsPublishing] = useState(false);
   
   // Step 2: Stato caricamento video con UI dettagliata
   const [isSavingVideos, setIsSavingVideos] = useState(false);
@@ -693,9 +694,7 @@ export default function ConsultantLibraryAIBuilder() {
                   return next;
                 });
               });
-              queryClient.invalidateQueries({ queryKey: ["/api/library/documents"] });
-              toast({ title: "Lezioni generate!", description: `${data.lessons.length} lezioni create` });
-              setTimeout(() => setCurrentStep(5), 1500);
+              toast({ title: "Lezioni generate!", description: `${data.lessons.length} lezioni create - Clicca per procedere al riepilogo` });
             } else if (data.type === 'error') {
               toast({ title: "Errore", description: data.message, variant: "destructive" });
             }
@@ -706,6 +705,32 @@ export default function ConsultantLibraryAIBuilder() {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handlePublishLessons = async () => {
+    if (generatedLessons.length === 0) {
+      toast({ title: "Nessuna lezione da pubblicare", variant: "destructive" });
+      return;
+    }
+
+    setIsPublishing(true);
+    try {
+      const lessonIds = generatedLessons.map((l: any) => l.id);
+      await apiRequest("POST", "/api/library/ai-publish-lessons", { lessonIds });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/library/documents"] });
+      toast({ 
+        title: "Lezioni pubblicate!", 
+        description: `${lessonIds.length} lezioni sono state aggiunte al corso` 
+      });
+      
+      // Naviga alla libreria
+      setLocation("/consultant/library");
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -1410,11 +1435,24 @@ export default function ConsultantLibraryAIBuilder() {
                     </div>
                   )}
 
-                  {generationProgress >= 100 && (
-                    <div className="flex items-center justify-center gap-4 pt-4">
-                      <p className="text-sm text-muted-foreground animate-pulse">
-                        Preparazione riepilogo lezioni...
-                      </p>
+                  {generationProgress >= 100 && !isGenerating && (
+                    <div className="flex flex-col items-center gap-4 pt-4 border-t">
+                      <div className="text-center">
+                        <p className="text-green-600 font-medium">
+                          Generazione completata!
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Le lezioni sono pronte per la revisione. Clicca per proseguire al riepilogo.
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => setCurrentStep(5)}
+                        className="bg-gradient-to-r from-green-600 to-emerald-600"
+                        size="lg"
+                      >
+                        <ArrowRight className="w-4 h-4 mr-2" />
+                        Vai al Riepilogo
+                      </Button>
                     </div>
                   )}
                 </CardContent>
@@ -1430,7 +1468,7 @@ export default function ConsultantLibraryAIBuilder() {
                       Riepilogo Lezioni Generate
                     </CardTitle>
                     <CardDescription>
-                      {generatedLessons.length} lezioni create con successo. Clicca su una lezione per vedere l'anteprima.
+                      {generatedLessons.length} lezioni pronte per l'inserimento. Clicca su una lezione per vedere l'anteprima, poi conferma per aggiungerle al corso.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1548,11 +1586,16 @@ export default function ConsultantLibraryAIBuilder() {
                         Crea Altre Lezioni
                       </Button>
                       <Button 
-                        onClick={() => setLocation("/consultant/library")}
+                        onClick={handlePublishLessons}
+                        disabled={isPublishing || generatedLessons.length === 0}
                         className="bg-gradient-to-r from-green-600 to-emerald-600"
                       >
-                        <Check className="w-4 h-4 mr-2" />
-                        Vai alla Libreria
+                        {isPublishing ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4 mr-2" />
+                        )}
+                        {isPublishing ? 'Pubblicazione...' : `Conferma e Inserisci ${generatedLessons.length} Lezioni`}
                       </Button>
                     </div>
                   </CardContent>

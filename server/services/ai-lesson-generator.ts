@@ -69,7 +69,7 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
     
     const lessonData = parseLessonResponse(generatedText, video);
     
-    console.log(`💾 [AI-LESSON] Salvando lezione: "${lessonData.title}"`);
+    console.log(`💾 [AI-LESSON] Salvando lezione come bozza: "${lessonData.title}"`);
     const [lesson] = await db.insert(libraryDocuments).values({
       categoryId: params.categoryId,
       subcategoryId: params.subcategoryId || null,
@@ -81,7 +81,7 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
       level: params.level || settings.defaultLevel || 'base',
       estimatedDuration: lessonData.estimatedDuration,
       tags: lessonData.tags,
-      isPublished: true,
+      isPublished: false,
       createdBy: params.consultantId,
       sourceType: 'youtube_ai',
       youtubeVideoId: video.id,

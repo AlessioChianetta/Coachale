@@ -5218,6 +5218,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Publish AI-generated lessons (confirm and make visible in course)
+  app.post("/api/library/ai-publish-lessons", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { lessonIds } = req.body;
+      
+      if (!lessonIds || !Array.isArray(lessonIds) || lessonIds.length === 0) {
+        return res.status(400).json({ message: "lessonIds array is required" });
+      }
+
+      // Update all lessons to published
+      const updatedLessons = [];
+      for (const lessonId of lessonIds) {
+        const [lesson] = await db.update(schema.libraryDocuments)
+          .set({ isPublished: true })
+          .where(and(
+            eq(schema.libraryDocuments.id, lessonId),
+            eq(schema.libraryDocuments.createdBy, req.user!.id)
+          ))
+          .returning();
+        
+        if (lesson) {
+          updatedLessons.push(lesson);
+        }
+      }
+
+      console.log(`✅ [AI-BUILDER] Published ${updatedLessons.length} lessons for consultant ${req.user!.id}`);
+      res.json({ success: true, published: updatedLessons.length });
+    } catch (error: any) {
+      console.error('Error publishing lessons:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ===== AI BUILDER DRAFTS CRUD ROUTES =====
 
   // List all drafts for consultant
