@@ -23,7 +23,10 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Interactive guided tours via `Driver.js` for onboarding.
 - Categorized Sidebar Navigation for consultants with state persistence.
 - **Libreria Formativa Layout (Dec 2025)**: Redesigned with Sidebar + Content pattern for improved navigation:
-  - Left navigation sidebar (~280px) with expandable course/module tree structure
+  - Left navigation sidebar (320px) with expandable course/module tree structure
+  - **Redesigned Course Cards**: Color-coded gradient headers, stats badges (lesson/module count), always-visible action buttons (Modifica, Assegna, Elimina)
+  - **4-Level Deletion Protection**: 3 progressive confirmation dialogs + mandatory "CANCELLA" text input to prevent accidental course deletions
+  - Responsive action buttons: icons only on mobile, full text on desktop (sm+ breakpoint)
   - Search input integrated in sidebar for quick filtering
   - Compact header with inline stats badges and dropdown action menu
   - Main content area with breadcrumb, level filter, and responsive lesson card grid
