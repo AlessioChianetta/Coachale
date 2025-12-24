@@ -32,12 +32,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Label } from "@/components/ui/label";
 import {
   BookOpen,
@@ -54,8 +48,18 @@ import {
   Users,
   Sparkles,
   Video,
-  Play
+  ChevronRight,
+  ChevronDown,
+  Menu,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -85,6 +89,8 @@ export default function ConsultantLibrary() {
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
   const [assigningCategory, setAssigningCategory] = useState<LibraryCategory | undefined>();
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
+  const [navSidebarOpen, setNavSidebarOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1062,6 +1068,48 @@ export default function ConsultantLibrary() {
     setShowAssignmentDialog(true);
   };
 
+  const toggleCourseExpansion = (courseId: string) => {
+    setExpandedCourses(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(courseId)) {
+        newSet.delete(courseId);
+      } else {
+        newSet.add(courseId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCourseClick = (courseId: string) => {
+    setSelectedCategory(courseId);
+    setSelectedSubcategory("all");
+    if (!expandedCourses.has(courseId)) {
+      setExpandedCourses(prev => new Set([...prev, courseId]));
+    }
+    if (isMobile) setNavSidebarOpen(false);
+  };
+
+  const handleSubcategoryClick = (courseId: string, subcategoryId: string) => {
+    setSelectedCategory(courseId);
+    setSelectedSubcategory(subcategoryId);
+    if (isMobile) setNavSidebarOpen(false);
+  };
+
+  const handleAllCoursesClick = () => {
+    setSelectedCategory("all");
+    setSelectedSubcategory("all");
+    if (isMobile) setNavSidebarOpen(false);
+  };
+
+  const getBreadcrumbText = () => {
+    if (selectedCategory === "all") return "Tutti i corsi";
+    const course = categories.find((c: LibraryCategory) => c.id === selectedCategory);
+    if (!course) return "Tutti i corsi";
+    if (selectedSubcategory === "all") return course.name;
+    const subcategory = subcategories.find((s: LibrarySubcategory) => s.id === selectedSubcategory);
+    return subcategory ? `${course.name} > ${subcategory.name}` : course.name;
+  };
+
   const handleSaveAssignment = () => {
     if (!assigningCategory?.id) return;
 
@@ -1076,185 +1124,245 @@ export default function ConsultantLibrary() {
     });
   };
 
+  const NavigationSidebar = () => (
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+          <Input
+            placeholder="Cerca..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9"
+          />
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="p-2">
+          <button
+            onClick={handleAllCoursesClick}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              selectedCategory === "all"
+                ? "bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100"
+                : "hover:bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <BookOpen size={16} />
+            Tutti i corsi
+          </button>
+
+          <div className="mt-2 space-y-1">
+            {categories.map((category: LibraryCategory) => {
+              const categorySubcats = subcategories.filter((s: LibrarySubcategory) => s.categoryId === category.id);
+              const isExpanded = expandedCourses.has(category.id);
+              const isSelected = selectedCategory === category.id && selectedSubcategory === "all";
+
+              return (
+                <div key={category.id}>
+                  <div className="flex items-center">
+                    {categorySubcats.length > 0 && (
+                      <button
+                        onClick={() => toggleCourseExpansion(category.id)}
+                        className="p-1 hover:bg-muted rounded"
+                      >
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleCourseClick(category.id)}
+                      className={`flex-1 flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                        isSelected
+                          ? "bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100"
+                          : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                      } ${categorySubcats.length === 0 ? "ml-5" : ""}`}
+                    >
+                      <Folder size={16} className={`text-${category.color || 'blue'}-500`} />
+                      <span className="truncate">{category.name}</span>
+                      <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0">
+                        {documents.filter((d: LibraryDocument) => d.categoryId === category.id).length}
+                      </Badge>
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100">
+                          <Settings size={12} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                          <Edit3 size={14} className="mr-2" /> Modifica
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAssignCategory(category)}>
+                          <Users size={14} className="mr-2" /> Assegna
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDeletingCategory(category.id)} className="text-destructive">
+                          <Trash2 size={14} className="mr-2" /> Elimina
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {isExpanded && categorySubcats.length > 0 && (
+                    <div className="ml-6 mt-1 space-y-1 border-l-2 border-muted pl-2">
+                      {categorySubcats.map((subcategory: LibrarySubcategory) => {
+                        const isSubSelected = selectedCategory === category.id && selectedSubcategory === subcategory.id;
+                        const subDocCount = documents.filter((d: LibraryDocument) => d.subcategoryId === subcategory.id).length;
+
+                        return (
+                          <div key={subcategory.id} className="flex items-center group">
+                            <button
+                              onClick={() => handleSubcategoryClick(category.id, subcategory.id)}
+                              className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-left ${
+                                isSubSelected
+                                  ? "bg-indigo-100 text-indigo-900 dark:bg-indigo-900/30 dark:text-indigo-100"
+                                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <Folder size={14} />
+                              <span className="truncate">{subcategory.name}</span>
+                              <Badge variant="outline" className="ml-auto text-xs px-1 py-0">
+                                {subDocCount}
+                              </Badge>
+                            </button>
+                            <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => handleEditSubcategory(subcategory)}
+                              >
+                                <Edit3 size={10} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-destructive"
+                                onClick={() => setDeletingSubcategory(subcategory.id)}
+                              >
+                                <Trash2 size={10} />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </ScrollArea>
+
+      <div className="p-3 border-t">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => setShowCategoryDialog(true)}
+        >
+          <Plus size={14} className="mr-2" />
+          Nuovo Corso
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
-            {/* Header */}
-            <div className="relative">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                      <BookOpen size={18} className="text-white" />
-                    </div>
-                    <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-                      Libreria Formativa
-                    </h1>
-                    <p className="text-muted-foreground md:text-lg">
-                      Gestisci corsi, sotto-categorie e lezioni per i tuoi clienti
-                    </p>
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex items-center justify-between px-4 md:px-6 h-14">
+              <div className="flex items-center gap-3">
+                {isMobile && (
+                  <Sheet open={navSidebarOpen} onOpenChange={setNavSidebarOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="sm" className="md:hidden">
+                        <Menu size={20} />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-72 p-0">
+                      <NavigationSidebar />
+                    </SheetContent>
+                  </Sheet>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <BookOpen size={16} className="text-white" />
                   </div>
+                  <h1 className="text-lg md:text-xl font-bold">Libreria Formativa</h1>
                 </div>
-                <div className="flex items-center space-x-3 flex-wrap gap-2">
-                  <Button
-                    onClick={() => setLocation("/consultant/library/ai-builder")}
-                    className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    <Sparkles size={16} className="mr-2" />
-                    Crea con AI
-                  </Button>
-                  <Button
-                    onClick={() => setShowCategoryDialog(true)}
-                    variant="outline"
-                  >
-                    <Folder size={16} className="mr-2" />
-                    Nuovo Corso
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setEditingSubcategory(undefined);
-                      setSubcategoryForm({
-                        categoryId: selectedCategory !== "all" ? selectedCategory : "",
-                        name: "",
-                        description: "",
-                        icon: "Folder",
-                        color: "gray",
-                        sortOrder: 0,
-                      });
-                      setShowSubcategoryDialog(true);
-                    }}
-                    variant="outline"
-                  >
-                    <Plus size={16} className="mr-2" />
-                    Nuova Categoria
-                  </Button>
-                  <Button
-                    onClick={handleCreateDocumentClick}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    <Plus size={16} className="mr-2" />
-                    Nuova Lezione
-                  </Button>
+                <div className="hidden md:flex items-center gap-2 ml-4">
+                  <Badge variant="secondary" className="text-xs">
+                    {categories.length} Corsi
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    {visibleDocuments.length} Lezioni
+                  </Badge>
                 </div>
               </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+                    <Plus size={16} className="mr-2" />
+                    Nuovo
+                    <ChevronDown size={14} className="ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setLocation("/consultant/library/ai-builder")}>
+                    <Sparkles size={16} className="mr-2 text-pink-500" />
+                    Crea con AI
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowCategoryDialog(true)}>
+                    <Folder size={16} className="mr-2" />
+                    Nuovo Corso
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    setEditingSubcategory(undefined);
+                    setSubcategoryForm({
+                      categoryId: selectedCategory !== "all" ? selectedCategory : "",
+                      name: "",
+                      description: "",
+                      icon: "Folder",
+                      color: "gray",
+                      sortOrder: 0,
+                    });
+                    setShowSubcategoryDialog(true);
+                  }}>
+                    <Folder size={16} className="mr-2" />
+                    Nuovo Modulo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCreateDocumentClick}>
+                    <FileText size={16} className="mr-2" />
+                    Nuova Lezione
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+          </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Corsi</p>
-                      <p className="text-2xl md:text-3xl font-bold text-blue-900 dark:text-blue-100">{categories.length}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                      <Folder className="text-white" size={24} />
-                    </div>
+          <div className="flex-1 flex overflow-hidden">
+            {!isMobile && (
+              <div className="w-72 border-r bg-muted/30 hidden md:flex flex-col">
+                <NavigationSidebar />
+              </div>
+            )}
+
+            <div className="flex-1 overflow-auto">
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <BookOpen size={14} />
+                    <span className="font-medium">{getBreadcrumbText()}</span>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-green-700 dark:text-green-300">Lezioni</p>
-                      <p className="text-2xl md:text-3xl font-bold text-green-900 dark:text-green-100">{visibleDocuments.length}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                      <FileText className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Base</p>
-                      <p className="text-2xl md:text-3xl font-bold text-purple-900 dark:text-purple-100">
-                        {visibleDocuments.filter((d: LibraryDocument) => d.level === "base").length}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
-                      <Tag className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/50 dark:to-orange-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-orange-700 dark:text-orange-300">Avanzati</p>
-                      <p className="text-2xl md:text-3xl font-bold text-orange-900 dark:text-orange-100">
-                        {visibleDocuments.filter((d: LibraryDocument) => d.level === "avanzato").length}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
-                      <Settings className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Filters */}
-            <Card className="shadow-sm border-muted/40">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-4">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-                      <Input
-                        placeholder="Cerca lezioni..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 h-11 border-muted/60 focus:border-purple-500 transition-colors"
-                      />
-                    </div>
-                  </div>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-full lg:w-56 h-11 border-muted/60">
-                      <SelectValue placeholder="Tutti i corsi" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutti i corsi</SelectItem>
-                      {categories.map((category: LibraryCategory) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Level Filter */}
-                  <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
-                    <SelectTrigger className="w-full lg:w-56 h-11 border-muted/60">
-                      <SelectValue placeholder="Tutte le categorie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutte le categorie</SelectItem>
-                      {subcategories
-                        .filter((sub: any) => selectedCategory === "all" || sub.categoryId === selectedCategory)
-                        .map((subcategory: LibrarySubcategory) => (
-                          <SelectItem key={subcategory.id} value={subcategory.id}>
-                            {subcategory.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-
                   <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-                    <SelectTrigger className="w-full lg:w-56 h-11 border-muted/60">
+                    <SelectTrigger className="w-full sm:w-40 h-9">
                       <SelectValue placeholder="Tutti i livelli" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1265,314 +1373,103 @@ export default function ConsultantLibrary() {
                     </SelectContent>
                   </Select>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Hierarchical Accordion Layout */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Struttura Completa dei Corsi</h2>
-                <Badge variant="outline" className="text-sm">
-                  {categories.length} Corsi • {subcategories.length} Categorie • {documents.length} Lezioni
-                </Badge>
-              </div>
+                {filteredDocuments.length === 0 ? (
+                  <Card className="p-12 text-center">
+                    <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">
+                      {categories.length === 0 ? "Nessun corso disponibile" : "Nessuna lezione trovata"}
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      {categories.length === 0
+                        ? "Inizia creando il tuo primo corso!"
+                        : "Non ci sono lezioni che corrispondono ai filtri selezionati."}
+                    </p>
+                    {categories.length === 0 ? (
+                      <Button onClick={() => setShowCategoryDialog(true)}>
+                        <Plus size={16} className="mr-2" />
+                        Crea Primo Corso
+                      </Button>
+                    ) : (
+                      <Button onClick={handleCreateDocumentClick}>
+                        <Plus size={16} className="mr-2" />
+                        Aggiungi Lezione
+                      </Button>
+                    )}
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredDocuments.map((document: LibraryDocument) => {
+                      const course = categories.find((c: LibraryCategory) => c.id === document.categoryId);
+                      const subcategory = document.subcategoryId
+                        ? subcategories.find((s: LibrarySubcategory) => s.id === document.subcategoryId)
+                        : null;
 
-              <Accordion 
-                type="single" 
-                collapsible 
-                className="space-y-4"
-                value={selectedCategory !== "all" ? selectedCategory : undefined}
-                onValueChange={(value) => {
-                  if (value && value !== selectedCategory) {
-                    setSelectedCategory(value);
-                  }
-                }}
-              >
-                {categories
-                  .filter((category: LibraryCategory) => selectedCategory === "all" || category.id === selectedCategory)
-                  .map((category: LibraryCategory) => {
-                    const categorySubcategories = subcategories.filter((sub: any) => sub.categoryId === category.id);
-                    const categoryDocuments = documents.filter((d: LibraryDocument) => d.categoryId === category.id);
-                    const directDocuments = categoryDocuments.filter((d: LibraryDocument) => !d.subcategoryId);
-
-                    return (
-                      <AccordionItem
-                        key={category.id}
-                        value={category.id}
-                        className="border rounded-lg bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 shadow-sm hover:shadow-md transition-all"
-                      >
-                      <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className={`w-12 h-12 bg-gradient-to-br from-${category.color}-500 to-${category.color}-600 rounded-xl flex items-center justify-center shadow-lg`}>
-                            {getCategoryIcon(category.icon || "BookOpen")}
-                          </div>
-                          <div className="flex-1 text-left">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{category.name}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{category.description}</p>
-                            <div className="flex items-center gap-3 mt-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {categoryDocuments.length} lezioni
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {categorySubcategories.length} categorie
-                              </Badge>
+                      return (
+                        <Card key={document.id} className="group hover:shadow-lg transition-all duration-200 flex flex-col">
+                          <CardContent className="p-4 flex-1 flex flex-col">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge className={`${getLevelBadgeColor(document.level)} text-xs`}>
+                                  {document.level}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {(document as any).contentType === 'video' ? '🎥' : (document as any).contentType === 'both' ? '📚' : '📄'}
+                                </Badge>
+                              </div>
+                              {document.estimatedDuration && (
+                                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                  <Clock size={10} />
+                                  {document.estimatedDuration}m
+                                </Badge>
+                              )}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditCategory(category);
-                              }}
-                              className="h-8 w-8 rounded-full"
-                            >
-                              <Edit3 size={14} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAssignCategory(category);
-                              }}
-                              className="h-8 w-8 rounded-full text-blue-600"
-                            >
-                              <Users size={14} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeletingCategory(category.id);
-                              }}
-                              className="h-8 w-8 rounded-full text-destructive"
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-6 pb-4">
-                        <div className="space-y-4 pt-2">
-                          {/* Direct Lessons (without subcategory) */}
-                          {directDocuments.length > 0 && (
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                <FileText size={14} />
-                                Lezioni del corso ({directDocuments.length})
-                              </h4>
-                              <div className="space-y-2 pl-4 border-l-2 border-purple-200 dark:border-purple-800">
-                                {directDocuments.map((document: LibraryDocument) => (
-                                  <Card key={document.id} className="hover:shadow-md transition-all bg-white dark:bg-gray-800 border-l-4 border-l-purple-500">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                            <Badge className={`${getLevelBadgeColor(document.level)} text-xs`}>
-                                              {document.level}
-                                            </Badge>
-                                            <Badge variant="outline" className="text-xs">
-                                              {(document as any).contentType === 'video' ? '🎥 Video' : (document as any).contentType === 'both' ? '📚 Testo+Video' : '📄 Testo'}
-                                            </Badge>
-                                            {document.estimatedDuration && (
-                                              <Badge variant="outline" className="text-xs">
-                                                <Clock size={10} className="mr-1" />
-                                                {document.estimatedDuration} min
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          <h5 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{document.title}</h5>
-                                          {document.subtitle && (
-                                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{document.subtitle}</p>
-                                          )}
-                                          {document.tags.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mt-2">
-                                              {document.tags.slice(0, 3).map((tag, idx) => (
-                                                <Badge key={idx} variant="outline" className="text-xs">#{tag}</Badge>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleViewDocument(document.id)}
-                                            className="h-8 w-8"
-                                          >
-                                            <Eye size={14} />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleEditDocument(document)}
-                                            className="h-8 w-8"
-                                          >
-                                            <Edit3 size={14} />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setDeletingDocument(document.id)}
-                                            className="h-8 w-8 text-destructive"
-                                          >
-                                            <Trash2 size={14} />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                ))}
+
+                            <h3 className="font-semibold text-sm mb-1 line-clamp-2">{document.title}</h3>
+                            {document.subtitle && (
+                              <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{document.subtitle}</p>
+                            )}
+
+                            <div className="mt-auto pt-3 border-t">
+                              <div className="flex items-center justify-between">
+                                <div className="text-xs text-muted-foreground truncate max-w-[60%]">
+                                  {course?.name}{subcategory ? ` > ${subcategory.name}` : ''}
+                                </div>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleViewDocument(document.id)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Eye size={14} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditDocument(document)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Edit3 size={14} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeletingDocument(document.id)}
+                                    className="h-7 w-7 p-0 text-destructive"
+                                  >
+                                    <Trash2 size={14} />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
-                          )}
-
-                          {/* Subcategories with nested lessons */}
-                          {categorySubcategories.length > 0 && (
-                            <Accordion type="single" collapsible className="space-y-3">
-                              {categorySubcategories.map((subcategory: LibrarySubcategory) => {
-                                const subDocs = documents.filter((d: LibraryDocument) => d.subcategoryId === subcategory.id);
-
-                                return (
-                                  <AccordionItem
-                                    key={subcategory.id}
-                                    value={subcategory.id}
-                                    className="border rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30"
-                                  >
-                                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                                      <div className="flex items-center gap-3 flex-1">
-                                        <div className={`w-10 h-10 bg-gradient-to-br from-${subcategory.color}-400 to-${subcategory.color}-500 rounded-lg flex items-center justify-center`}>
-                                          {getCategoryIcon(subcategory.icon || "Folder")}
-                                        </div>
-                                        <div className="flex-1 text-left">
-                                          <h4 className="font-semibold text-gray-900 dark:text-gray-100">{subcategory.name}</h4>
-                                          {subcategory.description && (
-                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{subcategory.description}</p>
-                                          )}
-                                          <Badge variant="secondary" className="text-xs mt-2">
-                                            {subDocs.length} lezioni
-                                          </Badge>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleEditSubcategory(subcategory);
-                                            }}
-                                            className="h-8 w-8"
-                                          >
-                                            <Edit3 size={12} />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setDeletingSubcategory(subcategory.id);
-                                            }}
-                                            className="h-8 w-8 text-destructive"
-                                          >
-                                            <Trash2 size={12} />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="px-4 pb-3">
-                                      <div className="space-y-2 pt-2 pl-4 border-l-2 border-indigo-200 dark:border-indigo-800">
-                                        {subDocs.length === 0 ? (
-                                          <p className="text-sm text-gray-500 italic">Nessuna lezione in questa categoria</p>
-                                        ) : (
-                                          subDocs.map((document: LibraryDocument) => (
-                                            <Card key={document.id} className="hover:shadow-md transition-all bg-white dark:bg-gray-800">
-                                              <CardContent className="p-3">
-                                                <div className="flex items-start justify-between gap-3">
-                                                  <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                                      <Badge className={`${getLevelBadgeColor(document.level)} text-xs`}>
-                                                        {document.level}
-                                                      </Badge>
-                                                      <Badge variant="outline" className="text-xs">
-                                                        {(document as any).contentType === 'video' ? '🎥 Video' : (document as any).contentType === 'both' ? '📚 Testo+Video' : '📄 Testo'}
-                                                      </Badge>
-                                                      {document.estimatedDuration && (
-                                                        <Badge variant="outline" className="text-xs">
-                                                          <Clock size={10} className="mr-1" />
-                                                          {document.estimatedDuration} min
-                                                        </Badge>
-                                                      )}
-                                                    </div>
-                                                    <h5 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-1">{document.title}</h5>
-                                                    {document.subtitle && (
-                                                      <p className="text-xs text-gray-600 dark:text-gray-400">{document.subtitle}</p>
-                                                    )}
-                                                  </div>
-                                                  <div className="flex items-center gap-1">
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="sm"
-                                                      onClick={() => handleViewDocument(document.id)}
-                                                      className="h-7 w-7"
-                                                    >
-                                                      <Eye size={12} />
-                                                    </Button>
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="sm"
-                                                      onClick={() => handleEditDocument(document)}
-                                                      className="h-7 w-7"
-                                                    >
-                                                      <Edit3 size={12} />
-                                                    </Button>
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="sm"
-                                                      onClick={() => setDeletingDocument(document.id)}
-                                                      className="h-7 w-7 text-destructive"
-                                                    >
-                                                      <Trash2 size={12} />
-                                                    </Button>
-                                                  </div>
-                                                </div>
-                                              </CardContent>
-                                            </Card>
-                                          ))
-                                        )}
-                                      </div>
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                );
-                              })}
-                            </Accordion>
-                          )}
-
-                          {categorySubcategories.length === 0 && directDocuments.length === 0 && (
-                            <p className="text-sm text-gray-500 italic text-center py-4">
-                              Nessun contenuto in questo corso. Aggiungi categorie o lezioni!
-                            </p>
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-
-              {categories.length === 0 && (
-                <Card className="p-12 text-center">
-                  <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Nessun corso disponibile</h3>
-                  <p className="text-gray-600 mb-4">Inizia creando il tuo primo corso!</p>
-                  <Button onClick={() => setShowCategoryDialog(true)}>
-                    <Plus size={16} className="mr-2" />
-                    Crea Primo Corso
-                  </Button>
-                </Card>
-              )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </main>

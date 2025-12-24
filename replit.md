@@ -22,6 +22,13 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Modern, accessible, and responsive design using `shadcn/ui` and `Tailwind CSS`.
 - Interactive guided tours via `Driver.js` for onboarding.
 - Categorized Sidebar Navigation for consultants with state persistence.
+- **Libreria Formativa Layout (Dec 2025)**: Redesigned with Sidebar + Content pattern for improved navigation:
+  - Left navigation sidebar (~280px) with expandable course/module tree structure
+  - Search input integrated in sidebar for quick filtering
+  - Compact header with inline stats badges and dropdown action menu
+  - Main content area with breadcrumb, level filter, and responsive lesson card grid
+  - Mobile: sidebar becomes a Sheet drawer, accessible via menu button
+  - Replaced accordion-based navigation with always-visible tree navigation
 ## AI Integration
 - **Percorso Capitale**: Provides personalized financial insights, designed for graceful degradation, with a daily pre-fetch scheduler to warm cache.
 - **AI Knowledge Base System**: Allows consultants and clients to upload documents (PDF, DOCX, TXT) and configure external API integrations for AI context. Features include text extraction, indexing, priority-based ranking, and multi-tenant isolation.
