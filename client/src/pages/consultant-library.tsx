@@ -1171,7 +1171,7 @@ export default function ConsultantLibrary() {
   };
 
   const NavigationSidebar = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       <div className="p-4 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
@@ -1184,7 +1184,7 @@ export default function ConsultantLibrary() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-3">
           <button
             onClick={handleAllCoursesClick}
@@ -1418,7 +1418,7 @@ export default function ConsultantLibrary() {
 
           <div className="flex-1 flex overflow-hidden">
             {!isMobile && (
-              <div className="w-80 min-w-80 border-r bg-muted/30 hidden md:flex flex-col">
+              <div className="w-80 min-w-80 border-r bg-muted/30 hidden md:flex flex-col min-h-0 overflow-hidden">
                 <NavigationSidebar />
               </div>
             )}
