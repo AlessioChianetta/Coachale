@@ -116,8 +116,7 @@ export default function ConsultantLibraryAIBuilder() {
 
   const fetchVideoMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await apiRequest("POST", "/api/youtube/video", { url });
-      return response.json();
+      return await apiRequest("POST", "/api/youtube/video", { url });
     },
     onSuccess: (video) => {
       setSavedVideos([video]);
@@ -132,8 +131,7 @@ export default function ConsultantLibraryAIBuilder() {
 
   const fetchPlaylistMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await apiRequest("POST", "/api/youtube/playlist", { url });
-      return response.json();
+      return await apiRequest("POST", "/api/youtube/playlist", { url });
     },
     onSuccess: (data) => {
       setPlaylistVideos(data.videos);
@@ -148,11 +146,10 @@ export default function ConsultantLibraryAIBuilder() {
 
   const savePlaylistVideosMutation = useMutation({
     mutationFn: async (videos: PlaylistVideo[]) => {
-      const response = await apiRequest("POST", "/api/youtube/playlist/save", {
+      return await apiRequest("POST", "/api/youtube/playlist/save", {
         videos,
         playlistId: youtubeUrl,
       });
-      return response.json();
     },
     onSuccess: (data) => {
       setSavedVideos(data.savedVideos);
@@ -191,7 +188,7 @@ export default function ConsultantLibraryAIBuilder() {
         await saveSettingsMutation.mutateAsync();
       }
 
-      const response = await apiRequest("POST", "/api/library/ai-generate-batch", {
+      return await apiRequest("POST", "/api/library/ai-generate-batch", {
         videoIds,
         categoryId: selectedCategoryId,
         subcategoryId: selectedSubcategoryId || undefined,
@@ -199,7 +196,6 @@ export default function ConsultantLibraryAIBuilder() {
         level,
         contentType,
       });
-      return response.json();
     },
     onSuccess: (data) => {
       setGeneratedLessons(data.lessons);
