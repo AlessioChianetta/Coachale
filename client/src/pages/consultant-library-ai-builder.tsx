@@ -1168,7 +1168,7 @@ export default function ConsultantLibraryAIBuilder() {
                         {lessonOrder.map((lessonId, index) => {
                           const lesson = generatedLessons.find((l: any) => l.id === lessonId);
                           if (!lesson) return null;
-                          const sourceVideo = savedVideos.find(v => v.id === lesson.youtubeVideoId);
+                          const sourceVideo = savedVideos.find(v => v.id === lesson.youtubeVideoId || v.videoId === lesson.youtubeVideoId);
                           const transcriptQuality = sourceVideo 
                             ? evaluateTranscriptQuality(sourceVideo.transcript, sourceVideo.duration)
                             : null;

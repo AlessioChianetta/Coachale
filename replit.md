@@ -54,13 +54,19 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Merge Strategy**: New extracted values only overwrite if non-null, preserving previously captured data
   - **Auto-Cleanup**: State marked completed after successful booking creation, auto-expires after 24h of inactivity
   - **Integration**: Applied to both WhatsApp conversations and public link flows via `extractBookingDataFromConversation()` options
-- **AI Course Builder (Dec 2025)**: 4-step wizard to generate lessons from YouTube videos. Features:
+- **AI Course Builder (Dec 2025)**: 5-step wizard to generate lessons from YouTube videos. Features:
   - **YouTube Transcript Extraction**: 3-layer fallback system - yt-dlp (Method 0, industry standard) → youtube-caption-extractor → InnerTube API
   - **Manual Transcript Fallback**: When auto-extraction fails (e.g., YouTube 429 rate limiting), consultants can paste transcripts manually via dialog editor
   - **VTT Parser**: Custom parser for yt-dlp VTT output with segment deduplication
   - **AI Lesson Generation**: Gemini generates lessons preserving speaker's original tone, style, and expressions
   - **SSE Progress Tracking**: Real-time generation progress via Server-Sent Events
   - **Draft Management**: Save/restore wizard state as drafts
+  - **Transcript Quality Evaluation**: Visual quality badges (Ottima/Buona/Incompleta) based on word count vs video duration ratio
+  - **AI Instruction Templates**: 6 predefined writing styles (speaker-style, formal, conversational, bullet-points, step-by-step, summary) for quick setup
+  - **Step 5 Review Screen**: Post-generation summary with lesson preview modal, transcript quality badges, manual reordering with up/down arrows
+  - **Duplicate Video Detection**: Reuses existing transcripts when same video is processed twice
+  - **Lesson Regeneration Endpoint**: POST `/api/library/ai-regenerate/:lessonId` to regenerate lesson from existing transcript with new instructions
+  - **AI Usage Statistics**: `ai_usage_stats` table tracks token consumption per operation with `trackAiUsage()` helper
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
