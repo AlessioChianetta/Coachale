@@ -1000,14 +1000,14 @@ export default function ConsultantLibrary() {
     ? visibleDocuments
     : visibleDocuments.filter((doc: LibraryDocument) => doc.level === selectedLevel)
   ).sort((a: LibraryDocument, b: LibraryDocument) => {
-    // Sort by sortOrder first (ascending), then by createdAt (newest first)
+    // Sort by sortOrder first (ascending), then by createdAt (oldest first)
     const orderA = (a as any).sortOrder ?? 999;
     const orderB = (b as any).sortOrder ?? 999;
     if (orderA !== orderB) return orderA - orderB;
-    // Fallback to createdAt if sortOrder is the same
+    // Fallback to createdAt if sortOrder is the same (oldest first = natural order)
     const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-    return dateB - dateA;
+    return dateA - dateB;
   });
 
   // Placeholder for getCategoryProgress if it's used elsewhere and needs to be defined
