@@ -31,6 +31,7 @@ const ConsultantExercises = lazy(() => import("@/pages/consultant-exercises"));
 const ConsultantTemplates = lazy(() => import("./pages/consultant-templates"));
 const ConsultantExerciseTemplates = lazy(() => import("./pages/consultant-exercise-templates"));
 const ConsultantLibrary = lazy(() => import("./pages/consultant-library"));
+const ConsultantLibraryAIBuilder = lazy(() => import("./pages/consultant-library-ai-builder"));
 const ClientLibrary = lazy(() => import("./pages/client-library"));
 const ClientLibraryDocument = lazy(() => import("./pages/client-library-document"));
 const ConsultantAppointments = lazy(() => import("@/pages/consultant-appointments"));
@@ -205,6 +206,12 @@ function Router() {
           <Route path="/consultant/library">
             <AuthGuard requiredRole="consultant">
               <ConsultantLibrary />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/library/ai-builder">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantLibraryAIBuilder />
             </AuthGuard>
           </Route>
 

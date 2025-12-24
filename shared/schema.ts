@@ -5793,3 +5793,61 @@ export const fileSearchSettings = pgTable("file_search_settings", {
 
 export type FileSearchSettings = typeof fileSearchSettings.$inferSelect;
 export type InsertFileSearchSettings = typeof fileSearchSettings.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// YouTube Videos & AI Lesson Generation
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const youtubeVideos = pgTable("youtube_videos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  videoId: varchar("video_id").notNull(),
+  videoUrl: text("video_url").notNull(),
+  title: text("title"),
+  description: text("description"),
+  thumbnailUrl: text("thumbnail_url"),
+  channelName: text("channel_name"),
+  duration: integer("duration"),
+  transcript: text("transcript"),
+  transcriptLanguage: varchar("transcript_language", { length: 10 }),
+  transcriptStatus: varchar("transcript_status", { length: 50 }).default("pending"),
+  playlistId: varchar("playlist_id"),
+  playlistTitle: text("playlist_title"),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_youtube_videos_consultant").on(table.consultantId),
+  playlistIdx: index("idx_youtube_videos_playlist").on(table.playlistId),
+}));
+
+export type YoutubeVideo = typeof youtubeVideos.$inferSelect;
+export type InsertYoutubeVideo = typeof youtubeVideos.$inferInsert;
+
+export const consultantAiLessonSettings = pgTable("consultant_ai_lesson_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  writingInstructions: text("writing_instructions"),
+  defaultContentType: varchar("default_content_type", { length: 20 }).default("both"),
+  defaultLevel: varchar("default_level", { length: 20 }).default("base"),
+  preserveSpeakerStyle: boolean("preserve_speaker_style").default(true),
+  includeTimestamps: boolean("include_timestamps").default(false),
+  customPrompts: jsonb("custom_prompts").default({}),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConsultantAiLessonSettings = typeof consultantAiLessonSettings.$inferSelect;
+export type InsertConsultantAiLessonSettings = typeof consultantAiLessonSettings.$inferInsert;
+
+export const insertYoutubeVideoSchema = createInsertSchema(youtubeVideos).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertConsultantAiLessonSettingsSchema = createInsertSchema(consultantAiLessonSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});

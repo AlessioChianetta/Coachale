@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ import { type LibraryCategory, type LibraryDocument, type LibrarySubcategory } f
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function ConsultantLibrary() {
+  const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
@@ -1094,7 +1096,14 @@ export default function ConsultantLibrary() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 flex-wrap gap-2">
+                  <Button
+                    onClick={() => setLocation("/consultant/library/ai-builder")}
+                    className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <Sparkles size={16} className="mr-2" />
+                    Crea con AI
+                  </Button>
                   <Button
                     onClick={() => setShowCategoryDialog(true)}
                     variant="outline"

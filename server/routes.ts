@@ -4848,6 +4848,199 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== YOUTUBE AI COURSE BUILDER ROUTES =====
+
+  // Fetch video info and transcript
+  app.post("/api/youtube/video", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { url } = req.body;
+      if (!url) {
+        return res.status(400).json({ message: "URL is required" });
+      }
+
+      const { extractVideoId, fetchVideoMetadata, fetchTranscript, saveVideoWithTranscript } = await import("./services/youtube-service");
+      
+      const videoId = extractVideoId(url);
+      if (!videoId) {
+        return res.status(400).json({ message: "Invalid YouTube URL" });
+      }
+
+      const result = await saveVideoWithTranscript(req.user!.id, url);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json(result.video);
+    } catch (error: any) {
+      console.error('Error fetching video:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Fetch playlist videos
+  app.post("/api/youtube/playlist", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { url } = req.body;
+      if (!url) {
+        return res.status(400).json({ message: "URL is required" });
+      }
+
+      const { extractPlaylistId, fetchPlaylistVideos, isPlaylistUrl } = await import("./services/youtube-service");
+      
+      if (!isPlaylistUrl(url)) {
+        return res.status(400).json({ message: "Not a valid playlist URL" });
+      }
+
+      const playlistId = extractPlaylistId(url);
+      if (!playlistId) {
+        return res.status(400).json({ message: "Could not extract playlist ID" });
+      }
+
+      const videos = await fetchPlaylistVideos(playlistId);
+      
+      if (videos.length === 0) {
+        return res.status(404).json({ message: "No videos found in playlist or playlist is private" });
+      }
+
+      res.json({ playlistId, videos });
+    } catch (error: any) {
+      console.error('Error fetching playlist:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Save selected videos from playlist
+  app.post("/api/youtube/playlist/save", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { videos, playlistId, playlistTitle } = req.body;
+      if (!videos || !Array.isArray(videos)) {
+        return res.status(400).json({ message: "Videos array is required" });
+      }
+
+      const { saveVideoWithTranscript } = await import("./services/youtube-service");
+      
+      const savedVideos = [];
+      const errors = [];
+
+      for (const video of videos) {
+        const result = await saveVideoWithTranscript(
+          req.user!.id, 
+          video.videoUrl, 
+          playlistId, 
+          playlistTitle
+        );
+        
+        if (result.success) {
+          savedVideos.push(result.video);
+        } else {
+          errors.push({ videoId: video.videoId, error: result.error });
+        }
+      }
+
+      res.json({ savedVideos, errors });
+    } catch (error: any) {
+      console.error('Error saving playlist videos:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get saved YouTube videos for consultant
+  app.get("/api/youtube/videos", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const videos = await db.select()
+        .from(schema.youtubeVideos)
+        .where(eq(schema.youtubeVideos.consultantId, req.user!.id))
+        .orderBy(desc(schema.youtubeVideos.createdAt));
+      
+      res.json(videos);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Generate lesson from video
+  app.post("/api/library/ai-generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { youtubeVideoId, categoryId, subcategoryId, customInstructions, level, contentType } = req.body;
+      
+      if (!youtubeVideoId || !categoryId) {
+        return res.status(400).json({ message: "youtubeVideoId and categoryId are required" });
+      }
+
+      const { generateLessonFromVideo } = await import("./services/ai-lesson-generator");
+      
+      const result = await generateLessonFromVideo({
+        consultantId: req.user!.id,
+        youtubeVideoId,
+        categoryId,
+        subcategoryId,
+        customInstructions,
+        level,
+        contentType,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json(result.lesson);
+    } catch (error: any) {
+      console.error('Error generating lesson:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Generate multiple lessons
+  app.post("/api/library/ai-generate-batch", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { videoIds, categoryId, subcategoryId, customInstructions, level, contentType } = req.body;
+      
+      if (!videoIds || !Array.isArray(videoIds) || !categoryId) {
+        return res.status(400).json({ message: "videoIds array and categoryId are required" });
+      }
+
+      const { generateMultipleLessons } = await import("./services/ai-lesson-generator");
+      
+      const result = await generateMultipleLessons(
+        req.user!.id,
+        videoIds,
+        categoryId,
+        subcategoryId,
+        customInstructions,
+        level,
+        contentType
+      );
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error generating lessons:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get AI lesson settings
+  app.get("/api/library/ai-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { getAiLessonSettings } = await import("./services/youtube-service");
+      const settings = await getAiLessonSettings(req.user!.id);
+      res.json(settings);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Save AI lesson settings
+  app.put("/api/library/ai-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { saveAiLessonSettings } = await import("./services/youtube-service");
+      await saveAiLessonSettings(req.user!.id, req.body);
+      res.json({ message: "Settings saved" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ===== UNIVERSITY MODULE ROUTES =====
 
   // Templates
