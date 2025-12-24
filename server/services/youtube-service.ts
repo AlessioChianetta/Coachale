@@ -3,6 +3,12 @@ import { youtubeVideos, consultantAiLessonSettings } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
 import { YoutubeTranscript } from '@danielxceron/youtube-transcript';
 import { getSubtitles } from 'youtube-caption-extractor';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const execAsync = promisify(exec);
 
 interface VideoMetadata {
   videoId: string;
@@ -76,10 +82,127 @@ export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata
   }
 }
 
+async function fetchTranscriptWithYtDlp(videoId: string, lang: string = 'it'): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
+  const tempDir = '/tmp/yt-transcripts';
+  const outputPath = path.join(tempDir, videoId);
+  
+  try {
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    const langsToTry = [lang, 'en', 'it.*', 'en.*'];
+    
+    for (const tryLang of langsToTry) {
+      try {
+        console.log(`   📝 yt-dlp tentativo lingua: ${tryLang}`);
+        
+        const cmd = `yt-dlp --write-auto-subs --skip-download --sub-lang "${tryLang}" --sub-format "vtt" -o "${outputPath}" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
+        
+        await execAsync(cmd, { timeout: 30000 });
+        
+        const possibleFiles = [
+          `${outputPath}.${tryLang}.vtt`,
+          `${outputPath}.it.vtt`,
+          `${outputPath}.en.vtt`,
+        ];
+        
+        const vttFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId) && f.endsWith('.vtt'));
+        
+        for (const vttFile of vttFiles) {
+          const vttPath = path.join(tempDir, vttFile);
+          const vttContent = fs.readFileSync(vttPath, 'utf-8');
+          
+          const segments = parseVttToSegments(vttContent);
+          const fullTranscript = segments.map(s => s.text).join(' ').trim();
+          
+          fs.unlinkSync(vttPath);
+          
+          if (fullTranscript.length > 50) {
+            return { transcript: fullTranscript, segments };
+          }
+        }
+      } catch (cmdError: any) {
+        console.log(`   ⚠️ yt-dlp lingua ${tryLang} fallita`);
+      }
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.log(`   ⚠️ yt-dlp errore: ${error.message?.substring(0, 80)}`);
+    return null;
+  }
+}
+
+function parseVttToSegments(vttContent: string): TranscriptSegment[] {
+  const segments: TranscriptSegment[] = [];
+  const lines = vttContent.split('\n');
+  
+  let currentStart = 0;
+  let currentDuration = 0;
+  let currentText = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    const timeMatch = line.match(/(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})/);
+    if (timeMatch) {
+      if (currentText) {
+        segments.push({ text: currentText.trim(), start: currentStart, duration: currentDuration });
+      }
+      
+      currentStart = parseVttTime(timeMatch[1]);
+      const endTime = parseVttTime(timeMatch[2]);
+      currentDuration = endTime - currentStart;
+      currentText = '';
+    } else if (line && !line.startsWith('WEBVTT') && !line.startsWith('Kind:') && !line.startsWith('Language:') && !line.match(/^\d+$/)) {
+      const cleanText = line.replace(/<[^>]*>/g, '').trim();
+      if (cleanText) {
+        currentText += (currentText ? ' ' : '') + cleanText;
+      }
+    }
+  }
+  
+  if (currentText) {
+    segments.push({ text: currentText.trim(), start: currentStart, duration: currentDuration });
+  }
+  
+  const uniqueSegments: TranscriptSegment[] = [];
+  const seenTexts = new Set<string>();
+  for (const seg of segments) {
+    if (!seenTexts.has(seg.text)) {
+      seenTexts.add(seg.text);
+      uniqueSegments.push(seg);
+    }
+  }
+  
+  return uniqueSegments;
+}
+
+function parseVttTime(timeStr: string): number {
+  const parts = timeStr.split(':');
+  const hours = parseFloat(parts[0]);
+  const minutes = parseFloat(parts[1]);
+  const seconds = parseFloat(parts[2]);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
 export async function fetchTranscript(videoId: string, lang: string = 'it'): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
   console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId}`);
   
-  // METODO 1: youtube-caption-extractor (più affidabile per auto-generated)
+  // METODO 0: yt-dlp (standard industriale, più robusto)
+  console.log(`🔍 [TRANSCRIPT] Metodo 0: yt-dlp (standard industriale)`);
+  try {
+    const ytdlpResult = await fetchTranscriptWithYtDlp(videoId, lang);
+    if (ytdlpResult && ytdlpResult.transcript.length > 50) {
+      console.log(`✅ [TRANSCRIPT] Metodo 0 OK (yt-dlp): ${ytdlpResult.transcript.length} caratteri, ${ytdlpResult.segments.length} segmenti`);
+      return ytdlpResult;
+    }
+  } catch (error: any) {
+    console.log(`   ⚠️ yt-dlp fallito: ${error.message?.substring(0, 80)}`);
+  }
+  
+  // METODO 1: youtube-caption-extractor (fallback)
   console.log(`🔍 [TRANSCRIPT] Metodo 1: youtube-caption-extractor`);
   const languagesToTry = [lang, 'en', 'it-IT', 'en-US'];
   
