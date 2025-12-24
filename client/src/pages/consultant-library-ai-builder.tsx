@@ -75,6 +75,44 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
+// Rileva automaticamente il tipo di link YouTube
+function detectYouTubeType(url: string): { type: 'video' | 'playlist' | 'video_in_playlist' | 'invalid'; videoId?: string; playlistId?: string } {
+  if (!url.trim()) return { type: 'invalid' };
+  
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.replace('www.', '');
+    
+    // Supporta youtube.com e youtu.be
+    if (!['youtube.com', 'youtu.be', 'm.youtube.com'].includes(hostname)) {
+      return { type: 'invalid' };
+    }
+    
+    const params = urlObj.searchParams;
+    const videoId = params.get('v') || (hostname === 'youtu.be' ? urlObj.pathname.slice(1) : null);
+    const playlistId = params.get('list');
+    
+    // Playlist pura (senza video specifico)
+    if (urlObj.pathname === '/playlist' && playlistId) {
+      return { type: 'playlist', playlistId };
+    }
+    
+    // Video singolo in una playlist
+    if (videoId && playlistId) {
+      return { type: 'video_in_playlist', videoId, playlistId };
+    }
+    
+    // Video singolo
+    if (videoId) {
+      return { type: 'video', videoId };
+    }
+    
+    return { type: 'invalid' };
+  } catch {
+    return { type: 'invalid' };
+  }
+}
+
 // 10 stili di scrittura AI selezionabili
 const AI_WRITING_STYLES = [
   {
@@ -379,8 +417,8 @@ export default function ConsultantLibraryAIBuilder() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [inputType, setInputType] = useState<"video" | "playlist">("video");
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [detectedType, setDetectedType] = useState<ReturnType<typeof detectYouTubeType>>({ type: 'invalid' });
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState("");
   const [playlistVideos, setPlaylistVideos] = useState<PlaylistVideo[]>([]);
@@ -580,11 +618,14 @@ export default function ConsultantLibraryAIBuilder() {
       toast({ title: "Seleziona un corso", variant: "destructive" });
       return;
     }
-
-    if (inputType === "video") {
+    
+    // Usa il tipo rilevato automaticamente
+    if (detectedType.type === 'video') {
       fetchVideoMutation.mutate(youtubeUrl);
-    } else {
+    } else if (detectedType.type === 'playlist' || detectedType.type === 'video_in_playlist') {
       fetchPlaylistMutation.mutate(youtubeUrl);
+    } else {
+      toast({ title: "Link non valido", description: "Inserisci un link YouTube valido", variant: "destructive" });
     }
   };
 
@@ -780,7 +821,7 @@ export default function ConsultantLibraryAIBuilder() {
       const draftData = {
         name: name || `Bozza ${new Date().toLocaleDateString('it-IT')} ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`,
         youtubeUrl,
-        inputType,
+        inputType: detectedType.type === 'playlist' || detectedType.type === 'video_in_playlist' ? 'playlist' : 'video',
         selectedCategoryId,
         selectedSubcategoryId,
         selectedVideoIds,
@@ -808,8 +849,9 @@ export default function ConsultantLibraryAIBuilder() {
   };
 
   const handleLoadDraft = async (draft: any) => {
-    setYoutubeUrl(draft.youtubeUrl || "");
-    setInputType(draft.inputType || "video");
+    const url = draft.youtubeUrl || "";
+    setYoutubeUrl(url);
+    setDetectedType(detectYouTubeType(url));
     setSelectedCategoryId(draft.selectedCategoryId || "");
     setSelectedSubcategoryId(draft.selectedSubcategoryId || "");
     setSelectedVideoIds(draft.selectedVideoIds || []);
@@ -1150,39 +1192,59 @@ export default function ConsultantLibraryAIBuilder() {
               <div className="grid md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Inserisci Link YouTube</CardTitle>
-                    <CardDescription>Video singolo o playlist</CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                      <Youtube className="w-5 h-5 text-red-500" />
+                      Inserisci Link YouTube
+                    </CardTitle>
+                    <CardDescription>Incolla un link e verrà rilevato automaticamente</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="flex gap-2">
-                      <Button
-                        variant={inputType === "video" ? "default" : "outline"}
-                        onClick={() => setInputType("video")}
-                        className="flex-1"
-                      >
-                        <Play className="w-4 h-4 mr-2" />
-                        Video Singolo
-                      </Button>
-                      <Button
-                        variant={inputType === "playlist" ? "default" : "outline"}
-                        onClick={() => setInputType("playlist")}
-                        className="flex-1"
-                      >
-                        <ListVideo className="w-4 h-4 mr-2" />
-                        Playlist
-                      </Button>
-                    </div>
-
                     <div className="space-y-2">
                       <Label>Link YouTube</Label>
-                      <Input
-                        placeholder={inputType === "video" 
-                          ? "https://youtube.com/watch?v=..." 
-                          : "https://youtube.com/playlist?list=..."
-                        }
-                        value={youtubeUrl}
-                        onChange={(e) => setYoutubeUrl(e.target.value)}
-                      />
+                      <div className="relative">
+                        <Input
+                          placeholder="https://youtube.com/watch?v=... o playlist?list=..."
+                          value={youtubeUrl}
+                          onChange={(e) => {
+                            setYoutubeUrl(e.target.value);
+                            setDetectedType(detectYouTubeType(e.target.value));
+                          }}
+                          className={`pr-24 ${
+                            youtubeUrl && detectedType.type === 'invalid' 
+                              ? 'border-red-300 focus:border-red-500' 
+                              : youtubeUrl && detectedType.type !== 'invalid'
+                              ? 'border-green-300 focus:border-green-500'
+                              : ''
+                          }`}
+                        />
+                        {youtubeUrl && (
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                            {detectedType.type === 'video' && (
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                <Play className="w-3 h-3 mr-1" />
+                                Video
+                              </Badge>
+                            )}
+                            {(detectedType.type === 'playlist' || detectedType.type === 'video_in_playlist') && (
+                              <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                                <ListVideo className="w-3 h-3 mr-1" />
+                                Playlist
+                              </Badge>
+                            )}
+                            {detectedType.type === 'invalid' && (
+                              <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                Non valido
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {detectedType.type === 'video_in_playlist' && (
+                        <p className="text-xs text-purple-600 dark:text-purple-400">
+                          Rilevato video in playlist - verranno caricati tutti i video della playlist
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -1237,7 +1299,7 @@ export default function ConsultantLibraryAIBuilder() {
 
                     <Button 
                       onClick={handleLoadContent}
-                      disabled={isLoading || !youtubeUrl || !selectedCategoryId}
+                      disabled={isLoading || !youtubeUrl || !selectedCategoryId || detectedType.type === 'invalid'}
                       className="w-full bg-gradient-to-r from-purple-600 to-indigo-600"
                     >
                       {isLoading ? (
@@ -1253,24 +1315,61 @@ export default function ConsultantLibraryAIBuilder() {
                 <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Youtube className="w-5 h-5 text-red-500" />
-                      Anteprima
+                      {detectedType.type === 'video' && <Play className="w-5 h-5 text-blue-500" />}
+                      {(detectedType.type === 'playlist' || detectedType.type === 'video_in_playlist') && <ListVideo className="w-5 h-5 text-purple-500" />}
+                      {(detectedType.type === 'invalid' || !youtubeUrl) && <Youtube className="w-5 h-5 text-red-500" />}
+                      {detectedType.type === 'video' ? 'Video Singolo' : 
+                       detectedType.type === 'playlist' ? 'Playlist' :
+                       detectedType.type === 'video_in_playlist' ? 'Video in Playlist' : 'Anteprima'}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex items-center justify-center min-h-[200px]">
-                    {youtubeUrl ? (
-                      <div className="text-center space-y-2">
-                        <div className="w-full aspect-video bg-gray-200 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                          <Youtube className="w-12 h-12 text-gray-400" />
+                  <CardContent className="flex flex-col items-center justify-center min-h-[200px] gap-4">
+                    {!youtubeUrl ? (
+                      <div className="text-center space-y-4">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto">
+                          <Youtube className="w-8 h-8 text-gray-400" />
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          Clicca "Carica Contenuto" per visualizzare i dettagli
+                        <p className="text-muted-foreground">
+                          Inserisci un link YouTube per iniziare
                         </p>
                       </div>
+                    ) : detectedType.type === 'invalid' ? (
+                      <div className="text-center space-y-4">
+                        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto">
+                          <AlertCircle className="w-8 h-8 text-red-500" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-red-600 dark:text-red-400">Link non valido</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Inserisci un link YouTube valido come:<br/>
+                            youtube.com/watch?v=... o youtube.com/playlist?list=...
+                          </p>
+                        </div>
+                      </div>
+                    ) : detectedType.type === 'video' ? (
+                      <div className="text-center space-y-4 w-full">
+                        <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto">
+                          <Play className="w-8 h-8 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-blue-600 dark:text-blue-400">Video singolo rilevato</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Verrà creata una lezione da questo video
+                          </p>
+                        </div>
+                      </div>
                     ) : (
-                      <p className="text-muted-foreground text-center">
-                        Inserisci un link YouTube per vedere l'anteprima
-                      </p>
+                      <div className="text-center space-y-4 w-full">
+                        <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mx-auto">
+                          <ListVideo className="w-8 h-8 text-purple-500" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-purple-600 dark:text-purple-400">Playlist rilevata</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Potrai selezionare i video da trasformare in lezioni
+                          </p>
+                        </div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -1687,7 +1786,7 @@ export default function ConsultantLibraryAIBuilder() {
                     </div>
 
                     <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                      <Button variant="outline" onClick={() => setCurrentStep(inputType === "playlist" ? 2 : 1)}>
+                      <Button variant="outline" onClick={() => setCurrentStep(savedVideos.length > 1 ? 2 : 1)}>
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Indietro
                       </Button>
