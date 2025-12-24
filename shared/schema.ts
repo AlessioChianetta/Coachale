@@ -1424,6 +1424,11 @@ export const libraryDocuments = pgTable("library_documents", {
   createdBy: varchar("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
+  // AI Course Builder fields
+  sourceType: varchar("source_type"),
+  youtubeVideoId: varchar("youtube_video_id"),
+  aiGenerated: boolean("ai_generated").default(false),
+  aiGenerationLog: json("ai_generation_log"),
 });
 
 export const libraryDocumentSections = pgTable("library_document_sections", {

@@ -227,6 +227,19 @@ export default function ConsultantLibraryAIBuilder() {
     queryKey: ["/api/library/ai-builder-drafts"],
   });
 
+  // Query per lezioni AI non pubblicate (bozze generate)
+  const { data: unpublishedLessons = [], refetch: refetchUnpublishedLessons } = useQuery<any[]>({
+    queryKey: ["/api/library/ai-unpublished-lessons"],
+  });
+
+  // Carica le lezioni non pubblicate quando si accede allo Step 5 o all'avvio
+  useEffect(() => {
+    if (unpublishedLessons.length > 0 && generatedLessons.length === 0) {
+      setGeneratedLessons(unpublishedLessons);
+      setLessonOrder(unpublishedLessons.map((l: any) => l.id));
+    }
+  }, [unpublishedLessons, generatedLessons.length]);
+
   useEffect(() => {
     if (aiSettings && aiSettings.writingInstructions) {
       setAiInstructions(aiSettings.writingInstructions);
@@ -720,6 +733,12 @@ export default function ConsultantLibraryAIBuilder() {
       await apiRequest("POST", "/api/library/ai-publish-lessons", { lessonIds });
       
       queryClient.invalidateQueries({ queryKey: ["/api/library/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/library/ai-unpublished-lessons"] });
+      
+      // Reset stato locale
+      setGeneratedLessons([]);
+      setLessonOrder([]);
+      
       toast({ 
         title: "Lezioni pubblicate!", 
         description: `${lessonIds.length} lezioni sono state aggiunte al corso` 

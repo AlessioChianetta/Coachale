@@ -5251,6 +5251,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get unpublished AI-generated lessons (drafts) for current consultant
+  app.get("/api/library/ai-unpublished-lessons", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const unpublishedLessons = await db.select()
+        .from(schema.libraryDocuments)
+        .where(and(
+          eq(schema.libraryDocuments.createdBy, req.user!.id),
+          eq(schema.libraryDocuments.isPublished, false),
+          eq(schema.libraryDocuments.aiGenerated, true)
+        ))
+        .orderBy(desc(schema.libraryDocuments.createdAt));
+      
+      console.log(`📋 [AI-BUILDER] Found ${unpublishedLessons.length} unpublished AI lessons for consultant ${req.user!.id}`);
+      res.json(unpublishedLessons);
+    } catch (error: any) {
+      console.error('Error fetching unpublished lessons:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ===== AI BUILDER DRAFTS CRUD ROUTES =====
 
   // List all drafts for consultant
