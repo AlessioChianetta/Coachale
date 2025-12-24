@@ -1347,10 +1347,11 @@ export default function ConsultantLibraryAIBuilder() {
                             <Checkbox 
                               id={enhancement.id}
                               checked={selectedEnhancements.includes(enhancement.id)}
+                              onClick={(e) => e.stopPropagation()}
                               onCheckedChange={(checked) => handleEnhancementToggle(enhancement.id, !!checked)}
                               className="mt-0.5"
                             />
-                            <div className="flex-1">
+                            <div className="flex-1" onClick={(e) => e.stopPropagation()}>
                               <label htmlFor={enhancement.id} className="font-medium cursor-pointer">
                                 {enhancement.label}
                               </label>
@@ -1369,10 +1370,10 @@ export default function ConsultantLibraryAIBuilder() {
                         </Badge>
                       </div>
                       <Textarea
-                        rows={6}
+                        rows={12}
                         value={aiInstructions}
                         onChange={(e) => setAiInstructions(e.target.value)}
-                        className="font-mono text-xs"
+                        className="font-mono text-sm"
                       />
                       <p className="text-xs text-muted-foreground">
                         Le istruzioni si aggiornano automaticamente. Puoi modificarle manualmente se necessario.
