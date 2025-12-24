@@ -59,7 +59,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Manual Transcript Fallback**: When auto-extraction fails (e.g., YouTube 429 rate limiting), consultants can paste transcripts manually via dialog editor
   - **VTT Parser**: Custom parser for yt-dlp VTT output with segment deduplication
   - **AI Lesson Generation**: Gemini generates lessons preserving speaker's original tone, style, and expressions
-  - **SSE Progress Tracking**: Real-time generation progress via Server-Sent Events
+  - **SSE Progress Tracking**: Real-time generation progress via Server-Sent Events with flush for immediate delivery
   - **Draft Management**: Save/restore wizard state as drafts
   - **Transcript Quality Evaluation**: Visual quality badges (Ottima/Buona/Incompleta) based on word count vs video duration ratio
   - **AI Instruction Templates**: 6 predefined writing styles (speaker-style, formal, conversational, bullet-points, step-by-step, summary) for quick setup
@@ -67,6 +67,8 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Duplicate Video Detection**: Reuses existing transcripts when same video is processed twice
   - **Lesson Regeneration Endpoint**: POST `/api/library/ai-regenerate/:lessonId` to regenerate lesson from existing transcript with new instructions
   - **AI Usage Statistics**: `ai_usage_stats` table tracks token consumption per operation with `trackAiUsage()` helper
+  - **Step 2 Real-time Loading (Dec 2025)**: Enhanced UX with visual overlay showing per-video status (waiting/downloading/transcribing/completed/error/reused) via SSE endpoint `/api/youtube/playlist/save-stream`. Features animated progress bar, live log console, and automatic Step 3 transition.
+  - **Step 4 Auto-transition (Dec 2025)**: Automatic navigation to Step 5 (Review) after generation completes with 1.5s delay for UX feedback.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
