@@ -1499,21 +1499,22 @@ export default function ConsultantLibrary() {
                       return (
                         <Card key={document.id} className="group hover:shadow-lg transition-all duration-200 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
                           <CardContent className="p-3 sm:p-4">
-                            <div className="flex items-start gap-3 sm:gap-4">
+                            <div className="flex items-start gap-3">
                               {/* Order Badge */}
                               <div className="flex-shrink-0">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center text-xs sm:text-sm font-bold shadow-md">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center text-sm font-bold shadow-md">
                                   {sortOrder ?? index + 1}
                                 </div>
                               </div>
 
-                              {/* Content */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-start gap-1 sm:gap-2 mb-1">
-                                  <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-100 break-words leading-tight w-full sm:w-auto">
-                                    {document.title}
-                                  </h3>
-                                  <div className="flex flex-wrap gap-1">
+                              {/* Content + Actions Container */}
+                              <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                {/* Content */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    <h3 className="font-semibold text-base text-slate-800 dark:text-slate-100 line-clamp-2 sm:line-clamp-1">
+                                      {document.title}
+                                    </h3>
                                     <Badge className={`${getLevelBadgeColor(document.level)} text-xs font-medium px-2 py-0 flex-shrink-0`}>
                                       {document.level}
                                     </Badge>
@@ -1527,47 +1528,47 @@ export default function ConsultantLibrary() {
                                       </Badge>
                                     )}
                                   </div>
+                                  {document.subtitle && (
+                                    <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-1">{document.subtitle}</p>
+                                  )}
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                                    <Folder size={11} className="text-primary/70 flex-shrink-0" />
+                                    <span className="line-clamp-1">
+                                      {course?.name}{subcategory ? ` > ${subcategory.name}` : ''}
+                                    </span>
+                                  </div>
                                 </div>
-                                {document.subtitle && (
-                                  <p className="text-xs sm:text-sm text-muted-foreground break-words leading-tight">{document.subtitle}</p>
-                                )}
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                                  <Folder size={11} className="text-primary/70 flex-shrink-0" />
-                                  <span className="break-words">
-                                    {course?.name}{subcategory ? ` > ${subcategory.name}` : ''}
-                                  </span>
-                                </div>
-                              </div>
 
-                              {/* Actions */}
-                              <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleViewDocument(document.id)}
-                                  className="h-7 w-7 sm:h-9 sm:w-9 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600"
-                                  title="Visualizza"
-                                >
-                                  <Eye size={14} className="sm:w-4 sm:h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEditDocument(document)}
-                                  className="h-7 w-7 sm:h-9 sm:w-9 p-0 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-600"
-                                  title="Modifica"
-                                >
-                                  <Edit3 size={14} className="sm:w-4 sm:h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setDeletingDocument(document.id)}
-                                  className="h-7 w-7 sm:h-9 sm:w-9 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 text-destructive"
-                                  title="Elimina"
-                                >
-                                  <Trash2 size={14} className="sm:w-4 sm:h-4" />
-                                </Button>
+                                {/* Actions - sotto su mobile, a destra su desktop */}
+                                <div className="flex items-center gap-1 flex-shrink-0 mt-2 sm:mt-0">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleViewDocument(document.id)}
+                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600"
+                                    title="Visualizza"
+                                  >
+                                    <Eye size={16} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditDocument(document)}
+                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-600"
+                                    title="Modifica"
+                                  >
+                                    <Edit3 size={16} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeletingDocument(document.id)}
+                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 text-destructive"
+                                    title="Elimina"
+                                  >
+                                    <Trash2 size={16} />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </CardContent>
