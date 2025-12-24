@@ -126,33 +126,49 @@ export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata
 async function downloadAudioWithYtDlp(videoId: string, maxRetries: number = 3): Promise<string | null> {
   const tempDir = '/tmp/yt-audio';
   
+  console.log(`      📁 Directory temporanea: ${tempDir}`);
+  console.log(`      🔄 Max tentativi: ${maxRetries}`);
+  
   for (let retry = 0; retry < maxRetries; retry++) {
     try {
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
+        console.log(`      📁 Directory creata: ${tempDir}`);
       }
       
       // Pulisci file vecchi per questo video
       try {
         const oldFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId));
-        oldFiles.forEach(f => fs.unlinkSync(path.join(tempDir, f)));
+        if (oldFiles.length > 0) {
+          oldFiles.forEach(f => fs.unlinkSync(path.join(tempDir, f)));
+          console.log(`      🧹 Puliti ${oldFiles.length} file vecchi`);
+        }
       } catch {}
       
       if (retry > 0) {
-        console.log(`   🔄 Retry ${retry}/${maxRetries - 1} download audio per: ${videoId}`);
-        await new Promise(resolve => setTimeout(resolve, 2000 * retry)); // Wait 2s, 4s, etc
-      } else {
-        console.log(`   🎵 Scaricando audio per video: ${videoId}`);
+        const waitTime = 2000 * retry;
+        console.log(`      🔄 RETRY ${retry}/${maxRetries - 1} - Attesa ${waitTime/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
       
-      // Usa python -m yt_dlp per la versione aggiornata (pip install -U yt-dlp)
+      console.log(`      🎵 Esecuzione: python -m yt_dlp (tentativo ${retry + 1}/${maxRetries})`);
+      console.log(`      📹 URL: https://www.youtube.com/watch?v=${videoId}`);
+      
+      // Usa python -m yt_dlp per la versione aggiornata
       const cmd = `python -m yt_dlp -x --audio-format mp3 --audio-quality 5 -o "${path.join(tempDir, videoId)}.%(ext)s" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
       
       const { stdout, stderr } = await execAsync(cmd, { timeout: 180000 }); // 3 minuti timeout
       const output = stdout + stderr;
       
+      // Log output parziale per debug
+      if (output.length > 0) {
+        const outputLines = output.split('\n').filter(l => l.trim()).slice(-5);
+        console.log(`      📋 Output yt-dlp (ultime righe):`);
+        outputLines.forEach(line => console.log(`         ${line.substring(0, 100)}`));
+      }
+      
       if (output.includes('429') || output.includes('Too Many Requests')) {
-        console.log(`   ⚠️ Rate limit (429) per download audio - attendo prima di riprovare`);
+        console.log(`      ⚠️ RATE LIMIT (429) - YouTube ha bloccato la richiesta`);
         await new Promise(resolve => setTimeout(resolve, 5000));
         continue;
       }
@@ -163,41 +179,50 @@ async function downloadAudioWithYtDlp(videoId: string, maxRetries: number = 3): 
       if (audioFiles.length > 0) {
         const audioPath = path.join(tempDir, audioFiles[0]);
         const stats = fs.statSync(audioPath);
-        console.log(`   ✅ Audio scaricato: ${audioFiles[0]} (${Math.round(stats.size / 1024)} KB)`);
+        const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+        console.log(`      ✅ FILE AUDIO SCARICATO: ${audioFiles[0]}`);
+        console.log(`      📊 Dimensione: ${sizeMB} MB (${Math.round(stats.size / 1024)} KB)`);
         return audioPath;
       }
       
-      console.log(`   ⚠️ Nessun file audio trovato dopo download`);
+      console.log(`      ⚠️ Nessun file .mp3 trovato in ${tempDir}`);
     } catch (error: any) {
       const errorMsg = error.message || String(error);
-      console.log(`   ⚠️ Errore download audio (tentativo ${retry + 1}): ${errorMsg.substring(0, 150)}`);
+      console.log(`      ❌ ERRORE download (tentativo ${retry + 1}): ${errorMsg.substring(0, 150)}`);
       
       if (error.stderr) {
-        console.log(`   📋 Dettagli: ${error.stderr.substring(0, 200)}`);
+        console.log(`      📋 Stderr: ${error.stderr.substring(0, 200)}`);
       }
     }
   }
   
-  console.log(`   ❌ Download audio fallito dopo ${maxRetries} tentativi`);
+  console.log(`      ❌ DOWNLOAD FALLITO dopo ${maxRetries} tentativi`);
   return null;
 }
 
 async function transcribeAudioWithGemini(audioPath: string): Promise<TranscriptResult | null> {
+  console.log(`      🔑 Recupero chiavi API Gemini...`);
+  
   // Ottieni API keys da SuperAdmin con rotazione
   const superAdminKeys = await getSuperAdminGeminiKeys();
   if (!superAdminKeys || superAdminKeys.keys.length === 0) {
-    console.log(`   ⚠️ Nessuna chiave Gemini disponibile`);
+    console.log(`      ❌ ERRORE: Nessuna chiave Gemini disponibile (SuperAdmin)`);
     return null;
   }
   
+  console.log(`      ✅ Trovate ${superAdminKeys.keys.length} chiavi Gemini disponibili`);
+  
   // Leggi il file audio come base64
+  console.log(`      📂 Lettura file audio: ${path.basename(audioPath)}`);
   const audioBuffer = fs.readFileSync(audioPath);
   const audioBase64 = audioBuffer.toString('base64');
   const fileSizeMB = audioBuffer.length / (1024 * 1024);
   
-  console.log(`   🤖 Inviando audio a Gemini (${fileSizeMB.toFixed(2)} MB)...`);
+  console.log(`      📊 File size: ${fileSizeMB.toFixed(2)} MB`);
+  console.log(`      📤 Preparazione invio a Gemini AI...`);
+  console.log(`      🎯 Modello: ${GEMINI_LEGACY_MODEL}`);
   
-  // Prova ogni chiave con rotazione random (come getGoogleAIStudioClientForFileSearch)
+  // Prova ogni chiave con rotazione random
   const keysToTry = [...superAdminKeys.keys];
   const startIndex = Math.floor(Math.random() * keysToTry.length);
   
@@ -206,7 +231,7 @@ async function transcribeAudioWithGemini(audioPath: string): Promise<TranscriptR
     const apiKey = keysToTry[keyIndex];
     
     try {
-      console.log(`   🔑 Tentativo ${attempt + 1}/${keysToTry.length} (chiave ${keyIndex + 1})`);
+      console.log(`      🔑 Tentativo ${attempt + 1}/${keysToTry.length} con chiave #${keyIndex + 1}`);
       
       const ai = new GoogleGenAI({ apiKey });
       
@@ -278,32 +303,48 @@ Requisiti:
 }
 
 async function fetchTranscriptWithGemini(videoId: string): Promise<TranscriptResult | null> {
-  console.log(`🔍 [TRANSCRIPT] Metodo Gemini: download audio + trascrizione AI`);
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`🤖 [STEP 2] METODO GEMINI (Download Audio + Trascrizione AI)`);
+  console.log(`${'─'.repeat(60)}`);
   
   let audioPath: string | null = null;
   
   try {
-    // Step 1: Scarica audio
+    console.log(`\n   [STEP 2.1] Avvio download audio...`);
+    const downloadStartTime = Date.now();
     audioPath = await downloadAudioWithYtDlp(videoId);
+    const downloadTime = ((Date.now() - downloadStartTime) / 1000).toFixed(2);
+    
     if (!audioPath) {
+      console.log(`   ❌ [STEP 2.1] Download audio FALLITO dopo ${downloadTime}s`);
       return null;
     }
+    console.log(`   ✅ [STEP 2.1] Download audio completato in ${downloadTime}s`);
     
-    // Step 2: Trascrivi con Gemini
+    console.log(`\n   [STEP 2.2] Avvio trascrizione con Gemini AI...`);
+    const transcribeStartTime = Date.now();
     const result = await transcribeAudioWithGemini(audioPath);
+    const transcribeTime = ((Date.now() - transcribeStartTime) / 1000).toFixed(2);
+    
+    if (result) {
+      console.log(`   ✅ [STEP 2.2] Trascrizione Gemini completata in ${transcribeTime}s`);
+      console.log(`   📊 Caratteri trascritti: ${result.transcript.length}`);
+      console.log(`   📊 Segmenti: ${result.segments.length}`);
+    } else {
+      console.log(`   ❌ [STEP 2.2] Trascrizione Gemini FALLITA dopo ${transcribeTime}s`);
+    }
     
     return result;
   } catch (error: any) {
-    console.log(`   ⚠️ Metodo Gemini fallito: ${error.message?.substring(0, 80)}`);
+    console.log(`   ❌ [STEP 2] Metodo Gemini ERRORE: ${error.message?.substring(0, 100)}`);
     return null;
   } finally {
-    // Cleanup: elimina sempre file audio (successo, errore, o qualsiasi uscita)
     if (audioPath) {
       try {
         fs.unlinkSync(audioPath);
-        console.log(`   🧹 File audio eliminato: ${audioPath}`);
+        console.log(`   🧹 [CLEANUP] File audio eliminato: ${path.basename(audioPath)}`);
       } catch (cleanupErr) {
-        console.log(`   ⚠️ Impossibile eliminare audio: ${audioPath}`);
+        console.log(`   ⚠️ [CLEANUP] Impossibile eliminare audio`);
       }
     }
   }
@@ -483,21 +524,35 @@ async function fetchSubtitlesWithJsLibraries(videoId: string, lang: string = 'it
 }
 
 async function fetchTranscriptWithSubtitles(videoId: string, lang: string = 'it'): Promise<TranscriptResult | null> {
-  console.log(`🔍 [TRANSCRIPT] Metodo Sottotitoli: yt-dlp + librerie JS`);
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`📝 [STEP 3] METODO SOTTOTITOLI (yt-dlp + Librerie JS)`);
+  console.log(`${'─'.repeat(60)}`);
   
   // Prima prova yt-dlp
+  console.log(`\n   [STEP 3.1] Tentativo yt-dlp sottotitoli...`);
+  const ytdlpStartTime = Date.now();
   const ytdlpResult = await fetchSubtitlesWithYtDlp(videoId, lang);
+  const ytdlpTime = ((Date.now() - ytdlpStartTime) / 1000).toFixed(2);
+  
   if (ytdlpResult) {
-    console.log(`✅ [TRANSCRIPT] yt-dlp sottotitoli OK: ${ytdlpResult.transcript.length} caratteri`);
+    console.log(`   ✅ [STEP 3.1] yt-dlp sottotitoli OK in ${ytdlpTime}s`);
+    console.log(`   📊 Caratteri: ${ytdlpResult.transcript.length}`);
     return ytdlpResult;
   }
+  console.log(`   ❌ [STEP 3.1] yt-dlp sottotitoli FALLITO dopo ${ytdlpTime}s`);
   
   // Poi prova librerie JS
+  console.log(`\n   [STEP 3.2] Tentativo librerie JavaScript...`);
+  const jsStartTime = Date.now();
   const jsResult = await fetchSubtitlesWithJsLibraries(videoId, lang);
+  const jsTime = ((Date.now() - jsStartTime) / 1000).toFixed(2);
+  
   if (jsResult) {
-    console.log(`✅ [TRANSCRIPT] Librerie JS OK: ${jsResult.transcript.length} caratteri`);
+    console.log(`   ✅ [STEP 3.2] Librerie JS OK in ${jsTime}s`);
+    console.log(`   📊 Caratteri: ${jsResult.transcript.length}`);
     return jsResult;
   }
+  console.log(`   ❌ [STEP 3.2] Librerie JS FALLITE dopo ${jsTime}s`);
   
   return null;
 }
@@ -511,7 +566,13 @@ export async function fetchTranscript(
   lang: string = 'it',
   mode: TranscriptMode = 'auto'
 ): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
-  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId} (modalità: ${mode})`);
+  console.log(`\n${'='.repeat(70)}`);
+  console.log(`📹 [STEP 1] INIZIO PROCESSO TRASCRIZIONE`);
+  console.log(`${'='.repeat(70)}`);
+  console.log(`   📋 Video ID: ${videoId}`);
+  console.log(`   🌐 Lingua richiesta: ${lang}`);
+  console.log(`   ⚙️  Modalità: ${mode}`);
+  console.log(`   🕐 Timestamp: ${new Date().toISOString()}`);
   
   // Modalità manuale: non fare nessuna estrazione automatica
   if (mode === 'manual') {
@@ -519,31 +580,66 @@ export async function fetchTranscript(
     return null;
   }
   
+  const processStartTime = Date.now();
+  
   if (mode === 'gemini' || mode === 'auto') {
     // METODO 1: Gemini (download audio + trascrizione AI) - Qualità premium
     const geminiResult = await fetchTranscriptWithGemini(videoId);
     if (geminiResult) {
-      console.log(`✅ [TRANSCRIPT] Metodo Gemini completato: ${geminiResult.transcript.length} caratteri`);
+      const totalTime = ((Date.now() - processStartTime) / 1000).toFixed(2);
+      console.log(`\n${'='.repeat(70)}`);
+      console.log(`✅ [STEP 4] TRASCRIZIONE COMPLETATA CON SUCCESSO`);
+      console.log(`${'='.repeat(70)}`);
+      console.log(`   🏆 Metodo utilizzato: GEMINI AI`);
+      console.log(`   📊 Caratteri totali: ${geminiResult.transcript.length}`);
+      console.log(`   📊 Segmenti: ${geminiResult.segments.length}`);
+      console.log(`   ⏱️  Tempo totale: ${totalTime}s`);
+      console.log(`   📝 Anteprima: "${geminiResult.transcript.substring(0, 150)}..."`);
+      console.log(`${'='.repeat(70)}\n`);
       return { transcript: geminiResult.transcript, segments: geminiResult.segments };
     }
     
     // Se modalità è "gemini" e fallisce, non fare fallback
     if (mode === 'gemini') {
-      console.log(`❌ [TRANSCRIPT] Modalità Gemini richiesta ma fallita per video: ${videoId}`);
+      const totalTime = ((Date.now() - processStartTime) / 1000).toFixed(2);
+      console.log(`\n${'='.repeat(70)}`);
+      console.log(`❌ [STEP 4] TRASCRIZIONE FALLITA`);
+      console.log(`${'='.repeat(70)}`);
+      console.log(`   ⚠️ Modalità Gemini richiesta ma non disponibile`);
+      console.log(`   ⏱️  Tempo totale: ${totalTime}s`);
+      console.log(`${'='.repeat(70)}\n`);
       return null;
     }
+    
+    console.log(`\n   ⚠️ Gemini fallito, passaggio a fallback sottotitoli...`);
   }
   
   if (mode === 'subtitles' || mode === 'auto') {
     // METODO 2: Sottotitoli (yt-dlp + librerie JS) - Fallback
     const subtitlesResult = await fetchTranscriptWithSubtitles(videoId, lang);
     if (subtitlesResult) {
-      console.log(`✅ [TRANSCRIPT] Metodo Sottotitoli completato: ${subtitlesResult.transcript.length} caratteri`);
+      const totalTime = ((Date.now() - processStartTime) / 1000).toFixed(2);
+      console.log(`\n${'='.repeat(70)}`);
+      console.log(`✅ [STEP 4] TRASCRIZIONE COMPLETATA CON SUCCESSO`);
+      console.log(`${'='.repeat(70)}`);
+      console.log(`   🏆 Metodo utilizzato: SOTTOTITOLI`);
+      console.log(`   📊 Caratteri totali: ${subtitlesResult.transcript.length}`);
+      console.log(`   📊 Segmenti: ${subtitlesResult.segments.length}`);
+      console.log(`   ⏱️  Tempo totale: ${totalTime}s`);
+      console.log(`   📝 Anteprima: "${subtitlesResult.transcript.substring(0, 150)}..."`);
+      console.log(`${'='.repeat(70)}\n`);
       return { transcript: subtitlesResult.transcript, segments: subtitlesResult.segments };
     }
   }
   
-  console.log(`❌ [TRANSCRIPT] Nessuna trascrizione disponibile per video: ${videoId}`);
+  const totalTime = ((Date.now() - processStartTime) / 1000).toFixed(2);
+  console.log(`\n${'='.repeat(70)}`);
+  console.log(`❌ [STEP 4] TRASCRIZIONE NON DISPONIBILE`);
+  console.log(`${'='.repeat(70)}`);
+  console.log(`   ⚠️ Tutti i metodi hanno fallito per video: ${videoId}`);
+  console.log(`   ⏱️  Tempo totale: ${totalTime}s`);
+  console.log(`   💡 Suggerimento: Inserire manualmente la trascrizione`);
+  console.log(`${'='.repeat(70)}\n`);
   return null;
 }
 
