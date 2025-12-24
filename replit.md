@@ -69,6 +69,9 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **AI Usage Statistics**: `ai_usage_stats` table tracks token consumption per operation with `trackAiUsage()` helper
   - **Step 2 Real-time Loading (Dec 2025)**: Enhanced UX with visual overlay showing per-video status (waiting/downloading/transcribing/completed/error/reused) via SSE endpoint `/api/youtube/playlist/save-stream`. Features animated progress bar, live log console, and automatic Step 3 transition.
   - **Step 4 Auto-transition (Dec 2025)**: Automatic navigation to Step 5 (Review) after generation completes with 1.5s delay for UX feedback.
+  - **Course Theme System (Dec 2025)**: 5 visual themes (Business, Wellness, Creative, Tech, Classic) with theme-specific Tailwind CSS styling. Each theme defines colors for 7 element types: section titles, key points boxes, examples, notes, action items, summaries, and quotes. Themes are stored per-course in `libraryCategories.theme`.
+  - **Step 4.5 Module Organization (Dec 2025)**: Intermediate wizard step for organizing lessons into modules before publishing. Supports two scenarios: create new modules (single or multiple) or select existing modules. AI-powered module name suggestions via POST `/api/library/ai-suggest-modules` analyze video titles to suggest logical groupings.
+  - **Styled HTML Lesson Output (Dec 2025)**: AI generates lessons as styled HTML instead of Markdown, with theme-specific Tailwind classes for rich visual presentation. Uses `shared/course-themes.ts` for theme definitions and `generateThemeInstructionsForAI()` to build AI prompts.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
