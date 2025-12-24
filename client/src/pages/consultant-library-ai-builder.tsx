@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle, Layers, GripVertical } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, ChevronDown, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle, Layers, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,15 +75,141 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Istruzioni base fisse per lo stile del relatore
-const BASE_AI_INSTRUCTIONS = `Trasforma la trascrizione del video in una lezione formativa completa e coinvolgente.
-
-STILE E TONO:
+// 10 stili di scrittura AI selezionabili
+const AI_WRITING_STYLES = [
+  {
+    id: "speaker-style",
+    label: "Stile del Relatore",
+    emoji: "🎤",
+    shortDescription: "Mantiene tono ed espressioni originali",
+    description: "L'AI mantiene il tono, le espressioni e lo stile comunicativo originale del relatore nel video. La lezione suonerà come se fosse scritta direttamente da chi parla.",
+    instruction: `STILE E TONO:
 - Mantieni ESATTAMENTE il tono, le espressioni e il modo di parlare del relatore
 - Preserva il suo linguaggio autentico, i suoi modi di dire e le sue metafore
 - Non parafrasare eccessivamente: la "voce" del relatore deve rimanere riconoscibile
-- Se il relatore usa un linguaggio informale o colloquiale, mantienilo
+- Se il relatore usa un linguaggio informale o colloquiale, mantienilo`
+  },
+  {
+    id: "formal-academic",
+    label: "Formale Accademico",
+    emoji: "🎓",
+    shortDescription: "Linguaggio formale e strutturato",
+    description: "Usa un linguaggio formale, accademico e professionale. Ideale per contenuti che richiedono autorevolezza e precisione scientifica.",
+    instruction: `STILE E TONO:
+- Usa un linguaggio formale, preciso e professionale
+- Evita espressioni colloquiali o informali
+- Mantieni un tono autorevole e accademico
+- Cita concetti in modo strutturato e rigoroso
+- Usa terminologia tecnica appropriata quando necessario`
+  },
+  {
+    id: "conversational",
+    label: "Conversazionale",
+    emoji: "💬",
+    shortDescription: "Tono amichevole e accessibile",
+    description: "Un tono caldo e amichevole, come se stessi parlando con un amico. Rende i contenuti più accessibili e meno intimidatori.",
+    instruction: `STILE E TONO:
+- Usa un tono caldo, amichevole e accessibile
+- Parla direttamente al lettore usando il "tu"
+- Inserisci frasi che creano connessione ("Lo so, anche io ci sono passato...")
+- Evita il gergo tecnico quando possibile
+- Rendi i concetti semplici e facili da comprendere`
+  },
+  {
+    id: "storytelling",
+    label: "Narrativo",
+    emoji: "📖",
+    shortDescription: "Racconta come una storia",
+    description: "Trasforma il contenuto in una narrazione coinvolgente con personaggi, situazioni ed emozioni. Perfetto per catturare l'attenzione.",
+    instruction: `STILE E TONO:
+- Racconta il contenuto come una storia coinvolgente
+- Crea un filo narrativo che guida il lettore
+- Usa descrizioni vivide e dettagli evocativi
+- Inserisci elementi di suspense e curiosità
+- Concludi con una "morale" o insegnamento chiaro`
+  },
+  {
+    id: "practical-how-to",
+    label: "Guida Pratica",
+    emoji: "🛠️",
+    shortDescription: "Focus su azioni concrete step-by-step",
+    description: "Una guida pratica orientata all'azione. Ogni sezione spiega cosa fare, come farlo e perché, con istruzioni chiare e immediate.",
+    instruction: `STILE E TONO:
+- Concentrati su azioni concrete e applicabili
+- Ogni sezione deve rispondere a "Come faccio a..."
+- Numera i passaggi in ordine logico
+- Includi avvertenze, consigli e best practices
+- Evita teoria eccessiva: vai dritto al punto pratico`
+  },
+  {
+    id: "bullet-points",
+    label: "Sintesi a Punti",
+    emoji: "📋",
+    shortDescription: "Elenchi puntati e concisione",
+    description: "Contenuto essenziale organizzato in punti elenco. Massima chiarezza e facilità di lettura veloce.",
+    instruction: `STILE E TONO:
+- Usa principalmente elenchi puntati e numerati
+- Ogni punto deve essere una frase concisa e autonoma
+- Elimina parole superflue: vai all'essenziale
+- Raggruppa i punti per categoria o tema
+- Ideale per chi vuole ripassare rapidamente`
+  },
+  {
+    id: "motivational",
+    label: "Motivazionale",
+    emoji: "🔥",
+    shortDescription: "Ispira e motiva all'azione",
+    description: "Un tono energico e ispirante che spinge il lettore all'azione. Ideale per contenuti di crescita personale e sviluppo.",
+    instruction: `STILE E TONO:
+- Usa un linguaggio energico, positivo e ispirante
+- Inserisci frasi motivazionali e call-to-action forti
+- Fai sentire il lettore capace di raggiungere i suoi obiettivi
+- Sfida le credenze limitanti con domande potenti
+- Concludi sempre con un invito all'azione immediata`
+  },
+  {
+    id: "technical",
+    label: "Tecnico Dettagliato",
+    emoji: "⚙️",
+    shortDescription: "Precisione tecnica e approfondimento",
+    description: "Linguaggio tecnico preciso con definizioni, specifiche e dettagli approfonditi. Per un pubblico esperto del settore.",
+    instruction: `STILE E TONO:
+- Usa terminologia tecnica precisa e appropriata
+- Definisci ogni termine specialistico alla prima occorrenza
+- Includi dettagli, specifiche e approfondimenti
+- Cita fonti o riferimenti quando pertinente
+- Struttura il contenuto in modo logico e gerarchico`
+  },
+  {
+    id: "minimalist",
+    label: "Minimalista",
+    emoji: "✨",
+    shortDescription: "Solo l'essenziale, zero fronzoli",
+    description: "Il minimo indispensabile. Ogni parola conta. Perfetto per chi preferisce contenuti diretti senza distrazioni.",
+    instruction: `STILE E TONO:
+- Riduci tutto all'essenziale assoluto
+- Una frase = un concetto
+- Elimina aggettivi, avverbi e parole di riempimento
+- Nessuna ripetizione: ogni idea appare una sola volta
+- Il silenzio (spazio bianco) è parte del messaggio`
+  },
+  {
+    id: "interactive",
+    label: "Interattivo",
+    emoji: "🎯",
+    shortDescription: "Coinvolge con domande e esercizi",
+    description: "Coinvolge attivamente il lettore con domande, esercizi e momenti di riflessione. Trasforma la lettura in un'esperienza attiva.",
+    instruction: `STILE E TONO:
+- Inserisci domande dirette al lettore ogni 2-3 paragrafi
+- Crea mini-esercizi o sfide da completare
+- Aggiungi spazi di riflessione: "Fermati e pensa..."
+- Usa il formato domanda-risposta dove appropriato
+- Invita il lettore a prendere appunti o fare azioni`
+  }
+];
 
+// Istruzioni base per la struttura della lezione
+const BASE_STRUCTURE_INSTRUCTIONS = `
 STRUTTURA DELLA LEZIONE:
 - Organizza il contenuto in sezioni logiche con titoli chiari
 - Inizia con un'introduzione che contestualizza l'argomento
@@ -94,6 +220,28 @@ FORMATTAZIONE:
 - Usa titoli e sottotitoli per strutturare il testo (## per sezioni, ### per sottosezioni)
 - Evidenzia in grassetto i concetti chiave e le parole importanti
 - Utilizza elenchi puntati per liste di elementi o passaggi`;
+
+// Funzione per generare le istruzioni complete basate sullo stile selezionato
+function buildAiInstructions(styleId: string, enhancements: string[]): string {
+  const style = AI_WRITING_STYLES.find(s => s.id === styleId) || AI_WRITING_STYLES[0];
+  let instructions = `Trasforma la trascrizione del video in una lezione formativa completa e coinvolgente.
+
+${style.instruction}
+${BASE_STRUCTURE_INSTRUCTIONS}`;
+
+  // Aggiungi le enhancement selezionate
+  enhancements.forEach(enhId => {
+    const enh = AI_ENHANCEMENT_OPTIONS.find(e => e.id === enhId);
+    if (enh) {
+      instructions += enh.instruction;
+    }
+  });
+
+  return instructions;
+}
+
+// Per retrocompatibilità
+const BASE_AI_INSTRUCTIONS = buildAiInstructions('speaker-style', []);
 
 // Aggiunte opzionali per migliorare le istruzioni AI
 const AI_ENHANCEMENT_OPTIONS = [
@@ -240,6 +388,9 @@ export default function ConsultantLibraryAIBuilder() {
   const [savedVideos, setSavedVideos] = useState<SavedVideo[]>([]);
   const [aiInstructions, setAiInstructions] = useState(BASE_AI_INSTRUCTIONS);
   const [selectedEnhancements, setSelectedEnhancements] = useState<string[]>([]);
+  const [selectedStyle, setSelectedStyle] = useState<string>("speaker-style");
+  const [showAllStyles, setShowAllStyles] = useState(false);
+  const [hasUserEditedInstructions, setHasUserEditedInstructions] = useState(false);
   const [contentType, setContentType] = useState<"text" | "video" | "both">("both");
   const [level, setLevel] = useState<"base" | "intermedio" | "avanzato">("base");
   const [transcriptMode, setTranscriptMode] = useState<"auto" | "gemini" | "subtitles">("auto");
@@ -317,22 +468,24 @@ export default function ConsultantLibraryAIBuilder() {
     if (aiSettings) {
       if (aiSettings.defaultContentType) setContentType(aiSettings.defaultContentType);
       if (aiSettings.defaultLevel) setLevel(aiSettings.defaultLevel);
+      if (aiSettings.defaultStyle) setSelectedStyle(aiSettings.defaultStyle);
     }
   }, [aiSettings]);
 
-  // Combina istruzioni base + aggiunte selezionate
+  // Combina stile selezionato + aggiunte selezionate (solo se l'utente non ha modificato manualmente)
   useEffect(() => {
-    let combinedInstructions = BASE_AI_INSTRUCTIONS;
-    
-    for (const enhancementId of selectedEnhancements) {
-      const enhancement = AI_ENHANCEMENT_OPTIONS.find(e => e.id === enhancementId);
-      if (enhancement) {
-        combinedInstructions += "\n" + enhancement.instruction;
-      }
+    if (!hasUserEditedInstructions) {
+      const combinedInstructions = buildAiInstructions(selectedStyle, selectedEnhancements);
+      setAiInstructions(combinedInstructions);
     }
-    
+  }, [selectedStyle, selectedEnhancements, hasUserEditedInstructions]);
+
+  // Handler per ripristinare le istruzioni allo stile selezionato
+  const handleResetInstructions = () => {
+    const combinedInstructions = buildAiInstructions(selectedStyle, selectedEnhancements);
     setAiInstructions(combinedInstructions);
-  }, [selectedEnhancements]);
+    setHasUserEditedInstructions(false);
+  };
 
   // Handler per toggle enhancement
   const handleEnhancementToggle = (enhancementId: string, checked: boolean) => {
@@ -710,6 +863,7 @@ export default function ConsultantLibraryAIBuilder() {
           writingInstructions: aiInstructions,
           defaultContentType: contentType,
           defaultLevel: level,
+          defaultStyle: selectedStyle,
         });
       }
 
@@ -1321,15 +1475,52 @@ export default function ConsultantLibraryAIBuilder() {
                     <CardDescription>Configura come l'AI trasformerà il video in lezione</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border border-purple-200 dark:border-purple-800">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-5 h-5 text-purple-600" />
-                        <h3 className="font-semibold text-purple-900 dark:text-purple-100">Stile del Relatore</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">Stile di scrittura</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowAllStyles(!showAllStyles)}
+                          className="text-xs"
+                        >
+                          {showAllStyles ? "Mostra meno" : "Mostra tutti"}
+                          <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${showAllStyles ? 'rotate-180' : ''}`} />
+                        </Button>
                       </div>
-                      <p className="text-sm text-purple-700 dark:text-purple-300">
-                        L'AI mantiene il tono, le espressioni e lo stile comunicativo originale del relatore nel video. 
-                        La lezione suonerà come se fosse scritta direttamente da chi parla.
-                      </p>
+                      
+                      <div className={`grid gap-2 ${showAllStyles ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-5'}`}>
+                        {(showAllStyles ? AI_WRITING_STYLES : AI_WRITING_STYLES.slice(0, 5)).map((style) => (
+                          <div
+                            key={style.id}
+                            onClick={() => setSelectedStyle(style.id)}
+                            className={`p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
+                              selectedStyle === style.id
+                                ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30 shadow-sm'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                            }`}
+                          >
+                            <div className="text-center">
+                              <span className="text-2xl">{style.emoji}</span>
+                              <p className="text-sm font-medium mt-1">{style.label}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {selectedStyle && (
+                        <div className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border border-purple-200 dark:border-purple-800 mt-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xl">{AI_WRITING_STYLES.find(s => s.id === selectedStyle)?.emoji}</span>
+                            <h3 className="font-semibold text-purple-900 dark:text-purple-100">
+                              {AI_WRITING_STYLES.find(s => s.id === selectedStyle)?.label}
+                            </h3>
+                          </div>
+                          <p className="text-sm text-purple-700 dark:text-purple-300">
+                            {AI_WRITING_STYLES.find(s => s.id === selectedStyle)?.description}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-3">
@@ -1367,20 +1558,38 @@ export default function ConsultantLibraryAIBuilder() {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <Label>Istruzioni AI (anteprima)</Label>
-                        <Badge variant="outline" className="text-xs">
-                          {selectedEnhancements.length} aggiunte attive
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          {hasUserEditedInstructions && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={handleResetInstructions}
+                              className="text-xs h-6"
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              Ripristina
+                            </Button>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {selectedEnhancements.length} aggiunte attive
+                          </Badge>
+                        </div>
                       </div>
                       <Textarea
                         rows={12}
                         value={aiInstructions}
-                        onChange={(e) => setAiInstructions(e.target.value)}
+                        onChange={(e) => {
+                          setAiInstructions(e.target.value);
+                          setHasUserEditedInstructions(true);
+                        }}
                         className="font-mono text-sm"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Le istruzioni si aggiornano automaticamente. Puoi modificarle manualmente se necessario.
+                        {hasUserEditedInstructions 
+                          ? "Hai modificato le istruzioni. Clicca 'Ripristina' per tornare allo stile selezionato."
+                          : "Le istruzioni si aggiornano automaticamente. Puoi modificarle manualmente se necessario."}
                       </p>
                     </div>
 

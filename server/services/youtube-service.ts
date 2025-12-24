@@ -949,12 +949,15 @@ export async function getAiLessonSettings(consultantId: string) {
     .from(consultantAiLessonSettings)
     .where(eq(consultantAiLessonSettings.consultantId, consultantId));
   
-  return settings || {
-    writingInstructions: "Mantieni il tono e lo stile del relatore nel video. Usa le sue espressioni e il suo modo di spiegare i concetti. Struttura il testo in sezioni chiare e leggibili.",
-    defaultContentType: 'both',
-    defaultLevel: 'base',
-    preserveSpeakerStyle: true,
-    includeTimestamps: false,
+  const customPrompts = (settings?.customPrompts as any) || {};
+  
+  return {
+    writingInstructions: settings?.writingInstructions || "Mantieni il tono e lo stile del relatore nel video. Usa le sue espressioni e il suo modo di spiegare i concetti. Struttura il testo in sezioni chiare e leggibili.",
+    defaultContentType: settings?.defaultContentType || 'both',
+    defaultLevel: settings?.defaultLevel || 'base',
+    preserveSpeakerStyle: settings?.preserveSpeakerStyle ?? true,
+    includeTimestamps: settings?.includeTimestamps ?? false,
+    defaultStyle: customPrompts.defaultStyle || 'speaker-style',
   };
 }
 
@@ -966,6 +969,7 @@ export async function saveAiLessonSettings(
     defaultLevel?: string;
     preserveSpeakerStyle?: boolean;
     includeTimestamps?: boolean;
+    defaultStyle?: string;
   }
 ) {
   const existing = await db
@@ -973,17 +977,28 @@ export async function saveAiLessonSettings(
     .from(consultantAiLessonSettings)
     .where(eq(consultantAiLessonSettings.consultantId, consultantId));
   
+  // Extract defaultStyle to save in customPrompts
+  const { defaultStyle, ...restSettings } = settings;
+  
+  // Build customPrompts with defaultStyle
+  const existingCustomPrompts = (existing[0]?.customPrompts as any) || {};
+  const customPrompts = defaultStyle 
+    ? { ...existingCustomPrompts, defaultStyle }
+    : existingCustomPrompts;
+  
   if (existing.length > 0) {
     await db.update(consultantAiLessonSettings)
       .set({
-        ...settings,
+        ...restSettings,
+        customPrompts,
         updatedAt: new Date(),
       })
       .where(eq(consultantAiLessonSettings.consultantId, consultantId));
   } else {
     await db.insert(consultantAiLessonSettings).values({
       consultantId,
-      ...settings,
+      ...restSettings,
+      customPrompts,
     });
   }
 }
