@@ -273,6 +273,7 @@ export default function ConsultantLibraryAIBuilder() {
   const [isCreatingModules, setIsCreatingModules] = useState(false);
   const [newModuleName, setNewModuleName] = useState("");
   const [assignmentMode, setAssignmentMode] = useState<'single' | 'distribute'>('single');
+  const [isSuggestingModules, setIsSuggestingModules] = useState(false);
   
   // Step 2: Stato caricamento video con UI dettagliata
   const [isSavingVideos, setIsSavingVideos] = useState(false);
@@ -474,7 +475,7 @@ export default function ConsultantLibraryAIBuilder() {
       }]);
     };
     
-    addLog(`Avvio elaborazione di ${selected.length} video...`, 'info');
+    addLog(`Sto preparando ${selected.length} video...`, 'info');
     
     try {
       const response = await fetch("/api/youtube/playlist/save-stream", {
@@ -511,7 +512,7 @@ export default function ConsultantLibraryAIBuilder() {
             const data = JSON.parse(line.slice(6));
             
             if (data.type === 'start') {
-              addLog(`Elaborazione video: "${data.title}"`, 'info');
+              addLog(`Sto scaricando: "${data.title}"`, 'info');
               setSavingVideoStatuses(prev => {
                 const next = new Map(prev);
                 next.set(data.videoId, { status: 'downloading', message: 'Scaricando...' });
@@ -524,28 +525,28 @@ export default function ConsultantLibraryAIBuilder() {
                 return next;
               });
             } else if (data.type === 'transcribing') {
-              addLog(`Estraendo trascrizione: "${data.title}"`, 'info');
+              addLog(`Sto analizzando l'audio: "${data.title}"`, 'info');
               setSavingVideoStatuses(prev => {
                 const next = new Map(prev);
                 next.set(data.videoId, { status: 'transcribing', message: data.message || 'Estraendo trascrizione...' });
                 return next;
               });
             } else if (data.type === 'reused') {
-              addLog(`♻️ Riutilizzata trascrizione esistente: "${data.title}"`, 'success');
+              addLog(`♻️ Già analizzato in precedenza: "${data.title}"`, 'success');
               setSavingVideoStatuses(prev => {
                 const next = new Map(prev);
                 next.set(data.videoId, { status: 'reused', message: 'Trascrizione riutilizzata' });
                 return next;
               });
             } else if (data.type === 'completed') {
-              addLog(`✅ Completato: "${data.title}"`, 'success');
+              addLog(`✅ Pronto: "${data.title}"`, 'success');
               setSavingVideoStatuses(prev => {
                 const next = new Map(prev);
                 next.set(data.videoId, { status: 'completed', message: data.transcriptLength ? `${data.transcriptLength} caratteri` : 'Completato' });
                 return next;
               });
             } else if (data.type === 'error') {
-              addLog(`❌ Errore: "${data.title}" - ${data.error}`, 'error');
+              addLog(`❌ Problema con "${data.title}": ${data.error}`, 'error');
               setSavingVideoStatuses(prev => {
                 const next = new Map(prev);
                 next.set(data.videoId, { status: 'error', message: data.error });
@@ -555,7 +556,7 @@ export default function ConsultantLibraryAIBuilder() {
               setSavingVideoProgress(Math.round((data.current / data.total) * 100));
             } else if (data.type === 'done') {
               savedVideosList = data.savedVideos || [];
-              addLog(`🎉 Completato! ${savedVideosList.length} video pronti`, 'success');
+              addLog(`🎉 Fatto! ${savedVideosList.length} video pronti per la lezione`, 'success');
             }
           } catch (e) {
             // Ignora errori di parsing
@@ -691,7 +692,10 @@ export default function ConsultantLibraryAIBuilder() {
     setGenerationProgress(0);
     setGeneratedLessons([]);
     setGenerationErrors([]);
-    setGenerationLogs([]);
+    setGenerationLogs([{
+      time: new Date().toLocaleTimeString('it-IT'),
+      message: "🚀 Sto iniziando a creare le lezioni..."
+    }]);
     setIsGenerating(true);
     
     const initialStatus = new Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; error?: string }>();
@@ -1741,7 +1745,10 @@ export default function ConsultantLibraryAIBuilder() {
                               type="button"
                               variant="outline"
                               size="sm"
+                              disabled={isSuggestingModules}
                               onClick={async () => {
+                                if (isSuggestingModules) return;
+                                setIsSuggestingModules(true);
                                 try {
                                   const videoTitles = savedVideos.map(v => v.title);
                                   const courseName = categories.find((c: Category) => c.id === selectedCategoryId)?.name;
@@ -1759,12 +1766,18 @@ export default function ConsultantLibraryAIBuilder() {
                                   }
                                 } catch (error: any) {
                                   toast({ title: "Errore", description: error.message, variant: "destructive" });
+                                } finally {
+                                  setIsSuggestingModules(false);
                                 }
                               }}
                               className="flex items-center gap-1"
                             >
-                              <Sparkles className="w-4 h-4" />
-                              Suggerisci con AI
+                              {isSuggestingModules ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Sparkles className="w-4 h-4" />
+                              )}
+                              {isSuggestingModules ? "Sto pensando..." : "Suggerisci con AI"}
                             </Button>
                           </div>
                           <div className="grid gap-2">
@@ -1874,7 +1887,19 @@ export default function ConsultantLibraryAIBuilder() {
 
                       {/* Single module selection */}
                       {assignmentMode === 'single' && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="space-y-3">
+                          {moduleAssignments.size === 0 ? (
+                            <p className="text-sm text-amber-600 dark:text-amber-400 font-medium flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4" />
+                              Seleziona un modulo per continuare
+                            </p>
+                          ) : (
+                            <p className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center gap-2">
+                              <Check className="w-4 h-4" />
+                              Modulo selezionato
+                            </p>
+                          )}
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                           {filteredSubcategories.map((sub) => (
                             <Card 
                               key={sub.id}
@@ -1909,6 +1934,7 @@ export default function ConsultantLibraryAIBuilder() {
                               </CardContent>
                             </Card>
                           ))}
+                          </div>
                         </div>
                       )}
 
