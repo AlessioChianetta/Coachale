@@ -112,6 +112,13 @@ const AI_INSTRUCTION_TEMPLATES = [
   }
 ];
 
+// Verifica se una trascrizione è valida (non vuota e con contenuto minimo)
+function hasValidTranscript(video: SavedVideo): boolean {
+  return video.transcriptStatus === 'completed' && 
+         !!video.transcript && 
+         video.transcript.trim().length >= 50;
+}
+
 // Valuta qualità trascrizione basata su lunghezza e durata video
 function evaluateTranscriptQuality(transcript: string, videoDuration: number): { level: 'excellent' | 'good' | 'poor' | 'empty'; label: string; color: string } {
   if (!transcript || transcript.trim().length === 0) {
@@ -971,7 +978,7 @@ export default function ConsultantLibraryAIBuilder() {
                     <CardDescription>{savedVideos.length} video pronti per la generazione</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {savedVideos.some(v => v.transcriptStatus === 'pending' || v.transcriptStatus === 'failed') && (
+                    {savedVideos.some(v => !hasValidTranscript(v)) && (
                       <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                         <p className="text-sm text-amber-800 dark:text-amber-200">
                           <strong>Inserisci le trascrizioni mancanti</strong> cliccando sull'icona ✏️ accanto a ogni video prima di generare le lezioni.
@@ -989,30 +996,33 @@ export default function ConsultantLibraryAIBuilder() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{video.title}</p>
                             <div className="flex gap-1.5 flex-wrap">
-                              <Badge 
-                                variant={video.transcriptStatus === 'completed' ? 'default' : video.transcriptStatus === 'pending' ? 'secondary' : 'destructive'}
-                                className={`text-xs ${video.transcriptStatus === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' : ''}`}
-                              >
-                                {video.transcriptStatus === 'completed' ? 'Trascrizione OK' : video.transcriptStatus === 'pending' ? 'Da inserire' : 'No trascrizione'}
-                              </Badge>
-                              {video.transcriptStatus === 'completed' && (() => {
+                              {(() => {
+                                const isValid = hasValidTranscript(video);
                                 const quality = evaluateTranscriptQuality(video.transcript, video.duration);
                                 return (
-                                  <Badge variant="outline" className={`text-xs ${quality.color}`}>
-                                    Qualità: {quality.label}
-                                  </Badge>
+                                  <>
+                                    <Badge 
+                                      variant={isValid ? 'default' : 'secondary'}
+                                      className={`text-xs ${!isValid ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' : ''}`}
+                                    >
+                                      {isValid ? 'Trascrizione OK' : 'Da inserire'}
+                                    </Badge>
+                                    <Badge variant="outline" className={`text-xs ${quality.color}`}>
+                                      Qualità: {quality.label}
+                                    </Badge>
+                                  </>
                                 );
                               })()}
                             </div>
                           </div>
                           <Button 
-                            variant={video.transcriptStatus === 'completed' ? 'ghost' : 'outline'}
+                            variant={hasValidTranscript(video) ? 'ghost' : 'outline'}
                             size="sm"
                             onClick={(e) => { e.stopPropagation(); handlePreviewTranscript(video); }}
-                            title={video.transcriptStatus === 'completed' ? 'Anteprima trascrizione' : 'Inserisci trascrizione'}
-                            className={video.transcriptStatus !== 'completed' ? 'border-amber-300 text-amber-700 hover:bg-amber-50' : ''}
+                            title={hasValidTranscript(video) ? 'Anteprima trascrizione' : 'Inserisci trascrizione'}
+                            className={!hasValidTranscript(video) ? 'border-amber-300 text-amber-700 hover:bg-amber-50' : ''}
                           >
-                            {video.transcriptStatus === 'completed' ? <Eye className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+                            {hasValidTranscript(video) ? <Eye className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
                           </Button>
                         </div>
                       ))}
@@ -1025,11 +1035,11 @@ export default function ConsultantLibraryAIBuilder() {
                       </Button>
                       <Button 
                         onClick={handleStartGeneration}
-                        disabled={isLoading || savedVideos.filter(v => v.transcriptStatus === 'completed').length === 0}
+                        disabled={isLoading || savedVideos.filter(v => hasValidTranscript(v)).length === 0}
                         className="bg-gradient-to-r from-purple-600 to-indigo-600"
                       >
                         <Sparkles className="w-4 h-4 mr-2" />
-                        Genera {savedVideos.filter(v => v.transcriptStatus === 'completed').length} Lezioni
+                        Genera {savedVideos.filter(v => hasValidTranscript(v)).length} Lezioni
                       </Button>
                     </div>
                   </CardContent>

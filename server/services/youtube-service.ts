@@ -617,12 +617,52 @@ export async function saveVideoWithTranscript(
       .limit(1);
     
     if (existingVideo) {
-      console.log(`♻️ [SAVE-VIDEO] Video già esistente: "${existingVideo.title}" - Riutilizzo trascrizione`);
-      return { 
-        success: true, 
-        video: existingVideo, 
-        reused: true 
-      };
+      // Verifica che la trascrizione sia valida (non vuota e con contenuto minimo)
+      const hasValidTranscript = existingVideo.transcriptStatus === 'completed' && 
+                                  existingVideo.transcript && 
+                                  existingVideo.transcript.trim().length >= 50;
+      
+      if (hasValidTranscript) {
+        console.log(`♻️ [SAVE-VIDEO] Video già esistente: "${existingVideo.title}" - Riutilizzo trascrizione (${existingVideo.transcript?.length} chars)`);
+        return { 
+          success: true, 
+          video: existingVideo, 
+          reused: true 
+        };
+      } else {
+        console.log(`⚠️ [SAVE-VIDEO] Video esistente ma trascrizione vuota: "${existingVideo.title}" - Ritento estrazione`);
+        
+        // Ritenta l'estrazione della trascrizione per il video esistente
+        const transcriptResult = await fetchTranscript(videoId, 'it', transcriptMode);
+        
+        if (transcriptResult && transcriptResult.transcript.trim().length >= 50) {
+          await db.update(youtubeVideos)
+            .set({
+              transcript: transcriptResult.transcript,
+              transcriptStatus: 'completed',
+              transcriptLanguage: 'it',
+              updatedAt: new Date(),
+            })
+            .where(eq(youtubeVideos.id, existingVideo.id));
+          
+          existingVideo.transcript = transcriptResult.transcript;
+          existingVideo.transcriptStatus = 'completed';
+          console.log(`✅ [SAVE-VIDEO] "${existingVideo.title}" - Trascrizione recuperata (${transcriptResult.transcript.length} caratteri)`);
+        } else {
+          // Mantieni status pending per inserimento manuale
+          await db.update(youtubeVideos)
+            .set({
+              transcriptStatus: 'pending',
+              updatedAt: new Date(),
+            })
+            .where(eq(youtubeVideos.id, existingVideo.id));
+          
+          existingVideo.transcriptStatus = 'pending';
+          console.log(`✍️ [SAVE-VIDEO] "${existingVideo.title}" - In attesa trascrizione manuale`);
+        }
+        
+        return { success: true, video: existingVideo, reused: true };
+      }
     }
     
     console.log(`📥 [SAVE-VIDEO] Caricando metadati per video: ${videoId} (modalità trascrizione: ${transcriptMode})`);
@@ -651,7 +691,7 @@ export async function saveVideoWithTranscript(
     console.log(`🔍 [SAVE-VIDEO] Cercando trascrizione (${transcriptMode}) per: "${metadata.title}"...`);
     const transcriptResult = await fetchTranscript(videoId, 'it', transcriptMode);
     
-    if (transcriptResult) {
+    if (transcriptResult && transcriptResult.transcript.trim().length >= 50) {
       await db.update(youtubeVideos)
         .set({
           transcript: transcriptResult.transcript,
@@ -666,7 +706,7 @@ export async function saveVideoWithTranscript(
       console.log(`✅ [SAVE-VIDEO] "${metadata.title}" - Trascrizione salvata (${transcriptResult.transcript.length} caratteri)`);
     } else {
       // Se modalità manuale, status "pending" invece di "failed"
-      const status = transcriptMode === 'manual' ? 'pending' : 'failed';
+      const status = transcriptMode === 'manual' ? 'pending' : 'pending'; // Sempre pending per inserimento manuale
       await db.update(youtubeVideos)
         .set({
           transcriptStatus: status,
@@ -675,11 +715,7 @@ export async function saveVideoWithTranscript(
         .where(eq(youtubeVideos.id, video.id));
       
       video.transcriptStatus = status;
-      if (transcriptMode === 'manual') {
-        console.log(`✍️ [SAVE-VIDEO] "${metadata.title}" - In attesa trascrizione manuale`);
-      } else {
-        console.log(`⚠️ [SAVE-VIDEO] "${metadata.title}" - Nessuna trascrizione disponibile`);
-      }
+      console.log(`✍️ [SAVE-VIDEO] "${metadata.title}" - In attesa trascrizione manuale`);
     }
     
     return { success: true, video };
