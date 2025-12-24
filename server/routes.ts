@@ -5261,6 +5261,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update video transcript manually (fallback when auto-extraction fails)
+  app.put("/api/youtube/video/:id/transcript", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const videoId = req.params.id;
+      const { transcript } = req.body;
+      
+      if (!transcript || typeof transcript !== 'string' || transcript.trim().length < 10) {
+        return res.status(400).json({ message: "La trascrizione deve contenere almeno 10 caratteri" });
+      }
+      
+      const [video] = await db.select()
+        .from(schema.youtubeVideos)
+        .where(and(
+          eq(schema.youtubeVideos.id, videoId),
+          eq(schema.youtubeVideos.consultantId, req.user!.id)
+        ));
+
+      if (!video) {
+        return res.status(404).json({ message: "Video not found or not owned by consultant" });
+      }
+
+      const [updated] = await db.update(schema.youtubeVideos)
+        .set({ 
+          transcript: transcript.trim(),
+          transcriptStatus: 'completed'
+        })
+        .where(eq(schema.youtubeVideos.id, videoId))
+        .returning();
+
+      res.json({
+        message: "Trascrizione salvata con successo",
+        transcript: updated.transcript,
+        transcriptStatus: updated.transcriptStatus,
+      });
+    } catch (error: any) {
+      console.error('Error saving transcript:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ===== UNIVERSITY MODULE ROUTES =====
 
   // Templates

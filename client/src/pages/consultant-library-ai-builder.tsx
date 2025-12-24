@@ -101,6 +101,9 @@ export default function ConsultantLibraryAIBuilder() {
   const [previewVideo, setPreviewVideo] = useState<SavedVideo | null>(null);
   const [previewTranscript, setPreviewTranscript] = useState<string>("");
   const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [isEditingTranscript, setIsEditingTranscript] = useState(false);
+  const [editedTranscript, setEditedTranscript] = useState<string>("");
+  const [savingTranscript, setSavingTranscript] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -229,13 +232,41 @@ export default function ConsultantLibraryAIBuilder() {
   const handlePreviewTranscript = async (video: SavedVideo) => {
     setPreviewVideo(video);
     setLoadingTranscript(true);
+    setIsEditingTranscript(false);
+    setEditedTranscript("");
     try {
       const data = await apiRequest("GET", `/api/youtube/video/${video.id}/transcript`);
-      setPreviewTranscript(data.transcript || "Trascrizione non disponibile");
+      const transcript = data.transcript || "";
+      setPreviewTranscript(transcript);
+      if (!transcript || data.transcriptStatus !== 'completed') {
+        setIsEditingTranscript(true);
+        setEditedTranscript(transcript);
+      }
     } catch (error) {
-      setPreviewTranscript("Errore nel caricamento della trascrizione");
+      setPreviewTranscript("");
+      setIsEditingTranscript(true);
     }
     setLoadingTranscript(false);
+  };
+
+  const handleSaveTranscript = async () => {
+    if (!previewVideo || editedTranscript.trim().length < 10) {
+      toast({ title: "Errore", description: "La trascrizione deve contenere almeno 10 caratteri", variant: "destructive" });
+      return;
+    }
+    setSavingTranscript(true);
+    try {
+      await apiRequest("PUT", `/api/youtube/video/${previewVideo.id}/transcript`, { transcript: editedTranscript });
+      setPreviewTranscript(editedTranscript);
+      setIsEditingTranscript(false);
+      setSavedVideos(prev => prev.map(v => 
+        v.id === previewVideo.id ? { ...v, transcript: editedTranscript, transcriptStatus: 'completed' } : v
+      ));
+      toast({ title: "Salvato", description: "Trascrizione salvata con successo" });
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message || "Errore nel salvataggio", variant: "destructive" });
+    }
+    setSavingTranscript(false);
   };
 
   const handleSaveDraft = async (name?: string) => {
@@ -995,25 +1026,65 @@ export default function ConsultantLibraryAIBuilder() {
         </main>
       </div>
 
-      <Dialog open={!!previewVideo} onOpenChange={(open) => !open && setPreviewVideo(null)}>
+      <Dialog open={!!previewVideo} onOpenChange={(open) => { if (!open) { setPreviewVideo(null); setIsEditingTranscript(false); } }}>
         <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Trascrizione: {previewVideo?.title}
+              {isEditingTranscript ? "Inserisci Trascrizione" : "Trascrizione"}: {previewVideo?.title}
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="h-[60vh] pr-4">
-            {loadingTranscript ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin" />
+          
+          {loadingTranscript ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          ) : isEditingTranscript ? (
+            <div className="space-y-4">
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Trascrizione non disponibile.</strong> YouTube ha bloccato l'estrazione automatica. 
+                  Puoi copiare la trascrizione da YouTube (sottotitoli) e incollarla qui.
+                </p>
               </div>
-            ) : (
-              <pre className="whitespace-pre-wrap text-sm font-mono bg-muted p-4 rounded-lg">
-                {previewTranscript}
-              </pre>
-            )}
-          </ScrollArea>
+              <Textarea
+                value={editedTranscript}
+                onChange={(e) => setEditedTranscript(e.target.value)}
+                placeholder="Incolla qui la trascrizione del video..."
+                className="min-h-[300px] font-mono text-sm"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {editedTranscript.length} caratteri (minimo 10)
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { setIsEditingTranscript(false); setEditedTranscript(""); }}>
+                    Annulla
+                  </Button>
+                  <Button 
+                    onClick={handleSaveTranscript} 
+                    disabled={savingTranscript || editedTranscript.trim().length < 10}
+                  >
+                    {savingTranscript ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                    Salva Trascrizione
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <ScrollArea className="h-[50vh] pr-4">
+                <pre className="whitespace-pre-wrap text-sm font-mono bg-muted p-4 rounded-lg">
+                  {previewTranscript}
+                </pre>
+              </ScrollArea>
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => { setIsEditingTranscript(true); setEditedTranscript(previewTranscript); }}>
+                  Modifica
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>

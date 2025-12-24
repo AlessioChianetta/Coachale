@@ -91,39 +91,66 @@ async function fetchTranscriptWithYtDlp(videoId: string, lang: string = 'it'): P
       fs.mkdirSync(tempDir, { recursive: true });
     }
     
+    // Pulisci file vecchi per questo video
+    try {
+      const oldFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId));
+      oldFiles.forEach(f => fs.unlinkSync(path.join(tempDir, f)));
+    } catch {}
+    
     const langsToTry = [lang, 'en', 'it.*', 'en.*'];
     
     for (const tryLang of langsToTry) {
-      try {
-        console.log(`   📝 yt-dlp tentativo lingua: ${tryLang}`);
-        
-        const cmd = `yt-dlp --write-auto-subs --skip-download --sub-lang "${tryLang}" --sub-format "vtt" -o "${outputPath}" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
-        
-        await execAsync(cmd, { timeout: 30000 });
-        
-        const possibleFiles = [
-          `${outputPath}.${tryLang}.vtt`,
-          `${outputPath}.it.vtt`,
-          `${outputPath}.en.vtt`,
-        ];
-        
-        const vttFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId) && f.endsWith('.vtt'));
-        
-        for (const vttFile of vttFiles) {
-          const vttPath = path.join(tempDir, vttFile);
-          const vttContent = fs.readFileSync(vttPath, 'utf-8');
-          
-          const segments = parseVttToSegments(vttContent);
-          const fullTranscript = segments.map(s => s.text).join(' ').trim();
-          
-          fs.unlinkSync(vttPath);
-          
-          if (fullTranscript.length > 50) {
-            return { transcript: fullTranscript, segments };
+      // Retry con backoff per rate limiting
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`   🔄 yt-dlp retry ${attempt + 1}/2 per lingua ${tryLang}`);
+            await new Promise(r => setTimeout(r, 2000 * attempt));
+          } else {
+            console.log(`   📝 yt-dlp tentativo lingua: ${tryLang}`);
           }
+          
+          // Usa opzioni anti-rate-limiting
+          const cmd = `yt-dlp --write-auto-subs --skip-download --sub-lang "${tryLang}" --sub-format "vtt" --extractor-args "youtube:player_skip=webpage,configs" --socket-timeout 10 -o "${outputPath}" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
+          
+          const { stdout, stderr } = await execAsync(cmd, { timeout: 45000 });
+          const output = stdout + stderr;
+          
+          // Controlla se c'è rate limiting
+          if (output.includes('429') || output.includes('Too Many Requests')) {
+            console.log(`   ⚠️ Rate limit (429) per lingua ${tryLang}`);
+            if (attempt < 1) continue; // Prova ancora
+            break; // Passa alla prossima lingua
+          }
+          
+          const vttFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId) && f.endsWith('.vtt'));
+          
+          for (const vttFile of vttFiles) {
+            const vttPath = path.join(tempDir, vttFile);
+            const vttContent = fs.readFileSync(vttPath, 'utf-8');
+            
+            const segments = parseVttToSegments(vttContent);
+            const fullTranscript = segments.map(s => s.text).join(' ').trim();
+            
+            // Pulisci file
+            try { fs.unlinkSync(vttPath); } catch {}
+            
+            if (fullTranscript.length > 50) {
+              return { transcript: fullTranscript, segments };
+            }
+          }
+          
+          break; // Esci dal retry loop se non ci sono stati errori 429
+        } catch (cmdError: any) {
+          const errMsg = cmdError.message || '';
+          if (errMsg.includes('429') || errMsg.includes('Too Many Requests')) {
+            console.log(`   ⚠️ Rate limit (429) per lingua ${tryLang}`);
+            if (attempt < 1) continue;
+          } else {
+            console.log(`   ⚠️ yt-dlp lingua ${tryLang} fallita: ${errMsg.substring(0, 60)}`);
+          }
+          break;
         }
-      } catch (cmdError: any) {
-        console.log(`   ⚠️ yt-dlp lingua ${tryLang} fallita`);
       }
     }
     
