@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -5881,3 +5881,23 @@ export const insertAiBuilderDraftSchema = createInsertSchema(aiBuilderDrafts).om
   createdAt: true,
   updatedAt: true,
 });
+
+// ===== AI USAGE STATISTICS =====
+export const aiUsageStats = pgTable("ai_usage_stats", {
+  id: serial("id").primaryKey(),
+  consultantId: varchar("consultant_id").notNull(),
+  operationType: varchar("operation_type", { length: 50 }).notNull(),
+  inputTokens: integer("input_tokens").default(0),
+  outputTokens: integer("output_tokens").default(0),
+  totalTokens: integer("total_tokens").default(0),
+  modelUsed: varchar("model_used", { length: 100 }),
+  videoId: varchar("video_id"),
+  lessonId: varchar("lesson_id"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_ai_usage_stats_consultant").on(table.consultantId),
+  operationIdx: index("idx_ai_usage_stats_operation").on(table.operationType),
+}));
+
+export type AiUsageStats = typeof aiUsageStats.$inferSelect;
+export type InsertAiUsageStats = typeof aiUsageStats.$inferInsert;

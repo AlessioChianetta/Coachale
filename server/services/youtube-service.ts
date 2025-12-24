@@ -1,6 +1,33 @@
 import { db } from "../db";
-import { youtubeVideos, consultantAiLessonSettings } from "../../shared/schema";
+import { youtubeVideos, consultantAiLessonSettings, aiUsageStats } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
+
+// Helper per tracciare uso API
+export async function trackAiUsage(params: {
+  consultantId: string;
+  operationType: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  modelUsed?: string;
+  videoId?: string;
+  lessonId?: string;
+}) {
+  try {
+    await db.insert(aiUsageStats).values({
+      consultantId: params.consultantId,
+      operationType: params.operationType,
+      inputTokens: params.inputTokens || 0,
+      outputTokens: params.outputTokens || 0,
+      totalTokens: params.totalTokens || params.inputTokens || 0 + (params.outputTokens || 0),
+      modelUsed: params.modelUsed,
+      videoId: params.videoId,
+      lessonId: params.lessonId,
+    });
+  } catch (err) {
+    console.log(`⚠️ [AI-STATS] Errore salvataggio stats:`, err);
+  }
+}
 import { YoutubeTranscript } from '@danielxceron/youtube-transcript';
 import { getSubtitles } from 'youtube-caption-extractor';
 import { exec } from 'child_process';
