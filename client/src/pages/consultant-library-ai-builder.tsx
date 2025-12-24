@@ -38,8 +38,9 @@ interface SavedVideo {
   thumbnailUrl: string;
   channelName: string;
   duration: number;
-  transcript: string;
+  transcript?: string;
   transcriptStatus: string;
+  transcriptLength?: number;
 }
 
 interface Category {
@@ -114,22 +115,41 @@ const AI_INSTRUCTION_TEMPLATES = [
 
 // Verifica se una trascrizione è valida (non vuota e con contenuto minimo)
 function hasValidTranscript(video: SavedVideo): boolean {
-  return video.transcriptStatus === 'completed' && 
-         !!video.transcript && 
-         video.transcript.trim().length >= 50;
+  // Usa transcriptLength se disponibile (dal backend ottimizzato), altrimenti controlla transcript
+  const length = video.transcriptLength ?? (video.transcript?.trim().length ?? 0);
+  return video.transcriptStatus === 'completed' && length >= 50;
 }
 
 // Valuta qualità trascrizione basata su lunghezza e durata video
-function evaluateTranscriptQuality(transcript: string, videoDuration: number): { level: 'excellent' | 'good' | 'poor' | 'empty'; label: string; color: string } {
-  if (!transcript || transcript.trim().length === 0) {
+// Accetta transcript (stringa) o transcriptLength (numero di caratteri)
+function evaluateTranscriptQuality(
+  transcriptOrLength: string | number | undefined | null, 
+  videoDuration: number
+): { level: 'excellent' | 'good' | 'poor' | 'empty'; label: string; color: string } {
+  // Determina la lunghezza in caratteri
+  let charLength: number;
+  let wordCount: number;
+  
+  if (typeof transcriptOrLength === 'number') {
+    // Se è un numero, è transcriptLength (caratteri)
+    charLength = transcriptOrLength;
+    // Stima parole: ~5 caratteri per parola in italiano
+    wordCount = Math.round(charLength / 5);
+  } else if (typeof transcriptOrLength === 'string' && transcriptOrLength.trim().length > 0) {
+    charLength = transcriptOrLength.trim().length;
+    wordCount = transcriptOrLength.split(/\s+/).length;
+  } else {
     return { level: 'empty', label: 'Vuota', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
   }
   
-  const words = transcript.split(/\s+/).length;
+  if (charLength === 0) {
+    return { level: 'empty', label: 'Vuota', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+  }
+  
   const expectedWordsPerMinute = 120; // Parlato normale ~120-150 parole/min
   const videoMinutes = Math.max(1, videoDuration / 60);
   const expectedWords = videoMinutes * expectedWordsPerMinute;
-  const ratio = words / expectedWords;
+  const ratio = wordCount / expectedWords;
   
   if (ratio >= 0.7) {
     return { level: 'excellent', label: 'Ottima', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
@@ -1239,7 +1259,7 @@ export default function ConsultantLibraryAIBuilder() {
                             <div className="flex gap-1.5 flex-wrap">
                               {(() => {
                                 const isValid = hasValidTranscript(video);
-                                const quality = evaluateTranscriptQuality(video.transcript, video.duration);
+                                const quality = evaluateTranscriptQuality(video.transcriptLength ?? video.transcript, video.duration);
                                 return (
                                   <>
                                     <Badge 
@@ -1421,7 +1441,7 @@ export default function ConsultantLibraryAIBuilder() {
                           if (!lesson) return null;
                           const sourceVideo = savedVideos.find(v => v.id === lesson.youtubeVideoId || v.videoId === lesson.youtubeVideoId);
                           const transcriptQuality = sourceVideo 
-                            ? evaluateTranscriptQuality(sourceVideo.transcript, sourceVideo.duration)
+                            ? evaluateTranscriptQuality(sourceVideo.transcriptLength ?? sourceVideo.transcript, sourceVideo.duration)
                             : null;
                           return (
                             <div 
