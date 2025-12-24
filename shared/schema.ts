@@ -1384,6 +1384,7 @@ export const libraryCategories = pgTable("library_categories", {
   description: text("description").notNull(),
   icon: text("icon").default("BookOpen"),
   color: text("color").default("blue"),
+  theme: text("theme").default("classic"),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").default(true),
   createdBy: varchar("created_by").references(() => users.id).notNull(),

@@ -62,6 +62,7 @@ import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAss
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { type LibraryCategory, type LibraryDocument, type LibrarySubcategory } from "@shared/schema";
+import { COURSE_THEMES } from "@shared/course-themes";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function ConsultantLibrary() {
@@ -94,6 +95,7 @@ export default function ConsultantLibrary() {
     description: "",
     icon: "BookOpen",
     color: "blue",
+    theme: "classic",
     sortOrder: 0,
   });
 
@@ -649,6 +651,7 @@ export default function ConsultantLibrary() {
       description: "",
       icon: "BookOpen",
       color: "blue",
+      theme: "classic",
       sortOrder: 0,
     });
   };
@@ -711,6 +714,7 @@ export default function ConsultantLibrary() {
       description: category.description,
       icon: category.icon || "BookOpen",
       color: category.color || "blue",
+      theme: (category as any).theme || "classic",
       sortOrder: category.sortOrder,
     });
     setShowCategoryDialog(true);
@@ -1641,6 +1645,34 @@ export default function ConsultantLibrary() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div>
+              <Label htmlFor="category-theme">Tema Lezioni AI</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Definisce lo stile visivo delle lezioni generate dall'AI
+              </p>
+              <Select
+                value={categoryForm.theme}
+                onValueChange={(value) => setCategoryForm({ ...categoryForm, theme: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COURSE_THEMES.map((theme) => (
+                    <SelectItem key={theme.id} value={theme.id}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-4 h-4 rounded-full border"
+                          style={{ backgroundColor: theme.preview.primary }}
+                        />
+                        <span className="font-medium">{theme.name}</span>
+                        <span className="text-xs text-muted-foreground">- {theme.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
