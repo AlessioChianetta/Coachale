@@ -1089,6 +1089,17 @@ export default function ConsultantLibrary() {
     }
   };
 
+  const getColorBorder = (color: string = 'purple') => {
+    const borders: Record<string, string> = {
+      blue: 'border-blue-300 dark:border-blue-700',
+      green: 'border-green-300 dark:border-green-700',
+      purple: 'border-purple-300 dark:border-purple-700',
+      red: 'border-red-300 dark:border-red-700',
+      yellow: 'border-yellow-300 dark:border-yellow-700',
+    };
+    return borders[color] || borders.purple;
+  };
+
   const startDeleteProcess = (categoryId: string) => {
     setDeletingCategoryId(categoryId);
     setDeleteStep(1);
@@ -1273,48 +1284,58 @@ export default function ConsultantLibrary() {
                   </Card>
                   
                   {isExpanded && categorySubcats.length > 0 && (
-                    <div className="ml-4 mt-2 space-y-1 border-l-2 border-purple-200 dark:border-purple-800 pl-3">
-                      {categorySubcats.map((subcategory: LibrarySubcategory) => {
-                        const isSubSelected = selectedCategory === category.id && selectedSubcategory === subcategory.id;
-                        const subDocCount = documents.filter((d: LibraryDocument) => d.subcategoryId === subcategory.id).length;
+                    <div className="ml-3 mt-2 space-y-1 overflow-hidden w-full">
+                      <div className={`border-l-2 pl-3 space-y-1 ${getColorBorder(category.color)}`}>
+                        {categorySubcats.map((subcategory: LibrarySubcategory) => {
+                          const isSubSelected = selectedCategory === category.id && selectedSubcategory === subcategory.id;
+                          const subDocCount = documents.filter((d: LibraryDocument) => d.subcategoryId === subcategory.id).length;
 
-                        return (
-                          <div key={subcategory.id} className="flex items-center group">
-                            <button
-                              onClick={() => handleSubcategoryClick(category.id, subcategory.id)}
-                              className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-left ${
-                                isSubSelected
-                                  ? "bg-indigo-100 text-indigo-900 dark:bg-indigo-900/30 dark:text-indigo-100"
-                                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              <Folder size={14} />
-                              <span className="truncate">{subcategory.name}</span>
-                              <Badge variant="outline" className="ml-auto text-xs px-1 py-0">
-                                {subDocCount}
-                              </Badge>
-                            </button>
-                            <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                onClick={() => handleEditSubcategory(subcategory)}
+                          return (
+                            <div key={subcategory.id} className="flex items-center group min-w-0">
+                              <button
+                                onClick={() => handleSubcategoryClick(category.id, subcategory.id)}
+                                className={`flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-all duration-200 min-w-0 ${
+                                  isSubSelected
+                                    ? "bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-900 dark:from-purple-900/40 dark:to-indigo-900/40 dark:text-purple-100 shadow-sm"
+                                    : "hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                                }`}
                               >
-                                <Edit3 size={10} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 text-destructive"
-                                onClick={() => setDeletingSubcategory(subcategory.id)}
-                              >
-                                <Trash2 size={10} />
-                              </Button>
+                                <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
+                                  isSubSelected ? 'bg-purple-200 dark:bg-purple-800' : 'bg-slate-200 dark:bg-slate-600'
+                                }`}>
+                                  <Folder size={12} className={isSubSelected ? 'text-purple-700 dark:text-purple-300' : 'text-slate-500 dark:text-slate-400'} />
+                                </div>
+                                <span className="truncate flex-1 text-left">{subcategory.name}</span>
+                                <span className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                                  isSubSelected 
+                                    ? 'bg-purple-200 text-purple-700 dark:bg-purple-800 dark:text-purple-200' 
+                                    : 'bg-slate-200 text-slate-600 dark:bg-slate-600 dark:text-slate-300'
+                                }`}>
+                                  {subDocCount}
+                                </span>
+                              </button>
+                              <div className="flex opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => handleEditSubcategory(subcategory)}
+                                >
+                                  <Edit3 size={10} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-destructive"
+                                  onClick={() => setDeletingSubcategory(subcategory.id)}
+                                >
+                                  <Trash2 size={10} />
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
