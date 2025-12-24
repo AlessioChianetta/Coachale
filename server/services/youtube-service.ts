@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { youtubeVideos, consultantAiLessonSettings } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
+import { YoutubeTranscript } from 'youtube-transcript';
 
 interface VideoMetadata {
   videoId: string;
@@ -75,71 +76,55 @@ export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata
 }
 
 export async function fetchTranscript(videoId: string, lang: string = 'it'): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
+  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId}`);
+  
   try {
-    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    const response = await fetch(watchUrl);
-    const html = await response.text();
-    
-    const captionTracksMatch = html.match(/"captionTracks":(\[.*?\])/);
-    if (!captionTracksMatch) {
-      console.log(`No captions found for video ${videoId}`);
-      return null;
-    }
-    
-    let captionTracks;
+    // Prima prova con la lingua richiesta
+    let transcriptData;
     try {
-      captionTracks = JSON.parse(captionTracksMatch[1]);
-    } catch {
-      console.error('Failed to parse caption tracks');
-      return null;
-    }
-    
-    if (!captionTracks || captionTracks.length === 0) {
-      return null;
-    }
-    
-    let selectedTrack = captionTracks.find((t: any) => t.languageCode === lang);
-    if (!selectedTrack) {
-      selectedTrack = captionTracks.find((t: any) => t.languageCode === 'en');
-    }
-    if (!selectedTrack) {
-      selectedTrack = captionTracks[0];
-    }
-    
-    const captionUrl = selectedTrack.baseUrl;
-    const captionResponse = await fetch(captionUrl);
-    const captionXml = await captionResponse.text();
-    
-    const segments: TranscriptSegment[] = [];
-    const textMatches = captionXml.matchAll(/<text start="([^"]+)" dur="([^"]+)"[^>]*>([^<]*)<\/text>/g);
-    
-    for (const match of textMatches) {
-      const text = match[3]
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/\n/g, ' ')
-        .trim();
-      
-      if (text) {
-        segments.push({
-          text,
-          start: parseFloat(match[1]),
-          duration: parseFloat(match[2]),
-        });
+      console.log(`🔍 [TRANSCRIPT] Tentativo con lingua: ${lang}`);
+      transcriptData = await YoutubeTranscript.fetchTranscript(videoId, { lang });
+    } catch (langError: any) {
+      console.log(`⚠️ [TRANSCRIPT] Lingua ${lang} non disponibile, provo inglese...`);
+      try {
+        transcriptData = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
+      } catch (enError: any) {
+        console.log(`⚠️ [TRANSCRIPT] Inglese non disponibile, provo qualsiasi lingua...`);
+        transcriptData = await YoutubeTranscript.fetchTranscript(videoId);
       }
     }
     
-    const fullTranscript = segments.map(s => s.text).join(' ');
+    if (!transcriptData || transcriptData.length === 0) {
+      console.log(`❌ [TRANSCRIPT] Nessuna trascrizione trovata per video: ${videoId}`);
+      return null;
+    }
+    
+    const segments: TranscriptSegment[] = transcriptData.map((item: any) => ({
+      text: item.text || '',
+      start: parseFloat(item.offset) / 1000 || 0,
+      duration: parseFloat(item.duration) / 1000 || 0,
+    }));
+    
+    const fullTranscript = segments.map(s => s.text).join(' ').trim();
+    
+    console.log(`✅ [TRANSCRIPT] Trascrizione trovata: ${fullTranscript.length} caratteri, ${segments.length} segmenti`);
     
     return {
       transcript: fullTranscript,
       segments,
     };
-  } catch (error) {
-    console.error('Error fetching transcript:', error);
+  } catch (error: any) {
+    console.error(`❌ [TRANSCRIPT] Errore per video ${videoId}:`, error.message || error);
+    
+    // Log più dettagliato per capire il tipo di errore
+    if (error.message?.includes('disabled')) {
+      console.log(`❌ [TRANSCRIPT] Trascrizioni disabilitate per questo video`);
+    } else if (error.message?.includes('unavailable')) {
+      console.log(`❌ [TRANSCRIPT] Video non disponibile o privato`);
+    } else if (error.message?.includes('Too Many Requests')) {
+      console.log(`❌ [TRANSCRIPT] Rate limiting da YouTube - attendi prima di riprovare`);
+    }
+    
     return null;
   }
 }
@@ -210,13 +195,18 @@ export async function saveVideoWithTranscript(
   try {
     const videoId = extractVideoId(videoUrl);
     if (!videoId) {
+      console.log(`❌ [SAVE-VIDEO] URL non valido: ${videoUrl}`);
       return { success: false, error: 'Invalid YouTube URL' };
     }
     
+    console.log(`📥 [SAVE-VIDEO] Caricando metadati per video: ${videoId}`);
     const metadata = await fetchVideoMetadata(videoId);
     if (!metadata) {
+      console.log(`❌ [SAVE-VIDEO] Impossibile ottenere metadati per: ${videoId}`);
       return { success: false, error: 'Could not fetch video metadata' };
     }
+    
+    console.log(`📝 [SAVE-VIDEO] Video: "${metadata.title}" - Salvando in database...`);
     
     const [video] = await db.insert(youtubeVideos).values({
       consultantId,
@@ -232,6 +222,7 @@ export async function saveVideoWithTranscript(
       playlistTitle,
     }).returning();
     
+    console.log(`🔍 [SAVE-VIDEO] Cercando trascrizione per: "${metadata.title}"...`);
     const transcriptResult = await fetchTranscript(videoId);
     
     if (transcriptResult) {
@@ -246,6 +237,7 @@ export async function saveVideoWithTranscript(
       
       video.transcript = transcriptResult.transcript;
       video.transcriptStatus = 'completed';
+      console.log(`✅ [SAVE-VIDEO] "${metadata.title}" - Trascrizione salvata (${transcriptResult.transcript.length} caratteri)`);
     } else {
       await db.update(youtubeVideos)
         .set({
@@ -255,11 +247,12 @@ export async function saveVideoWithTranscript(
         .where(eq(youtubeVideos.id, video.id));
       
       video.transcriptStatus = 'failed';
+      console.log(`⚠️ [SAVE-VIDEO] "${metadata.title}" - Nessuna trascrizione disponibile`);
     }
     
     return { success: true, video };
-  } catch (error) {
-    console.error('Error saving video:', error);
+  } catch (error: any) {
+    console.error(`❌ [SAVE-VIDEO] Errore:`, error.message || error);
     return { success: false, error: 'Failed to save video' };
   }
 }
