@@ -1,7 +1,7 @@
 import { db } from "../db";
 import { libraryDocuments, youtubeVideos, libraryCategories, librarySubcategories } from "../../shared/schema";
 import { eq } from "drizzle-orm";
-import { getAIProvider } from "../ai/provider-factory";
+import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL } from "../ai/provider-factory";
 import { getAiLessonSettings } from "./youtube-service";
 import { getThemeById, generateThemeInstructionsForAI, type CourseTheme } from "../../shared/course-themes";
 
@@ -68,11 +68,29 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
       return { success: false, error: 'AI provider not available' };
     }
 
+    // Seleziona modello basato sul provider (Gemini 3 per Google AI Studio)
+    const { model: selectedModel, useThinking } = getModelWithThinking(providerResult.metadata.providerName);
+    console.log(`🤖 [AI-LESSON] Usando modello: ${selectedModel} (thinking: ${useThinking})`);
+
     const startTime = Date.now();
-    const response = await providerResult.client.generateContent({
-      model: 'gemini-2.5-flash',
+    const generateConfig: any = {
+      model: selectedModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-    });
+    };
+    
+    // Aggiungi thinking config se supportato (Gemini 3)
+    if (useThinking) {
+      generateConfig.config = {
+        thinkingConfig: {
+          thinkingMode: "enabled",
+          thinkingBudget: GEMINI_3_THINKING_LEVEL === "high" ? 16000 : 
+                          GEMINI_3_THINKING_LEVEL === "medium" ? 8000 : 
+                          GEMINI_3_THINKING_LEVEL === "low" ? 4000 : 2000,
+        }
+      };
+    }
+    
+    const response = await providerResult.client.generateContent(generateConfig);
     const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
     const generatedText = response.response.text() || '';
@@ -194,7 +212,7 @@ export async function generateMultipleLessons(
   customInstructions?: string,
   level?: 'base' | 'intermedio' | 'avanzato',
   contentType?: 'text' | 'video' | 'both',
-  onProgress?: (current: number, total: number, status: string, videoTitle?: string, errorMessage?: string, logMessage?: string) => void
+  onProgress?: (current: number, total: number, status: string, videoId?: string, videoTitle?: string, errorMessage?: string, logMessage?: string) => void
 ): Promise<{ success: boolean; lessons: any[]; errors: string[] }> {
   const lessons: any[] = [];
   const errors: string[] = [];
@@ -220,7 +238,7 @@ export async function generateMultipleLessons(
       const logMsg = hasTranscript 
         ? `🔍 Trascrizione: ${transcriptLength} caratteri - Invio a Gemini...`
         : `❌ Nessuna trascrizione disponibile`;
-      onProgress(i + 1, videoIds.length, 'generating', videoTitle, undefined, logMsg);
+      onProgress(i + 1, videoIds.length, 'generating', videoId, videoTitle, undefined, logMsg);
     }
 
     const result = await generateLessonFromVideo({
@@ -237,14 +255,14 @@ export async function generateMultipleLessons(
       lessons.push(result.lesson);
       console.log(`   ✅ Lezione generata con successo`);
       if (onProgress) {
-        onProgress(i + 1, videoIds.length, 'completed', videoTitle, undefined, `✅ Lezione creata: "${result.lesson.title}"`);
+        onProgress(i + 1, videoIds.length, 'completed', videoId, videoTitle, undefined, `✅ Lezione creata: "${result.lesson.title}"`);
       }
     } else {
       const errorMsg = result.error || 'Unknown error';
       errors.push(`${videoTitle}: ${errorMsg}`);
       console.log(`   ❌ Errore: ${errorMsg}`);
       if (onProgress) {
-        onProgress(i + 1, videoIds.length, 'error', videoTitle, errorMsg, `❌ ${errorMsg}`);
+        onProgress(i + 1, videoIds.length, 'error', videoId, videoTitle, errorMsg, `❌ ${errorMsg}`);
       }
     }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, ChevronDown, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle, Layers, GripVertical } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, ChevronDown, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle, Layers, GripVertical, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1035,35 +1035,48 @@ export default function ConsultantLibraryAIBuilder() {
               setGenerationProgress(Math.round((data.current / data.total) * 100));
               setGenerationStatus(prev => [...prev, `Generando: ${data.videoTitle}`]);
               if (data.log) addLog(data.log);
+              // Usa videoId per matching affidabile (fallback a title se non disponibile)
               setGeneratingVideos(prev => {
                 const next = new Map(prev);
-                savedVideos.forEach(v => {
-                  if (v.title === data.videoTitle) {
-                    next.set(v.id, { status: 'generating' });
-                  }
-                });
+                if (data.videoId) {
+                  next.set(data.videoId, { status: 'generating' });
+                } else {
+                  savedVideos.forEach(v => {
+                    if (v.title === data.videoTitle) {
+                      next.set(v.id, { status: 'generating' });
+                    }
+                  });
+                }
                 return next;
               });
             } else if (data.type === 'video_complete') {
               if (data.log) addLog(data.log);
               setGeneratingVideos(prev => {
                 const next = new Map(prev);
-                savedVideos.forEach(v => {
-                  if (v.title === data.videoTitle) {
-                    next.set(v.id, { status: 'completed' });
-                  }
-                });
+                if (data.videoId) {
+                  next.set(data.videoId, { status: 'completed' });
+                } else {
+                  savedVideos.forEach(v => {
+                    if (v.title === data.videoTitle) {
+                      next.set(v.id, { status: 'completed' });
+                    }
+                  });
+                }
                 return next;
               });
             } else if (data.type === 'video_error') {
               if (data.log) addLog(data.log);
               setGeneratingVideos(prev => {
                 const next = new Map(prev);
-                savedVideos.forEach(v => {
-                  if (v.title === data.videoTitle) {
-                    next.set(v.id, { status: 'error', error: data.error });
-                  }
-                });
+                if (data.videoId) {
+                  next.set(data.videoId, { status: 'error', error: data.error });
+                } else {
+                  savedVideos.forEach(v => {
+                    if (v.title === data.videoTitle) {
+                      next.set(v.id, { status: 'error', error: data.error });
+                    }
+                  });
+                }
                 return next;
               });
             } else if (data.type === 'complete') {
