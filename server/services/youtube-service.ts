@@ -2,6 +2,7 @@ import { db } from "../db";
 import { youtubeVideos, consultantAiLessonSettings } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
 import { YoutubeTranscript } from '@danielxceron/youtube-transcript';
+import { getSubtitles } from 'youtube-caption-extractor';
 
 interface VideoMetadata {
   videoId: string;
@@ -76,39 +77,65 @@ export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata
 }
 
 export async function fetchTranscript(videoId: string, lang: string = 'it'): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
-  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId} (usando InnerTube API fallback)`);
+  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId}`);
   
-  const languagesToTry = [lang, 'en', undefined];
+  // METODO 1: youtube-caption-extractor (più affidabile per auto-generated)
+  console.log(`🔍 [TRANSCRIPT] Metodo 1: youtube-caption-extractor`);
+  const languagesToTry = [lang, 'en', 'it-IT', 'en-US'];
   
   for (const tryLang of languagesToTry) {
     try {
+      console.log(`   📝 Tentativo lingua: ${tryLang}`);
+      const subtitles = await getSubtitles({ videoID: videoId, lang: tryLang });
+      
+      if (subtitles && subtitles.length > 0) {
+        const segments: TranscriptSegment[] = subtitles.map((item: any) => ({
+          text: item.text || '',
+          start: parseFloat(item.start) || 0,
+          duration: parseFloat(item.dur) || 0,
+        }));
+        
+        const fullTranscript = segments.map(s => s.text).join(' ').trim();
+        
+        if (fullTranscript.length > 0) {
+          console.log(`✅ [TRANSCRIPT] Metodo 1 OK (${tryLang}): ${fullTranscript.length} caratteri, ${segments.length} segmenti`);
+          return { transcript: fullTranscript, segments };
+        }
+      }
+    } catch (error: any) {
+      console.log(`   ⚠️ Lingua ${tryLang} fallita: ${error.message?.substring(0, 80)}`);
+    }
+  }
+  
+  // METODO 2: @danielxceron/youtube-transcript (fallback con InnerTube API)
+  console.log(`🔍 [TRANSCRIPT] Metodo 2: InnerTube API fallback`);
+  const langsForMethod2 = [lang, 'en', undefined];
+  
+  for (const tryLang of langsForMethod2) {
+    try {
       const langLabel = tryLang || 'qualsiasi';
-      console.log(`🔍 [TRANSCRIPT] Tentativo con lingua: ${langLabel}`);
+      console.log(`   📝 Tentativo lingua: ${langLabel}`);
       
       const config = tryLang ? { lang: tryLang } : undefined;
       const transcriptData = await YoutubeTranscript.fetchTranscript(videoId, config);
       
-      if (!transcriptData || transcriptData.length === 0) {
-        console.log(`⚠️ [TRANSCRIPT] Nessun dato per lingua ${langLabel}, provo altra lingua...`);
-        continue;
-      }
-      
-      const segments: TranscriptSegment[] = transcriptData.map((item: any) => ({
-        text: item.text || '',
-        start: parseFloat(item.offset) / 1000 || 0,
-        duration: parseFloat(item.duration) / 1000 || 0,
-      }));
-      
-      const fullTranscript = segments.map(s => s.text).join(' ').trim();
-      
-      if (fullTranscript.length > 0) {
-        console.log(`✅ [TRANSCRIPT] Trascrizione trovata (${langLabel}): ${fullTranscript.length} caratteri, ${segments.length} segmenti`);
-        return { transcript: fullTranscript, segments };
+      if (transcriptData && transcriptData.length > 0) {
+        const segments: TranscriptSegment[] = transcriptData.map((item: any) => ({
+          text: item.text || '',
+          start: parseFloat(item.offset) / 1000 || 0,
+          duration: parseFloat(item.duration) / 1000 || 0,
+        }));
+        
+        const fullTranscript = segments.map(s => s.text).join(' ').trim();
+        
+        if (fullTranscript.length > 0) {
+          console.log(`✅ [TRANSCRIPT] Metodo 2 OK (${langLabel}): ${fullTranscript.length} caratteri, ${segments.length} segmenti`);
+          return { transcript: fullTranscript, segments };
+        }
       }
     } catch (error: any) {
       const langLabel = tryLang || 'qualsiasi';
-      console.log(`⚠️ [TRANSCRIPT] Lingua ${langLabel} fallita: ${error.message?.substring(0, 100)}`);
-      continue;
+      console.log(`   ⚠️ Lingua ${langLabel} fallita: ${error.message?.substring(0, 80)}`);
     }
   }
   
