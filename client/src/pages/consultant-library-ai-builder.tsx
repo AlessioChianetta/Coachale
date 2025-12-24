@@ -21,6 +21,7 @@ import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { apiRequest } from "@/lib/queryClient";
+import { COURSE_THEMES } from "@shared/course-themes";
 
 interface PlaylistVideo {
   videoId: string;
@@ -2446,82 +2447,135 @@ export default function ConsultantLibraryAIBuilder() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Gerarchia: Corso → Modulo → Lezioni */}
                     {generatedLessons.length > 0 && (
-                      <div className="space-y-3">
-                        {lessonOrder.map((lessonId, index) => {
-                          const lesson = generatedLessons.find((l: any) => l.id === lessonId);
-                          if (!lesson) return null;
-                          const sourceVideo = savedVideos.find(v => v.id === lesson.youtubeVideoId || v.videoId === lesson.youtubeVideoId);
-                          const transcriptQuality = sourceVideo 
-                            ? evaluateTranscriptQuality(sourceVideo.transcriptLength ?? sourceVideo.transcript, sourceVideo.duration)
-                            : null;
-                          return (
-                            <div 
-                              key={lesson.id} 
-                              className="flex items-center gap-3 p-4 rounded-lg border bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => setPreviewLesson(lesson)}
-                            >
-                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold text-sm">
-                                {index + 1}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium truncate">{lesson.title}</p>
-                                {lesson.subtitle && (
-                                  <p className="text-sm text-muted-foreground truncate">{lesson.subtitle}</p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {transcriptQuality && (
-                                  <Badge variant="outline" className={`text-xs ${transcriptQuality.color}`}>
-                                    Fonte: {transcriptQuality.label}
+                      <div className="space-y-4">
+                        {/* Corso Header */}
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-purple-100 to-indigo-100 dark:from-purple-950/40 dark:to-indigo-950/40 border-2 border-purple-300 dark:border-purple-700">
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                            <BookOpen className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs uppercase tracking-wide text-purple-600 dark:text-purple-400 font-semibold">Corso</p>
+                            <p className="text-xl font-bold text-purple-900 dark:text-purple-100">
+                              {categories.find((c: Category) => c.id === selectedCategoryId)?.name || 'Corso selezionato'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Raggruppa lezioni per modulo */}
+                        {(() => {
+                          const moduleGroups = new Map<string, any[]>();
+                          generatedLessons.forEach((lesson: any) => {
+                            const moduleId = moduleAssignments.get(lesson.id) || 'unassigned';
+                            if (!moduleGroups.has(moduleId)) {
+                              moduleGroups.set(moduleId, []);
+                            }
+                            moduleGroups.get(moduleId)!.push(lesson);
+                          });
+
+                          return Array.from(moduleGroups.entries()).map(([moduleId, lessons]) => {
+                            const module = subcategories.find((s: Subcategory) => s.id === moduleId);
+                            const moduleName = module?.name || 'Modulo non assegnato';
+                            
+                            return (
+                              <div key={moduleId} className="ml-6 border-l-4 border-indigo-300 dark:border-indigo-700 pl-4">
+                                {/* Modulo Header */}
+                                <div className="flex items-center gap-3 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 mb-3">
+                                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-indigo-500 to-blue-500 flex items-center justify-center">
+                                    <Layers className="w-5 h-5 text-white" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-xs uppercase tracking-wide text-indigo-600 dark:text-indigo-400 font-semibold">Modulo</p>
+                                    <p className="text-lg font-semibold text-indigo-900 dark:text-indigo-100">{moduleName}</p>
+                                  </div>
+                                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                                    {lessons.length} {lessons.length === 1 ? 'lezione' : 'lezioni'}
                                   </Badge>
-                                )}
-                                {lesson.level && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {lesson.level}
-                                  </Badge>
-                                )}
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <div className="flex flex-col gap-1">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 px-2"
-                                    disabled={index === 0}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setLessonOrder(prev => {
-                                        const newOrder = [...prev];
-                                        [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-                                        return newOrder;
-                                      });
-                                    }}
-                                  >
-                                    <ArrowUp className="w-3 h-3" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 px-2"
-                                    disabled={index === lessonOrder.length - 1}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setLessonOrder(prev => {
-                                        const newOrder = [...prev];
-                                        [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-                                        return newOrder;
-                                      });
-                                    }}
-                                  >
-                                    <ArrowDown className="w-3 h-3" />
-                                  </Button>
+                                </div>
+
+                                {/* Lezioni del modulo */}
+                                <div className="space-y-2 ml-4">
+                                  {lessons.map((lesson: any, idx: number) => {
+                                    const globalIndex = lessonOrder.indexOf(lesson.id);
+                                    const sourceVideo = savedVideos.find(v => v.id === lesson.youtubeVideoId || v.videoId === lesson.youtubeVideoId);
+                                    const transcriptQuality = sourceVideo 
+                                      ? evaluateTranscriptQuality(sourceVideo.transcriptLength ?? sourceVideo.transcript, sourceVideo.duration)
+                                      : null;
+                                    
+                                    return (
+                                      <div 
+                                        key={lesson.id} 
+                                        className="flex items-center gap-3 p-3 rounded-lg border bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+                                        onClick={() => setPreviewLesson(lesson)}
+                                      >
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow">
+                                          {idx + 1}
+                                        </div>
+                                        <FileText className="w-4 h-4 text-gray-400" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium truncate group-hover:text-purple-600 transition-colors">{lesson.title}</p>
+                                          {lesson.subtitle && (
+                                            <p className="text-sm text-muted-foreground truncate">{lesson.subtitle}</p>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          {transcriptQuality && (
+                                            <Badge variant="outline" className={`text-xs ${transcriptQuality.color}`}>
+                                              {transcriptQuality.label}
+                                            </Badge>
+                                          )}
+                                          {lesson.level && (
+                                            <Badge variant="outline" className="text-xs">
+                                              {lesson.level}
+                                            </Badge>
+                                          )}
+                                          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Eye className="w-4 h-4" />
+                                          </Button>
+                                          <div className="flex flex-col gap-0.5">
+                                            <Button 
+                                              variant="ghost" 
+                                              size="sm" 
+                                              className="h-5 px-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                              disabled={globalIndex === 0}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setLessonOrder(prev => {
+                                                  const newOrder = [...prev];
+                                                  [newOrder[globalIndex - 1], newOrder[globalIndex]] = [newOrder[globalIndex], newOrder[globalIndex - 1]];
+                                                  return newOrder;
+                                                });
+                                              }}
+                                            >
+                                              <ArrowUp className="w-3 h-3" />
+                                            </Button>
+                                            <Button 
+                                              variant="ghost" 
+                                              size="sm" 
+                                              className="h-5 px-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                              disabled={globalIndex === lessonOrder.length - 1}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setLessonOrder(prev => {
+                                                  const newOrder = [...prev];
+                                                  [newOrder[globalIndex], newOrder[globalIndex + 1]] = [newOrder[globalIndex + 1], newOrder[globalIndex]];
+                                                  return newOrder;
+                                                });
+                                              }}
+                                            >
+                                              <ArrowDown className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          });
+                        })()}
                       </div>
                     )}
 
@@ -2582,59 +2636,130 @@ export default function ConsultantLibraryAIBuilder() {
         </main>
       </div>
 
+      {/* Lesson Preview Dialog - Stile Email Journey Professionale */}
       <Dialog open={!!previewLesson} onOpenChange={(open) => { if (!open) setPreviewLesson(null); }}>
-        <DialogContent className="max-w-4xl max-h-[85vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Anteprima Lezione
-            </DialogTitle>
-          </DialogHeader>
-          {previewLesson && (
-            <ScrollArea className="h-[60vh] pr-4">
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-2xl font-bold">{previewLesson.title}</h2>
-                  {previewLesson.subtitle && (
-                    <p className="text-lg text-muted-foreground mt-1">{previewLesson.subtitle}</p>
-                  )}
-                </div>
-                
-                <div className="flex gap-2 flex-wrap">
-                  {previewLesson.level && <Badge variant="outline">{previewLesson.level}</Badge>}
-                  {previewLesson.contentType && <Badge variant="secondary">{previewLesson.contentType}</Badge>}
-                  {previewLesson.estimatedDuration && (
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {previewLesson.estimatedDuration} min
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          {previewLesson && (() => {
+            const course = categories.find((c: Category) => c.id === selectedCategoryId);
+            const module = subcategories.find((s: Subcategory) => s.id === moduleAssignments.get(previewLesson.id));
+            const theme = COURSE_THEMES.find(t => t.id === (course as any)?.theme) || COURSE_THEMES[0];
+            
+            return (
+              <div className="flex flex-col h-full max-h-[90vh]">
+                {/* Header Gradient - Stile Email Journey */}
+                <div 
+                  className="px-8 py-6 text-center text-white flex-shrink-0"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${theme.preview.primary} 0%, ${theme.preview.accent} 100%)` 
+                  }}
+                >
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Badge variant="secondary" className="bg-white/20 text-white border-0">
+                      {previewLesson.contentType === 'video' ? '🎥 Video' : previewLesson.contentType === 'both' ? '📚 Misto' : '📄 Testo'}
                     </Badge>
+                    {previewLesson.level && (
+                      <Badge variant="secondary" className="bg-white/20 text-white border-0">
+                        {previewLesson.level}
+                      </Badge>
+                    )}
+                    {previewLesson.estimatedDuration && (
+                      <Badge variant="secondary" className="bg-white/20 text-white border-0 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {previewLesson.estimatedDuration} min
+                      </Badge>
+                    )}
+                  </div>
+                  <h1 className="text-2xl font-bold tracking-tight mb-1">
+                    {previewLesson.title}
+                  </h1>
+                  {previewLesson.subtitle && (
+                    <p className="text-white/90 text-base">
+                      {previewLesson.subtitle}
+                    </p>
                   )}
                 </div>
 
-                {previewLesson.videoUrl && (
-                  <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                    <iframe 
-                      src={`https://www.youtube.com/embed/${previewLesson.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1] || ''}`}
-                      className="w-full h-full"
-                      allowFullScreen
+                {/* Breadcrumb */}
+                <div className="px-8 py-3 bg-slate-50 dark:bg-slate-900/50 border-b flex items-center gap-2 text-sm text-muted-foreground flex-shrink-0">
+                  <FolderOpen size={14} className="text-primary" />
+                  <span className="font-medium">{course?.name || 'Corso'}</span>
+                  {module && (
+                    <>
+                      <ChevronRight size={14} />
+                      <span>{module.name}</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Contenuto Principale - Stile Email Journey */}
+                <ScrollArea className="flex-1 overflow-auto">
+                  <div className="px-8 py-6">
+                    {/* Video Embed se presente */}
+                    {previewLesson.videoUrl && (
+                      <div className="mb-6 rounded-xl overflow-hidden shadow-lg">
+                        <div className="aspect-video bg-black">
+                          <iframe
+                            src={`https://www.youtube.com/embed/${previewLesson.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1] || ''}`}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contenuto HTML con stili professionali */}
+                    <div 
+                      className="prose prose-slate dark:prose-invert max-w-none
+                        prose-headings:tracking-tight
+                        prose-h1:text-2xl prose-h1:font-bold prose-h1:mb-4 prose-h1:mt-8 prose-h1:text-slate-900 dark:prose-h1:text-slate-100
+                        prose-h2:text-xl prose-h2:font-bold prose-h2:mb-3 prose-h2:mt-6 prose-h2:text-slate-800 dark:prose-h2:text-slate-200
+                        prose-h3:text-lg prose-h3:font-semibold prose-h3:mb-2 prose-h3:mt-5 prose-h3:text-slate-700 dark:prose-h3:text-slate-300
+                        prose-p:text-base prose-p:leading-7 prose-p:mb-4 prose-p:text-slate-600 dark:prose-p:text-slate-300
+                        prose-strong:font-bold prose-strong:text-slate-900 dark:prose-strong:text-slate-100
+                        prose-a:text-blue-600 prose-a:font-semibold prose-a:underline
+                        prose-ul:my-4 prose-ul:space-y-2
+                        prose-li:text-slate-600 dark:prose-li:text-slate-300
+                        [&_.bg-blue-50]:bg-blue-50 [&_.bg-blue-50]:dark:bg-blue-950/30
+                        [&_.bg-green-50]:bg-green-50 [&_.bg-green-50]:dark:bg-green-950/30
+                        [&_.bg-amber-50]:bg-amber-50 [&_.bg-amber-50]:dark:bg-amber-950/30
+                        [&_.bg-purple-50]:bg-purple-50 [&_.bg-purple-50]:dark:bg-purple-950/30
+                        [&_.bg-slate-100]:bg-slate-100 [&_.bg-slate-100]:dark:bg-slate-800/50
+                        [&_.border-l-4]:border-l-4
+                        [&_.rounded-lg]:rounded-lg [&_.rounded-xl]:rounded-xl [&_.rounded-2xl]:rounded-2xl
+                        [&_.p-4]:p-4 [&_.p-5]:p-5 [&_.p-6]:p-6
+                        [&_.my-5]:my-5 [&_.my-6]:my-6 [&_.my-8]:my-8
+                        [&_.mb-2]:mb-2 [&_.mb-3]:mb-3 [&_.mb-4]:mb-4
+                        [&_.mt-6]:mt-6 [&_.mt-8]:mt-8
+                        [&_.font-bold]:font-bold [&_.font-semibold]:font-semibold
+                        [&_.text-lg]:text-lg [&_.text-xl]:text-xl [&_.text-2xl]:text-2xl
+                        [&_.flex]:flex [&_.items-center]:items-center [&_.items-start]:items-start
+                        [&_.gap-2]:gap-2 [&_.gap-3]:gap-3
+                        [&_.space-y-2]:space-y-2
+                      "
+                      dangerouslySetInnerHTML={{ __html: previewLesson.content || '' }}
                     />
                   </div>
-                )}
+                </ScrollArea>
 
-                <div className="prose dark:prose-invert max-w-none">
-                  <div dangerouslySetInnerHTML={{ __html: previewLesson.content?.replace(/\n/g, '<br/>') || '' }} />
+                {/* Footer - Stile Email Journey */}
+                <div className="px-8 py-4 bg-slate-50 dark:bg-slate-900/50 border-t text-center flex-shrink-0">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold">Coachale Platform</span> — La tua crescita, il nostro impegno
+                  </p>
+                  {previewLesson.tags && previewLesson.tags.length > 0 && (
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      {previewLesson.tags.map((tag: string, idx: number) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          #{tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                {previewLesson.tags && previewLesson.tags.length > 0 && (
-                  <div className="flex gap-2 flex-wrap pt-4 border-t">
-                    {previewLesson.tags.map((tag: string, idx: number) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">#{tag}</Badge>
-                    ))}
-                  </div>
-                )}
               </div>
-            </ScrollArea>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

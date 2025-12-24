@@ -95,6 +95,7 @@ export default function ConsultantLibrary() {
   const [deleteStep, setDeleteStep] = useState(0);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<LibraryDocument | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -777,12 +778,7 @@ export default function ConsultantLibrary() {
       });
       if (!response.ok) throw new Error("Failed to fetch document");
       const document = await response.json();
-
-      // Qui potresti aprire un dialog di visualizzazione o navigare a una pagina dettaglio
-      toast({
-        title: "Lezione caricata",
-        description: `Lezione: ${document.title}`,
-      });
+      setViewingDocument(document);
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -3269,7 +3265,138 @@ export default function ConsultantLibrary() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Lesson Preview Dialog - Stile Email Journey Professionale */}
+      <Dialog open={!!viewingDocument} onOpenChange={() => setViewingDocument(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          {viewingDocument && (() => {
+            const course = categories.find((c: LibraryCategory) => c.id === viewingDocument.categoryId);
+            const module = subcategories.find((s: LibrarySubcategory) => s.id === viewingDocument.subcategoryId);
+            const theme = COURSE_THEMES.find(t => t.id === (course as any)?.theme) || COURSE_THEMES[0];
+            
+            return (
+              <div className="flex flex-col h-full max-h-[90vh]">
+                {/* Header Gradient - Stile Email Journey */}
+                <div 
+                  className="px-8 py-6 text-center text-white flex-shrink-0"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${theme.preview.primary} 0%, ${theme.preview.accent} 100%)` 
+                  }}
+                >
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Badge variant="secondary" className="bg-white/20 text-white border-0">
+                      {(viewingDocument as any).contentType === 'video' ? '🎥 Video' : (viewingDocument as any).contentType === 'both' ? '📚 Misto' : '📄 Testo'}
+                    </Badge>
+                    <Badge variant="secondary" className="bg-white/20 text-white border-0">
+                      {viewingDocument.level}
+                    </Badge>
+                    {viewingDocument.estimatedDuration && (
+                      <Badge variant="secondary" className="bg-white/20 text-white border-0 flex items-center gap-1">
+                        <Clock size={12} />
+                        {viewingDocument.estimatedDuration} min
+                      </Badge>
+                    )}
+                  </div>
+                  <h1 className="text-2xl font-bold tracking-tight mb-1">
+                    {viewingDocument.title}
+                  </h1>
+                  {viewingDocument.subtitle && (
+                    <p className="text-white/90 text-base">
+                      {viewingDocument.subtitle}
+                    </p>
+                  )}
+                </div>
+
+                {/* Breadcrumb */}
+                <div className="px-8 py-3 bg-slate-50 dark:bg-slate-900/50 border-b flex items-center gap-2 text-sm text-muted-foreground flex-shrink-0">
+                  <Folder size={14} className="text-primary" />
+                  <span className="font-medium">{course?.name || 'Corso'}</span>
+                  {module && (
+                    <>
+                      <ChevronRight size={14} />
+                      <span>{module.name}</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Contenuto Principale - Stile Email Journey */}
+                <ScrollArea className="flex-1 overflow-auto">
+                  <div className="px-8 py-6">
+                    {/* Video Embed se presente */}
+                    {((viewingDocument as any).contentType === 'video' || (viewingDocument as any).contentType === 'both') && (viewingDocument as any).videoUrl && (
+                      <div className="mb-6 rounded-xl overflow-hidden shadow-lg">
+                        <div className="aspect-video bg-black">
+                          <iframe
+                            src={`https://www.youtube.com/embed/${extractYouTubeId((viewingDocument as any).videoUrl)}`}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contenuto HTML con stili professionali inline */}
+                    <div 
+                      className="prose prose-slate dark:prose-invert max-w-none
+                        prose-headings:tracking-tight
+                        prose-h1:text-2xl prose-h1:font-bold prose-h1:mb-4 prose-h1:mt-8 prose-h1:text-slate-900 dark:prose-h1:text-slate-100
+                        prose-h2:text-xl prose-h2:font-bold prose-h2:mb-3 prose-h2:mt-6 prose-h2:text-slate-800 dark:prose-h2:text-slate-200
+                        prose-h3:text-lg prose-h3:font-semibold prose-h3:mb-2 prose-h3:mt-5 prose-h3:text-slate-700 dark:prose-h3:text-slate-300
+                        prose-p:text-base prose-p:leading-7 prose-p:mb-4 prose-p:text-slate-600 dark:prose-p:text-slate-300
+                        prose-strong:font-bold prose-strong:text-slate-900 dark:prose-strong:text-slate-100
+                        prose-a:text-blue-600 prose-a:font-semibold prose-a:underline
+                        prose-ul:my-4 prose-ul:space-y-2
+                        prose-li:text-slate-600 dark:prose-li:text-slate-300
+                        [&_.bg-blue-50]:bg-blue-50 [&_.bg-blue-50]:dark:bg-blue-950/30
+                        [&_.bg-green-50]:bg-green-50 [&_.bg-green-50]:dark:bg-green-950/30
+                        [&_.bg-amber-50]:bg-amber-50 [&_.bg-amber-50]:dark:bg-amber-950/30
+                        [&_.bg-purple-50]:bg-purple-50 [&_.bg-purple-50]:dark:bg-purple-950/30
+                        [&_.bg-slate-100]:bg-slate-100 [&_.bg-slate-100]:dark:bg-slate-800/50
+                        [&_.border-l-4]:border-l-4
+                        [&_.rounded-lg]:rounded-lg [&_.rounded-xl]:rounded-xl [&_.rounded-2xl]:rounded-2xl
+                        [&_.p-4]:p-4 [&_.p-5]:p-5 [&_.p-6]:p-6
+                        [&_.my-5]:my-5 [&_.my-6]:my-6 [&_.my-8]:my-8
+                        [&_.mb-2]:mb-2 [&_.mb-3]:mb-3 [&_.mb-4]:mb-4
+                        [&_.mt-6]:mt-6 [&_.mt-8]:mt-8
+                        [&_.font-bold]:font-bold [&_.font-semibold]:font-semibold
+                        [&_.text-lg]:text-lg [&_.text-xl]:text-xl [&_.text-2xl]:text-2xl
+                        [&_.flex]:flex [&_.items-center]:items-center [&_.items-start]:items-start
+                        [&_.gap-2]:gap-2 [&_.gap-3]:gap-3
+                        [&_.space-y-2]:space-y-2
+                      "
+                      dangerouslySetInnerHTML={{ __html: viewingDocument.content || '' }}
+                    />
+                  </div>
+                </ScrollArea>
+
+                {/* Footer - Stile Email Journey */}
+                <div className="px-8 py-4 bg-slate-50 dark:bg-slate-900/50 border-t text-center flex-shrink-0">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold">Coachale Platform</span> — La tua crescita, il nostro impegno
+                  </p>
+                  {viewingDocument.tags && viewingDocument.tags.length > 0 && (
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      {viewingDocument.tags.map((tag: string, idx: number) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       <ConsultantAIAssistant />
     </div>
   );
+}
+
+function extractYouTubeId(url: string): string {
+  const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^&\n?#]+)/);
+  return match?.[1] || '';
 }
