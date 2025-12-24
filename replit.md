@@ -54,6 +54,13 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Merge Strategy**: New extracted values only overwrite if non-null, preserving previously captured data
   - **Auto-Cleanup**: State marked completed after successful booking creation, auto-expires after 24h of inactivity
   - **Integration**: Applied to both WhatsApp conversations and public link flows via `extractBookingDataFromConversation()` options
+- **AI Course Builder (Dec 2025)**: 4-step wizard to generate lessons from YouTube videos. Features:
+  - **YouTube Transcript Extraction**: 3-layer fallback system - yt-dlp (Method 0, industry standard) → youtube-caption-extractor → InnerTube API
+  - **Manual Transcript Fallback**: When auto-extraction fails (e.g., YouTube 429 rate limiting), consultants can paste transcripts manually via dialog editor
+  - **VTT Parser**: Custom parser for yt-dlp VTT output with segment deduplication
+  - **AI Lesson Generation**: Gemini generates lessons preserving speaker's original tone, style, and expressions
+  - **SSE Progress Tracking**: Real-time generation progress via Server-Sent Events
+  - **Draft Management**: Save/restore wizard state as drafts
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
