@@ -51,6 +51,7 @@ import {
   ChevronRight,
   ChevronDown,
   Menu,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -79,7 +80,6 @@ export default function ConsultantLibrary() {
   const [editingCategory, setEditingCategory] = useState<LibraryCategory | undefined>();
   const [editingSubcategory, setEditingSubcategory] = useState<LibrarySubcategory | undefined>();
   const [editingDocument, setEditingDocument] = useState<LibraryDocument | undefined>();
-  const [deletingCategory, setDeletingCategory] = useState<string | undefined>();
   const [deletingSubcategory, setDeletingSubcategory] = useState<string | undefined>();
   const [deletingDocument, setDeletingDocument] = useState<string | undefined>();
   const [searchTerm, setSearchTerm] = useState("");
@@ -91,6 +91,9 @@ export default function ConsultantLibrary() {
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [navSidebarOpen, setNavSidebarOpen] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(0);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -206,14 +209,11 @@ export default function ConsultantLibrary() {
     },
   });
 
-  // Fetch subcategories
+  // Fetch ALL subcategories (unfiltered to correctly show module counts in sidebar)
   const { data: subcategories = [] } = useQuery({
-    queryKey: ["/api/library/subcategories", selectedCategory],
+    queryKey: ["/api/library/subcategories"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedCategory !== "all") params.append("categoryId", selectedCategory);
-
-      const response = await fetch(`/api/library/subcategories?${params.toString()}`, {
+      const response = await fetch("/api/library/subcategories", {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch subcategories");
@@ -343,7 +343,7 @@ export default function ConsultantLibrary() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/library/categories"] });
-      setDeletingCategory(undefined);
+      setDeletingCategoryId(null);
       toast({
         title: "Corso eliminato",
         description: "Il corso è stato eliminato con successo",
@@ -1078,6 +1078,42 @@ export default function ConsultantLibrary() {
     setShowAssignmentDialog(true);
   };
 
+  const getColorGradient = (color: string) => {
+    switch (color) {
+      case 'blue': return 'from-blue-500 to-blue-600';
+      case 'green': return 'from-green-500 to-green-600';
+      case 'purple': return 'from-purple-500 to-purple-600';
+      case 'red': return 'from-red-500 to-red-600';
+      case 'yellow': return 'from-yellow-500 to-yellow-600';
+      default: return 'from-purple-500 to-indigo-600';
+    }
+  };
+
+  const startDeleteProcess = (categoryId: string) => {
+    setDeletingCategoryId(categoryId);
+    setDeleteStep(1);
+    setDeleteConfirmText("");
+  };
+
+  const cancelDeleteProcess = () => {
+    setDeletingCategoryId(null);
+    setDeleteStep(0);
+    setDeleteConfirmText("");
+  };
+
+  const proceedDeleteStep = () => {
+    if (deleteStep < 3) {
+      setDeleteStep(deleteStep + 1);
+    }
+  };
+
+  const confirmFinalDelete = () => {
+    if (deleteConfirmText.toUpperCase() === "CANCELLA" && deletingCategoryId) {
+      deleteCategoryMutation.mutate(deletingCategoryId);
+      cancelDeleteProcess();
+    }
+  };
+
   const toggleCourseExpansion = (courseId: string) => {
     setExpandedCourses(prev => {
       const newSet = new Set(prev);
@@ -1149,10 +1185,10 @@ export default function ConsultantLibrary() {
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-2">
+        <div className="p-3">
           <button
             onClick={handleAllCoursesClick}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-3 ${
               selectedCategory === "all"
                 ? "bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100"
                 : "hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -1162,60 +1198,82 @@ export default function ConsultantLibrary() {
             Tutti i corsi
           </button>
 
-          <div className="mt-2 space-y-1">
+          <div className="space-y-3">
             {categories.map((category: LibraryCategory) => {
               const categorySubcats = subcategories.filter((s: LibrarySubcategory) => s.categoryId === category.id);
               const isExpanded = expandedCourses.has(category.id);
               const isSelected = selectedCategory === category.id && selectedSubcategory === "all";
+              const lessonCount = documents.filter((d: LibraryDocument) => d.categoryId === category.id).length;
 
               return (
-                <div key={category.id} className="group/course">
-                  <div className="flex items-center">
-                    {categorySubcats.length > 0 && (
-                      <button
-                        onClick={() => toggleCourseExpansion(category.id)}
-                        className="p-1 hover:bg-muted rounded"
-                      >
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleCourseClick(category.id)}
-                      className={`flex-1 flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                        isSelected
-                          ? "bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100"
-                          : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                      } ${categorySubcats.length === 0 ? "ml-5" : ""}`}
-                      title={category.name}
-                    >
-                      <Folder size={16} className={`text-${category.color || 'blue'}-500 flex-shrink-0`} />
-                      <span className="truncate flex-1">{category.name}</span>
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0 flex-shrink-0">
-                        {documents.filter((d: LibraryDocument) => d.categoryId === category.id).length}
-                      </Badge>
-                    </button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover/course:opacity-100 transition-opacity">
-                          <Settings size={12} />
+                <div key={category.id} className="mb-3">
+                  <Card className={`overflow-hidden transition-all duration-200 hover:shadow-md ${
+                    isSelected ? 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'bg-white dark:bg-slate-800'
+                  }`}>
+                    <div className={`h-1.5 bg-gradient-to-r ${getColorGradient(category.color || 'purple')}`} />
+                    
+                    <CardContent className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        {categorySubcats.length > 0 && (
+                          <button 
+                            onClick={() => toggleCourseExpansion(category.id)} 
+                            className="p-1 hover:bg-muted rounded transition-colors"
+                          >
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => handleCourseClick(category.id)} 
+                          className={`flex-1 text-left ${categorySubcats.length === 0 ? 'ml-6' : ''}`}
+                        >
+                          <h4 className="font-semibold text-sm line-clamp-2">{category.name}</h4>
+                        </button>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                        <span className="flex items-center gap-1">
+                          <FileText size={12} />
+                          {lessonCount} lezioni
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Folder size={12} />
+                          {categorySubcats.length} moduli
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-0.5 sm:gap-1 pt-2 border-t flex-wrap">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleEditCategory(category)}
+                          className="flex-1 h-7 text-xs hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/30 min-w-0 px-1 sm:px-2"
+                        >
+                          <Edit3 size={12} className="sm:mr-1" /> 
+                          <span className="hidden sm:inline">Modifica</span>
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                          <Edit3 size={14} className="mr-2" /> Modifica
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAssignCategory(category)}>
-                          <Users size={14} className="mr-2" /> Assegna
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDeletingCategory(category.id)} className="text-destructive">
-                          <Trash2 size={14} className="mr-2" /> Elimina
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleAssignCategory(category)}
+                          className="flex-1 h-7 text-xs hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-900/30 min-w-0 px-1 sm:px-2"
+                        >
+                          <Users size={12} className="sm:mr-1" /> 
+                          <span className="hidden sm:inline">Assegna</span>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => startDeleteProcess(category.id)}
+                          className="h-7 w-7 p-0 hover:bg-red-100 text-destructive dark:hover:bg-red-900/30"
+                        >
+                          <Trash2 size={12} />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
                   {isExpanded && categorySubcats.length > 0 && (
-                    <div className="ml-6 mt-1 space-y-1 border-l-2 border-muted pl-2">
+                    <div className="ml-4 mt-2 space-y-1 border-l-2 border-purple-200 dark:border-purple-800 pl-3">
                       {categorySubcats.map((subcategory: LibrarySubcategory) => {
                         const isSubSelected = selectedCategory === category.id && selectedSubcategory === subcategory.id;
                         const subDocCount = documents.filter((d: LibraryDocument) => d.subcategoryId === subcategory.id).length;
@@ -2972,26 +3030,75 @@ export default function ConsultantLibrary() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Category Dialog */}
-      <AlertDialog open={!!deletingCategory} onOpenChange={() => setDeletingCategory(undefined)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Conferma Eliminazione Corso</AlertDialogTitle>
-            <AlertDialogDescription>
-              Sei sicuro di voler eliminare questo corso? Questa azione non può essere annullata. Verranno rimosse anche tutte le lezioni associate.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deletingCategory && deleteCategoryMutation.mutate(deletingCategory)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Elimina
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* 4-Level Delete Confirmation Dialog */}
+      <Dialog open={deleteStep > 0} onOpenChange={(open) => !open && cancelDeleteProcess()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle size={20} />
+              {deleteStep === 1 && "Conferma Eliminazione"}
+              {deleteStep === 2 && "Sei Assolutamente Sicuro?"}
+              {deleteStep === 3 && "Ultimo Avvertimento!"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {deleteStep === 1 && (
+              <p className="text-muted-foreground">
+                Stai per eliminare questo corso. Sei sicuro di voler procedere?
+              </p>
+            )}
+            {deleteStep === 2 && (
+              <div className="space-y-2">
+                <p className="text-muted-foreground">
+                  Questa azione è <strong className="text-destructive">IRREVERSIBILE</strong>.
+                </p>
+                <p className="text-muted-foreground">
+                  Tutte le lezioni e i moduli associati verranno eliminati permanentemente.
+                </p>
+              </div>
+            )}
+            {deleteStep === 3 && (
+              <div className="space-y-4">
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-300 font-medium">
+                    ATTENZIONE: Stai per eliminare DEFINITIVAMENTE questo corso con tutte le sue lezioni e moduli!
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="delete-confirm">Scrivi <strong className="text-destructive">CANCELLA</strong> per confermare:</Label>
+                  <Input
+                    id="delete-confirm"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="Scrivi CANCELLA"
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={cancelDeleteProcess}>
+              Annulla
+            </Button>
+            {deleteStep < 3 ? (
+              <Button variant="destructive" onClick={proceedDeleteStep}>
+                {deleteStep === 1 ? "Sì, continua" : "Confermo, continua"}
+              </Button>
+            ) : (
+              <Button 
+                variant="destructive" 
+                onClick={confirmFinalDelete}
+                disabled={deleteConfirmText.toUpperCase() !== "CANCELLA"}
+              >
+                Elimina Definitivamente
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Document Dialog */}
       <AlertDialog open={!!deletingDocument} onOpenChange={() => setDeletingDocument(undefined)}>
