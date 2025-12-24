@@ -82,6 +82,14 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Course Theme System (Dec 2025)**: 5 visual themes (Business, Wellness, Creative, Tech, Classic) with theme-specific Tailwind CSS styling. Each theme defines colors for 7 element types: section titles, key points boxes, examples, notes, action items, summaries, and quotes. Themes are stored per-course in `libraryCategories.theme`.
   - **Step 4.5 Module Organization (Dec 2025)**: Intermediate wizard step for organizing lessons into modules before publishing. Supports two scenarios: create new modules (single or multiple) or select existing modules. AI-powered module name suggestions via POST `/api/library/ai-suggest-modules` analyze video titles to suggest logical groupings.
   - **Styled HTML Lesson Output (Dec 2025)**: AI generates lessons as styled HTML instead of Markdown, with theme-specific Tailwind classes for rich visual presentation. Uses `shared/course-themes.ts` for theme definitions and `generateThemeInstructionsForAI()` to build AI prompts.
+  - **Hierarchical Step 5 View (Dec 2025)**: Review screen displays lessons in a visual tree structure: Course (purple gradient header) → Modules (indigo header with lesson count badge) → Lessons (tree-like left border with numbered badges). Lessons grouped under their assigned modules with proper ordering.
+  - **Email Journey Style Preview (Dec 2025)**: Professional lesson preview dialogs in both Library and AI Builder, styled like Email Journey templates:
+    - Theme-based gradient headers using COURSE_THEMES colors
+    - Breadcrumb navigation showing Course > Module path
+    - ScrollArea with Tailwind prose classes for HTML rendering
+    - Support for embedded YouTube videos when videoUrl present
+    - Footer with Coachale branding and lesson tags
+    - Dark mode support for all theme box styles (blue, green, amber, purple backgrounds)
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
