@@ -1186,10 +1186,11 @@ export default function ConsultantLibrary() {
                           ? "bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100"
                           : "hover:bg-muted text-muted-foreground hover:text-foreground"
                       } ${categorySubcats.length === 0 ? "ml-5" : ""}`}
+                      title={category.name}
                     >
-                      <Folder size={16} className={`text-${category.color || 'blue'}-500`} />
-                      <span className="truncate">{category.name}</span>
-                      <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0">
+                      <Folder size={16} className={`text-${category.color || 'blue'}-500 flex-shrink-0`} />
+                      <span className="truncate flex-1">{category.name}</span>
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0 flex-shrink-0">
                         {documents.filter((d: LibraryDocument) => d.categoryId === category.id).length}
                       </Badge>
                     </button>
@@ -1359,7 +1360,7 @@ export default function ConsultantLibrary() {
 
           <div className="flex-1 flex overflow-hidden">
             {!isMobile && (
-              <div className="w-72 border-r bg-muted/30 hidden md:flex flex-col">
+              <div className="w-80 min-w-80 border-r bg-muted/30 hidden md:flex flex-col">
                 <NavigationSidebar />
               </div>
             )}
@@ -1408,7 +1409,7 @@ export default function ConsultantLibrary() {
                     )}
                   </Card>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="flex flex-col gap-3">
                     {filteredDocuments.map((document: LibraryDocument, index: number) => {
                       const course = categories.find((c: LibraryCategory) => c.id === document.categoryId);
                       const subcategory = document.subcategoryId
@@ -1417,80 +1418,74 @@ export default function ConsultantLibrary() {
                       const sortOrder = (document as any).sortOrder;
 
                       return (
-                        <Card key={document.id} className="group relative hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex flex-col bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700 overflow-hidden">
-                          {/* Order Badge */}
-                          <div className="absolute top-3 left-3 z-10">
-                            <div className="w-8 h-8 rounded-full bg-primary/90 text-primary-foreground flex items-center justify-center text-sm font-bold shadow-lg">
-                              {sortOrder ?? index + 1}
+                        <Card key={document.id} className="group hover:shadow-lg transition-all duration-200 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                          <CardContent className="p-4 flex items-center gap-4">
+                            {/* Order Badge */}
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center text-sm font-bold shadow-md">
+                                {sortOrder ?? index + 1}
+                              </div>
                             </div>
-                          </div>
-                          
-                          <CardContent className="p-5 flex-1 flex flex-col relative">
-                            {/* Header badges */}
-                            <div className="flex items-start justify-between mb-4 pl-10">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge className={`${getLevelBadgeColor(document.level)} text-xs font-medium px-2.5 py-0.5`}>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-base text-slate-800 dark:text-slate-100 truncate">
+                                  {document.title}
+                                </h3>
+                                <Badge className={`${getLevelBadgeColor(document.level)} text-xs font-medium px-2 py-0 flex-shrink-0`}>
                                   {document.level}
                                 </Badge>
-                                <Badge variant="secondary" className="text-xs px-2">
-                                  {(document as any).contentType === 'video' ? '🎥 Video' : (document as any).contentType === 'both' ? '📚 Misto' : '📄 Testo'}
+                                <Badge variant="secondary" className="text-xs px-2 flex-shrink-0">
+                                  {(document as any).contentType === 'video' ? '🎥' : (document as any).contentType === 'both' ? '📚' : '📄'}
                                 </Badge>
+                                {document.estimatedDuration && (
+                                  <Badge variant="outline" className="text-xs flex items-center gap-1 flex-shrink-0">
+                                    <Clock size={10} />
+                                    {document.estimatedDuration}m
+                                  </Badge>
+                                )}
                               </div>
-                              {document.estimatedDuration && (
-                                <Badge variant="outline" className="text-xs flex items-center gap-1 bg-white dark:bg-slate-800">
-                                  <Clock size={12} />
-                                  {document.estimatedDuration} min
-                                </Badge>
+                              {document.subtitle && (
+                                <p className="text-sm text-muted-foreground truncate">{document.subtitle}</p>
                               )}
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                                <Folder size={11} className="text-primary/70" />
+                                <span className="truncate">
+                                  {course?.name}{subcategory ? ` > ${subcategory.name}` : ''}
+                                </span>
+                              </div>
                             </div>
 
-                            {/* Title & Subtitle */}
-                            <h3 className="font-semibold text-base mb-2 line-clamp-2 text-slate-800 dark:text-slate-100">
-                              {document.title}
-                            </h3>
-                            {document.subtitle && (
-                              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{document.subtitle}</p>
-                            )}
-
-                            {/* Course Path */}
-                            <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <Folder size={12} className="text-primary/70" />
-                                  <span className="truncate max-w-[180px]">
-                                    {course?.name}{subcategory ? ` > ${subcategory.name}` : ''}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-0.5">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleViewDocument(document.id)}
-                                    className="h-8 w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600"
-                                    title="Visualizza"
-                                  >
-                                    <Eye size={15} />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditDocument(document)}
-                                    className="h-8 w-8 p-0 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-600"
-                                    title="Modifica"
-                                  >
-                                    <Edit3 size={15} />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setDeletingDocument(document.id)}
-                                    className="h-8 w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 text-destructive"
-                                    title="Elimina"
-                                  >
-                                    <Trash2 size={15} />
-                                  </Button>
-                                </div>
-                              </div>
+                            {/* Actions */}
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleViewDocument(document.id)}
+                                className="h-9 w-9 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600"
+                                title="Visualizza"
+                              >
+                                <Eye size={16} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditDocument(document)}
+                                className="h-9 w-9 p-0 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-600"
+                                title="Modifica"
+                              >
+                                <Edit3 size={16} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeletingDocument(document.id)}
+                                className="h-9 w-9 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 text-destructive"
+                                title="Elimina"
+                              >
+                                <Trash2 size={16} />
+                              </Button>
                             </div>
                           </CardContent>
                         </Card>
