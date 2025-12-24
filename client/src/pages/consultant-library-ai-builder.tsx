@@ -73,43 +73,104 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Template istruzioni AI predefiniti
-const AI_INSTRUCTION_TEMPLATES = [
+// Istruzioni base fisse per lo stile del relatore
+const BASE_AI_INSTRUCTIONS = `Trasforma la trascrizione del video in una lezione formativa completa e coinvolgente.
+
+STILE E TONO:
+- Mantieni ESATTAMENTE il tono, le espressioni e il modo di parlare del relatore
+- Preserva il suo linguaggio autentico, i suoi modi di dire e le sue metafore
+- Non parafrasare eccessivamente: la "voce" del relatore deve rimanere riconoscibile
+- Se il relatore usa un linguaggio informale o colloquiale, mantienilo
+
+STRUTTURA DELLA LEZIONE:
+- Organizza il contenuto in sezioni logiche con titoli chiari
+- Inizia con un'introduzione che contestualizza l'argomento
+- Sviluppa ogni concetto chiave in modo approfondito
+- Concludi con un riepilogo dei punti principali
+
+FORMATTAZIONE:
+- Usa titoli e sottotitoli per strutturare il testo (## per sezioni, ### per sottosezioni)
+- Evidenzia in grassetto i concetti chiave e le parole importanti
+- Utilizza elenchi puntati per liste di elementi o passaggi`;
+
+// Aggiunte opzionali per migliorare le istruzioni AI
+const AI_ENHANCEMENT_OPTIONS = [
   {
-    id: "speaker-style",
-    name: "Stile del Relatore",
-    description: "Mantiene tono e stile originale",
-    instructions: "Mantieni il tono e lo stile del relatore nel video. Usa le sue espressioni e il suo modo di spiegare i concetti. Struttura il testo in sezioni chiare e leggibili."
+    id: "add-examples",
+    label: "Aggiungi esempi pratici",
+    description: "Crea esempi concreti usando il linguaggio del relatore",
+    instruction: `
+ESEMPI PRATICI:
+- Aggiungi esempi pratici e concreti per ogni concetto importante
+- Crea scenari realistici che il lettore può immaginare facilmente
+- Usa lo stesso linguaggio e stile del relatore negli esempi
+- Gli esempi devono essere applicabili nella vita quotidiana`
   },
   {
-    id: "formal",
-    name: "Stile Formale",
-    description: "Tono professionale e accademico",
-    instructions: "Riscrivi il contenuto con un tono formale e professionale. Usa un linguaggio preciso e tecnico. Evita espressioni colloquiali e mantieni un registro accademico."
+    id: "expand-concepts",
+    label: "Espandi i concetti",
+    description: "Approfondisce le idee chiave con più dettagli",
+    instruction: `
+ESPANSIONE DEI CONCETTI:
+- Approfondisci ogni concetto chiave con spiegazioni dettagliate
+- Aggiungi contesto e background dove necessario
+- Spiega il "perché" dietro ogni idea, non solo il "cosa"
+- Collega i concetti tra loro mostrando le relazioni`
   },
   {
-    id: "conversational",
-    name: "Stile Colloquiale",
-    description: "Amichevole e accessibile",
-    instructions: "Riscrivi il contenuto con un tono amichevole e colloquiale. Usa un linguaggio semplice e accessibile. Mantieni un ritmo scorrevole come se stessi parlando con un amico."
+    id: "lengthen-content",
+    label: "Allunga il contenuto",
+    description: "Rende la lezione più lunga e dettagliata",
+    instruction: `
+CONTENUTO ESTESO:
+- Sviluppa ogni sezione in modo più completo e dettagliato
+- Aggiungi introduzioni e transizioni tra le sezioni
+- Includi riflessioni e approfondimenti aggiuntivi
+- La lezione deve essere completa e approfondita`
   },
   {
-    id: "bullet-points",
-    name: "Lista Puntata",
-    description: "Punti chiave in formato lista",
-    instructions: "Estrai i concetti chiave e presentali in formato lista puntata. Ogni punto deve essere chiaro e conciso. Usa sottotitoli per organizzare le sezioni."
+    id: "key-points",
+    label: "Box punti chiave",
+    description: "Aggiunge riquadri con i concetti essenziali",
+    instruction: `
+PUNTI CHIAVE:
+- Alla fine di ogni sezione, aggiungi un riquadro "Punti Chiave" con 3-5 bullet points
+- I punti chiave devono essere concisi e memorizzabili
+- Usa icone o emoji per rendere i punti più visivi
+- Esempio: "📌 Punto chiave: [concetto in una frase]"`
   },
   {
-    id: "step-by-step",
-    name: "Passo per Passo",
-    description: "Tutorial con passi numerati",
-    instructions: "Struttura il contenuto come un tutorial passo per passo. Numera ogni passaggio e spiega chiaramente cosa fare. Includi esempi pratici dove possibile."
+    id: "action-steps",
+    label: "Passi d'azione",
+    description: "Aggiunge esercizi e azioni concrete da fare",
+    instruction: `
+PASSI D'AZIONE:
+- Aggiungi una sezione "Cosa fare adesso" con azioni concrete
+- Numera i passi in ordine di esecuzione
+- Ogni passo deve essere specifico e realizzabile
+- Includi suggerimenti su come iniziare subito`
   },
   {
-    id: "summary",
-    name: "Riassunto Conciso",
-    description: "Sintesi breve e essenziale",
-    instructions: "Crea un riassunto conciso del contenuto. Mantieni solo i punti essenziali. La lezione deve essere breve ma completa."
+    id: "reflection-questions",
+    label: "Domande di riflessione",
+    description: "Aggiunge domande per far riflettere il lettore",
+    instruction: `
+DOMANDE DI RIFLESSIONE:
+- Inserisci domande stimolanti per far riflettere il lettore
+- Le domande devono essere personali e applicabili alla vita del lettore
+- Esempio: "Fermati un momento a pensare: quando ti è successo qualcosa di simile?"
+- Aggiungi spazi di pausa per la riflessione personale`
+  },
+  {
+    id: "summary-box",
+    label: "Riepilogo finale",
+    description: "Aggiunge un riassunto strutturato a fine lezione",
+    instruction: `
+RIEPILOGO FINALE:
+- Alla fine della lezione, crea un riepilogo strutturato
+- Elenca i 5-7 concetti più importanti appresi
+- Aggiungi una frase motivazionale finale nello stile del relatore
+- Il riepilogo deve permettere una rapida revisione della lezione`
   }
 ];
 
@@ -175,9 +236,8 @@ export default function ConsultantLibraryAIBuilder() {
   const [playlistVideos, setPlaylistVideos] = useState<PlaylistVideo[]>([]);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [savedVideos, setSavedVideos] = useState<SavedVideo[]>([]);
-  const [aiInstructions, setAiInstructions] = useState(
-    "Mantieni il tono e lo stile del relatore nel video. Usa le sue espressioni e il suo modo di spiegare i concetti. Struttura il testo in sezioni chiare e leggibili."
-  );
+  const [aiInstructions, setAiInstructions] = useState(BASE_AI_INSTRUCTIONS);
+  const [selectedEnhancements, setSelectedEnhancements] = useState<string[]>([]);
   const [contentType, setContentType] = useState<"text" | "video" | "both">("both");
   const [level, setLevel] = useState<"base" | "intermedio" | "avanzato">("base");
   const [transcriptMode, setTranscriptMode] = useState<"auto" | "gemini" | "subtitles">("auto");
@@ -241,12 +301,36 @@ export default function ConsultantLibraryAIBuilder() {
   }, [unpublishedLessons, generatedLessons.length]);
 
   useEffect(() => {
-    if (aiSettings && aiSettings.writingInstructions) {
-      setAiInstructions(aiSettings.writingInstructions);
+    if (aiSettings) {
       if (aiSettings.defaultContentType) setContentType(aiSettings.defaultContentType);
       if (aiSettings.defaultLevel) setLevel(aiSettings.defaultLevel);
     }
   }, [aiSettings]);
+
+  // Combina istruzioni base + aggiunte selezionate
+  useEffect(() => {
+    let combinedInstructions = BASE_AI_INSTRUCTIONS;
+    
+    for (const enhancementId of selectedEnhancements) {
+      const enhancement = AI_ENHANCEMENT_OPTIONS.find(e => e.id === enhancementId);
+      if (enhancement) {
+        combinedInstructions += "\n" + enhancement.instruction;
+      }
+    }
+    
+    setAiInstructions(combinedInstructions);
+  }, [selectedEnhancements]);
+
+  // Handler per toggle enhancement
+  const handleEnhancementToggle = (enhancementId: string, checked: boolean) => {
+    setSelectedEnhancements(prev => {
+      if (checked) {
+        return [...prev, enhancementId];
+      } else {
+        return prev.filter(id => id !== enhancementId);
+      }
+    });
+  };
 
   const fetchVideoMutation = useMutation({
     mutationFn: async (url: string) => {
@@ -1204,74 +1288,103 @@ export default function ConsultantLibraryAIBuilder() {
                       <Settings className="w-5 h-5" />
                       Impostazioni AI
                     </CardTitle>
-                    <CardDescription>Come deve scrivere l'AI?</CardDescription>
+                    <CardDescription>Configura come l'AI trasformerà il video in lezione</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <Label>Stile di scrittura</Label>
-                      <Select onValueChange={(templateId) => {
-                        const template = AI_INSTRUCTION_TEMPLATES.find(t => t.id === templateId);
-                        if (template) setAiInstructions(template.instructions);
-                      }}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Scegli un template..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {AI_INSTRUCTION_TEMPLATES.map(template => (
-                            <SelectItem key={template.id} value={template.id}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{template.name}</span>
-                                <span className="text-xs text-muted-foreground">{template.description}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Istruzioni per l'AI</Label>
-                      <Textarea
-                        rows={5}
-                        value={aiInstructions}
-                        onChange={(e) => setAiInstructions(e.target.value)}
-                        placeholder="Es: Mantieni il tono informale del relatore..."
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Seleziona un template sopra o scrivi le tue istruzioni personalizzate
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border border-purple-200 dark:border-purple-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-5 h-5 text-purple-600" />
+                        <h3 className="font-semibold text-purple-900 dark:text-purple-100">Stile del Relatore</h3>
+                      </div>
+                      <p className="text-sm text-purple-700 dark:text-purple-300">
+                        L'AI mantiene il tono, le espressioni e lo stile comunicativo originale del relatore nel video. 
+                        La lezione suonerà come se fosse scritta direttamente da chi parla.
                       </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Formato lezione</Label>
-                      <Select value={contentType} onValueChange={(v: any) => setContentType(v)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="both">Testo + Video embeddato</SelectItem>
-                          <SelectItem value="text">Solo testo</SelectItem>
-                          <SelectItem value="video">Solo video</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-3">
+                      <Label className="text-base font-semibold">Aggiunte opzionali</Label>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Seleziona gli elementi extra che vuoi aggiungere alla lezione
+                      </p>
+                      <div className="grid gap-3">
+                        {AI_ENHANCEMENT_OPTIONS.map((enhancement) => (
+                          <div 
+                            key={enhancement.id}
+                            className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                              selectedEnhancements.includes(enhancement.id) 
+                                ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700' 
+                                : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                            }`}
+                            onClick={() => handleEnhancementToggle(enhancement.id, !selectedEnhancements.includes(enhancement.id))}
+                          >
+                            <Checkbox 
+                              id={enhancement.id}
+                              checked={selectedEnhancements.includes(enhancement.id)}
+                              onCheckedChange={(checked) => handleEnhancementToggle(enhancement.id, !!checked)}
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1">
+                              <label htmlFor={enhancement.id} className="font-medium cursor-pointer">
+                                {enhancement.label}
+                              </label>
+                              <p className="text-sm text-muted-foreground">{enhancement.description}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Livello</Label>
-                      <Select value={level} onValueChange={(v: any) => setLevel(v)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="base">Base</SelectItem>
-                          <SelectItem value="intermedio">Intermedio</SelectItem>
-                          <SelectItem value="avanzato">Avanzato</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center justify-between">
+                        <Label>Istruzioni AI (anteprima)</Label>
+                        <Badge variant="outline" className="text-xs">
+                          {selectedEnhancements.length} aggiunte attive
+                        </Badge>
+                      </div>
+                      <Textarea
+                        rows={6}
+                        value={aiInstructions}
+                        onChange={(e) => setAiInstructions(e.target.value)}
+                        className="font-mono text-xs"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Le istruzioni si aggiornano automaticamente. Puoi modificarle manualmente se necessario.
+                      </p>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <Label>Salva come impostazioni predefinite</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Formato lezione</Label>
+                        <Select value={contentType} onValueChange={(v: any) => setContentType(v)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="both">Testo + Video</SelectItem>
+                            <SelectItem value="text">Solo testo</SelectItem>
+                            <SelectItem value="video">Solo video</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Livello</Label>
+                        <Select value={level} onValueChange={(v: any) => setLevel(v)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="base">Base</SelectItem>
+                            <SelectItem value="intermedio">Intermedio</SelectItem>
+                            <SelectItem value="avanzato">Avanzato</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <Label className="text-sm">Salva come predefinite</Label>
                       <Switch checked={saveSettings} onCheckedChange={setSaveSettings} />
                     </div>
                   </CardContent>
