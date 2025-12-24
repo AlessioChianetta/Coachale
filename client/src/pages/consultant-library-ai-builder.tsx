@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,6 +59,7 @@ const steps = [
   { id: 2, title: "Selezione", icon: ListVideo },
   { id: 3, title: "Impostazioni", icon: Settings },
   { id: 4, title: "Genera", icon: Sparkles },
+  { id: 5, title: "Riepilogo", icon: FileText },
 ];
 
 function formatDuration(seconds: number): string {
@@ -69,6 +70,27 @@ function formatDuration(seconds: number): string {
     return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
   return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Valuta qualità trascrizione basata su lunghezza e durata video
+function evaluateTranscriptQuality(transcript: string, videoDuration: number): { level: 'excellent' | 'good' | 'poor' | 'empty'; label: string; color: string } {
+  if (!transcript || transcript.trim().length === 0) {
+    return { level: 'empty', label: 'Vuota', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+  }
+  
+  const words = transcript.split(/\s+/).length;
+  const expectedWordsPerMinute = 120; // Parlato normale ~120-150 parole/min
+  const videoMinutes = Math.max(1, videoDuration / 60);
+  const expectedWords = videoMinutes * expectedWordsPerMinute;
+  const ratio = words / expectedWords;
+  
+  if (ratio >= 0.7) {
+    return { level: 'excellent', label: 'Ottima', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
+  } else if (ratio >= 0.4) {
+    return { level: 'good', label: 'Buona', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' };
+  } else {
+    return { level: 'poor', label: 'Incompleta', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' };
+  }
 }
 
 export default function ConsultantLibraryAIBuilder() {
@@ -109,6 +131,8 @@ export default function ConsultantLibraryAIBuilder() {
   const [showDrafts, setShowDrafts] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const [previewLesson, setPreviewLesson] = useState<any>(null);
+  const [lessonOrder, setLessonOrder] = useState<string[]>([]);
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/library/categories"],
@@ -461,6 +485,7 @@ export default function ConsultantLibraryAIBuilder() {
               setGeneratedLessons(data.lessons);
               setGenerationErrors(data.errors);
               setGenerationProgress(100);
+              setLessonOrder(data.lessons.map((l: any) => l.id));
               savedVideos.filter(v => selectedVideoIds.includes(v.id)).forEach(v => {
                 setGeneratingVideos(prev => {
                   const next = new Map(prev);
@@ -473,6 +498,7 @@ export default function ConsultantLibraryAIBuilder() {
               });
               queryClient.invalidateQueries({ queryKey: ["/api/library/documents"] });
               toast({ title: "Lezioni generate!", description: `${data.lessons.length} lezioni create` });
+              setTimeout(() => setCurrentStep(5), 1500);
             } else if (data.type === 'error') {
               toast({ title: "Errore", description: data.message, variant: "destructive" });
             }
@@ -897,12 +923,22 @@ export default function ConsultantLibraryAIBuilder() {
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{video.title}</p>
-                            <Badge 
-                              variant={video.transcriptStatus === 'completed' ? 'default' : video.transcriptStatus === 'pending' ? 'secondary' : 'destructive'}
-                              className={`text-xs ${video.transcriptStatus === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' : ''}`}
-                            >
-                              {video.transcriptStatus === 'completed' ? 'Trascrizione OK' : video.transcriptStatus === 'pending' ? 'Da inserire' : 'No trascrizione'}
-                            </Badge>
+                            <div className="flex gap-1.5 flex-wrap">
+                              <Badge 
+                                variant={video.transcriptStatus === 'completed' ? 'default' : video.transcriptStatus === 'pending' ? 'secondary' : 'destructive'}
+                                className={`text-xs ${video.transcriptStatus === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' : ''}`}
+                              >
+                                {video.transcriptStatus === 'completed' ? 'Trascrizione OK' : video.transcriptStatus === 'pending' ? 'Da inserire' : 'No trascrizione'}
+                              </Badge>
+                              {video.transcriptStatus === 'completed' && (() => {
+                                const quality = evaluateTranscriptQuality(video.transcript, video.duration);
+                                return (
+                                  <Badge variant="outline" className={`text-xs ${quality.color}`}>
+                                    Qualità: {quality.label}
+                                  </Badge>
+                                );
+                              })()}
+                            </div>
                           </div>
                           <Button 
                             variant={video.transcriptStatus === 'completed' ? 'ghost' : 'outline'}
@@ -1040,6 +1076,113 @@ export default function ConsultantLibraryAIBuilder() {
 
                   {generationProgress >= 100 && (
                     <div className="flex items-center justify-center gap-4 pt-4">
+                      <p className="text-sm text-muted-foreground animate-pulse">
+                        Preparazione riepilogo lezioni...
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Check className="w-5 h-5 text-green-500" />
+                      Riepilogo Lezioni Generate
+                    </CardTitle>
+                    <CardDescription>
+                      {generatedLessons.length} lezioni create con successo. Clicca su una lezione per vedere l'anteprima.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {generatedLessons.length > 0 && (
+                      <div className="space-y-3">
+                        {lessonOrder.map((lessonId, index) => {
+                          const lesson = generatedLessons.find((l: any) => l.id === lessonId);
+                          if (!lesson) return null;
+                          return (
+                            <div 
+                              key={lesson.id} 
+                              className="flex items-center gap-3 p-4 rounded-lg border bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                              onClick={() => setPreviewLesson(lesson)}
+                            >
+                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold text-sm">
+                                {index + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate">{lesson.title}</p>
+                                {lesson.subtitle && (
+                                  <p className="text-sm text-muted-foreground truncate">{lesson.subtitle}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {lesson.level && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {lesson.level}
+                                  </Badge>
+                                )}
+                                <Button variant="ghost" size="sm">
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <div className="flex flex-col gap-1">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 px-2"
+                                    disabled={index === 0}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setLessonOrder(prev => {
+                                        const newOrder = [...prev];
+                                        [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+                                        return newOrder;
+                                      });
+                                    }}
+                                  >
+                                    <ArrowUp className="w-3 h-3" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 px-2"
+                                    disabled={index === lessonOrder.length - 1}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setLessonOrder(prev => {
+                                        const newOrder = [...prev];
+                                        [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+                                        return newOrder;
+                                      });
+                                    }}
+                                  >
+                                    <ArrowDown className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {generationErrors.length > 0 && (
+                      <div className="mt-4 p-4 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200">
+                        <h4 className="font-semibold text-red-600 mb-2 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" />
+                          {generationErrors.length} errori durante la generazione
+                        </h4>
+                        <ul className="text-sm text-red-600 space-y-1">
+                          {generationErrors.map((err, idx) => (
+                            <li key={idx}>{err}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
                       <Button 
                         variant="outline"
                         onClick={() => {
@@ -1053,21 +1196,83 @@ export default function ConsultantLibraryAIBuilder() {
                           setGenerationProgress(0);
                           setGenerationLogs([]);
                           setGeneratingVideos(new Map());
+                          setLessonOrder([]);
                         }}
                       >
+                        <Plus className="w-4 h-4 mr-2" />
                         Crea Altre Lezioni
                       </Button>
-                      <Button onClick={() => setLocation("/consultant/library")}>
-                        Vai al Corso
+                      <Button 
+                        onClick={() => setLocation("/consultant/library")}
+                        className="bg-gradient-to-r from-green-600 to-emerald-600"
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        Vai alla Libreria
                       </Button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
         </main>
       </div>
+
+      <Dialog open={!!previewLesson} onOpenChange={(open) => { if (!open) setPreviewLesson(null); }}>
+        <DialogContent className="max-w-4xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Anteprima Lezione
+            </DialogTitle>
+          </DialogHeader>
+          {previewLesson && (
+            <ScrollArea className="h-[60vh] pr-4">
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-2xl font-bold">{previewLesson.title}</h2>
+                  {previewLesson.subtitle && (
+                    <p className="text-lg text-muted-foreground mt-1">{previewLesson.subtitle}</p>
+                  )}
+                </div>
+                
+                <div className="flex gap-2 flex-wrap">
+                  {previewLesson.level && <Badge variant="outline">{previewLesson.level}</Badge>}
+                  {previewLesson.contentType && <Badge variant="secondary">{previewLesson.contentType}</Badge>}
+                  {previewLesson.estimatedDuration && (
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {previewLesson.estimatedDuration} min
+                    </Badge>
+                  )}
+                </div>
+
+                {previewLesson.videoUrl && (
+                  <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                    <iframe 
+                      src={`https://www.youtube.com/embed/${previewLesson.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1] || ''}`}
+                      className="w-full h-full"
+                      allowFullScreen
+                    />
+                  </div>
+                )}
+
+                <div className="prose dark:prose-invert max-w-none">
+                  <div dangerouslySetInnerHTML={{ __html: previewLesson.content?.replace(/\n/g, '<br/>') || '' }} />
+                </div>
+
+                {previewLesson.tags && previewLesson.tags.length > 0 && (
+                  <div className="flex gap-2 flex-wrap pt-4 border-t">
+                    {previewLesson.tags.map((tag: string, idx: number) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">#{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!previewVideo} onOpenChange={(open) => { if (!open) { setPreviewVideo(null); setIsEditingTranscript(false); } }}>
         <DialogContent className="max-w-3xl max-h-[80vh]">
