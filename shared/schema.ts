@@ -5851,3 +5851,33 @@ export const insertConsultantAiLessonSettingsSchema = createInsertSchema(consult
   createdAt: true,
   updatedAt: true,
 });
+
+export const aiBuilderDrafts = pgTable("ai_builder_drafts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  youtubeUrl: text("youtube_url"),
+  inputType: varchar("input_type", { length: 20 }).default("video"),
+  selectedCategoryId: varchar("selected_category_id"),
+  selectedSubcategoryId: varchar("selected_subcategory_id"),
+  selectedVideoIds: jsonb("selected_video_ids").default([]),
+  playlistVideos: jsonb("playlist_videos").default([]),
+  savedVideoIds: jsonb("saved_video_ids").default([]),
+  aiInstructions: text("ai_instructions"),
+  contentType: varchar("content_type", { length: 20 }).default("both"),
+  level: varchar("level", { length: 20 }).default("base"),
+  currentStep: integer("current_step").default(1),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_ai_builder_drafts_consultant").on(table.consultantId),
+}));
+
+export type AiBuilderDraft = typeof aiBuilderDrafts.$inferSelect;
+export type InsertAiBuilderDraft = typeof aiBuilderDrafts.$inferInsert;
+
+export const insertAiBuilderDraftSchema = createInsertSchema(aiBuilderDrafts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
