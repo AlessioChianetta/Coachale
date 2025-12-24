@@ -456,7 +456,7 @@ async function fetchTranscriptWithSubtitles(videoId: string, lang: string = 'it'
 
 // ==================== FUNZIONE PRINCIPALE ====================
 
-export type TranscriptMode = 'auto' | 'gemini' | 'subtitles';
+export type TranscriptMode = 'auto' | 'gemini' | 'subtitles' | 'manual';
 
 export async function fetchTranscript(
   videoId: string, 
@@ -464,6 +464,12 @@ export async function fetchTranscript(
   mode: TranscriptMode = 'auto'
 ): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
   console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId} (modalità: ${mode})`);
+  
+  // Modalità manuale: non fare nessuna estrazione automatica
+  if (mode === 'manual') {
+    console.log(`✍️ [TRANSCRIPT] Modalità manuale: l'utente inserirà la trascrizione`);
+    return null;
+  }
   
   if (mode === 'gemini' || mode === 'auto') {
     // METODO 1: Gemini (download audio + trascrizione AI) - Qualità premium
@@ -606,15 +612,21 @@ export async function saveVideoWithTranscript(
       video.transcriptStatus = 'completed';
       console.log(`✅ [SAVE-VIDEO] "${metadata.title}" - Trascrizione salvata (${transcriptResult.transcript.length} caratteri)`);
     } else {
+      // Se modalità manuale, status "pending" invece di "failed"
+      const status = transcriptMode === 'manual' ? 'pending' : 'failed';
       await db.update(youtubeVideos)
         .set({
-          transcriptStatus: 'failed',
+          transcriptStatus: status,
           updatedAt: new Date(),
         })
         .where(eq(youtubeVideos.id, video.id));
       
-      video.transcriptStatus = 'failed';
-      console.log(`⚠️ [SAVE-VIDEO] "${metadata.title}" - Nessuna trascrizione disponibile`);
+      video.transcriptStatus = status;
+      if (transcriptMode === 'manual') {
+        console.log(`✍️ [SAVE-VIDEO] "${metadata.title}" - In attesa trascrizione manuale`);
+      } else {
+        console.log(`⚠️ [SAVE-VIDEO] "${metadata.title}" - Nessuna trascrizione disponibile`);
+      }
     }
     
     return { success: true, video };

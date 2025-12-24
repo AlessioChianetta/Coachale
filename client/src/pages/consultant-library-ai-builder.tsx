@@ -677,6 +677,7 @@ export default function ConsultantLibraryAIBuilder() {
                           <SelectItem value="auto">🤖 Automatico (Gemini → Sottotitoli)</SelectItem>
                           <SelectItem value="gemini">🎵 Solo Gemini AI (qualità premium)</SelectItem>
                           <SelectItem value="subtitles">📝 Solo Sottotitoli (più veloce)</SelectItem>
+                          <SelectItem value="manual">✍️ Inserisci Manualmente</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
