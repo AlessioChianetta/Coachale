@@ -738,6 +738,113 @@ export async function saveVideoWithTranscript(
   }
 }
 
+// ==================== STREAMING VERSION ====================
+
+export async function saveVideoWithTranscriptStream(
+  consultantId: string,
+  videoUrl: string,
+  playlistId?: string,
+  playlistTitle?: string,
+  transcriptMode: TranscriptMode = 'auto',
+  onProgress?: (status: string, message?: string) => void
+): Promise<{ success: boolean; video?: any; error?: string; reused?: boolean }> {
+  try {
+    const videoId = extractVideoId(videoUrl);
+    if (!videoId) {
+      return { success: false, error: 'URL non valido' };
+    }
+    
+    const [existingVideo] = await db.select()
+      .from(youtubeVideos)
+      .where(and(
+        eq(youtubeVideos.consultantId, consultantId),
+        eq(youtubeVideos.videoId, videoId)
+      ))
+      .limit(1);
+    
+    if (existingVideo) {
+      const hasValidTranscript = existingVideo.transcriptStatus === 'completed' && 
+                                  existingVideo.transcript && 
+                                  existingVideo.transcript.trim().length >= 50;
+      
+      if (hasValidTranscript) {
+        return { success: true, video: existingVideo, reused: true };
+      } else {
+        onProgress?.('transcribing', 'Ritento estrazione trascrizione...');
+        const transcriptResult = await fetchTranscript(videoId, 'it', transcriptMode);
+        
+        if (transcriptResult && transcriptResult.transcript.trim().length >= 50) {
+          await db.update(youtubeVideos)
+            .set({
+              transcript: transcriptResult.transcript,
+              transcriptStatus: 'completed',
+              transcriptLanguage: 'it',
+              updatedAt: new Date(),
+            })
+            .where(eq(youtubeVideos.id, existingVideo.id));
+          
+          existingVideo.transcript = transcriptResult.transcript;
+          existingVideo.transcriptStatus = 'completed';
+        } else {
+          await db.update(youtubeVideos)
+            .set({ transcriptStatus: 'pending', updatedAt: new Date() })
+            .where(eq(youtubeVideos.id, existingVideo.id));
+          existingVideo.transcriptStatus = 'pending';
+        }
+        
+        return { success: true, video: existingVideo, reused: true };
+      }
+    }
+    
+    onProgress?.('downloading', 'Scaricando metadati video...');
+    const metadata = await fetchVideoMetadata(videoId);
+    if (!metadata) {
+      return { success: false, error: 'Impossibile ottenere metadati' };
+    }
+    
+    const [video] = await db.insert(youtubeVideos).values({
+      consultantId,
+      videoId,
+      videoUrl,
+      title: metadata.title,
+      description: metadata.description,
+      thumbnailUrl: metadata.thumbnailUrl,
+      channelName: metadata.channelName,
+      duration: metadata.duration,
+      transcriptStatus: 'fetching',
+      playlistId,
+      playlistTitle,
+    }).returning();
+    
+    onProgress?.('transcribing', 'Estraendo trascrizione con Gemini AI...');
+    const transcriptResult = await fetchTranscript(videoId, 'it', transcriptMode);
+    
+    if (transcriptResult && transcriptResult.transcript.trim().length >= 50) {
+      await db.update(youtubeVideos)
+        .set({
+          transcript: transcriptResult.transcript,
+          transcriptStatus: 'completed',
+          transcriptLanguage: 'it',
+          updatedAt: new Date(),
+        })
+        .where(eq(youtubeVideos.id, video.id));
+      
+      video.transcript = transcriptResult.transcript;
+      video.transcriptStatus = 'completed';
+    } else {
+      await db.update(youtubeVideos)
+        .set({ transcriptStatus: 'pending', updatedAt: new Date() })
+        .where(eq(youtubeVideos.id, video.id));
+      video.transcriptStatus = 'pending';
+    }
+    
+    return { success: true, video };
+  } catch (error: any) {
+    console.error(`❌ [SAVE-VIDEO-STREAM] Errore:`, error.message || error);
+    return { success: false, error: error.message || 'Errore durante il salvataggio' };
+  }
+}
+
 // ==================== SETTINGS ====================
 
 export async function getAiLessonSettings(consultantId: string) {

@@ -4949,6 +4949,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // SSE endpoint for saving playlist videos with real-time updates
+  app.post("/api/youtube/playlist/save-stream", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const send = (data: any) => {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      if (res.flush) (res as any).flush();
+    };
+
+    try {
+      const { videos, playlistId, playlistTitle, transcriptMode = 'auto' } = req.body;
+      if (!videos || !Array.isArray(videos)) {
+        send({ type: 'error', error: 'Videos array is required' });
+        return res.end();
+      }
+
+      const { saveVideoWithTranscriptStream } = await import("./services/youtube-service");
+      
+      const savedVideos = [];
+      const errors = [];
+      const total = videos.length;
+
+      for (let i = 0; i < videos.length; i++) {
+        const video = videos[i];
+        send({ type: 'progress', current: i + 1, total });
+        send({ type: 'start', videoId: video.videoId, title: video.title });
+        
+        try {
+          const result = await saveVideoWithTranscriptStream(
+            req.user!.id, 
+            video.videoUrl, 
+            playlistId, 
+            playlistTitle,
+            transcriptMode,
+            (status: string, message?: string) => {
+              send({ type: status, videoId: video.videoId, title: video.title, message });
+            }
+          );
+          
+          if (result.success) {
+            savedVideos.push({ ...result.video, reused: result.reused || false });
+            if (result.reused) {
+              send({ type: 'reused', videoId: video.videoId, title: video.title });
+            } else {
+              send({ type: 'completed', videoId: video.videoId, title: video.title, transcriptLength: result.video?.transcript?.length || 0 });
+            }
+          } else {
+            errors.push({ videoId: video.videoId, error: result.error });
+            send({ type: 'error', videoId: video.videoId, title: video.title, error: result.error });
+          }
+        } catch (err: any) {
+          errors.push({ videoId: video.videoId, error: err.message });
+          send({ type: 'error', videoId: video.videoId, title: video.title, error: err.message });
+        }
+      }
+
+      send({ type: 'done', savedVideos, errors });
+      res.end();
+    } catch (error: any) {
+      console.error('Error in save-stream:', error);
+      send({ type: 'error', error: error.message });
+      res.end();
+    }
+  });
+
   // Get saved YouTube videos for consultant
   app.get("/api/youtube/videos", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
@@ -5120,6 +5188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (status === 'error') {
           res.write(`data: ${JSON.stringify({ type: 'video_error', current, total, videoTitle, error: errorMessage, log: logMessage })}\n\n`);
         }
+        if (res.flush) (res as any).flush();
       };
 
       const result = await generateMultipleLessons(

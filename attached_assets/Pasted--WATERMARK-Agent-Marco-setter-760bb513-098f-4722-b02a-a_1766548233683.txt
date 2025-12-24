@@ -1,0 +1,50 @@
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ [AI-LESSON] Risposta Gemini ricevuta in 17.3s (7533 caratteri)
+💾 [AI-LESSON] Salvando lezione: "Dal Metodo al Percorso TCS: Comprendere la Tua Scelta"
+✅ [AI-LESSON] Lezione creata con successo: "Dal Metodo al Percorso TCS: Comprendere la Tua Scelta"
+   ✅ Lezione generata con successo
+
+📹 [BATCH-LESSON] Video 2/2: "Perché NON RIESCI a smettere di MANGIARE? Non è fame, è TRAUMA."
+   Trascrizione: ✅ 2052 caratteri
+🎬 [AI-LESSON] Cercando video: 99058d38-c0d1-4b49-a4b3-c8fa51a36204
+📝 [AI-LESSON] Video: "Perché NON RIESCI a smettere di MANGIARE? Non è fame, è TRAUMA."
+✅ [AI-LESSON] Trascrizione trovata: 2052 caratteri
+🤖 [AI-LESSON] Inviando a Gemini per generazione lezione...
+🔍 Finding AI provider for client 42105c6d-d065-4f4e-b5b2-290742b4dd1d (consultant: none)...
+📋 Client preferred AI provider: vertex_admin
+⚠️ TIER 0: Skipped (no consultantId provided)
+⚠️ TIER 0.5: Skipped (no consultantId provided)
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 42105c6d-d065-4f4e-b5b2-290742b4dd1d)...
+⚠️ TIER 1: No client-managed Vertex AI settings found
+⚠️ TIER 2: Skipped (no consultantId provided)
+⚠️ TIER 3: No Vertex AI available, falling back to Google AI Studio (user: 42105c6d-d065-4f4e-b5b2-290742b4dd1d)
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+🔑 [AI] Using SuperAdmin Gemini key (1/1)
+✅ Created Google AI Studio client for user 42105c6d-d065-4f4e-b5b2-290742b4dd1d [source: superadmin]
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Assistente Viaggio Spaziale (514afe1d-8e43-47c7-90fc-17d05b0783ac) - last processed: 2025-12-22T20:43:31.572Z
+✅ [WHATSAPP POLLING] No new messages for agent Assistente Viaggio Spaziale
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-22T22:54:28.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-22T22:54:28.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+✅ [AI-LESSON] Risposta Gemini ricevuta in 12.9s (2689 caratteri)
+💾 [AI-LESSON] Salvando lezione: "Mangiare Emotivo: Non è fame, è Trauma. Come liberarsi dal ciclo"
+🔖 [WATERMARK] Agent FRT Agent (d0983101-2809-4e4a-b838-d623d05453f6) - last processed: 2025-12-23T00:41:18.000Z
+✅ [WHATSAPP POLLING] No new messages for agent FRT Agent
+📌 [WATERMARK] Latest on Twilio (2025-12-23T00:41:18.000Z) is older than watermark - keeping current
+✅ [AI-LESSON] Lezione creata con successo: "Mangiare Emotivo: Non è fame, è Trauma. Come liberarsi dal ciclo"
+   ✅ Lezione generata con successo
+
+📊 [BATCH-LESSON] Completato: 2 lezioni create, 0 errori
+3:50:36 AM [express] POST /api/library/ai-generate-batch-stream 200 in 34272ms
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+✅ [WHATSAPP POLLING] Poll cycle complete

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -180,6 +180,15 @@ export default function ConsultantLibraryAIBuilder() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [previewLesson, setPreviewLesson] = useState<any>(null);
   const [lessonOrder, setLessonOrder] = useState<string[]>([]);
+  
+  // Step 2: Stato caricamento video con UI dettagliata
+  const [isSavingVideos, setIsSavingVideos] = useState(false);
+  const [savingVideoProgress, setSavingVideoProgress] = useState(0);
+  const [savingVideoStatuses, setSavingVideoStatuses] = useState<Map<string, {
+    status: 'waiting' | 'downloading' | 'transcribing' | 'completed' | 'error' | 'reused';
+    message?: string;
+  }>>(new Map());
+  const [savingLogs, setSavingLogs] = useState<{ time: string; message: string; type?: 'info' | 'success' | 'error' | 'warning' }[]>([]);
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/library/categories"],
@@ -311,13 +320,134 @@ export default function ConsultantLibraryAIBuilder() {
     );
   };
 
-  const handleSaveSelectedVideos = () => {
+  const handleSaveSelectedVideos = async () => {
     const selected = playlistVideos.filter(v => selectedVideoIds.includes(v.videoId));
     if (selected.length === 0) {
       toast({ title: "Seleziona almeno un video", variant: "destructive" });
       return;
     }
-    savePlaylistVideosMutation.mutate(selected);
+    
+    setIsSavingVideos(true);
+    setSavingVideoProgress(0);
+    setSavingLogs([]);
+    
+    // Inizializza tutti i video come 'waiting'
+    const initialStatuses = new Map<string, { status: 'waiting' | 'downloading' | 'transcribing' | 'completed' | 'error' | 'reused'; message?: string }>();
+    selected.forEach(v => initialStatuses.set(v.videoId, { status: 'waiting' }));
+    setSavingVideoStatuses(initialStatuses);
+    
+    const addLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+      setSavingLogs(prev => [...prev, {
+        time: new Date().toLocaleTimeString('it-IT'),
+        message,
+        type
+      }]);
+    };
+    
+    addLog(`Avvio elaborazione di ${selected.length} video...`, 'info');
+    
+    try {
+      const response = await fetch("/api/youtube/playlist/save-stream", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          videos: selected,
+          playlistId: youtubeUrl,
+          transcriptMode,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Errore nel salvataggio video");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let savedVideosList: SavedVideo[] = [];
+      
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const text = decoder.decode(value);
+        const lines = text.split('\n').filter(line => line.startsWith('data: '));
+        
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.type === 'start') {
+              addLog(`Elaborazione video: "${data.title}"`, 'info');
+              setSavingVideoStatuses(prev => {
+                const next = new Map(prev);
+                next.set(data.videoId, { status: 'downloading', message: 'Scaricando...' });
+                return next;
+              });
+            } else if (data.type === 'downloading') {
+              setSavingVideoStatuses(prev => {
+                const next = new Map(prev);
+                next.set(data.videoId, { status: 'downloading', message: data.message || 'Scaricando audio...' });
+                return next;
+              });
+            } else if (data.type === 'transcribing') {
+              addLog(`Estraendo trascrizione: "${data.title}"`, 'info');
+              setSavingVideoStatuses(prev => {
+                const next = new Map(prev);
+                next.set(data.videoId, { status: 'transcribing', message: data.message || 'Estraendo trascrizione...' });
+                return next;
+              });
+            } else if (data.type === 'reused') {
+              addLog(`♻️ Riutilizzata trascrizione esistente: "${data.title}"`, 'success');
+              setSavingVideoStatuses(prev => {
+                const next = new Map(prev);
+                next.set(data.videoId, { status: 'reused', message: 'Trascrizione riutilizzata' });
+                return next;
+              });
+            } else if (data.type === 'completed') {
+              addLog(`✅ Completato: "${data.title}"`, 'success');
+              setSavingVideoStatuses(prev => {
+                const next = new Map(prev);
+                next.set(data.videoId, { status: 'completed', message: data.transcriptLength ? `${data.transcriptLength} caratteri` : 'Completato' });
+                return next;
+              });
+            } else if (data.type === 'error') {
+              addLog(`❌ Errore: "${data.title}" - ${data.error}`, 'error');
+              setSavingVideoStatuses(prev => {
+                const next = new Map(prev);
+                next.set(data.videoId, { status: 'error', message: data.error });
+                return next;
+              });
+            } else if (data.type === 'progress') {
+              setSavingVideoProgress(Math.round((data.current / data.total) * 100));
+            } else if (data.type === 'done') {
+              savedVideosList = data.savedVideos || [];
+              addLog(`🎉 Completato! ${savedVideosList.length} video pronti`, 'success');
+            }
+          } catch (e) {
+            // Ignora errori di parsing
+          }
+        }
+      }
+      
+      // Completamento
+      setSavedVideos(savedVideosList);
+      setSelectedVideoIds(savedVideosList.map((v: SavedVideo) => v.id));
+      
+      setTimeout(() => {
+        setIsSavingVideos(false);
+        setCurrentStep(3);
+        toast({ title: "Video caricati", description: `${savedVideosList.length} video pronti per la generazione` });
+      }, 1000);
+      
+    } catch (error: any) {
+      addLog(`Errore: ${error.message}`, 'error');
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      setIsSavingVideos(false);
+    }
   };
 
   const handlePreviewTranscript = async (video: SavedVideo) => {
@@ -834,6 +964,116 @@ export default function ConsultantLibraryAIBuilder() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Overlay di caricamento con stato per ogni video */}
+                  {isSavingVideos && (
+                    <div className="mb-6 p-6 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40 border-2 border-purple-200 dark:border-purple-800">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="relative">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center">
+                            <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                          </div>
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-ping" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">Elaborazione in corso...</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {savingVideoProgress}% completato
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Progress bar */}
+                      <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-4">
+                        <div 
+                          className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500 ease-out"
+                          style={{ width: `${savingVideoProgress}%` }}
+                        />
+                      </div>
+                      
+                      {/* Lista video con stato */}
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                        {playlistVideos
+                          .filter(v => selectedVideoIds.includes(v.videoId))
+                          .map((video) => {
+                            const status = savingVideoStatuses.get(video.videoId);
+                            return (
+                              <div 
+                                key={video.videoId}
+                                className={`flex items-center gap-3 p-2 rounded-lg transition-all ${
+                                  status?.status === 'completed' || status?.status === 'reused'
+                                    ? 'bg-green-100 dark:bg-green-900/30'
+                                    : status?.status === 'error'
+                                    ? 'bg-red-100 dark:bg-red-900/30'
+                                    : status?.status === 'downloading' || status?.status === 'transcribing'
+                                    ? 'bg-blue-100 dark:bg-blue-900/30'
+                                    : 'bg-white/50 dark:bg-gray-800/50'
+                                }`}
+                              >
+                                {/* Status icon */}
+                                <div className="w-6 h-6 flex items-center justify-center">
+                                  {status?.status === 'waiting' && (
+                                    <Clock className="w-4 h-4 text-gray-400" />
+                                  )}
+                                  {status?.status === 'downloading' && (
+                                    <Download className="w-4 h-4 text-blue-500 animate-bounce" />
+                                  )}
+                                  {status?.status === 'transcribing' && (
+                                    <Music className="w-4 h-4 text-purple-500 animate-pulse" />
+                                  )}
+                                  {(status?.status === 'completed' || status?.status === 'reused') && (
+                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                  )}
+                                  {status?.status === 'error' && (
+                                    <XCircle className="w-4 h-4 text-red-500" />
+                                  )}
+                                </div>
+                                
+                                {/* Video info */}
+                                <img 
+                                  src={video.thumbnailUrl} 
+                                  alt={video.title}
+                                  className="w-12 h-7 object-cover rounded"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{video.title}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {status?.status === 'waiting' && 'In attesa...'}
+                                    {status?.status === 'downloading' && (status.message || 'Scaricando...')}
+                                    {status?.status === 'transcribing' && (status.message || 'Estraendo trascrizione...')}
+                                    {status?.status === 'reused' && '♻️ Trascrizione riutilizzata'}
+                                    {status?.status === 'completed' && (status.message || 'Completato')}
+                                    {status?.status === 'error' && (status.message || 'Errore')}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                      
+                      {/* Log attività */}
+                      {savingLogs.length > 0 && (
+                        <div className="mt-4 p-3 bg-gray-900 rounded-lg max-h-[120px] overflow-y-auto">
+                          <div className="space-y-1 font-mono text-xs">
+                            {savingLogs.slice(-10).map((log, idx) => (
+                              <div 
+                                key={idx} 
+                                className={`flex gap-2 ${
+                                  log.type === 'success' ? 'text-green-400' :
+                                  log.type === 'error' ? 'text-red-400' :
+                                  log.type === 'warning' ? 'text-yellow-400' :
+                                  'text-gray-300'
+                                }`}
+                              >
+                                <span className="text-gray-500">[{log.time}]</span>
+                                <span>{log.message}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
                     {playlistVideos.map((video) => (
                       <div 
@@ -842,12 +1082,13 @@ export default function ConsultantLibraryAIBuilder() {
                           selectedVideoIds.includes(video.videoId)
                             ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/20'
                             : 'border-muted hover:border-purple-300'
-                        }`}
+                        } ${isSavingVideos ? 'opacity-50 pointer-events-none' : ''}`}
                         onClick={() => handleToggleVideo(video.videoId)}
                       >
                         <Checkbox 
                           checked={selectedVideoIds.includes(video.videoId)}
                           onCheckedChange={() => handleToggleVideo(video.videoId)}
+                          disabled={isSavingVideos}
                         />
                         <img 
                           src={video.thumbnailUrl} 
@@ -866,7 +1107,7 @@ export default function ConsultantLibraryAIBuilder() {
                   </div>
 
                   <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                    <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                    <Button variant="outline" onClick={() => setCurrentStep(1)} disabled={isSavingVideos}>
                       <ArrowLeft className="w-4 h-4 mr-2" />
                       Indietro
                     </Button>
@@ -876,14 +1117,14 @@ export default function ConsultantLibraryAIBuilder() {
                       </Badge>
                       <Button 
                         onClick={handleSaveSelectedVideos}
-                        disabled={isLoading || selectedVideoIds.length === 0}
+                        disabled={isLoading || isSavingVideos || selectedVideoIds.length === 0}
                       >
-                        {isLoading ? (
+                        {isSavingVideos ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         ) : (
                           <ArrowRight className="w-4 h-4 mr-2" />
                         )}
-                        Continua
+                        {isSavingVideos ? 'Elaborazione...' : 'Continua'}
                       </Button>
                     </div>
                   </div>
