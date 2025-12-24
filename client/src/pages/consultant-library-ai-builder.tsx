@@ -706,6 +706,7 @@ export default function ConsultantLibraryAIBuilder() {
       const decoder = new TextDecoder();
       let savedVideosList: SavedVideo[] = [];
       let buffer = '';
+      const completedVideoIds = new Set<string>();
       
       while (reader) {
         const { done, value } = await reader.read();
@@ -747,6 +748,7 @@ export default function ConsultantLibraryAIBuilder() {
               });
             } else if (data.type === 'reused') {
               addLog(`♻️ Già analizzato in precedenza: "${data.title}"`, 'success');
+              completedVideoIds.add(data.videoId);
               setSavingVideoStatuses(prev => {
                 const next = new Map(prev);
                 next.set(data.videoId, { status: 'reused', message: 'Trascrizione riutilizzata' });
@@ -754,6 +756,7 @@ export default function ConsultantLibraryAIBuilder() {
               });
             } else if (data.type === 'completed') {
               addLog(`✅ Pronto: "${data.title}"`, 'success');
+              completedVideoIds.add(data.videoId);
               setSavingVideoStatuses(prev => {
                 const next = new Map(prev);
                 next.set(data.videoId, { status: 'completed', message: data.transcriptLength ? `${data.transcriptLength} caratteri` : 'Completato' });
@@ -794,15 +797,15 @@ export default function ConsultantLibraryAIBuilder() {
       }
       
       // Fallback: se non abbiamo ricevuto i video dal messaggio 'done', li recuperiamo dal database
-      if (savedVideosList.length === 0 && selected.length > 0) {
-        console.log('[SSE] Fallback: recupero video dal database...');
+      // Usa i video che hanno ricevuto 'completed' o 'reused' durante lo stream
+      if (savedVideosList.length === 0 && completedVideoIds.size > 0) {
+        console.log('[SSE] Fallback: recupero video dal database...', Array.from(completedVideoIds));
         addLog('Recupero video salvati dal database...', 'info');
         try {
           const dbVideos = await apiRequest("GET", "/api/youtube/videos");
-          // Filtra solo i video appena processati (basandosi sui videoId selezionati)
-          const selectedVideoIds = new Set(selected.map(v => v.videoId));
-          savedVideosList = dbVideos.filter((v: any) => selectedVideoIds.has(v.videoId));
-          console.log('[SSE] Fallback: trovati', savedVideosList.length, 'video nel database');
+          // Filtra solo i video che sono stati effettivamente completati durante lo stream
+          savedVideosList = dbVideos.filter((v: any) => completedVideoIds.has(v.videoId));
+          console.log('[SSE] Fallback: trovati', savedVideosList.length, 'video nel database su', completedVideoIds.size, 'completati');
           addLog(`Recuperati ${savedVideosList.length} video dal database`, 'success');
         } catch (fallbackError) {
           console.error('[SSE] Errore fallback:', fallbackError);
