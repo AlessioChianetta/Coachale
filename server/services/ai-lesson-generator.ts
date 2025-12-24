@@ -140,10 +140,13 @@ Assicurati che:
 
 function parseLessonResponse(response: string, video: any): GeneratedLesson {
   try {
-    const cleanJson = response
+    let cleanJson = response
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
+    
+    // Rimuovi caratteri di controllo non validi in JSON (eccetto \n, \r, \t)
+    cleanJson = cleanJson.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
     
     const parsed = JSON.parse(cleanJson);
     
