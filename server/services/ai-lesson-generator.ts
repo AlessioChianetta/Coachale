@@ -24,38 +24,52 @@ interface GeneratedLesson {
 
 export async function generateLessonFromVideo(params: GenerateLessonParams): Promise<{ success: boolean; lesson?: any; error?: string }> {
   try {
+    console.log(`🎬 [AI-LESSON] Cercando video: ${params.youtubeVideoId}`);
+    
     const [video] = await db
       .select()
       .from(youtubeVideos)
       .where(eq(youtubeVideos.id, params.youtubeVideoId));
 
     if (!video) {
+      console.log(`❌ [AI-LESSON] Video non trovato: ${params.youtubeVideoId}`);
       return { success: false, error: 'Video not found' };
     }
 
+    console.log(`📝 [AI-LESSON] Video: "${video.title}"`);
+
     if (!video.transcript) {
+      console.log(`❌ [AI-LESSON] Nessuna trascrizione per: "${video.title}"`);
       return { success: false, error: 'Video transcript not available' };
     }
+
+    console.log(`✅ [AI-LESSON] Trascrizione trovata: ${video.transcript.length} caratteri`);
 
     const settings = await getAiLessonSettings(params.consultantId);
     const instructions = params.customInstructions || settings.writingInstructions || '';
 
+    console.log(`🤖 [AI-LESSON] Inviando a Gemini per generazione lezione...`);
     const prompt = buildLessonPrompt(video, instructions, settings.preserveSpeakerStyle);
     
     const providerResult = await getAIProvider(params.consultantId);
     if (!providerResult.client) {
+      console.log(`❌ [AI-LESSON] Provider AI non disponibile`);
       return { success: false, error: 'AI provider not available' };
     }
 
+    const startTime = Date.now();
     const response = await providerResult.client.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
+    const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
     const generatedText = response.response.text() || '';
+    console.log(`✅ [AI-LESSON] Risposta Gemini ricevuta in ${elapsedTime}s (${generatedText.length} caratteri)`);
     
     const lessonData = parseLessonResponse(generatedText, video);
     
+    console.log(`💾 [AI-LESSON] Salvando lezione: "${lessonData.title}"`);
     const [lesson] = await db.insert(libraryDocuments).values({
       categoryId: params.categoryId,
       subcategoryId: params.subcategoryId || null,
@@ -80,9 +94,10 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
       },
     }).returning();
 
+    console.log(`✅ [AI-LESSON] Lezione creata con successo: "${lessonData.title}"`);
     return { success: true, lesson };
-  } catch (error) {
-    console.error('Error generating lesson:', error);
+  } catch (error: any) {
+    console.error(`❌ [AI-LESSON] Errore:`, error.message || error);
     return { success: false, error: 'Failed to generate lesson' };
   }
 }
@@ -160,10 +175,12 @@ export async function generateMultipleLessons(
   customInstructions?: string,
   level?: 'base' | 'intermedio' | 'avanzato',
   contentType?: 'text' | 'video' | 'both',
-  onProgress?: (current: number, total: number, status: string, videoTitle?: string, errorMessage?: string) => void
+  onProgress?: (current: number, total: number, status: string, videoTitle?: string, errorMessage?: string, logMessage?: string) => void
 ): Promise<{ success: boolean; lessons: any[]; errors: string[] }> {
   const lessons: any[] = [];
   const errors: string[] = [];
+
+  console.log(`🚀 [BATCH-LESSON] Avvio generazione batch: ${videoIds.length} video`);
 
   for (let i = 0; i < videoIds.length; i++) {
     const videoId = videoIds[i];
@@ -174,9 +191,17 @@ export async function generateMultipleLessons(
       .where(eq(youtubeVideos.id, videoId));
 
     const videoTitle = video?.title || 'Video';
+    const hasTranscript = !!video?.transcript;
+    const transcriptLength = video?.transcript?.length || 0;
+
+    console.log(`\n📹 [BATCH-LESSON] Video ${i + 1}/${videoIds.length}: "${videoTitle}"`);
+    console.log(`   Trascrizione: ${hasTranscript ? `✅ ${transcriptLength} caratteri` : '❌ non disponibile'}`);
 
     if (onProgress) {
-      onProgress(i + 1, videoIds.length, 'generating', videoTitle);
+      const logMsg = hasTranscript 
+        ? `🔍 Trascrizione: ${transcriptLength} caratteri - Invio a Gemini...`
+        : `❌ Nessuna trascrizione disponibile`;
+      onProgress(i + 1, videoIds.length, 'generating', videoTitle, undefined, logMsg);
     }
 
     const result = await generateLessonFromVideo({
@@ -191,14 +216,16 @@ export async function generateMultipleLessons(
 
     if (result.success && result.lesson) {
       lessons.push(result.lesson);
+      console.log(`   ✅ Lezione generata con successo`);
       if (onProgress) {
-        onProgress(i + 1, videoIds.length, 'completed', videoTitle);
+        onProgress(i + 1, videoIds.length, 'completed', videoTitle, undefined, `✅ Lezione creata: "${result.lesson.title}"`);
       }
     } else {
       const errorMsg = result.error || 'Unknown error';
       errors.push(`${videoTitle}: ${errorMsg}`);
+      console.log(`   ❌ Errore: ${errorMsg}`);
       if (onProgress) {
-        onProgress(i + 1, videoIds.length, 'error', videoTitle, errorMsg);
+        onProgress(i + 1, videoIds.length, 'error', videoTitle, errorMsg, `❌ ${errorMsg}`);
       }
     }
 
@@ -206,6 +233,8 @@ export async function generateMultipleLessons(
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
+
+  console.log(`\n📊 [BATCH-LESSON] Completato: ${lessons.length} lezioni create, ${errors.length} errori`);
 
   return {
     success: lessons.length > 0,
