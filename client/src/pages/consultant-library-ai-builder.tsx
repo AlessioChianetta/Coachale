@@ -141,7 +141,14 @@ export default function ConsultantLibraryAIBuilder() {
     onSuccess: (video) => {
       setSavedVideos([video]);
       setSelectedVideoIds([video.id]);
-      toast({ title: "Video caricato", description: video.title });
+      if (video.reused) {
+        toast({ 
+          title: "Video già elaborato", 
+          description: `"${video.title}" - Trascrizione esistente riutilizzata`,
+        });
+      } else {
+        toast({ title: "Video caricato", description: video.title });
+      }
       setCurrentStep(3);
     },
     onError: (error: any) => {
@@ -175,12 +182,23 @@ export default function ConsultantLibraryAIBuilder() {
     onSuccess: (data) => {
       setSavedVideos(data.savedVideos);
       setSelectedVideoIds(data.savedVideos.map((v: SavedVideo) => v.id));
+      
+      const messages = [];
+      if (data.reusedCount > 0) {
+        messages.push(`${data.reusedCount} già elaborati`);
+      }
       if (data.errors.length > 0) {
+        messages.push(`${data.errors.length} errori`);
+      }
+      
+      if (messages.length > 0) {
         toast({ 
-          title: "Alcuni video non sono stati salvati", 
-          description: `${data.savedVideos.length} salvati, ${data.errors.length} errori`,
-          variant: "destructive"
+          title: `${data.savedVideos.length} video pronti`, 
+          description: messages.join(', '),
+          variant: data.errors.length > 0 ? "destructive" : "default"
         });
+      } else {
+        toast({ title: "Video caricati", description: `${data.savedVideos.length} video pronti` });
       }
       setCurrentStep(3);
     },

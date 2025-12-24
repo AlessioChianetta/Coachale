@@ -4871,7 +4871,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: result.error });
       }
 
-      res.json(result.video);
+      // Aggiungi flag reused al video per notificare il frontend
+      res.json({ ...result.video, reused: result.reused || false });
     } catch (error: any) {
       console.error('Error fetching video:', error);
       res.status(500).json({ message: error.message });
@@ -4922,6 +4923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const savedVideos = [];
       const errors = [];
+      let reusedCount = 0;
 
       for (const video of videos) {
         const result = await saveVideoWithTranscript(
@@ -4933,13 +4935,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         
         if (result.success) {
-          savedVideos.push(result.video);
+          savedVideos.push({ ...result.video, reused: result.reused || false });
+          if (result.reused) reusedCount++;
         } else {
           errors.push({ videoId: video.videoId, error: result.error });
         }
       }
 
-      res.json({ savedVideos, errors });
+      res.json({ savedVideos, errors, reusedCount });
     } catch (error: any) {
       console.error('Error saving playlist videos:', error);
       res.status(500).json({ message: error.message });

@@ -238,9 +238,11 @@ Requisiti:
 async function fetchTranscriptWithGemini(videoId: string): Promise<TranscriptResult | null> {
   console.log(`🔍 [TRANSCRIPT] Metodo Gemini: download audio + trascrizione AI`);
   
+  let audioPath: string | null = null;
+  
   try {
     // Step 1: Scarica audio
-    const audioPath = await downloadAudioWithYtDlp(videoId);
+    audioPath = await downloadAudioWithYtDlp(videoId);
     if (!audioPath) {
       return null;
     }
@@ -248,16 +250,20 @@ async function fetchTranscriptWithGemini(videoId: string): Promise<TranscriptRes
     // Step 2: Trascrivi con Gemini
     const result = await transcribeAudioWithGemini(audioPath);
     
-    // Cleanup: elimina file audio
-    try {
-      fs.unlinkSync(audioPath);
-      console.log(`   🧹 File audio eliminato`);
-    } catch {}
-    
     return result;
   } catch (error: any) {
     console.log(`   ⚠️ Metodo Gemini fallito: ${error.message?.substring(0, 80)}`);
     return null;
+  } finally {
+    // Cleanup: elimina sempre file audio (successo, errore, o qualsiasi uscita)
+    if (audioPath) {
+      try {
+        fs.unlinkSync(audioPath);
+        console.log(`   🧹 File audio eliminato: ${audioPath}`);
+      } catch (cleanupErr) {
+        console.log(`   ⚠️ Impossibile eliminare audio: ${audioPath}`);
+      }
+    }
   }
 }
 
@@ -564,12 +570,30 @@ export async function saveVideoWithTranscript(
   playlistId?: string,
   playlistTitle?: string,
   transcriptMode: TranscriptMode = 'auto'
-): Promise<{ success: boolean; video?: any; error?: string }> {
+): Promise<{ success: boolean; video?: any; error?: string; reused?: boolean }> {
   try {
     const videoId = extractVideoId(videoUrl);
     if (!videoId) {
       console.log(`❌ [SAVE-VIDEO] URL non valido: ${videoUrl}`);
       return { success: false, error: 'Invalid YouTube URL' };
+    }
+    
+    // Controllo duplicati: verifica se il video esiste già per questo consultant
+    const [existingVideo] = await db.select()
+      .from(youtubeVideos)
+      .where(and(
+        eq(youtubeVideos.consultantId, consultantId),
+        eq(youtubeVideos.videoId, videoId)
+      ))
+      .limit(1);
+    
+    if (existingVideo) {
+      console.log(`♻️ [SAVE-VIDEO] Video già esistente: "${existingVideo.title}" - Riutilizzo trascrizione`);
+      return { 
+        success: true, 
+        video: existingVideo, 
+        reused: true 
+      };
     }
     
     console.log(`📥 [SAVE-VIDEO] Caricando metadati per video: ${videoId} (modalità trascrizione: ${transcriptMode})`);
