@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
@@ -93,6 +95,11 @@ export default function ConsultantLibraryAIBuilder() {
   const [generationStatus, setGenerationStatus] = useState<string[]>([]);
   const [generatedLessons, setGeneratedLessons] = useState<any[]>([]);
   const [generationErrors, setGenerationErrors] = useState<string[]>([]);
+  const [generatingVideos, setGeneratingVideos] = useState<Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; error?: string }>>(new Map());
+  const [previewVideo, setPreviewVideo] = useState<SavedVideo | null>(null);
+  const [previewTranscript, setPreviewTranscript] = useState<string>("");
+  const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/library/categories"],
@@ -168,50 +175,6 @@ export default function ConsultantLibraryAIBuilder() {
     },
   });
 
-  const saveSettingsMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("PUT", "/api/library/ai-settings", {
-        writingInstructions: aiInstructions,
-        defaultContentType: contentType,
-        defaultLevel: level,
-      });
-    },
-  });
-
-  const generateLessonsMutation = useMutation({
-    mutationFn: async () => {
-      const videoIds = savedVideos
-        .filter(v => selectedVideoIds.includes(v.id))
-        .map(v => v.id);
-      
-      if (saveSettings) {
-        await saveSettingsMutation.mutateAsync();
-      }
-
-      return await apiRequest("POST", "/api/library/ai-generate-batch", {
-        videoIds,
-        categoryId: selectedCategoryId,
-        subcategoryId: selectedSubcategoryId || undefined,
-        customInstructions: aiInstructions,
-        level,
-        contentType,
-      });
-    },
-    onSuccess: (data) => {
-      setGeneratedLessons(data.lessons);
-      setGenerationErrors(data.errors);
-      setGenerationProgress(100);
-      queryClient.invalidateQueries({ queryKey: ["/api/library/documents"] });
-      toast({ 
-        title: "Lezioni generate!", 
-        description: `${data.lessons.length} lezioni create con successo` 
-      });
-    },
-    onError: (error: any) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
-    },
-  });
-
   const handleLoadContent = () => {
     if (!youtubeUrl) {
       toast({ title: "Inserisci un link YouTube", variant: "destructive" });
@@ -254,16 +217,140 @@ export default function ConsultantLibraryAIBuilder() {
     savePlaylistVideosMutation.mutate(selected);
   };
 
-  const handleStartGeneration = () => {
+  const handlePreviewTranscript = async (video: SavedVideo) => {
+    setPreviewVideo(video);
+    setLoadingTranscript(true);
+    try {
+      const data = await apiRequest("GET", `/api/youtube/video/${video.id}/transcript`);
+      setPreviewTranscript(data.transcript || "Trascrizione non disponibile");
+    } catch (error) {
+      setPreviewTranscript("Errore nel caricamento della trascrizione");
+    }
+    setLoadingTranscript(false);
+  };
+
+  const handleStartGeneration = async () => {
     if (selectedVideoIds.length === 0) {
       toast({ title: "Nessun video selezionato", variant: "destructive" });
       return;
     }
     
-    setGenerationProgress(10);
-    setGenerationStatus(["Avvio generazione..."]);
     setCurrentStep(4);
-    generateLessonsMutation.mutate();
+    setGenerationProgress(0);
+    setGeneratedLessons([]);
+    setGenerationErrors([]);
+    setIsGenerating(true);
+    
+    const initialStatus = new Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; error?: string }>();
+    savedVideos.filter(v => selectedVideoIds.includes(v.id)).forEach(v => {
+      initialStatus.set(v.id, { status: 'pending' });
+    });
+    setGeneratingVideos(initialStatus);
+
+    try {
+      if (saveSettings) {
+        await apiRequest("PUT", "/api/library/ai-settings", {
+          writingInstructions: aiInstructions,
+          defaultContentType: contentType,
+          defaultLevel: level,
+        });
+      }
+
+      const videoIds = savedVideos.filter(v => selectedVideoIds.includes(v.id)).map(v => v.id);
+      
+      const response = await fetch("/api/library/ai-generate-batch-stream", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          videoIds,
+          categoryId: selectedCategoryId,
+          subcategoryId: selectedSubcategoryId || undefined,
+          customInstructions: aiInstructions,
+          level,
+          contentType,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Errore nella generazione");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const text = decoder.decode(value);
+        const lines = text.split('\n').filter(line => line.startsWith('data: '));
+        
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.type === 'progress') {
+              setGenerationProgress(Math.round((data.current / data.total) * 100));
+              setGenerationStatus(prev => [...prev, `Generando: ${data.videoTitle}`]);
+              setGeneratingVideos(prev => {
+                const next = new Map(prev);
+                savedVideos.forEach(v => {
+                  if (v.title === data.videoTitle) {
+                    next.set(v.id, { status: 'generating' });
+                  }
+                });
+                return next;
+              });
+            } else if (data.type === 'video_complete') {
+              setGeneratingVideos(prev => {
+                const next = new Map(prev);
+                savedVideos.forEach(v => {
+                  if (v.title === data.videoTitle) {
+                    next.set(v.id, { status: 'completed' });
+                  }
+                });
+                return next;
+              });
+            } else if (data.type === 'video_error') {
+              setGeneratingVideos(prev => {
+                const next = new Map(prev);
+                savedVideos.forEach(v => {
+                  if (v.title === data.videoTitle) {
+                    next.set(v.id, { status: 'error', error: data.error });
+                  }
+                });
+                return next;
+              });
+            } else if (data.type === 'complete') {
+              setGeneratedLessons(data.lessons);
+              setGenerationErrors(data.errors);
+              setGenerationProgress(100);
+              savedVideos.filter(v => selectedVideoIds.includes(v.id)).forEach(v => {
+                setGeneratingVideos(prev => {
+                  const next = new Map(prev);
+                  const current = next.get(v.id);
+                  if (current?.status === 'generating' || current?.status === 'pending') {
+                    next.set(v.id, { status: 'completed' });
+                  }
+                  return next;
+                });
+              });
+              queryClient.invalidateQueries({ queryKey: ["/api/library/documents"] });
+              toast({ title: "Lezioni generate!", description: `${data.lessons.length} lezioni create` });
+            } else if (data.type === 'error') {
+              toast({ title: "Errore", description: data.message, variant: "destructive" });
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const filteredSubcategories = subcategories.filter(
@@ -271,7 +358,7 @@ export default function ConsultantLibraryAIBuilder() {
   );
 
   const isLoading = fetchVideoMutation.isPending || fetchPlaylistMutation.isPending || 
-                    savePlaylistVideosMutation.isPending || generateLessonsMutation.isPending;
+                    savePlaylistVideosMutation.isPending || isGenerating;
 
   return (
     <>
@@ -601,6 +688,14 @@ export default function ConsultantLibraryAIBuilder() {
                               {video.transcriptStatus === 'completed' ? 'Trascrizione OK' : 'No trascrizione'}
                             </Badge>
                           </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handlePreviewTranscript(video); }}
+                            title="Anteprima trascrizione"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -644,9 +739,34 @@ export default function ConsultantLibraryAIBuilder() {
                 <CardContent className="space-y-6">
                   <Progress value={generationProgress} className="h-3" />
                   
-                  {generateLessonsMutation.isPending && (
-                    <div className="text-center py-8">
-                      <Loader2 className="w-12 h-12 mx-auto animate-spin text-purple-500 mb-4" />
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-sm text-muted-foreground">Stato video:</h3>
+                    {savedVideos.filter(v => selectedVideoIds.includes(v.id)).map((video) => {
+                      const status = generatingVideos.get(video.id);
+                      return (
+                        <div key={video.id} className="flex items-center gap-3 p-3 rounded-lg border">
+                          <img src={video.thumbnailUrl} alt={video.title} className="w-16 h-10 object-cover rounded" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{video.title}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {status?.status === 'pending' && <Clock className="w-4 h-4 text-muted-foreground" />}
+                            {status?.status === 'generating' && <Loader2 className="w-4 h-4 animate-spin text-purple-500" />}
+                            {status?.status === 'completed' && <Check className="w-4 h-4 text-green-500" />}
+                            {status?.status === 'error' && (
+                              <div className="flex items-center gap-1 text-red-500">
+                                <AlertCircle className="w-4 h-4" />
+                                <span className="text-xs">{status.error}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {isGenerating && (
+                    <div className="text-center py-4">
                       <p className="text-muted-foreground">
                         L'AI sta analizzando le trascrizioni e creando le lezioni...
                       </p>
@@ -712,6 +832,28 @@ export default function ConsultantLibraryAIBuilder() {
           </div>
         </main>
       </div>
+
+      <Dialog open={!!previewVideo} onOpenChange={(open) => !open && setPreviewVideo(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Trascrizione: {previewVideo?.title}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[60vh] pr-4">
+            {loadingTranscript ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div>
+            ) : (
+              <pre className="whitespace-pre-wrap text-sm font-mono bg-muted p-4 rounded-lg">
+                {previewTranscript}
+              </pre>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
