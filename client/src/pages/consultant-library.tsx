@@ -1182,7 +1182,7 @@ export default function ConsultantLibrary() {
   };
 
   const NavigationSidebar = () => (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden">
+    <div className="flex flex-col h-full min-h-0">
       <div className="p-4 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
@@ -1195,8 +1195,8 @@ export default function ConsultantLibrary() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0 overflow-hidden">
-        <div className="p-3 overflow-hidden max-w-full">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-3">
           <button
             onClick={handleAllCoursesClick}
             className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-3 ${
@@ -1209,7 +1209,7 @@ export default function ConsultantLibrary() {
             Tutti i corsi
           </button>
 
-          <div className="space-y-3 overflow-hidden">
+          <div className="space-y-3">
             {categories.map((category: LibraryCategory) => {
               const categorySubcats = subcategories.filter((s: LibrarySubcategory) => s.categoryId === category.id);
               const isExpanded = expandedCourses.has(category.id);
@@ -1217,8 +1217,8 @@ export default function ConsultantLibrary() {
               const lessonCount = documents.filter((d: LibraryDocument) => d.categoryId === category.id).length;
 
               return (
-                <div key={category.id} className="mb-3 overflow-hidden">
-                  <Card className={`overflow-hidden transition-all duration-200 hover:shadow-md ${
+                <div key={category.id} className="mb-3">
+                  <Card className={`transition-all duration-200 hover:shadow-md ${
                     isSelected ? 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'bg-white dark:bg-slate-800'
                   }`}>
                     <div className={`h-1.5 bg-gradient-to-r ${getColorGradient(category.color || 'purple')}`} />
@@ -1284,8 +1284,8 @@ export default function ConsultantLibrary() {
                   </Card>
                   
                   {isExpanded && categorySubcats.length > 0 && (
-                    <div className="mt-2 pl-3 space-y-1 overflow-hidden">
-                      <div className={`border-l-2 pl-3 space-y-1 overflow-hidden ${getColorBorder(category.color)}`}>
+                    <div className="mt-2 pl-3 space-y-1">
+                      <div className={`border-l-2 pl-3 space-y-1 ${getColorBorder(category.color)}`}>
                         {categorySubcats.map((subcategory: LibrarySubcategory) => {
                           const isSubSelected = selectedCategory === category.id && selectedSubcategory === subcategory.id;
                           const subDocCount = documents.filter((d: LibraryDocument) => d.subcategoryId === subcategory.id).length;
@@ -1375,7 +1375,7 @@ export default function ConsultantLibrary() {
                         <Menu size={20} />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-72 p-0">
+                    <SheetContent side="left" className="w-[85vw] max-w-80 p-0">
                       <NavigationSidebar />
                     </SheetContent>
                   </Sheet>
