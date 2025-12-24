@@ -8,7 +8,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { GoogleGenAI } from "@google/genai";
-import { getSuperAdminGeminiKeys } from "../ai/provider-factory";
+import { getSuperAdminGeminiKeys, GEMINI_LEGACY_MODEL } from "../ai/provider-factory";
 
 const execAsync = promisify(exec);
 
@@ -141,77 +141,98 @@ async function downloadAudioWithYtDlp(videoId: string): Promise<string | null> {
 }
 
 async function transcribeAudioWithGemini(audioPath: string): Promise<TranscriptResult | null> {
-  try {
-    // Ottieni API key da SuperAdmin
-    const superAdminKeys = await getSuperAdminGeminiKeys();
-    if (!superAdminKeys || superAdminKeys.keys.length === 0) {
-      console.log(`   ⚠️ Nessuna chiave Gemini disponibile`);
-      return null;
-    }
+  // Ottieni API keys da SuperAdmin con rotazione
+  const superAdminKeys = await getSuperAdminGeminiKeys();
+  if (!superAdminKeys || superAdminKeys.keys.length === 0) {
+    console.log(`   ⚠️ Nessuna chiave Gemini disponibile`);
+    return null;
+  }
+  
+  // Leggi il file audio come base64
+  const audioBuffer = fs.readFileSync(audioPath);
+  const audioBase64 = audioBuffer.toString('base64');
+  const fileSizeMB = audioBuffer.length / (1024 * 1024);
+  
+  console.log(`   🤖 Inviando audio a Gemini (${fileSizeMB.toFixed(2)} MB)...`);
+  
+  // Prova ogni chiave con rotazione random (come getGoogleAIStudioClientForFileSearch)
+  const keysToTry = [...superAdminKeys.keys];
+  const startIndex = Math.floor(Math.random() * keysToTry.length);
+  
+  for (let attempt = 0; attempt < keysToTry.length; attempt++) {
+    const keyIndex = (startIndex + attempt) % keysToTry.length;
+    const apiKey = keysToTry[keyIndex];
     
-    const apiKey = superAdminKeys.keys[0];
-    const ai = new GoogleGenAI({ apiKey });
-    
-    // Leggi il file audio come base64
-    const audioBuffer = fs.readFileSync(audioPath);
-    const audioBase64 = audioBuffer.toString('base64');
-    const fileSizeMB = audioBuffer.length / (1024 * 1024);
-    
-    console.log(`   🤖 Inviando audio a Gemini (${fileSizeMB.toFixed(2)} MB)...`);
-    
-    // Usa Gemini per trascrivere
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                mimeType: "audio/mp3",
-                data: audioBase64
-              }
-            },
-            {
-              text: `Trascrivi questo audio in italiano. 
+    try {
+      console.log(`   🔑 Tentativo ${attempt + 1}/${keysToTry.length} (chiave ${keyIndex + 1})`);
+      
+      const ai = new GoogleGenAI({ apiKey });
+      
+      // Usa Gemini per trascrivere (modello legacy per audio con inlineData)
+      const response = await ai.models.generateContent({
+        model: GEMINI_LEGACY_MODEL,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                inlineData: {
+                  mimeType: "audio/mpeg",
+                  data: audioBase64
+                }
+              },
+              {
+                text: `Trascrivi questo audio in italiano. 
 Requisiti:
 - Trascrivi fedelmente tutto il parlato
 - Mantieni il tono e le espressioni originali del relatore
 - Includi punteggiatura corretta
 - Non aggiungere interpretazioni o commenti
 - Restituisci SOLO la trascrizione, senza intestazioni o note`
-            }
-          ]
+              }
+            ]
+          }
+        ],
+        config: {
+          maxOutputTokens: 8192,
+          temperature: 0.1
         }
-      ],
-      config: {
-        maxOutputTokens: 8192,
-        temperature: 0.1
+      });
+      
+      const transcript = response.text?.trim() || '';
+      
+      if (transcript.length > 50) {
+        console.log(`   ✅ Trascrizione Gemini completata: ${transcript.length} caratteri`);
+        
+        // Crea segmenti semplici (senza timing preciso)
+        const sentences = transcript.split(/[.!?]+/).filter(s => s.trim().length > 0);
+        const segments: TranscriptSegment[] = sentences.map((text, index) => ({
+          text: text.trim(),
+          start: index * 10,
+          duration: 10
+        }));
+        
+        return { transcript, segments, method: 'gemini' };
       }
-    });
-    
-    const transcript = response.text?.trim() || '';
-    
-    if (transcript.length > 50) {
-      console.log(`   ✅ Trascrizione Gemini completata: ${transcript.length} caratteri`);
       
-      // Crea segmenti semplici (senza timing preciso)
-      const sentences = transcript.split(/[.!?]+/).filter(s => s.trim().length > 0);
-      const segments: TranscriptSegment[] = sentences.map((text, index) => ({
-        text: text.trim(),
-        start: index * 10,
-        duration: 10
-      }));
+      console.log(`   ⚠️ Trascrizione Gemini troppo corta: ${transcript.length} caratteri`);
+      return null;
       
-      return { transcript, segments, method: 'gemini' };
+    } catch (error: any) {
+      const errMsg = error.message || '';
+      // Se è un errore di quota/rate limit, prova la prossima chiave
+      if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+        console.log(`   ⚠️ Chiave ${keyIndex + 1} rate limited, provo la prossima...`);
+        continue;
+      }
+      // Altri errori: log e fallisce
+      console.log(`   ⚠️ Errore trascrizione Gemini: ${errMsg.substring(0, 80)}`);
+      return null;
     }
-    
-    console.log(`   ⚠️ Trascrizione Gemini troppo corta: ${transcript.length} caratteri`);
-    return null;
-  } catch (error: any) {
-    console.log(`   ⚠️ Errore trascrizione Gemini: ${error.message?.substring(0, 80)}`);
-    return null;
   }
+  
+  console.log(`   ⚠️ Tutte le chiavi Gemini esaurite`);
+  return null;
 }
 
 async function fetchTranscriptWithGemini(videoId: string): Promise<TranscriptResult | null> {
