@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle, Layers, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -60,6 +61,7 @@ const steps = [
   { id: 2, title: "Selezione", icon: ListVideo },
   { id: 3, title: "Impostazioni", icon: Settings },
   { id: 4, title: "Genera", icon: Sparkles },
+  { id: 4.5, title: "Moduli", icon: Layers },
   { id: 5, title: "Riepilogo", icon: FileText },
 ];
 
@@ -261,6 +263,16 @@ export default function ConsultantLibraryAIBuilder() {
   const [previewLesson, setPreviewLesson] = useState<any>(null);
   const [lessonOrder, setLessonOrder] = useState<string[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
+  
+  // Step 4.5: Module organization states
+  const [moduleAssignments, setModuleAssignments] = useState<Map<string, string>>(new Map());
+  const [moduleCreationMode, setModuleCreationMode] = useState<'single' | 'multiple' | null>(null);
+  const [newModulesCount, setNewModulesCount] = useState(2);
+  const [newModuleNames, setNewModuleNames] = useState<string[]>([]);
+  const [selectedModuleId, setSelectedModuleId] = useState<string>("");
+  const [isCreatingModules, setIsCreatingModules] = useState(false);
+  const [newModuleName, setNewModuleName] = useState("");
+  const [assignmentMode, setAssignmentMode] = useState<'single' | 'distribute'>('single');
   
   // Step 2: Stato caricamento video con UI dettagliata
   const [isSavingVideos, setIsSavingVideos] = useState(false);
@@ -814,7 +826,17 @@ export default function ConsultantLibraryAIBuilder() {
     setIsPublishing(true);
     try {
       const lessonIds = generatedLessons.map((l: any) => l.id);
-      await apiRequest("POST", "/api/library/ai-publish-lessons", { lessonIds });
+      
+      // Convert Map to object for API
+      const moduleAssignmentsObj: Record<string, string> = {};
+      moduleAssignments.forEach((subcategoryId, lessonId) => {
+        moduleAssignmentsObj[lessonId] = subcategoryId;
+      });
+      
+      await apiRequest("POST", "/api/library/ai-publish-lessons", { 
+        lessonIds,
+        moduleAssignments: Object.keys(moduleAssignmentsObj).length > 0 ? moduleAssignmentsObj : undefined
+      });
       
       queryClient.invalidateQueries({ queryKey: ["/api/library/documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/library/ai-unpublished-lessons"] });
@@ -822,6 +844,10 @@ export default function ConsultantLibraryAIBuilder() {
       // Reset stato locale
       setGeneratedLessons([]);
       setLessonOrder([]);
+      setModuleAssignments(new Map());
+      setModuleCreationMode(null);
+      setNewModuleNames([]);
+      setSelectedModuleId("");
       
       toast({ 
         title: "Lezioni pubblicate!", 
@@ -1574,19 +1600,426 @@ export default function ConsultantLibraryAIBuilder() {
                           Generazione completata!
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Le lezioni sono pronte per la revisione. Clicca per proseguire al riepilogo.
+                          {selectedSubcategoryId 
+                            ? "Le lezioni sono pronte per la revisione. Clicca per proseguire al riepilogo."
+                            : "Ora organizza le lezioni nei moduli del corso."}
                         </p>
                       </div>
                       <Button 
-                        onClick={() => setCurrentStep(5)}
+                        onClick={() => {
+                          if (selectedSubcategoryId) {
+                            // Skip module organization if subcategory already selected
+                            const assignments = new Map<string, string>();
+                            generatedLessons.forEach((lesson: any) => {
+                              assignments.set(lesson.id, selectedSubcategoryId);
+                            });
+                            setModuleAssignments(assignments);
+                            setCurrentStep(5);
+                          } else {
+                            // Go to module organization step
+                            setCurrentStep(4.5);
+                          }
+                        }}
                         className="bg-gradient-to-r from-green-600 to-emerald-600"
                         size="lg"
                       >
                         <ArrowRight className="w-4 h-4 mr-2" />
-                        Vai al Riepilogo
+                        {selectedSubcategoryId ? "Vai al Riepilogo" : "Organizza Moduli"}
                       </Button>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            )}
+
+            {currentStep === 4.5 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-purple-500" />
+                    Organizza Moduli
+                  </CardTitle>
+                  <CardDescription>
+                    Assegna le {generatedLessons.length} lezioni generate ai moduli del corso "{categories.find(c => c.id === selectedCategoryId)?.name}"
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Generated lessons preview */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">Lezioni Generate</Label>
+                    <div className="grid gap-2 max-h-[200px] overflow-y-auto">
+                      {generatedLessons.map((lesson: any, idx: number) => {
+                        const sourceVideo = savedVideos.find(v => v.id === lesson.youtubeVideoId || v.videoId === lesson.youtubeVideoId);
+                        return (
+                          <div key={lesson.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold text-xs">
+                              {idx + 1}
+                            </div>
+                            {sourceVideo?.thumbnailUrl && (
+                              <img src={sourceVideo.thumbnailUrl} alt={lesson.title} className="w-12 h-7 object-cover rounded" />
+                            )}
+                            <span className="text-sm font-medium truncate flex-1">{lesson.title}</span>
+                            {assignmentMode === 'distribute' && moduleAssignments.get(lesson.id) && (
+                              <Badge variant="secondary" className="text-xs">
+                                {filteredSubcategories.find(s => s.id === moduleAssignments.get(lesson.id))?.name || 'Assegnato'}
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Scenario A: No existing modules */}
+                  {filteredSubcategories.length === 0 && (
+                    <div className="space-y-6 p-4 rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border border-purple-200 dark:border-purple-800">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-purple-600" />
+                        <h3 className="font-semibold text-purple-900 dark:text-purple-100">Crea Nuovi Moduli</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Non ci sono moduli per questo corso. Crea uno o più moduli per organizzare le lezioni.
+                      </p>
+                      
+                      <RadioGroup 
+                        value={moduleCreationMode || ''} 
+                        onValueChange={(v) => {
+                          setModuleCreationMode(v as 'single' | 'multiple');
+                          if (v === 'single') {
+                            setNewModuleNames(['Modulo 1']);
+                            setNewModulesCount(1);
+                          } else {
+                            const names = Array.from({ length: newModulesCount }, (_, i) => `Modulo ${i + 1}`);
+                            setNewModuleNames(names);
+                          }
+                        }}
+                        className="space-y-3"
+                      >
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${moduleCreationMode === 'single' ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
+                          <RadioGroupItem value="single" id="single" />
+                          <Label htmlFor="single" className="cursor-pointer flex-1">
+                            <span className="font-medium">Un singolo modulo</span>
+                            <p className="text-sm text-muted-foreground">Tutte le lezioni saranno in un unico modulo</p>
+                          </Label>
+                        </div>
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${moduleCreationMode === 'multiple' ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
+                          <RadioGroupItem value="multiple" id="multiple" />
+                          <Label htmlFor="multiple" className="cursor-pointer flex-1">
+                            <span className="font-medium">Più moduli</span>
+                            <p className="text-sm text-muted-foreground">Crea più moduli per organizzare meglio le lezioni</p>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+
+                      {moduleCreationMode === 'multiple' && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Label>Numero di moduli:</Label>
+                            <Input 
+                              type="number" 
+                              min={2} 
+                              max={10} 
+                              value={newModulesCount}
+                              onChange={(e) => {
+                                const count = Math.min(10, Math.max(2, parseInt(e.target.value) || 2));
+                                setNewModulesCount(count);
+                                const names = Array.from({ length: count }, (_, i) => newModuleNames[i] || `Modulo ${i + 1}`);
+                                setNewModuleNames(names);
+                              }}
+                              className="w-20"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {moduleCreationMode && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-base font-semibold">Nomi dei moduli</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const videoTitles = savedVideos.map(v => v.title);
+                                  const courseName = categories.find((c: Category) => c.id === selectedCategoryId)?.name;
+                                  const result = await apiRequest("POST", "/api/library/ai-suggest-modules", {
+                                    videoTitles,
+                                    moduleCount: newModuleNames.length,
+                                    courseName,
+                                  });
+                                  if (result.names && result.names.length > 0) {
+                                    setNewModuleNames(result.names);
+                                    toast({ 
+                                      title: result.aiGenerated ? "Nomi suggeriti dall'AI" : "Nomi generati",
+                                      description: result.aiGenerated ? "Puoi modificarli se vuoi" : "Suggerimenti generici",
+                                    });
+                                  }
+                                } catch (error: any) {
+                                  toast({ title: "Errore", description: error.message, variant: "destructive" });
+                                }
+                              }}
+                              className="flex items-center gap-1"
+                            >
+                              <Sparkles className="w-4 h-4" />
+                              Suggerisci con AI
+                            </Button>
+                          </div>
+                          <div className="grid gap-2">
+                            {newModuleNames.map((name, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground w-8">#{idx + 1}</span>
+                                <Input 
+                                  value={name}
+                                  onChange={(e) => {
+                                    const updated = [...newModuleNames];
+                                    updated[idx] = e.target.value;
+                                    setNewModuleNames(updated);
+                                  }}
+                                  placeholder={`Nome modulo ${idx + 1}`}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {moduleCreationMode && (
+                        <Button 
+                          onClick={async () => {
+                            if (newModuleNames.length === 0 || newModuleNames.some(n => !n.trim())) {
+                              toast({ title: "Inserisci i nomi dei moduli", variant: "destructive" });
+                              return;
+                            }
+                            setIsCreatingModules(true);
+                            try {
+                              const createdModules: Subcategory[] = [];
+                              for (const moduleName of newModuleNames) {
+                                const result = await apiRequest("POST", "/api/library/subcategories", {
+                                  categoryId: selectedCategoryId,
+                                  name: moduleName.trim()
+                                });
+                                createdModules.push(result);
+                              }
+                              queryClient.invalidateQueries({ queryKey: ["/api/library/subcategories"] });
+                              
+                              // Assign all lessons to first module if single, or let user choose if multiple
+                              if (createdModules.length === 1) {
+                                const assignments = new Map<string, string>();
+                                generatedLessons.forEach((lesson: any) => {
+                                  assignments.set(lesson.id, createdModules[0].id);
+                                });
+                                setModuleAssignments(assignments);
+                                toast({ title: "Modulo creato!", description: `"${createdModules[0].name}" creato con successo` });
+                                setCurrentStep(5);
+                              } else {
+                                toast({ title: "Moduli creati!", description: `${createdModules.length} moduli creati. Ora assegna le lezioni.` });
+                                setAssignmentMode('distribute');
+                              }
+                            } catch (error: any) {
+                              toast({ title: "Errore", description: error.message, variant: "destructive" });
+                            }
+                            setIsCreatingModules(false);
+                          }}
+                          disabled={isCreatingModules || !moduleCreationMode}
+                          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600"
+                        >
+                          {isCreatingModules ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Plus className="w-4 h-4 mr-2" />
+                          )}
+                          Crea {moduleCreationMode === 'single' ? 'Modulo' : `${newModulesCount} Moduli`}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Scenario B: Existing modules */}
+                  {filteredSubcategories.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">Moduli Esistenti</Label>
+                        <Badge variant="secondary">{filteredSubcategories.length} moduli</Badge>
+                      </div>
+
+                      {/* Assignment mode selection */}
+                      <RadioGroup 
+                        value={assignmentMode} 
+                        onValueChange={(v) => {
+                          setAssignmentMode(v as 'single' | 'distribute');
+                          if (v === 'single') {
+                            setModuleAssignments(new Map());
+                          }
+                        }}
+                        className="space-y-2"
+                      >
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${assignmentMode === 'single' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
+                          <RadioGroupItem value="single" id="mode-single" />
+                          <Label htmlFor="mode-single" className="cursor-pointer">
+                            <span className="font-medium">Tutte in un modulo</span>
+                            <span className="text-sm text-muted-foreground ml-2">— Inserisci tutte le lezioni nello stesso modulo</span>
+                          </Label>
+                        </div>
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${assignmentMode === 'distribute' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
+                          <RadioGroupItem value="distribute" id="mode-distribute" />
+                          <Label htmlFor="mode-distribute" className="cursor-pointer">
+                            <span className="font-medium">Distribuisci tra moduli</span>
+                            <span className="text-sm text-muted-foreground ml-2">— Assegna ogni lezione a un modulo specifico</span>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+
+                      {/* Single module selection */}
+                      {assignmentMode === 'single' && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {filteredSubcategories.map((sub) => (
+                            <Card 
+                              key={sub.id}
+                              className={`cursor-pointer transition-all hover:shadow-md ${
+                                selectedModuleId === sub.id 
+                                  ? 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-950/20' 
+                                  : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                              }`}
+                              onClick={() => {
+                                setSelectedModuleId(sub.id);
+                                const assignments = new Map<string, string>();
+                                generatedLessons.forEach((lesson: any) => {
+                                  assignments.set(lesson.id, sub.id);
+                                });
+                                setModuleAssignments(assignments);
+                              }}
+                            >
+                              <CardContent className="p-4 flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                  selectedModuleId === sub.id 
+                                    ? 'bg-purple-500 text-white' 
+                                    : 'bg-gray-100 dark:bg-gray-800'
+                                }`}>
+                                  <Layers className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{sub.name}</p>
+                                </div>
+                                {selectedModuleId === sub.id && (
+                                  <Check className="w-5 h-5 text-purple-500" />
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Distribute lessons among modules */}
+                      {assignmentMode === 'distribute' && (
+                        <div className="space-y-3">
+                          <p className="text-sm text-muted-foreground">
+                            Seleziona un modulo per ogni lezione:
+                          </p>
+                          <div className="space-y-2">
+                            {generatedLessons.map((lesson: any, idx: number) => (
+                              <div key={lesson.id} className="flex items-center gap-3 p-3 rounded-lg border">
+                                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold text-xs">
+                                  {idx + 1}
+                                </div>
+                                <span className="text-sm font-medium flex-1 truncate">{lesson.title}</span>
+                                <Select 
+                                  value={moduleAssignments.get(lesson.id) || ''} 
+                                  onValueChange={(v) => {
+                                    setModuleAssignments(prev => {
+                                      const next = new Map(prev);
+                                      next.set(lesson.id, v);
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Seleziona modulo" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filteredSubcategories.map((sub) => (
+                                      <SelectItem key={sub.id} value={sub.id}>
+                                        {sub.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add new module inline */}
+                      <div className="p-4 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-3">
+                          <Plus className="w-5 h-5 text-muted-foreground" />
+                          <Input 
+                            value={newModuleName}
+                            onChange={(e) => setNewModuleName(e.target.value)}
+                            placeholder="Aggiungi nuovo modulo..."
+                            className="flex-1"
+                          />
+                          <Button 
+                            variant="outline"
+                            onClick={async () => {
+                              if (!newModuleName.trim()) {
+                                toast({ title: "Inserisci un nome per il modulo", variant: "destructive" });
+                                return;
+                              }
+                              setIsCreatingModules(true);
+                              try {
+                                await apiRequest("POST", "/api/library/subcategories", {
+                                  categoryId: selectedCategoryId,
+                                  name: newModuleName.trim()
+                                });
+                                queryClient.invalidateQueries({ queryKey: ["/api/library/subcategories"] });
+                                setNewModuleName("");
+                                toast({ title: "Modulo creato!", description: `"${newModuleName}" aggiunto` });
+                              } catch (error: any) {
+                                toast({ title: "Errore", description: error.message, variant: "destructive" });
+                              }
+                              setIsCreatingModules(false);
+                            }}
+                            disabled={isCreatingModules || !newModuleName.trim()}
+                          >
+                            {isCreatingModules ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aggiungi"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Navigation buttons */}
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <Button variant="outline" onClick={() => setCurrentStep(4)}>
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Indietro
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        // Validate assignments
+                        if (moduleAssignments.size === 0) {
+                          toast({ title: "Seleziona un modulo", description: "Devi assegnare le lezioni a un modulo", variant: "destructive" });
+                          return;
+                        }
+                        if (assignmentMode === 'distribute') {
+                          const allAssigned = generatedLessons.every((lesson: any) => moduleAssignments.has(lesson.id));
+                          if (!allAssigned) {
+                            toast({ title: "Assegnazioni incomplete", description: "Assegna tutte le lezioni a un modulo", variant: "destructive" });
+                            return;
+                          }
+                        }
+                        setCurrentStep(5);
+                      }}
+                      disabled={moduleAssignments.size === 0}
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600"
+                    >
+                      <ArrowRight className="w-4 h-4 mr-2" />
+                      Continua al Riepilogo
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}

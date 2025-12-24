@@ -5038,6 +5038,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI suggest module names based on video titles
+  app.post("/api/library/ai-suggest-modules", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { videoTitles, moduleCount, courseName } = req.body;
+      
+      if (!videoTitles || !Array.isArray(videoTitles) || videoTitles.length === 0) {
+        return res.status(400).json({ message: "videoTitles array is required" });
+      }
+      
+      const count = Math.min(Math.max(moduleCount || 1, 1), 10);
+      
+      const { getAIProvider } = await import("./ai/provider-factory");
+      const providerResult = await getAIProvider(req.user!.id);
+      
+      if (!providerResult.client) {
+        // Fallback: genera nomi generici
+        const names = Array.from({ length: count }, (_, i) => `Modulo ${i + 1}`);
+        return res.json({ names, aiGenerated: false });
+      }
+      
+      const prompt = `Sei un esperto nella creazione di corsi formativi.
+      
+${courseName ? `NOME DEL CORSO: ${courseName}\n` : ''}
+TITOLI DEI VIDEO LEZIONE:
+${videoTitles.map((t: string, i: number) => `${i + 1}. ${t}`).join('\n')}
+
+Devo organizzare questi ${videoTitles.length} video in ${count} moduli.
+Analizza i titoli e suggerisci ${count} nomi di moduli che:
+1. Raggruppino logicamente i video per argomento
+2. Siano brevi e descrittivi (massimo 5 parole)
+3. Seguano una progressione logica (dal base all'avanzato, o cronologica)
+
+Rispondi SOLO con un JSON array di stringhe, senza altri testi:
+["Nome Modulo 1", "Nome Modulo 2", ...]`;
+
+      const response = await providerResult.client.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+      
+      const text = response.response.text() || '';
+      
+      try {
+        const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const names = JSON.parse(cleanJson);
+        if (Array.isArray(names) && names.length > 0) {
+          res.json({ names: names.slice(0, count), aiGenerated: true });
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } catch {
+        // Fallback se parsing fallisce
+        const names = Array.from({ length: count }, (_, i) => `Modulo ${i + 1}`);
+        res.json({ names, aiGenerated: false });
+      }
+    } catch (error: any) {
+      console.error('Error suggesting module names:', error);
+      const count = req.body.moduleCount || 1;
+      const names = Array.from({ length: count }, (_, i) => `Modulo ${i + 1}`);
+      res.json({ names, aiGenerated: false });
+    }
+  });
+
   // Generate lesson from video
   app.post("/api/library/ai-generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
@@ -5221,17 +5284,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Publish AI-generated lessons (confirm and make visible in course)
   app.post("/api/library/ai-publish-lessons", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { lessonIds } = req.body;
+      const { lessonIds, moduleAssignments } = req.body;
       
       if (!lessonIds || !Array.isArray(lessonIds) || lessonIds.length === 0) {
         return res.status(400).json({ message: "lessonIds array is required" });
       }
 
-      // Update all lessons to published
+      // Update all lessons to published (and assign to modules if provided)
       const updatedLessons = [];
       for (const lessonId of lessonIds) {
+        const updateData: any = { isPublished: true };
+        
+        // If moduleAssignments provided, update subcategoryId
+        if (moduleAssignments && moduleAssignments[lessonId]) {
+          updateData.subcategoryId = moduleAssignments[lessonId];
+        }
+        
         const [lesson] = await db.update(schema.libraryDocuments)
-          .set({ isPublished: true })
+          .set(updateData)
           .where(and(
             eq(schema.libraryDocuments.id, lessonId),
             eq(schema.libraryDocuments.createdBy, req.user!.id)
@@ -5243,7 +5313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log(`✅ [AI-BUILDER] Published ${updatedLessons.length} lessons for consultant ${req.user!.id}`);
+      console.log(`✅ [AI-BUILDER] Published ${updatedLessons.length} lessons for consultant ${req.user!.id}${moduleAssignments ? ' with module assignments' : ''}`);
       res.json({ success: true, published: updatedLessons.length });
     } catch (error: any) {
       console.error('Error publishing lessons:', error);

@@ -3,6 +3,7 @@ import { libraryDocuments, youtubeVideos, libraryCategories, librarySubcategorie
 import { eq } from "drizzle-orm";
 import { getAIProvider } from "../ai/provider-factory";
 import { getAiLessonSettings } from "./youtube-service";
+import { getThemeById, generateThemeInstructionsForAI, type CourseTheme } from "../../shared/course-themes";
 
 interface GenerateLessonParams {
   consultantId: string;
@@ -45,11 +46,21 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
 
     console.log(`✅ [AI-LESSON] Trascrizione trovata: ${video.transcript.length} caratteri`);
 
+    // Recupera il tema dalla categoria
+    const [category] = await db
+      .select()
+      .from(libraryCategories)
+      .where(eq(libraryCategories.id, params.categoryId));
+    
+    const themeId = (category as any)?.theme || 'classic';
+    const theme = getThemeById(themeId);
+    console.log(`🎨 [AI-LESSON] Tema corso: ${theme.name}`);
+
     const settings = await getAiLessonSettings(params.consultantId);
     const instructions = params.customInstructions || settings.writingInstructions || '';
 
     console.log(`🤖 [AI-LESSON] Inviando a Gemini per generazione lezione...`);
-    const prompt = buildLessonPrompt(video, instructions, settings.preserveSpeakerStyle);
+    const prompt = buildLessonPrompt(video, instructions, settings.preserveSpeakerStyle, theme);
     
     const providerResult = await getAIProvider(params.consultantId);
     if (!providerResult.client) {
@@ -102,10 +113,12 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
   }
 }
 
-function buildLessonPrompt(video: any, instructions: string, preserveSpeakerStyle: boolean): string {
+function buildLessonPrompt(video: any, instructions: string, preserveSpeakerStyle: boolean, theme: CourseTheme): string {
   const styleInstruction = preserveSpeakerStyle 
     ? `IMPORTANTE: Mantieni ESATTAMENTE il tono, lo stile e le espressioni usate dal relatore nel video. Usa le sue parole e il suo modo di spiegare. Non parafrasare troppo, preserva la sua voce autentica.`
     : `Riscrivi il contenuto con un tono professionale e chiaro.`;
+
+  const themeInstructions = generateThemeInstructionsForAI(theme);
 
   return `Sei un esperto nella creazione di contenuti formativi. Devi creare una lezione formativa basata sulla trascrizione di un video YouTube.
 
@@ -121,21 +134,24 @@ ${styleInstruction}
 
 ${instructions ? `ISTRUZIONI AGGIUNTIVE DELL'UTENTE:\n${instructions}\n\n` : ''}
 
+${themeInstructions}
+
 Genera una lezione formativa strutturata. Rispondi SOLO con il seguente formato JSON (senza markdown, senza backticks):
 
 {
   "title": "Titolo della lezione (massimo 80 caratteri)",
   "subtitle": "Sottotitolo descrittivo (massimo 150 caratteri)",
-  "content": "Contenuto completo della lezione in formato Markdown. Usa ## per i titoli delle sezioni, **grassetto** per i concetti chiave, elenchi puntati per i punti importanti. Il contenuto deve essere ben strutturato e formativo.",
+  "content": "Contenuto HTML completo della lezione usando ESATTAMENTE le classi Tailwind CSS specificate sopra. NON usare markdown. Genera HTML valido con i tag e le classi fornite. Struttura la lezione con sezioni, box punti chiave, esempi e riepilogo.",
   "estimatedDuration": numero_minuti_lettura,
   "tags": ["tag1", "tag2", "tag3"]
 }
 
 Assicurati che:
-1. Il contenuto sia formativo e strutturato in sezioni chiare
-2. I concetti chiave siano evidenziati
-3. Lo stile rifletta quello del relatore originale
-4. I tags siano pertinenti all'argomento`;
+1. Il contenuto sia HTML valido con le classi Tailwind specificate
+2. Usa tutti gli elementi del tema: titoli, box punti chiave, esempi, note, azioni, riepilogo
+3. Lo stile testuale rifletta quello del relatore originale
+4. La struttura visiva sia quella del tema ${theme.name}
+5. I tags siano pertinenti all'argomento`;
 }
 
 function parseLessonResponse(response: string, video: any): GeneratedLesson {
