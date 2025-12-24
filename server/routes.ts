@@ -4988,7 +4988,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             transcriptMode,
             (status: string, message?: string) => {
               send({ type: status, videoId: video.videoId, title: video.title, message });
-            }
+            },
+            // Metadati dalla playlist per fallback se oEmbed fallisce (video non embeddabili)
+            { title: video.title, thumbnailUrl: video.thumbnail, channelName: video.channelTitle }
           );
           
           if (result.success) {

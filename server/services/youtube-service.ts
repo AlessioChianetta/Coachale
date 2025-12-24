@@ -842,7 +842,8 @@ export async function saveVideoWithTranscriptStream(
   playlistId?: string,
   playlistTitle?: string,
   transcriptMode: TranscriptMode = 'auto',
-  onProgress?: (status: string, message?: string) => void
+  onProgress?: (status: string, message?: string) => void,
+  playlistMetadata?: { title?: string; thumbnailUrl?: string; channelName?: string }
 ): Promise<{ success: boolean; video?: any; error?: string; reused?: boolean }> {
   try {
     const videoId = extractVideoId(videoUrl);
@@ -893,9 +894,22 @@ export async function saveVideoWithTranscriptStream(
     }
     
     onProgress?.('downloading', 'Scaricando metadati video...');
-    const metadata = await fetchVideoMetadata(videoId);
+    let metadata = await fetchVideoMetadata(videoId);
+    
+    // Fallback: se oEmbed fallisce (video non embeddabile), usa i metadati dalla playlist
+    if (!metadata && playlistMetadata?.title) {
+      console.log(`⚠️ [SAVE-VIDEO-STREAM] oEmbed fallito, uso metadati playlist per: "${playlistMetadata.title}"`);
+      metadata = {
+        title: playlistMetadata.title,
+        thumbnailUrl: playlistMetadata.thumbnailUrl || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+        channelName: playlistMetadata.channelName || 'Canale sconosciuto',
+        description: '',
+        duration: null,
+      };
+    }
+    
     if (!metadata) {
-      return { success: false, error: 'Impossibile ottenere metadati' };
+      return { success: false, error: 'Impossibile ottenere metadati (video privato o con restrizioni)' };
     }
     
     const [video] = await db.insert(youtubeVideos).values({
