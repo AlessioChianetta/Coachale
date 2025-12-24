@@ -5057,8 +5057,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { generateMultipleLessons } = await import("./services/ai-lesson-generator");
       
-      const onProgress = (current: number, total: number, status: string, videoTitle?: string) => {
-        res.write(`data: ${JSON.stringify({ type: 'progress', current, total, videoTitle, status })}\n\n`);
+      const onProgress = (current: number, total: number, status: string, videoTitle?: string, errorMessage?: string) => {
+        if (status === 'generating') {
+          res.write(`data: ${JSON.stringify({ type: 'progress', current, total, videoTitle, status })}\n\n`);
+        } else if (status === 'completed') {
+          res.write(`data: ${JSON.stringify({ type: 'video_complete', current, total, videoTitle })}\n\n`);
+        } else if (status === 'error') {
+          res.write(`data: ${JSON.stringify({ type: 'video_error', current, total, videoTitle, error: errorMessage })}\n\n`);
+        }
       };
 
       const result = await generateMultipleLessons(

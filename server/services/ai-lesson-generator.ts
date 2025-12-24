@@ -160,7 +160,7 @@ export async function generateMultipleLessons(
   customInstructions?: string,
   level?: 'base' | 'intermedio' | 'avanzato',
   contentType?: 'text' | 'video' | 'both',
-  onProgress?: (current: number, total: number, status: string, videoTitle?: string) => void
+  onProgress?: (current: number, total: number, status: string, videoTitle?: string, errorMessage?: string) => void
 ): Promise<{ success: boolean; lessons: any[]; errors: string[] }> {
   const lessons: any[] = [];
   const errors: string[] = [];
@@ -173,8 +173,10 @@ export async function generateMultipleLessons(
       .from(youtubeVideos)
       .where(eq(youtubeVideos.id, videoId));
 
+    const videoTitle = video?.title || 'Video';
+
     if (onProgress) {
-      onProgress(i + 1, videoIds.length, 'generating', video?.title || 'Video');
+      onProgress(i + 1, videoIds.length, 'generating', videoTitle);
     }
 
     const result = await generateLessonFromVideo({
@@ -189,8 +191,15 @@ export async function generateMultipleLessons(
 
     if (result.success && result.lesson) {
       lessons.push(result.lesson);
+      if (onProgress) {
+        onProgress(i + 1, videoIds.length, 'completed', videoTitle);
+      }
     } else {
-      errors.push(`${video?.title || videoId}: ${result.error}`);
+      const errorMsg = result.error || 'Unknown error';
+      errors.push(`${videoTitle}: ${errorMsg}`);
+      if (onProgress) {
+        onProgress(i + 1, videoIds.length, 'error', videoTitle, errorMsg);
+      }
     }
 
     if (i < videoIds.length - 1) {

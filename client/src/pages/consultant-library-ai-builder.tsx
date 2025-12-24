@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText } from "lucide-react";
+import { ArrowLeft, ArrowRight, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, Eye, FileText, Bookmark, Trash2, FolderOpen, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
@@ -100,6 +101,9 @@ export default function ConsultantLibraryAIBuilder() {
   const [previewTranscript, setPreviewTranscript] = useState<string>("");
   const [loadingTranscript, setLoadingTranscript] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/library/categories"],
@@ -111,6 +115,10 @@ export default function ConsultantLibraryAIBuilder() {
 
   const { data: aiSettings } = useQuery({
     queryKey: ["/api/library/ai-settings"],
+  });
+
+  const { data: drafts = [], refetch: refetchDrafts } = useQuery<any[]>({
+    queryKey: ["/api/library/ai-builder-drafts"],
   });
 
   useEffect(() => {
@@ -229,6 +237,67 @@ export default function ConsultantLibraryAIBuilder() {
     setLoadingTranscript(false);
   };
 
+  const handleSaveDraft = async (name?: string) => {
+    setSavingDraft(true);
+    try {
+      const draftData = {
+        name: name || `Bozza ${new Date().toLocaleDateString('it-IT')} ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`,
+        youtubeUrl,
+        inputType,
+        selectedCategoryId,
+        selectedSubcategoryId,
+        selectedVideoIds,
+        playlistVideos,
+        savedVideoIds: savedVideos.map(v => v.id),
+        aiInstructions,
+        contentType,
+        level,
+        currentStep,
+      };
+
+      if (currentDraftId) {
+        await apiRequest("PUT", `/api/library/ai-builder-drafts/${currentDraftId}`, draftData);
+        toast({ title: "Bozza aggiornata" });
+      } else {
+        const result = await apiRequest("POST", "/api/library/ai-builder-drafts", draftData);
+        setCurrentDraftId(result.id);
+        toast({ title: "Bozza salvata" });
+      }
+      refetchDrafts();
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+    setSavingDraft(false);
+  };
+
+  const handleLoadDraft = async (draft: any) => {
+    setYoutubeUrl(draft.youtubeUrl || "");
+    setInputType(draft.inputType || "video");
+    setSelectedCategoryId(draft.selectedCategoryId || "");
+    setSelectedSubcategoryId(draft.selectedSubcategoryId || "");
+    setSelectedVideoIds(draft.selectedVideoIds || []);
+    setPlaylistVideos(draft.playlistVideos || []);
+    setAiInstructions(draft.aiInstructions || "");
+    setContentType(draft.contentType || "both");
+    setLevel(draft.level || "base");
+    setCurrentStep(draft.currentStep || 1);
+    setCurrentDraftId(draft.id);
+    
+    setShowDrafts(false);
+    toast({ title: "Bozza caricata", description: draft.name });
+  };
+
+  const handleDeleteDraft = async (draftId: string) => {
+    try {
+      await apiRequest("DELETE", `/api/library/ai-builder-drafts/${draftId}`);
+      if (currentDraftId === draftId) setCurrentDraftId(null);
+      refetchDrafts();
+      toast({ title: "Bozza eliminata" });
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+  };
+
   const handleStartGeneration = async () => {
     if (selectedVideoIds.length === 0) {
       toast({ title: "Nessun video selezionato", variant: "destructive" });
@@ -262,6 +331,7 @@ export default function ConsultantLibraryAIBuilder() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
         },
         credentials: "include",
         body: JSON.stringify({
@@ -377,6 +447,67 @@ export default function ConsultantLibraryAIBuilder() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Torna alla Libreria
               </Button>
+              <div className="flex items-center gap-2 ml-auto">
+                {currentDraftId && (
+                  <Badge variant="outline" className="text-xs">
+                    <Bookmark className="w-3 h-3 mr-1" />
+                    Bozza attiva
+                  </Badge>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleSaveDraft()}
+                  disabled={savingDraft || currentStep === 4}
+                >
+                  {savingDraft ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Salva Bozza
+                </Button>
+                <Sheet open={showDrafts} onOpenChange={setShowDrafts}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <FolderOpen className="w-4 h-4 mr-2" />
+                      Bozze ({drafts.length})
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent>
+                    <SheetHeader>
+                      <SheetTitle>Bozze Salvate</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 space-y-3">
+                      {drafts.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-8">Nessuna bozza salvata</p>
+                      ) : (
+                        drafts.map((draft: any) => (
+                          <div 
+                            key={draft.id} 
+                            className={`p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors ${
+                              currentDraftId === draft.id ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/20' : ''
+                            }`}
+                            onClick={() => handleLoadDraft(draft)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate">{draft.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(draft.updatedAt).toLocaleDateString('it-IT')} - Step {draft.currentStep}
+                                </p>
+                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteDraft(draft.id); }}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
 
             <div className="space-y-2">
