@@ -995,10 +995,20 @@ export default function ConsultantLibrary() {
     (doc: LibraryDocument) => doc.isPublished || selectedCategory === "all" || searchTerm
   );
 
-  // Filter documents by level
-  const filteredDocuments = (selectedLevel === "all")
+  // Filter documents by level and sort by sortOrder
+  const filteredDocuments = ((selectedLevel === "all")
     ? visibleDocuments
-    : visibleDocuments.filter((doc: LibraryDocument) => doc.level === selectedLevel);
+    : visibleDocuments.filter((doc: LibraryDocument) => doc.level === selectedLevel)
+  ).sort((a: LibraryDocument, b: LibraryDocument) => {
+    // Sort by sortOrder first (ascending), then by createdAt (newest first)
+    const orderA = (a as any).sortOrder ?? 999;
+    const orderB = (b as any).sortOrder ?? 999;
+    if (orderA !== orderB) return orderA - orderB;
+    // Fallback to createdAt if sortOrder is the same
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  });
 
   // Placeholder for getCategoryProgress if it's used elsewhere and needs to be defined
   const getCategoryProgress = (categoryId: string) => {
@@ -1398,67 +1408,86 @@ export default function ConsultantLibrary() {
                     )}
                   </Card>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredDocuments.map((document: LibraryDocument) => {
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {filteredDocuments.map((document: LibraryDocument, index: number) => {
                       const course = categories.find((c: LibraryCategory) => c.id === document.categoryId);
                       const subcategory = document.subcategoryId
                         ? subcategories.find((s: LibrarySubcategory) => s.id === document.subcategoryId)
                         : null;
+                      const sortOrder = (document as any).sortOrder;
 
                       return (
-                        <Card key={document.id} className="group hover:shadow-lg transition-all duration-200 flex flex-col">
-                          <CardContent className="p-4 flex-1 flex flex-col">
-                            <div className="flex items-start justify-between mb-3">
+                        <Card key={document.id} className="group relative hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex flex-col bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700 overflow-hidden">
+                          {/* Order Badge */}
+                          <div className="absolute top-3 left-3 z-10">
+                            <div className="w-8 h-8 rounded-full bg-primary/90 text-primary-foreground flex items-center justify-center text-sm font-bold shadow-lg">
+                              {sortOrder ?? index + 1}
+                            </div>
+                          </div>
+                          
+                          <CardContent className="p-5 flex-1 flex flex-col relative">
+                            {/* Header badges */}
+                            <div className="flex items-start justify-between mb-4 pl-10">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <Badge className={`${getLevelBadgeColor(document.level)} text-xs`}>
+                                <Badge className={`${getLevelBadgeColor(document.level)} text-xs font-medium px-2.5 py-0.5`}>
                                   {document.level}
                                 </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                  {(document as any).contentType === 'video' ? '🎥' : (document as any).contentType === 'both' ? '📚' : '📄'}
+                                <Badge variant="secondary" className="text-xs px-2">
+                                  {(document as any).contentType === 'video' ? '🎥 Video' : (document as any).contentType === 'both' ? '📚 Misto' : '📄 Testo'}
                                 </Badge>
                               </div>
                               {document.estimatedDuration && (
-                                <Badge variant="outline" className="text-xs flex items-center gap-1">
-                                  <Clock size={10} />
-                                  {document.estimatedDuration}m
+                                <Badge variant="outline" className="text-xs flex items-center gap-1 bg-white dark:bg-slate-800">
+                                  <Clock size={12} />
+                                  {document.estimatedDuration} min
                                 </Badge>
                               )}
                             </div>
 
-                            <h3 className="font-semibold text-sm mb-1 line-clamp-2">{document.title}</h3>
+                            {/* Title & Subtitle */}
+                            <h3 className="font-semibold text-base mb-2 line-clamp-2 text-slate-800 dark:text-slate-100">
+                              {document.title}
+                            </h3>
                             {document.subtitle && (
-                              <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{document.subtitle}</p>
+                              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{document.subtitle}</p>
                             )}
 
-                            <div className="mt-auto pt-3 border-t">
+                            {/* Course Path */}
+                            <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700">
                               <div className="flex items-center justify-between">
-                                <div className="text-xs text-muted-foreground truncate max-w-[60%]">
-                                  {course?.name}{subcategory ? ` > ${subcategory.name}` : ''}
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <Folder size={12} className="text-primary/70" />
+                                  <span className="truncate max-w-[180px]">
+                                    {course?.name}{subcategory ? ` > ${subcategory.name}` : ''}
+                                  </span>
                                 </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-0.5">
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleViewDocument(document.id)}
-                                    className="h-7 w-7 p-0"
+                                    className="h-8 w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600"
+                                    title="Visualizza"
                                   >
-                                    <Eye size={14} />
+                                    <Eye size={15} />
                                   </Button>
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleEditDocument(document)}
-                                    className="h-7 w-7 p-0"
+                                    className="h-8 w-8 p-0 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-600"
+                                    title="Modifica"
                                   >
-                                    <Edit3 size={14} />
+                                    <Edit3 size={15} />
                                   </Button>
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setDeletingDocument(document.id)}
-                                    className="h-7 w-7 p-0 text-destructive"
+                                    className="h-8 w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 text-destructive"
+                                    title="Elimina"
                                   >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={15} />
                                   </Button>
                                 </div>
                               </div>
