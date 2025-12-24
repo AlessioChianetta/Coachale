@@ -1171,7 +1171,7 @@ export default function ConsultantLibrary() {
   };
 
   const NavigationSidebar = () => (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
       <div className="p-4 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
