@@ -140,8 +140,8 @@ async function downloadAudioWithYtDlp(videoId: string): Promise<string | null> {
     
     console.log(`   🎵 Scaricando audio per video: ${videoId}`);
     
-    // yt-dlp scarica l'audio in formato mp3 (meno bloccato dei sottotitoli)
-    const cmd = `yt-dlp -x --audio-format mp3 --audio-quality 5 -o "${path.join(tempDir, videoId)}.%(ext)s" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
+    // Usa python -m yt_dlp per la versione aggiornata (pip install -U yt-dlp)
+    const cmd = `python -m yt_dlp -x --audio-format mp3 --audio-quality 5 -o "${path.join(tempDir, videoId)}.%(ext)s" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
     
     const { stdout, stderr } = await execAsync(cmd, { timeout: 180000 }); // 3 minuti timeout
     const output = stdout + stderr;
