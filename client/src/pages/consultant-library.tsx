@@ -1291,10 +1291,10 @@ export default function ConsultantLibrary() {
                           const subDocCount = documents.filter((d: LibraryDocument) => d.subcategoryId === subcategory.id).length;
 
                           return (
-                            <div key={subcategory.id} className="flex items-center group min-w-0">
+                            <div key={subcategory.id} className="flex items-start group min-w-0">
                               <button
                                 onClick={() => handleSubcategoryClick(category.id, subcategory.id)}
-                                className={`flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-all duration-200 min-w-0 ${
+                                className={`flex-1 flex items-start gap-2 px-2.5 py-2 rounded-lg text-sm transition-all duration-200 min-w-0 ${
                                   isSubSelected
                                     ? "bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-900 dark:from-purple-900/40 dark:to-indigo-900/40 dark:text-purple-100 shadow-sm"
                                     : "hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
@@ -1305,7 +1305,7 @@ export default function ConsultantLibrary() {
                                 }`}>
                                   <Folder size={12} className={isSubSelected ? 'text-purple-700 dark:text-purple-300' : 'text-slate-500 dark:text-slate-400'} />
                                 </div>
-                                <span className="truncate flex-1 text-left">{subcategory.name}</span>
+                                <span className="flex-1 text-left break-words whitespace-normal leading-tight">{subcategory.name}</span>
                                 <span className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                                   isSubSelected 
                                     ? 'bg-purple-200 text-purple-700 dark:bg-purple-800 dark:text-purple-200' 
