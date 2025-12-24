@@ -5041,6 +5041,220 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // SSE endpoint for real-time AI lesson generation progress
+  app.post("/api/library/ai-generate-batch-stream", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { videoIds, categoryId, subcategoryId, customInstructions, level, contentType } = req.body;
+      
+      if (!videoIds || !Array.isArray(videoIds) || !categoryId) {
+        return res.status(400).json({ message: "videoIds array and categoryId are required" });
+      }
+
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders();
+
+      const { generateMultipleLessons } = await import("./services/ai-lesson-generator");
+      
+      const onProgress = (current: number, total: number, status: string, videoTitle?: string) => {
+        res.write(`data: ${JSON.stringify({ type: 'progress', current, total, videoTitle, status })}\n\n`);
+      };
+
+      const result = await generateMultipleLessons(
+        req.user!.id,
+        videoIds,
+        categoryId,
+        subcategoryId,
+        customInstructions,
+        level,
+        contentType,
+        onProgress
+      );
+
+      res.write(`data: ${JSON.stringify({ type: 'complete', lessons: result.lessons, errors: result.errors })}\n\n`);
+      res.end();
+    } catch (error: any) {
+      console.error('Error in SSE lesson generation:', error);
+      res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+      res.end();
+    }
+  });
+
+  // ===== AI BUILDER DRAFTS CRUD ROUTES =====
+
+  // List all drafts for consultant
+  app.get("/api/library/ai-builder-drafts", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const drafts = await db.select()
+        .from(schema.aiBuilderDrafts)
+        .where(eq(schema.aiBuilderDrafts.consultantId, req.user!.id))
+        .orderBy(desc(schema.aiBuilderDrafts.updatedAt));
+      
+      res.json(drafts);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Create new draft
+  app.post("/api/library/ai-builder-drafts", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { 
+        name, 
+        youtubeUrl, 
+        inputType, 
+        selectedCategoryId, 
+        selectedSubcategoryId, 
+        selectedVideoIds, 
+        playlistVideos, 
+        savedVideoIds, 
+        aiInstructions, 
+        contentType, 
+        level, 
+        currentStep 
+      } = req.body;
+
+      if (!name) {
+        return res.status(400).json({ message: "Draft name is required" });
+      }
+
+      const [draft] = await db.insert(schema.aiBuilderDrafts).values({
+        consultantId: req.user!.id,
+        name,
+        youtubeUrl,
+        inputType,
+        selectedCategoryId,
+        selectedSubcategoryId,
+        selectedVideoIds: selectedVideoIds || [],
+        playlistVideos: playlistVideos || [],
+        savedVideoIds: savedVideoIds || [],
+        aiInstructions,
+        contentType,
+        level,
+        currentStep,
+      }).returning();
+
+      res.status(201).json(draft);
+    } catch (error: any) {
+      console.error('Error creating draft:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Update existing draft
+  app.put("/api/library/ai-builder-drafts/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const draftId = req.params.id;
+      
+      const [existingDraft] = await db.select()
+        .from(schema.aiBuilderDrafts)
+        .where(and(
+          eq(schema.aiBuilderDrafts.id, draftId),
+          eq(schema.aiBuilderDrafts.consultantId, req.user!.id)
+        ));
+
+      if (!existingDraft) {
+        return res.status(404).json({ message: "Draft not found" });
+      }
+
+      const { 
+        name, 
+        youtubeUrl, 
+        inputType, 
+        selectedCategoryId, 
+        selectedSubcategoryId, 
+        selectedVideoIds, 
+        playlistVideos, 
+        savedVideoIds, 
+        aiInstructions, 
+        contentType, 
+        level, 
+        currentStep 
+      } = req.body;
+
+      const [updatedDraft] = await db.update(schema.aiBuilderDrafts)
+        .set({
+          name,
+          youtubeUrl,
+          inputType,
+          selectedCategoryId,
+          selectedSubcategoryId,
+          selectedVideoIds: selectedVideoIds || existingDraft.selectedVideoIds,
+          playlistVideos: playlistVideos || existingDraft.playlistVideos,
+          savedVideoIds: savedVideoIds || existingDraft.savedVideoIds,
+          aiInstructions,
+          contentType,
+          level,
+          currentStep,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.aiBuilderDrafts.id, draftId))
+        .returning();
+
+      res.json(updatedDraft);
+    } catch (error: any) {
+      console.error('Error updating draft:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Delete draft
+  app.delete("/api/library/ai-builder-drafts/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const draftId = req.params.id;
+      
+      const [existingDraft] = await db.select()
+        .from(schema.aiBuilderDrafts)
+        .where(and(
+          eq(schema.aiBuilderDrafts.id, draftId),
+          eq(schema.aiBuilderDrafts.consultantId, req.user!.id)
+        ));
+
+      if (!existingDraft) {
+        return res.status(404).json({ message: "Draft not found" });
+      }
+
+      await db.delete(schema.aiBuilderDrafts)
+        .where(eq(schema.aiBuilderDrafts.id, draftId));
+
+      res.json({ message: "Draft deleted successfully" });
+    } catch (error: any) {
+      console.error('Error deleting draft:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ===== TRANSCRIPT PREVIEW ENDPOINT =====
+
+  // Get video transcript for preview
+  app.get("/api/youtube/video/:id/transcript", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const videoId = req.params.id;
+      
+      const [video] = await db.select()
+        .from(schema.youtubeVideos)
+        .where(and(
+          eq(schema.youtubeVideos.id, videoId),
+          eq(schema.youtubeVideos.consultantId, req.user!.id)
+        ));
+
+      if (!video) {
+        return res.status(404).json({ message: "Video not found or not owned by consultant" });
+      }
+
+      res.json({
+        transcript: video.transcript,
+        transcriptStatus: video.transcriptStatus,
+        title: video.title,
+        videoId: video.videoId,
+      });
+    } catch (error: any) {
+      console.error('Error fetching transcript:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ===== UNIVERSITY MODULE ROUTES =====
 
   // Templates
