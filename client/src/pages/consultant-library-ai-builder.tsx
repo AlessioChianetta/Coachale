@@ -72,6 +72,46 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
+// Template istruzioni AI predefiniti
+const AI_INSTRUCTION_TEMPLATES = [
+  {
+    id: "speaker-style",
+    name: "Stile del Relatore",
+    description: "Mantiene tono e stile originale",
+    instructions: "Mantieni il tono e lo stile del relatore nel video. Usa le sue espressioni e il suo modo di spiegare i concetti. Struttura il testo in sezioni chiare e leggibili."
+  },
+  {
+    id: "formal",
+    name: "Stile Formale",
+    description: "Tono professionale e accademico",
+    instructions: "Riscrivi il contenuto con un tono formale e professionale. Usa un linguaggio preciso e tecnico. Evita espressioni colloquiali e mantieni un registro accademico."
+  },
+  {
+    id: "conversational",
+    name: "Stile Colloquiale",
+    description: "Amichevole e accessibile",
+    instructions: "Riscrivi il contenuto con un tono amichevole e colloquiale. Usa un linguaggio semplice e accessibile. Mantieni un ritmo scorrevole come se stessi parlando con un amico."
+  },
+  {
+    id: "bullet-points",
+    name: "Lista Puntata",
+    description: "Punti chiave in formato lista",
+    instructions: "Estrai i concetti chiave e presentali in formato lista puntata. Ogni punto deve essere chiaro e conciso. Usa sottotitoli per organizzare le sezioni."
+  },
+  {
+    id: "step-by-step",
+    name: "Passo per Passo",
+    description: "Tutorial con passi numerati",
+    instructions: "Struttura il contenuto come un tutorial passo per passo. Numera ogni passaggio e spiega chiaramente cosa fare. Includi esempi pratici dove possibile."
+  },
+  {
+    id: "summary",
+    name: "Riassunto Conciso",
+    description: "Sintesi breve e essenziale",
+    instructions: "Crea un riassunto conciso del contenuto. Mantieni solo i punti essenziali. La lezione deve essere breve ma completa."
+  }
+];
+
 // Valuta qualità trascrizione basata su lunghezza e durata video
 function evaluateTranscriptQuality(transcript: string, videoDuration: number): { level: 'excellent' | 'good' | 'poor' | 'empty'; label: string; color: string } {
   if (!transcript || transcript.trim().length === 0) {
@@ -856,13 +896,38 @@ export default function ConsultantLibraryAIBuilder() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-2">
+                      <Label>Stile di scrittura</Label>
+                      <Select onValueChange={(templateId) => {
+                        const template = AI_INSTRUCTION_TEMPLATES.find(t => t.id === templateId);
+                        if (template) setAiInstructions(template.instructions);
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Scegli un template..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AI_INSTRUCTION_TEMPLATES.map(template => (
+                            <SelectItem key={template.id} value={template.id}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{template.name}</span>
+                                <span className="text-xs text-muted-foreground">{template.description}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label>Istruzioni per l'AI</Label>
                       <Textarea
-                        rows={6}
+                        rows={5}
                         value={aiInstructions}
                         onChange={(e) => setAiInstructions(e.target.value)}
                         placeholder="Es: Mantieni il tono informale del relatore..."
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Seleziona un template sopra o scrivi le tue istruzioni personalizzate
+                      </p>
                     </div>
 
                     <div className="space-y-2">
