@@ -4992,11 +4992,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           
           if (result.success) {
-            savedVideos.push({ ...result.video, reused: result.reused || false });
+            // Escludi transcript dal saved video per evitare JSON troppo grande
+            const { transcript, description, ...videoWithoutLargeFields } = result.video || {};
+            savedVideos.push({ 
+              ...videoWithoutLargeFields, 
+              reused: result.reused || false,
+              transcriptStatus: result.video?.transcriptStatus,
+              transcriptLength: transcript?.length || 0 
+            });
             if (result.reused) {
               send({ type: 'reused', videoId: video.videoId, title: video.title });
             } else {
-              send({ type: 'completed', videoId: video.videoId, title: video.title, transcriptLength: result.video?.transcript?.length || 0 });
+              send({ type: 'completed', videoId: video.videoId, title: video.title, transcriptLength: transcript?.length || 0 });
             }
           } else {
             errors.push({ videoId: video.videoId, error: result.error });
