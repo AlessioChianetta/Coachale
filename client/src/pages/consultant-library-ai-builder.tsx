@@ -705,13 +705,21 @@ export default function ConsultantLibraryAIBuilder() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let savedVideosList: SavedVideo[] = [];
+      let buffer = '';
       
       while (reader) {
         const { done, value } = await reader.read();
         if (done) break;
         
-        const text = decoder.decode(value);
-        const lines = text.split('\n').filter(line => line.startsWith('data: '));
+        buffer += decoder.decode(value, { stream: true });
+        
+        const eventEndIndex = buffer.lastIndexOf('\n\n');
+        if (eventEndIndex === -1) continue;
+        
+        const completeEvents = buffer.slice(0, eventEndIndex + 2);
+        buffer = buffer.slice(eventEndIndex + 2);
+        
+        const lines = completeEvents.split('\n').filter(line => line.startsWith('data: '));
         
         for (const line of lines) {
           try {
@@ -765,8 +773,39 @@ export default function ConsultantLibraryAIBuilder() {
               addLog(`🎉 Fatto! ${savedVideosList.length} video pronti per la lezione`, 'success');
             }
           } catch (e) {
-            // Ignora errori di parsing
+            console.warn('[SSE] Errore parsing:', e, 'Linea:', line.slice(0, 100));
           }
+        }
+      }
+      
+      if (buffer.trim()) {
+        const remainingLines = buffer.split('\n').filter(line => line.startsWith('data: '));
+        for (const line of remainingLines) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'done') {
+              savedVideosList = data.savedVideos || [];
+              addLog(`🎉 Fatto! ${savedVideosList.length} video pronti per la lezione`, 'success');
+            }
+          } catch (e) {
+            console.warn('[SSE] Errore parsing buffer rimanente:', e);
+          }
+        }
+      }
+      
+      // Fallback: se non abbiamo ricevuto i video dal messaggio 'done', li recuperiamo dal database
+      if (savedVideosList.length === 0 && selected.length > 0) {
+        console.log('[SSE] Fallback: recupero video dal database...');
+        addLog('Recupero video salvati dal database...', 'info');
+        try {
+          const dbVideos = await apiRequest("GET", "/api/youtube/videos");
+          // Filtra solo i video appena processati (basandosi sui videoId selezionati)
+          const selectedVideoIds = new Set(selected.map(v => v.videoId));
+          savedVideosList = dbVideos.filter((v: any) => selectedVideoIds.has(v.videoId));
+          console.log('[SSE] Fallback: trovati', savedVideosList.length, 'video nel database');
+          addLog(`Recuperati ${savedVideosList.length} video dal database`, 'success');
+        } catch (fallbackError) {
+          console.error('[SSE] Errore fallback:', fallbackError);
         }
       }
       
