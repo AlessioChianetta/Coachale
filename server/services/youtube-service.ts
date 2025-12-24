@@ -7,6 +7,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import { GoogleGenAI } from "@google/genai";
+import { getSuperAdminGeminiKeys } from "../ai/provider-factory";
 
 const execAsync = promisify(exec);
 
@@ -33,6 +35,14 @@ interface TranscriptSegment {
   start: number;
   duration: number;
 }
+
+interface TranscriptResult {
+  transcript: string;
+  segments: TranscriptSegment[];
+  method: 'gemini' | 'subtitles' | 'manual';
+}
+
+// ==================== UTILITY FUNCTIONS ====================
 
 export function extractVideoId(url: string): string | null {
   const patterns = [
@@ -82,9 +92,11 @@ export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata
   }
 }
 
-async function fetchTranscriptWithYtDlp(videoId: string, lang: string = 'it'): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
-  const tempDir = '/tmp/yt-transcripts';
-  const outputPath = path.join(tempDir, videoId);
+// ==================== METODO 1: GEMINI (Audio Transcription) ====================
+
+async function downloadAudioWithYtDlp(videoId: string): Promise<string | null> {
+  const tempDir = '/tmp/yt-audio';
+  const outputPath = path.join(tempDir, `${videoId}.mp3`);
   
   try {
     if (!fs.existsSync(tempDir)) {
@@ -97,69 +109,138 @@ async function fetchTranscriptWithYtDlp(videoId: string, lang: string = 'it'): P
       oldFiles.forEach(f => fs.unlinkSync(path.join(tempDir, f)));
     } catch {}
     
-    const langsToTry = [lang, 'en', 'it.*', 'en.*'];
+    console.log(`   🎵 Scaricando audio per video: ${videoId}`);
     
-    for (const tryLang of langsToTry) {
-      // Retry con backoff per rate limiting
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          if (attempt > 0) {
-            console.log(`   🔄 yt-dlp retry ${attempt + 1}/2 per lingua ${tryLang}`);
-            await new Promise(r => setTimeout(r, 2000 * attempt));
-          } else {
-            console.log(`   📝 yt-dlp tentativo lingua: ${tryLang}`);
-          }
-          
-          // Usa opzioni anti-rate-limiting
-          const cmd = `yt-dlp --write-auto-subs --skip-download --sub-lang "${tryLang}" --sub-format "vtt" --extractor-args "youtube:player_skip=webpage,configs" --socket-timeout 10 -o "${outputPath}" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
-          
-          const { stdout, stderr } = await execAsync(cmd, { timeout: 45000 });
-          const output = stdout + stderr;
-          
-          // Controlla se c'è rate limiting
-          if (output.includes('429') || output.includes('Too Many Requests')) {
-            console.log(`   ⚠️ Rate limit (429) per lingua ${tryLang}`);
-            if (attempt < 1) continue; // Prova ancora
-            break; // Passa alla prossima lingua
-          }
-          
-          const vttFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId) && f.endsWith('.vtt'));
-          
-          for (const vttFile of vttFiles) {
-            const vttPath = path.join(tempDir, vttFile);
-            const vttContent = fs.readFileSync(vttPath, 'utf-8');
-            
-            const segments = parseVttToSegments(vttContent);
-            const fullTranscript = segments.map(s => s.text).join(' ').trim();
-            
-            // Pulisci file
-            try { fs.unlinkSync(vttPath); } catch {}
-            
-            if (fullTranscript.length > 50) {
-              return { transcript: fullTranscript, segments };
-            }
-          }
-          
-          break; // Esci dal retry loop se non ci sono stati errori 429
-        } catch (cmdError: any) {
-          const errMsg = cmdError.message || '';
-          if (errMsg.includes('429') || errMsg.includes('Too Many Requests')) {
-            console.log(`   ⚠️ Rate limit (429) per lingua ${tryLang}`);
-            if (attempt < 1) continue;
-          } else {
-            console.log(`   ⚠️ yt-dlp lingua ${tryLang} fallita: ${errMsg.substring(0, 60)}`);
-          }
-          break;
-        }
-      }
+    // yt-dlp scarica l'audio in formato mp3 (meno bloccato dei sottotitoli)
+    const cmd = `yt-dlp -x --audio-format mp3 --audio-quality 5 -o "${path.join(tempDir, videoId)}.%(ext)s" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
+    
+    const { stdout, stderr } = await execAsync(cmd, { timeout: 180000 }); // 3 minuti timeout
+    const output = stdout + stderr;
+    
+    if (output.includes('429') || output.includes('Too Many Requests')) {
+      console.log(`   ⚠️ Rate limit (429) per download audio`);
+      return null;
     }
     
+    // Cerca il file mp3 scaricato
+    const audioFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId) && f.endsWith('.mp3'));
+    
+    if (audioFiles.length > 0) {
+      const audioPath = path.join(tempDir, audioFiles[0]);
+      const stats = fs.statSync(audioPath);
+      console.log(`   ✅ Audio scaricato: ${audioFiles[0]} (${Math.round(stats.size / 1024)} KB)`);
+      return audioPath;
+    }
+    
+    console.log(`   ⚠️ Nessun file audio trovato dopo download`);
     return null;
   } catch (error: any) {
-    console.log(`   ⚠️ yt-dlp errore: ${error.message?.substring(0, 80)}`);
+    console.log(`   ⚠️ Errore download audio: ${error.message?.substring(0, 80)}`);
     return null;
   }
 }
+
+async function transcribeAudioWithGemini(audioPath: string): Promise<TranscriptResult | null> {
+  try {
+    // Ottieni API key da SuperAdmin
+    const superAdminKeys = await getSuperAdminGeminiKeys();
+    if (!superAdminKeys || superAdminKeys.keys.length === 0) {
+      console.log(`   ⚠️ Nessuna chiave Gemini disponibile`);
+      return null;
+    }
+    
+    const apiKey = superAdminKeys.keys[0];
+    const ai = new GoogleGenAI({ apiKey });
+    
+    // Leggi il file audio come base64
+    const audioBuffer = fs.readFileSync(audioPath);
+    const audioBase64 = audioBuffer.toString('base64');
+    const fileSizeMB = audioBuffer.length / (1024 * 1024);
+    
+    console.log(`   🤖 Inviando audio a Gemini (${fileSizeMB.toFixed(2)} MB)...`);
+    
+    // Usa Gemini per trascrivere
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType: "audio/mp3",
+                data: audioBase64
+              }
+            },
+            {
+              text: `Trascrivi questo audio in italiano. 
+Requisiti:
+- Trascrivi fedelmente tutto il parlato
+- Mantieni il tono e le espressioni originali del relatore
+- Includi punteggiatura corretta
+- Non aggiungere interpretazioni o commenti
+- Restituisci SOLO la trascrizione, senza intestazioni o note`
+            }
+          ]
+        }
+      ],
+      config: {
+        maxOutputTokens: 8192,
+        temperature: 0.1
+      }
+    });
+    
+    const transcript = response.text?.trim() || '';
+    
+    if (transcript.length > 50) {
+      console.log(`   ✅ Trascrizione Gemini completata: ${transcript.length} caratteri`);
+      
+      // Crea segmenti semplici (senza timing preciso)
+      const sentences = transcript.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      const segments: TranscriptSegment[] = sentences.map((text, index) => ({
+        text: text.trim(),
+        start: index * 10,
+        duration: 10
+      }));
+      
+      return { transcript, segments, method: 'gemini' };
+    }
+    
+    console.log(`   ⚠️ Trascrizione Gemini troppo corta: ${transcript.length} caratteri`);
+    return null;
+  } catch (error: any) {
+    console.log(`   ⚠️ Errore trascrizione Gemini: ${error.message?.substring(0, 80)}`);
+    return null;
+  }
+}
+
+async function fetchTranscriptWithGemini(videoId: string): Promise<TranscriptResult | null> {
+  console.log(`🔍 [TRANSCRIPT] Metodo Gemini: download audio + trascrizione AI`);
+  
+  try {
+    // Step 1: Scarica audio
+    const audioPath = await downloadAudioWithYtDlp(videoId);
+    if (!audioPath) {
+      return null;
+    }
+    
+    // Step 2: Trascrivi con Gemini
+    const result = await transcribeAudioWithGemini(audioPath);
+    
+    // Cleanup: elimina file audio
+    try {
+      fs.unlinkSync(audioPath);
+      console.log(`   🧹 File audio eliminato`);
+    } catch {}
+    
+    return result;
+  } catch (error: any) {
+    console.log(`   ⚠️ Metodo Gemini fallito: ${error.message?.substring(0, 80)}`);
+    return null;
+  }
+}
+
+// ==================== METODO 2: SOTTOTITOLI (yt-dlp + librerie JS) ====================
 
 function parseVttToSegments(vttContent: string): TranscriptSegment[] {
   const segments: TranscriptSegment[] = [];
@@ -194,6 +275,7 @@ function parseVttToSegments(vttContent: string): TranscriptSegment[] {
     segments.push({ text: currentText.trim(), start: currentStart, duration: currentDuration });
   }
   
+  // Deduplica segmenti
   const uniqueSegments: TranscriptSegment[] = [];
   const seenTexts = new Set<string>();
   for (const seg of segments) {
@@ -214,28 +296,71 @@ function parseVttTime(timeStr: string): number {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
-export async function fetchTranscript(videoId: string, lang: string = 'it'): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
-  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId}`);
+async function fetchSubtitlesWithYtDlp(videoId: string, lang: string = 'it'): Promise<TranscriptResult | null> {
+  const tempDir = '/tmp/yt-transcripts';
+  const outputPath = path.join(tempDir, videoId);
   
-  // METODO 0: yt-dlp (standard industriale, più robusto)
-  console.log(`🔍 [TRANSCRIPT] Metodo 0: yt-dlp (standard industriale)`);
   try {
-    const ytdlpResult = await fetchTranscriptWithYtDlp(videoId, lang);
-    if (ytdlpResult && ytdlpResult.transcript.length > 50) {
-      console.log(`✅ [TRANSCRIPT] Metodo 0 OK (yt-dlp): ${ytdlpResult.transcript.length} caratteri, ${ytdlpResult.segments.length} segmenti`);
-      return ytdlpResult;
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
     }
+    
+    // Pulisci file vecchi
+    try {
+      const oldFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId));
+      oldFiles.forEach(f => fs.unlinkSync(path.join(tempDir, f)));
+    } catch {}
+    
+    const langsToTry = [lang, 'en', 'it.*', 'en.*'];
+    
+    for (const tryLang of langsToTry) {
+      try {
+        console.log(`   📝 yt-dlp tentativo lingua: ${tryLang}`);
+        
+        const cmd = `yt-dlp --write-auto-subs --skip-download --sub-lang "${tryLang}" --sub-format "vtt" --extractor-args "youtube:player_skip=webpage,configs" --socket-timeout 10 -o "${outputPath}" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
+        
+        const { stdout, stderr } = await execAsync(cmd, { timeout: 45000 });
+        const output = stdout + stderr;
+        
+        if (output.includes('429') || output.includes('Too Many Requests')) {
+          console.log(`   ⚠️ Rate limit (429) per sottotitoli`);
+          continue;
+        }
+        
+        const vttFiles = fs.readdirSync(tempDir).filter(f => f.startsWith(videoId) && f.endsWith('.vtt'));
+        
+        for (const vttFile of vttFiles) {
+          const vttPath = path.join(tempDir, vttFile);
+          const vttContent = fs.readFileSync(vttPath, 'utf-8');
+          
+          const segments = parseVttToSegments(vttContent);
+          const fullTranscript = segments.map(s => s.text).join(' ').trim();
+          
+          try { fs.unlinkSync(vttPath); } catch {}
+          
+          if (fullTranscript.length > 50) {
+            return { transcript: fullTranscript, segments, method: 'subtitles' };
+          }
+        }
+      } catch (cmdError: any) {
+        console.log(`   ⚠️ yt-dlp lingua ${tryLang} fallita`);
+      }
+    }
+    
+    return null;
   } catch (error: any) {
-    console.log(`   ⚠️ yt-dlp fallito: ${error.message?.substring(0, 80)}`);
+    console.log(`   ⚠️ yt-dlp sottotitoli fallito: ${error.message?.substring(0, 80)}`);
+    return null;
   }
-  
-  // METODO 1: youtube-caption-extractor (fallback)
-  console.log(`🔍 [TRANSCRIPT] Metodo 1: youtube-caption-extractor`);
+}
+
+async function fetchSubtitlesWithJsLibraries(videoId: string, lang: string = 'it'): Promise<TranscriptResult | null> {
+  // Metodo A: youtube-caption-extractor
+  console.log(`   📝 Tentativo youtube-caption-extractor`);
   const languagesToTry = [lang, 'en', 'it-IT', 'en-US'];
   
   for (const tryLang of languagesToTry) {
     try {
-      console.log(`   📝 Tentativo lingua: ${tryLang}`);
       const subtitles = await getSubtitles({ videoID: videoId, lang: tryLang });
       
       if (subtitles && subtitles.length > 0) {
@@ -248,24 +373,21 @@ export async function fetchTranscript(videoId: string, lang: string = 'it'): Pro
         const fullTranscript = segments.map(s => s.text).join(' ').trim();
         
         if (fullTranscript.length > 0) {
-          console.log(`✅ [TRANSCRIPT] Metodo 1 OK (${tryLang}): ${fullTranscript.length} caratteri, ${segments.length} segmenti`);
-          return { transcript: fullTranscript, segments };
+          console.log(`   ✅ youtube-caption-extractor OK (${tryLang}): ${fullTranscript.length} caratteri`);
+          return { transcript: fullTranscript, segments, method: 'subtitles' };
         }
       }
     } catch (error: any) {
-      console.log(`   ⚠️ Lingua ${tryLang} fallita: ${error.message?.substring(0, 80)}`);
+      // Silent fail, try next
     }
   }
   
-  // METODO 2: @danielxceron/youtube-transcript (fallback con InnerTube API)
-  console.log(`🔍 [TRANSCRIPT] Metodo 2: InnerTube API fallback`);
-  const langsForMethod2 = [lang, 'en', undefined];
+  // Metodo B: InnerTube API
+  console.log(`   📝 Tentativo InnerTube API`);
+  const langsForInnerTube = [lang, 'en', undefined];
   
-  for (const tryLang of langsForMethod2) {
+  for (const tryLang of langsForInnerTube) {
     try {
-      const langLabel = tryLang || 'qualsiasi';
-      console.log(`   📝 Tentativo lingua: ${langLabel}`);
-      
       const config = tryLang ? { lang: tryLang } : undefined;
       const transcriptData = await YoutubeTranscript.fetchTranscript(videoId, config);
       
@@ -279,19 +401,62 @@ export async function fetchTranscript(videoId: string, lang: string = 'it'): Pro
         const fullTranscript = segments.map(s => s.text).join(' ').trim();
         
         if (fullTranscript.length > 0) {
-          console.log(`✅ [TRANSCRIPT] Metodo 2 OK (${langLabel}): ${fullTranscript.length} caratteri, ${segments.length} segmenti`);
-          return { transcript: fullTranscript, segments };
+          console.log(`   ✅ InnerTube API OK: ${fullTranscript.length} caratteri`);
+          return { transcript: fullTranscript, segments, method: 'subtitles' };
         }
       }
     } catch (error: any) {
-      const langLabel = tryLang || 'qualsiasi';
-      console.log(`   ⚠️ Lingua ${langLabel} fallita: ${error.message?.substring(0, 80)}`);
+      // Silent fail
     }
+  }
+  
+  return null;
+}
+
+async function fetchTranscriptWithSubtitles(videoId: string, lang: string = 'it'): Promise<TranscriptResult | null> {
+  console.log(`🔍 [TRANSCRIPT] Metodo Sottotitoli: yt-dlp + librerie JS`);
+  
+  // Prima prova yt-dlp
+  const ytdlpResult = await fetchSubtitlesWithYtDlp(videoId, lang);
+  if (ytdlpResult) {
+    console.log(`✅ [TRANSCRIPT] yt-dlp sottotitoli OK: ${ytdlpResult.transcript.length} caratteri`);
+    return ytdlpResult;
+  }
+  
+  // Poi prova librerie JS
+  const jsResult = await fetchSubtitlesWithJsLibraries(videoId, lang);
+  if (jsResult) {
+    console.log(`✅ [TRANSCRIPT] Librerie JS OK: ${jsResult.transcript.length} caratteri`);
+    return jsResult;
+  }
+  
+  return null;
+}
+
+// ==================== FUNZIONE PRINCIPALE ====================
+
+export async function fetchTranscript(videoId: string, lang: string = 'it'): Promise<{ transcript: string; segments: TranscriptSegment[] } | null> {
+  console.log(`🔍 [TRANSCRIPT] Cercando trascrizione per video: ${videoId}`);
+  
+  // METODO 1: Gemini (download audio + trascrizione AI) - Qualità premium
+  const geminiResult = await fetchTranscriptWithGemini(videoId);
+  if (geminiResult) {
+    console.log(`✅ [TRANSCRIPT] Metodo Gemini completato: ${geminiResult.transcript.length} caratteri`);
+    return { transcript: geminiResult.transcript, segments: geminiResult.segments };
+  }
+  
+  // METODO 2: Sottotitoli (yt-dlp + librerie JS) - Fallback
+  const subtitlesResult = await fetchTranscriptWithSubtitles(videoId, lang);
+  if (subtitlesResult) {
+    console.log(`✅ [TRANSCRIPT] Metodo Sottotitoli completato: ${subtitlesResult.transcript.length} caratteri`);
+    return { transcript: subtitlesResult.transcript, segments: subtitlesResult.segments };
   }
   
   console.log(`❌ [TRANSCRIPT] Nessuna trascrizione disponibile per video: ${videoId}`);
   return null;
 }
+
+// ==================== PLAYLIST & VIDEO MANAGEMENT ====================
 
 export async function fetchPlaylistVideos(playlistId: string): Promise<PlaylistVideo[]> {
   try {
@@ -420,6 +585,8 @@ export async function saveVideoWithTranscript(
     return { success: false, error: 'Failed to save video' };
   }
 }
+
+// ==================== SETTINGS ====================
 
 export async function getAiLessonSettings(consultantId: string) {
   const [settings] = await db
