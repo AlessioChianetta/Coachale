@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { youtubeVideos, consultantAiLessonSettings, aiUsageStats } from "../../shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 // Helper per tracciare uso API
 export async function trackAiUsage(params: {
@@ -783,7 +783,7 @@ export async function saveVideoWithTranscript(
     
     console.log(`📝 [SAVE-VIDEO] Video: "${metadata.title}" - Salvando in database...`);
     
-    const [video] = await db.insert(youtubeVideos).values({
+    const insertResult = await db.insert(youtubeVideos).values({
       consultantId,
       videoId,
       videoUrl,
@@ -795,7 +795,25 @@ export async function saveVideoWithTranscript(
       transcriptStatus: 'fetching',
       playlistId,
       playlistTitle,
+    }).onConflictDoNothing({
+      target: [youtubeVideos.consultantId, youtubeVideos.videoId],
     }).returning();
+    
+    let video = insertResult[0];
+    if (!video) {
+      console.log(`🔄 [SAVE-VIDEO] Race condition rilevata - recupero video esistente`);
+      const [existingFromRace] = await db.select()
+        .from(youtubeVideos)
+        .where(and(
+          eq(youtubeVideos.consultantId, consultantId),
+          eq(youtubeVideos.videoId, videoId)
+        ))
+        .limit(1);
+      if (existingFromRace) {
+        return { success: true, video: existingFromRace, reused: true };
+      }
+      return { success: false, error: 'Failed to insert or find video' };
+    }
     
     console.log(`🔍 [SAVE-VIDEO] Cercando trascrizione (${transcriptMode}) per: "${metadata.title}"...`);
     const transcriptResult = await fetchTranscript(videoId, 'it', transcriptMode);
@@ -912,7 +930,7 @@ export async function saveVideoWithTranscriptStream(
       return { success: false, error: 'Impossibile ottenere metadati (video privato o con restrizioni)' };
     }
     
-    const [video] = await db.insert(youtubeVideos).values({
+    const insertResult = await db.insert(youtubeVideos).values({
       consultantId,
       videoId,
       videoUrl,
@@ -924,7 +942,25 @@ export async function saveVideoWithTranscriptStream(
       transcriptStatus: 'fetching',
       playlistId,
       playlistTitle,
+    }).onConflictDoNothing({
+      target: [youtubeVideos.consultantId, youtubeVideos.videoId],
     }).returning();
+    
+    let video = insertResult[0];
+    if (!video) {
+      console.log(`🔄 [SAVE-VIDEO-STREAM] Race condition rilevata - recupero video esistente`);
+      const [existingFromRace] = await db.select()
+        .from(youtubeVideos)
+        .where(and(
+          eq(youtubeVideos.consultantId, consultantId),
+          eq(youtubeVideos.videoId, videoId)
+        ))
+        .limit(1);
+      if (existingFromRace) {
+        return { success: true, video: existingFromRace, reused: true };
+      }
+      return { success: false, error: 'Failed to insert or find video' };
+    }
     
     onProgress?.('transcribing', 'Estraendo trascrizione con Gemini AI...');
     const transcriptResult = await fetchTranscript(videoId, 'it', transcriptMode);

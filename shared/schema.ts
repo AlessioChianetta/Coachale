@@ -5825,6 +5825,7 @@ export const youtubeVideos = pgTable("youtube_videos", {
 }, (table) => ({
   consultantIdx: index("idx_youtube_videos_consultant").on(table.consultantId),
   playlistIdx: index("idx_youtube_videos_playlist").on(table.playlistId),
+  consultantVideoUnique: unique("youtube_videos_consultant_video_unique").on(table.consultantId, table.videoId),
 }));
 
 export type YoutubeVideo = typeof youtubeVideos.$inferSelect;
