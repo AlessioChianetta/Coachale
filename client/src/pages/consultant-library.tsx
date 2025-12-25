@@ -3373,7 +3373,7 @@ export default function ConsultantLibrary() {
                 {/* Footer - Stile Email Journey */}
                 <div className="px-8 py-4 bg-slate-50 dark:bg-slate-900/50 border-t text-center flex-shrink-0">
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-semibold">Coachale Platform</span> — La tua crescita, il nostro impegno
+                    <span className="font-semibold">Coachale Platform</span> La tua crescita, il nostro impegno
                   </p>
                   {viewingDocument.tags && viewingDocument.tags.length > 0 && (
                     <div className="flex items-center justify-center gap-2 mt-2">

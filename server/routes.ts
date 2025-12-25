@@ -5245,26 +5245,42 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         return res.status(400).json({ message: "videoIds array and categoryId are required" });
       }
 
+      // SSE headers - critical for real-time streaming
       res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
       res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no'); // Disable Nginx/proxy buffering
+      res.setHeader('Transfer-Encoding', 'chunked');
+      
+      // Disable Nagle algorithm for immediate sending
+      if (res.socket) {
+        res.socket.setNoDelay(true);
+        res.socket.setTimeout(0);
+      }
+      
       res.flushHeaders();
+      
+      // Send initial heartbeat to confirm connection
+      res.write(`data: ${JSON.stringify({ type: 'connected', message: 'SSE connection established' })}\n\n`);
 
       const { generateMultipleLessons } = await import("./services/ai-lesson-generator");
       
       const onProgress = (current: number, total: number, status: string, videoId?: string, videoTitle?: string, errorMessage?: string, logMessage?: string) => {
         console.log(`[SSE] onProgress: ${status} ${current}/${total} - ${videoId} "${videoTitle || ''}" - ${logMessage || ''}`);
+        
+        let eventData: any;
         if (status === 'generating') {
-          res.write(`data: ${JSON.stringify({ type: 'progress', current, total, videoId, videoTitle, status, log: logMessage })}\n\n`);
+          eventData = { type: 'progress', current, total, videoId, videoTitle, status, log: logMessage };
         } else if (status === 'completed') {
-          res.write(`data: ${JSON.stringify({ type: 'video_complete', current, total, videoId, videoTitle, log: logMessage })}\n\n`);
+          eventData = { type: 'video_complete', current, total, videoId, videoTitle, log: logMessage };
         } else if (status === 'error') {
-          res.write(`data: ${JSON.stringify({ type: 'video_error', current, total, videoId, videoTitle, error: errorMessage, log: logMessage })}\n\n`);
+          eventData = { type: 'video_error', current, total, videoId, videoTitle, error: errorMessage, log: logMessage };
         }
-        // Force flush to send SSE event immediately
-        if (res.flush) {
-          console.log('[SSE] Flushing response');
-          (res as any).flush();
+        
+        if (eventData) {
+          const chunk = `data: ${JSON.stringify(eventData)}\n\n`;
+          res.write(chunk);
+          console.log(`[SSE] Sent ${chunk.length} bytes: ${eventData.type}`);
         }
       };
 

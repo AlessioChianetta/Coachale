@@ -272,7 +272,7 @@ export const COURSE_THEMES: CourseTheme[] = [
       note: '※',
       action: '□',
       summary: '◆',
-      bullet: '—',
+      bullet: '•',
     },
   },
 ];

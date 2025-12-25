@@ -2482,14 +2482,14 @@ export default function ConsultantLibraryAIBuilder() {
                           <RadioGroupItem value="single" id="mode-single" />
                           <Label htmlFor="mode-single" className="cursor-pointer">
                             <span className="font-medium">Tutte in un modulo</span>
-                            <span className="text-sm text-muted-foreground ml-2">— Inserisci tutte le lezioni nello stesso modulo</span>
+                            <span className="text-sm text-muted-foreground ml-2">Inserisci tutte le lezioni nello stesso modulo</span>
                           </Label>
                         </div>
                         <div className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${assignmentMode === 'distribute' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
                           <RadioGroupItem value="distribute" id="mode-distribute" />
                           <Label htmlFor="mode-distribute" className="cursor-pointer">
                             <span className="font-medium">Distribuisci tra moduli</span>
-                            <span className="text-sm text-muted-foreground ml-2">— Assegna ogni lezione a un modulo specifico</span>
+                            <span className="text-sm text-muted-foreground ml-2">Assegna ogni lezione a un modulo specifico</span>
                           </Label>
                         </div>
                       </RadioGroup>
@@ -2991,7 +2991,7 @@ export default function ConsultantLibraryAIBuilder() {
                 {/* Footer - Stile Email Journey */}
                 <div className="px-8 py-4 bg-slate-50 dark:bg-slate-900/50 border-t text-center flex-shrink-0">
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-semibold">Coachale Platform</span> — La tua crescita, il nostro impegno
+                    <span className="font-semibold">Coachale Platform</span> La tua crescita, il nostro impegno
                   </p>
                   {previewLesson.tags && previewLesson.tags.length > 0 && (
                     <div className="flex items-center justify-center gap-2 mt-2">
