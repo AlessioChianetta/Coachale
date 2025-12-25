@@ -5883,7 +5883,9 @@ Rispondi SOLO con un JSON array, senza altri testi:
         aiInstructions, 
         contentType, 
         level, 
-        currentStep 
+        currentStep,
+        generatedLessonIds,
+        generatedLessonsCount
       } = req.body;
 
       const [updatedDraft] = await db.update(schema.aiBuilderDrafts)
@@ -5900,6 +5902,8 @@ Rispondi SOLO con un JSON array, senza altri testi:
           contentType,
           level,
           currentStep,
+          generatedLessonIds: generatedLessonIds ?? existingDraft.generatedLessonIds,
+          generatedLessonsCount: generatedLessonsCount ?? existingDraft.generatedLessonsCount,
           updatedAt: new Date(),
         })
         .where(eq(schema.aiBuilderDrafts.id, draftId))

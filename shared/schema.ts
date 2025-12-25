@@ -5873,6 +5873,8 @@ export const aiBuilderDrafts = pgTable("ai_builder_drafts", {
   contentType: varchar("content_type", { length: 20 }).default("both"),
   level: varchar("level", { length: 20 }).default("base"),
   currentStep: integer("current_step").default(1),
+  generatedLessonIds: jsonb("generated_lesson_ids").default([]),
+  generatedLessonsCount: integer("generated_lessons_count").default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
