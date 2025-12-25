@@ -1046,8 +1046,17 @@ export default function ConsultantLibraryAIBuilder() {
     
     setCurrentStep(4);
     setGenerationProgress(0);
-    // PRESERVE existing lessons - don't reset! New ones will be appended by polling
-    // setGeneratedLessons([]); // REMOVED - preserve existing lessons for resume
+    
+    // IMPORTANTE: Resetta le lezioni SOLO se è una nuova generazione (nessuna corrispondenza con i video selezionati)
+    // Se è un RESUME (alcune lezioni già completate), preserva le esistenti
+    if (alreadyCompletedVideoIds.size === 0) {
+      console.log('[AI Builder] Nuova generazione: reset lezioni precedenti');
+      setGeneratedLessons([]);
+      setLessonOrder([]);
+    } else {
+      console.log('[AI Builder] Resume: preservo', alreadyCompletedVideoIds.size, 'lezioni già completate');
+    }
+    
     setGenerationErrors([]);
     setGenerationLogs([{
       time: new Date().toLocaleTimeString('it-IT'),
