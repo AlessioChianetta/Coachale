@@ -2453,18 +2453,21 @@ export class FileSearchSyncService {
         where: eq(exerciseAssignments.clientId, clientId),
       });
 
-      // Get all submissions for these assignments
+      // Get all submissions for these assignments (filter at database level for efficiency)
       const assignmentIds = assignments.map(a => a.id);
-      const submissions = await db.query.exerciseSubmissions.findMany({
+      
+      // Early return if no assignments
+      if (assignmentIds.length === 0) {
+        return { total: 0, synced: 0, failed: 0, skipped: 0, errors: [] };
+      }
+      
+      // Filter directly in the database query instead of fetching all submissions
+      const clientSubmissions = await db.query.exerciseSubmissions.findMany({
         where: and(
+          inArray(exerciseSubmissions.assignmentId, assignmentIds),
           isNotNull(exerciseSubmissions.submittedAt),
         ),
       });
-
-      // Filter to only submissions that belong to this client's assignments
-      const clientSubmissions = submissions.filter(s => 
-        assignmentIds.includes(s.assignmentId)
-      );
 
       let synced = 0;
       let failed = 0;
