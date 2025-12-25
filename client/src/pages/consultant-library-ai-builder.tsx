@@ -1035,8 +1035,28 @@ export default function ConsultantLibraryAIBuilder() {
     console.log('[AI Builder] Video già completati:', alreadyCompletedVideoIds.size, 'Rimanenti:', remainingVideoIds.length);
     
     if (remainingVideoIds.length === 0) {
-      toast({ title: "Tutte le lezioni già generate", description: "Vai allo Step 5 per pubblicare" });
-      setCurrentStep(5);
+      toast({ title: "Tutte le lezioni già generate", description: "Procedi all'organizzazione" });
+      
+      // Filtra generatedLessons per mostrare solo quelle dei video selezionati
+      const selectedVideoSet = new Set(selectedVideoIds);
+      const filteredLessons = generatedLessons.filter((l: any) => selectedVideoSet.has(l.youtubeVideoId));
+      if (filteredLessons.length !== generatedLessons.length) {
+        console.log('[AI Builder] Filtro lezioni: da', generatedLessons.length, 'a', filteredLessons.length);
+        setGeneratedLessons(filteredLessons);
+        setLessonOrder(filteredLessons.map((l: any) => l.id));
+      }
+      
+      // Se c'è già un modulo selezionato, vai a Step 5, altrimenti vai a Step 4.5
+      if (selectedSubcategoryId && selectedSubcategoryId !== '__none__') {
+        const assignments = new Map<string, string>();
+        filteredLessons.forEach((lesson: any) => {
+          assignments.set(lesson.id, selectedSubcategoryId);
+        });
+        setModuleAssignments(assignments);
+        setCurrentStep(5);
+      } else {
+        setCurrentStep(4.5);
+      }
       return;
     }
     
