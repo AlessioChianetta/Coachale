@@ -32,7 +32,7 @@ export async function trackAiUsage(params: {
 }
 import { YoutubeTranscript } from '@danielxceron/youtube-transcript';
 import { getSubtitles } from 'youtube-caption-extractor';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -646,16 +646,86 @@ export async function fetchTranscript(
 // ==================== PLAYLIST & VIDEO MANAGEMENT ====================
 
 export async function fetchPlaylistVideos(playlistId: string): Promise<PlaylistVideo[]> {
+  console.log(`\n${'='.repeat(70)}`);
+  console.log(`📋 [PLAYLIST] Caricamento playlist: ${playlistId}`);
+  console.log(`${'='.repeat(70)}`);
+  
+  // Sanitizza playlistId per sicurezza (solo caratteri alfanumerici, trattini e underscore)
+  const sanitizedPlaylistId = playlistId.replace(/[^a-zA-Z0-9_-]/g, '');
+  if (sanitizedPlaylistId !== playlistId) {
+    console.log(`   ⚠️ PlaylistId sanitizzato: "${playlistId}" -> "${sanitizedPlaylistId}"`);
+  }
+  
   try {
-    const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
+    const playlistUrl = `https://www.youtube.com/playlist?list=${sanitizedPlaylistId}`;
+    
+    // Usa yt-dlp per estrarre TUTTI i video della playlist (senza limite di 100)
+    // Usa execFile con array di argomenti per prevenire shell injection
+    const videos = await new Promise<PlaylistVideo[]>((resolve, reject) => {
+      const args = [
+        '--flat-playlist',
+        '-J',
+        '--socket-timeout', '30',
+        playlistUrl
+      ];
+      
+      console.log(`   🔧 Esecuzione yt-dlp per playlist completa...`);
+      const startTime = Date.now();
+      
+      execFile('yt-dlp', args, { maxBuffer: 50 * 1024 * 1024 }, (error, stdout, stderr) => {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+        
+        if (error) {
+          console.log(`   ❌ yt-dlp fallito dopo ${elapsed}s: ${error.message}`);
+          // Fallback al metodo HTML se yt-dlp fallisce
+          resolve([]);
+          return;
+        }
+        
+        try {
+          const data = JSON.parse(stdout);
+          const entries = data.entries || [];
+          
+          console.log(`   ✅ yt-dlp completato in ${elapsed}s`);
+          console.log(`   📊 Video trovati: ${entries.length}`);
+          
+          const playlistVideos: PlaylistVideo[] = entries
+            .filter((entry: any) => entry && entry.id)
+            .map((entry: any, index: number) => ({
+              videoId: entry.id,
+              videoUrl: `https://www.youtube.com/watch?v=${entry.id}`,
+              title: entry.title || 'Titolo non disponibile',
+              thumbnailUrl: entry.thumbnail || `https://img.youtube.com/vi/${entry.id}/hqdefault.jpg`,
+              duration: entry.duration || 0,
+              position: index + 1,
+            }));
+          
+          resolve(playlistVideos);
+        } catch (parseError) {
+          console.log(`   ❌ Errore parsing JSON yt-dlp: ${parseError}`);
+          resolve([]);
+        }
+      });
+    });
+    
+    // Se yt-dlp ha funzionato, ritorna i video
+    if (videos.length > 0) {
+      console.log(`   🎉 Playlist caricata con successo: ${videos.length} video`);
+      console.log(`${'='.repeat(70)}\n`);
+      return videos;
+    }
+    
+    // FALLBACK: metodo HTML scraping (limitato a ~100 video)
+    console.log(`   ⚠️ Fallback a HTML scraping (limite ~100 video)...`);
+    
     const response = await fetch(playlistUrl);
     const html = await response.text();
     
-    const videos: PlaylistVideo[] = [];
+    const fallbackVideos: PlaylistVideo[] = [];
     
     const initialDataMatch = html.match(/var ytInitialData = ({.*?});<\/script>/s);
     if (!initialDataMatch) {
-      console.error('Could not find playlist data');
+      console.error('   ❌ Could not find playlist data in HTML');
       return [];
     }
     
@@ -680,7 +750,7 @@ export async function fetchPlaylistVideos(playlistId: string): Promise<PlaylistV
               duration = timeParts[0] * 60 + timeParts[1];
             }
             
-            videos.push({
+            fallbackVideos.push({
               videoId,
               videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
               title,
@@ -691,11 +761,14 @@ export async function fetchPlaylistVideos(playlistId: string): Promise<PlaylistV
           }
         }
       }
+      
+      console.log(`   📊 HTML fallback: ${fallbackVideos.length} video`);
     } catch (parseError) {
-      console.error('Error parsing playlist data:', parseError);
+      console.error('   ❌ Error parsing playlist data:', parseError);
     }
     
-    return videos;
+    console.log(`${'='.repeat(70)}\n`);
+    return fallbackVideos;
   } catch (error) {
     console.error('Error fetching playlist:', error);
     return [];
