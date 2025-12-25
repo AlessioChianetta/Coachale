@@ -1220,11 +1220,30 @@ export class FileSearchSyncService {
     errors: string[];
   }> {
     try {
-      // Get all years for this consultant
-      const years = await db.query.universityYears.findMany();
+      // CRITICAL FIX: Filter university lessons by consultantId using the proper chain
+      // universityLessons -> modules -> trimesters -> years -> createdBy (consultantId)
+      const consultantYears = await db.select({ id: universityYears.id })
+        .from(universityYears).where(eq(universityYears.createdBy, consultantId));
+      const yearIds = consultantYears.map(y => y.id);
       
-      // Get all lessons (syncUniversityLesson loads hierarchy data separately)
-      const allLessons = await db.query.universityLessons.findMany();
+      let allLessons: { id: string; title: string }[] = [];
+      
+      if (yearIds.length > 0) {
+        const trimesters = await db.select({ id: universityTrimesters.id })
+          .from(universityTrimesters).where(inArray(universityTrimesters.yearId, yearIds));
+        const trimesterIds = trimesters.map(t => t.id);
+        
+        if (trimesterIds.length > 0) {
+          const modules = await db.select({ id: universityModules.id })
+            .from(universityModules).where(inArray(universityModules.trimesterId, trimesterIds));
+          const moduleIds = modules.map(m => m.id);
+          
+          if (moduleIds.length > 0) {
+            allLessons = await db.select({ id: universityLessons.id, title: universityLessons.title })
+              .from(universityLessons).where(inArray(universityLessons.moduleId, moduleIds));
+          }
+        }
+      }
 
       let synced = 0;
       let updated = 0;
