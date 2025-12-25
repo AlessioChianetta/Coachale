@@ -1106,7 +1106,10 @@ export default function ConsultantLibraryAIBuilder() {
               }]);
             };
 
-            if (data.type === 'progress') {
+            if (data.type === 'connected') {
+              console.log('[AI Builder] SSE - Connessione stabilita!');
+              addLog("🔗 Connessione real-time stabilita");
+            } else if (data.type === 'progress') {
               setGenerationProgress(Math.round((data.current / data.total) * 100));
               setGenerationStatus(prev => [...prev, `Generando: ${data.videoTitle}`]);
               if (data.log) addLog(data.log);
