@@ -5209,6 +5209,119 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
     }
   });
 
+  // AI auto-assign lessons to modules based on content analysis
+  app.post("/api/library/ai-auto-assign", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { lessons, modules } = req.body;
+      
+      if (!lessons || !Array.isArray(lessons) || lessons.length === 0) {
+        return res.status(400).json({ message: "lessons array is required" });
+      }
+      if (!modules || !Array.isArray(modules) || modules.length === 0) {
+        return res.status(400).json({ message: "modules array is required" });
+      }
+      
+      const { getAIProvider } = await import("./ai/provider-factory");
+      const providerResult = await getAIProvider(req.user!.id);
+      
+      if (!providerResult.client) {
+        // Fallback: assegna tutte al primo modulo
+        const assignments = lessons.map((l: any) => ({
+          lessonId: l.id,
+          moduleId: modules[0].id,
+          confidence: 0.5,
+          reason: "Assegnazione automatica (AI non disponibile)"
+        }));
+        return res.json({ assignments, aiGenerated: false });
+      }
+      
+      const prompt = `Sei un esperto nella creazione e organizzazione di corsi formativi.
+
+LEZIONI DA ASSEGNARE:
+${lessons.map((l: any, i: number) => `${i + 1}. ID: "${l.id}"
+   Titolo: "${l.title}"
+   Sottotitolo: "${l.subtitle || 'N/A'}"
+   Tags: ${l.tags?.join(', ') || 'N/A'}`).join('\n\n')}
+
+MODULI DISPONIBILI:
+${modules.map((m: any, i: number) => `${i + 1}. ID: "${m.id}" - Nome: "${m.name}"`).join('\n')}
+
+COMPITO:
+Analizza il contenuto di ogni lezione e assegnala al modulo più appropriato.
+Per ogni lezione, fornisci:
+1. L'ID della lezione
+2. L'ID del modulo più adatto
+3. Un punteggio di confidenza (0.0-1.0)
+4. Una breve spiegazione (max 20 parole)
+
+CRITERI DI ASSEGNAZIONE:
+- Affinità tematica tra titolo lezione e nome modulo
+- Coerenza con eventuali tags
+- Progressione logica del contenuto
+
+Rispondi SOLO con un JSON array, senza altri testi:
+[
+  {
+    "lessonId": "id_lezione",
+    "moduleId": "id_modulo",
+    "confidence": 0.85,
+    "reason": "Spiegazione breve"
+  }
+]`;
+
+      const response = await providerResult.client.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+      
+      const text = response.response.text() || '';
+      
+      try {
+        const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const assignments = JSON.parse(cleanJson);
+        if (Array.isArray(assignments) && assignments.length > 0) {
+          // Valida che tutti gli ID esistano
+          const validAssignments = assignments.map((a: any) => {
+            const lessonExists = lessons.some((l: any) => l.id === a.lessonId);
+            const moduleExists = modules.some((m: any) => m.id === a.moduleId);
+            if (!lessonExists || !moduleExists) {
+              // Fallback se ID non valido
+              return {
+                lessonId: a.lessonId,
+                moduleId: modules[0].id,
+                confidence: 0.3,
+                reason: "Assegnazione di fallback"
+              };
+            }
+            return a;
+          });
+          res.json({ assignments: validAssignments, aiGenerated: true });
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } catch {
+        // Fallback se parsing fallisce
+        const assignments = lessons.map((l: any) => ({
+          lessonId: l.id,
+          moduleId: modules[0].id,
+          confidence: 0.5,
+          reason: "Assegnazione automatica (parsing fallito)"
+        }));
+        res.json({ assignments, aiGenerated: false });
+      }
+    } catch (error: any) {
+      console.error('Error auto-assigning lessons:', error);
+      const { lessons, modules } = req.body;
+      const assignments = lessons?.map((l: any) => ({
+        lessonId: l.id,
+        moduleId: modules?.[0]?.id || '',
+        confidence: 0.5,
+        reason: "Errore durante l'analisi AI"
+      })) || [];
+      res.json({ assignments, aiGenerated: false });
+    }
+  });
+
   // Generate lesson from video
   app.post("/api/library/ai-generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {

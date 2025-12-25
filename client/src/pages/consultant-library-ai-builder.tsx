@@ -464,7 +464,9 @@ export default function ConsultantLibraryAIBuilder() {
   const [selectedModuleId, setSelectedModuleId] = useState<string>("");
   const [isCreatingModules, setIsCreatingModules] = useState(false);
   const [newModuleName, setNewModuleName] = useState("");
-  const [assignmentMode, setAssignmentMode] = useState<'single' | 'distribute'>('single');
+  const [assignmentMode, setAssignmentMode] = useState<'single' | 'distribute' | 'ai'>('single');
+  const [isAiAssigning, setIsAiAssigning] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<Map<string, { moduleId: string; confidence: number; reason: string }>>(new Map());
   const [isSuggestingModules, setIsSuggestingModules] = useState(false);
   
   // Step 2: Stato caricamento video con UI dettagliata
@@ -2350,9 +2352,12 @@ export default function ConsultantLibraryAIBuilder() {
                       <RadioGroup 
                         value={assignmentMode} 
                         onValueChange={(v) => {
-                          setAssignmentMode(v as 'single' | 'distribute');
+                          setAssignmentMode(v as 'single' | 'distribute' | 'ai');
                           if (v === 'single') {
                             setModuleAssignments(new Map());
+                            setAiSuggestions(new Map());
+                          } else if (v === 'distribute') {
+                            setAiSuggestions(new Map());
                           }
                         }}
                         className="space-y-2"
@@ -2367,8 +2372,16 @@ export default function ConsultantLibraryAIBuilder() {
                         <div className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${assignmentMode === 'distribute' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
                           <RadioGroupItem value="distribute" id="mode-distribute" />
                           <Label htmlFor="mode-distribute" className="cursor-pointer">
-                            <span className="font-medium">Distribuisci tra moduli</span>
-                            <span className="text-sm text-muted-foreground ml-2">Assegna ogni lezione a un modulo specifico</span>
+                            <span className="font-medium">Distribuisci manualmente</span>
+                            <span className="text-sm text-muted-foreground ml-2">Assegna manualmente ogni lezione a un modulo</span>
+                          </Label>
+                        </div>
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${assignmentMode === 'ai' ? 'bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
+                          <RadioGroupItem value="ai" id="mode-ai" />
+                          <Label htmlFor="mode-ai" className="cursor-pointer flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-purple-500" />
+                            <span className="font-medium">Auto-assegnazione AI</span>
+                            <span className="text-sm text-muted-foreground ml-2">L'AI suggerisce il modulo migliore per ogni lezione</span>
                           </Label>
                         </div>
                       </RadioGroup>
@@ -2404,13 +2417,7 @@ export default function ConsultantLibraryAIBuilder() {
                                   assignments.set(lesson.id, sub.id);
                                 });
                                 setModuleAssignments(assignments);
-                                
-                                // Auto-navigazione al Riepilogo dopo 1 secondo
-                                toast({ title: "Modulo selezionato!", description: `${generatedLessons.length} lezioni assegnate a "${sub.name}"` });
-                                setTimeout(() => {
-                                  console.log('[AI Builder] Step 4.5 -> Step 5: Auto-navigazione al Riepilogo');
-                                  setCurrentStep(5);
-                                }, 1000);
+                                toast({ title: "Modulo selezionato!", description: `${generatedLessons.length} lezioni assegnate a "${sub.name}". Clicca "Continua" per procedere.` });
                               }}
                             >
                               <CardContent className="p-4 flex items-center gap-3">
@@ -2471,6 +2478,141 @@ export default function ConsultantLibraryAIBuilder() {
                               </div>
                             ))}
                           </div>
+                        </div>
+                      )}
+
+                      {/* AI Auto-assignment mode */}
+                      {assignmentMode === 'ai' && (
+                        <div className="space-y-4">
+                          {aiSuggestions.size === 0 && !isAiAssigning && (
+                            <div className="text-center py-6 border-2 border-dashed rounded-lg">
+                              <Sparkles className="w-10 h-10 mx-auto text-purple-400 mb-3" />
+                              <p className="text-muted-foreground mb-4">
+                                L'AI analizzerà il contenuto delle lezioni e suggerirà il modulo migliore per ognuna
+                              </p>
+                              <Button
+                                onClick={async () => {
+                                  setIsAiAssigning(true);
+                                  try {
+                                    const lessonsData = generatedLessons.map((l: any) => ({
+                                      id: l.id,
+                                      title: l.title,
+                                      subtitle: l.subtitle || '',
+                                      tags: l.tags || []
+                                    }));
+                                    const modulesData = filteredSubcategories.map(s => ({
+                                      id: s.id,
+                                      name: s.name
+                                    }));
+                                    
+                                    const data = await apiRequest("POST", "/api/library/ai-auto-assign", {
+                                      lessons: lessonsData,
+                                      modules: modulesData
+                                    });
+                                    
+                                    if (data.assignments) {
+                                      const newSuggestions = new Map<string, { moduleId: string; confidence: number; reason: string }>();
+                                      const newAssignments = new Map<string, string>();
+                                      
+                                      data.assignments.forEach((a: any) => {
+                                        newSuggestions.set(a.lessonId, {
+                                          moduleId: a.moduleId,
+                                          confidence: a.confidence,
+                                          reason: a.reason
+                                        });
+                                        newAssignments.set(a.lessonId, a.moduleId);
+                                      });
+                                      
+                                      setAiSuggestions(newSuggestions);
+                                      setModuleAssignments(newAssignments);
+                                      toast({ title: "Suggerimenti AI pronti!", description: "Puoi modificare le assegnazioni prima di procedere" });
+                                    }
+                                  } catch (error: any) {
+                                    toast({ title: "Errore AI", description: error.message, variant: "destructive" });
+                                  }
+                                  setIsAiAssigning(false);
+                                }}
+                                className="bg-gradient-to-r from-purple-600 to-indigo-600"
+                              >
+                                <Sparkles className="w-4 h-4 mr-2" />
+                                Genera Suggerimenti AI
+                              </Button>
+                            </div>
+                          )}
+                          
+                          {isAiAssigning && (
+                            <div className="text-center py-8">
+                              <Loader2 className="w-8 h-8 mx-auto animate-spin text-purple-500 mb-3" />
+                              <p className="text-muted-foreground">L'AI sta analizzando le lezioni...</p>
+                            </div>
+                          )}
+                          
+                          {aiSuggestions.size > 0 && !isAiAssigning && (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium flex items-center gap-2">
+                                  <Sparkles className="w-4 h-4 text-purple-500" />
+                                  Suggerimenti AI (modificabili)
+                                </p>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setAiSuggestions(new Map());
+                                    setModuleAssignments(new Map());
+                                  }}
+                                >
+                                  Rigenera
+                                </Button>
+                              </div>
+                              <div className="space-y-2">
+                                {generatedLessons.map((lesson: any, idx: number) => {
+                                  const suggestion = aiSuggestions.get(lesson.id);
+                                  const confidence = suggestion?.confidence || 0;
+                                  return (
+                                    <div key={lesson.id} className="p-3 rounded-lg border bg-gradient-to-r from-purple-50/50 to-indigo-50/50 dark:from-purple-900/10 dark:to-indigo-900/10">
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold text-xs">
+                                          {idx + 1}
+                                        </div>
+                                        <span className="text-sm font-medium flex-1 truncate">{lesson.title}</span>
+                                        <Badge 
+                                          variant={confidence >= 0.8 ? "default" : confidence >= 0.5 ? "secondary" : "outline"}
+                                          className={confidence >= 0.8 ? "bg-green-500" : confidence >= 0.5 ? "bg-amber-500" : ""}
+                                        >
+                                          {Math.round(confidence * 100)}%
+                                        </Badge>
+                                        <Select 
+                                          value={moduleAssignments.get(lesson.id) || ''} 
+                                          onValueChange={(v) => {
+                                            setModuleAssignments(prev => {
+                                              const next = new Map(prev);
+                                              next.set(lesson.id, v);
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-[180px]">
+                                            <SelectValue placeholder="Seleziona modulo" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {filteredSubcategories.map((sub) => (
+                                              <SelectItem key={sub.id} value={sub.id}>
+                                                {sub.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      {suggestion?.reason && (
+                                        <p className="text-xs text-muted-foreground mt-2 ml-9">{suggestion.reason}</p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 

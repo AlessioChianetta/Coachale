@@ -1,5 +1,5 @@
 # Overview
-This full-stack web application serves as a comprehensive consultation platform, connecting consultants with clients to facilitate exercise assignments, progress tracking, and performance analytics. It integrates an AI assistant for personalized financial insights, leveraging real-time financial data for context-aware advice. The platform also offers advanced client management, communication tools, and a robust AI knowledge base system, aiming to enhance consultant-client interactions and streamline financial guidance for improved client outcomes and consultant efficiency.
+This full-stack web application is a consultation platform connecting consultants and clients for exercise assignments, progress tracking, and performance analytics. It features an AI assistant for personalized financial insights using real-time data, advanced client management, and communication tools. The platform also includes a robust AI knowledge base system, aiming to enhance consultant-client interactions, streamline financial guidance, and improve client outcomes and consultant efficiency.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -10,86 +10,35 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Frontend**: React 18, TypeScript, Vite, TanStack React Query, Wouter, shadcn/ui, Tailwind CSS, React Hook Form, Zod.
 - **Backend**: Express.js, TypeScript, JWT, bcrypt, PostgreSQL (Drizzle ORM), Multer.
 ## Data Management
-- **Database**: PostgreSQL (Supabase) with Drizzle ORM.
-- **Schema**: Supports users, exercises, assignments, submissions, consultations, goals, and analytics.
+- **Database**: PostgreSQL (Supabase) with Drizzle ORM, supporting users, exercises, assignments, submissions, consultations, goals, and analytics.
 ## Authentication & Authorization
 - **JWT tokens** for client-side authentication.
-- **Role-based access control** (consultant/client/super_admin) via middleware.
+- **Role-based access control** (consultant/client/super_admin).
 - **Secure password handling** using bcrypt.
-- **Super Admin System**: Centralized management with global OAuth and TURN server configurations.
-  - **SuperAdmin Gemini API Keys**: Centralized, encrypted key management with a 3-tier priority system (SuperAdmin keys → User keys → Environment variable fallback).
+- **Super Admin System**: Centralized management with global OAuth, TURN server configurations, and a 3-tier priority system for Gemini API keys.
 ## UI/UX Decisions
 - Modern, accessible, and responsive design using `shadcn/ui` and `Tailwind CSS`.
 - Interactive guided tours via `Driver.js` for onboarding.
 - Categorized Sidebar Navigation for consultants with state persistence.
-- **Libreria Formativa Layout (Dec 2025)**: Redesigned with Sidebar + Content pattern for improved navigation:
-  - Left navigation sidebar (320px) with expandable course/module tree structure
-  - **Redesigned Course Cards**: Color-coded gradient headers, stats badges (lesson/module count), always-visible action buttons (Modifica, Assegna, Elimina)
-  - **4-Level Deletion Protection**: 3 progressive confirmation dialogs + mandatory "CANCELLA" text input to prevent accidental course deletions
-  - Responsive action buttons: icons only on mobile, full text on desktop (sm+ breakpoint)
-  - Search input integrated in sidebar for quick filtering
-  - Compact header with inline stats badges and dropdown action menu
-  - Main content area with breadcrumb, level filter, and responsive lesson card grid
-  - Mobile: sidebar becomes a Sheet drawer, accessible via menu button
-  - Replaced accordion-based navigation with always-visible tree navigation
+- Redesigned "Libreria Formativa" layout with a Sidebar + Content pattern, redesigned course cards, 4-level deletion protection, responsive action buttons, integrated search, and a compact header.
 ## AI Integration
-- **Percorso Capitale**: Provides personalized financial insights, designed for graceful degradation, with a daily pre-fetch scheduler to warm cache.
-- **AI Knowledge Base System**: Allows consultants and clients to upload documents (PDF, DOCX, TXT) and configure external API integrations for AI context. Features include text extraction, indexing, priority-based ranking, and multi-tenant isolation.
-- **Gemini File Search Integration (RAG)**: Implements semantic document retrieval using Google's native File Search for advanced RAG. Each consultant has a dedicated `FileSearchStore`, with automatic syncing from library documents and support for mixed-role users. FileSearch tool automatically integrated into `generateContent` calls with citations.
-  - **Privacy Isolation (Dec 2025)**: Sensitive client data (consultations, financial data, exercise responses) are stored in CLIENT PRIVATE stores, not consultant shared stores. Consultants can query all their clients' stores, but clients can only see their own store. Uses `getOrCreateClientStore()` with strict fallback prevention. Reset endpoint available at `/api/file-search/reset-stores` for migration.
-  - **Mixed-Role User Fix (Dec 2025)**: For Email Condivisa users who are both consultants AND clients of another consultant, AI chat now correctly uses the active profile role (from JWT) instead of database user.role. This ensures mixed-role users see the correct FileSearch store based on their active profile (client store when in client mode, consultant store when in consultant mode).
-  - **Consultant Platform Guide (Dec 2025)**: Comprehensive software guide (`server/consultant-guides.ts`) documenting all 27+ pages of the platform, automatically synced to File Search for all consultants. Features:
-    - **Auto-Sync**: Controlled via `autoSyncConsultantGuides` setting (default: true)
-    - **Audit Integration**: Guide status tracked in comprehensive audit with health score impact
-    - **SSE Progress**: Emits 'start' and 'complete' events during sync for real-time tracking
-    - **UI Display**: Visible in File Search Analytics under "Guide Piattaforma" with indigo theme
-- **Echo - AI Consultation Summary Agent**: Automatically generates consultation summary emails and extracts actionable tasks from Fathom transcripts, with an approval workflow. Tasks remain `draft` until email approval/sending or saving for AI context.
-- **AI System Prompt Architecture**: All AI endpoints use `buildSystemPrompt()` from `server/ai-prompts.ts` as `systemInstruction` for comprehensive context.
-- **Token Optimization Strategy**: Hybrid approach using intent detection, conditional database queries, intent-scoped caching, dynamic exercise scraping limits, and File Search RAG to significantly reduce AI token consumption.
-- **WhatsApp Business Integration**: Full-featured WhatsApp messaging via Twilio with AI-powered responses, rich media, and automatic API key rotation. Includes multi-tenant configuration, dual message delivery, message debouncing, and Gemini AI responses.
-- **Per-Agent Google Calendar Integration (Dec 2025 Refactored)**: Each WhatsApp agent operates with COMPLETE INDEPENDENCE - no fallback to consultant-level settings. Agent calendars are configured in the AgentProfilePanel sidebar (not the wizard). Features include:
-  - **Mandatory Agent Calendar**: Booking is disabled for agents without their own calendar connected. `/api/calendar/available-slots` returns 400 error with `AGENT_CONFIG_REQUIRED` code when agentConfigId is not provided.
-  - **Agent-Specific Availability Settings**: Each agent has its own timezone, appointment duration, buffer times (before/after), min hours notice, max days ahead, and per-day working hours stored in `consultantWhatsappConfig` table.
-  - **Isolated Booking Data**: Available slots calculated from agent-specific `appointmentBookings` (joined with `whatsappConversations` filtered by agentConfigId) + agent's Google Calendar events. Consultant-level tables (`consultations`, `consultantCalendarSync`, `consultantAvailabilitySettings`) are no longer used when agentConfigId is provided.
-  - **UI Configuration**: AgentAvailability.tsx provides full configuration UI for all availability settings.
-  - OAuth tokens stored per-agent in `consultant_whatsapp_config` table. Requires 5 OAuth redirect URIs in Google Cloud Console (Drive x2, Calendar x2, plus JS origin).
-- **Sales Agent Configuration**: Configurable AI agent execution for sales phases (Discovery, Demo) with dynamic token usage optimization, intelligent personality profiling, and sequentially validated scripts.
-- **Human Seller Analytics & Session Persistence**: Unified analytics for AI agents and human sellers, with session state (transcripts, checkpoints, phases) stored and restored.
-- **Checkpoint Validation System**: 3-tier status system (VALIDATED, VAGUE, MISSING) for sales coaching, with sticky validation logic.
-- **Gemini Model Configuration**: Dynamic model selection based on provider type (Google AI Studio uses `gemini-3-flash-preview`, Vertex AI uses `gemini-2.5-flash`). Prioritizes SuperAdmin Gemini Keys for Gemini 3 capabilities. Includes specific exclusions for speed/use cases.
-- **Video Copilot Turn-Taking System**: Prevents API bombardment during video meetings via intelligent turn-taking using a state machine and client-side VAD.
-- **WebRTC/WebSocket Resilience System**: Implements heartbeat, exponential backoff reconnection, and network change detection for robust connectivity.
-- **AI-Driven Follow-up Automation System**: 100% AI-driven follow-up system without hardcoded rules. AI acts as an expert sales consultant, guided by per-consultant preferences (max follow-ups, delay, aggressiveness, custom instructions, etc.) but maintains decision autonomy.
-- **Booking Extraction Accumulator Pattern (Dec 2025)**: Prevents booking data loss during AI re-extraction cycles. Uses `booking_extraction_state` table to progressively accumulate extracted fields (date, time, phone, email, name) across multiple extraction attempts. Key features:
-  - **Merge Strategy**: New extracted values only overwrite if non-null, preserving previously captured data
-  - **Auto-Cleanup**: State marked completed after successful booking creation, auto-expires after 24h of inactivity
-  - **Integration**: Applied to both WhatsApp conversations and public link flows via `extractBookingDataFromConversation()` options
-- **AI Course Builder (Dec 2025)**: 5-step wizard to generate lessons from YouTube videos. Features:
-  - **YouTube Transcript Extraction**: 3-layer fallback system - yt-dlp (Method 0, industry standard) → youtube-caption-extractor → InnerTube API
-  - **Manual Transcript Fallback**: When auto-extraction fails (e.g., YouTube 429 rate limiting), consultants can paste transcripts manually via dialog editor
-  - **VTT Parser**: Custom parser for yt-dlp VTT output with segment deduplication
-  - **AI Lesson Generation**: Gemini generates lessons preserving speaker's original tone, style, and expressions
-  - **SSE Progress Tracking**: Real-time generation progress via Server-Sent Events with flush for immediate delivery
-  - **Draft Management**: Save/restore wizard state as drafts
-  - **Transcript Quality Evaluation**: Visual quality badges (Ottima/Buona/Incompleta) based on word count vs video duration ratio
-  - **AI Instruction Templates**: 6 predefined writing styles (speaker-style, formal, conversational, bullet-points, step-by-step, summary) for quick setup
-  - **Step 5 Review Screen**: Post-generation summary with lesson preview modal, transcript quality badges, manual reordering with up/down arrows
-  - **Duplicate Video Detection**: Reuses existing transcripts when same video is processed twice
-  - **Lesson Regeneration Endpoint**: POST `/api/library/ai-regenerate/:lessonId` to regenerate lesson from existing transcript with new instructions
-  - **AI Usage Statistics**: `ai_usage_stats` table tracks token consumption per operation with `trackAiUsage()` helper
-  - **Step 2 Real-time Loading (Dec 2025)**: Enhanced UX with visual overlay showing per-video status (waiting/downloading/transcribing/completed/error/reused) via SSE endpoint `/api/youtube/playlist/save-stream`. Features animated progress bar, live log console, and automatic Step 3 transition.
-  - **Step 4 Auto-transition (Dec 2025)**: Automatic navigation to Step 5 (Review) after generation completes with 1.5s delay for UX feedback.
-  - **Course Theme System (Dec 2025)**: 5 visual themes (Business, Wellness, Creative, Tech, Classic) with theme-specific Tailwind CSS styling. Each theme defines colors for 7 element types: section titles, key points boxes, examples, notes, action items, summaries, and quotes. Themes are stored per-course in `libraryCategories.theme`.
-  - **Step 4.5 Module Organization (Dec 2025)**: Intermediate wizard step for organizing lessons into modules before publishing. Supports two scenarios: create new modules (single or multiple) or select existing modules. AI-powered module name suggestions via POST `/api/library/ai-suggest-modules` analyze video titles to suggest logical groupings.
-  - **Styled HTML Lesson Output (Dec 2025)**: AI generates lessons as styled HTML instead of Markdown, with theme-specific Tailwind classes for rich visual presentation. Uses `shared/course-themes.ts` for theme definitions and `generateThemeInstructionsForAI()` to build AI prompts.
-  - **Hierarchical Step 5 View (Dec 2025)**: Review screen displays lessons in a visual tree structure: Course (purple gradient header) → Modules (indigo header with lesson count badge) → Lessons (tree-like left border with numbered badges). Lessons grouped under their assigned modules with proper ordering.
-  - **Email Journey Style Preview (Dec 2025)**: Professional lesson preview dialogs in both Library and AI Builder, styled like Email Journey templates:
-    - Theme-based gradient headers using COURSE_THEMES colors
-    - Breadcrumb navigation showing Course > Module path
-    - ScrollArea with Tailwind prose classes for HTML rendering
-    - Support for embedded YouTube videos when videoUrl present
-    - Footer with Coachale branding and lesson tags
-    - Dark mode support for all theme box styles (blue, green, amber, purple backgrounds)
+- **Percorso Capitale**: Personalized financial insights with graceful degradation and daily pre-fetch.
+- **AI Knowledge Base System**: Allows document uploads (PDF, DOCX, TXT) and external API integrations for AI context, featuring text extraction, indexing, priority-based ranking, and multi-tenant isolation.
+- **Gemini File Search Integration (RAG)**: Semantic document retrieval using Google's native File Search. Each consultant has a dedicated `FileSearchStore` with automatic syncing and support for mixed-role users. Strict privacy isolation for client data and a comprehensive Consultant Platform Guide automatically synced.
+- **Echo - AI Consultation Summary Agent**: Generates consultation summary emails and extracts actionable tasks from Fathom transcripts with approval workflows.
+- **AI System Prompt Architecture**: All AI endpoints use `buildSystemPrompt()` for comprehensive context.
+- **Token Optimization Strategy**: Hybrid approach using intent detection, conditional database queries, intent-scoped caching, dynamic exercise scraping limits, and File Search RAG to reduce AI token consumption.
+- **WhatsApp Business Integration**: Full-featured WhatsApp messaging via Twilio with AI-powered responses, rich media, and automatic API key rotation, including multi-tenant configuration and Gemini AI responses.
+- **Per-Agent Google Calendar Integration**: Each WhatsApp agent operates independently with mandatory agent calendars, agent-specific availability settings, and isolated booking data.
+- **Sales Agent Configuration**: Configurable AI agent execution for sales phases with dynamic token usage optimization, intelligent personality profiling, and sequentially validated scripts.
+- **Human Seller Analytics & Session Persistence**: Unified analytics for AI agents and human sellers, with session state storage and restoration.
+- **Checkpoint Validation System**: 3-tier status system (VALIDATED, VAGUE, MISSING) for sales coaching.
+- **Gemini Model Configuration**: Dynamic model selection based on provider type (Google AI Studio/Vertex AI) and priority for SuperAdmin Gemini Keys for Gemini 3 capabilities.
+- **Video Copilot Turn-Taking System**: Prevents API bombardment during video meetings via intelligent turn-taking.
+- **WebRTC/WebSocket Resilience System**: Implements heartbeat, exponential backoff, and network change detection for robust connectivity.
+- **AI-Driven Follow-up Automation System**: 100% AI-driven follow-up system guided by per-consultant preferences while maintaining decision autonomy.
+- **Booking Extraction Accumulator Pattern**: Prevents booking data loss during AI re-extraction cycles by progressively accumulating fields across multiple attempts.
+- **AI Course Builder**: 5-step wizard to generate lessons from YouTube videos with 3-layer transcript extraction fallback, manual transcript input, AI lesson generation preserving speaker's tone, SSE progress tracking, draft management, transcript quality evaluation, AI instruction templates, a review screen, duplicate video detection, and lesson regeneration. Includes real-time loading for video processing, automatic step transitions, a Course Theme System with 5 visual themes, and Module Organization with single module, manual, or AI auto-assignment options. AI lesson generation enhancements include extended output, length requirements, priority instructions, content logging, and styled HTML lesson output with theme-specific Tailwind classes. Features a hierarchical Step 5 view and Email Journey style preview for lessons.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.

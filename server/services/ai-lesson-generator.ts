@@ -76,11 +76,15 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
     const generateConfig: any = {
       model: selectedModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        maxOutputTokens: 20000, // Permette lezioni molto dettagliate e lunghe
+      }
     };
     
     // Aggiungi thinking config se supportato (Gemini 3)
     if (useThinking) {
       generateConfig.config = {
+        ...generateConfig.config,
         thinkingConfig: {
           thinkingMode: "enabled",
           thinkingBudget: GEMINI_3_THINKING_LEVEL === "high" ? 16000 : 
@@ -90,6 +94,7 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
       };
     }
     
+    console.log(`📝 [AI-LESSON] Config: maxOutputTokens=20000, thinking=${useThinking}`);
     const response = await providerResult.client.generateContent(generateConfig);
     const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
@@ -97,6 +102,9 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
     console.log(`✅ [AI-LESSON] Risposta Gemini ricevuta in ${elapsedTime}s (${generatedText.length} caratteri)`);
     
     const lessonData = parseLessonResponse(generatedText, video);
+    const contentLength = lessonData.content?.length || 0;
+    const wordCount = lessonData.content?.split(/\s+/).filter(Boolean).length || 0;
+    console.log(`📊 [AI-LESSON] Contenuto generato: ${contentLength} caratteri, ~${wordCount} parole`);
     
     console.log(`💾 [AI-LESSON] Salvando lezione come bozza: "${lessonData.title}"`);
     const [lesson] = await db.insert(libraryDocuments).values({
@@ -138,7 +146,7 @@ function buildLessonPrompt(video: any, instructions: string, preserveSpeakerStyl
 
   const themeInstructions = generateThemeInstructionsForAI(theme);
 
-  return `Sei un esperto nella creazione di contenuti formativi. Devi creare una lezione formativa basata sulla trascrizione di un video YouTube.
+  return `Sei un esperto nella creazione di contenuti formativi DETTAGLIATI e APPROFONDITI. Devi creare una lezione formativa COMPLETA e ESTESA basata sulla trascrizione di un video YouTube.
 
 TITOLO VIDEO: ${video.title || 'Video senza titolo'}
 CANALE: ${video.channelName || 'Canale sconosciuto'}
@@ -150,7 +158,14 @@ ${video.transcript}
 
 ${styleInstruction}
 
-${instructions ? `ISTRUZIONI AGGIUNTIVE DELL'UTENTE:\n${instructions}\n\n` : ''}
+${instructions ? `ISTRUZIONI DELL'UTENTE (PRIORITÀ MASSIMA - SEGUI ESATTAMENTE):\n${instructions}\n\n` : ''}
+
+REQUISITI DI LUNGHEZZA E PROFONDITÀ:
+- La lezione deve essere MOLTO DETTAGLIATA e APPROFONDITA
+- Ogni sezione deve avere ALMENO 3-5 paragrafi di contenuto
+- NON riassumere eccessivamente: espandi e approfondisci ogni concetto
+- Se le istruzioni richiedono esempi, punti chiave, azioni, riflessioni, riepilogo: includili TUTTI in modo completo
+- La lezione finale deve essere ALMENO 2000-3000 parole
 
 ${themeInstructions}
 
