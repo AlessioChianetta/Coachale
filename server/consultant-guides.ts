@@ -67,7 +67,7 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Accedere al Wizard",
             content: "Vai su /consultant/setup-wizard oppure clicca 'Completa Configurazione' dalla dashboard principale.",
-            actionText: "Apri Setup Wizard",
+            actionText: "Vai a Setup Iniziale",
             actionHref: "/consultant/setup-wizard"
           },
           {
@@ -100,7 +100,7 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "1.3 Google Calendar (Opzionale)",
             content: "Collega Google Calendar ai tuoi agenti WhatsApp per sincronizzare automaticamente gli appuntamenti prenotati.",
-            actionText: "Vai agli Agenti",
+            actionText: "Vai a I tuoi dipendenti",
             actionHref: "/consultant/whatsapp",
             tips: ["Ogni agente può avere il proprio Google Calendar", "Collega il calendario dal pannello laterale dell'agente"]
           },
@@ -160,14 +160,14 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "2.4 Link Pubblico Agente",
             content: "Una volta creato un agente, genera un link pubblico che i potenziali clienti possono usare per iniziare una conversazione con il tuo bot.",
-            actionText: "Gestisci Agenti",
+            actionText: "Vai a I tuoi dipendenti",
             actionHref: "/consultant/whatsapp-agents-chat",
             tips: ["Il link può essere condiviso su social, sito web, biglietti da visita", "Il lead viene automaticamente aggiunto alla pipeline"]
           },
           {
             title: "2.5 Idee AI Generate",
             content: "L'AI può generare idee creative per i tuoi agenti basandosi sul tuo settore e target.",
-            actionText: "Genera Idee",
+            actionText: "Vai a I tuoi dipendenti",
             actionHref: "/consultant/whatsapp?tab=ideas",
             tips: ["Descrivi il tuo target e l'AI suggerirà contenuti", "Puoi modificare e personalizzare i suggerimenti"]
           },
@@ -188,21 +188,21 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "3.1 Primo Corso",
             content: "Crea il tuo primo corso formativo per i clienti. Struttura in moduli e lezioni con video, testo e quiz.",
-            actionText: "Crea Corso",
+            actionText: "Vai a Università",
             actionHref: "/consultant/university",
             tips: ["I clienti possono seguire i corsi dalla loro area", "Traccia i progressi e il completamento"]
           },
           {
             title: "3.2 Primo Esercizio",
             content: "Crea esercizi pratici che i clienti devono completare. Ricevi notifiche quando vengono consegnati per la revisione.",
-            actionText: "Crea Esercizio",
+            actionText: "Vai a Template",
             actionHref: "/consultant/exercise-templates",
             tips: ["Gli esercizi aiutano i clienti ad applicare quanto appreso", "Puoi impostare scadenze e priorità"]
           },
           {
             title: "3.3 Base di Conoscenza",
             content: "Carica documenti, PDF, e contenuti che l'AI userà per rispondere alle domande. Più informazioni carichi, più accurate saranno le risposte.",
-            actionText: "Gestisci Knowledge Base",
+            actionText: "Vai a Documenti",
             actionHref: "/consultant/knowledge-documents",
             tips: ["Carica PDF, documenti Word, o testo", "L'AI indicizza automaticamente i contenuti", "Usato sia dall'assistente che dagli agenti WhatsApp"]
           }
@@ -216,7 +216,7 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "4.1 Prima Email Riassuntiva",
             content: "Dopo una consulenza, genera automaticamente un'email di riepilogo con i punti chiave discussi e i prossimi passi.",
-            actionText: "Vedi Consulenze",
+            actionText: "Vai a Calendario",
             actionHref: "/consultant/appointments",
             tips: ["L'AI genera la bozza basandosi sulle note della consulenza", "Puoi modificare prima di inviare"]
           },
@@ -252,7 +252,7 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Supporto",
             content: "Se hai problemi durante la configurazione, usa l'Assistente AI in qualsiasi pagina per ricevere aiuto contestuale.",
-            actionText: "Apri Assistente AI",
+            actionText: "Vai a AI Assistant",
             actionHref: "/consultant/ai-assistant"
           }
         ]
@@ -279,25 +279,25 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Clienti Attivi",
             content: "Numero totale di clienti attualmente attivi nel tuo portafoglio. Clicca per vedere la lista completa.",
-            actionText: "Vai ai Clienti",
+            actionText: "Vai a Clienti",
             actionHref: "/consultant/clients"
           },
           {
             title: "Esercizi da Revisionare",
             content: "Esercizi consegnati dai clienti che attendono la tua revisione. Priorità: revisionali entro 24-48h.",
-            actionText: "Revisiona Esercizi",
+            actionText: "Vai a Esercizi",
             actionHref: "/consultant/exercises"
           },
           {
             title: "Consulenze Settimana",
             content: "Numero di consulenze programmate per questa settimana. Include scheduled e completed.",
-            actionText: "Vai al Calendario",
+            actionText: "Vai a Calendario",
             actionHref: "/consultant/appointments"
           },
           {
             title: "Lead Prioritari",
             content: "Lead con alta probabilità di conversione che richiedono attenzione. Basato su engagement e lead scoring.",
-            actionText: "Gestisci Lead",
+            actionText: "Vai a HUB Lead",
             actionHref: "/consultant/lead-hub"
           }
         ]
@@ -310,55 +310,55 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "AI Assistant",
             content: "Chat con l'intelligenza artificiale per domande, analisi clienti, generazione contenuti.",
-            actionText: "Apri Chat AI",
+            actionText: "Vai a AI Assistant",
             actionHref: "/consultant/ai-assistant"
           },
           {
             title: "Clienti",
             content: "Gestione completa dei clienti: profili, percorsi, documenti, storico consulenze.",
-            actionText: "Gestisci Clienti",
+            actionText: "Vai a Clienti",
             actionHref: "/consultant/clients"
           },
           {
             title: "Calendario",
             content: "Visualizza e gestisci tutte le consulenze. Vista mensile con dettagli appuntamenti.",
-            actionText: "Apri Calendario",
+            actionText: "Vai a Calendario",
             actionHref: "/consultant/appointments"
           },
           {
             title: "Email Journey",
             content: "Gestione del percorso email automatico per i clienti. Monitora invii e engagement.",
-            actionText: "Gestisci Email",
+            actionText: "Vai a Email Journey",
             actionHref: "/consultant/ai-config"
           },
           {
             title: "Lead Hub",
             content: "Centro di controllo per lead e campagne. Visualizza pipeline e conversioni.",
-            actionText: "Apri Lead Hub",
+            actionText: "Vai a HUB Lead",
             actionHref: "/consultant/lead-hub"
           },
           {
             title: "Agent Setup",
             content: "Configurazione e gestione degli agenti AI per WhatsApp.",
-            actionText: "Configura Agenti",
+            actionText: "Vai a I tuoi dipendenti",
             actionHref: "/consultant/whatsapp"
           },
           {
             title: "Formazione",
             content: "Corsi e contenuti formativi per i tuoi clienti.",
-            actionText: "Gestisci Corsi",
+            actionText: "Vai a Università",
             actionHref: "/consultant/university"
           },
           {
             title: "Knowledge Base",
             content: "Documenti e conoscenze che alimentano l'AI.",
-            actionText: "Gestisci Documenti",
+            actionText: "Vai a Documenti",
             actionHref: "/consultant/knowledge-documents"
           },
           {
             title: "File Search Analytics",
             content: "Analisi delle ricerche effettuate sui documenti.",
-            actionText: "Vedi Analytics",
+            actionText: "Vai a File Search",
             actionHref: "/consultant/file-search-analytics"
           }
         ]
@@ -612,7 +612,7 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Nuovo Appuntamento",
             content: "Clicca su un giorno nel calendario o usa il pulsante 'Nuova Consulenza'.",
-            actionText: "Crea Consulenza",
+            actionText: "Vai a Calendario",
             actionHref: "/consultant/appointments"
           },
           {
@@ -1038,7 +1038,7 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Step 1: Lead Proattivi",
             content: "Carica e gestisci i tuoi contatti da Excel/CSV o manualmente. Ogni lead è un potenziale cliente.",
-            actionText: "Gestisci Lead",
+            actionText: "Vai a HUB Lead",
             actionHref: "/consultant/proactive-leads"
           },
           {
@@ -1415,7 +1415,7 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Creare Nuovo Agente",
             content: "Clicca 'Nuovo Agente' per avviare la procedura guidata di creazione.",
-            actionText: "Crea Agente",
+            actionText: "Vai a I tuoi dipendenti",
             actionHref: "/consultant/whatsapp/agent/new"
           },
           {
@@ -1554,7 +1554,7 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Link Pubblico",
             content: "Genera URL condivisibile per permettere a chiunque di contattare questo agente.",
-            actionText: "Gestisci Link",
+            actionText: "Vai a I tuoi dipendenti",
             actionHref: "/consultant/whatsapp-agents-chat"
           }
         ]
@@ -2053,7 +2053,7 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Accedere al Builder",
             content: "Vai su Libreria Formativa → clicca 'Crea Corso con AI' in alto a destra.",
-            actionText: "Apri AI Builder",
+            actionText: "Vai a Corsi",
             actionHref: "/consultant/library/ai-builder"
           }
         ]
