@@ -3350,6 +3350,12 @@ export class FileSearchSyncService {
           .from(libraryCategoryClientAssignments).where(inArray(libraryCategoryClientAssignments.clientId, allClientIds))
       : [];
     
+    // DEBUG: Log what category assignments we found
+    console.log(`🔍 [Audit Debug] allLibraryCategoryAssigns found: ${allLibraryCategoryAssigns.length}`);
+    for (const assign of allLibraryCategoryAssigns) {
+      console.log(`   - client: ${assign.clientId}, category: ${assign.categoryId}`);
+    }
+    
     const allUniversityYearAssigns = allClientIds.length > 0
       ? await db.select({ clientId: universityYearClientAssignments.clientId, yearId: universityYearClientAssignments.yearId })
           .from(universityYearClientAssignments).where(inArray(universityYearClientAssignments.clientId, allClientIds))
@@ -3474,6 +3480,14 @@ export class FileSearchSyncService {
       for (const c of cats) {
         categoryNamesById.set(c.id, c.name);
       }
+      
+      // DEBUG: Log what categories and documents we found
+      console.log(`🔍 [Audit Debug] allAssignedCategoryIds: ${Array.from(allAssignedCategoryIds).join(', ')}`);
+      console.log(`🔍 [Audit Debug] libraryDocsByCategoryId entries:`);
+      for (const [catId, docs] of libraryDocsByCategoryId.entries()) {
+        const catName = categoryNamesById.get(catId) || 'Unknown';
+        console.log(`   - ${catName} (${catId}): ${docs.length} docs`);
+      }
     }
     
     // Pre-load university structure for assigned years
@@ -3556,6 +3570,11 @@ export class FileSearchSyncService {
         const docs = libraryDocsByCategoryId.get(catId) || [];
         assignedLibraryDocs.push(...docs);
       }
+      
+      // DEBUG: Log assigned library docs for each client
+      console.log(`🔍 [Audit Debug] Client ${client.email}:`);
+      console.log(`   - assignedCategoryIds: [${assignedCategoryIds.join(', ')}]`);
+      console.log(`   - assignedLibraryDocs count: ${assignedLibraryDocs.length}`);
       
       // Assigned University
       const assignedYearIds = universityYearAssignsByClient.get(client.id) || [];
