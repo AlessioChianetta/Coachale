@@ -16,6 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
@@ -475,6 +476,10 @@ export default function ConsultantLibraryAIBuilder() {
   }>>(new Map());
   const [savingLogs, setSavingLogs] = useState<{ time: string; message: string; type?: 'info' | 'success' | 'error' | 'warning' }[]>([]);
 
+  // Duplicate detection state
+  const [videoDuplicates, setVideoDuplicates] = useState<Map<string, { path: string; lessonTitle: string }>>(new Map());
+  const [includeDuplicates, setIncludeDuplicates] = useState(false);
+
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/library/categories"],
   });
@@ -815,6 +820,36 @@ export default function ConsultantLibraryAIBuilder() {
       // Completamento
       setSavedVideos(savedVideosList);
       setSelectedVideoIds(savedVideosList.map((v: SavedVideo) => v.id));
+      
+      // Check for duplicates - videos already used in lessons
+      if (savedVideosList.length > 0) {
+        try {
+          const videoIds = savedVideosList.map(v => v.id);
+          const dupResponse = await apiRequest("POST", "/api/library/check-video-duplicates", { videoIds });
+          if (dupResponse.duplicates?.length > 0) {
+            const dupMap = new Map<string, { path: string; lessonTitle: string }>();
+            dupResponse.duplicates.forEach((d: any) => {
+              dupMap.set(d.youtubeVideoId, { path: d.path, lessonTitle: d.lessonTitle });
+            });
+            setVideoDuplicates(dupMap);
+            
+            // Log duplicati trovati
+            dupResponse.duplicates.forEach((d: any) => {
+              addLog(`⚠️ Video già usato: "${d.lessonTitle}" in ${d.path}`, 'warning');
+            });
+            
+            // Rimuovi duplicati dalla selezione (se includeDuplicates è false)
+            if (!includeDuplicates) {
+              const filteredIds = savedVideosList
+                .filter(v => !dupMap.has(v.id))
+                .map(v => v.id);
+              setSelectedVideoIds(filteredIds);
+            }
+          }
+        } catch (error) {
+          console.warn('Error checking duplicates:', error);
+        }
+      }
       
       setTimeout(() => {
         setIsSavingVideos(false);
@@ -1627,11 +1662,35 @@ export default function ConsultantLibraryAIBuilder() {
                           className="w-24 h-14 object-cover rounded"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{video.title}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Clock className="w-3 h-3" />
-                            {formatDuration(video.duration)}
-                          </div>
+                          {(() => {
+                            const matchingSavedVideo = savedVideos.find(sv => sv.videoId === video.videoId);
+                            const duplicateInfo = matchingSavedVideo ? videoDuplicates.get(matchingSavedVideo.id) : null;
+                            return (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium truncate">{video.title}</p>
+                                  {duplicateInfo && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300 shrink-0">
+                                          ⚠️ Già usato
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="max-w-xs">
+                                        <p className="text-xs">
+                                          Questo video è già stato usato per creare la lezione <strong>"{duplicateInfo.lessonTitle}"</strong> in {duplicateInfo.path}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Clock className="w-3 h-3" />
+                                  {formatDuration(video.duration)}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     ))}
@@ -1842,16 +1901,60 @@ export default function ConsultantLibraryAIBuilder() {
                         </p>
                       </div>
                     )}
+                    
+                    {videoDuplicates.size > 0 && (
+                      <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                        <Checkbox 
+                          id="includeDuplicates" 
+                          checked={includeDuplicates} 
+                          onCheckedChange={(checked) => {
+                            setIncludeDuplicates(!!checked);
+                            if (checked) {
+                              setSelectedVideoIds(savedVideos.map(v => v.id));
+                            } else {
+                              const filteredIds = savedVideos
+                                .filter(v => !videoDuplicates.has(v.id))
+                                .map(v => v.id);
+                              setSelectedVideoIds(filteredIds);
+                            }
+                          }}
+                        />
+                        <Label htmlFor="includeDuplicates" className="text-sm text-amber-700 dark:text-amber-300 cursor-pointer">
+                          Includi anche i {videoDuplicates.size} video già usati in altre lezioni
+                        </Label>
+                      </div>
+                    )}
+                    
                     <div className="space-y-3 max-h-[300px] overflow-y-auto">
                       {savedVideos.map((video) => (
-                        <div key={video.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/50 dark:bg-gray-800/50">
+                        <div key={video.id} className={`flex items-center gap-3 p-2 rounded-lg ${
+                          videoDuplicates.has(video.id) && !includeDuplicates 
+                            ? 'bg-amber-50/50 dark:bg-amber-950/10 opacity-60' 
+                            : 'bg-white/50 dark:bg-gray-800/50'
+                        }`}>
                           <img 
                             src={video.thumbnailUrl} 
                             alt={video.title}
                             className="w-16 h-10 object-cover rounded"
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{video.title}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium truncate">{video.title}</p>
+                              {videoDuplicates.has(video.id) && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300 shrink-0">
+                                      ⚠️ Già usato
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p className="text-xs">
+                                      Questo video è già stato usato per creare la lezione <strong>"{videoDuplicates.get(video.id)?.lessonTitle}"</strong> in {videoDuplicates.get(video.id)?.path}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                             <div className="flex gap-1.5 flex-wrap">
                               {(() => {
                                 const isValid = hasValidTranscript(video);

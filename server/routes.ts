@@ -5328,6 +5328,74 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
     }
   });
 
+  // Check if videos are already used in existing lessons (duplicate detection)
+  app.post("/api/library/check-video-duplicates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { videoIds } = req.body;
+      
+      if (!videoIds || !Array.isArray(videoIds) || videoIds.length === 0) {
+        return res.json({ duplicates: [] });
+      }
+
+      // Find existing lessons that use these YouTube video IDs
+      const existingLessons = await db
+        .select({
+          lessonId: schema.libraryDocuments.id,
+          lessonTitle: schema.libraryDocuments.title,
+          youtubeVideoId: schema.libraryDocuments.youtubeVideoId,
+          categoryId: schema.libraryDocuments.categoryId,
+          subcategoryId: schema.libraryDocuments.subcategoryId,
+          isPublished: schema.libraryDocuments.isPublished,
+        })
+        .from(schema.libraryDocuments)
+        .where(and(
+          eq(schema.libraryDocuments.createdBy, req.user!.id),
+          inArray(schema.libraryDocuments.youtubeVideoId, videoIds)
+        ));
+
+      if (existingLessons.length === 0) {
+        return res.json({ duplicates: [] });
+      }
+
+      // Get category and subcategory names for the duplicates
+      const categoryIds = [...new Set(existingLessons.map(l => l.categoryId).filter(Boolean))];
+      const subcategoryIds = [...new Set(existingLessons.map(l => l.subcategoryId).filter(Boolean))];
+
+      const categories = categoryIds.length > 0 
+        ? await db.select({ id: schema.libraryCategories.id, name: schema.libraryCategories.name })
+            .from(schema.libraryCategories)
+            .where(inArray(schema.libraryCategories.id, categoryIds as string[]))
+        : [];
+
+      const subcategories = subcategoryIds.length > 0
+        ? await db.select({ id: schema.librarySubcategories.id, name: schema.librarySubcategories.name })
+            .from(schema.librarySubcategories)
+            .where(inArray(schema.librarySubcategories.id, subcategoryIds as string[]))
+        : [];
+
+      const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+      const subcategoryMap = new Map(subcategories.map(s => [s.id, s.name]));
+
+      // Build duplicates response with full path
+      const duplicates = existingLessons.map(lesson => ({
+        youtubeVideoId: lesson.youtubeVideoId,
+        lessonTitle: lesson.lessonTitle,
+        courseName: categoryMap.get(lesson.categoryId!) || 'Corso sconosciuto',
+        moduleName: lesson.subcategoryId ? subcategoryMap.get(lesson.subcategoryId) || null : null,
+        isPublished: lesson.isPublished,
+        path: lesson.subcategoryId && subcategoryMap.get(lesson.subcategoryId)
+          ? `${categoryMap.get(lesson.categoryId!) || 'Corso'} > ${subcategoryMap.get(lesson.subcategoryId)} > ${lesson.lessonTitle}`
+          : `${categoryMap.get(lesson.categoryId!) || 'Corso'} > ${lesson.lessonTitle}`,
+      }));
+
+      console.log(`🔍 [DUPLICATE-CHECK] Found ${duplicates.length} duplicates for consultant ${req.user!.id}`);
+      res.json({ duplicates });
+    } catch (error: any) {
+      console.error('Error checking video duplicates:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get unpublished AI-generated lessons (drafts) for current consultant
   app.get("/api/library/ai-unpublished-lessons", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
