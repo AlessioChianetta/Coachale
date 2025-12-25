@@ -670,196 +670,123 @@ export default function ConsultantLibraryAIBuilder() {
       return;
     }
     
+    console.log('[AI Builder] handleSaveSelectedVideos - Inizio salvataggio (polling)');
+    
     setIsSavingVideos(true);
     setSavingVideoProgress(0);
-    setSavingLogs([]);
+    setSavingLogs([{ time: new Date().toLocaleTimeString('it-IT'), message: `Sto preparando ${selected.length} video...`, type: 'info' }]);
     
     // Inizializza tutti i video come 'waiting'
     const initialStatuses = new Map<string, { status: 'waiting' | 'downloading' | 'transcribing' | 'completed' | 'error' | 'reused'; message?: string }>();
     selected.forEach(v => initialStatuses.set(v.videoId, { status: 'waiting' }));
     setSavingVideoStatuses(initialStatuses);
     
-    const addLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
-      setSavingLogs(prev => [...prev, {
-        time: new Date().toLocaleTimeString('it-IT'),
-        message,
-        type
-      }]);
-    };
-    
-    addLog(`Sto preparando ${selected.length} video...`, 'info');
-    
     try {
-      const response = await fetch("/api/youtube/playlist/save-stream", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          videos: selected,
-          playlistId: youtubeUrl,
-          transcriptMode,
-        }),
+      // Start save job (returns immediately with jobId)
+      const startResponse = await apiRequest("POST", "/api/youtube/playlist/save-stream", {
+        videos: selected,
+        playlistId: youtubeUrl,
+        transcriptMode,
       });
 
-      if (!response.ok) {
-        throw new Error("Errore nel salvataggio video");
-      }
+      const { jobId } = startResponse;
+      console.log('[AI Builder] Video save job avviato:', jobId);
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let savedVideosList: SavedVideo[] = [];
-      let buffer = '';
-      const completedVideoIds = new Set<string>();
-      
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        buffer += decoder.decode(value, { stream: true });
-        
-        const eventEndIndex = buffer.lastIndexOf('\n\n');
-        if (eventEndIndex === -1) continue;
-        
-        const completeEvents = buffer.slice(0, eventEndIndex + 2);
-        buffer = buffer.slice(eventEndIndex + 2);
-        
-        const lines = completeEvents.split('\n').filter(line => line.startsWith('data: '));
-        
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            
-            if (data.type === 'start') {
-              addLog(`Sto scaricando: "${data.title}"`, 'info');
-              setSavingVideoStatuses(prev => {
-                const next = new Map(prev);
-                next.set(data.videoId, { status: 'downloading', message: 'Scaricando...' });
-                return next;
-              });
-            } else if (data.type === 'downloading') {
-              setSavingVideoStatuses(prev => {
-                const next = new Map(prev);
-                next.set(data.videoId, { status: 'downloading', message: data.message || 'Scaricando audio...' });
-                return next;
-              });
-            } else if (data.type === 'transcribing') {
-              addLog(`Sto analizzando l'audio: "${data.title}"`, 'info');
-              setSavingVideoStatuses(prev => {
-                const next = new Map(prev);
-                next.set(data.videoId, { status: 'transcribing', message: data.message || 'Estraendo trascrizione...' });
-                return next;
-              });
-            } else if (data.type === 'reused') {
-              addLog(`♻️ Già analizzato in precedenza: "${data.title}"`, 'success');
-              completedVideoIds.add(data.videoId);
-              setSavingVideoStatuses(prev => {
-                const next = new Map(prev);
-                next.set(data.videoId, { status: 'reused', message: 'Trascrizione riutilizzata' });
-                return next;
-              });
-            } else if (data.type === 'completed') {
-              addLog(`✅ Pronto: "${data.title}"`, 'success');
-              completedVideoIds.add(data.videoId);
-              setSavingVideoStatuses(prev => {
-                const next = new Map(prev);
-                next.set(data.videoId, { status: 'completed', message: data.transcriptLength ? `${data.transcriptLength} caratteri` : 'Completato' });
-                return next;
-              });
-            } else if (data.type === 'error') {
-              addLog(`❌ Problema con "${data.title}": ${data.error}`, 'error');
-              setSavingVideoStatuses(prev => {
-                const next = new Map(prev);
-                next.set(data.videoId, { status: 'error', message: data.error });
-                return next;
-              });
-            } else if (data.type === 'progress') {
-              setSavingVideoProgress(Math.round((data.current / data.total) * 100));
-            } else if (data.type === 'done') {
-              savedVideosList = data.savedVideos || [];
-              addLog(`🎉 Fatto! ${savedVideosList.length} video pronti per la lezione`, 'success');
-            }
-          } catch (e) {
-            console.warn('[SSE] Errore parsing:', e, 'Linea:', line.slice(0, 100));
-          }
-        }
-      }
-      
-      if (buffer.trim()) {
-        const remainingLines = buffer.split('\n').filter(line => line.startsWith('data: '));
-        for (const line of remainingLines) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'done') {
-              savedVideosList = data.savedVideos || [];
-              addLog(`🎉 Fatto! ${savedVideosList.length} video pronti per la lezione`, 'success');
-            }
-          } catch (e) {
-            console.warn('[SSE] Errore parsing buffer rimanente:', e);
-          }
-        }
-      }
-      
-      // Fallback: se non abbiamo ricevuto i video dal messaggio 'done', li recuperiamo dal database
-      // Usa i video che hanno ricevuto 'completed' o 'reused' durante lo stream
-      if (savedVideosList.length === 0 && completedVideoIds.size > 0) {
-        console.log('[SSE] Fallback: recupero video dal database...', Array.from(completedVideoIds));
-        addLog('Recupero video salvati dal database...', 'info');
+      // Poll for status every 2 seconds
+      const pollInterval = setInterval(async () => {
         try {
-          const dbVideos = await apiRequest("GET", "/api/youtube/videos");
-          // Filtra solo i video che sono stati effettivamente completati durante lo stream
-          savedVideosList = dbVideos.filter((v: any) => completedVideoIds.has(v.videoId));
-          console.log('[SSE] Fallback: trovati', savedVideosList.length, 'video nel database su', completedVideoIds.size, 'completati');
-          addLog(`Recuperati ${savedVideosList.length} video dal database`, 'success');
-        } catch (fallbackError) {
-          console.error('[SSE] Errore fallback:', fallbackError);
-        }
-      }
-      
-      // Completamento
-      setSavedVideos(savedVideosList);
-      setSelectedVideoIds(savedVideosList.map((v: SavedVideo) => v.id));
-      
-      // Check for duplicates - videos already used in lessons
-      if (savedVideosList.length > 0) {
-        try {
-          const videoIds = savedVideosList.map(v => v.id);
-          const dupResponse = await apiRequest("POST", "/api/library/check-video-duplicates", { videoIds });
-          if (dupResponse.duplicates?.length > 0) {
-            const dupMap = new Map<string, { lessonId: string; path: string; lessonTitle: string }>();
-            dupResponse.duplicates.forEach((d: any) => {
-              dupMap.set(d.youtubeVideoId, { lessonId: d.lessonId, path: d.path, lessonTitle: d.lessonTitle });
+          const status = await apiRequest("GET", `/api/youtube/playlist/save-status/${jobId}`);
+          console.log('[AI Builder] Video save poll:', status.status, status.current, '/', status.total);
+          
+          // Update progress
+          if (status.total > 0) {
+            setSavingVideoProgress(Math.round((status.current / status.total) * 100));
+          }
+          
+          // Update logs
+          if (status.logs && status.logs.length > 0) {
+            setSavingLogs(status.logs);
+          }
+          
+          // Update video statuses
+          if (status.videos) {
+            setSavingVideoStatuses(prev => {
+              const next = new Map(prev);
+              Object.entries(status.videos).forEach(([videoId, videoStatus]: [string, any]) => {
+                next.set(videoId, { status: videoStatus.status, message: videoStatus.message });
+              });
+              return next;
             });
-            setVideoDuplicates(dupMap);
+          }
+          
+          // Check if completed or error
+          if (status.status === 'completed') {
+            clearInterval(pollInterval);
+            console.log('[AI Builder] Video save completato!', status.savedVideos?.length, 'video');
             
-            // Log duplicati trovati
-            dupResponse.duplicates.forEach((d: any) => {
-              addLog(`⚠️ Video già usato: "${d.lessonTitle}" in ${d.path}`, 'warning');
-            });
+            let savedVideosList = status.savedVideos || [];
             
-            // Rimuovi duplicati dalla selezione (se includeDuplicates è false)
-            if (!includeDuplicates) {
-              const filteredIds = savedVideosList
-                .filter(v => !dupMap.has(v.id))
-                .map(v => v.id);
-              setSelectedVideoIds(filteredIds);
+            // Fallback: recupera dal database se necessario
+            if (savedVideosList.length === 0) {
+              console.log('[AI Builder] Fallback: recupero video dal database...');
+              try {
+                const dbVideos = await apiRequest("GET", "/api/youtube/videos");
+                const completedVideoIds = selected.map(v => v.videoId);
+                savedVideosList = dbVideos.filter((v: any) => completedVideoIds.includes(v.videoId));
+              } catch (fallbackError) {
+                console.error('[AI Builder] Errore fallback:', fallbackError);
+              }
+            }
+            
+            setSavedVideos(savedVideosList);
+            setSelectedVideoIds(savedVideosList.map((v: SavedVideo) => v.id));
+            
+            // Check for duplicates
+            if (savedVideosList.length > 0) {
+              try {
+                const videoIds = savedVideosList.map((v: SavedVideo) => v.id);
+                const dupResponse = await apiRequest("POST", "/api/library/check-video-duplicates", { videoIds });
+                if (dupResponse.duplicates?.length > 0) {
+                  const dupMap = new Map<string, { lessonId: string; path: string; lessonTitle: string }>();
+                  dupResponse.duplicates.forEach((d: any) => {
+                    dupMap.set(d.youtubeVideoId, { lessonId: d.lessonId, path: d.path, lessonTitle: d.lessonTitle });
+                  });
+                  setVideoDuplicates(dupMap);
+                  
+                  if (!includeDuplicates) {
+                    const filteredIds = savedVideosList
+                      .filter((v: SavedVideo) => !dupMap.has(v.id))
+                      .map((v: SavedVideo) => v.id);
+                    setSelectedVideoIds(filteredIds);
+                  }
+                }
+              } catch (error) {
+                console.warn('Error checking duplicates:', error);
+              }
+            }
+            
+            setTimeout(() => {
+              setIsSavingVideos(false);
+              setCurrentStep(3);
+              toast({ title: "Video caricati", description: `${savedVideosList.length} video pronti per la generazione` });
+            }, 1000);
+            
+          } else if (status.status === 'error') {
+            clearInterval(pollInterval);
+            console.error('[AI Builder] Errore salvataggio video:', status.errors);
+            setIsSavingVideos(false);
+            if (status.errors && status.errors.length > 0) {
+              toast({ title: "Errore", description: status.errors[0]?.error || 'Errore sconosciuto', variant: "destructive" });
             }
           }
-        } catch (error) {
-          console.warn('Error checking duplicates:', error);
+        } catch (pollError: any) {
+          console.error('[AI Builder] Errore polling video save:', pollError);
+          // Don't stop polling on single error
         }
-      }
-      
-      setTimeout(() => {
-        setIsSavingVideos(false);
-        setCurrentStep(3);
-        toast({ title: "Video caricati", description: `${savedVideosList.length} video pronti per la generazione` });
-      }, 1000);
-      
+      }, 2000); // Poll every 2 seconds
+
     } catch (error: any) {
-      addLog(`Errore: ${error.message}`, 'error');
+      console.error('[AI Builder] Errore avvio salvataggio video:', error);
       toast({ title: "Errore", description: error.message, variant: "destructive" });
       setIsSavingVideos(false);
     }

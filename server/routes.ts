@@ -4949,80 +4949,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // SSE endpoint for saving playlist videos with real-time updates
+  // In-memory store for video saving job status (polling approach)
+  const videoSaveJobs = new Map<string, {
+    consultantId: string;
+    status: 'running' | 'completed' | 'error';
+    total: number;
+    current: number;
+    videos: Map<string, { status: 'waiting' | 'downloading' | 'transcribing' | 'completed' | 'reused' | 'error'; title?: string; message?: string }>;
+    logs: Array<{ time: string; message: string; type: 'info' | 'success' | 'error' | 'warning' }>;
+    savedVideos: any[];
+    errors: any[];
+    startedAt: Date;
+  }>();
+
+  // Cleanup old video save jobs after 1 hour
+  setInterval(() => {
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    for (const [jobId, job] of videoSaveJobs.entries()) {
+      if (job.startedAt.getTime() < oneHourAgo) {
+        videoSaveJobs.delete(jobId);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  // Start video saving job (returns immediately with jobId)
   app.post("/api/youtube/playlist/save-stream", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    const send = (data: any) => {
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-      if (res.flush) (res as any).flush();
-    };
-
     try {
       const { videos, playlistId, playlistTitle, transcriptMode = 'auto' } = req.body;
       if (!videos || !Array.isArray(videos)) {
-        send({ type: 'error', error: 'Videos array is required' });
-        return res.end();
+        return res.status(400).json({ message: 'Videos array is required' });
       }
 
+      const jobId = `save_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const consultantId = req.user!.id;
+      
+      // Initialize job state
+      const videosMap = new Map<string, { status: 'waiting' | 'downloading' | 'transcribing' | 'completed' | 'reused' | 'error'; title?: string; message?: string }>();
+      videos.forEach((v: any) => videosMap.set(v.videoId, { status: 'waiting', title: v.title }));
+      
+      videoSaveJobs.set(jobId, {
+        consultantId,
+        status: 'running',
+        total: videos.length,
+        current: 0,
+        videos: videosMap,
+        logs: [{ time: new Date().toLocaleTimeString('it-IT'), message: `Preparazione ${videos.length} video...`, type: 'info' }],
+        savedVideos: [],
+        errors: [],
+        startedAt: new Date(),
+      });
+
+      console.log(`🚀 [VIDEO-SAVE] Job ${jobId} started for ${videos.length} videos`);
+
+      // Return immediately with jobId
+      res.json({ jobId, message: 'Video saving started' });
+
+      // Run saving in background
       const { saveVideoWithTranscriptStream } = await import("./services/youtube-service");
       
-      const savedVideos = [];
-      const errors = [];
-      const total = videos.length;
+      const savedVideosList: any[] = [];
+      const errorsList: any[] = [];
 
       for (let i = 0; i < videos.length; i++) {
         const video = videos[i];
-        send({ type: 'progress', current: i + 1, total });
-        send({ type: 'start', videoId: video.videoId, title: video.title });
+        const job = videoSaveJobs.get(jobId);
+        if (!job) break;
+        
+        job.current = i + 1;
+        job.videos.set(video.videoId, { status: 'downloading', title: video.title, message: 'Scaricando...' });
+        job.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `Sto scaricando: "${video.title}"`, type: 'info' });
+        
+        console.log(`📊 [VIDEO-SAVE] Job ${jobId}: ${i + 1}/${videos.length} - ${video.title}`);
         
         try {
           const result = await saveVideoWithTranscriptStream(
-            req.user!.id, 
+            consultantId, 
             video.videoUrl, 
             playlistId, 
             playlistTitle,
             transcriptMode,
             (status: string, message?: string) => {
-              send({ type: status, videoId: video.videoId, title: video.title, message });
+              const currentJob = videoSaveJobs.get(jobId);
+              if (currentJob) {
+                currentJob.videos.set(video.videoId, { 
+                  status: status as any, 
+                  title: video.title, 
+                  message 
+                });
+              }
             },
-            // Metadati dalla playlist per fallback se oEmbed fallisce (video non embeddabili)
             { title: video.title, thumbnailUrl: video.thumbnail, channelName: video.channelTitle }
           );
           
           if (result.success) {
-            // Escludi transcript dal saved video per evitare JSON troppo grande
             const { transcript, description, ...videoWithoutLargeFields } = result.video || {};
-            savedVideos.push({ 
+            const savedVideo = { 
               ...videoWithoutLargeFields, 
               reused: result.reused || false,
               transcriptStatus: result.video?.transcriptStatus,
               transcriptLength: transcript?.length || 0 
-            });
-            if (result.reused) {
-              send({ type: 'reused', videoId: video.videoId, title: video.title });
-            } else {
-              send({ type: 'completed', videoId: video.videoId, title: video.title, transcriptLength: transcript?.length || 0 });
+            };
+            savedVideosList.push(savedVideo);
+            
+            const jobUpdate = videoSaveJobs.get(jobId);
+            if (jobUpdate) {
+              jobUpdate.savedVideos.push(savedVideo);
+              if (result.reused) {
+                jobUpdate.videos.set(video.videoId, { status: 'reused', title: video.title, message: 'Trascrizione riutilizzata' });
+                jobUpdate.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `♻️ Già analizzato: "${video.title}"`, type: 'success' });
+              } else {
+                jobUpdate.videos.set(video.videoId, { status: 'completed', title: video.title, message: `${transcript?.length || 0} caratteri` });
+                jobUpdate.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `✅ Pronto: "${video.title}"`, type: 'success' });
+              }
             }
           } else {
-            errors.push({ videoId: video.videoId, error: result.error });
-            send({ type: 'error', videoId: video.videoId, title: video.title, error: result.error });
+            errorsList.push({ videoId: video.videoId, error: result.error });
+            const jobUpdate = videoSaveJobs.get(jobId);
+            if (jobUpdate) {
+              jobUpdate.errors.push({ videoId: video.videoId, error: result.error });
+              jobUpdate.videos.set(video.videoId, { status: 'error', title: video.title, message: result.error });
+              jobUpdate.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `❌ Problema: "${video.title}": ${result.error}`, type: 'error' });
+            }
           }
         } catch (err: any) {
-          errors.push({ videoId: video.videoId, error: err.message });
-          send({ type: 'error', videoId: video.videoId, title: video.title, error: err.message });
+          errorsList.push({ videoId: video.videoId, error: err.message });
+          const jobUpdate = videoSaveJobs.get(jobId);
+          if (jobUpdate) {
+            jobUpdate.errors.push({ videoId: video.videoId, error: err.message });
+            jobUpdate.videos.set(video.videoId, { status: 'error', title: video.title, message: err.message });
+            jobUpdate.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `❌ Errore: "${video.title}": ${err.message}`, type: 'error' });
+          }
         }
       }
 
-      send({ type: 'done', savedVideos, errors });
-      res.end();
+      // Mark job as completed
+      const finalJob = videoSaveJobs.get(jobId);
+      if (finalJob) {
+        finalJob.status = 'completed';
+        finalJob.savedVideos = savedVideosList;
+        finalJob.errors = errorsList;
+        finalJob.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `🎉 Fatto! ${savedVideosList.length} video pronti`, type: 'success' });
+        console.log(`✅ [VIDEO-SAVE] Job ${jobId} completed: ${savedVideosList.length} videos saved`);
+      }
     } catch (error: any) {
-      console.error('Error in save-stream:', error);
-      send({ type: 'error', error: error.message });
-      res.end();
+      console.error('Error starting video save job:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Poll video saving job status
+  app.get("/api/youtube/playlist/save-status/:jobId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { jobId } = req.params;
+      const job = videoSaveJobs.get(jobId);
+      
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found or expired' });
+      }
+      
+      // Security: only owner can poll their job
+      if (job.consultantId !== req.user!.id) {
+        return res.status(403).json({ message: 'Unauthorized' });
+      }
+
+      // Convert videos Map to object for JSON
+      const videosStatus: Record<string, { status: string; title?: string; message?: string }> = {};
+      job.videos.forEach((value, key) => {
+        videosStatus[key] = value;
+      });
+
+      res.json({
+        status: job.status,
+        total: job.total,
+        current: job.current,
+        videos: videosStatus,
+        logs: job.logs,
+        savedVideos: job.status === 'completed' ? job.savedVideos : [],
+        errors: job.errors,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 
