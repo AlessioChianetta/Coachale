@@ -10,7 +10,7 @@
  * - Ogni pagina ha: emoji, titolo, path, descrizione, sezioni con steps
  * - Sezione speciale ONBOARDING per tracciare setup wizard
  * 
- * ULTIMO AGGIORNAMENTO: Dicembre 2024
+ * ULTIMO AGGIORNAMENTO: Dicembre 2025
  */
 
 export interface GuideStep {
@@ -2023,6 +2023,233 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Assegnazione",
             content: "Assegna documenti specifici a clienti specifici."
+          }
+        ]
+      }
+    ]
+  },
+
+  aiCourseBuilder: {
+    emoji: "🤖",
+    title: "Crea Corso con AI",
+    path: "/consultant/library/ai-builder",
+    description: "Crea corsi formativi automaticamente da video YouTube usando l'intelligenza artificiale. Estrai trascrizioni, genera lezioni e organizza in moduli.",
+    category: "content",
+    sections: [
+      {
+        title: "PANORAMICA",
+        icon: "✨",
+        description: "Il Corso Builder AI trasforma video YouTube in lezioni formative complete.",
+        steps: [
+          {
+            title: "Come Funziona",
+            content: "Inserisci link YouTube (singoli o playlist), l'AI estrae le trascrizioni e genera lezioni formative strutturate mantenendo lo stile e il tono dell'autore originale."
+          },
+          {
+            title: "Vantaggi",
+            content: "Risparmia ore di lavoro: l'AI crea automaticamente contenuti formativi da video esistenti, con struttura professionale e formattazione moderna.",
+            tips: ["Ideale per trasformare webinar, corsi video o tutorial in lezioni testuali", "Supporta playlist intere per creare corsi multi-lezione"]
+          },
+          {
+            title: "Accedere al Builder",
+            content: "Vai su Libreria Formativa → clicca 'Crea Corso con AI' in alto a destra.",
+            actionText: "Apri AI Builder",
+            actionHref: "/consultant/library/ai-builder"
+          }
+        ]
+      },
+      {
+        title: "STEP 1: IMPORTA VIDEO",
+        icon: "📺",
+        description: "Inserisci video YouTube da trasformare in lezioni.",
+        steps: [
+          {
+            title: "Video Singoli",
+            content: "Incolla uno o più link YouTube separati da virgola o su righe separate. L'AI estrae automaticamente titolo, durata e miniatura."
+          },
+          {
+            title: "Playlist Intera",
+            content: "Incolla il link di una playlist YouTube per importare tutti i video in un colpo solo."
+          },
+          {
+            title: "Estrazione Trascrizioni",
+            content: "L'AI tenta 3 metodi in sequenza: sottotitoli ufficiali YouTube → sottotitoli auto-generati → estrazione audio (richiede più tempo).",
+            tips: ["I video con sottotitoli ufficiali danno risultati migliori", "La qualità della trascrizione viene valutata automaticamente"]
+          },
+          {
+            title: "Rilevamento Duplicati",
+            content: "Il sistema rileva automaticamente se un video è già stato importato in precedenza, mostrando dove esiste già la lezione corrispondente.",
+            warnings: ["I duplicati vengono evidenziati per evitare di generare lezioni doppie"]
+          }
+        ]
+      },
+      {
+        title: "STEP 2: SELEZIONA VIDEO",
+        icon: "☑️",
+        description: "Scegli quali video trasformare in lezioni.",
+        steps: [
+          {
+            title: "Selezione Multipla",
+            content: "Spunta i video che vuoi includere nel corso. Puoi selezionare/deselezionare tutti con un click."
+          },
+          {
+            title: "Qualità Trascrizione",
+            content: "Ogni video mostra un badge con la qualità della trascrizione: Ottima, Buona, Sufficiente, Scarsa. Preferisci video con qualità alta.",
+            tips: ["Video senza trascrizione mostrano 'Da inserire' - puoi aggiungerla manualmente"]
+          },
+          {
+            title: "Inserimento Manuale",
+            content: "Se la trascrizione automatica non è disponibile o è di bassa qualità, clicca sull'icona 'modifica' per inserirla manualmente."
+          }
+        ]
+      },
+      {
+        title: "STEP 3: IMPOSTAZIONI AI",
+        icon: "⚙️",
+        description: "Configura come l'AI genererà le lezioni.",
+        steps: [
+          {
+            title: "Stile di Scrittura",
+            content: "Scegli tra 10+ stili: Voce Originale (mantiene il tono dell'autore), Professionale, Conversazionale, Accademico, Narrativo, ecc."
+          },
+          {
+            title: "Aggiunte Opzionali",
+            content: "Attiva elementi extra: Punti Chiave, Esercizi Pratici, Domande di Riflessione, Citazioni, Glossario, Bibliografia.",
+            tips: ["Ogni aggiunta arricchisce la lezione ma aumenta la lunghezza"]
+          },
+          {
+            title: "Istruzioni AI Personalizzate",
+            content: "Modifica le istruzioni AI per personalizzare ulteriormente l'output. Vedrai un'anteprima delle istruzioni che verranno usate."
+          },
+          {
+            title: "Tema Visivo",
+            content: "Scegli il tema grafico delle lezioni: Default, Elegante, Moderno, Minimalista, Accademico. Il tema influenza colori e stili delle lezioni generate."
+          }
+        ]
+      },
+      {
+        title: "STEP 4: GENERAZIONE",
+        icon: "⚡",
+        description: "L'AI genera le lezioni in parallelo.",
+        steps: [
+          {
+            title: "Elaborazione Batch",
+            content: "L'AI genera 5 lezioni contemporaneamente per velocizzare il processo. Per 20 video servono circa 4 batch.",
+            tips: ["Puoi vedere il progresso in tempo reale per ogni video", "I batch hanno una pausa di 2 secondi tra loro"]
+          },
+          {
+            title: "Stati Video",
+            content: "Ogni video mostra: In attesa → Generazione... (con animazione) → Completato ✓ oppure Errore ✗"
+          },
+          {
+            title: "Salvataggio Automatico",
+            content: "Il progresso viene salvato automaticamente dopo ogni batch. Se interrompi, puoi riprendere dalla bozza.",
+            tips: ["Le bozze sono accessibili dalla pagina iniziale del builder", "Riprendendo, il sistema salta i video già generati"]
+          },
+          {
+            title: "Lezioni Già Generate",
+            content: "Se alcuni video hanno già lezioni esistenti, il sistema le include automaticamente senza rigenerarle."
+          }
+        ]
+      },
+      {
+        title: "STEP 4.5: ORGANIZZAZIONE MODULI",
+        icon: "📂",
+        description: "Organizza le lezioni nei moduli del corso.",
+        steps: [
+          {
+            title: "Modulo Singolo",
+            content: "Seleziona un modulo esistente e assegna tutte le lezioni a quel modulo."
+          },
+          {
+            title: "Organizzazione Manuale",
+            content: "Assegna ogni lezione a un modulo specifico usando i dropdown. Utile per corsi strutturati."
+          },
+          {
+            title: "Organizzazione AI",
+            content: "Lascia che l'AI organizzi automaticamente le lezioni nei moduli più appropriati basandosi sui contenuti.",
+            tips: ["L'AI analizza i titoli e contenuti per suggerire la migliore organizzazione"]
+          },
+          {
+            title: "Crea Nuovo Modulo",
+            content: "Puoi creare nuovi moduli direttamente da questa schermata se quelli esistenti non sono sufficienti."
+          }
+        ]
+      },
+      {
+        title: "STEP 5: REVISIONE E PUBBLICAZIONE",
+        icon: "📋",
+        description: "Rivedi le lezioni e pubblica il corso.",
+        steps: [
+          {
+            title: "Lista Lezioni",
+            content: "Visualizza tutte le lezioni generate organizzate per modulo. Ogni lezione mostra titolo, modulo assegnato e miniatura video.",
+            tips: ["Clicca su una lezione per vedere l'anteprima completa"]
+          },
+          {
+            title: "Anteprima Lezione",
+            content: "Apri l'anteprima per vedere come apparirà la lezione ai clienti. Verifica formattazione, contenuti e stile."
+          },
+          {
+            title: "Riordina Lezioni",
+            content: "Trascina le lezioni per cambiare l'ordine all'interno di ogni modulo."
+          },
+          {
+            title: "Elimina Lezione",
+            content: "Rimuovi singole lezioni prima della pubblicazione se non sono soddisfacenti."
+          },
+          {
+            title: "Pubblica Tutto",
+            content: "Clicca 'Pubblica X Lezioni' per rendere tutte le lezioni visibili ai clienti nella Libreria Formativa.",
+            warnings: ["Una volta pubblicate, le lezioni sono immediatamente visibili ai clienti assegnati"]
+          }
+        ]
+      },
+      {
+        title: "GESTIONE BOZZE",
+        icon: "📝",
+        description: "Come gestire e riprendere le bozze.",
+        steps: [
+          {
+            title: "Bozze Automatiche",
+            content: "Ogni sessione del builder crea automaticamente una bozza. Le bozze vengono aggiornate ad ogni batch completato."
+          },
+          {
+            title: "Riprendere Bozza",
+            content: "All'apertura del builder, se esiste una bozza interrotta, appare un popup per riprenderla. Clicca 'Continua' per riprendere da dove eri rimasto."
+          },
+          {
+            title: "Lista Bozze",
+            content: "Dalla pagina iniziale del builder, vedi tutte le bozze salvate con nome, data e progresso."
+          },
+          {
+            title: "Eliminare Bozza",
+            content: "Clicca l'icona cestino per eliminare una bozza non più necessaria."
+          }
+        ]
+      },
+      {
+        title: "TROUBLESHOOTING",
+        icon: "🔧",
+        description: "Problemi comuni e soluzioni.",
+        steps: [
+          {
+            title: "Video Senza Trascrizione",
+            content: "Alcuni video non hanno sottotitoli. Soluzione: inserisci manualmente la trascrizione oppure usa l'estrazione audio (richiede più tempo).",
+            tips: ["L'estrazione audio funziona ma è più lenta e meno precisa"]
+          },
+          {
+            title: "Lezioni di Bassa Qualità",
+            content: "Se la lezione generata non è soddisfacente, puoi eliminarla e rigenerarla con impostazioni diverse.",
+            tips: ["Prova a cambiare stile di scrittura o aggiungere istruzioni specifiche"]
+          },
+          {
+            title: "Generazione Interrotta",
+            content: "Se la generazione si interrompe, usa la funzione 'Riprendi' dalla bozza. Il sistema ricomincia dal primo video non completato."
+          },
+          {
+            title: "Duplicati Rilevati",
+            content: "Se un video risulta duplicato, puoi: includere la lezione esistente senza rigenerare, eliminare la lezione esistente per rigenerare, oppure escludere il video."
           }
         ]
       }
