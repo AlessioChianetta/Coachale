@@ -279,8 +279,9 @@ export class FileSearchSyncService {
     errors: string[];
   }> {
     try {
+      // Only sync published documents (isPublished = true)
       const docs = await db.query.libraryDocuments.findMany({
-        where: eq(libraryDocuments.createdBy, consultantId),
+        where: and(eq(libraryDocuments.createdBy, consultantId), eq(libraryDocuments.isPublished, true)),
       });
 
       let synced = 0;
@@ -3093,13 +3094,14 @@ export class FileSearchSyncService {
     console.log(`📊 [Audit] Phase 1: Loading consultant source documents...`);
     
     // Load all source tables with updatedAt for staleness detection
+    // Only count published documents (isPublished = true)
     const libraryDocs = await db.select({ 
       id: libraryDocuments.id, 
       title: libraryDocuments.title, 
       contentType: libraryDocuments.contentType,
       updatedAt: libraryDocuments.updatedAt
     })
-      .from(libraryDocuments).where(eq(libraryDocuments.createdBy, consultantId));
+      .from(libraryDocuments).where(and(eq(libraryDocuments.createdBy, consultantId), eq(libraryDocuments.isPublished, true)));
     
     const knowledgeDocs = await db.select({ 
       id: consultantKnowledgeDocuments.id, 
@@ -3350,12 +3352,6 @@ export class FileSearchSyncService {
           .from(libraryCategoryClientAssignments).where(inArray(libraryCategoryClientAssignments.clientId, allClientIds))
       : [];
     
-    // DEBUG: Log what category assignments we found
-    console.log(`🔍 [Audit Debug] allLibraryCategoryAssigns found: ${allLibraryCategoryAssigns.length}`);
-    for (const assign of allLibraryCategoryAssigns) {
-      console.log(`   - client: ${assign.clientId}, category: ${assign.categoryId}`);
-    }
-    
     const allUniversityYearAssigns = allClientIds.length > 0
       ? await db.select({ clientId: universityYearClientAssignments.clientId, yearId: universityYearClientAssignments.yearId })
           .from(universityYearClientAssignments).where(inArray(universityYearClientAssignments.clientId, allClientIds))
@@ -3463,13 +3459,13 @@ export class FileSearchSyncService {
       }
     }
     
-    // Pre-load library documents and categories
+    // Pre-load library documents and categories (only published documents)
     const allAssignedCategoryIds = new Set(allLibraryCategoryAssigns.map(a => a.categoryId));
     const libraryDocsByCategoryId = new Map<string, Array<{ id: string; title: string; categoryId: string | null }>>();
     const categoryNamesById = new Map<string, string>();
     if (allAssignedCategoryIds.size > 0) {
       const assignedLibDocs = await db.select({ id: libraryDocuments.id, title: libraryDocuments.title, categoryId: libraryDocuments.categoryId })
-        .from(libraryDocuments).where(inArray(libraryDocuments.categoryId, Array.from(allAssignedCategoryIds)));
+        .from(libraryDocuments).where(and(inArray(libraryDocuments.categoryId, Array.from(allAssignedCategoryIds)), eq(libraryDocuments.isPublished, true)));
       for (const doc of assignedLibDocs) {
         if (!doc.categoryId) continue;
         if (!libraryDocsByCategoryId.has(doc.categoryId)) libraryDocsByCategoryId.set(doc.categoryId, []);
@@ -3481,13 +3477,6 @@ export class FileSearchSyncService {
         categoryNamesById.set(c.id, c.name);
       }
       
-      // DEBUG: Log what categories and documents we found
-      console.log(`🔍 [Audit Debug] allAssignedCategoryIds: ${Array.from(allAssignedCategoryIds).join(', ')}`);
-      console.log(`🔍 [Audit Debug] libraryDocsByCategoryId entries:`);
-      for (const [catId, docs] of libraryDocsByCategoryId.entries()) {
-        const catName = categoryNamesById.get(catId) || 'Unknown';
-        console.log(`   - ${catName} (${catId}): ${docs.length} docs`);
-      }
     }
     
     // Pre-load university structure for assigned years
@@ -3570,11 +3559,6 @@ export class FileSearchSyncService {
         const docs = libraryDocsByCategoryId.get(catId) || [];
         assignedLibraryDocs.push(...docs);
       }
-      
-      // DEBUG: Log assigned library docs for each client
-      console.log(`🔍 [Audit Debug] Client ${client.email}:`);
-      console.log(`   - assignedCategoryIds: [${assignedCategoryIds.join(', ')}]`);
-      console.log(`   - assignedLibraryDocs count: ${assignedLibraryDocs.length}`);
       
       // Assigned University
       const assignedYearIds = universityYearAssignsByClient.get(client.id) || [];
@@ -3920,7 +3904,8 @@ export class FileSearchSyncService {
     indexed: number;
     missing: Array<{ id: string; title: string; type: string }>;
   }> {
-    const docs = await db.select().from(libraryDocuments).where(eq(libraryDocuments.createdBy, consultantId));
+    // Only audit published documents (isPublished = true)
+    const docs = await db.select().from(libraryDocuments).where(and(eq(libraryDocuments.createdBy, consultantId), eq(libraryDocuments.isPublished, true)));
 
     const missing: Array<{ id: string; title: string; type: string }> = [];
     let indexed = 0;
@@ -4887,11 +4872,11 @@ export class FileSearchSyncService {
 
       const subcategoryIds = subcategories.map(s => s.id);
 
-      // Get all documents in this category (direct + via subcategories)
+      // Get all published documents in this category (direct + via subcategories)
       const docs = await db.query.libraryDocuments.findMany({
         where: subcategoryIds.length > 0 
-          ? inArray(libraryDocuments.subcategoryId, subcategoryIds)
-          : eq(libraryDocuments.createdBy, consultantId),
+          ? and(inArray(libraryDocuments.subcategoryId, subcategoryIds), eq(libraryDocuments.isPublished, true))
+          : and(eq(libraryDocuments.createdBy, consultantId), eq(libraryDocuments.isPublished, true)),
       });
 
       console.log(`\n${'═'.repeat(60)}`);
