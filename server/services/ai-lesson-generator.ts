@@ -69,7 +69,7 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
     }
 
     // Seleziona modello basato sul provider (Gemini 3 per Google AI Studio)
-    const { model: selectedModel, useThinking } = getModelWithThinking(providerResult.metadata.providerName);
+    const { model: selectedModel, useThinking } = getModelWithThinking(providerResult.metadata.name);
     console.log(`🤖 [AI-LESSON] Usando modello: ${selectedModel} (thinking: ${useThinking})`);
 
     const startTime = Date.now();
@@ -194,13 +194,72 @@ function parseLessonResponse(response: string, video: any): GeneratedLesson {
   } catch (error) {
     console.error('Error parsing AI response:', error);
     
-    return {
-      title: video.title || 'Lezione da video',
-      subtitle: `Contenuto basato sul video di ${video.channelName || 'YouTube'}`,
-      content: response,
-      estimatedDuration: Math.ceil((video.transcript?.length || 1000) / 1000),
-      tags: [],
-    };
+    // Fallback: prova a estrarre i campi con regex
+    try {
+      const titleMatch = response.match(/"title"\s*:\s*"([^"]+)"/);
+      const subtitleMatch = response.match(/"subtitle"\s*:\s*"([^"]+)"/);
+      const durationMatch = response.match(/"estimatedDuration"\s*:\s*(\d+)/);
+      const tagsMatch = response.match(/"tags"\s*:\s*\[(.*?)\]/);
+      
+      // Estrai il content (più complesso perché contiene HTML con virgolette)
+      const contentStartIndex = response.indexOf('"content"');
+      let contentValue = '';
+      if (contentStartIndex > -1) {
+        // Trova l'inizio del valore content
+        const colonIndex = response.indexOf(':', contentStartIndex);
+        const valueStart = response.indexOf('"', colonIndex) + 1;
+        
+        // Trova la fine del content (cerca "estimatedDuration" o "tags" dopo)
+        let valueEnd = -1;
+        const possibleEndings = ['"estimatedDuration"', '"tags"', '",\n  "estimated', '",\n  "tags'];
+        for (const ending of possibleEndings) {
+          const idx = response.indexOf(ending, valueStart);
+          if (idx > -1 && (valueEnd === -1 || idx < valueEnd)) {
+            valueEnd = idx;
+          }
+        }
+        
+        if (valueEnd > valueStart) {
+          // Vai indietro per trovare l'ultima virgoletta prima della virgola
+          let endQuote = valueEnd - 1;
+          while (endQuote > valueStart && response[endQuote] !== '"') {
+            endQuote--;
+          }
+          contentValue = response.substring(valueStart, endQuote);
+        }
+      }
+      
+      const extractedTitle = titleMatch?.[1] || video.title || 'Lezione senza titolo';
+      const extractedSubtitle = subtitleMatch?.[1] || '';
+      const extractedDuration = durationMatch ? parseInt(durationMatch[1]) : Math.ceil((video.transcript?.length || 1000) / 1000);
+      
+      let extractedTags: string[] = [];
+      if (tagsMatch?.[1]) {
+        extractedTags = tagsMatch[1].split(',')
+          .map(t => t.trim().replace(/^"|"$/g, ''))
+          .filter(t => t.length > 0);
+      }
+      
+      console.log('📝 [AI-LESSON] Fallback parsing successful, extracted title:', extractedTitle);
+      
+      return {
+        title: extractedTitle,
+        subtitle: extractedSubtitle,
+        content: contentValue || response,
+        estimatedDuration: extractedDuration,
+        tags: extractedTags,
+      };
+    } catch (fallbackError) {
+      console.error('Error in fallback parsing:', fallbackError);
+      
+      return {
+        title: video.title || 'Lezione da video',
+        subtitle: `Contenuto basato sul video di ${video.channelName || 'YouTube'}`,
+        content: response,
+        estimatedDuration: Math.ceil((video.transcript?.length || 1000) / 1000),
+        tags: [],
+      };
+    }
   }
 }
 
