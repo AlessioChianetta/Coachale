@@ -1,0 +1,25 @@
+2
+consultant-library-ai-builder.tsx:635 Uncaught ReferenceError: React is not defined
+    at ConsultantLibraryAIBuilder (consultant-library-ai-builder.tsx:635:31)
+injected.js:37 The above error occurred in the <ConsultantLibraryAIBuilder> component:
+
+    at ConsultantLibraryAIBuilder (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/pages/consultant-library-ai-builder.tsx:354:27)
+    at AuthGuard (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:226:16)
+    at Switch (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:283:17)
+    at Suspense
+    at Router (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=BejhAxDTXLI0lxpkVyfGl:244:35)
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at TooltipProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:158:5)
+    at TourProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=74ebe40b:3096:3)
+    at V (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:44:25)
+    at J (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:42:18)
+    at App (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=BejhAxDTXLI0lxpkVyfGl:1590:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+chunk-RPCDYKBN.js?v=74ebe40b:19413 Uncaught ReferenceError: React is not defined
+    at ConsultantLibraryAIBuilder (consultant-library-ai-builder.tsx:635:31)

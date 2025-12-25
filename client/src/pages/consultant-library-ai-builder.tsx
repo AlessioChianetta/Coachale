@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, ChevronDown, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle, Layers, GripVertical, BookOpen } from "lucide-react";
@@ -632,8 +632,8 @@ export default function ConsultantLibraryAIBuilder() {
   });
 
   // Auto-save draft when lessons are generated progressively (for resume on interruption)
-  const prevLessonsCountRef = React.useRef(0);
-  React.useEffect(() => {
+  const prevLessonsCountRef = useRef(0);
+  useEffect(() => {
     // Only auto-save during generation and when we have new lessons
     if (isGenerating && generatedLessons.length > 0 && generatedLessons.length > prevLessonsCountRef.current) {
       console.log(`[AI Builder] Auto-save: ${generatedLessons.length} lezioni (prima: ${prevLessonsCountRef.current})`);
