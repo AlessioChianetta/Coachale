@@ -1,0 +1,217 @@
+✅ Restoring existing session: 1e1c7075-141b-4623-a028-1825f1659c57
+injected.js:37 Heartbeat sent successfully
+injected.js:37 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ injected.js:37
+(anonymous) @ chunk-RRZFOOTW.js?v=74ebe40b:433
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=74ebe40b:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=74ebe40b:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=74ebe40b:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=74ebe40b:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=74ebe40b:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=74ebe40b:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=74ebe40b:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=74ebe40b:19416
+commitRoot @ chunk-RPCDYKBN.js?v=74ebe40b:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=74ebe40b:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=74ebe40b:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=74ebe40b:18627Understand this warning
+injected.js:37 [AI Builder] useEffect unpublishedLessons: {unpublishedLessonsCount: 0, generatedLessonsCount: 0, isNewGenerationSession: false}
+injected.js:37 [AI Builder] useEffect unpublishedLessons: {unpublishedLessonsCount: 0, generatedLessonsCount: 0, isNewGenerationSession: false}
+injected.js:37 [AI Builder] useEffect unpublishedLessons: {unpublishedLessonsCount: 0, generatedLessonsCount: 0, isNewGenerationSession: false}
+injected.js:37 [AI Builder] useEffect unpublishedLessons: {unpublishedLessonsCount: 0, generatedLessonsCount: 0, isNewGenerationSession: false}
+injected.js:37 [AI Builder] useEffect unpublishedLessons: {unpublishedLessonsCount: 7, generatedLessonsCount: 0, isNewGenerationSession: false}
+injected.js:37 [AI Builder] Caricamento lezioni precedenti dal database: 7
+injected.js:37 [AI Builder] useEffect unpublishedLessons: {unpublishedLessonsCount: 7, generatedLessonsCount: 7, isNewGenerationSession: false}
+injected.js:37 Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+
+Check the render method of `Primitive.button.SlotClone`.
+    at Badge (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/badge.tsx:35:18)
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:140:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:117:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:230:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:140:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:117:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:230:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4F7VY7VZ.js?v=74ebe40b:1961:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:294:13
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at Popper (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4F7VY7VZ.js?v=74ebe40b:1953:11)
+    at Tooltip (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:202:5)
+    at div
+    at div
+    at div
+    at div
+    at div
+    at _c9 (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at main
+    at div
+    at ConsultantLibraryAIBuilder (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/pages/consultant-library-ai-builder.tsx:354:27)
+    at AuthGuard (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:226:16)
+    at Switch (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:283:17)
+    at Suspense
+    at Router (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=wPuy_Y6AYFYkl6geIS5J2:244:35)
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at TooltipProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:158:5)
+    at TourProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=74ebe40b:3096:3)
+    at V (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:44:25)
+    at J (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:42:18)
+    at App (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=wPuy_Y6AYFYkl6geIS5J2:1590:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ chunk-RPCDYKBN.js?v=74ebe40b:521
+error @ chunk-RPCDYKBN.js?v=74ebe40b:505
+validateFunctionComponentInDev @ chunk-RPCDYKBN.js?v=74ebe40b:15013
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=74ebe40b:14988
+beginWork @ chunk-RPCDYKBN.js?v=74ebe40b:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=74ebe40b:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=74ebe40b:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=74ebe40b:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=74ebe40b:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=74ebe40b:18678
+workLoop @ chunk-RPCDYKBN.js?v=74ebe40b:197
+flushWork @ chunk-RPCDYKBN.js?v=74ebe40b:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=74ebe40b:384Understand this error
+injected.js:37 Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+
+Check the render method of `Primitive.button.SlotClone`.
+    at Badge (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/badge.tsx:35:18)
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:140:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:117:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:230:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:140:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:117:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:230:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4F7VY7VZ.js?v=74ebe40b:1961:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:294:13
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at Popper (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4F7VY7VZ.js?v=74ebe40b:1953:11)
+    at Tooltip (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:202:5)
+    at div
+    at div
+    at div
+    at div
+    at div
+    at div
+    at _c9 (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at div
+    at main
+    at div
+    at ConsultantLibraryAIBuilder (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/pages/consultant-library-ai-builder.tsx:354:27)
+    at AuthGuard (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:226:16)
+    at Switch (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:283:17)
+    at Suspense
+    at Router (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=wPuy_Y6AYFYkl6geIS5J2:244:35)
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at TooltipProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:158:5)
+    at TourProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=74ebe40b:3096:3)
+    at V (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:44:25)
+    at J (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:42:18)
+    at App (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=wPuy_Y6AYFYkl6geIS5J2:1590:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ chunk-RPCDYKBN.js?v=74ebe40b:521
+error @ chunk-RPCDYKBN.js?v=74ebe40b:505
+validateFunctionComponentInDev @ chunk-RPCDYKBN.js?v=74ebe40b:15013
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=74ebe40b:14988
+beginWork @ chunk-RPCDYKBN.js?v=74ebe40b:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=74ebe40b:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=74ebe40b:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=74ebe40b:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=74ebe40b:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=74ebe40b:18678
+workLoop @ chunk-RPCDYKBN.js?v=74ebe40b:197
+flushWork @ chunk-RPCDYKBN.js?v=74ebe40b:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=74ebe40b:384Understand this error
+injected.js:214  DELETE https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/api/library/documents/dd30c9e8-ffa3-472e-b687-c3dbb382610f 404 (Not Found)
+apply @ injected.js:214
+handleDeleteDuplicateLesson @ consultant-library-ai-builder.tsx:977
+onClick @ consultant-library-ai-builder.tsx:2006
+overrideProps.<computed> @ chunk-66JOO7XH.js?v=74ebe40b:176
+callCallback2 @ chunk-RPCDYKBN.js?v=74ebe40b:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=74ebe40b:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=74ebe40b:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=74ebe40b:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=74ebe40b:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=74ebe40b:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=74ebe40b:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=74ebe40b:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=74ebe40b:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=74ebe40b:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=74ebe40b:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=74ebe40b:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=74ebe40b:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=74ebe40b:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=74ebe40b:5449Understand this error
+injected.js:37 [AI Builder] handleStartGeneration - Inizio nuova generazione
+injected.js:37 [AI Builder] Video selezionati: 16
+injected.js:37 [AI Builder] isNewGenerationSession = true (blocco lezioni precedenti)
+injected.js:37 [AI Builder] useEffect unpublishedLessons: {unpublishedLessonsCount: 7, generatedLessonsCount: 0, isNewGenerationSession: true}
+injected.js:37 [AI Builder] Blocco caricamento lezioni precedenti - nuova sessione di generazione attiva

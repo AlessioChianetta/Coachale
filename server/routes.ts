@@ -5236,7 +5236,30 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
     }
   });
 
-  // SSE endpoint for real-time AI lesson generation progress
+  // In-memory store for generation job status (polling approach)
+  const generationJobs = new Map<string, {
+    consultantId: string;
+    status: 'running' | 'completed' | 'error';
+    total: number;
+    current: number;
+    videos: Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; title?: string; error?: string }>;
+    logs: Array<{ time: string; message: string }>;
+    lessons: any[];
+    errors: string[];
+    startedAt: Date;
+  }>();
+
+  // Cleanup old jobs after 1 hour
+  setInterval(() => {
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    for (const [jobId, job] of generationJobs.entries()) {
+      if (job.startedAt.getTime() < oneHourAgo) {
+        generationJobs.delete(jobId);
+      }
+    }
+  }, 5 * 60 * 1000); // Check every 5 minutes
+
+  // Start AI lesson generation job (returns immediately with jobId)
   app.post("/api/library/ai-generate-batch-stream", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { videoIds, categoryId, subcategoryId, customInstructions, level, contentType } = req.body;
@@ -5245,69 +5268,123 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         return res.status(400).json({ message: "videoIds array and categoryId are required" });
       }
 
-      // SSE headers - critical for real-time streaming
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache, no-transform');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no'); // Disable Nginx/proxy buffering
-      res.setHeader('Transfer-Encoding', 'chunked');
+      const jobId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const consultantId = req.user!.id;
       
-      // Disable Nagle algorithm for immediate sending
-      if (res.socket) {
-        res.socket.setNoDelay(true);
-        res.socket.setTimeout(0);
-      }
+      // Initialize job state
+      const videosMap = new Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; title?: string; error?: string }>();
+      videoIds.forEach((id: string) => videosMap.set(id, { status: 'pending' }));
       
-      res.flushHeaders();
-      
-      // Force initial chunk through proxy buffering with padding comment
-      // Some proxies buffer until they receive ~1KB of data
-      const padding = `:${' '.repeat(2048)}\n\n`;
-      res.write(padding);
-      
-      // Send initial heartbeat to confirm connection
-      const connectedEvent = `data: ${JSON.stringify({ type: 'connected', message: 'SSE connection established' })}\n\n`;
-      res.write(connectedEvent);
-      console.log('[SSE] Sent connected event + padding');
+      generationJobs.set(jobId, {
+        consultantId,
+        status: 'running',
+        total: videoIds.length,
+        current: 0,
+        videos: videosMap,
+        logs: [{ time: new Date().toLocaleTimeString('it-IT'), message: '🚀 Generazione avviata...' }],
+        lessons: [],
+        errors: [],
+        startedAt: new Date(),
+      });
 
+      console.log(`🚀 [POLLING] Job ${jobId} started for ${videoIds.length} videos`);
+
+      // Return immediately with jobId
+      res.json({ jobId, message: 'Generation started' });
+
+      // Run generation in background
       const { generateMultipleLessons } = await import("./services/ai-lesson-generator");
       
       const onProgress = (current: number, total: number, status: string, videoId?: string, videoTitle?: string, errorMessage?: string, logMessage?: string) => {
-        console.log(`[SSE] onProgress: ${status} ${current}/${total} - ${videoId} "${videoTitle || ''}" - ${logMessage || ''}`);
+        const job = generationJobs.get(jobId);
+        if (!job) return;
+
+        console.log(`📊 [POLLING] Job ${jobId}: ${status} ${current}/${total} - ${videoId}`);
         
-        let eventData: any;
-        if (status === 'generating') {
-          eventData = { type: 'progress', current, total, videoId, videoTitle, status, log: logMessage };
-        } else if (status === 'completed') {
-          eventData = { type: 'video_complete', current, total, videoId, videoTitle, log: logMessage };
-        } else if (status === 'error') {
-          eventData = { type: 'video_error', current, total, videoId, videoTitle, error: errorMessage, log: logMessage };
+        job.current = current;
+        
+        if (videoId) {
+          if (status === 'generating') {
+            job.videos.set(videoId, { status: 'generating', title: videoTitle });
+          } else if (status === 'completed') {
+            job.videos.set(videoId, { status: 'completed', title: videoTitle });
+          } else if (status === 'error') {
+            job.videos.set(videoId, { status: 'error', title: videoTitle, error: errorMessage });
+          }
         }
         
-        if (eventData) {
-          const chunk = `data: ${JSON.stringify(eventData)}\n\n`;
-          res.write(chunk);
-          console.log(`[SSE] Sent ${chunk.length} bytes: ${eventData.type}`);
+        if (logMessage) {
+          job.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: logMessage });
         }
       };
 
-      const result = await generateMultipleLessons(
-        req.user!.id,
-        videoIds,
-        categoryId,
-        subcategoryId,
-        customInstructions,
-        level,
-        contentType,
-        onProgress
-      );
+      try {
+        const result = await generateMultipleLessons(
+          consultantId,
+          videoIds,
+          categoryId,
+          subcategoryId,
+          customInstructions,
+          level,
+          contentType,
+          onProgress
+        );
 
-      res.write(`data: ${JSON.stringify({ type: 'complete', lessons: result.lessons, errors: result.errors })}\n\n`);
-      res.end();
+        const job = generationJobs.get(jobId);
+        if (job) {
+          job.status = 'completed';
+          job.lessons = result.lessons;
+          job.errors = result.errors;
+          job.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `✅ Generazione completata: ${result.lessons.length} lezioni create` });
+          console.log(`✅ [POLLING] Job ${jobId} completed: ${result.lessons.length} lessons`);
+        }
+      } catch (error: any) {
+        const job = generationJobs.get(jobId);
+        if (job) {
+          job.status = 'error';
+          job.errors.push(error.message);
+          job.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `❌ Errore: ${error.message}` });
+          console.error(`❌ [POLLING] Job ${jobId} error:`, error.message);
+        }
+      }
     } catch (error: any) {
-      console.error('Error in SSE lesson generation:', error);
-      res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
-      res.end();
+      console.error('Error starting generation job:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Poll generation job status
+  app.get("/api/library/ai-generate-status/:jobId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { jobId } = req.params;
+      const job = generationJobs.get(jobId);
+      
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found or expired' });
+      }
+      
+      // Security: only owner can poll their job
+      if (job.consultantId !== req.user!.id) {
+        return res.status(403).json({ message: 'Unauthorized' });
+      }
+
+      // Convert videos Map to object for JSON
+      const videosStatus: Record<string, { status: string; title?: string; error?: string }> = {};
+      job.videos.forEach((value, key) => {
+        videosStatus[key] = value;
+      });
+
+      res.json({
+        status: job.status,
+        total: job.total,
+        current: job.current,
+        videos: videosStatus,
+        logs: job.logs,
+        lessons: job.status === 'completed' ? job.lessons : [],
+        errors: job.errors,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

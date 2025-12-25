@@ -1007,7 +1007,7 @@ export default function ConsultantLibraryAIBuilder() {
   };
 
   const handleStartGeneration = async () => {
-    console.log('[AI Builder] handleStartGeneration - Inizio nuova generazione');
+    console.log('[AI Builder] handleStartGeneration - Inizio nuova generazione (polling)');
     console.log('[AI Builder] Video selezionati:', selectedVideoIds.length);
     
     if (selectedVideoIds.length === 0) {
@@ -1047,149 +1047,98 @@ export default function ConsultantLibraryAIBuilder() {
 
       const videoIds = savedVideos.filter(v => selectedVideoIds.includes(v.id)).map(v => v.id);
       
-      const response = await fetch("/api/library/ai-generate-batch-stream", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          videoIds,
-          categoryId: selectedCategoryId,
-          subcategoryId: (selectedSubcategoryId && selectedSubcategoryId !== '__none__') ? selectedSubcategoryId : undefined,
-          customInstructions: aiInstructions,
-          level,
-          contentType,
-        }),
+      // Start generation job (returns immediately with jobId)
+      const startResponse = await apiRequest("POST", "/api/library/ai-generate-batch-stream", {
+        videoIds,
+        categoryId: selectedCategoryId,
+        subcategoryId: (selectedSubcategoryId && selectedSubcategoryId !== '__none__') ? selectedSubcategoryId : undefined,
+        customInstructions: aiInstructions,
+        level,
+        contentType,
       });
 
-      if (!response.ok) {
-        throw new Error("Errore nella generazione");
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let sseBuffer = ''; // Buffer per gestire chunk parziali
+      const { jobId } = startResponse;
+      console.log('[AI Builder] Job avviato:', jobId);
       
-      console.log('[AI Builder] SSE - Inizio lettura stream');
-      
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) {
-          console.log('[AI Builder] SSE - Stream completato');
-          break;
-        }
-        
-        const text = decoder.decode(value, { stream: true });
-        sseBuffer += text;
-        console.log('[AI Builder] SSE - Chunk ricevuto, buffer totale:', sseBuffer.length, 'chars');
-        
-        // Processa solo eventi completi (terminano con \n\n)
-        const events = sseBuffer.split('\n\n');
-        // L'ultimo elemento potrebbe essere incompleto, lo teniamo nel buffer
-        sseBuffer = events.pop() || '';
-        
-        const lines = events.flatMap(event => event.split('\n').filter(line => line.startsWith('data: ')));
-        console.log('[AI Builder] SSE - Eventi completi trovati:', lines.length);
-        
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            console.log('[AI Builder] SSE - Evento ricevuto:', data.type, data.log || data.videoTitle || '');
-            
-            const addLog = (message: string) => {
-              console.log('[AI Builder] Aggiunta log:', message);
-              setGenerationLogs(prev => [...prev, {
-                time: new Date().toLocaleTimeString('it-IT'),
-                message
-              }]);
-            };
+      setGenerationLogs(prev => [...prev, {
+        time: new Date().toLocaleTimeString('it-IT'),
+        message: "🔗 Connessione stabilita, generazione in corso..."
+      }]);
 
-            if (data.type === 'connected') {
-              console.log('[AI Builder] SSE - Connessione stabilita!');
-              addLog("🔗 Connessione real-time stabilita");
-            } else if (data.type === 'progress') {
-              setGenerationProgress(Math.round((data.current / data.total) * 100));
-              setGenerationStatus(prev => [...prev, `Generando: ${data.videoTitle}`]);
-              if (data.log) addLog(data.log);
-              // Usa videoId per matching affidabile (fallback a title se non disponibile)
-              setGeneratingVideos(prev => {
-                const next = new Map(prev);
-                if (data.videoId) {
-                  next.set(data.videoId, { status: 'generating' });
-                } else {
-                  savedVideos.forEach(v => {
-                    if (v.title === data.videoTitle) {
-                      next.set(v.id, { status: 'generating' });
-                    }
-                  });
-                }
-                return next;
-              });
-            } else if (data.type === 'video_complete') {
-              if (data.log) addLog(data.log);
-              setGeneratingVideos(prev => {
-                const next = new Map(prev);
-                if (data.videoId) {
-                  next.set(data.videoId, { status: 'completed' });
-                } else {
-                  savedVideos.forEach(v => {
-                    if (v.title === data.videoTitle) {
-                      next.set(v.id, { status: 'completed' });
-                    }
-                  });
-                }
-                return next;
-              });
-            } else if (data.type === 'video_error') {
-              if (data.log) addLog(data.log);
-              setGeneratingVideos(prev => {
-                const next = new Map(prev);
-                if (data.videoId) {
-                  next.set(data.videoId, { status: 'error', error: data.error });
-                } else {
-                  savedVideos.forEach(v => {
-                    if (v.title === data.videoTitle) {
-                      next.set(v.id, { status: 'error', error: data.error });
-                    }
-                  });
-                }
-                return next;
-              });
-            } else if (data.type === 'complete') {
-              console.log('[AI Builder] SSE - Generazione completata, lezioni:', data.lessons.length);
-              setGeneratedLessons(data.lessons);
-              setGenerationErrors(data.errors);
-              setGenerationProgress(100);
-              setLessonOrder(data.lessons.map((l: any) => l.id));
-              savedVideos.filter(v => selectedVideoIds.includes(v.id)).forEach(v => {
-                setGeneratingVideos(prev => {
-                  const next = new Map(prev);
-                  const current = next.get(v.id);
-                  if (current?.status === 'generating' || current?.status === 'pending') {
-                    next.set(v.id, { status: 'completed' });
-                  }
-                  return next;
-                });
-              });
-              toast({ title: "Lezioni generate!", description: `${data.lessons.length} lezioni create - Clicca per procedere al riepilogo` });
-            } else if (data.type === 'error') {
-              toast({ title: "Errore", description: data.message, variant: "destructive" });
-            }
-          } catch (e) {
-            console.warn('[AI Builder] SSE - Errore parsing:', e);
+      // Poll for status every 2 seconds
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await apiRequest("GET", `/api/library/ai-generate-status/${jobId}`);
+          console.log('[AI Builder] Poll status:', status.status, status.current, '/', status.total);
+          
+          // Update progress
+          if (status.total > 0) {
+            setGenerationProgress(Math.round((status.current / status.total) * 100));
           }
+          
+          // Update logs
+          if (status.logs && status.logs.length > 0) {
+            setGenerationLogs(status.logs);
+          }
+          
+          // Update video statuses
+          if (status.videos) {
+            setGeneratingVideos(prev => {
+              const next = new Map(prev);
+              Object.entries(status.videos).forEach(([videoId, videoStatus]: [string, any]) => {
+                next.set(videoId, { status: videoStatus.status, error: videoStatus.error });
+              });
+              return next;
+            });
+          }
+          
+          // Check if completed or error
+          if (status.status === 'completed') {
+            clearInterval(pollInterval);
+            console.log('[AI Builder] Generazione completata!', status.lessons?.length, 'lezioni');
+            
+            if (status.lessons) {
+              setGeneratedLessons(status.lessons);
+              setLessonOrder(status.lessons.map((l: any) => l.id));
+            }
+            if (status.errors && status.errors.length > 0) {
+              setGenerationErrors(status.errors);
+            }
+            setIsGenerating(false);
+            setGenerationProgress(100);
+            
+            toast({ title: "Lezioni generate!", description: `${status.lessons?.length || 0} lezioni create - Clicca per procedere al riepilogo` });
+            
+            // Auto-navigazione a Step 5 se modulo già selezionato
+            if (selectedSubcategoryId && selectedSubcategoryId !== '__none__' && status.lessons?.length > 0) {
+              setTimeout(() => {
+                const assignments = new Map<string, string>();
+                status.lessons.forEach((lesson: any) => {
+                  assignments.set(lesson.id, selectedSubcategoryId);
+                });
+                setModuleAssignments(assignments);
+                setCurrentStep(5);
+              }, 1500);
+            }
+          } else if (status.status === 'error') {
+            clearInterval(pollInterval);
+            console.error('[AI Builder] Errore generazione:', status.errors);
+            setIsGenerating(false);
+            if (status.errors && status.errors.length > 0) {
+              setGenerationErrors(status.errors);
+              toast({ title: "Errore", description: status.errors[0], variant: "destructive" });
+            }
+          }
+        } catch (pollError: any) {
+          console.error('[AI Builder] Errore polling:', pollError);
+          // Don't stop polling on single error, might be temporary
         }
-      }
+      }, 2000); // Poll every 2 seconds
+
     } catch (error: any) {
-      console.error('[AI Builder] Errore generazione:', error);
+      console.error('[AI Builder] Errore avvio generazione:', error);
       toast({ title: "Errore", description: error.message, variant: "destructive" });
-    } finally {
-      console.log('[AI Builder] Generazione terminata, reset isNewGenerationSession');
       setIsGenerating(false);
-      // Mantieni isNewGenerationSession = true fino a pubblicazione o reset manuale
-      // per evitare che le vecchie lezioni vengano ricaricate
     }
   };
 
