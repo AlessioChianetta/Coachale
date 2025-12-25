@@ -477,8 +477,9 @@ export default function ConsultantLibraryAIBuilder() {
   const [savingLogs, setSavingLogs] = useState<{ time: string; message: string; type?: 'info' | 'success' | 'error' | 'warning' }[]>([]);
 
   // Duplicate detection state
-  const [videoDuplicates, setVideoDuplicates] = useState<Map<string, { path: string; lessonTitle: string }>>(new Map());
+  const [videoDuplicates, setVideoDuplicates] = useState<Map<string, { lessonId: string; path: string; lessonTitle: string }>>(new Map());
   const [includeDuplicates, setIncludeDuplicates] = useState(false);
+  const [deletingDuplicate, setDeletingDuplicate] = useState<string | null>(null);
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/library/categories"],
@@ -827,9 +828,9 @@ export default function ConsultantLibraryAIBuilder() {
           const videoIds = savedVideosList.map(v => v.id);
           const dupResponse = await apiRequest("POST", "/api/library/check-video-duplicates", { videoIds });
           if (dupResponse.duplicates?.length > 0) {
-            const dupMap = new Map<string, { path: string; lessonTitle: string }>();
+            const dupMap = new Map<string, { lessonId: string; path: string; lessonTitle: string }>();
             dupResponse.duplicates.forEach((d: any) => {
-              dupMap.set(d.youtubeVideoId, { path: d.path, lessonTitle: d.lessonTitle });
+              dupMap.set(d.youtubeVideoId, { lessonId: d.lessonId, path: d.path, lessonTitle: d.lessonTitle });
             });
             setVideoDuplicates(dupMap);
             
@@ -964,6 +965,41 @@ export default function ConsultantLibraryAIBuilder() {
     } catch (error: any) {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     }
+  };
+
+  const handleDeleteDuplicateLesson = async (videoId: string) => {
+    const duplicateInfo = videoDuplicates.get(videoId);
+    if (!duplicateInfo?.lessonId) return;
+    
+    setDeletingDuplicate(videoId);
+    try {
+      const response = await fetch(`/api/library/documents/${duplicateInfo.lessonId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Errore durante l'eliminazione");
+      }
+      
+      // Rimuovi il duplicato dalla mappa
+      setVideoDuplicates(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(videoId);
+        return newMap;
+      });
+      
+      // Aggiungi il video alla selezione se non già presente
+      if (!selectedVideoIds.includes(videoId)) {
+        setSelectedVideoIds(prev => [...prev, videoId]);
+      }
+      
+      toast({ title: "Lezione eliminata", description: `"${duplicateInfo.lessonTitle}" rimossa. Puoi ora rigenerare la lezione.` });
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+    setDeletingDuplicate(null);
   };
 
   const handleStartGeneration = async () => {
@@ -1941,18 +1977,41 @@ export default function ConsultantLibraryAIBuilder() {
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium truncate">{video.title}</p>
                               {videoDuplicates.has(video.id) && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300 shrink-0">
-                                      ⚠️ Già usato
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="max-w-xs">
-                                    <p className="text-xs">
-                                      Questo video è già stato usato per creare la lezione <strong>"{videoDuplicates.get(video.id)?.lessonTitle}"</strong> in {videoDuplicates.get(video.id)?.path}
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300">
+                                        ⚠️ Già usato
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                      <p className="text-xs">
+                                        Questo video è già stato usato per creare la lezione <strong>"{videoDuplicates.get(video.id)?.lessonTitle}"</strong> in {videoDuplicates.get(video.id)?.path}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteDuplicateLesson(video.id); }}
+                                        disabled={deletingDuplicate === video.id}
+                                      >
+                                        {deletingDuplicate === video.id ? (
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="w-3 h-3" />
+                                        )}
+                                        <span className="ml-1">Cancella</span>
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      <p className="text-xs">Elimina la lezione esistente per rigenerare</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
                               )}
                             </div>
                             <div className="flex gap-1.5 flex-wrap">

@@ -5378,6 +5378,7 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
 
       // Build duplicates response with full path
       const duplicates = existingLessons.map(lesson => ({
+        lessonId: lesson.lessonId,
         youtubeVideoId: lesson.youtubeVideoId,
         lessonTitle: lesson.lessonTitle,
         courseName: categoryMap.get(lesson.categoryId!) || 'Corso sconosciuto',
