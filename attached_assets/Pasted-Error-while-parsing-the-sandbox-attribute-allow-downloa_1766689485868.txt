@@ -1,0 +1,110 @@
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev:3000/:1  Failed to load resource: the server responded with a status of 502 (Bad Gateway)Understand this error
+workspace_iframe.html?initialPath=%2F&id=%3Ar17c%3A:32 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+client:536 WebSocket connection to 'wss://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/?token=1Xw-CFlGv_27' failed: 
+setupWebSocket @ client:536Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=1Xw-CFlGv_27' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)Understand this error
+injected.js:37 Activity tracker init: Object
+injected.js:37 ✅ Restoring existing session: 1e1c7075-141b-4623-a028-1825f1659c57
+injected.js:37 Heartbeat sent successfully
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] Caricamento lezioni precedenti dal database: 17
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+
+Check the render method of `Primitive.button.SlotClone`.
+    at Badge (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/badge.tsx:35:18)
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:140:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:117:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:230:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:140:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:117:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:230:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4F7VY7VZ.js?v=74ebe40b:1961:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:294:13
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at Popper (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4F7VY7VZ.js?v=74ebe40b:1953:11)
+    at Tooltip (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:202:5)
+    at div
+    at div
+    at div
+    at div
+    at div
+    at _c9 (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at main
+    at div
+    at ConsultantLibraryAIBuilder (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/pages/consultant-library-ai-builder.tsx:354:27)
+    at AuthGuard (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:226:16)
+    at Switch (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:283:17)
+    at Suspense
+    at Router (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=OlJPe-ds1NOVE58oTMhhH:244:35)
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at TooltipProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:158:5)
+    at TourProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=74ebe40b:3096:3)
+    at V (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:44:25)
+    at J (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:42:18)
+    at App (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=OlJPe-ds1NOVE58oTMhhH:1590:22)
+(anonymous) @ injected.js:37Understand this error
+injected.js:37 Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+
+Check the render method of `Primitive.button.SlotClone`.
+    at Badge (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/badge.tsx:35:18)
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:140:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:117:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:230:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:140:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:117:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:230:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4F7VY7VZ.js?v=74ebe40b:1961:13
+    at https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:294:13
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at Popper (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4F7VY7VZ.js?v=74ebe40b:1953:11)
+    at Tooltip (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:202:5)
+    at div
+    at div
+    at div
+    at div
+    at div
+    at div
+    at _c9 (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at div
+    at main
+    at div
+    at ConsultantLibraryAIBuilder (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/pages/consultant-library-ai-builder.tsx:354:27)
+    at AuthGuard (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:226:16)
+    at Switch (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ebe40b:283:17)
+    at Suspense
+    at Router (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=OlJPe-ds1NOVE58oTMhhH:244:35)
+    at Provider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ebe40b:44:15)
+    at TooltipProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ebe40b:158:5)
+    at TourProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=74ebe40b:3096:3)
+    at V (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:44:25)
+    at J (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ebe40b:42:18)
+    at App (https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/src/App.tsx?v=OlJPe-ds1NOVE58oTMhhH:1590:22)
+(anonymous) @ injected.js:37Understand this error
+injected.js:37 [AI Builder] handleStartGeneration - Inizio nuova generazione
+injected.js:37 [AI Builder] Video selezionati: 16
+injected.js:37 [AI Builder] isNewGenerationSession = true (blocco lezioni precedenti)
+injected.js:37 [AI Builder] useEffect unpublishedLessons: Object
+injected.js:37 [AI Builder] Blocco caricamento lezioni precedenti - nuova sessione di generazione attiva

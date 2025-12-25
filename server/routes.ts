@@ -5260,8 +5260,15 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
       
       res.flushHeaders();
       
+      // Force initial chunk through proxy buffering with padding comment
+      // Some proxies buffer until they receive ~1KB of data
+      const padding = `:${' '.repeat(2048)}\n\n`;
+      res.write(padding);
+      
       // Send initial heartbeat to confirm connection
-      res.write(`data: ${JSON.stringify({ type: 'connected', message: 'SSE connection established' })}\n\n`);
+      const connectedEvent = `data: ${JSON.stringify({ type: 'connected', message: 'SSE connection established' })}\n\n`;
+      res.write(connectedEvent);
+      console.log('[SSE] Sent connected event + padding');
 
       const { generateMultipleLessons } = await import("./services/ai-lesson-generator");
       
