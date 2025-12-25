@@ -45,8 +45,8 @@ export function getModelForProvider(providerType: 'studio' | 'vertex' | 'google'
  * @param providerName - Provider name from metadata (e.g., 'Google AI Studio', 'Vertex AI (tuo)')
  * @returns The model name to use
  */
-export function getModelForProviderName(providerName: string): string {
-  if (providerName === 'Google AI Studio' || providerName.toLowerCase().includes('studio')) {
+export function getModelForProviderName(providerName: string | undefined): string {
+  if (providerName === 'Google AI Studio' || (providerName && providerName.toLowerCase().includes('studio'))) {
     return GEMINI_3_MODEL;
   }
   return GEMINI_LEGACY_MODEL;
@@ -64,12 +64,12 @@ export const GEMINI_3_THINKING_LEVEL: "minimal" | "low" | "medium" | "high" = "l
  * @param providerName - Provider name from metadata (e.g., 'Google AI Studio', 'Vertex AI (tuo)')
  * @returns Object with model name, useThinking flag, and thinkingLevel
  */
-export function getModelWithThinking(providerName: string): { 
+export function getModelWithThinking(providerName: string | undefined): { 
   model: string; 
   useThinking: boolean; 
   thinkingLevel: "minimal" | "low" | "medium" | "high";
 } {
-  const isGoogleAIStudio = providerName === 'Google AI Studio' || providerName.toLowerCase().includes('studio');
+  const isGoogleAIStudio = providerName === 'Google AI Studio' || (providerName && providerName.toLowerCase().includes('studio'));
   if (isGoogleAIStudio) {
     return { 
       model: GEMINI_3_MODEL, 
