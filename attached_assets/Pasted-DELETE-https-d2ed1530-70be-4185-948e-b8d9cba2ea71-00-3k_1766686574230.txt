@@ -1,0 +1,40 @@
+DELETE https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/api/library/documents/db8fd47f-1042-4404-9444-664b3b98ba25 401 (Unauthorized)
+apply @ injected.js:214
+handleDeleteDuplicateLesson @ consultant-library-ai-builder.tsx:976
+onClick @ consultant-library-ai-builder.tsx:1999
+overrideProps.<computed> @ chunk-66JOO7XH.js?v=74ebe40b:176
+callCallback2 @ chunk-RPCDYKBN.js?v=74ebe40b:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=74ebe40b:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=74ebe40b:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=74ebe40b:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=74ebe40b:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=74ebe40b:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=74ebe40b:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=74ebe40b:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=74ebe40b:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=74ebe40b:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=74ebe40b:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=74ebe40b:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=74ebe40b:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=74ebe40b:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=74ebe40b:5449Understand this error
+injected.js:214  DELETE https://d2ed1530-70be-4185-948e-b8d9cba2ea71-00-3kpk7vdrecpbd.kirk.replit.dev/api/library/documents/db8fd47f-1042-4404-9444-664b3b98ba25 401 (Unauthorized)
+apply @ injected.js:214
+handleDeleteDuplicateLesson @ consultant-library-ai-builder.tsx:976
+onClick @ consultant-library-ai-builder.tsx:1999
+overrideProps.<computed> @ chunk-66JOO7XH.js?v=74ebe40b:176
+callCallback2 @ chunk-RPCDYKBN.js?v=74ebe40b:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=74ebe40b:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=74ebe40b:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=74ebe40b:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=74ebe40b:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=74ebe40b:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=74ebe40b:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=74ebe40b:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=74ebe40b:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=74ebe40b:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=74ebe40b:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=74ebe40b:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=74ebe40b:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=74ebe40b:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=74ebe40b:5449Understand this error

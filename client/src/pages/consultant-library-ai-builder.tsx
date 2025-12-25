@@ -973,9 +973,13 @@ export default function ConsultantLibraryAIBuilder() {
     
     setDeletingDuplicate(videoId);
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`/api/library/documents/${duplicateInfo.lessonId}`, {
         method: "DELETE",
         credentials: "include",
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
       });
       
       if (!response.ok) {
