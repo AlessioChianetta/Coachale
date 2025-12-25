@@ -457,6 +457,8 @@ export default function ConsultantLibraryAIBuilder() {
   const [lessonOrder, setLessonOrder] = useState<string[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isNewGenerationSession, setIsNewGenerationSession] = useState(false); // Blocca reload lezioni precedenti
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [resumableDraft, setResumableDraft] = useState<any>(null);
   
   // Step 4.5: Module organization states
   const [moduleAssignments, setModuleAssignments] = useState<Map<string, string>>(new Map());
@@ -531,6 +533,25 @@ export default function ConsultantLibraryAIBuilder() {
       if (aiSettings.defaultStyle) setSelectedStyle(aiSettings.defaultStyle);
     }
   }, [aiSettings]);
+
+  // Check for resumable drafts on page load
+  useEffect(() => {
+    if (drafts.length > 0 && !currentDraftId && currentStep === 1) {
+      // Find drafts with partial generation (has generated lessons but not completed)
+      const resumable = drafts.find((d: any) => {
+        const hasGeneratedLessons = d.generatedLessonsCount > 0 || (d.generatedLessonIds && d.generatedLessonIds.length > 0);
+        const hasVideos = d.videoIds && d.videoIds.length > 0;
+        const isIncomplete = hasVideos && hasGeneratedLessons && d.generatedLessonsCount < d.videoIds.length;
+        return isIncomplete || hasGeneratedLessons;
+      });
+      
+      if (resumable) {
+        console.log('[AI Builder] Bozza riprendibile trovata:', resumable.name);
+        setResumableDraft(resumable);
+        setShowResumePrompt(true);
+      }
+    }
+  }, [drafts, currentDraftId, currentStep]);
 
   // Combina stile selezionato + aggiunte selezionate (solo se l'utente non ha modificato manualmente)
   useEffect(() => {
@@ -1332,6 +1353,56 @@ export default function ConsultantLibraryAIBuilder() {
                 Crea lezioni automaticamente da video YouTube
               </p>
             </div>
+
+            {/* Banner per riprendere bozza interrotta */}
+            {showResumePrompt && resumableDraft && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-2 border-amber-300 dark:border-amber-700 rounded-xl p-4 shadow-lg animate-in slide-in-from-top-2">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
+                    <RefreshCw className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-amber-800 dark:text-amber-200 text-lg">
+                      Vuoi continuare dove hai lasciato?
+                    </h3>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      Hai una bozza in sospeso: <strong>"{resumableDraft.name}"</strong>
+                      {resumableDraft.generatedLessonsCount > 0 && (
+                        <span> con {resumableDraft.generatedLessonsCount} lezioni già generate</span>
+                      )}
+                    </p>
+                    <div className="flex gap-3 mt-3">
+                      <Button 
+                        size="sm"
+                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                        onClick={() => {
+                          handleLoadDraft(resumableDraft);
+                          setShowResumePrompt(false);
+                        }}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Riprendi Bozza
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowResumePrompt(false)}
+                      >
+                        Inizia da Zero
+                      </Button>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="shrink-0"
+                    onClick={() => setShowResumePrompt(false)}
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-center gap-2 md:gap-4 py-4">
               {steps.map((step, index) => (
