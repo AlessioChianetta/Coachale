@@ -2091,25 +2091,50 @@ export default function ConsultantLibraryAIBuilder() {
                   <Progress value={generationProgress} className="h-3" />
                   
                   <div className="space-y-3">
-                    <h3 className="font-semibold text-sm text-muted-foreground">Stato video:</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-sm text-muted-foreground">Stato video:</h3>
+                      <Badge variant="secondary" className="text-sm font-medium">
+                        {selectedVideoIds.filter(id => generatingVideos.get(id)?.status === 'completed').length}/{selectedVideoIds.length} generati
+                      </Badge>
+                    </div>
                     {savedVideos.filter(v => selectedVideoIds.includes(v.id)).map((video) => {
                       const status = generatingVideos.get(video.id);
                       return (
-                        <div key={video.id} className="flex items-center gap-3 p-3 rounded-lg border">
-                          <img src={video.thumbnailUrl} alt={video.title} className="w-16 h-10 object-cover rounded" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{video.title}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {status?.status === 'pending' && <Clock className="w-4 h-4 text-muted-foreground" />}
-                            {status?.status === 'generating' && <Loader2 className="w-4 h-4 animate-spin text-purple-500" />}
-                            {status?.status === 'completed' && <Check className="w-4 h-4 text-green-500" />}
-                            {status?.status === 'error' && (
-                              <div className="flex items-center gap-1 text-red-500">
-                                <AlertCircle className="w-4 h-4" />
-                                <span className="text-xs">{status.error}</span>
-                              </div>
-                            )}
+                        <div 
+                          key={video.id} 
+                          className={`relative overflow-hidden flex items-center gap-3 p-3 rounded-lg border transition-all duration-500 ${
+                            status?.status === 'completed' 
+                              ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700' 
+                              : status?.status === 'error'
+                                ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700'
+                                : 'bg-white dark:bg-gray-900'
+                          }`}
+                        >
+                          {status?.status === 'generating' && (
+                            <div 
+                              className="absolute inset-0 bg-gradient-to-r from-purple-100 via-indigo-100 to-purple-100 dark:from-purple-900/30 dark:via-indigo-900/30 dark:to-purple-900/30"
+                              style={{
+                                animation: 'generation-progress 2s ease-in-out infinite',
+                                backgroundSize: '200% 100%',
+                              }}
+                            />
+                          )}
+                          <div className="relative z-10 flex items-center gap-3 w-full">
+                            <img src={video.thumbnailUrl} alt={video.title} className="w-16 h-10 object-cover rounded" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{video.title}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {status?.status === 'pending' && <Clock className="w-4 h-4 text-muted-foreground" />}
+                              {status?.status === 'generating' && <Loader2 className="w-4 h-4 animate-spin text-purple-500" />}
+                              {status?.status === 'completed' && <Check className="w-4 h-4 text-green-500" />}
+                              {status?.status === 'error' && (
+                                <div className="flex items-center gap-1 text-red-500">
+                                  <AlertCircle className="w-4 h-4" />
+                                  <span className="text-xs">{status.error}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
