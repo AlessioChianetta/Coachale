@@ -1057,7 +1057,7 @@ export default function ConsultantLibraryAIBuilder() {
         body: JSON.stringify({
           videoIds,
           categoryId: selectedCategoryId,
-          subcategoryId: selectedSubcategoryId || undefined,
+          subcategoryId: (selectedSubcategoryId && selectedSubcategoryId !== '__none__') ? selectedSubcategoryId : undefined,
           customInstructions: aiInstructions,
           level,
           contentType,
@@ -1446,7 +1446,7 @@ export default function ConsultantLibraryAIBuilder() {
                             <SelectValue placeholder="Seleziona un modulo" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Nessun modulo</SelectItem>
+                            <SelectItem value="__none__">Nessun modulo</SelectItem>
                             {filteredSubcategories.map((sub) => (
                               <SelectItem key={sub.id} value={sub.id}>
                                 {sub.name}
@@ -2204,14 +2204,14 @@ export default function ConsultantLibraryAIBuilder() {
                           Generazione completata!
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {selectedSubcategoryId 
+                          {(selectedSubcategoryId && selectedSubcategoryId !== '__none__')
                             ? "Le lezioni sono pronte per la revisione. Clicca per proseguire al riepilogo."
                             : "Ora organizza le lezioni nei moduli del corso."}
                         </p>
                       </div>
                       <Button 
                         onClick={() => {
-                          if (selectedSubcategoryId) {
+                          if (selectedSubcategoryId && selectedSubcategoryId !== '__none__') {
                             // Skip module organization if subcategory already selected
                             const assignments = new Map<string, string>();
                             generatedLessons.forEach((lesson: any) => {
@@ -2228,7 +2228,7 @@ export default function ConsultantLibraryAIBuilder() {
                         size="lg"
                       >
                         <ArrowRight className="w-4 h-4 mr-2" />
-                        {selectedSubcategoryId ? "Vai al Riepilogo" : "Organizza Moduli"}
+                        {(selectedSubcategoryId && selectedSubcategoryId !== '__none__') ? "Vai al Riepilogo" : "Organizza Moduli"}
                       </Button>
                     </div>
                   )}
