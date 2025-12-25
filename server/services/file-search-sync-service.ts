@@ -1676,37 +1676,16 @@ export class FileSearchSyncService {
       : [];
     const preCalcAssignedUniversityTotal = allUniversityAssignments.length;
 
-    // Pre-calculate totals based on clients with ACTUAL DATA (not all clients)
-    // Use raw query counts for performance and proper Drizzle compatibility
-    const clientsWithGoalsQuery = clientIds.length > 0
-      ? await db.select({ clientId: goals.clientId }).from(goals).where(inArray(goals.clientId, clientIds)).groupBy(goals.clientId)
-      : [];
-    const preCalcGoalsTotal = clientsWithGoalsQuery.length;
+    // Goals and tasks are aggregated per client, so total = number of clients with goals/tasks
+    const preCalcGoalsTotal = clients.length;
+    const preCalcTasksTotal = clients.length;
 
-    const clientsWithTasksQuery = clientIds.length > 0
-      ? await db.select({ clientId: consultationTasks.clientId }).from(consultationTasks).where(inArray(consultationTasks.clientId, clientIds)).groupBy(consultationTasks.clientId)
-      : [];
-    const preCalcTasksTotal = clientsWithTasksQuery.length;
-
-    const clientsWithReflectionsQuery = clientIds.length > 0
-      ? await db.select({ clientId: dailyReflections.clientId }).from(dailyReflections).where(inArray(dailyReflections.clientId, clientIds)).groupBy(dailyReflections.clientId)
-      : [];
-    const preCalcDailyReflectionsTotal = clientsWithReflectionsQuery.length;
-
-    const clientsWithProgressQuery = clientIds.length > 0
-      ? await db.select({ clientId: clientProgress.clientId }).from(clientProgress).where(inArray(clientProgress.clientId, clientIds)).groupBy(clientProgress.clientId)
-      : [];
-    const preCalcClientProgressTotal = clientsWithProgressQuery.length;
-
-    const clientsWithLibraryProgressQuery = clientIds.length > 0
-      ? await db.select({ clientId: clientLibraryProgress.clientId }).from(clientLibraryProgress).where(inArray(clientLibraryProgress.clientId, clientIds)).groupBy(clientLibraryProgress.clientId)
-      : [];
-    const preCalcLibraryProgressTotal = clientsWithLibraryProgressQuery.length;
-
-    const clientsWithEmailJourneyQuery = clientIds.length > 0
-      ? await db.select({ clientId: clientEmailJourneyProgress.clientId }).from(clientEmailJourneyProgress).where(inArray(clientEmailJourneyProgress.clientId, clientIds)).groupBy(clientEmailJourneyProgress.clientId)
-      : [];
-    const preCalcEmailJourneyTotal = clientsWithEmailJourneyQuery.length;
+    // Pre-calculate totals for new sync categories (daily_reflections, client_progress, library_progress, email_journey)
+    // These are also aggregated per client (one document per client)
+    const preCalcDailyReflectionsTotal = clients.length;
+    const preCalcClientProgressTotal = clients.length;
+    const preCalcLibraryProgressTotal = clients.length;
+    const preCalcEmailJourneyTotal = clients.length;
 
     // Counters for assigned content
     let totalAssignedExercises = { total: 0, synced: 0, failed: 0 };
@@ -1820,82 +1799,82 @@ export class FileSearchSyncService {
           totalAssignedUniversity.total, preCalcAssignedUniversityTotal);
       }
 
-      // Sync goals and tasks (aggregated documents) - only count when data exists
+      // Sync goals and tasks (aggregated documents) - always re-sync to ensure up-to-date
       const goalsResult = await this.syncClientGoals(client.id, consultantId);
-      if (goalsResult.synced > 0) {
-        totalGoals.total++;
+      totalGoals.total++;
+      if (goalsResult.success) {
         totalGoals.synced++;
-        syncProgressEmitter.emitItemProgress(consultantId, 'goals', clientDisplayName,
-          totalGoals.synced, totalGoals.total);
-      } else if (!goalsResult.success) {
+      } else {
         totalGoals.failed++;
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'goals', clientDisplayName,
+        totalGoals.synced + totalGoals.failed, preCalcGoalsTotal);
 
       const tasksResult = await this.syncClientTasks(client.id, consultantId);
-      if (tasksResult.synced > 0) {
-        totalTasks.total++;
+      totalTasks.total++;
+      if (tasksResult.success) {
         totalTasks.synced++;
-        syncProgressEmitter.emitItemProgress(consultantId, 'tasks', clientDisplayName,
-          totalTasks.synced, totalTasks.total);
-      } else if (!tasksResult.success) {
+      } else {
         totalTasks.failed++;
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'tasks', clientDisplayName,
+        totalTasks.synced + totalTasks.failed, preCalcTasksTotal);
 
-      // Sync daily reflections - only count when data exists
+      // Sync daily reflections
       const reflectionsResult = await this.syncClientDailyReflections(client.id, consultantId);
-      if (reflectionsResult.synced > 0) {
-        totalDailyReflections.total++;
+      totalDailyReflections.total++;
+      if (reflectionsResult.success) {
         totalDailyReflections.synced++;
-        syncProgressEmitter.emitItemProgress(consultantId, 'daily_reflections', clientDisplayName,
-          totalDailyReflections.synced, totalDailyReflections.total);
-      } else if (!reflectionsResult.success) {
+      } else {
         totalDailyReflections.failed++;
         if (reflectionsResult.error) {
           errors.push(`Client ${clientDisplayName} riflessioni: ${reflectionsResult.error}`);
         }
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'daily_reflections', clientDisplayName,
+        totalDailyReflections.synced + totalDailyReflections.failed, preCalcDailyReflectionsTotal);
 
-      // Sync client progress history - only count when data exists
+      // Sync client progress history
       const progressHistResult = await this.syncClientProgress(client.id, consultantId);
-      if (progressHistResult.synced > 0) {
-        totalClientProgress.total++;
+      totalClientProgress.total++;
+      if (progressHistResult.success) {
         totalClientProgress.synced++;
-        syncProgressEmitter.emitItemProgress(consultantId, 'client_progress', clientDisplayName,
-          totalClientProgress.synced, totalClientProgress.total);
-      } else if (!progressHistResult.success) {
+      } else {
         totalClientProgress.failed++;
         if (progressHistResult.error) {
           errors.push(`Client ${clientDisplayName} progresso: ${progressHistResult.error}`);
         }
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'client_progress', clientDisplayName,
+        totalClientProgress.synced + totalClientProgress.failed, preCalcClientProgressTotal);
 
-      // Sync library progress - only count when data exists
+      // Sync library progress  
       const libraryProgResult = await this.syncClientLibraryProgress(client.id, consultantId);
-      if (libraryProgResult.synced > 0) {
-        totalLibraryProgress.total++;
+      totalLibraryProgress.total++;
+      if (libraryProgResult.success) {
         totalLibraryProgress.synced++;
-        syncProgressEmitter.emitItemProgress(consultantId, 'library_progress', clientDisplayName,
-          totalLibraryProgress.synced, totalLibraryProgress.total);
-      } else if (!libraryProgResult.success) {
+      } else {
         totalLibraryProgress.failed++;
         if (libraryProgResult.error) {
           errors.push(`Client ${clientDisplayName} progresso libreria: ${libraryProgResult.error}`);
         }
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'library_progress', clientDisplayName,
+        totalLibraryProgress.synced + totalLibraryProgress.failed, preCalcLibraryProgressTotal);
 
-      // Sync email journey progress - only count when data exists
+      // Sync email journey progress
       const emailJourneyResult = await this.syncClientEmailJourneyProgress(client.id, consultantId);
-      if (emailJourneyResult.synced > 0) {
-        totalEmailJourney.total++;
+      totalEmailJourney.total++;
+      if (emailJourneyResult.success) {
         totalEmailJourney.synced++;
-        syncProgressEmitter.emitItemProgress(consultantId, 'email_journey', clientDisplayName,
-          totalEmailJourney.synced, totalEmailJourney.total);
-      } else if (!emailJourneyResult.success) {
+      } else {
         totalEmailJourney.failed++;
         if (emailJourneyResult.error) {
           errors.push(`Client ${clientDisplayName} email journey: ${emailJourneyResult.error}`);
         }
       }
+      syncProgressEmitter.emitItemProgress(consultantId, 'email_journey', clientDisplayName,
+        totalEmailJourney.synced + totalEmailJourney.failed, preCalcEmailJourneyTotal);
 
       clientsProcessed++;
       
