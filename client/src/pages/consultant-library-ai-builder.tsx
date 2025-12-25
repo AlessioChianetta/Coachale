@@ -441,6 +441,8 @@ export default function ConsultantLibraryAIBuilder() {
   const [generatedLessons, setGeneratedLessons] = useState<any[]>([]);
   const [generationErrors, setGenerationErrors] = useState<string[]>([]);
   const [generatingVideos, setGeneratingVideos] = useState<Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; error?: string }>>(new Map());
+  const [currentBatch, setCurrentBatch] = useState(0);
+  const [totalBatches, setTotalBatches] = useState(0);
   const [previewVideo, setPreviewVideo] = useState<SavedVideo | null>(null);
   const [previewTranscript, setPreviewTranscript] = useState<string>("");
   const [loadingTranscript, setLoadingTranscript] = useState(false);
@@ -628,6 +630,24 @@ export default function ConsultantLibraryAIBuilder() {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
+
+  // Auto-save draft when lessons are generated progressively (for resume on interruption)
+  const prevLessonsCountRef = React.useRef(0);
+  React.useEffect(() => {
+    // Only auto-save during generation and when we have new lessons
+    if (isGenerating && generatedLessons.length > 0 && generatedLessons.length > prevLessonsCountRef.current) {
+      console.log(`[AI Builder] Auto-save: ${generatedLessons.length} lezioni (prima: ${prevLessonsCountRef.current})`);
+      prevLessonsCountRef.current = generatedLessons.length;
+      
+      // Auto-save silently (without toast)
+      handleSaveDraft(undefined, true);
+    }
+    
+    // Reset counter when generation finishes
+    if (!isGenerating && prevLessonsCountRef.current > 0) {
+      prevLessonsCountRef.current = 0;
+    }
+  }, [isGenerating, generatedLessons.length]);
 
   const handleLoadContent = () => {
     if (!youtubeUrl) {
@@ -834,8 +854,8 @@ export default function ConsultantLibraryAIBuilder() {
     setSavingTranscript(false);
   };
 
-  const handleSaveDraft = async (name?: string) => {
-    setSavingDraft(true);
+  const handleSaveDraft = async (name?: string, autoSave = false) => {
+    if (!autoSave) setSavingDraft(true);
     try {
       const draftData = {
         name: name || `Bozza ${new Date().toLocaleDateString('it-IT')} ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`,
@@ -850,21 +870,24 @@ export default function ConsultantLibraryAIBuilder() {
         contentType,
         level,
         currentStep,
+        generatedLessonIds: generatedLessons.map(l => l.id),
+        generatedLessonsCount: generatedLessons.length,
       };
 
       if (currentDraftId) {
         await apiRequest("PUT", `/api/library/ai-builder-drafts/${currentDraftId}`, draftData);
-        toast({ title: "Bozza aggiornata" });
+        if (!autoSave) toast({ title: "Bozza aggiornata" });
       } else {
         const result = await apiRequest("POST", "/api/library/ai-builder-drafts", draftData);
         setCurrentDraftId(result.id);
-        toast({ title: "Bozza salvata" });
+        if (!autoSave) toast({ title: "Bozza salvata" });
       }
       refetchDrafts();
     } catch (error: any) {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      if (!autoSave) toast({ title: "Errore", description: error.message, variant: "destructive" });
+      console.error('[AI Builder] Auto-save failed:', error);
     }
-    setSavingDraft(false);
+    if (!autoSave) setSavingDraft(false);
   };
 
   const handleLoadDraft = async (draft: any) => {
@@ -881,8 +904,42 @@ export default function ConsultantLibraryAIBuilder() {
     setCurrentStep(draft.currentStep || 1);
     setCurrentDraftId(draft.id);
     
+    // If draft has generated lessons, load them
+    if (draft.generatedLessonIds && draft.generatedLessonIds.length > 0) {
+      try {
+        const lessons = await apiRequest("POST", "/api/library/documents/by-ids", { 
+          ids: draft.generatedLessonIds 
+        });
+        if (lessons && lessons.length > 0) {
+          setGeneratedLessons(lessons);
+          setLessonOrder(lessons.map((l: any) => l.id));
+          console.log(`[AI Builder] Bozza con ${lessons.length} lezioni già generate`);
+          
+          // Show resume option if there are remaining videos
+          const generatedVideoCount = lessons.length;
+          const totalVideos = draft.savedVideoIds?.length || 0;
+          if (generatedVideoCount < totalVideos) {
+            toast({ 
+              title: "Bozza con progresso parziale", 
+              description: `${generatedVideoCount}/${totalVideos} lezioni generate. Puoi continuare dallo Step 4.` 
+            });
+          } else {
+            toast({ 
+              title: "Bozza caricata", 
+              description: `${lessons.length} lezioni già pronte. Vai allo Step 5 per pubblicare.` 
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[AI Builder] Failed to load draft lessons:', err);
+        toast({ title: "Bozza caricata", description: draft.name });
+      }
+    } else {
+      setShowDrafts(false);
+      toast({ title: "Bozza caricata", description: draft.name });
+    }
+    
     setShowDrafts(false);
-    toast({ title: "Bozza caricata", description: draft.name });
   };
 
   const handleDeleteDraft = async (draftId: string) => {
@@ -938,9 +995,27 @@ export default function ConsultantLibraryAIBuilder() {
   const handleStartGeneration = async () => {
     console.log('[AI Builder] handleStartGeneration - Inizio nuova generazione (polling)');
     console.log('[AI Builder] Video selezionati:', selectedVideoIds.length);
+    console.log('[AI Builder] Lezioni già generate:', generatedLessons.length);
     
     if (selectedVideoIds.length === 0) {
       toast({ title: "Nessun video selezionato", variant: "destructive" });
+      return;
+    }
+    
+    // Determine which videos already have lessons (for resume)
+    const alreadyCompletedVideoIds = new Set(
+      generatedLessons
+        .filter((l: any) => l.youtubeVideoId)
+        .map((l: any) => l.youtubeVideoId)
+    );
+    
+    // Filter out already completed videos
+    const remainingVideoIds = selectedVideoIds.filter(id => !alreadyCompletedVideoIds.has(id));
+    console.log('[AI Builder] Video già completati:', alreadyCompletedVideoIds.size, 'Rimanenti:', remainingVideoIds.length);
+    
+    if (remainingVideoIds.length === 0) {
+      toast({ title: "Tutte le lezioni già generate", description: "Vai allo Step 5 per pubblicare" });
+      setCurrentStep(5);
       return;
     }
     
@@ -950,17 +1025,25 @@ export default function ConsultantLibraryAIBuilder() {
     
     setCurrentStep(4);
     setGenerationProgress(0);
-    setGeneratedLessons([]);
+    // PRESERVE existing lessons - don't reset! New ones will be appended by polling
+    // setGeneratedLessons([]); // REMOVED - preserve existing lessons for resume
     setGenerationErrors([]);
     setGenerationLogs([{
       time: new Date().toLocaleTimeString('it-IT'),
-      message: "🚀 Sto iniziando a creare le lezioni..."
+      message: generatedLessons.length > 0 
+        ? `🔄 Riprendo generazione: ${generatedLessons.length} lezioni già pronte, ${remainingVideoIds.length} rimanenti...`
+        : "🚀 Sto iniziando a creare le lezioni..."
     }]);
     setIsGenerating(true);
     
     const initialStatus = new Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; error?: string }>();
-    savedVideos.filter(v => selectedVideoIds.includes(v.id)).forEach(v => {
-      initialStatus.set(v.id, { status: 'pending' });
+    // Mark already completed videos
+    savedVideos.forEach(v => {
+      if (alreadyCompletedVideoIds.has(v.id)) {
+        initialStatus.set(v.id, { status: 'completed' });
+      } else if (remainingVideoIds.includes(v.id)) {
+        initialStatus.set(v.id, { status: 'pending' });
+      }
     });
     setGeneratingVideos(initialStatus);
 
@@ -974,7 +1057,8 @@ export default function ConsultantLibraryAIBuilder() {
         });
       }
 
-      const videoIds = savedVideos.filter(v => selectedVideoIds.includes(v.id)).map(v => v.id);
+      // Use remaining video IDs (excluding already completed)
+      const videoIds = savedVideos.filter(v => remainingVideoIds.includes(v.id)).map(v => v.id);
       
       // Start generation job (returns immediately with jobId)
       const startResponse = await apiRequest("POST", "/api/library/ai-generate-batch-stream", {
@@ -998,11 +1082,19 @@ export default function ConsultantLibraryAIBuilder() {
       const pollInterval = setInterval(async () => {
         try {
           const status = await apiRequest("GET", `/api/library/ai-generate-status/${jobId}`);
-          console.log('[AI Builder] Poll status:', status.status, status.current, '/', status.total);
+          console.log('[AI Builder] Poll status:', status.status, status.current, '/', status.total, `(batch ${status.currentBatch}/${status.totalBatches})`);
           
           // Update progress
           if (status.total > 0) {
             setGenerationProgress(Math.round((status.current / status.total) * 100));
+          }
+          
+          // Update batch info
+          if (status.currentBatch !== undefined) {
+            setCurrentBatch(status.currentBatch);
+          }
+          if (status.totalBatches !== undefined) {
+            setTotalBatches(status.totalBatches);
           }
           
           // Update logs
@@ -1021,14 +1113,37 @@ export default function ConsultantLibraryAIBuilder() {
             });
           }
           
+          // Update lessons progressively (combine with existing for resume)
+          if (status.lessons && status.lessons.length > 0) {
+            setGeneratedLessons(prev => {
+              // Get IDs of existing lessons (from draft resume)
+              const existingIds = new Set(prev.map((l: any) => l.id));
+              // Filter new lessons to avoid duplicates
+              const newLessons = status.lessons.filter((l: any) => !existingIds.has(l.id));
+              
+              if (newLessons.length > 0) {
+                const combined = [...prev, ...newLessons];
+                console.log(`[AI Builder] Lezioni progressive: ${combined.length} totali (${prev.length} esistenti + ${newLessons.length} nuove)`);
+                return combined;
+              }
+              return prev;
+            });
+          }
+          
           // Check if completed or error
           if (status.status === 'completed') {
             clearInterval(pollInterval);
-            console.log('[AI Builder] Generazione completata!', status.lessons?.length, 'lezioni');
+            console.log('[AI Builder] Generazione completata!', status.lessons?.length, 'nuove lezioni');
             
             if (status.lessons) {
-              setGeneratedLessons(status.lessons);
-              setLessonOrder(status.lessons.map((l: any) => l.id));
+              // Combine with existing lessons (for resume scenarios)
+              setGeneratedLessons(prev => {
+                const existingIds = new Set(prev.map((l: any) => l.id));
+                const newLessons = status.lessons.filter((l: any) => !existingIds.has(l.id));
+                const combined = [...prev, ...newLessons];
+                setLessonOrder(combined.map((l: any) => l.id));
+                return combined;
+              });
             }
             if (status.errors && status.errors.length > 0) {
               setGenerationErrors(status.errors);
@@ -1959,6 +2074,11 @@ export default function ConsultantLibraryAIBuilder() {
                       <>
                         <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
                         Generazione in Corso...
+                        {totalBatches > 1 && currentBatch > 0 && (
+                          <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                            Batch {currentBatch}/{totalBatches}
+                          </Badge>
+                        )}
                       </>
                     ) : (
                       <>
@@ -1967,9 +2087,25 @@ export default function ConsultantLibraryAIBuilder() {
                       </>
                     )}
                   </CardTitle>
+                  {totalBatches > 1 && generationProgress < 100 && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Generazione parallela: {Math.min(5, selectedVideoIds.length)} lezioni alla volta
+                    </p>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <Progress value={generationProgress} className="h-3" />
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progresso totale</span>
+                      <span className="font-medium">{generationProgress}%</span>
+                    </div>
+                    <Progress value={generationProgress} className="h-3" />
+                    {totalBatches > 1 && currentBatch > 0 && generationProgress < 100 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Batch {currentBatch} di {totalBatches} in elaborazione (5 lezioni in parallelo)
+                      </p>
+                    )}
+                  </div>
                   
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">

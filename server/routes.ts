@@ -4246,6 +4246,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get documents by IDs (for draft resume)
+  app.post("/api/library/documents/by-ids", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { ids } = req.body;
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "ids array required" });
+      }
+      
+      const foundDocs = await db
+        .select()
+        .from(schema.libraryDocuments)
+        .where(inArray(schema.libraryDocuments.id, ids));
+      
+      res.json(foundDocs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/library/documents/:id", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const document = await storage.getLibraryDocument(req.params.id);
@@ -5461,6 +5480,8 @@ Rispondi SOLO con un JSON array, senza altri testi:
     status: 'running' | 'completed' | 'error';
     total: number;
     current: number;
+    currentBatch: number;
+    totalBatches: number;
     videos: Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; title?: string; error?: string }>;
     logs: Array<{ time: string; message: string }>;
     lessons: any[];
@@ -5494,13 +5515,16 @@ Rispondi SOLO con un JSON array, senza altri testi:
       const videosMap = new Map<string, { status: 'pending' | 'generating' | 'completed' | 'error'; title?: string; error?: string }>();
       videoIds.forEach((id: string) => videosMap.set(id, { status: 'pending' }));
       
+      const totalBatches = Math.ceil(videoIds.length / 5);
       generationJobs.set(jobId, {
         consultantId,
         status: 'running',
         total: videoIds.length,
         current: 0,
+        currentBatch: 0,
+        totalBatches,
         videos: videosMap,
-        logs: [{ time: new Date().toLocaleTimeString('it-IT'), message: '🚀 Generazione avviata...' }],
+        logs: [{ time: new Date().toLocaleTimeString('it-IT'), message: `🚀 Generazione avviata: ${videoIds.length} video in ${totalBatches} batch da 5...` }],
         lessons: [],
         errors: [],
         startedAt: new Date(),
@@ -5514,16 +5538,22 @@ Rispondi SOLO con un JSON array, senza altri testi:
       // Run generation in background
       const { generateMultipleLessons } = await import("./services/ai-lesson-generator");
       
-      const onProgress = (current: number, total: number, status: string, videoId?: string, videoTitle?: string, errorMessage?: string, logMessage?: string) => {
+      const onProgress = (current: number, total: number, status: string, videoId?: string, videoTitle?: string, errorMessage?: string, logMessage?: string, batchInfo?: { batchNumber: number; totalBatches: number; batchVideoIds: string[] }) => {
         const job = generationJobs.get(jobId);
         if (!job) return;
 
-        console.log(`📊 [POLLING] Job ${jobId}: ${status} ${current}/${total} - ${videoId}`);
+        console.log(`📊 [POLLING] Job ${jobId}: ${status} ${current}/${total} - ${videoId} (batch ${batchInfo?.batchNumber || '?'}/${batchInfo?.totalBatches || '?'})`);
         
         job.current = current;
         
+        // Update batch info
+        if (batchInfo) {
+          job.currentBatch = batchInfo.batchNumber;
+          job.totalBatches = batchInfo.totalBatches;
+        }
+        
         if (videoId) {
-          if (status === 'generating') {
+          if (status === 'batch_start' || status === 'generating') {
             job.videos.set(videoId, { status: 'generating', title: videoTitle });
           } else if (status === 'completed') {
             job.videos.set(videoId, { status: 'completed', title: videoTitle });
@@ -5537,6 +5567,31 @@ Rispondi SOLO con un JSON array, senza altri testi:
         }
       };
 
+      // Callback per aggiornare lezioni progressivamente dopo ogni batch
+      const onBatchComplete = async (batchNumber: number, completedLessonIds: string[]) => {
+        const job = generationJobs.get(jobId);
+        if (job) {
+          // Fetch completed lessons to add progressively
+          try {
+            const completedLessons = await db
+              .select()
+              .from(documents)
+              .where(inArray(documents.id, completedLessonIds));
+            
+            // Add new lessons to job.lessons
+            job.lessons.push(...completedLessons);
+            
+            job.logs.push({ 
+              time: new Date().toLocaleTimeString('it-IT'), 
+              message: `📦 Batch ${batchNumber} completato: ${completedLessonIds.length} lezioni salvate (totale: ${job.lessons.length})` 
+            });
+            console.log(`📦 [POLLING] Job ${jobId} batch ${batchNumber} complete: ${completedLessonIds.length} lessons, total: ${job.lessons.length}`);
+          } catch (err: any) {
+            console.error(`❌ [POLLING] Failed to fetch batch lessons:`, err.message);
+          }
+        }
+      };
+
       try {
         const result = await generateMultipleLessons(
           consultantId,
@@ -5546,7 +5601,8 @@ Rispondi SOLO con un JSON array, senza altri testi:
           customInstructions,
           level,
           contentType,
-          onProgress
+          onProgress,
+          onBatchComplete
         );
 
         const job = generationJobs.get(jobId);
@@ -5597,9 +5653,11 @@ Rispondi SOLO con un JSON array, senza altri testi:
         status: job.status,
         total: job.total,
         current: job.current,
+        currentBatch: job.currentBatch,
+        totalBatches: job.totalBatches,
         videos: videosStatus,
         logs: job.logs,
-        lessons: job.status === 'completed' ? job.lessons : [],
+        lessons: job.lessons, // Restituisce lezioni progressivamente, non solo a completamento
         errors: job.errors,
       });
     } catch (error: any) {

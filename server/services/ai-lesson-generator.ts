@@ -278,6 +278,8 @@ function parseLessonResponse(response: string, video: any): GeneratedLesson {
   }
 }
 
+const BATCH_SIZE = 5; // Numero di lezioni generate in parallelo
+
 export async function generateMultipleLessons(
   consultantId: string,
   videoIds: string[],
@@ -286,66 +288,134 @@ export async function generateMultipleLessons(
   customInstructions?: string,
   level?: 'base' | 'intermedio' | 'avanzato',
   contentType?: 'text' | 'video' | 'both',
-  onProgress?: (current: number, total: number, status: string, videoId?: string, videoTitle?: string, errorMessage?: string, logMessage?: string) => void
+  onProgress?: (current: number, total: number, status: string, videoId?: string, videoTitle?: string, errorMessage?: string, logMessage?: string, batchInfo?: { batchNumber: number; totalBatches: number; batchVideoIds: string[] }) => void,
+  onBatchComplete?: (batchNumber: number, completedLessonIds: string[]) => void
 ): Promise<{ success: boolean; lessons: any[]; errors: string[] }> {
   const lessons: any[] = [];
   const errors: string[] = [];
 
-  console.log(`🚀 [BATCH-LESSON] Avvio generazione batch: ${videoIds.length} video`);
+  // Divide videoIds in batch di 5
+  const batches: string[][] = [];
+  for (let i = 0; i < videoIds.length; i += BATCH_SIZE) {
+    batches.push(videoIds.slice(i, i + BATCH_SIZE));
+  }
 
-  for (let i = 0; i < videoIds.length; i++) {
-    const videoId = videoIds[i];
+  const totalBatches = batches.length;
+  console.log(`🚀 [BATCH-LESSON] Avvio generazione: ${videoIds.length} video in ${totalBatches} batch da max ${BATCH_SIZE}`);
+
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    const batchNumber = batchIndex + 1;
     
-    const [video] = await db
-      .select()
-      .from(youtubeVideos)
-      .where(eq(youtubeVideos.id, videoId));
+    console.log(`\n📦 [BATCH-LESSON] === Batch ${batchNumber}/${totalBatches} (${batch.length} video) ===`);
 
-    const videoTitle = video?.title || 'Video';
-    const hasTranscript = !!video?.transcript;
-    const transcriptLength = video?.transcript?.length || 0;
-
-    console.log(`\n📹 [BATCH-LESSON] Video ${i + 1}/${videoIds.length}: "${videoTitle}"`);
-    console.log(`   Trascrizione: ${hasTranscript ? `✅ ${transcriptLength} caratteri` : '❌ non disponibile'}`);
-
+    // Notifica inizio batch
     if (onProgress) {
-      const logMsg = hasTranscript 
-        ? `🔍 Trascrizione: ${transcriptLength} caratteri - Invio a Gemini...`
-        : `❌ Nessuna trascrizione disponibile`;
-      onProgress(i + 1, videoIds.length, 'generating', videoId, videoTitle, undefined, logMsg);
+      batch.forEach((videoId, idx) => {
+        const globalIndex = batchIndex * BATCH_SIZE + idx + 1;
+        onProgress(globalIndex, videoIds.length, 'batch_start', videoId, undefined, undefined, 
+          `🔄 Batch ${batchNumber}/${totalBatches} - Avvio generazione parallela...`,
+          { batchNumber, totalBatches, batchVideoIds: batch });
+      });
     }
 
-    const result = await generateLessonFromVideo({
-      consultantId,
-      youtubeVideoId: videoId,
-      categoryId,
-      subcategoryId,
-      customInstructions,
-      level,
-      contentType,
-    });
+    // Pre-carica info video per il batch
+    const videoInfos = await Promise.all(
+      batch.map(async (videoId) => {
+        const [video] = await db
+          .select()
+          .from(youtubeVideos)
+          .where(eq(youtubeVideos.id, videoId));
+        return { videoId, video };
+      })
+    );
 
-    if (result.success && result.lesson) {
-      lessons.push(result.lesson);
-      console.log(`   ✅ Lezione generata con successo`);
-      if (onProgress) {
-        onProgress(i + 1, videoIds.length, 'completed', videoId, videoTitle, undefined, `✅ Lezione creata: "${result.lesson.title}"`);
-      }
-    } else {
-      const errorMsg = result.error || 'Unknown error';
-      errors.push(`${videoTitle}: ${errorMsg}`);
-      console.log(`   ❌ Errore: ${errorMsg}`);
-      if (onProgress) {
-        onProgress(i + 1, videoIds.length, 'error', videoId, videoTitle, errorMsg, `❌ ${errorMsg}`);
+    // Genera lezioni in parallelo per questo batch
+    const batchResults = await Promise.all(
+      videoInfos.map(async ({ videoId, video }) => {
+        const videoTitle = video?.title || 'Video';
+        const hasTranscript = !!video?.transcript;
+        const transcriptLength = video?.transcript?.length || 0;
+        const globalIndex = videoIds.indexOf(videoId) + 1;
+
+        console.log(`   📹 [${globalIndex}/${videoIds.length}] "${videoTitle}" - ${hasTranscript ? `${transcriptLength} chars` : 'no transcript'}`);
+
+        if (onProgress) {
+          onProgress(globalIndex, videoIds.length, 'generating', videoId, videoTitle, undefined,
+            `🤖 Generazione AI in corso...`,
+            { batchNumber, totalBatches, batchVideoIds: batch });
+        }
+
+        try {
+          const result = await generateLessonFromVideo({
+            consultantId,
+            youtubeVideoId: videoId,
+            categoryId,
+            subcategoryId,
+            customInstructions,
+            level,
+            contentType,
+          });
+
+          if (result.success && result.lesson) {
+            console.log(`   ✅ [${globalIndex}/${videoIds.length}] Lezione creata: "${result.lesson.title}"`);
+            if (onProgress) {
+              onProgress(globalIndex, videoIds.length, 'completed', videoId, videoTitle, undefined,
+                `✅ Lezione creata: "${result.lesson.title}"`,
+                { batchNumber, totalBatches, batchVideoIds: batch });
+            }
+            return { success: true, lesson: result.lesson, videoId, videoTitle };
+          } else {
+            const errorMsg = result.error || 'Unknown error';
+            console.log(`   ❌ [${globalIndex}/${videoIds.length}] Errore: ${errorMsg}`);
+            if (onProgress) {
+              onProgress(globalIndex, videoIds.length, 'error', videoId, videoTitle, errorMsg,
+                `❌ ${errorMsg}`,
+                { batchNumber, totalBatches, batchVideoIds: batch });
+            }
+            return { success: false, error: errorMsg, videoId, videoTitle };
+          }
+        } catch (err: any) {
+          const errorMsg = err.message || 'Exception during generation';
+          console.log(`   ❌ [${globalIndex}/${videoIds.length}] Exception: ${errorMsg}`);
+          if (onProgress) {
+            onProgress(globalIndex, videoIds.length, 'error', videoId, videoTitle, errorMsg,
+              `❌ ${errorMsg}`,
+              { batchNumber, totalBatches, batchVideoIds: batch });
+          }
+          return { success: false, error: errorMsg, videoId, videoTitle };
+        }
+      })
+    );
+
+    // Raccogli risultati del batch
+    const batchLessonIds: string[] = [];
+    for (const result of batchResults) {
+      if (result.success && result.lesson) {
+        lessons.push(result.lesson);
+        batchLessonIds.push(result.lesson.id);
+      } else if (result.error) {
+        errors.push(`${result.videoTitle}: ${result.error}`);
       }
     }
 
-    if (i < videoIds.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // Callback per salvare progresso dopo ogni batch
+    if (onBatchComplete && batchLessonIds.length > 0) {
+      onBatchComplete(batchNumber, batchLessonIds);
+    }
+
+    console.log(`   📊 Batch ${batchNumber} completato: ${batchLessonIds.length}/${batch.length} lezioni create`);
+
+    // Pausa tra batch per non sovraccaricare API (solo se ci sono altri batch)
+    if (batchIndex < batches.length - 1) {
+      console.log(`   ⏳ Pausa 2s prima del prossimo batch...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
 
-  console.log(`\n📊 [BATCH-LESSON] Completato: ${lessons.length} lezioni create, ${errors.length} errori`);
+  console.log(`\n📊 [BATCH-LESSON] ===== COMPLETATO =====`);
+  console.log(`   ✅ Lezioni create: ${lessons.length}/${videoIds.length}`);
+  console.log(`   ❌ Errori: ${errors.length}`);
 
   return {
     success: lessons.length > 0,
