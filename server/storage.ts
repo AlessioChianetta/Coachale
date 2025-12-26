@@ -198,6 +198,7 @@ export interface IStorage {
   rejectAssignment(id: string, rejection: { consultantFeedback: string; reviewedAt: Date }, createdBy: string): Promise<ExerciseAssignment | undefined>;
   returnAssignmentToClient(id: string, updates: { consultantFeedback: string; status: string; reviewedAt: Date }, createdBy: string): Promise<ExerciseAssignment | undefined>;
   updateAssignmentWhatsappSent(assignmentId: string, whatsappSent: boolean): Promise<ExerciseAssignment | undefined>;
+  updateAssignmentWorkPlatform(assignmentId: string, workPlatform: string | null): Promise<ExerciseAssignment | undefined>;
 
   // Exercise submission operations
   createExerciseSubmission(submission: InsertExerciseSubmission): Promise<ExerciseSubmission>;
@@ -936,6 +937,19 @@ export class DatabaseStorage implements IStorage {
       return assignment || undefined;
     } catch (error) {
       console.error('Error updating WhatsApp sent status:', error);
+      throw error;
+    }
+  }
+
+  async updateAssignmentWorkPlatform(assignmentId: string, workPlatform: string | null): Promise<ExerciseAssignment | undefined> {
+    try {
+      const [assignment] = await db.update(schema.exerciseAssignments)
+        .set({ workPlatform: workPlatform })
+        .where(eq(schema.exerciseAssignments.id, assignmentId))
+        .returning();
+      return assignment || undefined;
+    } catch (error) {
+      console.error('Error updating assignment workPlatform:', error);
       throw error;
     }
   }
