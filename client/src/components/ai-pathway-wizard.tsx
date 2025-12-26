@@ -125,6 +125,7 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
   const [isComplete, setIsComplete] = useState(false);
   const [duplicateTemplates, setDuplicateTemplates] = useState<DuplicateTemplate[]>([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -141,6 +142,7 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       setIsComplete(false);
       setDuplicateTemplates([]);
       setShowDuplicateWarning(false);
+      setIsCheckingDuplicates(false);
     }
   }, [open]);
 
@@ -290,6 +292,8 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       return;
     }
     
+    setIsCheckingDuplicates(true);
+    
     try {
       const duplicateCheck = await apiRequest("POST", "/api/university/ai/check-duplicates", { 
         courseIds: selectedCourseIds 
@@ -298,12 +302,14 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       if (duplicateCheck.hasDuplicate && duplicateCheck.duplicateTemplates.length > 0) {
         setDuplicateTemplates(duplicateCheck.duplicateTemplates);
         setShowDuplicateWarning(true);
+        setIsCheckingDuplicates(false);
         return;
       }
     } catch (error) {
       console.error("Error checking duplicates:", error);
     }
     
+    setIsCheckingDuplicates(false);
     await analyzeMutation.mutateAsync(selectedCourseIds);
     setCurrentStep(1);
   };
@@ -495,10 +501,15 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
               </div>
               <Button
                 onClick={handleAnalyze}
-                disabled={selectedCourseIds.length === 0 || analyzeMutation.isPending}
+                disabled={selectedCourseIds.length === 0 || analyzeMutation.isPending || isCheckingDuplicates}
                 className="gap-2"
               >
-                {analyzeMutation.isPending ? (
+                {isCheckingDuplicates ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Verifica duplicati...
+                  </>
+                ) : analyzeMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Analisi in corso...
