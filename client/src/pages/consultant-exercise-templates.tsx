@@ -55,6 +55,8 @@ import {
   Lock,
   Tag,
   Sparkles,
+  ArrowLeft,
+  FolderOpen,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -82,6 +84,7 @@ export default function ConsultantTemplates() {
   const [templateToDelete, setTemplateToDelete] = useState<{ id: string, hasExercises: boolean, exerciseCount: number } | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   const { toast } = useToast();
@@ -551,18 +554,18 @@ export default function ConsultantTemplates() {
               </CardContent>
             </Card>
 
-            {/* Templates View with Tabs */}
+            {/* Templates View - Category Grid or Template List */}
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <Card key={i} className="p-3 animate-pulse">
-                    <div className="h-3 bg-muted rounded w-3/4 mb-2"></div>
-                    <div className="h-2 bg-muted rounded w-1/2 mb-3"></div>
-                    <div className="h-6 bg-muted rounded w-full"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Card key={i} className="p-6 animate-pulse">
+                    <div className="h-12 w-12 bg-muted rounded-xl mb-4"></div>
+                    <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-muted rounded w-1/2"></div>
                   </Card>
                 ))}
               </div>
-            ) : sortedFilteredTemplates.length === 0 ? (
+            ) : categories.length === 0 ? (
               <Card className="border-0 shadow-lg">
                 <CardContent className="p-12 text-center">
                   <div className="w-20 h-20 bg-gradient-to-r from-purple-500/10 to-indigo-600/10 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -570,9 +573,7 @@ export default function ConsultantTemplates() {
                   </div>
                   <h3 className="text-xl font-semibold mb-3">Nessun esercizio modello trovato</h3>
                   <p className="text-muted-foreground text-lg mb-4">
-                    {searchTerm || categoryFilter !== "all" || typeFilter !== "all" || filterMode !== "all"
-                      ? "Prova a modificare i filtri di ricerca."
-                      : "Inizia creando il tuo primo esercizio modello."}
+                    Inizia creando il tuo primo esercizio modello.
                   </p>
                   <Button onClick={() => setShowExerciseForm(true)}>
                     <Plus size={16} className="mr-2" />
@@ -580,24 +581,80 @@ export default function ConsultantTemplates() {
                   </Button>
                 </CardContent>
               </Card>
-            ) : (
-              <Tabs defaultValue="all" className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="all">Tutti ({sortedFilteredTemplates.length})</TabsTrigger>
-                  {categories.map((category) => {
-                    const count = sortedFilteredTemplates.filter((t: ExerciseTemplate) => t.category === category).length;
-                    const displayName = categoryDisplayNames[category] || category;
-                    return count > 0 ? (
-                      <TabsTrigger key={category} value={category}>
-                        {displayName} ({count})
-                      </TabsTrigger>
-                    ) : null;
-                  })}
-                </TabsList>
+            ) : activeTab === null ? (
+              /* Category Grid View */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {categories.map((category) => {
+                  const count = templates.filter((t: ExerciseTemplate) => t.category === category).length;
+                  const categoryEmoji = category === 'Metodo Orbitale - Finanza' ? '📧' :
+                    category === 'Risparmio e Investimenti' ? '📊' :
+                      category === 'Imprenditoria' ? '🚀' : '📝';
+                  const displayName = categoryDisplayNames[category] || category;
 
-                <TabsContent value="all">
-                  <div className="space-y-3">
-                    {paginatedTemplates.map((template: ExerciseTemplate) => {
+                  return (
+                    <Card
+                      key={category}
+                      className="group cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200 border overflow-hidden"
+                      onClick={() => {
+                        setActiveTab(category);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-4">
+                          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl flex-shrink-0">
+                            {categoryEmoji}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-bold text-foreground mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                              {displayName}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {count} esercizi{count !== 1 ? '' : 'o'} modello
+                            </p>
+                          </div>
+                          <FolderOpen size={20} className="text-muted-foreground group-hover:text-purple-500 transition-colors" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Template List View for Selected Category */
+              <div className="space-y-4">
+                {/* Back Button and Category Header */}
+                <div className="flex items-center gap-4 mb-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveTab(null)}
+                    className="flex items-center gap-2"
+                  >
+                    <ArrowLeft size={16} />
+                    Torna alle categorie
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-lg">
+                      {activeTab === 'Metodo Orbitale - Finanza' ? '📧' :
+                        activeTab === 'Risparmio e Investimenti' ? '📊' :
+                          activeTab === 'Imprenditoria' ? '🚀' : '📝'}
+                    </div>
+                    <h2 className="text-xl font-bold">
+                      {categoryDisplayNames[activeTab] || activeTab}
+                    </h2>
+                    <Badge variant="secondary">
+                      {sortedFilteredTemplates.filter((t: ExerciseTemplate) => t.category === activeTab).length} esercizi
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Template Cards */}
+                <div className="space-y-3">
+                  {sortedFilteredTemplates
+                    .filter((t: ExerciseTemplate) => t.category === activeTab)
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((template: ExerciseTemplate) => {
                       const isOwner = currentUser?.id === template.createdBy;
                       const categoryEmoji = template.category === 'Metodo Orbitale - Finanza' ? '📧' :
                         template.category === 'Risparmio e Investimenti' ? '📊' :
@@ -703,10 +760,14 @@ export default function ConsultantTemplates() {
                         </Card>
                       );
                     })}
-                  </div>
+                </div>
 
-                  {/* Paginazione */}
-                  {totalPages > 1 && (
+                {/* Pagination */}
+                {(() => {
+                  const categoryTemplates = sortedFilteredTemplates.filter((t: ExerciseTemplate) => t.category === activeTab);
+                  const categoryTotalPages = Math.ceil(categoryTemplates.length / itemsPerPage);
+                  
+                  return categoryTotalPages > 1 ? (
                     <div className="mt-6">
                       <Pagination>
                         <PaginationContent>
@@ -721,7 +782,7 @@ export default function ConsultantTemplates() {
                             />
                           </PaginationItem>
 
-                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          {Array.from({ length: categoryTotalPages }, (_, i) => i + 1).map((page) => (
                             <PaginationItem key={page}>
                               <PaginationLink
                                 href="#"
@@ -742,135 +803,17 @@ export default function ConsultantTemplates() {
                               href="#"
                               onClick={(e) => {
                                 e.preventDefault();
-                                if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                                if (currentPage < categoryTotalPages) setCurrentPage(currentPage + 1);
                               }}
-                              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                              className={currentPage === categoryTotalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                             />
                           </PaginationItem>
                         </PaginationContent>
                       </Pagination>
                     </div>
-                  )}
-                </TabsContent>
-
-                {categories.map((category) => {
-                  const categoryTemplates = sortedFilteredTemplates.filter((t: ExerciseTemplate) => t.category === category);
-                  if (categoryTemplates.length === 0) return null;
-
-                  return (
-                    <TabsContent key={category} value={category}>
-                      <div className="space-y-3">
-                        {categoryTemplates.map((template: ExerciseTemplate) => {
-                          const isOwner = currentUser?.id === template.createdBy;
-                          const categoryEmoji = template.category === 'Metodo Orbitale - Finanza' ? '📧' :
-                            template.category === 'Risparmio e Investimenti' ? '📊' :
-                              template.category === 'Imprenditoria' ? '🚀' : '📝';
-
-                          return (
-                            <Card
-                              key={template.id}
-                              className="group hover:shadow-lg transition-all duration-200 border overflow-hidden"
-                              data-testid={`card-template-${template.id}`}
-                            >
-                              <CardContent className="p-4">
-                                <div className="flex items-start gap-4">
-                                  {/* Order Number + Icon */}
-                                  <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                                    {template.sortOrder ? (
-                                      <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
-                                        {template.sortOrder}
-                                      </div>
-                                    ) : null}
-                                    <div className={`${template.sortOrder ? 'w-10 h-10 text-lg' : 'w-14 h-14 text-2xl'} rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center`}>
-                                      {categoryEmoji}
-                                    </div>
-                                  </div>
-
-                                  {/* Content */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-3 mb-2">
-                                      <h4 className="text-base font-bold text-foreground" data-testid={`text-template-name-${template.id}`}>
-                                        {template.name}
-                                      </h4>
-
-                                      {/* Badges */}
-                                      <div className="flex items-center gap-2 flex-shrink-0">
-                                        <Badge variant={template.isPublic ? "default" : "outline"} className="text-xs">
-                                          {template.isPublic ? <Globe size={12} className="mr-1" /> : <Lock size={12} className="mr-1" />}
-                                          {template.isPublic ? 'Pubblico' : 'Privato'}
-                                        </Badge>
-                                        <Badge variant="secondary" className="text-xs">
-                                          {template.type === 'general' ? 'Generale' : 'Personalizzato'}
-                                        </Badge>
-                                      </div>
-                                    </div>
-
-                                    {/* Description */}
-                                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2" data-testid={`text-template-description-${template.id}`}>
-                                      {template.description}
-                                    </p>
-
-                                    {/* Category & Stats */}
-                                    <div className="flex items-center gap-4 mb-3">
-                                      <Badge variant="outline" className="text-xs font-medium">
-                                        <Tag size={12} className="mr-1" />
-                                        {categoryDisplayNames[template.category] || template.category}
-                                      </Badge>
-                                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                        <Clock size={14} className="text-blue-600 dark:text-blue-400" />
-                                        <span>{template.timeLimit || 0} min</span>
-                                      </div>
-                                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                        <TrendingUp size={14} className="text-green-600 dark:text-green-400" />
-                                        <span>{template.usageCount || 0} usi</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-2">
-                                      <Button
-                                        onClick={() => handleUseTemplate(template.id)}
-                                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                                        size="sm"
-                                      >
-                                        <Plus size={16} className="mr-2" />
-                                        Assegna
-                                      </Button>
-
-                                      {isOwner && (
-                                        <>
-                                          <Button
-                                            onClick={() => handleEditTemplate(template)}
-                                            variant="outline"
-                                            size="sm"
-                                            className="hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                          >
-                                            <Edit size={16} className="mr-2" />
-                                            Modifica
-                                          </Button>
-                                          <Button
-                                            onClick={() => handleDeleteTemplate(template.id)}
-                                            variant="outline"
-                                            size="sm"
-                                            className="hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600"
-                                          >
-                                            <Trash2 size={16} className="mr-2" />
-                                            Elimina
-                                          </Button>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    </TabsContent>
-                  );
-                })}
-              </Tabs>
+                  ) : null;
+                })()}
+              </div>
             )}
           </div>
         </main>
