@@ -1594,6 +1594,7 @@ export const templateLessons = pgTable("template_lessons", {
   description: text("description"),
   resourceUrl: text("resource_url"),
   libraryDocumentId: varchar("library_document_id").references(() => libraryDocuments.id),
+  exerciseId: varchar("exercise_id").references(() => exercises.id),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
