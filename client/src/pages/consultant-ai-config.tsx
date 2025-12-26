@@ -251,7 +251,7 @@ function EmailJourneyTab() {
       },
       reflection: {
         label: "Riflessione",
-        color: "bg-blue-100 text-blue-800 border-blue-300",
+        color: "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-700",
         description: "Email che invita il cliente a riflettere sui progressi e obiettivi"
       },
       action: {
@@ -344,13 +344,13 @@ function EmailJourneyTab() {
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-200 opacity-20 rounded-full -mr-8 -mt-8"></div>
+              <div className="bg-gradient-to-br from-cyan-50 to-teal-100 dark:from-cyan-900/30 dark:to-teal-900/30 border-2 border-cyan-300 dark:border-cyan-700 rounded-lg p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-200 dark:bg-cyan-700 opacity-20 rounded-full -mr-8 -mt-8"></div>
                 <div className="relative">
-                  <div className="text-sm font-medium text-blue-700 mb-2">Metà Mese</div>
-                  <div className="text-3xl font-bold text-blue-900 mb-1">{journeyPhases.mid}</div>
-                  <div className="text-xs text-blue-600">Giorni 11-20</div>
-                  <div className="mt-4 text-xs text-blue-700">
+                  <div className="text-sm font-medium text-cyan-700 dark:text-cyan-300 mb-2">Metà Mese</div>
+                  <div className="text-3xl font-bold text-cyan-900 dark:text-cyan-100 mb-1">{journeyPhases.mid}</div>
+                  <div className="text-xs text-cyan-600 dark:text-cyan-400">Giorni 11-20</div>
+                  <div className="mt-4 text-xs text-cyan-700 dark:text-cyan-300">
                     Email di riflessione e consolidamento
                   </div>
                 </div>
@@ -386,40 +386,40 @@ function EmailJourneyTab() {
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Clienti Totali</CardTitle>
-            <Mail className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-cyan-700 dark:text-cyan-300">Clienti Totali</CardTitle>
+            <Mail className="h-4 w-4 text-cyan-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900">{stats.total}</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100">
+        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-emerald-700">Journey Attivi</CardTitle>
+            <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Journey Attivi</CardTitle>
             <Calendar className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-900">{stats.active}</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.active}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Azioni Completate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-teal-700 dark:text-teal-300">Azioni Completate</CardTitle>
+            <CheckCircle className="h-4 w-4 text-teal-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-900">{stats.allActionsCompleted}</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.allActionsCompleted}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
+        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700">Richiedono Attenzione</CardTitle>
-            <Clock className="h-4 w-4 text-orange-600" />
+            <CardTitle className="text-sm font-medium text-amber-700 dark:text-amber-300">Richiedono Attenzione</CardTitle>
+            <Clock className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-900">{stats.needsAttention}</div>
@@ -686,18 +686,18 @@ function EmailJourneyTab() {
                       <div className="pl-13 space-y-4 pt-4">
                         {nextTemplate && nextDay ? (
                           <>
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg p-4">
                               <div className="flex items-start gap-3">
-                                <Mail className="h-5 w-5 text-blue-600 mt-0.5" />
+                                <Mail className="h-5 w-5 text-cyan-600 mt-0.5" />
                                 <div className="space-y-2 flex-1">
-                                  <div className="font-semibold text-blue-900">
+                                  <div className="font-semibold text-cyan-900 dark:text-cyan-100">
                                     Prossima email prevista per il giorno {nextDay}
                                   </div>
-                                  <div className="text-sm text-blue-800">
+                                  <div className="text-sm text-cyan-800 dark:text-cyan-200">
                                     <span className="font-medium">Template:</span> {nextTemplate.title}
                                   </div>
                                   {nextTemplate.description && (
-                                    <div className="text-sm text-blue-700 mt-2">
+                                    <div className="text-sm text-cyan-700 dark:text-cyan-300 mt-2">
                                       {nextTemplate.description}
                                     </div>
                                   )}
@@ -914,49 +914,49 @@ function EchoTab() {
     <div className="space-y-6">
       {/* Section 1: Echo Statistics */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Email Totali</CardTitle>
-            <Mail className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-cyan-700 dark:text-cyan-300">Email Totali</CardTitle>
+            <Mail className="h-4 w-4 text-cyan-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : echoStats?.totalEmails || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100">
+        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-emerald-700">Task Totali</CardTitle>
+            <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Task Totali</CardTitle>
             <ListTodo className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-900">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : echoStats?.totalTasks || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
+        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700">In Attesa Approvazione</CardTitle>
-            <Clock className="h-4 w-4 text-orange-600" />
+            <CardTitle className="text-sm font-medium text-amber-700 dark:text-amber-300">In Attesa Approvazione</CardTitle>
+            <Clock className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-900">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : echoStats?.pendingApprovals || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Tasso di Successo</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-teal-700 dark:text-teal-300">Tasso di Successo</CardTitle>
+            <TrendingUp className="h-4 w-4 text-teal-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-900">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${echoStats?.successRate || 0}%`}
             </div>
           </CardContent>
@@ -977,7 +977,7 @@ function EchoTab() {
         <CardContent>
           {draftsLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
             </div>
           ) : !draftEmails || draftEmails.length === 0 ? (
             <div className="text-center py-12">
@@ -1007,7 +1007,7 @@ function EchoTab() {
                     </TableCell>
                     <TableCell>
                       {draft.scheduledAt ? (
-                        <Badge variant="outline" className="bg-blue-50">
+                        <Badge variant="outline" className="bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300">
                           {format(new Date(draft.scheduledAt), "dd/MM/yyyy", { locale: it })}
                         </Badge>
                       ) : (
@@ -1052,7 +1052,7 @@ function EchoTab() {
                           size="sm"
                           onClick={() => saveForAiMutation.mutate(draft.id)}
                           disabled={saveForAiMutation.isPending}
-                          className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                          className="border-cyan-300 text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-900/20"
                         >
                           <Save className="h-4 w-4 mr-1" />
                           Solo AI
@@ -1090,7 +1090,7 @@ function EchoTab() {
         <CardContent>
           {pendingLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
             </div>
           ) : !pendingConsultations || pendingConsultations.length === 0 ? (
             <div className="text-center py-12">
@@ -1118,7 +1118,7 @@ function EchoTab() {
                     </TableCell>
                     <TableCell>
                       {consultation.scheduledAt ? (
-                        <Badge variant="outline" className="bg-blue-50">
+                        <Badge variant="outline" className="bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300">
                           {format(new Date(consultation.scheduledAt), "dd/MM/yyyy HH:mm", { locale: it })}
                         </Badge>
                       ) : (
@@ -1147,7 +1147,7 @@ function EchoTab() {
                           generateEmailMutation.mutate(consultation.id);
                         }}
                         disabled={!consultation.transcript || generatingEmailId === consultation.id}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
                       >
                         {generatingEmailId === consultation.id ? (
                           <>
@@ -1252,7 +1252,7 @@ function EchoTab() {
                   variant="outline"
                   onClick={() => saveForAiMutation.mutate(selectedEchoDraft.id)}
                   disabled={saveForAiMutation.isPending}
-                  className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                  className="border-cyan-300 text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-900/20"
                 >
                   {saveForAiMutation.isPending ? (
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -2838,26 +2838,28 @@ Non limitarti a stato attuale/ideale. Attingi da:
             </TabsContent>
 
             <TabsContent value="consultation-summary" className="space-y-6">
-              <Card className="border-0 shadow-lg">
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-6 w-6" />
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg">
+                      <FileText className="h-4 w-4 text-white" />
+                    </div>
                     Bozze Email Riepilogo Consulenza
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
                     Email di riepilogo generate dall'AI dopo le consulenze
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {consultationDraftsLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                      <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                     </div>
                   ) : consultationDrafts.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-lg font-semibold text-muted-foreground">Nessuna bozza di riepilogo consulenza</p>
-                      <p className="text-sm text-muted-foreground mt-2">
+                    <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <Mail className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                      <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessuna bozza di riepilogo consulenza</p>
+                      <p className="text-sm text-slate-500 mt-2">
                         Le email di riepilogo consulenza generate dall'AI appariranno qui
                       </p>
                     </div>
@@ -2880,11 +2882,11 @@ Non limitarti a stato attuale/ideale. Attingi da:
                             <TableCell className="max-w-md truncate">{draft.subject}</TableCell>
                             <TableCell>
                               {draft.metadata?.consultationDate ? (
-                                <Badge variant="outline" className="bg-blue-50">
+                                <Badge variant="outline" className="bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300">
                                   {format(new Date(draft.metadata.consultationDate), "dd/MM/yyyy", { locale: it })}
                                 </Badge>
                               ) : (
-                                <span className="text-xs text-muted-foreground">N/A</span>
+                                <span className="text-xs text-slate-500">N/A</span>
                               )}
                             </TableCell>
                             <TableCell>
@@ -2893,13 +2895,13 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                   href={draft.metadata.fathomShareLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1"
+                                  className="text-cyan-600 hover:text-cyan-700 hover:underline text-sm flex items-center gap-1"
                                 >
                                   <Eye className="h-3 w-3" />
                                   Vedi Registrazione
                                 </a>
                               ) : (
-                                <span className="text-xs text-muted-foreground">Nessun link</span>
+                                <span className="text-xs text-slate-500">Nessun link</span>
                               )}
                             </TableCell>
                             <TableCell>{format(new Date(draft.generatedAt), "dd/MM/yyyy HH:mm", { locale: it })}</TableCell>
@@ -2924,9 +2926,9 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                     saveForAiMutation.mutate(draft.id);
                                   }}
                                   disabled={saveForAiMutation.isPending}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white border-0"
                                 >
-                                  💾 Salva per AI
+                                  Salva per AI
                                 </Button>
                                 <Button
                                   variant="default"
@@ -2941,7 +2943,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                     sendConsultationDraftMutation.mutate(draft.id);
                                   }}
                                   disabled={sendConsultationDraftMutation.isPending}
-                                  className="bg-emerald-600 hover:bg-emerald-700"
+                                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
                                 >
                                   <Send className="h-4 w-4 mr-1" />
                                   Invia
@@ -2967,75 +2969,77 @@ Non limitarti a stato attuale/ideale. Attingi da:
             </TabsContent>
 
             <TabsContent value="statistics" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-blue-700">Email Generate</p>
-                        <p className="text-3xl font-bold text-blue-900">{stats?.totalGenerated || 0}</p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-md shadow-cyan-500/20">
+                        <Mail className="text-white h-5 w-5" />
                       </div>
-                      <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center">
-                        <Mail className="text-white" size={24} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-emerald-700">Success Rate</p>
-                        <p className="text-3xl font-bold text-emerald-900">{stats?.successRate || 0}%</p>
-                      </div>
-                      <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center">
-                        <TrendingUp className="text-white" size={24} />
+                      <div>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Email Generate</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats?.totalGenerated || 0}</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-purple-700">Lunghezza Media</p>
-                        <p className="text-3xl font-bold text-purple-900">{stats?.averageLength || 0}</p>
-                        <p className="text-xs text-purple-600">parole</p>
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl shadow-md shadow-emerald-500/20">
+                        <TrendingUp className="text-white h-5 w-5" />
                       </div>
-                      <div className="w-12 h-12 bg-purple-500 rounded-2xl flex items-center justify-center">
-                        <FileText className="text-white" size={24} />
+                      <div>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Success Rate</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats?.successRate || 0}%</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-orange-700">AI Attivo</p>
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-md shadow-teal-500/20">
+                        <FileText className="text-white h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Lunghezza Media</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats?.averageLength || 0}</p>
+                        <p className="text-xs text-slate-400">parole</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-md shadow-amber-500/20">
+                        <Brain className="text-white h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">AI Attivo</p>
                         <div className="flex items-center gap-2">
-                          <CheckCircle className="text-orange-900" size={24} />
-                          <p className="text-lg font-bold text-orange-900">Online</p>
+                          <CheckCircle className="text-emerald-500 h-5 w-5" />
+                          <p className="text-lg font-bold text-slate-900 dark:text-slate-100">Online</p>
                         </div>
-                      </div>
-                      <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center">
-                        <Brain className="text-white" size={24} />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              <Card className="border-0 shadow-lg">
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-6 w-6" />
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg">
+                      <BarChart3 className="h-4 w-4 text-white" />
+                    </div>
                     Distribuzione Toni Email
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
                     Analisi dei toni utilizzati nelle email generate dall'AI
                   </CardDescription>
                 </CardHeader>
@@ -3045,12 +3049,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       <>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Professionale</span>
-                            <span className="text-sm text-muted-foreground">{stats.toneDistribution?.professionale || 0}</span>
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Professionale</span>
+                            <span className="text-sm text-slate-500">{stats.toneDistribution?.professionale || 0}</span>
                           </div>
-                          <div className="w-full bg-slate-200 rounded-full h-3">
+                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
                             <div 
-                              className="bg-blue-600 h-3 rounded-full transition-all" 
+                              className="bg-gradient-to-r from-cyan-500 to-teal-500 h-3 rounded-full transition-all" 
                               style={{ width: `${stats.totalGenerated > 0 ? ((stats.toneDistribution?.professionale || 0) / stats.totalGenerated) * 100 : 0}%` }}
                             />
                           </div>
@@ -3058,12 +3062,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Amichevole</span>
-                            <span className="text-sm text-muted-foreground">{stats.toneDistribution?.amichevole || 0}</span>
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Amichevole</span>
+                            <span className="text-sm text-slate-500">{stats.toneDistribution?.amichevole || 0}</span>
                           </div>
-                          <div className="w-full bg-slate-200 rounded-full h-3">
+                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
                             <div 
-                              className="bg-emerald-600 h-3 rounded-full transition-all" 
+                              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-3 rounded-full transition-all" 
                               style={{ width: `${stats.totalGenerated > 0 ? ((stats.toneDistribution?.amichevole || 0) / stats.totalGenerated) * 100 : 0}%` }}
                             />
                           </div>
@@ -3071,12 +3075,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Motivazionale</span>
-                            <span className="text-sm text-muted-foreground">{stats.toneDistribution?.motivazionale || 0}</span>
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Motivazionale</span>
+                            <span className="text-sm text-slate-500">{stats.toneDistribution?.motivazionale || 0}</span>
                           </div>
-                          <div className="w-full bg-slate-200 rounded-full h-3">
+                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
                             <div 
-                              className="bg-purple-600 h-3 rounded-full transition-all" 
+                              className="bg-gradient-to-r from-teal-500 to-emerald-500 h-3 rounded-full transition-all" 
                               style={{ width: `${stats.totalGenerated > 0 ? ((stats.toneDistribution?.motivazionale || 0) / stats.totalGenerated) * 100 : 0}%` }}
                             />
                           </div>
@@ -3088,20 +3092,23 @@ Non limitarti a stato attuale/ideale. Attingi da:
               </Card>
 
               {/* Personalizza Journey Email Section */}
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200">
-                <CardHeader className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white rounded-t-lg">
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden">
+                <CardHeader className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white relative">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Sparkles className="h-6 w-6" />
+                      <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                        <Sparkles className="h-5 w-5 text-white" />
+                      </div>
                       <div>
                         <CardTitle className="text-white">Personalizza Journey Email</CardTitle>
-                        <CardDescription className="text-violet-100">
+                        <CardDescription className="text-slate-400">
                           Adatta i template email al tuo business con l'AI
                         </CardDescription>
                       </div>
                     </div>
                     {customJourneyData?.useCustomTemplates && (
-                      <Badge className="bg-white/20 text-white border-white/30">
+                      <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0">
                         Template Personalizzati Attivi
                       </Badge>
                     )}
@@ -3109,7 +3116,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="customBusinessContext" className="text-violet-900 font-medium">
+                    <Label htmlFor="customBusinessContext" className="text-slate-700 dark:text-slate-300 font-medium">
                       Descrivi la tua attività
                     </Label>
                     <Textarea
@@ -3118,9 +3125,9 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       value={customBusinessContext || customJourneyData?.businessContext || ""}
                       onChange={(e) => setCustomBusinessContext(e.target.value)}
                       rows={4}
-                      className="bg-white border-violet-200 focus:border-violet-400"
+                      className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-cyan-400"
                     />
-                    <p className="text-xs text-violet-600">
+                    <p className="text-xs text-slate-500">
                       L'AI userà questa descrizione per personalizzare tutti i 31 template email
                     </p>
                   </div>
@@ -3128,7 +3135,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   <Button
                     onClick={() => generateCustomTemplatesMutation.mutate(customBusinessContext || customJourneyData?.businessContext || "")}
                     disabled={generateCustomTemplatesMutation.isPending || !(customBusinessContext || customJourneyData?.businessContext)?.trim()}
-                    className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                    className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
                   >
                     {generateCustomTemplatesMutation.isPending ? (
                       <>
@@ -3144,8 +3151,8 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </Button>
 
                   {(customGenerationSuccess || customJourneyData?.hasCustomTemplates) && (
-                    <div className="p-3 bg-violet-100 border border-violet-200 rounded-lg">
-                      <div className="flex items-center gap-2 text-violet-800">
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                      <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
                         <CheckCircle className="h-4 w-4" />
                         <span className="text-sm font-medium">
                           {customGenerationSuccess 
@@ -3159,12 +3166,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-violet-200">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                     <div className="space-y-0.5">
-                      <Label htmlFor="useCustomTemplates" className="text-violet-900 font-medium">
+                      <Label htmlFor="useCustomTemplates" className="text-slate-700 dark:text-slate-300 font-medium">
                         Usa Template Personalizzati
                       </Label>
-                      <p className="text-xs text-violet-600">
+                      <p className="text-xs text-slate-500">
                         Attiva per usare i template personalizzati invece dei default
                       </p>
                     </div>
@@ -3173,14 +3180,14 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       checked={customJourneyData?.useCustomTemplates ?? false}
                       onCheckedChange={(checked) => updateCustomSettingsMutation.mutate({ useCustomTemplates: checked })}
                       disabled={updateCustomSettingsMutation.isPending || !customJourneyData?.hasCustomTemplates}
-                      className="data-[state=checked]:bg-violet-600"
+                      className="data-[state=checked]:bg-cyan-500"
                     />
                   </div>
 
                   {customJourneyData?.hasCustomTemplates && !customJourneyData?.hasSmtpSettings && (
-                    <Alert className="bg-amber-50 border-amber-300">
+                    <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700">
                       <AlertCircle className="h-4 w-4 text-amber-600" />
-                      <AlertDescription className="text-amber-800">
+                      <AlertDescription className="text-amber-800 dark:text-amber-200">
                         <strong>Attenzione:</strong> Le impostazioni SMTP non sono configurate. 
                         I template personalizzati sono pronti ma le email non potranno essere inviate 
                         finché non configuri il server SMTP nella sezione "Email Automation".
@@ -3193,7 +3200,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       variant="outline"
                       onClick={() => resetCustomTemplatesMutation.mutate()}
                       disabled={resetCustomTemplatesMutation.isPending}
-                      className="w-full border-violet-300 text-violet-700 hover:bg-violet-100"
+                      className="w-full border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       {resetCustomTemplatesMutation.isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -3206,16 +3213,18 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </CardContent>
               </Card>
 
-              <Card className="border-0 shadow-lg">
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-6 w-6" />
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg">
+                      <Sparkles className="h-4 w-4 text-white" />
+                    </div>
                     Template Journey Email (31 Giorni)
                     {customJourneyData?.isCustom && (
-                      <Badge className="bg-violet-600 text-white ml-2">Personalizzati</Badge>
+                      <Badge className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white ml-2">Personalizzati</Badge>
                     )}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
                     {customJourneyData?.isCustom 
                       ? "Template personalizzati per il tuo business - clicca su ogni giorno per vedere il prompt"
                       : "Prompt AI reali utilizzati per generare le email giorno per giorno nel journey mensile"
@@ -3224,7 +3233,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    // Use custom templates when available and enabled, otherwise default templates
                     const displayTemplates = customJourneyData?.isCustom && customJourneyData.templates?.length > 0 
                       ? customJourneyData.templates 
                       : journeyTemplates;
@@ -3233,17 +3241,17 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     if (isLoading) {
                       return (
                         <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                          <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                         </div>
                       );
                     }
                     
                     if (displayTemplates.length === 0) {
                       return (
-                        <div className="text-center py-12">
-                          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-lg font-semibold text-muted-foreground">Nessun template trovato</p>
-                          <p className="text-sm text-muted-foreground mt-2">
+                        <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                          <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessun template trovato</p>
+                          <p className="text-sm text-slate-500 mt-2">
                             Esegui lo script di seeding per creare i template journey
                           </p>
                         </div>
@@ -3252,10 +3260,10 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     
                     return (
                       <>
-                        <div className={`mb-4 p-4 border rounded-lg ${customJourneyData?.isCustom ? 'bg-gradient-to-r from-violet-50 to-purple-50 border-violet-200' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'}`}>
+                        <div className={`mb-4 p-4 border rounded-lg ${customJourneyData?.isCustom ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800'}`}>
                           <div className="flex items-start gap-3">
-                            <Sparkles className={`h-5 w-5 mt-0.5 ${customJourneyData?.isCustom ? 'text-violet-600' : 'text-blue-600'}`} />
-                            <div className={`text-sm ${customJourneyData?.isCustom ? 'text-violet-800' : 'text-blue-800'}`}>
+                            <Sparkles className={`h-5 w-5 mt-0.5 ${customJourneyData?.isCustom ? 'text-emerald-600' : 'text-cyan-600'}`} />
+                            <div className={`text-sm ${customJourneyData?.isCustom ? 'text-emerald-700 dark:text-emerald-300' : 'text-cyan-700 dark:text-cyan-300'}`}>
                               <p className="font-semibold mb-1">
                                 {customJourneyData?.isCustom ? 'Template Personalizzati Attivi' : 'Sistema Email Journey Attivo'}
                               </p>
@@ -3270,11 +3278,11 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           let badgeClass = '';
 
                           if (template.dayOfMonth === 29) {
-                            badgeClass = 'bg-purple-100 text-purple-800 border-purple-300';
+                            badgeClass = 'bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300 border-teal-300 dark:border-teal-700';
                           } else if (template.dayOfMonth === 30) {
-                            badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-300';
+                            badgeClass = 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-700';
                           } else if (template.dayOfMonth === 31) {
-                            badgeClass = 'bg-pink-100 text-pink-800 border-pink-300';
+                            badgeClass = 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700';
                           }
 
                           return (
@@ -3285,7 +3293,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                     Giorno {template.dayOfMonth}
                                   </Badge>
                                   {isExtraDay && (
-                                    <Badge className="bg-amber-500 text-xs">Extra</Badge>
+                                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs border-0">Extra</Badge>
                                   )}
                                   <span className="font-semibold text-left flex-1">{template.title}</span>
                                   <Badge variant="outline" className="text-xs">
@@ -3312,7 +3320,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
                                   <div>
                                     <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                                      <Sparkles className="h-4 w-4 text-blue-600" />
+                                      <Sparkles className="h-4 w-4 text-cyan-600" />
                                       Prompt AI Completo:
                                     </h4>
                                     <Textarea
@@ -3353,26 +3361,28 @@ Non limitarti a stato attuale/ideale. Attingi da:
             </TabsContent>
 
             <TabsContent value="clients" className="space-y-6">
-              <Card className="border-0 shadow-lg">
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-6 w-6" />
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg">
+                      <Users className="h-4 w-4 text-white" />
+                    </div>
                     Gestione Automation Clienti
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
                     Monitora lo stato delle email automatiche per ogni cliente
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {clientStatusLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                      <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                     </div>
                   ) : !clientAutomationStatus?.clients || clientAutomationStatus.clients.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-lg font-semibold text-muted-foreground">Nessun cliente trovato</p>
-                      <p className="text-sm text-muted-foreground mt-2">
+                    <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                      <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessun cliente trovato</p>
+                      <p className="text-sm text-slate-500 mt-2">
                         Aggiungi clienti per iniziare a usare l'automation
                       </p>
                     </div>
@@ -3412,18 +3422,18 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                   <div className="flex items-center gap-2 text-sm">
-                                    <Mail className="h-4 w-4 text-blue-600" />
+                                    <Mail className="h-4 w-4 text-cyan-600" />
                                     <div>
-                                      <p className="text-muted-foreground">Email inviate</p>
-                                      <p className="font-semibold">{client.emailsSentCount}</p>
+                                      <p className="text-slate-500 dark:text-slate-400">Email inviate</p>
+                                      <p className="font-semibold text-slate-700 dark:text-slate-300">{client.emailsSentCount}</p>
                                     </div>
                                   </div>
 
                                   <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle className="h-4 w-4 text-purple-600" />
+                                    <CheckCircle className="h-4 w-4 text-teal-600" />
                                     <div>
-                                      <p className="text-muted-foreground">Ultima email</p>
-                                      <p className="font-semibold">
+                                      <p className="text-slate-500 dark:text-slate-400">Ultima email</p>
+                                      <p className="font-semibold text-slate-700 dark:text-slate-300">
                                         {client.lastEmailSentAt 
                                           ? format(new Date(client.lastEmailSentAt), "dd/MM/yyyy", { locale: it })
                                           : "Mai"}
@@ -3432,21 +3442,21 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                   </div>
 
                                   <div className="flex items-center gap-2 text-sm">
-                                    <Calendar className="h-4 w-4 text-indigo-600" />
+                                    <Calendar className="h-4 w-4 text-emerald-600" />
                                     <div className="space-y-1">
-                                      <p className="text-muted-foreground">Prossimo invio</p>
+                                      <p className="text-slate-500 dark:text-slate-400">Prossimo invio</p>
                                       {client.nextEmailDate ? (
                                         <>
                                           {client.daysUntilNext !== null && client.daysUntilNext <= 0 ? (
-                                            <Badge className="bg-emerald-600">Pronto per invio</Badge>
+                                            <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0">Pronto per invio</Badge>
                                           ) : client.daysUntilNext !== null && client.daysUntilNext > 0 ? (
-                                            <Badge className="bg-amber-500">
+                                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
                                               Tra {client.daysUntilNext} {client.daysUntilNext === 1 ? 'giorno' : 'giorni'}
                                             </Badge>
                                           ) : (
                                             <Badge variant="secondary">In attesa</Badge>
                                           )}
-                                          <p className="text-xs text-muted-foreground">
+                                          <p className="text-xs text-slate-500">
                                             {format(new Date(client.nextEmailDate), "dd/MM/yyyy", { locale: it })}
                                           </p>
                                         </>
@@ -3458,9 +3468,9 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                 </div>
 
                                 {!automationEnabled && (
-                                  <Alert className="bg-orange-50 border-orange-200">
-                                    <AlertCircle className="h-4 w-4 text-orange-600" />
-                                    <AlertDescription className="text-orange-800">
+                                  <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700">
+                                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                                    <AlertDescription className="text-amber-800 dark:text-amber-200">
                                       Automation generale disattivata - tutte le email vanno in bozza
                                     </AlertDescription>
                                   </Alert>
@@ -3482,13 +3492,15 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
             <TabsContent value="test" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="border-0 shadow-lg">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-6 w-6" />
+                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                      <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg">
+                        <Zap className="h-4 w-4 text-white" />
+                      </div>
                       Test Generazione Email Journey
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-slate-500 dark:text-slate-400">
                       Simula l'invio di email per uno specifico giorno del journey (1-31)
                     </CardDescription>
                   </CardHeader>
@@ -3545,15 +3557,15 @@ Non limitarti a stato attuale/ideale. Attingi da:
                         const template = journeyTemplates.find(t => t.dayOfMonth === selectedTestDay);
                         if (template) {
                           return (
-                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg">
                               <div className="flex items-start gap-2">
-                                <Sparkles className="h-4 w-4 text-blue-600 mt-0.5" />
-                                <div className="text-xs text-blue-800">
+                                <Sparkles className="h-4 w-4 text-cyan-600 mt-0.5" />
+                                <div className="text-xs text-cyan-700 dark:text-cyan-300">
                                   <p className="font-semibold">Template: {template.title}</p>
-                                  <p className="text-muted-foreground">{template.description}</p>
+                                  <p className="text-slate-500">{template.description}</p>
                                   <div className="flex gap-2 mt-1">
-                                    <Badge variant="outline" className="text-xs">{template.emailType}</Badge>
-                                    <Badge variant="outline" className="text-xs">{template.tone}</Badge>
+                                    <Badge variant="outline" className="text-xs border-cyan-300 text-cyan-700">{template.emailType}</Badge>
+                                    <Badge variant="outline" className="text-xs border-teal-300 text-teal-700">{template.tone}</Badge>
                                   </div>
                                 </div>
                               </div>
@@ -3582,7 +3594,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     <Button
                       onClick={handleGenerateTest}
                       disabled={!selectedClient || generateTestEmailMutation.isPending}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
                     >
                       {generateTestEmailMutation.isPending ? (
                         <>
@@ -3600,20 +3612,22 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </Card>
 
                 {selectedClient && (
-                  <Card className="border-0 shadow-lg">
+                  <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Eye className="h-6 w-6" />
+                      <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                        <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg">
+                          <Eye className="h-4 w-4 text-white" />
+                        </div>
                         Preview Contesto AI
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-slate-500 dark:text-slate-400">
                         Dati che verranno utilizzati dall'AI per generare l'email
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       {contextLoading ? (
                         <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                          <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                         </div>
                       ) : contextPreview ? (
                         <div className="space-y-4">
@@ -3647,13 +3661,13 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           </div>
 
                           {contextPreview.recentTasks.length > 0 && (
-                            <div className="p-4 bg-blue-50 rounded-lg">
-                              <h4 className="font-semibold mb-3">Task Recenti</h4>
+                            <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-100 dark:border-cyan-800">
+                              <h4 className="font-semibold mb-3 text-slate-700 dark:text-slate-300">Task Recenti</h4>
                               <div className="space-y-2">
                                 {contextPreview.recentTasks.map((task, idx) => (
                                   <div key={idx} className="flex items-center justify-between text-sm">
-                                    <span>{task.title}</span>
-                                    <Badge variant="outline">{task.status}</Badge>
+                                    <span className="text-slate-700 dark:text-slate-300">{task.title}</span>
+                                    <Badge variant="outline" className="border-cyan-300 text-cyan-700">{task.status}</Badge>
                                   </div>
                                 ))}
                               </div>
@@ -3661,7 +3675,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           )}
 
                           {contextPreview.goals.length > 0 && (
-                            <div className="p-4 bg-emerald-50 rounded-lg">
+                            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800">
                               <h4 className="font-semibold mb-3">Obiettivi</h4>
                               <div className="space-y-3">
                                 {contextPreview.goals.map((goal, idx) => (
@@ -3694,20 +3708,22 @@ Non limitarti a stato attuale/ideale. Attingi da:
             </TabsContent>
 
             <TabsContent value="updates" className="space-y-6">
-              <Card className="border-0 shadow-lg">
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Megaphone className="h-6 w-6" />
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-500 rounded-lg">
+                      <Megaphone className="h-4 w-4 text-white" />
+                    </div>
                     Email Aggiornamenti Sistema
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
                     Invia comunicazioni personalizzate sui nuovi aggiornamenti del sistema a clienti selezionati
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <Alert className="bg-blue-50 border-blue-200">
-                    <Info className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">
+                  <Alert className="bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800">
+                    <Info className="h-4 w-4 text-cyan-600" />
+                    <AlertDescription className="text-cyan-800 dark:text-cyan-200">
                       <strong>Come funziona:</strong> Inserisci il prompt AI e il contenuto degli aggiornamenti. 
                       L'AI genererà email personalizzate per ogni cliente selezionato considerando il loro contesto specifico.
                       Le email andranno nella tab "Bozze" per la tua approvazione prima dell'invio.
@@ -3732,7 +3748,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           }
                         }}
                       >
-                        <SelectTrigger className="w-full bg-gradient-to-r from-violet-50 to-purple-50 border-violet-200">
+                        <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                           <SelectValue placeholder="Scegli un preset o personalizza" />
                         </SelectTrigger>
                         <SelectContent className="max-h-[400px]">
@@ -3792,7 +3808,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       <div className="border rounded-lg p-4 max-h-[400px] overflow-y-auto bg-slate-50">
                         {clientStatusLoading ? (
                           <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                            <Loader2 className="h-6 w-6 animate-spin text-cyan-600" />
                           </div>
                         ) : !clientAutomationStatus?.clients || clientAutomationStatus.clients.length === 0 ? (
                           <p className="text-sm text-muted-foreground text-center py-8">
@@ -3844,7 +3860,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                   type="checkbox"
                                   checked={selectedUpdatesClients.includes(client.id)}
                                   onChange={() => {}}
-                                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                                  className="mt-1 h-4 w-4 rounded border-gray-300 text-cyan-600 cursor-pointer accent-cyan-600"
                                 />
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
@@ -3874,7 +3890,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
                     <Button
                       onClick={handleGenerateSystemUpdates}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
                       size="lg"
                       disabled={!updatesSystemPrompt || !updatesDescription || selectedUpdatesClients.length === 0 || generateSystemUpdatesMutation.isPending}
                     >
@@ -4000,7 +4016,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
               <Button
                 onClick={handleSaveEditDraft}
                 disabled={editDraftMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
               >
                 {editDraftMutation.isPending ? (
                   <>
