@@ -692,8 +692,32 @@ export async function fetchPlaylistVideos(playlistId: string): Promise<PlaylistV
           console.log(`   ✅ yt-dlp completato in ${elapsed}s`);
           console.log(`   📊 Video trovati: ${entries.length}`);
           
-          const playlistVideos: PlaylistVideo[] = entries
-            .filter((entry: any) => entry && entry.id)
+          // Filtra video privati e non disponibili
+          const filteredEntries = entries.filter((entry: any) => {
+            if (!entry || !entry.id) return false;
+            
+            // Escludi video privati (titolo "[Private video]" o "[Deleted video]")
+            const title = entry.title || '';
+            if (title === '[Private video]' || title === '[Deleted video]' || title === 'Private video') {
+              console.log(`   ⏭️ Saltato video privato/eliminato: ${entry.id}`);
+              return false;
+            }
+            
+            // Escludi video non disponibili
+            if (entry.availability && entry.availability !== 'public' && entry.availability !== 'unlisted') {
+              console.log(`   ⏭️ Saltato video non disponibile (${entry.availability}): ${entry.id}`);
+              return false;
+            }
+            
+            return true;
+          });
+          
+          const skippedCount = entries.length - filteredEntries.length;
+          if (skippedCount > 0) {
+            console.log(`   📊 Video saltati (privati/eliminati): ${skippedCount}`);
+          }
+          
+          const playlistVideos: PlaylistVideo[] = filteredEntries
             .map((entry: any, index: number) => ({
               videoId: entry.id,
               videoUrl: `https://www.youtube.com/watch?v=${entry.id}`,
@@ -996,6 +1020,16 @@ export async function saveVideoWithTranscriptStream(
     
     // Fallback: se oEmbed fallisce (video non embeddabile), usa i metadati dalla playlist
     if (!metadata && playlistMetadata?.title) {
+      // Controlla se è un video privato prima di usare i metadati playlist
+      const isPrivateVideo = playlistMetadata.title === '[Private video]' || 
+                             playlistMetadata.title === '[Deleted video]' ||
+                             playlistMetadata.title === 'Private video';
+      
+      if (isPrivateVideo) {
+        console.log(`⏭️ [SAVE-VIDEO-STREAM] Video privato/eliminato saltato: ${videoId}`);
+        return { success: false, error: 'Video privato - saltato', skipped: true };
+      }
+      
       console.log(`⚠️ [SAVE-VIDEO-STREAM] oEmbed fallito, uso metadati playlist per: "${playlistMetadata.title}"`);
       metadata = {
         title: playlistMetadata.title,
@@ -1007,7 +1041,7 @@ export async function saveVideoWithTranscriptStream(
     }
     
     if (!metadata) {
-      return { success: false, error: 'Impossibile ottenere metadati (video privato o con restrizioni)' };
+      return { success: false, error: 'Impossibile ottenere metadati (video privato o con restrizioni)', skipped: true };
     }
     
     const insertResult = await db.insert(youtubeVideos).values({

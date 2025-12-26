@@ -5081,6 +5081,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 jobUpdate.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `✅ Pronto: "${video.title}"`, type: 'success' });
               }
             }
+          } else if ((result as any).skipped) {
+            // Video privato/eliminato - saltato (non contare come errore)
+            const jobUpdate = videoSaveJobs.get(jobId);
+            if (jobUpdate) {
+              jobUpdate.videos.set(video.videoId, { status: 'skipped', title: video.title, message: 'Video privato - saltato' });
+              jobUpdate.logs.push({ time: new Date().toLocaleTimeString('it-IT'), message: `⏭️ Saltato: "${video.title}" (privato/eliminato)`, type: 'warning' });
+            }
           } else {
             errorsList.push({ videoId: video.videoId, error: result.error });
             const jobUpdate = videoSaveJobs.get(jobId);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, ChevronDown, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle, Layers, GripVertical, BookOpen } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Youtube, ListVideo, Settings, Sparkles, Check, Loader2, AlertCircle, Play, Clock, ChevronRight, ChevronDown, Eye, FileText, Bookmark, Trash2, FolderOpen, Save, Edit, Plus, Download, Music, CheckCircle2, RefreshCw, XCircle, Layers, GripVertical, BookOpen, MinusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -487,7 +487,7 @@ export default function ConsultantLibraryAIBuilder() {
   const [isSavingVideos, setIsSavingVideos] = useState(false);
   const [savingVideoProgress, setSavingVideoProgress] = useState(0);
   const [savingVideoStatuses, setSavingVideoStatuses] = useState<Map<string, {
-    status: 'waiting' | 'downloading' | 'transcribing' | 'completed' | 'error' | 'reused';
+    status: 'waiting' | 'downloading' | 'transcribing' | 'completed' | 'error' | 'reused' | 'skipped';
     message?: string;
   }>>(new Map());
   const [savingLogs, setSavingLogs] = useState<{ time: string; message: string; type?: 'info' | 'success' | 'error' | 'warning' }[]>([]);
@@ -789,6 +789,12 @@ export default function ConsultantLibraryAIBuilder() {
               const message = videoStatus.message || '';
               const charMatch = message.match(/^(\d+)\s*caratteri/i);
               const charCount = charMatch ? parseInt(charMatch[1], 10) : -1;
+              
+              // Skip private/deleted videos - non contare come fallimenti
+              const isSkipped = videoStatus.status === 'skipped';
+              if (isSkipped) {
+                return; // Non processare video saltati
+              }
               
               // Check if this is a failure (0 chars or error)
               const isZeroChars = charCount === 0;
@@ -1925,7 +1931,10 @@ export default function ConsultantLibraryAIBuilder() {
                                   {(isSuccess || effectiveStatus?.status === 'reused') && (
                                     <CheckCircle2 className="w-4 h-4 text-green-500" />
                                   )}
-                                  {isError && (
+                                  {effectiveStatus?.status === 'skipped' && (
+                                    <MinusCircle className="w-4 h-4 text-gray-400" />
+                                  )}
+                                  {isError && effectiveStatus?.status !== 'skipped' && (
                                     <XCircle className="w-4 h-4 text-red-500" />
                                   )}
                                 </div>
@@ -1943,6 +1952,11 @@ export default function ConsultantLibraryAIBuilder() {
                                     {effectiveStatus?.status === 'downloading' && (effectiveStatus.message || 'Scaricando...')}
                                     {effectiveStatus?.status === 'transcribing' && (effectiveStatus.message || 'Estraendo trascrizione...')}
                                     {effectiveStatus?.status === 'reused' && '♻️ Trascrizione riutilizzata'}
+                                    {effectiveStatus?.status === 'skipped' && (
+                                      <span className="text-gray-500 dark:text-gray-400">
+                                        ⏭️ Video privato - saltato
+                                      </span>
+                                    )}
                                     {effectiveStatus?.status === 'completed' && (
                                       isError ? (
                                         <span className="text-red-600 dark:text-red-400 font-medium">
