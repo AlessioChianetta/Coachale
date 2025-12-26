@@ -54,6 +54,7 @@ interface Course {
   name: string;
   description: string;
   lessonCount: number;
+  exerciseCount?: number;
 }
 
 interface AIAnalysis {
@@ -475,11 +476,18 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
                             className="mt-1"
                           />
                           <div className="flex-1">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between gap-2">
                               <h4 className="font-semibold">{course.name}</h4>
-                              <Badge variant="secondary">
-                                {course.lessonCount} lezioni
-                              </Badge>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <Badge variant="secondary">
+                                  {course.lessonCount} lezioni
+                                </Badge>
+                                {course.exerciseCount !== undefined && course.exerciseCount > 0 && (
+                                  <Badge variant="outline" className="text-purple-600 border-purple-300 dark:text-purple-400 dark:border-purple-700">
+                                    {course.exerciseCount} esercizi
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                             {course.description && (
                               <p className="text-sm text-muted-foreground mt-1">

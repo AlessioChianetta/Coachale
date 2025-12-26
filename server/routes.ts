@@ -7757,12 +7757,28 @@ Rispondi SOLO con un JSON array, senza altri testi:
             )
             .orderBy(asc(schema.libraryDocuments.sortOrder));
           
+          // Count exercise templates linked to lessons in this course
+          let exerciseCount = 0;
+          if (lessons.length > 0) {
+            const lessonIds = lessons.map(l => l.id);
+            const exerciseTemplatesCount = await db.select({ count: sql<number>`count(*)` })
+              .from(schema.exerciseTemplates)
+              .where(
+                and(
+                  inArray(schema.exerciseTemplates.libraryDocumentId, lessonIds),
+                  eq(schema.exerciseTemplates.createdBy, req.user!.id)
+                )
+              );
+            exerciseCount = Number(exerciseTemplatesCount[0]?.count || 0);
+          }
+          
           return {
             id: cat.id,
             name: cat.name,
             description: cat.description,
             icon: cat.icon,
             lessonCount: lessons.length,
+            exerciseCount: exerciseCount,
             lessons: lessons.map(l => ({
               id: l.id,
               title: l.title,
