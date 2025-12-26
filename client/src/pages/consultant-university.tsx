@@ -2902,6 +2902,19 @@ return (
           </Tabs>
         </div>
       </main>
+      
+      <AIPathwayWizard 
+        open={aiWizardOpen} 
+        onOpenChange={setAiWizardOpen}
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/university"] });
+          toast({
+            title: "Percorso creato con successo!",
+            description: "Il nuovo percorso universitario è stato creato.",
+          });
+        }}
+      />
+      <ConsultantAIAssistant />
     </div>
   </div>
 );
@@ -4247,17 +4260,6 @@ function EditLessonExerciseSelector({
           </p>
         </>
       )}
-      <AIPathwayWizard 
-        open={aiWizardOpen} 
-        onOpenChange={setAiWizardOpen}
-        onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/university"] });
-          toast({
-            title: "Percorso creato con successo!",
-            description: "Il nuovo percorso universitario è stato creato.",
-          });
-        }}
-      />
       <ConsultantAIAssistant />
     </div>
   );
