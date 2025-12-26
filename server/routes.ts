@@ -1335,12 +1335,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Save category and consultant info for renumbering
+      const templateCategory = template.category;
+      const consultantId = req.user!.id;
+
       // Force delete the template since we've handled associated exercises appropriately
       const result = await db.delete(schema.exerciseTemplates)
         .where(eq(schema.exerciseTemplates.id, req.params.id));
 
       if (result.rowCount === 0) {
         return res.status(404).json({ message: "Template not found" });
+      }
+
+      // Renumber remaining templates in the same category
+      const remainingTemplates = await db.select()
+        .from(schema.exerciseTemplates)
+        .where(
+          and(
+            eq(schema.exerciseTemplates.category, templateCategory),
+            eq(schema.exerciseTemplates.createdBy, consultantId)
+          )
+        )
+        .orderBy(schema.exerciseTemplates.sortOrder);
+
+      // Update sortOrder for each template (1, 2, 3...)
+      for (let i = 0; i < remainingTemplates.length; i++) {
+        if (remainingTemplates[i].sortOrder !== i + 1) {
+          await db.update(schema.exerciseTemplates)
+            .set({ sortOrder: i + 1 })
+            .where(eq(schema.exerciseTemplates.id, remainingTemplates[i].id));
+        }
       }
 
       res.json({ 
