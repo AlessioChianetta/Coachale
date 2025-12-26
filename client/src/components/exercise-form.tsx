@@ -751,8 +751,13 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
 
         // Only call the API if there are new clients to add (when using) or any changes (when editing)
         if (clientIdsToSend.length > 0 || isEditingTemplate) {
+          console.log('🔗 Sending template association with custom links:', {
+            clientIds: clientIdsToSend,
+            customPlatformLinks: customPlatformLinks
+          });
           await apiRequest("POST", `/api/templates/${templateIdToUpdate}/associate-clients`, {
             clientIds: clientIdsToSend,
+            customPlatformLinks: customPlatformLinks,
           });
         } else {
           console.log('ℹ️ No new clients to associate, skipping API call');

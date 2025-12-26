@@ -1397,7 +1397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Template-Client Association Routes
   app.post("/api/templates/:id/associate-clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { clientIds } = req.body;
+      const { clientIds, customPlatformLinks } = req.body;
 
       // Verify template ownership
       const template = await storage.getExerciseTemplate(req.params.id);
@@ -1409,7 +1409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      await storage.associateTemplateWithClients(req.params.id, clientIds || [], req.user!.id);
+      await storage.associateTemplateWithClients(req.params.id, clientIds || [], req.user!.id, customPlatformLinks || {});
       res.json({ message: "Template associations updated successfully" });
     } catch (error: any) {
       res.status(400).json({ message: error.message });

@@ -337,7 +337,7 @@ export interface IStorage {
 
   // Template Client Association Operations
   associateTemplateWithClient(templateId: string, clientId: string): Promise<TemplateClientAssociation>;
-  associateTemplateWithClients(templateId: string, clientIds: string[], consultantId: string): Promise<void>;
+  associateTemplateWithClients(templateId: string, clientIds: string[], consultantId: string, customPlatformLinks?: Record<string, string>): Promise<void>;
   getAssociatedClientsForTemplate(templateId: string): Promise<User[]>;
   getTemplateClientAssociations(templateId: string, consultantId: string): Promise<TemplateClientAssociation[]>;
   getAssociatedTemplatesForClient(clientId: string): Promise<ExerciseTemplate[]>;
@@ -2077,7 +2077,7 @@ export class DatabaseStorage implements IStorage {
     return !!association;
   }
 
-  async associateTemplateWithClients(templateId: string, clientIds: string[], consultantId: string): Promise<void> {
+  async associateTemplateWithClients(templateId: string, clientIds: string[], consultantId: string, customPlatformLinks: Record<string, string> = {}): Promise<void> {
     // Get current associations to identify removed and new clients
     const currentAssociations = await db.select()
       .from(schema.templateClientAssociations)
@@ -2162,15 +2162,20 @@ export class DatabaseStorage implements IStorage {
             randomizeQuestions: (template as any).randomizeQuestions || false
           }, consultantId);
           
-          // Create assignment for the new client
+          // Create assignment for the new client with optional custom platform link
+          const customLink = customPlatformLinks[clientId] || null;
           await this.createExerciseAssignment({
             exerciseId: exercise.id,
             clientId: clientId,
             consultantId: consultantId,
             dueDate: null,
             status: "pending",
-            workPlatform: null
+            workPlatform: customLink
           });
+          
+          if (customLink) {
+            console.log(`🔗 Assignment created with custom link for client ${clientId}: ${customLink}`);
+          }
           
           console.log(`✅ Created exercise ${exercise.id} and assignment for client ${clientId}`);
         } catch (error) {
