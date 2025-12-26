@@ -7546,8 +7546,11 @@ Rispondi SOLO con un JSON array, senza altri testi:
         .from(schema.libraryCategories)
         .where(
           and(
-            eq(schema.libraryCategories.createdBy, req.user!.id),
-            eq(schema.libraryCategories.isActive, true)
+            eq(schema.libraryCategories.isActive, true),
+            or(
+              eq(schema.libraryCategories.createdBy, req.user!.id),
+              eq(schema.libraryCategories.isPublic, true)
+            )
           )
         )
         .orderBy(asc(schema.libraryCategories.sortOrder));
@@ -7583,6 +7586,25 @@ Rispondi SOLO con un JSON array, senza altri testi:
       res.json(coursesWithLessons.filter(c => c.lessonCount > 0));
     } catch (error: any) {
       console.error('[AI-UNIVERSITY] Error fetching courses:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Check for duplicate templates with same courses
+  app.post("/api/university/ai/check-duplicates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { courseIds } = req.body;
+      
+      if (!Array.isArray(courseIds) || courseIds.length === 0) {
+        return res.status(400).json({ message: "courseIds deve essere un array non vuoto" });
+      }
+
+      const { checkForDuplicateTemplate } = await import("./services/ai-university-generator");
+      const result = await checkForDuplicateTemplate(req.user!.id, courseIds);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('[AI-UNIVERSITY] Error checking duplicates:', error);
       res.status(500).json({ message: error.message });
     }
   });

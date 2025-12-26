@@ -77,6 +77,13 @@ interface TrimesterAssignment {
   reasoning: string;
 }
 
+interface DuplicateTemplate {
+  templateId: string;
+  templateName: string;
+  matchingCourses: string[];
+  totalCoursesInTemplate: number;
+}
+
 const steps: Step[] = [
   {
     id: "courses",
@@ -116,6 +123,8 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [createdTemplateId, setCreatedTemplateId] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [duplicateTemplates, setDuplicateTemplates] = useState<DuplicateTemplate[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -130,6 +139,8 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       setSelectedClientIds([]);
       setCreatedTemplateId(null);
       setIsComplete(false);
+      setDuplicateTemplates([]);
+      setShowDuplicateWarning(false);
     }
   }, [open]);
 
@@ -278,6 +289,28 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       });
       return;
     }
+    
+    try {
+      const duplicateCheck = await apiRequest("POST", "/api/university/ai/check-duplicates", { 
+        courseIds: selectedCourseIds 
+      }) as { hasDuplicate: boolean; duplicateTemplates: DuplicateTemplate[] };
+      
+      if (duplicateCheck.hasDuplicate && duplicateCheck.duplicateTemplates.length > 0) {
+        setDuplicateTemplates(duplicateCheck.duplicateTemplates);
+        setShowDuplicateWarning(true);
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking duplicates:", error);
+    }
+    
+    await analyzeMutation.mutateAsync(selectedCourseIds);
+    setCurrentStep(1);
+  };
+  
+  const handleContinueAnyway = async () => {
+    setShowDuplicateWarning(false);
+    setDuplicateTemplates([]);
     await analyzeMutation.mutateAsync(selectedCourseIds);
     setCurrentStep(1);
   };
@@ -350,6 +383,57 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
               <BookOpen className="h-5 w-5" />
               <span>Seleziona i corsi da includere nel percorso formativo</span>
             </div>
+
+            {showDuplicateWarning && duplicateTemplates.length > 0 && (
+              <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-400">
+                        Template simili esistenti
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        Esistono già template con corsi simili a quelli selezionati:
+                      </p>
+                      <ul className="text-sm list-disc list-inside text-yellow-700 dark:text-yellow-300">
+                        {duplicateTemplates.map((dt) => (
+                          <li key={dt.templateId}>
+                            <strong>"{dt.templateName}"</strong> ({dt.matchingCourses.length} corsi in comune)
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowDuplicateWarning(false);
+                            setDuplicateTemplates([]);
+                          }}
+                        >
+                          Cambia selezione
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleContinueAnyway}
+                          disabled={analyzeMutation.isPending}
+                        >
+                          {analyzeMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                              Analisi...
+                            </>
+                          ) : (
+                            "Continua comunque"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {coursesLoading ? (
               <div className="flex items-center justify-center py-12">

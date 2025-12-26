@@ -13,7 +13,7 @@ import {
   universityYearClientAssignments,
   exercises,
 } from "../../shared/schema";
-import { eq, and, inArray, asc } from "drizzle-orm";
+import { eq, and, inArray, asc, or } from "drizzle-orm";
 import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL } from "../ai/provider-factory";
 
 interface CourseInfo {
@@ -92,8 +92,11 @@ async function getCoursesForConsultant(consultantId: string, courseIds?: string[
     .from(libraryCategories)
     .where(
       and(
-        eq(libraryCategories.createdBy, consultantId),
-        eq(libraryCategories.isActive, true)
+        eq(libraryCategories.isActive, true),
+        or(
+          eq(libraryCategories.createdBy, consultantId),
+          eq(libraryCategories.isPublic, true)
+        )
       )
     )
     .orderBy(asc(libraryCategories.sortOrder));
@@ -345,6 +348,103 @@ async function findExerciseForLesson(lessonId: string): Promise<string | null> {
     .limit(1);
 
   return exercise?.id || null;
+}
+
+interface DuplicateTemplateInfo {
+  templateId: string;
+  templateName: string;
+  matchingCourses: string[];
+  totalCoursesInTemplate: number;
+}
+
+export async function checkForDuplicateTemplate(
+  consultantId: string,
+  courseIds: string[]
+): Promise<{
+  hasDuplicate: boolean;
+  duplicateTemplates: DuplicateTemplateInfo[];
+}> {
+  try {
+    console.log(`🔍 [AI-UNIVERSITY] Checking for duplicate templates with courses: ${courseIds.join(', ')}`);
+
+    const existingTemplates = await db
+      .select()
+      .from(universityTemplates)
+      .where(
+        and(
+          eq(universityTemplates.createdBy, consultantId),
+          eq(universityTemplates.isActive, true)
+        )
+      );
+
+    if (existingTemplates.length === 0) {
+      return { hasDuplicate: false, duplicateTemplates: [] };
+    }
+
+    const duplicateTemplates: DuplicateTemplateInfo[] = [];
+
+    for (const template of existingTemplates) {
+      const templateTrimestersList = await db
+        .select()
+        .from(templateTrimesters)
+        .where(eq(templateTrimesters.templateId, template.id));
+
+      const templateModulesList = await db
+        .select()
+        .from(templateModules)
+        .where(
+          inArray(
+            templateModules.templateTrimesterId,
+            templateTrimestersList.map(t => t.id)
+          )
+        );
+
+      const templateLessonsList = await db
+        .select()
+        .from(templateLessons)
+        .where(
+          inArray(
+            templateLessons.templateModuleId,
+            templateModulesList.map(m => m.id)
+          )
+        );
+
+      const templateLibraryDocIds = templateLessonsList
+        .map(l => l.libraryDocumentId)
+        .filter((id): id is string => id !== null);
+
+      const lessonCategories = await db
+        .select({ categoryId: libraryDocuments.categoryId })
+        .from(libraryDocuments)
+        .where(inArray(libraryDocuments.id, templateLibraryDocIds));
+
+      const templateCourseIds = [...new Set(
+        lessonCategories
+          .map(l => l.categoryId)
+          .filter((id): id is string => id !== null)
+      )];
+
+      const matchingCourses = courseIds.filter(id => templateCourseIds.includes(id));
+      
+      if (matchingCourses.length > 0 && matchingCourses.length >= courseIds.length * 0.7) {
+        duplicateTemplates.push({
+          templateId: template.id,
+          templateName: template.name,
+          matchingCourses,
+          totalCoursesInTemplate: templateCourseIds.length,
+        });
+        console.log(`⚠️ [AI-UNIVERSITY] Found similar template: "${template.name}" with ${matchingCourses.length}/${courseIds.length} matching courses`);
+      }
+    }
+
+    return {
+      hasDuplicate: duplicateTemplates.length > 0,
+      duplicateTemplates,
+    };
+  } catch (error: any) {
+    console.error(`❌ [AI-UNIVERSITY] Error checking duplicates:`, error.message || error);
+    return { hasDuplicate: false, duplicateTemplates: [] };
+  }
 }
 
 export async function generateUniversityPathway(
