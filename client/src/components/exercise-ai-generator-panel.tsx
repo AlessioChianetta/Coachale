@@ -38,6 +38,7 @@ import {
   Trash2,
   Edit3,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   Loader2,
   CheckCircle2,
@@ -54,6 +55,9 @@ import {
   Clock,
   Zap,
   Search,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -216,6 +220,26 @@ export function ExerciseAIGeneratorPanel({
         ? prev.filter((id) => id !== lessonId)
         : [...prev, lessonId]
     );
+  };
+
+  const handleMoveLessonUp = (lessonId: string) => {
+    setSelectedLessons((prev) => {
+      const index = prev.indexOf(lessonId);
+      if (index <= 0) return prev;
+      const newArr = [...prev];
+      [newArr[index - 1], newArr[index]] = [newArr[index], newArr[index - 1]];
+      return newArr;
+    });
+  };
+
+  const handleMoveLessonDown = (lessonId: string) => {
+    setSelectedLessons((prev) => {
+      const index = prev.indexOf(lessonId);
+      if (index < 0 || index >= prev.length - 1) return prev;
+      const newArr = [...prev];
+      [newArr[index], newArr[index + 1]] = [newArr[index + 1], newArr[index]];
+      return newArr;
+    });
   };
 
   const handleMixChange = (type: keyof typeof questionMix, value: number) => {
@@ -627,6 +651,61 @@ export function ExerciseAIGeneratorPanel({
                     </div>
                   )}
                 </Card>
+
+                {/* Order Section - Ordine di generazione */}
+                {selectedLessons.length >= 2 && (
+                  <Card className="border-0 shadow-sm overflow-hidden">
+                    <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border-b">
+                      <div className="flex items-center gap-2">
+                        <GripVertical size={18} className="text-indigo-600" />
+                        <Label className="text-base font-semibold">Ordine di Generazione</Label>
+                        <Badge variant="secondary" className="text-[10px] ml-auto">
+                          {selectedLessons.length} lezioni
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Usa le frecce per definire l'ordine degli esercizi
+                      </p>
+                    </div>
+                    <div className="p-3 space-y-2 max-h-40 overflow-y-auto">
+                      {selectedLessons.map((lessonId, index) => {
+                        const lesson = lessons.find((l: Lesson) => l.id === lessonId);
+                        if (!lesson) return null;
+                        return (
+                          <div
+                            key={lessonId}
+                            className="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/10 dark:to-purple-900/10 border border-indigo-200/50 dark:border-indigo-800/50"
+                          >
+                            <div className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              {index + 1}
+                            </div>
+                            <span className="flex-1 text-sm font-medium truncate">{lesson.title}</span>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMoveLessonUp(lessonId)}
+                                disabled={index === 0}
+                                className="h-7 w-7 p-0 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
+                              >
+                                <ArrowUp size={14} className={index === 0 ? "text-muted-foreground/30" : "text-indigo-600"} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMoveLessonDown(lessonId)}
+                                disabled={index === selectedLessons.length - 1}
+                                className="h-7 w-7 p-0 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
+                              >
+                                <ArrowDown size={14} className={index === selectedLessons.length - 1 ? "text-muted-foreground/30" : "text-indigo-600"} />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                )}
 
                 {/* Configuration Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
