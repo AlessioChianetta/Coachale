@@ -582,43 +582,187 @@ export default function ConsultantTemplates() {
                 </CardContent>
               </Card>
             ) : activeTab === null ? (
-              /* Category Grid View */
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categories.map((category) => {
-                  const count = templates.filter((t: ExerciseTemplate) => t.category === category).length;
-                  const categoryEmoji = category === 'Metodo Orbitale - Finanza' ? '📧' :
-                    category === 'Risparmio e Investimenti' ? '📊' :
-                      category === 'Imprenditoria' ? '🚀' : '📝';
-                  const displayName = categoryDisplayNames[category] || category;
-
-                  return (
-                    <Card
-                      key={category}
-                      className="group cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200 border overflow-hidden"
-                      onClick={() => {
-                        setActiveTab(category);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex items-start gap-4">
-                          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl flex-shrink-0">
-                            {categoryEmoji}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-bold text-foreground mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                              {displayName}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {count} esercizi{count !== 1 ? '' : 'o'} modello
-                            </p>
-                          </div>
-                          <FolderOpen size={20} className="text-muted-foreground group-hover:text-purple-500 transition-colors" />
+              /* Category Grid View - Adaptive based on number of categories */
+              <div className="space-y-6">
+                {categories.length === 1 ? (
+                  /* Single Category - Hero Card Layout */
+                  <Card
+                    className="group cursor-pointer overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-700"
+                    onClick={() => {
+                      setActiveTab(categories[0]);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <CardContent className="p-0">
+                      <div className="relative p-8 md:p-12">
+                        {/* Background Pattern */}
+                        <div className="absolute inset-0 opacity-10">
+                          <div className="absolute top-4 right-4 w-32 h-32 rounded-full bg-white/20 blur-2xl" />
+                          <div className="absolute bottom-4 left-4 w-24 h-24 rounded-full bg-white/10 blur-xl" />
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-white/5 blur-3xl" />
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                        
+                        <div className="relative flex flex-col md:flex-row md:items-center gap-6 md:gap-10">
+                          {/* Icon */}
+                          <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl md:text-5xl shadow-lg border border-white/20 flex-shrink-0">
+                            {categories[0] === 'Metodo Orbitale - Finanza' ? '📧' :
+                              categories[0] === 'Risparmio e Investimenti' ? '📊' :
+                                categories[0] === 'Imprenditoria' ? '🚀' : '📝'}
+                          </div>
+                          
+                          {/* Content */}
+                          <div className="flex-1 text-white">
+                            <h2 className="text-2xl md:text-3xl font-bold mb-2 group-hover:translate-x-1 transition-transform">
+                              {categoryDisplayNames[categories[0]] || categories[0]}
+                            </h2>
+                            <p className="text-white/80 text-lg mb-6">
+                              Esplora tutti gli esercizi modello di questa categoria
+                            </p>
+                            
+                            {/* Stats Row */}
+                            <div className="flex flex-wrap gap-3">
+                              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm">
+                                <BookOpen size={18} className="text-white/90" />
+                                <span className="font-semibold">{templates.filter((t: ExerciseTemplate) => t.category === categories[0]).length}</span>
+                                <span className="text-white/80">esercizi</span>
+                              </div>
+                              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm">
+                                <TrendingUp size={18} className="text-white/90" />
+                                <span className="font-semibold">
+                                  {templates.filter((t: ExerciseTemplate) => t.category === categories[0]).reduce((sum: number, t: ExerciseTemplate) => sum + (t.usageCount || 0), 0)}
+                                </span>
+                                <span className="text-white/80">assegnazioni</span>
+                              </div>
+                              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm">
+                                <Clock size={18} className="text-white/90" />
+                                <span className="text-white/80">~{Math.round(templates.filter((t: ExerciseTemplate) => t.category === categories[0]).reduce((sum: number, t: ExerciseTemplate) => sum + (t.timeLimit || 0), 0) / Math.max(1, templates.filter((t: ExerciseTemplate) => t.category === categories[0]).length))} min</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Arrow */}
+                          <div className="hidden md:flex items-center justify-center w-14 h-14 rounded-full bg-white/20 group-hover:bg-white/30 transition-colors">
+                            <FolderOpen size={24} className="text-white group-hover:scale-110 transition-transform" />
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : categories.length <= 3 ? (
+                  /* Few Categories - Large Cards */
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {categories.map((category, index) => {
+                      const categoryTemplates = templates.filter((t: ExerciseTemplate) => t.category === category);
+                      const count = categoryTemplates.length;
+                      const totalUsage = categoryTemplates.reduce((sum: number, t: ExerciseTemplate) => sum + (t.usageCount || 0), 0);
+                      const avgTime = Math.round(categoryTemplates.reduce((sum: number, t: ExerciseTemplate) => sum + (t.timeLimit || 0), 0) / Math.max(1, count));
+                      const categoryEmoji = category === 'Metodo Orbitale - Finanza' ? '📧' :
+                        category === 'Risparmio e Investimenti' ? '📊' :
+                          category === 'Imprenditoria' ? '🚀' : '📝';
+                      const displayName = categoryDisplayNames[category] || category;
+                      const gradients = [
+                        'from-purple-500 via-indigo-500 to-blue-500',
+                        'from-emerald-500 via-teal-500 to-cyan-500',
+                        'from-orange-500 via-rose-500 to-pink-500',
+                      ];
+
+                      return (
+                        <Card
+                          key={category}
+                          className="group cursor-pointer overflow-hidden border-0 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+                          onClick={() => {
+                            setActiveTab(category);
+                            setCurrentPage(1);
+                          }}
+                        >
+                          <div className={`h-2 bg-gradient-to-r ${gradients[index % gradients.length]}`} />
+                          <CardContent className="p-6">
+                            <div className="flex items-start gap-4 mb-4">
+                              <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${gradients[index % gradients.length]} flex items-center justify-center text-3xl shadow-md`}>
+                                {categoryEmoji}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-xl font-bold text-foreground mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                  {displayName}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  Clicca per esplorare
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-3 gap-3 mb-4">
+                              <div className="text-center p-3 rounded-lg bg-muted/50">
+                                <p className="text-2xl font-bold text-foreground">{count}</p>
+                                <p className="text-xs text-muted-foreground">Esercizi</p>
+                              </div>
+                              <div className="text-center p-3 rounded-lg bg-muted/50">
+                                <p className="text-2xl font-bold text-foreground">{totalUsage}</p>
+                                <p className="text-xs text-muted-foreground">Assegnati</p>
+                              </div>
+                              <div className="text-center p-3 rounded-lg bg-muted/50">
+                                <p className="text-2xl font-bold text-foreground">{avgTime}</p>
+                                <p className="text-xs text-muted-foreground">Min. medi</p>
+                              </div>
+                            </div>
+                            
+                            <Button className={`w-full bg-gradient-to-r ${gradients[index % gradients.length]} hover:opacity-90 text-white`}>
+                              <FolderOpen size={16} className="mr-2" />
+                              Apri Categoria
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Many Categories - Compact Grid */
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {categories.map((category, index) => {
+                      const count = templates.filter((t: ExerciseTemplate) => t.category === category).length;
+                      const categoryEmoji = category === 'Metodo Orbitale - Finanza' ? '📧' :
+                        category === 'Risparmio e Investimenti' ? '📊' :
+                          category === 'Imprenditoria' ? '🚀' : '📝';
+                      const displayName = categoryDisplayNames[category] || category;
+                      const colors = [
+                        'from-purple-500 to-indigo-600',
+                        'from-emerald-500 to-teal-600',
+                        'from-orange-500 to-rose-600',
+                        'from-blue-500 to-cyan-600',
+                        'from-pink-500 to-purple-600',
+                      ];
+
+                      return (
+                        <Card
+                          key={category}
+                          className="group cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border overflow-hidden"
+                          onClick={() => {
+                            setActiveTab(category);
+                            setCurrentPage(1);
+                          }}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${colors[index % colors.length]} flex items-center justify-center text-xl flex-shrink-0`}>
+                                {categoryEmoji}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-foreground truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                  {displayName}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {count} esercizi
+                                </p>
+                              </div>
+                              <FolderOpen size={18} className="text-muted-foreground group-hover:text-purple-500 transition-colors flex-shrink-0" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : (
               /* Template List View for Selected Category */
