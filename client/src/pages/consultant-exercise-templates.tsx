@@ -400,7 +400,7 @@ export default function ConsultantTemplates() {
   }, [searchTerm, categoryFilter, typeFilter, filterMode]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
 
       <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
@@ -408,26 +408,30 @@ export default function ConsultantTemplates() {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
-            {/* Header */}
-            <div className="relative">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                      <BookOpen size={18} className="text-white" />
-                    </div>
-                    <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-                      Esercizi da Assegnare
-                    </h1>
+            {/* Header Moderno */}
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 lg:p-8 text-white shadow-xl relative overflow-hidden border border-slate-700/50">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl"></div>
+
+              <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-lg shadow-cyan-500/25">
+                    <BookOpen className="h-8 w-8 text-white" />
                   </div>
-                  <p className="text-muted-foreground md:text-lg">
-                    Gestisci i tuoi esercizi modello per assegnarli rapidamente ai clienti
-                  </p>
+                  <div>
+                    <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Esercizi da Assegnare</h1>
+                    <p className="text-slate-400 text-sm lg:text-base mt-0.5">
+                      Gestisci i tuoi esercizi modello per assegnarli ai clienti
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-3">
+
+                <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={() => setShowExerciseForm(true)}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-cyan-500/25 transition-all hover:shadow-xl"
+                    size="default"
                   >
                     <Sparkles size={16} className="mr-2" />
                     Nuovo Esercizio Modello
@@ -437,68 +441,52 @@ export default function ConsultantTemplates() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Esercizi Modello</p>
-                      <p className="text-2xl md:text-3xl font-bold text-purple-900 dark:text-purple-100">{templates.length}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
-                      <BookOpen className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-xl flex items-center justify-center">
+                  <BookOpen className="text-slate-600 dark:text-slate-300" size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Totali</p>
+                  <p className="text-2xl font-bold">{templates.length}</p>
+                </div>
+              </div>
 
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-green-700 dark:text-green-300">Miei Esercizi Modello</p>
-                      <p className="text-2xl md:text-3xl font-bold text-green-900 dark:text-green-100">
-                        {currentUser ? templates.filter((t: ExerciseTemplate) => t.createdBy === currentUser.id).length : 0}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                      <Lock className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900/50 dark:to-emerald-800/50 rounded-xl flex items-center justify-center">
+                  <Lock className="text-emerald-600 dark:text-emerald-400" size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Miei</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {currentUser ? templates.filter((t: ExerciseTemplate) => t.createdBy === currentUser.id).length : 0}
+                  </p>
+                </div>
+              </div>
 
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Esercizi Modello Pubblici</p>
-                      <p className="text-2xl md:text-3xl font-bold text-blue-900 dark:text-blue-100">
-                        {templates.filter((t: ExerciseTemplate) => t.isPublic).length}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                      <Globe className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50 rounded-xl flex items-center justify-center">
+                  <Globe className="text-blue-600 dark:text-blue-400" size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Pubblici</p>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {templates.filter((t: ExerciseTemplate) => t.isPublic).length}
+                  </p>
+                </div>
+              </div>
 
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/50 dark:to-orange-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-orange-700 dark:text-orange-300">Assegnazioni Totali</p>
-                      <p className="text-2xl md:text-3xl font-bold text-orange-900 dark:text-orange-100">
-                        {templates.reduce((sum: number, t: ExerciseTemplate) => sum + (t.usageCount || 0), 0)}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
-                      <TrendingUp className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/50 dark:to-amber-800/50 rounded-xl flex items-center justify-center">
+                  <TrendingUp className="text-amber-600 dark:text-amber-400" size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Assegnazioni</p>
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                    {templates.reduce((sum: number, t: ExerciseTemplate) => sum + (t.usageCount || 0), 0)}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Filters */}
@@ -512,7 +500,7 @@ export default function ConsultantTemplates() {
                         placeholder="Cerca esercizi modello..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 h-11 border-muted/60 focus:border-purple-500 transition-colors"
+                        className="pl-10 h-11 border-muted/60 focus:border-cyan-500 transition-colors"
                         data-testid="input-search-templates"
                       />
                     </div>
@@ -568,7 +556,7 @@ export default function ConsultantTemplates() {
             ) : categories.length === 0 ? (
               <Card className="border-0 shadow-lg">
                 <CardContent className="p-12 text-center">
-                  <div className="w-20 h-20 bg-gradient-to-r from-purple-500/10 to-indigo-600/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                     <BookOpen size={40} className="text-muted-foreground" />
                   </div>
                   <h3 className="text-xl font-semibold mb-3">Nessun esercizio modello trovato</h3>
@@ -587,7 +575,7 @@ export default function ConsultantTemplates() {
                 {categories.length === 1 ? (
                   /* Single Category - Hero Card Layout */
                   <Card
-                    className="group cursor-pointer overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-700"
+                    className="group cursor-pointer overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-cyan-600 via-teal-600 to-emerald-700"
                     onClick={() => {
                       setActiveTab(categories[0]);
                       setCurrentPage(1);
@@ -661,7 +649,7 @@ export default function ConsultantTemplates() {
                           category === 'Imprenditoria' ? '🚀' : '📝';
                       const displayName = categoryDisplayNames[category] || category;
                       const gradients = [
-                        'from-purple-500 via-indigo-500 to-blue-500',
+                        'from-cyan-500 via-teal-500 to-emerald-500',
                         'from-emerald-500 via-teal-500 to-cyan-500',
                         'from-orange-500 via-rose-500 to-pink-500',
                       ];
@@ -682,7 +670,7 @@ export default function ConsultantTemplates() {
                                 {categoryEmoji}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="text-xl font-bold text-foreground mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                <h3 className="text-xl font-bold text-foreground mb-1 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
                                   {displayName}
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
@@ -726,7 +714,7 @@ export default function ConsultantTemplates() {
                           category === 'Imprenditoria' ? '🚀' : '📝';
                       const displayName = categoryDisplayNames[category] || category;
                       const colors = [
-                        'from-purple-500 to-indigo-600',
+                        'from-cyan-500 to-teal-500',
                         'from-emerald-500 to-teal-600',
                         'from-orange-500 to-rose-600',
                         'from-blue-500 to-cyan-600',
@@ -748,14 +736,14 @@ export default function ConsultantTemplates() {
                                 {categoryEmoji}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-foreground truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                <h3 className="font-semibold text-foreground truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
                                   {displayName}
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
                                   {count} esercizi
                                 </p>
                               </div>
-                              <FolderOpen size={18} className="text-muted-foreground group-hover:text-purple-500 transition-colors flex-shrink-0" />
+                              <FolderOpen size={18} className="text-muted-foreground group-hover:text-cyan-500 transition-colors flex-shrink-0" />
                             </div>
                           </CardContent>
                         </Card>
@@ -779,7 +767,7 @@ export default function ConsultantTemplates() {
                     Torna alle categorie
                   </Button>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-lg">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-lg">
                       {activeTab === 'Metodo Orbitale - Finanza' ? '📧' :
                         activeTab === 'Risparmio e Investimenti' ? '📊' :
                           activeTab === 'Imprenditoria' ? '🚀' : '📝'}
@@ -815,11 +803,11 @@ export default function ConsultantTemplates() {
                               {/* Order Number + Icon */}
                               <div className="flex flex-col items-center gap-1 flex-shrink-0">
                                 {template.sortOrder ? (
-                                  <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                                  <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
                                     {template.sortOrder}
                                   </div>
                                 ) : null}
-                                <div className={`${template.sortOrder ? 'w-10 h-10 text-lg' : 'w-14 h-14 text-2xl'} rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center`}>
+                                <div className={`${template.sortOrder ? 'w-10 h-10 text-lg' : 'w-14 h-14 text-2xl'} rounded-xl bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center`}>
                                   {categoryEmoji}
                                 </div>
                               </div>
@@ -868,7 +856,7 @@ export default function ConsultantTemplates() {
                                 <div className="flex gap-2">
                                   <Button
                                     onClick={() => handleUseTemplate(template.id)}
-                                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                                    className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
                                     size="sm"
                                   >
                                     <Plus size={16} className="mr-2" />

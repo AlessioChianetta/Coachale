@@ -526,7 +526,7 @@ export default function ConsultantTemplates() {
 
   if (viewMode === "builder" && selectedTemplateId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
         {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
 
         <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
@@ -599,7 +599,7 @@ export default function ConsultantTemplates() {
                         <div className="flex gap-3 pt-4">
                           <Button
                             onClick={() => updateTemplateMutation.mutate({ id: selectedTemplate.id, ...templateFormData })}
-                            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                            className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
                           >
                             <Save className="mr-2 h-4 w-4" />
                             Salva Modifiche
@@ -616,21 +616,21 @@ export default function ConsultantTemplates() {
                   <TabsContent value="structure" className="space-y-4">
                     <div className="flex justify-between items-center">
                       <h3 className="text-lg font-semibold">Struttura Template</h3>
-                      <Button onClick={() => handleOpenTrimesterDialog()} className="bg-gradient-to-r from-purple-600 to-indigo-600">
+                      <Button onClick={() => handleOpenTrimesterDialog()} className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600">
                         <Plus className="mr-2 h-4 w-4" />
                         Aggiungi Trimestre
                       </Button>
                     </div>
 
                     {!selectedTemplate.trimesters || selectedTemplate.trimesters.length === 0 ? (
-                      <Card>
-                        <CardContent className="p-12 text-center">
-                          <div className="w-20 h-20 bg-gradient-to-r from-purple-500/10 to-indigo-600/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Calendar size={40} className="text-muted-foreground" />
+                      <Card className="border border-dashed">
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                            <Calendar size={32} className="text-muted-foreground" />
                           </div>
-                          <h3 className="text-xl font-semibold mb-3">Nessun trimestre ancora</h3>
+                          <h3 className="text-lg font-semibold mb-2">Nessun trimestre ancora</h3>
                           <p className="text-muted-foreground mb-4">Inizia creando il primo trimestre del template</p>
-                          <Button onClick={() => handleOpenTrimesterDialog()}>
+                          <Button onClick={() => handleOpenTrimesterDialog()} variant="outline">
                             <Plus className="mr-2 h-4 w-4" />
                             Aggiungi Primo Trimestre
                           </Button>
@@ -639,11 +639,11 @@ export default function ConsultantTemplates() {
                     ) : (
                       <Accordion type="multiple" className="space-y-2">
                         {selectedTemplate.trimesters.sort((a, b) => a.sortOrder - b.sortOrder).map((trimester) => (
-                          <AccordionItem key={trimester.id} value={trimester.id} className="border rounded-lg px-4">
+                          <AccordionItem key={trimester.id} value={trimester.id} className="border rounded-lg px-4 bg-card">
                             <AccordionTrigger className="hover:no-underline">
                               <div className="flex items-center justify-between w-full pr-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg flex items-center justify-center">
                                     <Calendar className="text-white" size={20} />
                                   </div>
                                   <div className="text-left">
@@ -693,12 +693,12 @@ export default function ConsultantTemplates() {
                               ) : (
                                 <div className="space-y-2 ml-6">
                                   {trimester.modules.sort((a, b) => a.sortOrder - b.sortOrder).map((module) => (
-                                    <Card key={module.id} className="border-l-4 border-l-indigo-500">
+                                    <Card key={module.id} className="border-l-4 border-l-teal-500">
                                       <CardHeader className="pb-3">
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center">
-                                              <Layers className="text-indigo-600 dark:text-indigo-400" size={16} />
+                                            <div className="w-8 h-8 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center">
+                                              <Layers className="text-teal-600 dark:text-teal-400" size={16} />
                                             </div>
                                             <div>
                                               <CardTitle className="text-base">{module.title}</CardTitle>
@@ -743,7 +743,7 @@ export default function ConsultantTemplates() {
                                             {module.lessons.sort((a, b) => a.sortOrder - b.sortOrder).map((lesson) => (
                                               <div key={lesson.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                                                 <div className="flex items-center gap-3 flex-1">
-                                                  <BookOpen className="text-purple-600 dark:text-purple-400" size={16} />
+                                                  <BookOpen className="text-slate-600 dark:text-slate-400" size={16} />
                                                   <div className="flex-1">
                                                     <p className="text-sm font-medium">{lesson.title}</p>
                                                     {lesson.description && (
@@ -986,7 +986,7 @@ export default function ConsultantTemplates() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
 
       <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
@@ -994,32 +994,38 @@ export default function ConsultantTemplates() {
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
-            <div className="relative">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                      <GraduationCap size={18} className="text-white" />
-                    </div>
-                    <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-                      Gestione Template Universitari
-                    </h1>
+            {/* Header Moderno */}
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 lg:p-8 text-white shadow-xl relative overflow-hidden border border-slate-700/50">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl"></div>
+
+              <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-lg shadow-cyan-500/25">
+                    <GraduationCap className="h-8 w-8 text-white" />
                   </div>
-                  <p className="text-muted-foreground md:text-lg">
-                    Crea e gestisci i template per i percorsi universitari dei clienti
-                  </p>
+                  <div>
+                    <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Template Universitari</h1>
+                    <p className="text-slate-400 text-sm lg:text-base mt-0.5">
+                      Crea e gestisci i template per i percorsi formativi
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-3">
+
+                <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={() => setAiWizardOpen(true)}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-cyan-500/25 transition-all hover:shadow-xl"
+                    size="default"
                   >
                     <Sparkles size={16} className="mr-2" />
                     Crea con AI
                   </Button>
                   <Button
                     onClick={() => handleOpenTemplateDialog()}
-                    variant="outline"
+                    className="bg-white text-slate-900 hover:bg-slate-100 border-0 font-semibold"
+                    size="default"
                   >
                     <Plus size={16} className="mr-2" />
                     Nuovo Template
@@ -1028,52 +1034,41 @@ export default function ConsultantTemplates() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Template Totali</p>
-                      <p className="text-2xl md:text-3xl font-bold text-purple-900 dark:text-purple-100">{templates.length}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
-                      <GraduationCap className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-xl flex items-center justify-center">
+                  <GraduationCap className="text-slate-600 dark:text-slate-300" size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Template Totali</p>
+                  <p className="text-2xl font-bold">{templates.length}</p>
+                </div>
+              </div>
 
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-green-700 dark:text-green-300">Template Attivi</p>
-                      <p className="text-2xl md:text-3xl font-bold text-green-900 dark:text-green-100">
-                        {templates.filter(t => t.isActive).length}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                      <CheckCircle2 className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900/50 dark:to-emerald-800/50 rounded-xl flex items-center justify-center">
+                  <CheckCircle2 className="text-emerald-600 dark:text-emerald-400" size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Template Attivi</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {templates.filter(t => t.isActive).length}
+                  </p>
+                </div>
+              </div>
 
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/50 hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Template Inattivi</p>
-                      <p className="text-2xl md:text-3xl font-bold text-blue-900 dark:text-blue-100">
-                        {templates.filter(t => !t.isActive).length}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                      <FileText className="text-white" size={24} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-xl flex items-center justify-center">
+                  <FileText className="text-slate-500 dark:text-slate-400" size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Template Inattivi</p>
+                  <p className="text-2xl font-bold text-slate-500">
+                    {templates.filter(t => !t.isActive).length}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {isLoading ? (
@@ -1087,122 +1082,119 @@ export default function ConsultantTemplates() {
                 ))}
               </div>
             ) : templates.length === 0 ? (
-              <Card className="border-0 shadow-lg">
-                <CardContent className="p-12 text-center">
-                  <div className="w-20 h-20 bg-gradient-to-r from-purple-500/10 to-indigo-600/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <GraduationCap size={40} className="text-muted-foreground" />
+              <Card className="border border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                    <GraduationCap size={32} className="text-muted-foreground" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-3">Nessun template ancora</h3>
-                  <p className="text-muted-foreground text-lg mb-4">
+                  <h3 className="text-lg font-semibold mb-2">Nessun template ancora</h3>
+                  <p className="text-muted-foreground text-center mb-4">
                     Inizia creando il tuo primo template universitario
                   </p>
-                  <Button onClick={() => handleOpenTemplateDialog()}>
+                  <Button onClick={() => handleOpenTemplateDialog()} variant="outline">
                     <Plus size={16} className="mr-2" />
                     Crea Primo Template
                   </Button>
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {templates.map((template) => {
                   const counts = calculateTemplateCounts(template);
                   return (
-                    <Card
+                    <div
                       key={template.id}
-                      className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden cursor-pointer"
+                      className="group bg-card border rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-cyan-500/50"
                       onClick={() => handleSelectTemplate(template.id)}
                     >
-                      <CardContent className="p-0 h-full flex flex-col">
-                        <div className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 dark:from-purple-500/20 dark:to-indigo-500/20 p-4 border-b border-purple-100 dark:border-purple-800">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-start space-x-3 flex-1 min-w-0">
-                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-xl flex-shrink-0 shadow-lg">
-                                <GraduationCap className="text-white" size={24} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-base font-bold text-foreground mb-1 line-clamp-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                                  {template.name}
-                                </h4>
-                                <Badge variant={template.isActive ? "default" : "outline"} className="text-xs">
-                                  {template.isActive ? 'Attivo' : 'Inattivo'}
-                                </Badge>
-                              </div>
-                            </div>
+                      <div className="h-1 bg-gradient-to-r from-cyan-500 to-teal-500"></div>
+                      <div className="p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center flex-shrink-0">
+                            <GraduationCap className="text-white" size={20} />
                           </div>
-                        </div>
-
-                        <div className="p-4 flex-1">
-                          {template.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{template.description}</p>
-                          )}
-                          <div className="flex gap-2 mb-4">
-                            <Badge variant="secondary" className="text-xs">
-                              <Calendar className="mr-1 h-3 w-3" />
-                              {counts.trimesterCount} trimestri
-                            </Badge>
-                            <Badge variant="secondary" className="text-xs">
-                              <Layers className="mr-1 h-3 w-3" />
-                              {counts.moduleCount} moduli
-                            </Badge>
-                            <Badge variant="secondary" className="text-xs">
-                              <BookOpen className="mr-1 h-3 w-3" />
-                              {counts.lessonCount} lezioni
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-foreground line-clamp-1 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                              {template.name}
+                            </h4>
+                            <Badge 
+                              variant={template.isActive ? "default" : "outline"} 
+                              className={`text-xs mt-1 ${template.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : ''}`}
+                            >
+                              {template.isActive ? 'Attivo' : 'Inattivo'}
                             </Badge>
                           </div>
                         </div>
 
-                        <div className="p-4 pt-0 flex flex-col gap-2">
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenTemplateDialog(template);
-                              }}
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Modifica
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPreviewTemplateId(template.id);
-                                setPreviewDialogOpen(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteTarget({ type: "template", id: template.id });
-                                setDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                        {template.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{template.description}</p>
+                        )}
+
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          <span className="inline-flex items-center text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                            <Calendar className="mr-1 h-3 w-3" />
+                            {counts.trimesterCount} trim.
+                          </span>
+                          <span className="inline-flex items-center text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                            <Layers className="mr-1 h-3 w-3" />
+                            {counts.moduleCount} mod.
+                          </span>
+                          <span className="inline-flex items-center text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                            <BookOpen className="mr-1 h-3 w-3" />
+                            {counts.lessonCount} lez.
+                          </span>
+                        </div>
+
+                        <div className="flex gap-2 pt-3 border-t">
                           <Button
                             size="sm"
-                            variant="secondary"
-                            className="w-full"
+                            variant="ghost"
+                            className="flex-1 h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenTemplateDialog(template);
+                            }}
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="flex-1 h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewTemplateId(template.id);
+                              setPreviewDialogOpen(true);
+                            }}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="flex-1 h-8"
                             onClick={(e) => {
                               e.stopPropagation();
                               duplicateTemplateMutation.mutate(template.id);
                             }}
                           >
-                            <Copy className="mr-2 h-4 w-4" />
-                            Duplica Template
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="flex-1 h-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget({ type: "template", id: template.id });
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -1293,7 +1285,7 @@ export default function ConsultantTemplates() {
                   {previewTemplate.trimesters.map((trimester, tIndex) => (
                     <div key={trimester.id} className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-purple-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                        <div className="w-8 h-8 bg-cyan-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
                           {tIndex + 1}
                         </div>
                         <div className="flex-1">
@@ -1310,9 +1302,9 @@ export default function ConsultantTemplates() {
                       {trimester.modules && trimester.modules.length > 0 && (
                         <div className="ml-11 space-y-2">
                           {trimester.modules.map((module, mIndex) => (
-                            <div key={module.id} className="border-l-2 border-indigo-200 pl-4 py-2 space-y-2">
+                            <div key={module.id} className="border-l-2 border-teal-200 pl-4 py-2 space-y-2">
                               <div className="flex items-start gap-3">
-                                <div className="w-6 h-6 bg-indigo-500 text-white rounded flex items-center justify-center font-semibold text-xs">
+                                <div className="w-6 h-6 bg-teal-500 text-white rounded flex items-center justify-center font-semibold text-xs">
                                   {mIndex + 1}
                                 </div>
                                 <div className="flex-1">
