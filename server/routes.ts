@@ -6069,9 +6069,29 @@ Rispondi SOLO con un JSON array, senza altri testi:
         .where(eq(schema.libraryDocuments.categoryId, courseId))
         .orderBy(schema.libraryDocuments.sortOrder, schema.libraryDocuments.createdAt);
       
-      console.log(`📚 [LIBRARY-DOCS] Found ${documents.length} documents for course ${courseId}`);
+      // Get all exercise templates linked to these document IDs
+      const documentIds = documents.map(d => d.id);
+      let linkedTemplates: { libraryDocumentId: string | null }[] = [];
       
-      res.json(documents);
+      if (documentIds.length > 0) {
+        linkedTemplates = await db.select({
+          libraryDocumentId: schema.exerciseTemplates.libraryDocumentId
+        })
+          .from(schema.exerciseTemplates)
+          .where(inArray(schema.exerciseTemplates.libraryDocumentId, documentIds));
+      }
+      
+      const linkedDocumentIds = new Set(linkedTemplates.map(t => t.libraryDocumentId).filter(Boolean));
+      
+      // Add hasExercise flag to each document
+      const documentsWithExerciseInfo = documents.map(doc => ({
+        ...doc,
+        hasExercise: linkedDocumentIds.has(doc.id)
+      }));
+      
+      console.log(`📚 [LIBRARY-DOCS] Found ${documents.length} documents for course ${courseId}, ${linkedDocumentIds.size} with exercises`);
+      
+      res.json(documentsWithExerciseInfo);
     } catch (error: any) {
       console.error('Error fetching course documents:', error);
       res.status(500).json({ message: error.message });

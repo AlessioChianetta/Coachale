@@ -62,6 +62,7 @@ interface Lesson {
   title: string;
   sortOrder: number;
   level?: string;
+  hasExercise?: boolean;
 }
 
 interface Question {
@@ -218,8 +219,10 @@ export function ExerciseAIGeneratorPanel({
     },
   });
 
+  const availableLessons = lessons.filter((l: Lesson) => !l.hasExercise);
+
   const handleSelectAll = () => {
-    setSelectedLessons(lessons.map((l: Lesson) => l.id));
+    setSelectedLessons(availableLessons.map((l: Lesson) => l.id));
   };
 
   const handleDeselectAll = () => {
@@ -227,6 +230,9 @@ export function ExerciseAIGeneratorPanel({
   };
 
   const handleLessonToggle = (lessonId: string) => {
+    const lesson = lessons.find((l: Lesson) => l.id === lessonId);
+    if (lesson?.hasExercise) return;
+    
     setSelectedLessons((prev) =>
       prev.includes(lessonId)
         ? prev.filter((id) => id !== lessonId)
@@ -433,26 +439,37 @@ export function ExerciseAIGeneratorPanel({
                         .map((lesson: Lesson) => (
                           <div
                             key={lesson.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
-                              selectedLessons.includes(lesson.id)
-                                ? "bg-purple-50 border-purple-300 dark:bg-purple-900/20 dark:border-purple-700"
-                                : "bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-700"
+                            className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                              lesson.hasExercise
+                                ? "bg-gray-100 border-gray-200 cursor-not-allowed opacity-60 dark:bg-slate-900 dark:border-slate-700"
+                                : selectedLessons.includes(lesson.id)
+                                ? "bg-purple-50 border-purple-300 dark:bg-purple-900/20 dark:border-purple-700 cursor-pointer"
+                                : "bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer"
                             }`}
                             onClick={() => handleLessonToggle(lesson.id)}
                           >
                             <Checkbox
                               checked={selectedLessons.includes(lesson.id)}
                               onCheckedChange={() => handleLessonToggle(lesson.id)}
+                              disabled={lesson.hasExercise}
                             />
                             <div className="flex items-center gap-2 flex-1 min-w-0">
                               <Badge variant="secondary" className="text-xs flex-shrink-0">
                                 {lesson.sortOrder || "-"}
                               </Badge>
-                              <span className="text-sm font-medium truncate">
+                              <span className={`text-sm font-medium truncate ${lesson.hasExercise ? "text-muted-foreground" : ""}`}>
                                 {lesson.title}
                               </span>
                             </div>
-                            {lesson.level && (
+                            {lesson.hasExercise ? (
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-700"
+                              >
+                                <CheckCircle2 size={12} className="mr-1" />
+                                Esercizio esistente
+                              </Badge>
+                            ) : lesson.level ? (
                               <Badge
                                 variant="outline"
                                 className={`text-xs ${
@@ -465,13 +482,18 @@ export function ExerciseAIGeneratorPanel({
                               >
                                 {lesson.level}
                               </Badge>
-                            )}
+                            ) : null}
                           </div>
                         ))}
                     </div>
                   )}
                   <p className="text-sm text-muted-foreground">
-                    {selectedLessons.length} di {lessons.length} lezioni selezionate
+                    {selectedLessons.length} di {availableLessons.length} lezioni disponibili selezionate
+                    {lessons.length > availableLessons.length && (
+                      <span className="ml-2 text-emerald-600">
+                        ({lessons.length - availableLessons.length} con esercizio)
+                      </span>
+                    )}
                   </p>
                 </div>
 
