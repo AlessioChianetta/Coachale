@@ -2,6 +2,7 @@ import { db } from "../db";
 import {
   libraryDocuments,
   libraryCategories,
+  librarySubcategories,
   universityTemplates,
   templateTrimesters,
   templateModules,
@@ -535,9 +536,9 @@ export async function generateUniversityPathway(
       const assignments = groupedAssignments[trimesterKey];
       const modules: GeneratedPathway["trimesters"][0]["modules"] = [];
 
-      for (let moduleIdx = 0; moduleIdx < assignments.length; moduleIdx++) {
-        const assignment = assignments[moduleIdx];
-
+      let globalModuleIdx = 0;
+      
+      for (const assignment of assignments) {
         const [category] = await db
           .select()
           .from(libraryCategories)
@@ -548,63 +549,139 @@ export async function generateUniversityPathway(
           continue;
         }
 
-        const [module] = await db
-          .insert(templateModules)
-          .values({
-            templateTrimesterId: trimesterInfo.id,
-            title: category.name,
-            description: category.description,
-            sortOrder: moduleIdx,
-          })
-          .returning();
-
-        console.log(`✅ [AI-UNIVERSITY] Created module: ${module.title}`);
-
-        const lessons = await db
+        const subcategories = await db
           .select()
-          .from(libraryDocuments)
+          .from(librarySubcategories)
           .where(
             and(
-              eq(libraryDocuments.categoryId, assignment.courseId),
-              eq(libraryDocuments.isPublished, true)
+              eq(librarySubcategories.categoryId, assignment.courseId),
+              eq(librarySubcategories.isActive, true)
             )
           )
-          .orderBy(asc(libraryDocuments.sortOrder), asc(libraryDocuments.createdAt));
+          .orderBy(asc(librarySubcategories.sortOrder));
 
-        const moduleLessons: GeneratedPathway["trimesters"][0]["modules"][0]["lessons"] = [];
+        console.log(`📂 [AI-UNIVERSITY] Found ${subcategories.length} subcategories for course "${category.name}"`);
 
-        for (let lessonIdx = 0; lessonIdx < lessons.length; lessonIdx++) {
-          const lesson = lessons[lessonIdx];
-          const exerciseId = await findExerciseForLesson(lesson.id);
+        if (subcategories.length > 0) {
+          for (const subcategory of subcategories) {
+            const [module] = await db
+              .insert(templateModules)
+              .values({
+                templateTrimesterId: trimesterInfo.id,
+                title: subcategory.name,
+                description: subcategory.description,
+                sortOrder: globalModuleIdx++,
+              })
+              .returning();
 
-          const [templateLesson] = await db
-            .insert(templateLessons)
+            console.log(`✅ [AI-UNIVERSITY] Created module from subcategory: ${module.title}`);
+
+            const lessons = await db
+              .select()
+              .from(libraryDocuments)
+              .where(
+                and(
+                  eq(libraryDocuments.categoryId, assignment.courseId),
+                  eq(libraryDocuments.subcategoryId, subcategory.id),
+                  eq(libraryDocuments.isPublished, true)
+                )
+              )
+              .orderBy(asc(libraryDocuments.sortOrder), asc(libraryDocuments.createdAt));
+
+            const moduleLessons: GeneratedPathway["trimesters"][0]["modules"][0]["lessons"] = [];
+
+            for (let lessonIdx = 0; lessonIdx < lessons.length; lessonIdx++) {
+              const lesson = lessons[lessonIdx];
+              const exerciseId = await findExerciseForLesson(lesson.id);
+
+              const [templateLesson] = await db
+                .insert(templateLessons)
+                .values({
+                  templateModuleId: module.id,
+                  title: lesson.title,
+                  description: lesson.description,
+                  libraryDocumentId: lesson.id,
+                  exerciseId: exerciseId,
+                  sortOrder: lessonIdx,
+                })
+                .returning();
+
+              moduleLessons.push({
+                id: templateLesson.id,
+                title: templateLesson.title,
+                libraryDocumentId: lesson.id,
+                exerciseId: exerciseId,
+              });
+            }
+
+            console.log(`✅ [AI-UNIVERSITY] Created ${moduleLessons.length} lessons for module "${module.title}"`);
+
+            modules.push({
+              id: module.id,
+              title: module.title,
+              courseId: assignment.courseId,
+              lessons: moduleLessons,
+            });
+          }
+        } else {
+          const [module] = await db
+            .insert(templateModules)
             .values({
-              templateModuleId: module.id,
-              title: lesson.title,
-              description: lesson.description,
-              libraryDocumentId: lesson.id,
-              exerciseId: exerciseId,
-              sortOrder: lessonIdx,
+              templateTrimesterId: trimesterInfo.id,
+              title: category.name,
+              description: category.description,
+              sortOrder: globalModuleIdx++,
             })
             .returning();
 
-          moduleLessons.push({
-            id: templateLesson.id,
-            title: templateLesson.title,
-            libraryDocumentId: lesson.id,
-            exerciseId: exerciseId,
+          console.log(`✅ [AI-UNIVERSITY] Created module from category (no subcategories): ${module.title}`);
+
+          const lessons = await db
+            .select()
+            .from(libraryDocuments)
+            .where(
+              and(
+                eq(libraryDocuments.categoryId, assignment.courseId),
+                eq(libraryDocuments.isPublished, true)
+              )
+            )
+            .orderBy(asc(libraryDocuments.sortOrder), asc(libraryDocuments.createdAt));
+
+          const moduleLessons: GeneratedPathway["trimesters"][0]["modules"][0]["lessons"] = [];
+
+          for (let lessonIdx = 0; lessonIdx < lessons.length; lessonIdx++) {
+            const lesson = lessons[lessonIdx];
+            const exerciseId = await findExerciseForLesson(lesson.id);
+
+            const [templateLesson] = await db
+              .insert(templateLessons)
+              .values({
+                templateModuleId: module.id,
+                title: lesson.title,
+                description: lesson.description,
+                libraryDocumentId: lesson.id,
+                exerciseId: exerciseId,
+                sortOrder: lessonIdx,
+              })
+              .returning();
+
+            moduleLessons.push({
+              id: templateLesson.id,
+              title: templateLesson.title,
+              libraryDocumentId: lesson.id,
+              exerciseId: exerciseId,
+            });
+          }
+
+          console.log(`✅ [AI-UNIVERSITY] Created ${moduleLessons.length} lessons for module "${module.title}"`);
+
+          modules.push({
+            id: module.id,
+            title: module.title,
+            courseId: assignment.courseId,
+            lessons: moduleLessons,
           });
         }
-
-        console.log(`✅ [AI-UNIVERSITY] Created ${moduleLessons.length} lessons for module "${module.title}"`);
-
-        modules.push({
-          id: module.id,
-          title: module.title,
-          courseId: assignment.courseId,
-          lessons: moduleLessons,
-        });
       }
 
       pathwayTrimesters.push({
