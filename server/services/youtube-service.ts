@@ -833,6 +833,8 @@ export async function saveVideoWithTranscript(
           existingVideo.transcript = transcriptResult.transcript;
           existingVideo.transcriptStatus = 'completed';
           console.log(`✅ [SAVE-VIDEO] "${existingVideo.title}" - Trascrizione recuperata (${transcriptResult.transcript.length} caratteri)`);
+          // Non è reused perché abbiamo appena estratto una nuova trascrizione
+          return { success: true, video: existingVideo, reused: false };
         } else {
           // Mantieni status pending per inserimento manuale
           await db.update(youtubeVideos)
@@ -844,9 +846,9 @@ export async function saveVideoWithTranscript(
           
           existingVideo.transcriptStatus = 'pending';
           console.log(`✍️ [SAVE-VIDEO] "${existingVideo.title}" - In attesa trascrizione manuale`);
+          // Non è reused - trascrizione mancante
+          return { success: true, video: existingVideo, reused: false };
         }
-        
-        return { success: true, video: existingVideo, reused: true };
       }
     }
     
@@ -976,14 +978,16 @@ export async function saveVideoWithTranscriptStream(
           
           existingVideo.transcript = transcriptResult.transcript;
           existingVideo.transcriptStatus = 'completed';
+          // Non è reused perché abbiamo appena estratto una nuova trascrizione
+          return { success: true, video: existingVideo, reused: false };
         } else {
           await db.update(youtubeVideos)
             .set({ transcriptStatus: 'pending', updatedAt: new Date() })
             .where(eq(youtubeVideos.id, existingVideo.id));
           existingVideo.transcriptStatus = 'pending';
+          // Non è reused - trascrizione mancante
+          return { success: true, video: existingVideo, reused: false };
         }
-        
-        return { success: true, video: existingVideo, reused: true };
       }
     }
     
