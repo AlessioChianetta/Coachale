@@ -2934,214 +2934,142 @@ function YearCard({
   }
 
   return (
-    <Card className="group relative border-0 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden bg-white dark:bg-gray-800">
-      {/* Barra Laterale Timeline con Gradiente di Progresso */}
-      <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800">
-        <div 
-          className="w-full bg-gradient-to-b from-blue-500 via-purple-500 to-green-500 transition-all duration-500"
-          style={{ height: `${completionPercentage}%` }}
-        />
-      </div>
-
-      <CardHeader className="pb-4 pl-8">
-        <div className="flex items-start justify-between gap-4">
-          {/* Header con Informazioni Principali */}
-          <div className="flex items-start gap-4 flex-1">
-            <button 
-              onClick={onToggle}
-              className="mt-1 p-2 hover:bg-muted rounded-lg transition-colors"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-5 w-5 text-primary" />
-              ) : (
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              )}
-            </button>
-
-            <div className="flex-1 space-y-3">
-              {/* Titolo e Badge Stato */}
-              <div className="flex items-start gap-3 flex-wrap">
-                <div className="p-2.5 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl">
-                  <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <CardTitle className="text-xl font-bold">{year.title}</CardTitle>
-                    <Badge 
-                      variant="secondary" 
-                      className={`${
-                        completionPercentage === 100 ? 'bg-green-100 text-green-800 dark:bg-green-900/30' :
-                        completionPercentage >= 50 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30' :
-                        'bg-slate-100 text-slate-800 dark:bg-slate-800'
-                      }`}
-                    >
-                      {completionPercentage}%
-                    </Badge>
-                  </div>
-                  {year.description && (
-                    <p className="text-sm text-muted-foreground leading-relaxed">{year.description}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Griglia Statistiche 2x2 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                  <BookOpen className="h-4 w-4 text-blue-600" />
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">Trimestri</p>
-                    <p className="text-sm font-bold text-blue-600">{trimesters.length}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-                  <FileText className="h-4 w-4 text-purple-600" />
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">Moduli</p>
-                    <p className="text-sm font-bold text-purple-600">{trimesters.reduce((acc: number, tri: any) => acc + (tri.modules?.length || 0), 0)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                  <Target className="h-4 w-4 text-green-600" />
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">Lezioni</p>
-                    <p className="text-sm font-bold text-green-600">{trimesters.reduce((acc: number, tri: any) => acc + (tri.modules?.reduce((mAcc: number, mod: any) => mAcc + (mod.lessons?.length || 0), 0) || 0), 0)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 p-2 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg">
-                  <Users className="h-4 w-4 text-indigo-600" />
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">Clienti</p>
-                    <p className="text-sm font-bold text-indigo-600">{assignments.length}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <Card className="border rounded-xl overflow-hidden bg-card hover:shadow-lg transition-all duration-300">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 text-white relative">
+        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
+        
+        <div className="flex items-center gap-4">
+          <button onClick={onToggle} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
+            {isExpanded ? (
+              <ChevronDown className="h-5 w-5 text-cyan-400" />
+            ) : (
+              <ChevronRight className="h-5 w-5 text-slate-400" />
+            )}
+          </button>
+          
+          <div className="p-2.5 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-lg">
+            <Calendar className="h-5 w-5 text-white" />
           </div>
-
-          {/* Azioni Sempre Visibili */}
-          <div className="flex flex-col gap-2 min-w-[200px]">
-            <div className="flex gap-1.5">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  console.log("📝 Clicked edit year button for year:", year);
-                  onEditYear(year);
-                }}
-                className="flex-1 h-9 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all group"
-                title="Modifica anno"
-              >
-                <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  if (window.confirm(`Elimina "${year.title}"?`)) {
-                    onDeleteYear(year.id);
-                  }
-                }}
-                className="flex-1 h-9 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all group"
-                title="Elimina anno"
-              >
-                <X className="h-4 w-4 text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform" />
-              </Button>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-bold truncate">{year.title}</h3>
+              <Badge className={`text-xs ${
+                completionPercentage === 100 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                completionPercentage >= 50 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
+                'bg-slate-500/20 text-slate-300 border-slate-500/30'
+              }`}>
+                {completionPercentage}%
+              </Badge>
             </div>
-
-            <div className="flex gap-1.5">
-              {yearGrade ? (
-                <div className="flex-1 px-2 py-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-md border border-amber-300 text-xs font-medium text-amber-800 dark:text-amber-200 text-center">
-                  <Star className="h-3 w-3 inline mr-1 fill-amber-600" />
-                  {yearGrade.grade.toFixed(1)}/10
-                </div>
-              ) : (
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  onClick={() => onAssignGrade("year", year.id, year.title)}
-                  className="flex-1 h-8 text-xs hover:bg-amber-50"
-                >
-                  <Star className="h-3 w-3 mr-1 text-amber-600" />
-                  Voto
-                </Button>
-              )}
-
-              {yearCert ? (
-                <div className="flex-1 px-2 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-md border border-purple-300 dark:border-purple-700 text-xs font-medium text-purple-800 dark:text-purple-200 text-center">
-                  <Award className="h-3 w-3 inline mr-1 fill-purple-600" />
-                  Emesso
-                </div>
-              ) : (
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  onClick={() => onIssueCertificate("year", year.id, year.title)}
-                  className="flex-1 h-8 text-xs hover:bg-purple-50"
-                >
-                  <Award className="h-3 w-3 mr-1 text-purple-600" />
-                  Attestato
-                </Button>
-              )}
-            </div>
-
-            <Button 
-              size="sm" 
-              onClick={onAddTrimester}
-              className="w-full h-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-xs"
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              Trimestre
+            {year.description && (
+              <p className="text-sm text-slate-400 truncate mt-0.5">{year.description}</p>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => onEditYear(year)} className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-white/10">
+              <FileText className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { if (window.confirm(`Elimina "${year.title}"?`)) onDeleteYear(year.id); }} className="h-8 w-8 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10">
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
-      </CardHeader>
+      </div>
+      
+      {/* Stats Row */}
+      <div className="grid grid-cols-4 gap-px bg-border">
+        <div className="bg-card p-3 text-center">
+          <p className="text-xs text-muted-foreground">Trimestri</p>
+          <p className="text-lg font-bold text-cyan-600 dark:text-cyan-400">{trimesters.length}</p>
+        </div>
+        <div className="bg-card p-3 text-center">
+          <p className="text-xs text-muted-foreground">Moduli</p>
+          <p className="text-lg font-bold text-teal-600 dark:text-teal-400">{trimesters.reduce((acc: number, tri: any) => acc + (tri.modules?.length || 0), 0)}</p>
+        </div>
+        <div className="bg-card p-3 text-center">
+          <p className="text-xs text-muted-foreground">Lezioni</p>
+          <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{trimesters.reduce((acc: number, tri: any) => acc + (tri.modules?.reduce((mAcc: number, mod: any) => mAcc + (mod.lessons?.length || 0), 0) || 0), 0)}</p>
+        </div>
+        <div className="bg-card p-3 text-center">
+          <p className="text-xs text-muted-foreground">Clienti</p>
+          <p className="text-lg font-bold text-violet-600 dark:text-violet-400">{assignments.length}</p>
+        </div>
+      </div>
+      
+      {/* Actions Row */}
+      <div className="flex items-center justify-between p-3 border-t bg-muted/30">
+        <div className="flex items-center gap-2">
+          {yearGrade ? (
+            <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300">
+              <Star className="h-3 w-3 mr-1 fill-amber-500" />
+              {yearGrade.grade.toFixed(1)}/10
+            </Badge>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={() => onAssignGrade("year", year.id, year.title)} className="h-7 text-xs">
+              <Star className="h-3 w-3 mr-1 text-amber-500" /> Voto
+            </Button>
+          )}
+          
+          {yearCert ? (
+            <Badge variant="outline" className="bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300">
+              <Award className="h-3 w-3 mr-1 fill-violet-500" />
+              Attestato
+            </Badge>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={() => onIssueCertificate("year", year.id, year.title)} className="h-7 text-xs">
+              <Award className="h-3 w-3 mr-1 text-violet-500" /> Attestato
+            </Button>
+          )}
+        </div>
+        
+        <Button size="sm" onClick={onAddTrimester} className="h-8 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white text-xs">
+          <Plus className="h-3 w-3 mr-1" />
+          Aggiungi Trimestre
+        </Button>
+      </div>
 
       {isExpanded && (
-        <CardContent className="space-y-4 pt-0 pl-8">
+        <div className="border-t">
           {trimesters.length === 0 ? (
-            <div className="text-center py-8 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950 rounded-xl border-2 border-dashed border-blue-200 dark:border-blue-800">
-              <BookOpen className="h-12 w-12 mx-auto mb-3 text-blue-600 dark:text-blue-400 opacity-50" />
-              <p className="text-sm text-muted-foreground mb-3">Nessun trimestre. Clicca "Trimestre" per aggiungerne uno.</p>
+            <div className="text-center py-8 m-4 border border-dashed rounded-xl">
+              <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground opacity-50" />
+              <p className="text-sm text-muted-foreground">Nessun trimestre. Aggiungi il primo!</p>
             </div>
           ) : (
-            <div className="space-y-3 relative">
-              {/* Linea Timeline Verticale */}
-              <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-purple-200 to-pink-200 dark:from-blue-800 dark:via-purple-800 dark:to-pink-800" />
-
-              {trimesters.map((trimester: UniversityTrimester, index: number) => (
-                <div key={trimester.id} className="relative pl-8">
-                  {/* Indicatore Timeline */}
-                  <div className="absolute left-3.5 top-4 w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 border-4 border-white dark:border-gray-900 shadow-lg" />
-
-                  <TrimesterCard
-                    trimester={trimester}
-                    selectedClientId={selectedClientId}
-                    isExpanded={expandedTrimesters.includes(trimester.id)}
-                    onToggle={() => toggleTrimester(trimester.id)}
-                    useModules={useModules}
-                    expandedModules={expandedModules}
-                    toggleModule={toggleModule}
-                    useLessons={useLessons}
-                    allConsultantExercises={allConsultantExercises}
-                    existingGrades={existingGrades}
-                    existingCertificates={existingCertificates}
-                    onAddModule={() => onAddModule(trimester.id)}
-                    onAddLesson={onAddLesson}
-                    onAssignGrade={onAssignGrade}
-                    onIssueCertificate={onIssueCertificate}
-                    onForceComplete={onForceComplete}
-                    onEditTrimester={onEditTrimester}
-                    onDeleteTrimester={onDeleteTrimester}
-                    onEditModule={onEditModule}
-                    onDeleteModule={onDeleteModule}
-                    onEditLesson={onEditLesson}
-                    onDeleteLesson={onDeleteLesson}
-                  />
-                </div>
+            <div className="p-4 space-y-3">
+              {trimesters.map((trimester: UniversityTrimester) => (
+                <TrimesterCard
+                  key={trimester.id}
+                  trimester={trimester}
+                  selectedClientId={selectedClientId}
+                  isExpanded={expandedTrimesters.includes(trimester.id)}
+                  onToggle={() => toggleTrimester(trimester.id)}
+                  useModules={useModules}
+                  expandedModules={expandedModules}
+                  toggleModule={toggleModule}
+                  useLessons={useLessons}
+                  allConsultantExercises={allConsultantExercises}
+                  existingGrades={existingGrades}
+                  existingCertificates={existingCertificates}
+                  onAddModule={() => onAddModule(trimester.id)}
+                  onAddLesson={onAddLesson}
+                  onAssignGrade={onAssignGrade}
+                  onIssueCertificate={onIssueCertificate}
+                  onForceComplete={onForceComplete}
+                  onEditTrimester={onEditTrimester}
+                  onDeleteTrimester={onDeleteTrimester}
+                  onEditModule={onEditModule}
+                  onDeleteModule={onDeleteModule}
+                  onEditLesson={onEditLesson}
+                  onDeleteLesson={onDeleteLesson}
+                />
               ))}
             </div>
           )}
-        </CardContent>
+        </div>
       )}
     </Card>
   );
@@ -3178,87 +3106,62 @@ function TrimesterCard({
   const trimesterCert = existingCertificates.find((c: ExistingCertificate) => c.certificateType === "trimester" && c.referenceId === trimester.id);
 
   return (
-    <div className="border-0 rounded-xl p-4 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-950/20 dark:to-cyan-950/20 hover:shadow-md transition-all">
-      <div className="flex items-center justify-between mb-2">
+    <div className="border rounded-xl bg-card overflow-hidden">
+      {/* Trimester Header */}
+      <div className="flex items-center justify-between p-3 bg-muted/30">
         <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={onToggle}>
-          {isExpanded ? <ChevronDown className="h-4 w-4 text-blue-600" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-          <div className="p-2 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg shadow-sm">
+          {isExpanded ? <ChevronDown className="h-4 w-4 text-cyan-600" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
             <BookOpen className="h-4 w-4 text-white" />
           </div>
-          <div className="flex-1">
-            <h4 className="font-semibold">{trimester.title}</h4>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold text-sm">{trimester.title}</h4>
             {trimester.description && (
-              <p className="text-xs text-muted-foreground">{trimester.description}</p>
+              <p className="text-xs text-muted-foreground truncate">{trimester.description}</p>
             )}
           </div>
-          <div className="flex gap-1 mr-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onEditTrimester(trimester)}
-              className="h-8 w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all group"
-              title="Modifica trimestre"
-            >
-              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                if (window.confirm(`Sei sicuro di voler eliminare il trimestre "${trimester.title}"?`)) {
-                  onDeleteTrimester(trimester.id);
-                }
-              }}
-              className="h-8 w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all group"
-              title="Elimina trimestre"
-            >
-              <X className="h-4 w-4 text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform" />
-            </Button>
-          </div>
         </div>
-        <div className="flex gap-2">
+        
+        <div className="flex items-center gap-2">
           {trimesterGrade ? (
-            <div className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 rounded-md border border-amber-300 dark:border-amber-700 text-xs font-medium text-amber-800 dark:text-amber-200 flex items-center gap-1">
-              <Star className="h-3 w-3 fill-amber-600" />
+            <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs">
+              <Star className="h-3 w-3 mr-1 fill-amber-500" />
               {trimesterGrade.grade}/10
-            </div>
+            </Badge>
           ) : (
-            <Button 
-              size="sm" 
-              variant="ghost"
-              onClick={() => onAssignGrade("trimester", trimester.id, trimester.title)}
-              className="hover:bg-amber-100"
-            >
-              <Star className="h-3 w-3 mr-1 text-amber-600" />
-              Voto
+            <Button size="sm" variant="ghost" onClick={() => onAssignGrade("trimester", trimester.id, trimester.title)} className="h-7 text-xs">
+              <Star className="h-3 w-3 mr-1 text-amber-500" /> Voto
             </Button>
           )}
+          
           {trimesterCert ? (
-            <div className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-md border border-purple-300 dark:border-purple-700 text-xs font-medium text-purple-800 dark:text-purple-200 flex items-center gap-1">
-              <Award className="h-3 w-3 fill-purple-600" />
+            <Badge variant="outline" className="bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 text-xs">
+              <Award className="h-3 w-3 mr-1 fill-violet-500" />
               Emesso
-            </div>
+            </Badge>
           ) : (
-            <Button 
-              size="sm" 
-              variant="ghost"
-              onClick={() => onIssueCertificate("trimester", trimester.id, trimester.title)}
-              className="hover:bg-purple-100"
-            >
-              <Award className="h-3 w-3 mr-1 text-purple-600" />
-              Attestato
+            <Button size="sm" variant="ghost" onClick={() => onIssueCertificate("trimester", trimester.id, trimester.title)} className="h-7 text-xs">
+              <Award className="h-3 w-3 mr-1 text-violet-500" /> Attestato
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={onAddModule} className="hover:bg-blue-100">
-            <Plus className="h-3 w-3 mr-1 text-blue-600" />
-            Modulo
+          
+          <Button size="sm" variant="ghost" onClick={onAddModule} className="h-7 text-xs text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20">
+            <Plus className="h-3 w-3 mr-1" /> Modulo
+          </Button>
+          
+          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onEditTrimester(trimester); }} className="h-7 w-7 p-0">
+            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); if (window.confirm(`Elimina "${trimester.title}"?`)) onDeleteTrimester(trimester.id); }} className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500">
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
+      
       {isExpanded && (
-        <div className="ml-7 mt-3 space-y-2">
+        <div className="p-3 pt-0 space-y-2">
           {modules.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nessun modulo</p>
+            <p className="text-xs text-muted-foreground text-center py-4">Nessun modulo</p>
           ) : (
             modules.map((module: UniversityModule) => (
               <ModuleCard
