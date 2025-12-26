@@ -558,38 +558,37 @@ export default function ClientUniversity() {
   const isLoading = structureLoading || statsLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <div className="flex h-screen">
         <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <main className="flex-1 overflow-y-auto bg-transparent">
           <div className="container mx-auto px-4 lg:px-8 pt-6 pb-8">
-            {/* Header Universitario Minimal con Gradiente */}
+            {/* Header Moderno */}
             <div className="mb-6">
-              <div className="relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-                {/* Gradiente decorativo di sfondo */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20 opacity-60"></div>
-                <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-full blur-3xl"></div>
-                
-                <div className="relative z-10 p-4 md:p-6">
-                  <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-200/50 dark:border-gray-700/50">
+              <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden border border-slate-700/50">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl"></div>
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-4 mb-6">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setSidebarOpen(true)}
-                      className="hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden shrink-0"
+                      className="hover:bg-white/10 md:hidden shrink-0 text-white"
                     >
                       <Menu className="h-5 w-5" />
                     </Button>
-                    <div className="p-3.5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-lg shrink-0">
-                      <GraduationCap className="h-9 w-9 text-white" />
+                    <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-lg shadow-cyan-500/25">
+                      <GraduationCap className="h-8 w-8 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                      <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                         La Mia Università
                       </h1>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5" />
+                      <p className="text-slate-400 text-sm mt-0.5">
                         Percorso di Formazione Professionale
                       </p>
                     </div>
@@ -598,83 +597,63 @@ export default function ClientUniversity() {
                         variant="outline"
                         size="sm"
                         onClick={startUniversityTour}
-                        className="gap-2 border-purple-200 text-purple-600 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/20 shrink-0"
+                        className="gap-2 border-slate-600 text-slate-300 hover:bg-white/10 hover:text-white shrink-0"
                       >
                         <HelpCircle size={16} />
-                        <span className="hidden sm:inline">Guida Interattiva</span>
+                        <span className="hidden sm:inline">Guida</span>
                       </Button>
                     )}
                   </div>
 
-                  {/* Stats Grid con Gradienti */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" data-tour="university-stats">
-                    {/* Lezioni Totali */}
-                    <div className="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/40 dark:to-cyan-950/40 rounded-xl p-3 sm:p-4 border border-blue-200/50 dark:border-blue-800/50 hover:shadow-md transition-all" data-tour="university-stats-lessons">
-                      <div className="absolute top-0 right-0 w-20 h-20 bg-blue-400/10 rounded-full blur-2xl"></div>
-                      <div className="relative">
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                          <div className="p-1 sm:p-1.5 bg-blue-600/10 rounded-lg shrink-0">
-                            <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide truncate">Lezioni Totali</span>
+                  {/* Stats Grid Minimalista */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" data-tour="university-stats">
+                    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10" data-tour="university-stats-lessons">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-cyan-500/20 rounded-lg">
+                          <FileText className="h-5 w-5 text-cyan-400" />
                         </div>
-                        <div className="text-2xl sm:text-3xl font-bold text-blue-900 dark:text-blue-100">{stats?.totalLessons || 0}</div>
-                      </div>
-                    </div>
-
-                    {/* Progresso */}
-                    <div className="group relative overflow-hidden bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/40 dark:to-green-950/40 rounded-xl p-3 sm:p-4 border border-emerald-200/50 dark:border-emerald-800/50 hover:shadow-md transition-all" data-tour="university-stats-progress">
-                      <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-400/10 rounded-full blur-2xl"></div>
-                      <div className="relative">
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                          <div className="p-1 sm:p-1.5 bg-emerald-600/10 rounded-lg shrink-0">
-                            <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600 dark:text-emerald-400" />
-                          </div>
-                          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide truncate">Progresso</span>
-                        </div>
-                        <div className="space-y-1.5 sm:space-y-2">
-                          <div className="flex items-baseline gap-1 sm:gap-1.5">
-                            <div className="text-2xl sm:text-3xl font-bold text-emerald-900 dark:text-emerald-100">{stats?.completedLessons || 0}</div>
-                            <div className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 font-medium">/ {stats?.totalLessons || 0}</div>
-                          </div>
-                          <div className="space-y-1">
-                            <Progress value={stats?.completionPercentage || 0} className="h-1.5 sm:h-2 bg-emerald-200 dark:bg-emerald-900" />
-                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">{stats?.completionPercentage || 0}%</p>
-                          </div>
+                        <div>
+                          <p className="text-xs text-slate-400">Lezioni</p>
+                          <p className="text-2xl font-bold text-white">{stats?.totalLessons || 0}</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Media Voti */}
-                    <div className="group relative overflow-hidden bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-950/40 rounded-xl p-3 sm:p-4 border border-amber-200/50 dark:border-amber-800/50 hover:shadow-md transition-all" data-tour="university-stats-grade">
-                      <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/10 rounded-full blur-2xl"></div>
-                      <div className="relative">
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                          <div className="p-1 sm:p-1.5 bg-amber-600/10 rounded-lg shrink-0">
-                            <Star className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400 fill-amber-600 dark:fill-amber-400" />
-                          </div>
-                          <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide truncate">Media Voti</span>
+                    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10" data-tour="university-stats-progress">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-500/20 rounded-lg">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                         </div>
-                        <div className="flex items-baseline gap-1 sm:gap-1.5">
-                          <div className="text-2xl sm:text-3xl font-bold text-amber-900 dark:text-amber-100">
-                            {stats?.averageGrade ? stats.averageGrade.toFixed(1) : '-'}
-                          </div>
-                          <p className="text-xs sm:text-sm text-amber-600 dark:text-amber-400 font-medium">/10</p>
+                        <div className="flex-1">
+                          <p className="text-xs text-slate-400">Completate</p>
+                          <p className="text-2xl font-bold text-white">{stats?.completedLessons || 0}<span className="text-sm text-slate-400 font-normal">/{stats?.totalLessons || 0}</span></p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Attestati */}
-                    <div className="group relative overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/40 dark:to-pink-950/40 rounded-xl p-3 sm:p-4 border border-purple-200/50 dark:border-purple-800/50 hover:shadow-md transition-all" data-tour="university-stats-certificates">
-                      <div className="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full blur-2xl"></div>
-                      <div className="relative">
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                          <div className="p-1 sm:p-1.5 bg-purple-600/10 rounded-lg shrink-0">
-                            <Award className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600 dark:text-purple-400" />
-                          </div>
-                          <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide truncate">Attestati</span>
+                    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10" data-tour="university-stats-grade">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-500/20 rounded-lg">
+                          <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
                         </div>
-                        <div className="text-2xl sm:text-3xl font-bold text-purple-900 dark:text-purple-100">{certificates?.length || 0}</div>
+                        <div>
+                          <p className="text-xs text-slate-400">Media Voti</p>
+                          <p className="text-2xl font-bold text-white">
+                            {stats?.averageGrade ? stats.averageGrade.toFixed(1) : '-'}<span className="text-sm text-slate-400 font-normal">/10</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10" data-tour="university-stats-certificates">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-violet-500/20 rounded-lg">
+                          <Award className="h-5 w-5 text-violet-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400">Attestati</p>
+                          <p className="text-2xl font-bold text-white">{certificates?.length || 0}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -683,33 +662,30 @@ export default function ClientUniversity() {
             </div>
 
             <Tabs defaultValue="percorso" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg">
+              <TabsList className="grid w-full grid-cols-3 mb-6 bg-card p-1.5 rounded-xl border shadow-sm">
                 <TabsTrigger 
                   value="percorso" 
-                  className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white rounded-lg py-3 font-semibold transition-all duration-300"
+                  className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white rounded-lg py-2.5 font-medium transition-all"
                   data-tour="university-tab-percorso"
                 >
-                  <GraduationCap className="h-5 w-5" />
-                  <span className="hidden sm:inline">Il Mio Percorso</span>
-                  <span className="sm:hidden">Percorso</span>
+                  <GraduationCap className="h-4 w-4" />
+                  <span className="hidden sm:inline">Percorso</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="esami" 
-                  className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white rounded-lg py-3 font-semibold transition-all duration-300"
+                  className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white rounded-lg py-2.5 font-medium transition-all"
                   data-tour="university-tab-esami"
                 >
-                  <FileText className="h-5 w-5" />
-                  <span className="hidden sm:inline">Esami da Fare</span>
-                  <span className="sm:hidden">Esami</span>
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Esami</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="attestati" 
-                  className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white rounded-lg py-3 font-semibold transition-all duration-300"
+                  className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white rounded-lg py-2.5 font-medium transition-all"
                   data-tour="university-tab-attestati"
                 >
-                  <Award className="h-5 w-5" />
-                  <span className="hidden sm:inline">I Miei Attestati</span>
-                  <span className="sm:hidden">Attestati</span>
+                  <Award className="h-4 w-4" />
+                  <span className="hidden sm:inline">Attestati</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -717,13 +693,13 @@ export default function ClientUniversity() {
                 {isLoading ? (
                   <div className="text-center py-12">Caricamento...</div>
                 ) : structure.length === 0 ? (
-                  <Card className="border-0 shadow-lg">
-                    <CardContent className="py-12 text-center">
-                      <div className="w-20 h-20 bg-gradient-to-br from-blue-500/10 to-purple-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <GraduationCap className="h-10 w-10 text-muted-foreground" />
+                  <Card className="border border-dashed">
+                    <CardContent className="flex flex-col items-center justify-center py-16">
+                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                        <GraduationCap className="h-8 w-8 text-muted-foreground" />
                       </div>
                       <h3 className="text-lg font-semibold mb-2">Nessun percorso universitario</h3>
-                      <p className="text-muted-foreground">Il tuo consulente non ha ancora creato il percorso universitario</p>
+                      <p className="text-muted-foreground text-center">Il tuo consulente non ha ancora creato il percorso universitario</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -745,218 +721,166 @@ export default function ClientUniversity() {
                       const completionPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
                       return (
-                        <Card key={year.id} className={`group relative border-0 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden ${
-                          year.isLocked 
-                            ? 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 opacity-75' 
-                            : 'bg-white dark:bg-gray-800'
+                        <Card key={year.id} className={`border rounded-xl overflow-hidden transition-all duration-300 ${
+                          year.isLocked ? 'opacity-60' : 'hover:shadow-lg'
                         }`} data-tour="university-year-card">
-                          {/* Barra Laterale Timeline con Gradiente di Progresso */}
-                          <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700">
-                            <div 
-                              className={`w-full transition-all duration-500 ${
+                          {/* Header Anno */}
+                          <div className={`p-4 ${year.isLocked ? 'bg-slate-100 dark:bg-slate-800' : 'bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900'} text-white relative`}>
+                            {!year.isLocked && <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>}
+
+                            <div className="flex items-center gap-3">
+                              <button 
+                                onClick={() => !year.isLocked && toggleYear(year.id)}
+                                className={`p-1.5 rounded-lg transition-colors shrink-0 ${
+                                  year.isLocked ? 'cursor-not-allowed' : 'hover:bg-white/10 cursor-pointer'
+                                }`}
+                                disabled={year.isLocked}
+                              >
+                                {year.isLocked ? (
+                                  <Lock className="h-5 w-5 text-slate-400" />
+                                ) : expandedYears.includes(year.id) ? (
+                                  <ChevronDown className="h-5 w-5 text-cyan-400" />
+                                ) : (
+                                  <ChevronRight className="h-5 w-5 text-slate-400" />
+                                )}
+                              </button>
+
+                              <div className={`p-2.5 rounded-xl shrink-0 ${
                                 year.isLocked 
-                                  ? 'bg-gradient-to-b from-slate-400 to-slate-500' 
-                                  : 'bg-gradient-to-b from-blue-500 via-purple-500 to-green-500'
-                              }`}
-                              style={{ height: year.isLocked ? '100%' : `${completionPercentage}%` }}
-                            />
-                          </div>
+                                  ? 'bg-slate-200 dark:bg-slate-700' 
+                                  : 'bg-gradient-to-br from-cyan-500 to-teal-500 shadow-lg'
+                              }`}>
+                                {year.isLocked ? (
+                                  <Lock className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                                ) : (
+                                  <Calendar className="h-5 w-5 text-white" />
+                                )}
+                              </div>
 
-                          <CardHeader className="pb-4 pl-4 sm:pl-6 md:pl-8">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                              {/* Header con Informazioni Principali */}
-                              <div className="flex items-start gap-2 sm:gap-4 flex-1 min-w-0">
-                                <button 
-                                  onClick={() => !year.isLocked && toggleYear(year.id)}
-                                  className={`mt-1 p-2 rounded-lg transition-colors shrink-0 ${
-                                    year.isLocked ? 'cursor-not-allowed opacity-50' : 'hover:bg-muted cursor-pointer'
-                                  }`}
-                                  disabled={year.isLocked}
-                                >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-3">
+                                  <h3 className={`text-lg font-bold truncate ${year.isLocked ? 'text-slate-700 dark:text-slate-300' : 'text-white'}`}>{year.title}</h3>
                                   {year.isLocked ? (
-                                    <Lock className="h-5 w-5 sm:h-6 sm:w-6 text-slate-500" />
-                                  ) : expandedYears.includes(year.id) ? (
-                                    <ChevronDown className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                                    <Badge className="bg-slate-400/20 text-slate-600 dark:text-slate-300 border-slate-400/30 text-xs">
+                                      <Lock className="h-3 w-3 mr-1" />
+                                      Bloccato
+                                    </Badge>
                                   ) : (
-                                    <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
-                                  )}
-                                </button>
-
-                                <div className="flex-1 space-y-3 min-w-0">
-                                  {/* Titolo e Badge Stato */}
-                                  <div className="flex items-start gap-2 sm:gap-3 flex-wrap">
-                                    <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 ${
-                                      year.isLocked 
-                                        ? 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600' 
-                                        : 'bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50'
+                                    <Badge className={`text-xs ${
+                                      completionPercentage === 100 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                      completionPercentage >= 50 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
+                                      'bg-slate-500/20 text-slate-300 border-slate-500/30'
                                     }`}>
-                                      {year.isLocked ? (
-                                        <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600 dark:text-slate-400" />
-                                      ) : (
-                                        <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
-                                      )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                        <CardTitle className="text-lg sm:text-xl font-bold">{year.title}</CardTitle>
-                                        {year.isLocked ? (
-                                          <Badge className="bg-gradient-to-r from-slate-400 to-slate-500 text-white border-0 shadow-md text-xs whitespace-nowrap">
-                                            <Lock className="h-3 w-3 mr-1" />
-                                            Da Sbloccare
-                                          </Badge>
-                                        ) : (
-                                          <Badge 
-                                            variant="secondary" 
-                                            className={`text-xs whitespace-nowrap ${
-                                              completionPercentage === 100 ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' :
-                                              completionPercentage >= 50 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' :
-                                              'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
-                                            }`}
-                                          >
-                                            {completionPercentage}%
+                                      {completionPercentage}%
+                                    </Badge>
+                                  )}
+                                </div>
+                                {year.description && (
+                                  <p className={`text-sm truncate mt-0.5 ${year.isLocked ? 'text-slate-500' : 'text-slate-400'}`}>{year.description}</p>
+                                )}
+                              </div>
+
+                              {yearGrade && (
+                                <Badge variant="outline" className="bg-amber-500/20 border-amber-500/30 text-amber-300 shrink-0">
+                                  <Star className="h-3 w-3 mr-1 fill-amber-400" />
+                                  {yearGrade.grade.toFixed(1)}/10
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Stats Row */}
+                          {!year.isLocked && (
+                            <div className="grid grid-cols-4 gap-px bg-border">
+                              <div className="bg-card p-3 text-center">
+                                <p className="text-xs text-muted-foreground">Trimestri</p>
+                                <p className="text-lg font-bold text-cyan-600 dark:text-cyan-400">{year.trimesters.length}</p>
+                              </div>
+                              <div className="bg-card p-3 text-center">
+                                <p className="text-xs text-muted-foreground">Moduli</p>
+                                <p className="text-lg font-bold text-teal-600 dark:text-teal-400">{year.trimesters.reduce((acc, tri) => acc + tri.modules.length, 0)}</p>
+                              </div>
+                              <div className="bg-card p-3 text-center">
+                                <p className="text-xs text-muted-foreground">Lezioni</p>
+                                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{totalLessons}</p>
+                              </div>
+                              <div className="bg-card p-3 text-center">
+                                <p className="text-xs text-muted-foreground">Completate</p>
+                                <p className="text-lg font-bold text-violet-600 dark:text-violet-400">{completedLessons}</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {yearGrade?.feedback && (
+                            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800">
+                              <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-1">Feedback</p>
+                              <p className="text-sm text-amber-600 dark:text-amber-200">{yearGrade.feedback}</p>
+                            </div>
+                          )}
+
+                          {!year.isLocked && expandedYears.includes(year.id) && (
+                            <div className="border-t p-4 space-y-3">
+                              {year.trimesters.length === 0 ? (
+                                <div className="text-center py-8 border border-dashed rounded-xl">
+                                  <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground opacity-50" />
+                                  <p className="text-sm text-muted-foreground">Nessun trimestre disponibile</p>
+                                </div>
+                              ) : (
+                                year.trimesters.map((trimester) => {
+                                  const trimesterGrade = findGrade("trimester", trimester.id);
+                                  return (
+                                    <div key={trimester.id} className="border rounded-xl bg-card overflow-hidden" data-tour="university-trimester">
+                                      <div className="flex items-center justify-between p-3 bg-muted/30">
+                                        <div className="flex items-center gap-3 flex-1 cursor-pointer min-w-0" onClick={() => toggleTrimester(trimester.id)}>
+                                          {expandedTrimesters.includes(trimester.id) ? 
+                                            <ChevronDown className="h-4 w-4 text-cyan-600 shrink-0" /> : 
+                                            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                          }
+                                          <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg shrink-0">
+                                            <BookOpen className="h-4 w-4 text-white" />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <h4 className="font-semibold text-sm truncate">{trimester.title}</h4>
+                                            {trimester.description && (
+                                              <p className="text-xs text-muted-foreground truncate">{trimester.description}</p>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {trimesterGrade && (
+                                          <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs shrink-0">
+                                            <Star className="h-3 w-3 mr-1 fill-amber-500" />
+                                            {trimesterGrade.grade.toFixed(1)}/10
                                           </Badge>
                                         )}
                                       </div>
-                                      {year.description && (
-                                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{year.description}</p>
+                                      {trimesterGrade?.feedback && (
+                                        <div className="px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800">
+                                          <p className="text-xs text-amber-600 dark:text-amber-300">{trimesterGrade.feedback}</p>
+                                        </div>
                                       )}
-                                      {year.isLocked && (
-                                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-2 italic">
-                                          Questo livello sarà sbloccato dal tuo consulente quando sarai pronto
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Griglia Statistiche 2x2 */}
-                                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                                    <div className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/40 rounded-lg">
-                                      <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-300 shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-muted-foreground dark:text-gray-400">Trimestri</p>
-                                        <p className="text-sm sm:text-base font-bold text-blue-600 dark:text-blue-300">{year.trimesters.length}</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-3 bg-purple-50 dark:bg-purple-900/40 rounded-lg">
-                                      <FileText className="h-4 w-4 text-purple-600 dark:text-purple-300 shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-muted-foreground dark:text-gray-400">Moduli</p>
-                                        <p className="text-sm sm:text-base font-bold text-purple-600 dark:text-purple-300">
-                                          {year.trimesters.reduce((acc, tri) => acc + tri.modules.length, 0)}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-3 bg-green-50 dark:bg-green-900/40 rounded-lg">
-                                      <Target className="h-4 w-4 text-green-600 dark:text-green-300 shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-muted-foreground dark:text-gray-400">Lezioni</p>
-                                        <p className="text-sm sm:text-base font-bold text-green-600 dark:text-green-300">{totalLessons}</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-3 bg-indigo-50 dark:bg-indigo-900/40 rounded-lg">
-                                      <CheckCircle2 className="h-4 w-4 text-indigo-600 dark:text-indigo-300 shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-muted-foreground dark:text-gray-400">Completate</p>
-                                        <p className="text-sm sm:text-base font-bold text-indigo-600 dark:text-indigo-300">{completedLessons}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Voto Anno */}
-                              {yearGrade && (
-                                <div className="flex flex-col gap-2 min-w-[100px] sm:min-w-[120px]">
-                                  <div className="px-2 py-1.5 bg-amber-100 dark:bg-amber-900/40 rounded-md border border-amber-300 dark:border-amber-700 text-xs font-medium text-amber-800 dark:text-amber-200 text-center">
-                                    <Star className="h-3 w-3 mr-1 fill-amber-600 inline" />
-                                    {yearGrade.grade.toFixed(1)}/10
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {yearGrade && yearGrade.feedback && (
-                              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg">
-                                <p className="text-xs font-medium text-amber-900 dark:text-amber-300 mb-1">Feedback del Consulente</p>
-                                <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-200">{yearGrade.feedback}</p>
-                              </div>
-                            )}
-                          </CardHeader>
-
-                          {!year.isLocked && expandedYears.includes(year.id) && (
-                            <CardContent className="space-y-4 pt-0 pl-4 sm:pl-6 md:pl-8">
-                              {year.trimesters.length === 0 ? (
-                                <div className="text-center py-8 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900 rounded-xl border-2 border-dashed border-blue-200 dark:border-blue-700">
-                                  <BookOpen className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 text-blue-600 dark:text-blue-400 opacity-50" />
-                                  <p className="text-xs sm:text-sm text-muted-foreground">Nessun trimestre disponibile</p>
-                                </div>
-                              ) : (
-                                <div className="space-y-3 relative">
-                                  {/* Linea Timeline Verticale */}
-                                  <div className="absolute left-4 sm:left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-purple-200 to-pink-200 dark:from-blue-700 dark:via-purple-700 dark:to-pink-700" />
-
-                                  {year.trimesters.map((trimester) => {
-                                    const trimesterGrade = findGrade("trimester", trimester.id);
-                                    return (
-                                      <div key={trimester.id} className="relative pl-6 sm:pl-8" data-tour="university-trimester">
-                                        {/* Indicatore Timeline */}
-                                        <div className="absolute left-1.5 sm:left-3.5 top-3 sm:top-4 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 border-2 sm:border-4 border-white dark:border-gray-800 shadow-lg" />
-
-                                        <div className="border-0 rounded-xl p-3 sm:p-4 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-900/30 dark:to-cyan-900/30 hover:shadow-md transition-all">
-                                          <div className="flex items-center justify-between mb-2 gap-2">
-                                            <div className="flex items-center gap-2 sm:gap-3 flex-1 cursor-pointer min-w-0" onClick={() => toggleTrimester(trimester.id)}>
-                                              {expandedTrimesters.includes(trimester.id) ? 
-                                                <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 shrink-0" /> : 
-                                                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
-                                              }
-                                              <div className="p-1.5 sm:p-2 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg shadow-sm shrink-0">
-                                                <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <h4 className="text-sm sm:text-base font-semibold truncate">{trimester.title}</h4>
-                                                {trimester.description && (
-                                                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">{trimester.description}</p>
-                                                )}
-                                              </div>
-                                            </div>
-                                            {trimesterGrade && (
-                                              <Badge variant="secondary" className="px-2 py-0.5 text-xs shrink-0 whitespace-nowrap">
-                                                <Star className="h-3 w-3 mr-1" />
-                                                {trimesterGrade.grade.toFixed(1)}/10
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          {trimesterGrade && trimesterGrade.feedback && (
-                                            <div className="mb-2 p-2 bg-muted rounded border border-border">
-                                              <p className="text-xs font-medium text-muted-foreground mb-1">Feedback</p>
-                                              <p className="text-xs sm:text-sm">{trimesterGrade.feedback}</p>
-                                            </div>
-                                          )}
-                                          {expandedTrimesters.includes(trimester.id) && (
-                                            <div className="ml-4 sm:ml-7 mt-3 space-y-2">
-                                              {trimester.modules.length === 0 ? (
-                                                <p className="text-xs sm:text-sm text-muted-foreground">Nessun modulo disponibile</p>
-                                              ) : (
-                                                <ModulesWithExercises 
-                                                  modules={trimester.modules} 
-                                                  expandedModules={expandedModules} 
-                                                  toggleModule={toggleModule} 
-                                                  findGrade={findGrade} 
-                                                  handleToggleLesson={handleToggleLesson} 
-                                                  setSelectedLessonForNotes={setSelectedLessonForNotes} 
-                                                  setNotesDialogOpen={setNotesDialogOpen} 
-                                                  lessonNotes={lessonNotes} 
-                                                />
-                                              )}
-                                            </div>
+                                      {expandedTrimesters.includes(trimester.id) && (
+                                        <div className="p-3 pt-0 space-y-2">
+                                          {trimester.modules.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground text-center py-4">Nessun modulo disponibile</p>
+                                          ) : (
+                                            <ModulesWithExercises 
+                                              modules={trimester.modules} 
+                                              expandedModules={expandedModules} 
+                                              toggleModule={toggleModule} 
+                                              findGrade={findGrade} 
+                                              handleToggleLesson={handleToggleLesson} 
+                                              setSelectedLessonForNotes={setSelectedLessonForNotes} 
+                                              setNotesDialogOpen={setNotesDialogOpen} 
+                                              lessonNotes={lessonNotes} 
+                                            />
                                           )}
                                         </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
+                                      )}
+                                    </div>
+                                  );
+                                })
                               )}
-                            </CardContent>
+                            </div>
                           )}
                         </Card>
                       );
@@ -967,28 +891,17 @@ export default function ClientUniversity() {
 
           <TabsContent value="attestati" className="mt-0">
             {!certificates || certificates.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-              >
-                <Card className="border-2 border-dashed border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 dark:from-blue-950/10 dark:to-indigo-950/10">
-                  <CardContent className="py-20 text-center">
-                    <motion.div 
-                      className="w-28 h-28 bg-gradient-to-br from-blue-500/20 to-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6"
-                      initial={{ scale: 0.8 }}
-                      animate={{ scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                    >
-                      <Award className="h-14 w-14 text-blue-600 dark:text-blue-400" />
-                    </motion.div>
-                    <h3 className="text-2xl font-bold mb-3 text-gray-900 dark:text-gray-100">Nessun Attestato Conseguito</h3>
-                    <p className="text-muted-foreground max-w-md mx-auto text-base">
-                      Completa i tuoi trimestri e anni universitari per ricevere attestati ufficiali dal tuo consulente
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <Card className="border border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                    <Award className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">Nessun Attestato Conseguito</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
+                    Completa i tuoi trimestri e anni universitari per ricevere attestati ufficiali dal tuo consulente
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
               <div className="space-y-8">
                 {(() => {
@@ -1015,64 +928,35 @@ export default function ClientUniversity() {
                         className="space-y-4"
                       >
                         {/* Attestato Annuale */}
-                        <Card className="border-2 border-blue-300 dark:border-blue-700 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-white to-blue-50/60 dark:from-gray-900 dark:to-blue-950/40 overflow-hidden" data-tour="university-certificate-card">
-                          <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
-                          <CardHeader className="pb-4 pt-8">
-                            <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
-                              <div className="flex items-center gap-3">
-                                <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl shadow-lg">
-                                  <Trophy className="h-7 w-7 text-white" />
-                                </div>
-                                <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0 px-5 py-2 text-base font-bold shadow-md">
-                                  Attestato Annuale
+                        <Card className="border rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all" data-tour="university-certificate-card">
+                          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 text-white relative">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
+                            <div className="flex items-center gap-3">
+                              <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-lg">
+                                <Trophy className="h-6 w-6 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30 mb-1">Attestato Annuale</Badge>
+                                <h3 className="text-lg font-bold">{yearCert.title}</h3>
+                              </div>
+                              {yearCert.averageGrade !== null && (
+                                <Badge variant="outline" className="bg-amber-500/20 border-amber-500/30 text-amber-300 text-lg px-4 py-2">
+                                  <Star className="h-5 w-5 mr-1 fill-amber-400" />
+                                  {yearCert.averageGrade.toFixed(1)}/10
                                 </Badge>
-                              </div>
+                              )}
                             </div>
-                            <CardTitle className="text-2xl font-bold text-blue-900 dark:text-blue-100 mb-3 leading-tight">
-                              {yearCert.title}
-                            </CardTitle>
-                            <CardDescription className="flex items-center gap-2 text-sm">
-                              <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                              <span className="text-muted-foreground">
-                                {new Date(yearCert.issuedAt).toLocaleDateString('it-IT', { 
-                                  year: 'numeric', 
-                                  month: 'long', 
-                                  day: 'numeric' 
-                                })}
-                              </span>
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-4 pb-6">
-                            {yearCert.averageGrade !== null && (
-                              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-950/40 rounded-xl p-6 border-2 border-amber-200 dark:border-amber-800 shadow-sm">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
-                                    Voto Finale
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    <Star className="h-8 w-8 text-amber-500 fill-amber-500" />
-                                    <span className="text-5xl font-bold text-amber-700 dark:text-amber-300">
-                                      {yearCert.averageGrade.toFixed(1)}
-                                    </span>
-                                    <span className="text-2xl text-amber-600 dark:text-amber-400 font-semibold">/10</span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                          </div>
+                          <CardContent className="p-4 flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              {new Date(yearCert.issuedAt).toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' })}
+                            </p>
                             {yearCert.pdfUrl && (
-                              <a 
-                                href={yearCert.pdfUrl} 
-                                download
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block"
-                              >
-                                <Button 
-                                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all font-bold text-lg py-7"
-                                  size="lg"
-                                >
-                                  <Download className="h-6 w-6 mr-2" />
-                                  Scarica Attestato Annuale
+                              <a href={yearCert.pdfUrl} download target="_blank" rel="noopener noreferrer">
+                                <Button className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white">
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Scarica
                                 </Button>
                               </a>
                             )}
@@ -1089,62 +973,33 @@ export default function ClientUniversity() {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.3, delay: trimIndex * 0.1 }}
                               >
-                                <Card className="h-full border-2 border-blue-200 dark:border-blue-800 shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-blue-950/20 overflow-hidden">
-                                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-500 to-blue-500"></div>
-                                  <CardHeader className="pb-3 pt-6">
-                                    <div className="flex items-center gap-2 mb-3">
-                                      <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-md">
-                                        <Medal className="h-5 w-5 text-white" />
+                                <Card className="h-full border rounded-xl overflow-hidden hover:shadow-md transition-all">
+                                  <div className="p-3 bg-muted/30 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                                        <Medal className="h-4 w-4 text-white" />
                                       </div>
-                                      <Badge className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-0 px-3 py-1 text-xs font-semibold">
-                                        Trimestrale
-                                      </Badge>
+                                      <div>
+                                        <Badge variant="outline" className="text-xs mb-1">Trimestrale</Badge>
+                                        <h4 className="font-semibold text-sm">{trimCert.title}</h4>
+                                      </div>
                                     </div>
-                                    <CardTitle className="text-lg font-bold text-blue-900 dark:text-blue-100 leading-tight">
-                                      {trimCert.title}
-                                    </CardTitle>
-                                    <CardDescription className="flex items-center gap-1 text-xs mt-2">
-                                      <Calendar className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                                      <span className="text-muted-foreground">
-                                        {new Date(trimCert.issuedAt).toLocaleDateString('it-IT', { 
-                                          year: 'numeric', 
-                                          month: 'long', 
-                                          day: 'numeric' 
-                                        })}
-                                      </span>
-                                    </CardDescription>
-                                  </CardHeader>
-                                  <CardContent className="space-y-3 pb-4">
                                     {trimCert.averageGrade !== null && (
-                                      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-xs font-semibold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
-                                            Voto
-                                          </span>
-                                          <div className="flex items-center gap-1">
-                                            <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
-                                            <span className="text-2xl font-bold text-amber-700 dark:text-amber-300">
-                                              {trimCert.averageGrade.toFixed(1)}
-                                            </span>
-                                            <span className="text-sm text-amber-600 dark:text-amber-400 font-semibold">/10</span>
-                                          </div>
-                                        </div>
-                                      </div>
+                                      <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300">
+                                        <Star className="h-3 w-3 mr-1 fill-amber-500" />
+                                        {trimCert.averageGrade.toFixed(1)}
+                                      </Badge>
                                     )}
+                                  </div>
+                                  <CardContent className="p-3 flex items-center justify-between">
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      {new Date(trimCert.issuedAt).toLocaleDateString('it-IT', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                    </p>
                                     {trimCert.pdfUrl && (
-                                      <a 
-                                        href={trimCert.pdfUrl} 
-                                        download
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block"
-                                      >
-                                        <Button 
-                                          className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all font-semibold text-sm py-5"
-                                          size="sm"
-                                        >
-                                          <Download className="h-4 w-4 mr-1" />
-                                          Scarica
+                                      <a href={trimCert.pdfUrl} download target="_blank" rel="noopener noreferrer">
+                                        <Button size="sm" variant="ghost" className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50">
+                                          <Download className="h-4 w-4" />
                                         </Button>
                                       </a>
                                     )}
@@ -1166,28 +1021,17 @@ export default function ClientUniversity() {
             {examsLoading ? (
               <div className="text-center py-12">Caricamento esami...</div>
             ) : !exams || exams.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-              >
-                <Card className="border-2 border-dashed border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/30 to-indigo-50/30 dark:from-purple-950/10 dark:to-indigo-950/10">
-                  <CardContent className="py-20 text-center">
-                    <motion.div 
-                      className="w-28 h-28 bg-gradient-to-br from-purple-500/20 to-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6"
-                      initial={{ scale: 0.8 }}
-                      animate={{ scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                    >
-                      <FileText className="h-14 w-14 text-purple-600 dark:text-purple-400" />
-                    </motion.div>
-                    <h3 className="text-2xl font-bold mb-3 text-gray-900 dark:text-gray-100">Nessun Esame Disponibile</h3>
-                    <p className="text-muted-foreground max-w-md mx-auto text-base">
-                      Il tuo consulente non ha ancora assegnato esami da svolgere
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <Card className="border border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                    <FileText className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">Nessun Esame Disponibile</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
+                    Il tuo consulente non ha ancora assegnato esami da svolgere
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
               <div className="space-y-4" data-tour="university-exams-list">
                 {exams.map((examAssignment: any, index: number) => {
@@ -1233,106 +1077,73 @@ export default function ClientUniversity() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
                     >
-                      <Card className="border-2 border-purple-200 dark:border-purple-700 hover:shadow-lg transition-all duration-300" data-tour="university-exam-card">
-                        <CardHeader className="p-4 sm:p-6">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                                <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900 rounded-lg shrink-0">
-                                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
-                                </div>
-                                {getStatusBadge()}
-                              </div>
-                              <CardTitle className="text-lg sm:text-xl mb-2">{exam.title}</CardTitle>
-                              <CardDescription className="text-xs sm:text-sm">
-                                {exam.description}
-                              </CardDescription>
+                      <Card className="border rounded-xl overflow-hidden hover:shadow-lg transition-all" data-tour="university-exam-card">
+                        <div className="p-4 flex items-center justify-between bg-muted/30 border-b">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                              <FileText className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg">{exam.title}</h3>
+                              {exam.description && <p className="text-sm text-muted-foreground line-clamp-1">{exam.description}</p>}
                             </div>
                           </div>
+                          {getStatusBadge()}
+                        </div>
 
-                          {/* Info Grid */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 mt-4">
-                            {exam.examDate && (
-                              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                                <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-                                <span className="font-medium">Data:</span>
-                                <span className="text-muted-foreground truncate">
-                                  {new Date(exam.examDate).toLocaleDateString('it-IT')}
-                                </span>
-                              </div>
-                            )}
+                        <div className="p-4 space-y-4">
+                          {(exam.examDate || yearInfo || exam.examTimeLimit || exam.totalPoints) && (
+                            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                              {exam.examDate && (
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-4 w-4 text-cyan-600" />
+                                  <span>{new Date(exam.examDate).toLocaleDateString('it-IT')}</span>
+                                </div>
+                              )}
+                              {yearInfo && (
+                                <div className="flex items-center gap-1.5">
+                                  <GraduationCap className="h-4 w-4 text-teal-600" />
+                                  <span>{yearInfo}{trimesterInfo ? ` - ${trimesterInfo}` : ''}</span>
+                                </div>
+                              )}
+                              {exam.examTimeLimit && (
+                                <div className="flex items-center gap-1.5">
+                                  <RefreshCw className="h-4 w-4 text-violet-600" />
+                                  <span>{exam.examTimeLimit} min</span>
+                                </div>
+                              )}
+                              {exam.totalPoints && (
+                                <div className="flex items-center gap-1.5">
+                                  <Target className="h-4 w-4 text-emerald-600" />
+                                  <span>{exam.totalPoints} punti</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
 
-                            {yearInfo && (
-                              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                                <GraduationCap className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-                                <span className="font-medium">Anno:</span>
-                                <span className="text-muted-foreground truncate">{yearInfo}</span>
-                              </div>
-                            )}
-
-                            {yearInfo && (
-                              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                                <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-                                <span className="font-medium">Periodo:</span>
-                                <span className="text-muted-foreground truncate">
-                                  {trimesterInfo || "📚 Tutto l'anno"}
-                                </span>
-                              </div>
-                            )}
-
-                            {exam.examTimeLimit && (
-                              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-                                <span className="font-medium">Tempo:</span>
-                                <span className="text-muted-foreground">{exam.examTimeLimit} minuti</span>
-                              </div>
-                            )}
-
-                            {exam.totalPoints && (
-                              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                                <Target className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-                                <span className="font-medium">Punteggio:</span>
-                                <span className="text-muted-foreground">{exam.totalPoints} punti</span>
-                              </div>
-                            )}
-
-                            {exam.autoCorrect && (
-                              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                                <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-                                <span className="text-muted-foreground">Correzione automatica</span>
-                              </div>
-                            )}
-                          </div>
-                        </CardHeader>
-
-                        <CardContent className="p-4 sm:p-6 pt-0">
-                          <div className="flex flex-col sm:flex-row gap-2">
+                          <div className="flex items-center gap-3">
                             <Button
-                              className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white h-11 sm:h-10"
+                              className="flex-1 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
                               onClick={() => {
                                 window.location.href = `/exercise/${exam.id}?assignment=${examAssignment.id}`;
                               }}
                               disabled={status === 'completed'}
                             >
-                              <PlayCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                              <span className="text-sm sm:text-base">
-                                {status === 'completed' ? 'Esame Completato' : 
-                                 status === 'submitted' ? 'Visualizza Esame' :
-                                 status === 'in_progress' ? 'Continua Esame' : 
-                                 'Inizia Esame'}
-                              </span>
+                              <PlayCircle className="h-4 w-4 mr-2" />
+                              {status === 'completed' ? 'Completato' : 
+                               status === 'submitted' ? 'Visualizza' :
+                               status === 'in_progress' ? 'Continua' : 
+                               'Inizia'}
                             </Button>
 
                             {(status === 'completed' || status === 'submitted') && examAssignment.score !== null && (
-                              <div className="flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-lg border-2 border-amber-200 dark:border-amber-800">
-                                <Medal className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 shrink-0" />
-                                <span className="font-bold text-sm sm:text-base text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                                  {examAssignment.score}/{exam.totalPoints || 100}
-                                </span>
-                              </div>
+                              <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 px-4 py-2 text-lg">
+                                <Medal className="h-4 w-4 mr-1" />
+                                {examAssignment.score}/{exam.totalPoints || 100}
+                              </Badge>
                             )}
                           </div>
-                        </CardContent>
+                        </div>
                       </Card>
                     </motion.div>
                   );
@@ -1340,7 +1151,7 @@ export default function ClientUniversity() {
               </div>
             )}
           </TabsContent>
-        </Tabs>
+          </Tabs>
           </div>
         </main>
       </div>

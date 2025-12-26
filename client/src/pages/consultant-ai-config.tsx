@@ -2265,9 +2265,9 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
   if (smtpLoading || statsLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
         <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
+          <Loader2 className="h-12 w-12 animate-spin text-cyan-600 mx-auto" />
           <p className="text-slate-600">Caricamento configurazione AI...</p>
         </div>
       </div>
@@ -2275,7 +2275,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -2289,39 +2289,40 @@ Non limitarti a stato attuale/ideale. Attingi da:
             ]}
           />
 
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 text-white shadow-2xl">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl">
-                      <Sparkles className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <h1 className="text-4xl font-bold">Centro Controllo Email Automation</h1>
-                      <p className="text-blue-100 text-lg">Gestisci l'intelligenza artificiale e l'automazione delle email</p>
-                    </div>
-                  </div>
+          <div className="mb-6">
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden border border-slate-700/50">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl"></div>
+              <div className="relative z-10 flex items-center gap-4">
+                <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-lg shadow-cyan-500/25">
+                  <Sparkles className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Centro Controllo Email Automation</h1>
+                  <p className="text-slate-400 text-sm mt-0.5">Gestisci l'intelligenza artificiale e l'automazione delle email</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <Collapsible open={automationSettingsOpen} onOpenChange={setAutomationSettingsOpen} className="w-full mb-8">
-            <Card className="border-0 shadow-lg">
+          <Collapsible open={automationSettingsOpen} onOpenChange={setAutomationSettingsOpen} className="w-full mb-6">
+            <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-6 w-6" />
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                      <Settings className="h-4 w-4 text-white" />
+                    </div>
                     Impostazioni Automation
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-500 dark:text-slate-400 mt-1">
                     Configura l'automazione generale delle email AI
                   </CardDescription>
                 </div>
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-9 p-0">
-                    <ChevronsUpDown className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <ChevronsUpDown className="h-4 w-4 text-slate-500" />
                     <span className="sr-only">Toggle automation settings</span>
                   </Button>
                 </CollapsibleTrigger>
@@ -2337,7 +2338,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </Alert>
               )}
 
-              <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <div className="space-y-1">
                   <Label htmlFor="automation-toggle" className="text-base font-semibold">
                     Automation Generale
@@ -2420,16 +2421,18 @@ Non limitarti a stato attuale/ideale. Attingi da:
             </Card>
           </Collapsible>
 
-          <Collapsible open={schedulerCardOpen} onOpenChange={setSchedulerCardOpen} className="w-full mb-8">
-            <Card className="border-0 shadow-lg">
+          <Collapsible open={schedulerCardOpen} onOpenChange={setSchedulerCardOpen} className="w-full mb-6">
+            <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-6 w-6" />
+                <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                  <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-lg">
+                    <Clock className="h-4 w-4 text-white" />
+                  </div>
                   Centro Controllo Scheduler
                 </CardTitle>
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-9 p-0">
-                    <ChevronsUpDown className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <ChevronsUpDown className="h-4 w-4 text-slate-500" />
                     <span className="sr-only">Toggle scheduler card</span>
                   </Button>
                 </CollapsibleTrigger>
@@ -2438,44 +2441,44 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 <CardContent className="space-y-6">
                   {schedulerStatusLoading ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                      <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                     </div>
                   ) : schedulerStatus ? (
                     <>
-                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                         <div className="space-y-1">
-                          <Label className="text-base font-semibold">Stato Scheduler</Label>
+                          <Label className="text-base font-semibold text-slate-700 dark:text-slate-300">Stato Scheduler</Label>
                           <div className="flex items-center gap-2 mt-2">
                             {schedulerStatus.schedulerEnabled && !schedulerStatus.schedulerPaused ? (
-                              <Badge className="bg-emerald-600">Attivo</Badge>
+                              <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white">Attivo</Badge>
                             ) : schedulerStatus.schedulerEnabled && schedulerStatus.schedulerPaused ? (
-                              <Badge className="bg-yellow-600">In Pausa</Badge>
+                              <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white">In Pausa</Badge>
                             ) : (
-                              <Badge variant="secondary">Disattivato</Badge>
+                              <Badge variant="secondary" className="bg-slate-200 text-slate-600">Disattivato</Badge>
                             )}
                           </div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 bg-blue-50 rounded-lg">
+                        <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
                           <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="h-4 w-4 text-blue-600" />
-                            <Label className="text-sm font-semibold">Ultima esecuzione</Label>
+                            <Calendar className="h-4 w-4 text-cyan-600" />
+                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Ultima esecuzione</Label>
                           </div>
-                          <p className="text-base font-medium">
+                          <p className="text-base font-medium text-slate-900 dark:text-slate-100">
                             {schedulerStatus.lastSchedulerRun 
                               ? format(new Date(schedulerStatus.lastSchedulerRun), "dd/MM/yyyy HH:mm", { locale: it })
                               : "Mai eseguito"}
                           </p>
                         </div>
 
-                        <div className="p-4 bg-purple-50 rounded-lg">
+                        <div className="p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-800">
                           <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="h-4 w-4 text-purple-600" />
-                            <Label className="text-sm font-semibold">Prossima esecuzione</Label>
+                            <Calendar className="h-4 w-4 text-teal-600" />
+                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Prossima esecuzione</Label>
                           </div>
-                          <p className="text-base font-medium">
+                          <p className="text-base font-medium text-slate-900 dark:text-slate-100">
                             {schedulerStatus.nextSchedulerRun 
                               ? format(new Date(schedulerStatus.nextSchedulerRun), "dd/MM/yyyy HH:mm", { locale: it })
                               : "Non programmata"}
@@ -2488,7 +2491,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           <Button
                             onClick={() => startSchedulerMutation.mutate()}
                             disabled={startSchedulerMutation.isPending}
-                            className="bg-emerald-600 hover:bg-emerald-700"
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md"
                           >
                             {startSchedulerMutation.isPending ? (
                               <>
@@ -2509,7 +2512,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                             onClick={() => pauseSchedulerMutation.mutate()}
                             disabled={pauseSchedulerMutation.isPending}
                             variant="outline"
-                            className="border-yellow-600 text-yellow-700 hover:bg-yellow-50"
+                            className="border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                           >
                             {pauseSchedulerMutation.isPending ? (
                               <>
@@ -2529,7 +2532,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           <Button
                             onClick={() => resumeSchedulerMutation.mutate()}
                             disabled={resumeSchedulerMutation.isPending}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-md"
                           >
                             {resumeSchedulerMutation.isPending ? (
                               <>
@@ -2567,7 +2570,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
                         <Button
                           onClick={() => {
-                            // Extra protection against double-click
                             if (executeNowMutation.isPending) {
                               console.log("⚠️ Scheduler execution already in progress - ignoring click");
                               return;
@@ -2578,7 +2580,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           }}
                           disabled={executeNowMutation.isPending}
                           variant="outline"
-                          className="border-indigo-600 text-indigo-700 hover:bg-indigo-50"
+                          className="border-cyan-500 text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
                         >
                           {executeNowMutation.isPending ? (
                             <>
@@ -2595,45 +2597,45 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       </div>
 
                       <div className="pt-4">
-                        <Label className="text-base font-semibold mb-4 block">Ultimi 10 Log</Label>
+                        <Label className="text-base font-semibold mb-4 block text-slate-700 dark:text-slate-300">Ultimi 10 Log</Label>
                         {schedulerLogsLoading ? (
                           <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                            <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                           </div>
                         ) : schedulerLogs.length === 0 ? (
-                          <div className="text-center py-8 bg-slate-50 rounded-lg">
-                            <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                            <p className="text-sm text-muted-foreground">Nessuna esecuzione registrata</p>
+                          <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <Clock className="h-10 w-10 text-slate-400 mx-auto mb-3" />
+                            <p className="text-sm text-slate-500">Nessuna esecuzione registrata</p>
                           </div>
                         ) : (
-                          <div className="border rounded-lg overflow-hidden">
+                          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                             <Table>
                               <TableHeader>
-                                <TableRow>
-                                  <TableHead>Data/Ora</TableHead>
-                                  <TableHead>Clienti Processati</TableHead>
-                                  <TableHead>Email Inviate</TableHead>
-                                  <TableHead>Draft Creati</TableHead>
-                                  <TableHead>Errori</TableHead>
-                                  <TableHead>Status</TableHead>
+                                <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Data/Ora</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Clienti Processati</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Email Inviate</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Draft Creati</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Errori</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Status</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {schedulerLogs.map((log) => (
-                                  <TableRow key={log.id}>
-                                    <TableCell className="font-medium">
+                                  <TableRow key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                                       {format(new Date(log.executedAt), "dd/MM/yyyy HH:mm", { locale: it })}
                                     </TableCell>
-                                    <TableCell>{log.clientsProcessed}</TableCell>
-                                    <TableCell>{log.emailsSent}</TableCell>
-                                    <TableCell>{log.draftsCreated}</TableCell>
-                                    <TableCell>{log.errors}</TableCell>
+                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.clientsProcessed}</TableCell>
+                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.emailsSent}</TableCell>
+                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.draftsCreated}</TableCell>
+                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.errors}</TableCell>
                                     <TableCell>
                                       {log.status === 'success' && (
-                                        <Badge className="bg-emerald-600">Success</Badge>
+                                        <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white">Success</Badge>
                                       )}
                                       {log.status === 'partial' && (
-                                        <Badge className="bg-yellow-600">Partial</Badge>
+                                        <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white">Partial</Badge>
                                       )}
                                       {log.status === 'failed' && (
                                         <Badge variant="destructive">Failed</Badge>
@@ -2661,89 +2663,88 @@ Non limitarti a stato attuale/ideale. Attingi da:
           </Collapsible>
 
           <Tabs defaultValue="drafts" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8 bg-gradient-to-r from-white via-blue-50/30 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 shadow-xl border-2 border-blue-100/50 dark:border-slate-600 p-2 h-auto rounded-2xl backdrop-blur-sm">
+            <TabsList className="grid w-full grid-cols-8 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 h-auto rounded-xl shadow-sm backdrop-blur-sm">
               <TabsTrigger 
                 value="drafts" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-slate-700/50"
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
-                <span className="text-xl">📝</span>
-                <span>Bozze</span>
+                <FileText className="h-4 w-4" />
+                <span className="hidden lg:inline">Bozze</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="echo" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-amber-50/50 dark:hover:bg-slate-700/50"
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
-                <Sparkles className="h-5 w-5" />
-                <span className="hidden lg:inline">Riepilogo Consulenza</span>
-                <span className="lg:hidden">Echo</span>
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden lg:inline">Echo</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="consultation-summary" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-purple-50/50 dark:hover:bg-slate-700/50"
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
-                <span className="text-xl">📋</span>
-                <span className="hidden lg:inline">Email Riepilogo</span>
-                <span className="lg:hidden">Riepilogo</span>
+                <Mail className="h-4 w-4" />
+                <span className="hidden lg:inline">Riepilogo</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="statistics" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-emerald-50/50 dark:hover:bg-slate-700/50"
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
-                <span className="text-xl">📊</span>
-                <span>Statistiche</span>
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden lg:inline">Statistiche</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="clients" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-orange-50/50 dark:hover:bg-slate-700/50"
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
-                <span className="text-xl">👥</span>
-                <span>Clienti</span>
+                <Users className="h-4 w-4" />
+                <span className="hidden lg:inline">Clienti</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="journey" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-cyan-50/50 dark:hover:bg-slate-700/50"
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
-                <span className="text-xl">📧</span>
-                <span className="hidden lg:inline">Email Journey</span>
-                <span className="lg:hidden">Journey</span>
+                <Route className="h-4 w-4" />
+                <span className="hidden lg:inline">Journey</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="updates" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-violet-50/50 dark:hover:bg-slate-700/50"
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
-                <span className="text-xl">📢</span>
-                <span>Aggiornamenti</span>
+                <Megaphone className="h-4 w-4" />
+                <span className="hidden lg:inline">Updates</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="test" 
-                className="flex items-center gap-2.5 py-4 px-4 text-base font-semibold rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-600 data-[state=active]:to-rose-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 hover:bg-pink-50/50 dark:hover:bg-slate-700/50"
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
-                <span className="text-xl">🧪</span>
-                <span>Test</span>
+                <Zap className="h-4 w-4" />
+                <span className="hidden lg:inline">Test</span>
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="drafts" className="space-y-6">
-              <Card className="border-0 shadow-lg">
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-6 w-6" />
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                      <FileText className="h-4 w-4 text-white" />
+                    </div>
                     Bozze Email in Attesa
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
                     Rivedi e approva le email generate dall'AI prima dell'invio
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {draftsLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                      <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                     </div>
                   ) : drafts.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-lg font-semibold text-muted-foreground">Nessuna bozza in attesa</p>
-                      <p className="text-sm text-muted-foreground mt-2">
+                    <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <Mail className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                      <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessuna bozza in attesa</p>
+                      <p className="text-sm text-slate-500 mt-2">
                         Le email generate dall'AI appariranno qui per l'approvazione
                       </p>
                     </div>
@@ -2765,8 +2766,8 @@ Non limitarti a stato attuale/ideale. Attingi da:
                             <TableCell className="max-w-md truncate">{draft.subject}</TableCell>
                             <TableCell>
                               {draft.emailType === 'system_update' ? (
-                                <Badge className="bg-purple-600 hover:bg-purple-700">
-                                  📢 Aggiornamento Sistema
+                                <Badge className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white">
+                                  Aggiornamento Sistema
                                 </Badge>
                               ) : draft.journeyDay ? (
                                 <div className="flex items-center gap-2">
@@ -2807,7 +2808,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                   size="sm"
                                   onClick={() => approveDraftMutation.mutate(draft.id)}
                                   disabled={approveDraftMutation.isPending}
-                                  className="bg-emerald-600 hover:bg-emerald-700"
+                                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-sm"
                                 >
                                   <Check className="h-4 w-4 mr-1" />
                                   Approva
