@@ -153,6 +153,7 @@ function buildTrimesterAssignmentPrompt(courses: CourseInfo[]): string {
 
     return `
 ### CORSO ${idx + 1}: "${course.name}"
+**ID CORSO (da usare in courseId)**: ${course.id}
 Descrizione: ${course.description || "Non disponibile"}
 Numero lezioni: ${course.lessonCount}
 Lezioni:
@@ -182,20 +183,21 @@ Rispondi SOLO con un JSON array valido (senza markdown, senza backticks):
 
 [
   {
-    "courseId": "id_del_corso",
+    "courseId": "COPIA_ESATTA_DELL_ID_CORSO",
     "courseName": "nome_del_corso",
-    "trimester": "Q1" | "Q2" | "Q3" | "Q4",
+    "trimester": "Q1",
     "reasoning": "Spiegazione breve del perché questo corso appartiene a questo trimestre",
-    "sortOrder": numero_ordine_nel_trimestre
+    "sortOrder": 1
   }
 ]
 
 ## REGOLE IMPORTANTI:
 1. Assegna OGNI corso a un solo trimestre
-2. Il campo "trimester" deve essere esattamente "Q1", "Q2", "Q3" o "Q4"
-3. Il campo "sortOrder" indica l'ordine del corso all'interno del trimestre (1, 2, 3, ...)
-4. Il campo "reasoning" deve essere in italiano e breve (max 100 caratteri)
-5. Considera il contenuto delle lezioni per determinare il livello di difficoltà
+2. Il campo "courseId" DEVE essere ESATTAMENTE l'ID CORSO mostrato sopra per ogni corso (es: "865ca525-c7cc-45d3-b9c2-xxx")
+3. Il campo "trimester" deve essere esattamente "Q1", "Q2", "Q3" o "Q4"
+4. Il campo "sortOrder" indica l'ordine del corso all'interno del trimestre (1, 2, 3, ...)
+5. Il campo "reasoning" deve essere in italiano e breve (max 100 caratteri)
+6. Considera il contenuto delle lezioni per determinare il livello di difficoltà
 
 Genera ora le assegnazioni:`;
 }
