@@ -93,10 +93,7 @@ async function getCoursesForConsultant(consultantId: string, courseIds?: string[
     .where(
       and(
         eq(libraryCategories.isActive, true),
-        or(
-          eq(libraryCategories.createdBy, consultantId),
-          eq(libraryCategories.isPublic, true)
-        )
+        eq(libraryCategories.createdBy, consultantId)
       )
     )
     .orderBy(asc(libraryCategories.sortOrder));

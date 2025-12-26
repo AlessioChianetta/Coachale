@@ -55,7 +55,7 @@ import {
 import path from "path";
 import fs from "fs";
 import { calculateTemplateDay } from "./services/email-scheduler";
-import { eq, and, inArray, sql, desc, or, gte, lte, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, inArray, sql, desc, or, gte, lte, isNotNull, isNull, asc } from "drizzle-orm";
 import { db } from "./db";
 import * as schema from "@shared/schema";
 import { Request, Response } from 'express'; // Import Request and Response types
@@ -7547,10 +7547,7 @@ Rispondi SOLO con un JSON array, senza altri testi:
         .where(
           and(
             eq(schema.libraryCategories.isActive, true),
-            or(
-              eq(schema.libraryCategories.createdBy, req.user!.id),
-              eq(schema.libraryCategories.isPublic, true)
-            )
+            eq(schema.libraryCategories.createdBy, req.user!.id)
           )
         )
         .orderBy(asc(schema.libraryCategories.sortOrder));
