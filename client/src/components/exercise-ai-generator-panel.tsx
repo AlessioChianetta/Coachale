@@ -46,6 +46,14 @@ import {
   HelpCircle,
   Check,
   X,
+  Globe,
+  GraduationCap,
+  Baby,
+  Briefcase,
+  MessageSquare,
+  Clock,
+  Zap,
+  Search,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -115,6 +123,18 @@ export function ExerciseAIGeneratorPanel({
   const [editingQuestion, setEditingQuestion] = useState<{ templateId: string; questionId: string } | null>(null);
   const [generatedCategorySlug, setGeneratedCategorySlug] = useState<string>("");
 
+  // Nuovi stati per configurazione avanzata
+  const [languageMode, setLanguageMode] = useState<"course" | "specific" | "custom">("course");
+  const [specificLanguage, setSpecificLanguage] = useState<string>("it");
+  const [customSystemPrompt, setCustomSystemPrompt] = useState<string>("");
+  const [writingStyle, setWritingStyle] = useState<string>("standard");
+  const [customWritingStyle, setCustomWritingStyle] = useState<string>("");
+  const [questionsMode, setQuestionsMode] = useState<"auto" | "fixed">("fixed");
+
+  // Stati per progress pool
+  const [lessonProgress, setLessonProgress] = useState<Record<string, { status: 'pending' | 'analyzing' | 'generating' | 'completed' | 'error'; questionsCount?: number; message?: string }>>({});
+  const [currentLessonIndex, setCurrentLessonIndex] = useState<number>(0);
+
   const { data: lessons = [], isLoading: lessonsLoading } = useQuery({
     queryKey: ["/api/library/courses", courseId, "documents"],
     queryFn: async () => {
@@ -123,49 +143,6 @@ export function ExerciseAIGeneratorPanel({
       });
       if (!response.ok) throw new Error("Failed to fetch lessons");
       return response.json();
-    },
-  });
-
-  const generateMutation = useMutation({
-    mutationFn: async (params: {
-      lessonIds: string[];
-      difficulty: string;
-      questionsPerLesson: number;
-      questionMix: typeof questionMix;
-    }) => {
-      const response = await fetch(`/api/library/courses/${courseId}/generate-exercises`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(params),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to generate exercises");
-      }
-      return response.json();
-    },
-    onSuccess: (data) => {
-      const templates: GeneratedTemplate[] = data.templates || data;
-      if (data.categorySlug) {
-        setGeneratedCategorySlug(data.categorySlug);
-      }
-      setGeneratedTemplates(templates.map((t: any) => ({ ...t, isExpanded: false })));
-      setPhase("review");
-      toast({
-        title: "Esercizi generati",
-        description: `${templates.length} esercizi generati con successo`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Errore",
-        description: error.message || "Errore durante la generazione degli esercizi",
-        variant: "destructive",
-      });
-      setPhase("selection");
     },
   });
 
@@ -190,6 +167,7 @@ export function ExerciseAIGeneratorPanel({
             estimatedDuration: template.estimatedDuration,
             sortOrder: i + 1,
             isPublic: false,
+            libraryDocumentId: template.lessonId,
           }),
         });
         if (!response.ok) {
@@ -268,7 +246,7 @@ export function ExerciseAIGeneratorPanel({
     }
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (selectedLessons.length === 0) {
       toast({
         title: "Seleziona lezioni",
@@ -281,31 +259,108 @@ export function ExerciseAIGeneratorPanel({
     normalizeMix();
     setPhase("generating");
     setGenerationProgress(0);
+    setCurrentLessonIndex(0);
+    setGeneratedTemplates([]);
 
-    const progressInterval = setInterval(() => {
-      setGenerationProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + Math.random() * 15;
-      });
-    }, 500);
+    const initialProgress: Record<string, { status: 'pending' | 'analyzing' | 'generating' | 'completed' | 'error'; questionsCount?: number; message?: string }> = {};
+    selectedLessons.forEach((lessonId) => {
+      initialProgress[lessonId] = { status: 'pending' };
+    });
+    setLessonProgress(initialProgress);
 
-    generateMutation.mutate(
-      {
-        lessonIds: selectedLessons,
-        difficulty,
-        questionsPerLesson,
-        questionMix,
-      },
-      {
-        onSettled: () => {
-          clearInterval(progressInterval);
-          setGenerationProgress(100);
+    try {
+      const response = await fetch(`/api/library/courses/${courseId}/generate-exercises-stream`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          lessonIds: selectedLessons,
+          difficulty,
+          questionsPerLesson,
+          questionMix,
+          languageMode,
+          specificLanguage,
+          customSystemPrompt,
+          writingStyle,
+          customWritingStyle,
+          questionsMode,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante la generazione degli esercizi");
       }
-    );
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("Impossibile leggere lo stream");
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === "progress") {
+                setLessonProgress((prev) => ({
+                  ...prev,
+                  [data.lessonId]: {
+                    status: data.status,
+                    questionsCount: data.questionsCount,
+                    message: data.message,
+                  },
+                }));
+                const completedCount = Object.values({ ...lessonProgress, [data.lessonId]: { status: data.status } })
+                  .filter((p) => p.status === 'completed').length;
+                setGenerationProgress((completedCount / selectedLessons.length) * 100);
+              } else if (data.type === "complete") {
+                const templates: GeneratedTemplate[] = data.templates || [];
+                if (data.categorySlug) {
+                  setGeneratedCategorySlug(data.categorySlug);
+                }
+                setGeneratedTemplates(templates.map((t: any) => ({ ...t, isExpanded: false })));
+                setGenerationProgress(100);
+                setPhase("review");
+                toast({
+                  title: "Esercizi generati",
+                  description: `${templates.length} esercizi generati con successo`,
+                });
+              } else if (data.type === "error") {
+                toast({
+                  title: "Errore",
+                  description: data.message || "Errore durante la generazione degli esercizi",
+                  variant: "destructive",
+                });
+                setPhase("selection");
+              }
+            } catch (parseError) {
+              console.error("Error parsing SSE data:", parseError);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la generazione degli esercizi",
+        variant: "destructive",
+      });
+      setPhase("selection");
+    }
   };
 
   const handleToggleTemplateExpand = (templateId: string) => {
@@ -616,31 +671,289 @@ export function ExerciseAIGeneratorPanel({
                       </div>
                       <Label className="text-sm font-semibold">Domande per lezione</Label>
                     </div>
-                    <div className="flex items-center gap-3">
+                    
+                    {/* Toggle Automatico/Fisso */}
+                    <div className="flex items-center gap-2 mb-3">
                       <Button
-                        variant="outline"
+                        variant={questionsMode === "auto" ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setQuestionsPerLesson(Math.max(1, questionsPerLesson - 1))}
-                        disabled={questionsPerLesson <= 1}
-                        className="h-9 w-9 p-0"
+                        onClick={() => setQuestionsMode("auto")}
+                        className={`flex-1 h-8 text-xs ${questionsMode === "auto" ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" : ""}`}
                       >
-                        -
+                        <Zap size={12} className="mr-1" />
+                        Automatico
                       </Button>
-                      <div className="flex-1 text-center">
-                        <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{questionsPerLesson}</span>
-                      </div>
                       <Button
-                        variant="outline"
+                        variant={questionsMode === "fixed" ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setQuestionsPerLesson(Math.min(10, questionsPerLesson + 1))}
-                        disabled={questionsPerLesson >= 10}
-                        className="h-9 w-9 p-0"
+                        onClick={() => setQuestionsMode("fixed")}
+                        className={`flex-1 h-8 text-xs ${questionsMode === "fixed" ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600" : ""}`}
                       >
-                        +
+                        <Clock size={12} className="mr-1" />
+                        Fisso
                       </Button>
                     </div>
+
+                    {questionsMode === "auto" ? (
+                      <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Zap size={14} className="text-amber-600 dark:text-amber-400" />
+                          <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">AI decide automaticamente</span>
+                        </div>
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                          L'AI analizzerà il contenuto di ogni lezione e determinerà il numero ottimale di domande (max 15 per lezione)
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setQuestionsPerLesson(Math.max(1, questionsPerLesson - 1))}
+                          disabled={questionsPerLesson <= 1}
+                          className="h-9 w-9 p-0"
+                        >
+                          -
+                        </Button>
+                        <div className="flex-1 text-center">
+                          <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{questionsPerLesson}</span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setQuestionsPerLesson(Math.min(15, questionsPerLesson + 1))}
+                          disabled={questionsPerLesson >= 15}
+                          className="h-9 w-9 p-0"
+                        >
+                          +
+                        </Button>
+                      </div>
+                    )}
                   </Card>
                 </div>
+
+                {/* Sezione Lingua */}
+                <Card className="border-0 shadow-sm overflow-hidden">
+                  <div className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
+                        <Globe size={14} className="text-cyan-600 dark:text-cyan-400" />
+                      </div>
+                      <Label className="text-base font-semibold">Lingua delle Domande</Label>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <div
+                        onClick={() => setLanguageMode("course")}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                          languageMode === "course"
+                            ? "bg-gradient-to-r from-cyan-50 to-blue-50 border-cyan-300 dark:from-cyan-900/20 dark:to-blue-900/20 dark:border-cyan-700"
+                            : "bg-white border-transparent hover:border-cyan-200 dark:bg-slate-800/50 dark:hover:border-cyan-800"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            languageMode === "course" ? "border-cyan-500 bg-cyan-500" : "border-slate-300 dark:border-slate-600"
+                          }`}>
+                            {languageMode === "course" && <Check size={10} className="text-white" />}
+                          </div>
+                          <span className="text-sm font-medium">Lingua del corso</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1 ml-6">Usa la lingua originale del corso</p>
+                      </div>
+
+                      <div
+                        onClick={() => setLanguageMode("specific")}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                          languageMode === "specific"
+                            ? "bg-gradient-to-r from-cyan-50 to-blue-50 border-cyan-300 dark:from-cyan-900/20 dark:to-blue-900/20 dark:border-cyan-700"
+                            : "bg-white border-transparent hover:border-cyan-200 dark:bg-slate-800/50 dark:hover:border-cyan-800"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            languageMode === "specific" ? "border-cyan-500 bg-cyan-500" : "border-slate-300 dark:border-slate-600"
+                          }`}>
+                            {languageMode === "specific" && <Check size={10} className="text-white" />}
+                          </div>
+                          <span className="text-sm font-medium">Lingua specifica</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1 ml-6">Scegli una lingua</p>
+                      </div>
+
+                      <div
+                        onClick={() => setLanguageMode("custom")}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                          languageMode === "custom"
+                            ? "bg-gradient-to-r from-cyan-50 to-blue-50 border-cyan-300 dark:from-cyan-900/20 dark:to-blue-900/20 dark:border-cyan-700"
+                            : "bg-white border-transparent hover:border-cyan-200 dark:bg-slate-800/50 dark:hover:border-cyan-800"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            languageMode === "custom" ? "border-cyan-500 bg-cyan-500" : "border-slate-300 dark:border-slate-600"
+                          }`}>
+                            {languageMode === "custom" && <Check size={10} className="text-white" />}
+                          </div>
+                          <span className="text-sm font-medium">Prompt personalizzato</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1 ml-6">Istruzioni custom</p>
+                      </div>
+                    </div>
+
+                    {languageMode === "specific" && (
+                      <Select value={specificLanguage} onValueChange={setSpecificLanguage}>
+                        <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                          <SelectValue placeholder="Seleziona lingua" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="it">
+                            <div className="flex items-center gap-2">🇮🇹 Italiano</div>
+                          </SelectItem>
+                          <SelectItem value="en">
+                            <div className="flex items-center gap-2">🇬🇧 English</div>
+                          </SelectItem>
+                          <SelectItem value="es">
+                            <div className="flex items-center gap-2">🇪🇸 Español</div>
+                          </SelectItem>
+                          <SelectItem value="fr">
+                            <div className="flex items-center gap-2">🇫🇷 Français</div>
+                          </SelectItem>
+                          <SelectItem value="de">
+                            <div className="flex items-center gap-2">🇩🇪 Deutsch</div>
+                          </SelectItem>
+                          <SelectItem value="pt">
+                            <div className="flex items-center gap-2">🇵🇹 Português</div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+
+                    {languageMode === "custom" && (
+                      <Textarea
+                        value={customSystemPrompt}
+                        onChange={(e) => setCustomSystemPrompt(e.target.value)}
+                        placeholder="Inserisci le istruzioni personalizzate per la generazione delle domande (es. 'Genera le domande in italiano formale, usando terminologia tecnica del settore finanziario...')"
+                        className="min-h-[80px] text-sm"
+                      />
+                    )}
+                  </div>
+                </Card>
+
+                {/* Sezione Stile di Scrittura */}
+                <Card className="border-0 shadow-sm overflow-hidden">
+                  <div className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                        <BookOpen size={14} className="text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <Label className="text-base font-semibold">Stile di Scrittura</Label>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                      {/* Elementare */}
+                      <div
+                        onClick={() => setWritingStyle("elementary")}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                          writingStyle === "elementary"
+                            ? "bg-gradient-to-br from-pink-50 to-rose-50 border-pink-300 dark:from-pink-900/20 dark:to-rose-900/20 dark:border-pink-700"
+                            : "bg-white border-transparent hover:border-pink-200 dark:bg-slate-800/50 dark:hover:border-pink-800"
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center ${
+                          writingStyle === "elementary" ? "bg-pink-500" : "bg-pink-100 dark:bg-pink-900/30"
+                        }`}>
+                          <Baby size={20} className={writingStyle === "elementary" ? "text-white" : "text-pink-600 dark:text-pink-400"} />
+                        </div>
+                        <span className="text-xs font-semibold">Elementare</span>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">Linguaggio semplice</p>
+                      </div>
+
+                      {/* Standard */}
+                      <div
+                        onClick={() => setWritingStyle("standard")}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                          writingStyle === "standard"
+                            ? "bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300 dark:from-blue-900/20 dark:to-indigo-900/20 dark:border-blue-700"
+                            : "bg-white border-transparent hover:border-blue-200 dark:bg-slate-800/50 dark:hover:border-blue-800"
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center ${
+                          writingStyle === "standard" ? "bg-blue-500" : "bg-blue-100 dark:bg-blue-900/30"
+                        }`}>
+                          <BookOpen size={20} className={writingStyle === "standard" ? "text-white" : "text-blue-600 dark:text-blue-400"} />
+                        </div>
+                        <span className="text-xs font-semibold">Standard</span>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">Bilanciato</p>
+                      </div>
+
+                      {/* Professionale */}
+                      <div
+                        onClick={() => setWritingStyle("professional")}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                          writingStyle === "professional"
+                            ? "bg-gradient-to-br from-slate-100 to-gray-100 border-slate-400 dark:from-slate-800 dark:to-gray-800 dark:border-slate-600"
+                            : "bg-white border-transparent hover:border-slate-300 dark:bg-slate-800/50 dark:hover:border-slate-700"
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center ${
+                          writingStyle === "professional" ? "bg-slate-600" : "bg-slate-100 dark:bg-slate-700"
+                        }`}>
+                          <Briefcase size={20} className={writingStyle === "professional" ? "text-white" : "text-slate-600 dark:text-slate-400"} />
+                        </div>
+                        <span className="text-xs font-semibold">Professionale</span>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">Tono formale</p>
+                      </div>
+
+                      {/* Accademico */}
+                      <div
+                        onClick={() => setWritingStyle("academic")}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                          writingStyle === "academic"
+                            ? "bg-gradient-to-br from-violet-50 to-purple-50 border-violet-300 dark:from-violet-900/20 dark:to-purple-900/20 dark:border-violet-700"
+                            : "bg-white border-transparent hover:border-violet-200 dark:bg-slate-800/50 dark:hover:border-violet-800"
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center ${
+                          writingStyle === "academic" ? "bg-violet-500" : "bg-violet-100 dark:bg-violet-900/30"
+                        }`}>
+                          <GraduationCap size={20} className={writingStyle === "academic" ? "text-white" : "text-violet-600 dark:text-violet-400"} />
+                        </div>
+                        <span className="text-xs font-semibold">Accademico</span>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">Universitario</p>
+                      </div>
+
+                      {/* Personalizzato */}
+                      <div
+                        onClick={() => setWritingStyle("custom")}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                          writingStyle === "custom"
+                            ? "bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-300 dark:from-emerald-900/20 dark:to-teal-900/20 dark:border-emerald-700"
+                            : "bg-white border-transparent hover:border-emerald-200 dark:bg-slate-800/50 dark:hover:border-emerald-800"
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center ${
+                          writingStyle === "custom" ? "bg-emerald-500" : "bg-emerald-100 dark:bg-emerald-900/30"
+                        }`}>
+                          <MessageSquare size={20} className={writingStyle === "custom" ? "text-white" : "text-emerald-600 dark:text-emerald-400"} />
+                        </div>
+                        <span className="text-xs font-semibold">Personalizzato</span>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">Custom</p>
+                      </div>
+                    </div>
+
+                    {writingStyle === "custom" && (
+                      <Textarea
+                        value={customWritingStyle}
+                        onChange={(e) => setCustomWritingStyle(e.target.value)}
+                        placeholder="Descrivi lo stile di scrittura desiderato (es. 'Usa un tono amichevole ma professionale, con esempi pratici del mondo reale...')"
+                        className="min-h-[80px] text-sm mt-3"
+                      />
+                    )}
+                  </div>
+                </Card>
 
                 {/* Question Mix Section */}
                 <Card className="border-0 shadow-sm overflow-hidden">
@@ -748,26 +1061,155 @@ export function ExerciseAIGeneratorPanel({
           )}
 
           {phase === "generating" && (
-            <div className="flex flex-col items-center justify-center py-16 space-y-6">
-              <div className="relative">
-                <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center animate-pulse">
-                  <Sparkles className="h-12 w-12 text-white" />
+            <ScrollArea className="h-[60vh] pr-4">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-white animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold">Generazione Esercizi</h3>
+                    <p className="text-xs text-muted-foreground">
+                      L'AI sta analizzando le lezioni e generando le domande
+                    </p>
+                  </div>
                 </div>
+
+                <div className="space-y-2">
+                  {selectedLessons.map((lessonId) => {
+                    const lesson = lessons.find((l: Lesson) => l.id === lessonId);
+                    const progress = lessonProgress[lessonId] || { status: 'pending' };
+                    
+                    const getStatusConfig = () => {
+                      switch (progress.status) {
+                        case 'pending':
+                          return {
+                            icon: <Clock size={16} className="text-slate-400" />,
+                            text: "In attesa...",
+                            bgColor: "bg-slate-50 dark:bg-slate-800/50",
+                            borderColor: "border-slate-200 dark:border-slate-700",
+                            progressColor: "bg-slate-200",
+                            progressValue: 0,
+                          };
+                        case 'analyzing':
+                          return {
+                            icon: <Search size={16} className="text-blue-500 animate-pulse" />,
+                            text: "Analisi contenuto...",
+                            bgColor: "bg-blue-50 dark:bg-blue-900/20",
+                            borderColor: "border-blue-300 dark:border-blue-700",
+                            progressColor: "bg-blue-500",
+                            progressValue: 30,
+                          };
+                        case 'generating':
+                          return {
+                            icon: <Sparkles size={16} className="text-purple-500 animate-pulse" />,
+                            text: "Generazione esercizi...",
+                            bgColor: "bg-purple-50 dark:bg-purple-900/20",
+                            borderColor: "border-purple-300 dark:border-purple-700",
+                            progressColor: "bg-purple-500",
+                            progressValue: 70,
+                          };
+                        case 'completed':
+                          return {
+                            icon: <CheckCircle2 size={16} className="text-emerald-500" />,
+                            text: `${progress.questionsCount || 0} domande create`,
+                            bgColor: "bg-emerald-50 dark:bg-emerald-900/20",
+                            borderColor: "border-emerald-300 dark:border-emerald-700",
+                            progressColor: "bg-emerald-500",
+                            progressValue: 100,
+                          };
+                        case 'error':
+                          return {
+                            icon: <XCircle size={16} className="text-red-500" />,
+                            text: progress.message || "Errore",
+                            bgColor: "bg-red-50 dark:bg-red-900/20",
+                            borderColor: "border-red-300 dark:border-red-700",
+                            progressColor: "bg-red-500",
+                            progressValue: 100,
+                          };
+                        default:
+                          return {
+                            icon: <Clock size={16} className="text-slate-400" />,
+                            text: "In attesa...",
+                            bgColor: "bg-slate-50 dark:bg-slate-800/50",
+                            borderColor: "border-slate-200 dark:border-slate-700",
+                            progressColor: "bg-slate-200",
+                            progressValue: 0,
+                          };
+                      }
+                    };
+
+                    const config = getStatusConfig();
+
+                    return (
+                      <Card 
+                        key={lessonId} 
+                        className={`p-3 border-2 transition-all duration-300 ${config.bgColor} ${config.borderColor}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center">
+                            {config.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {lesson?.title || `Lezione ${lessonId}`}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{config.text}</p>
+                          </div>
+                          {progress.status !== 'pending' && progress.status !== 'completed' && progress.status !== 'error' && (
+                            <Loader2 size={16} className="animate-spin text-purple-500 flex-shrink-0" />
+                          )}
+                        </div>
+                        <div className="mt-2">
+                          <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full transition-all duration-500 rounded-full ${config.progressColor}`}
+                              style={{ width: `${config.progressValue}%` }}
+                            />
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                <Card className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-0 shadow-sm mt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                          <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold">
+                            {Object.values(lessonProgress).filter((p) => p.status === 'completed').length}/{selectedLessons.length}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Lezioni completate</p>
+                        </div>
+                      </div>
+                      <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                          <HelpCircle size={16} className="text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold">
+                            {Object.values(lessonProgress).reduce((sum, p) => sum + (p.questionsCount || 0), 0)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Domande generate</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-32">
+                      <Progress value={generationProgress} className="h-2" />
+                      <p className="text-xs text-muted-foreground text-center mt-1">
+                        {Math.round(generationProgress)}%
+                      </p>
+                    </div>
+                  </div>
+                </Card>
               </div>
-              <div className="text-center space-y-2">
-                <h3 className="text-lg font-semibold">Generazione in corso...</h3>
-                <p className="text-muted-foreground">
-                  L'AI sta creando {selectedLessons.length * questionsPerLesson} domande per{" "}
-                  {selectedLessons.length} lezioni
-                </p>
-              </div>
-              <div className="w-64 space-y-2">
-                <Progress value={generationProgress} className="h-2" />
-                <p className="text-center text-sm text-muted-foreground">
-                  {Math.round(generationProgress)}%
-                </p>
-              </div>
-            </div>
+            </ScrollArea>
           )}
 
           {phase === "review" && (

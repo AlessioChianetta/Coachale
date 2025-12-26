@@ -6150,11 +6150,22 @@ Rispondi SOLO con un JSON array, senza altri testi:
   app.post("/api/library/courses/:courseId/generate-exercises", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { courseId } = req.params;
-      const { lessonIds, difficulty, questionsPerLesson, questionMix } = req.body;
+      const { 
+        lessonIds, 
+        difficulty, 
+        questionsPerLesson, 
+        questionMix,
+        languageMode,
+        specificLanguage,
+        customSystemPrompt,
+        writingStyle,
+        customWritingStyle,
+        questionsMode
+      } = req.body;
       const consultantId = req.user!.id;
 
       console.log(`🎯 [AI-EXERCISE-ROUTE] Starting exercise generation for course: ${courseId}`);
-      console.log(`📊 [AI-EXERCISE-ROUTE] Options: lessonIds=${lessonIds?.length || 'all'}, difficulty=${difficulty || 'base'}, questionsPerLesson=${questionsPerLesson || 3}`);
+      console.log(`📊 [AI-EXERCISE-ROUTE] Options: lessonIds=${lessonIds?.length || 'all'}, difficulty=${difficulty || 'base'}, questionsPerLesson=${questionsPerLesson || 3}, questionsMode=${questionsMode || 'fixed'}, languageMode=${languageMode || 'course'}, writingStyle=${writingStyle || 'standard'}`);
 
       const { generateExercisesForCourse } = await import("./services/ai-exercise-generator");
 
@@ -6166,6 +6177,12 @@ Rispondi SOLO con un JSON array, senza altri testi:
           difficulty,
           questionsPerLesson,
           questionMix,
+          languageMode,
+          specificLanguage,
+          customSystemPrompt,
+          writingStyle,
+          customWritingStyle,
+          questionsMode,
         },
       });
 
@@ -6183,6 +6200,76 @@ Rispondi SOLO con un JSON array, senza altri testi:
     } catch (error: any) {
       console.error('❌ [AI-EXERCISE-ROUTE] Error:', error);
       res.status(500).json({ success: false, error: error.message || 'Errore nella generazione degli esercizi' });
+    }
+  });
+
+  // ===== SSE ENDPOINT FOR EXERCISE GENERATION WITH PROGRESS =====
+  
+  app.post("/api/library/courses/:courseId/generate-exercises-stream", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    const { courseId } = req.params;
+    const { 
+      lessonIds, 
+      difficulty, 
+      questionsPerLesson, 
+      questionMix,
+      languageMode,
+      specificLanguage,
+      customSystemPrompt,
+      writingStyle,
+      customWritingStyle,
+      questionsMode
+    } = req.body;
+    const consultantId = req.user!.id;
+
+    // Set headers for SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const sendEvent = (data: any) => {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      console.log(`🎯 [AI-EXERCISE-STREAM] Starting streaming exercise generation for course: ${courseId}`);
+      
+      const { generateExercisesForCourseWithProgress } = await import("./services/ai-exercise-generator");
+
+      const result = await generateExercisesForCourseWithProgress({
+        consultantId,
+        courseId,
+        options: {
+          lessonIds,
+          difficulty,
+          questionsPerLesson,
+          questionMix,
+          languageMode,
+          specificLanguage,
+          customSystemPrompt,
+          writingStyle,
+          customWritingStyle,
+          questionsMode,
+        },
+        onProgress: (progress) => {
+          sendEvent({ type: 'progress', ...progress });
+        },
+      });
+
+      if (!result.success) {
+        sendEvent({ type: 'error', error: result.error });
+      } else {
+        sendEvent({ 
+          type: 'complete', 
+          templates: result.templates,
+          categorySlug: result.categorySlug,
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ [AI-EXERCISE-STREAM] Error:', error);
+      sendEvent({ type: 'error', error: error.message || 'Errore nella generazione degli esercizi' });
+    } finally {
+      res.end();
     }
   });
 
