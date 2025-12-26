@@ -1005,29 +1005,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Update custom platform links for existing assignments
-        if (customPlatformLinks && Object.keys(customPlatformLinks).length > 0) {
-          console.log('🔗 UPDATING CUSTOM PLATFORM LINKS FOR EXISTING ASSIGNMENTS', {
-            customPlatformLinks
-          });
+      }
 
-          for (const existingAssignment of existingAssignments) {
-            const newCustomLink = customPlatformLinks[existingAssignment.clientId];
-            // Update if there's a new custom link for this client (including setting to empty/null)
-            if (newCustomLink !== undefined) {
-              try {
-                await storage.updateAssignmentWorkPlatform(
-                  existingAssignment.id, 
-                  newCustomLink || null
-                );
-                console.log('✅ Updated workPlatform for assignment', {
-                  assignmentId: existingAssignment.id,
-                  clientId: existingAssignment.clientId,
-                  newWorkPlatform: newCustomLink || null
-                });
-              } catch (updateError: any) {
-                console.error(`❌ Failed to update workPlatform for assignment ${existingAssignment.id}:`, updateError.message);
-              }
+      // Update custom platform links for existing assignments (independent of selectedClients)
+      if (customPlatformLinks && Object.keys(customPlatformLinks).length > 0) {
+        console.log('🔗 UPDATING CUSTOM PLATFORM LINKS FOR EXISTING ASSIGNMENTS', {
+          customPlatformLinks
+        });
+
+        // Fetch all existing assignments for this exercise
+        const allExistingAssignments = await db.select()
+          .from(schema.exerciseAssignments)
+          .where(eq(schema.exerciseAssignments.exerciseId, req.params.id));
+
+        for (const existingAssignment of allExistingAssignments) {
+          const newCustomLink = customPlatformLinks[existingAssignment.clientId];
+          // Update if there's a new custom link for this client (including setting to empty/null)
+          if (newCustomLink !== undefined) {
+            try {
+              await storage.updateAssignmentWorkPlatform(
+                existingAssignment.id, 
+                newCustomLink || null
+              );
+              console.log('✅ Updated workPlatform for assignment', {
+                assignmentId: existingAssignment.id,
+                clientId: existingAssignment.clientId,
+                newWorkPlatform: newCustomLink || null
+              });
+            } catch (updateError: any) {
+              console.error(`❌ Failed to update workPlatform for assignment ${existingAssignment.id}:`, updateError.message);
             }
           }
         }
