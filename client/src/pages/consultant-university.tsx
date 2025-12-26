@@ -68,6 +68,7 @@ import {
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
+import { AIPathwayWizard } from "@/components/ai-pathway-wizard";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getAuthHeaders } from "@/lib/auth";
@@ -467,6 +468,7 @@ export default function ConsultantUniversity() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [applyTemplateDialogOpen, setApplyTemplateDialogOpen] = useState(false);
   const [templateToApply, setTemplateToApply] = useState<string>("");
+  const [aiWizardOpen, setAiWizardOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1364,6 +1366,14 @@ return (
                 </div>
 
                 <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => setAiWizardOpen(true)}
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0 shadow-lg transition-all hover:scale-105"
+                    size="lg"
+                  >
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    Crea con AI
+                  </Button>
                   <Button
                     onClick={() => {
                       if (selectedClientId) {
@@ -4237,6 +4247,17 @@ function EditLessonExerciseSelector({
           </p>
         </>
       )}
+      <AIPathwayWizard 
+        open={aiWizardOpen} 
+        onOpenChange={setAiWizardOpen}
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/university"] });
+          toast({
+            title: "Percorso creato con successo!",
+            description: "Il nuovo percorso universitario è stato creato.",
+          });
+        }}
+      />
       <ConsultantAIAssistant />
     </div>
   );
