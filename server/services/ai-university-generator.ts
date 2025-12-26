@@ -185,11 +185,13 @@ Rispondi SOLO con un JSON array valido (senza markdown, senza backticks):
   {
     "courseId": "COPIA_ESATTA_DELL_ID_CORSO",
     "courseName": "nome_del_corso",
-    "trimester": "Q1",
+    "trimester": "Q1 oppure Q2 oppure Q3 oppure Q4",
     "reasoning": "Spiegazione breve del perché questo corso appartiene a questo trimestre",
     "sortOrder": 1
   }
 ]
+
+I valori validi per trimester sono: "Q1", "Q2", "Q3", "Q4"
 
 ## REGOLE IMPORTANTI:
 1. Assegna OGNI corso a un solo trimestre
