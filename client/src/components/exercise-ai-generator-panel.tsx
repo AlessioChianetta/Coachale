@@ -293,7 +293,7 @@ export function ExerciseAIGeneratorPanel({
     setLessonProgress(initialProgress);
 
     try {
-      const response = await fetch(`/api/library/courses/${courseId}/generate-exercises-stream`, {
+      const response = await fetch(`/api/library/courses/${courseId}/generate-exercises-job`, {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
@@ -318,65 +318,61 @@ export function ExerciseAIGeneratorPanel({
         throw new Error(error.message || "Errore durante la generazione degli esercizi");
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("Impossibile leggere lo stream");
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
-
-              if (data.type === "progress") {
-                setLessonProgress((prev) => ({
-                  ...prev,
-                  [data.lessonId]: {
-                    status: data.status,
-                    questionsCount: data.questionsCount,
-                    message: data.message,
-                  },
-                }));
-                const completedCount = Object.values({ ...lessonProgress, [data.lessonId]: { status: data.status } })
-                  .filter((p) => p.status === 'completed').length;
-                setGenerationProgress((completedCount / selectedLessons.length) * 100);
-              } else if (data.type === "complete") {
-                const templates: GeneratedTemplate[] = data.templates || [];
-                if (data.categorySlug) {
-                  setGeneratedCategorySlug(data.categorySlug);
-                }
-                setGeneratedTemplates(templates.map((t: any) => ({ ...t, isExpanded: false })));
-                setGenerationProgress(100);
-                setPhase("review");
-                toast({
-                  title: "Esercizi generati",
-                  description: `${templates.length} esercizi generati con successo`,
-                });
-              } else if (data.type === "error") {
-                toast({
-                  title: "Errore",
-                  description: data.message || "Errore durante la generazione degli esercizi",
-                  variant: "destructive",
-                });
-                setPhase("selection");
-              }
-            } catch (parseError) {
-              console.error("Error parsing SSE data:", parseError);
-            }
+      const { jobId } = await response.json();
+      
+      const pollJob = async () => {
+        try {
+          const jobResponse = await fetch(`/api/exercise-generation-jobs/${jobId}`, {
+            headers: getAuthHeaders(),
+          });
+          
+          if (!jobResponse.ok) {
+            throw new Error("Errore nel recupero dello stato del job");
           }
+          
+          const job = await jobResponse.json();
+          
+          setLessonProgress(job.progress);
+          
+          const completedCount = Object.values(job.progress)
+            .filter((p: any) => p.status === 'completed').length;
+          setGenerationProgress((completedCount / selectedLessons.length) * 100);
+          
+          if (job.status === 'completed') {
+            const templates: GeneratedTemplate[] = job.templates || [];
+            if (job.categorySlug) {
+              setGeneratedCategorySlug(job.categorySlug);
+            }
+            setGeneratedTemplates(templates.map((t: any) => ({ ...t, isExpanded: false })));
+            setGenerationProgress(100);
+            setPhase("review");
+            toast({
+              title: "Esercizi generati",
+              description: `${templates.length} esercizi generati con successo`,
+            });
+          } else if (job.status === 'error') {
+            toast({
+              title: "Errore",
+              description: job.error || "Errore durante la generazione degli esercizi",
+              variant: "destructive",
+            });
+            setPhase("selection");
+          } else {
+            setTimeout(pollJob, 1500);
+          }
+        } catch (pollError: any) {
+          console.error("Polling error:", pollError);
+          toast({
+            title: "Errore",
+            description: pollError.message || "Errore nel controllo dello stato",
+            variant: "destructive",
+          });
+          setPhase("selection");
         }
-      }
+      };
+      
+      setTimeout(pollJob, 1000);
+      
     } catch (error: any) {
       toast({
         title: "Errore",

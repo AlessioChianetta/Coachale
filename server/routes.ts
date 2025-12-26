@@ -6297,6 +6297,88 @@ Rispondi SOLO con un JSON array, senza altri testi:
     }
   });
 
+  // ===== POLLING-BASED EXERCISE GENERATION =====
+  
+  app.post("/api/library/courses/:courseId/generate-exercises-job", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    const { courseId } = req.params;
+    const { 
+      lessonIds, 
+      difficulty, 
+      questionsPerLesson, 
+      questionMix,
+      languageMode,
+      specificLanguage,
+      customSystemPrompt,
+      writingStyle,
+      customWritingStyle,
+      questionsMode
+    } = req.body;
+    const consultantId = req.user!.id;
+
+    const { createJob, updateJobProgress, completeJob, failJob } = await import("./services/exercise-generation-jobs");
+    const { v4: uuidv4 } = await import("uuid");
+    
+    const jobId = uuidv4();
+    createJob(jobId, lessonIds);
+
+    res.json({ jobId });
+
+    (async () => {
+      try {
+        console.log(`🎯 [AI-EXERCISE-JOB] Starting job ${jobId} for course: ${courseId}`);
+        
+        const { generateExercisesForCourseWithProgress } = await import("./services/ai-exercise-generator");
+
+        const result = await generateExercisesForCourseWithProgress({
+          consultantId,
+          courseId,
+          options: {
+            lessonIds,
+            difficulty,
+            questionsPerLesson,
+            questionMix,
+            languageMode,
+            specificLanguage,
+            customSystemPrompt,
+            writingStyle,
+            customWritingStyle,
+            questionsMode,
+          },
+          onProgress: (progress) => {
+            updateJobProgress(jobId, progress.lessonId, {
+              status: progress.status,
+              questionsCount: progress.questionsCount,
+              message: progress.message,
+            });
+          },
+        });
+
+        if (!result.success) {
+          failJob(jobId, result.error || 'Unknown error');
+        } else {
+          completeJob(jobId, result.templates || [], result.categorySlug);
+        }
+        
+        console.log(`✅ [AI-EXERCISE-JOB] Job ${jobId} completed`);
+      } catch (error: any) {
+        console.error(`❌ [AI-EXERCISE-JOB] Job ${jobId} failed:`, error);
+        failJob(jobId, error.message || 'Errore nella generazione degli esercizi');
+      }
+    })();
+  });
+
+  app.get("/api/exercise-generation-jobs/:jobId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    const { jobId } = req.params;
+    const { getJob } = await import("./services/exercise-generation-jobs");
+    
+    const job = getJob(jobId);
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    res.json(job);
+  });
+
   // ===== TRANSCRIPT PREVIEW ENDPOINT =====
 
   // Get video transcript for preview
