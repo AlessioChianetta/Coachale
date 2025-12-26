@@ -14,6 +14,16 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  AlertDialog, 
+  AlertDialogContent, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogAction, 
+  AlertDialogCancel 
+} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -487,6 +497,14 @@ export default function ConsultantLibraryAIBuilder() {
   const [includeDuplicates, setIncludeDuplicates] = useState(false);
   const [deletingDuplicate, setDeletingDuplicate] = useState<string | null>(null);
 
+  // Transcript failure handling state
+  const [transcriptFailureCount, setTranscriptFailureCount] = useState(0);
+  const [manualTranscriptMode, setManualTranscriptMode] = useState(false);
+  const [videosNeedingManualTranscript, setVideosNeedingManualTranscript] = useState<string[]>([]);
+  const [showTranscriptFailureModal, setShowTranscriptFailureModal] = useState(false);
+  const [currentManualTranscriptIndex, setCurrentManualTranscriptIndex] = useState(0);
+  const [countedFailures, setCountedFailures] = useState<Set<string>>(new Set());
+
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/library/categories"],
   });
@@ -719,6 +737,12 @@ export default function ConsultantLibraryAIBuilder() {
     setSavingVideoProgress(0);
     setSavingLogs([{ time: new Date().toLocaleTimeString('it-IT'), message: `Sto preparando ${selected.length} video...`, type: 'info' }]);
     
+    // Reset transcript failure counters
+    setTranscriptFailureCount(0);
+    setVideosNeedingManualTranscript([]);
+    setManualTranscriptMode(false);
+    setCountedFailures(new Set());
+    
     // Inizializza tutti i video come 'waiting'
     const initialStatuses = new Map<string, { status: 'waiting' | 'downloading' | 'transcribing' | 'completed' | 'error' | 'reused'; message?: string }>();
     selected.forEach(v => initialStatuses.set(v.videoId, { status: 'waiting' }));
@@ -751,15 +775,89 @@ export default function ConsultantLibraryAIBuilder() {
             setSavingLogs(status.logs);
           }
           
-          // Update video statuses
+          // Update video statuses and track transcript failures
+          // Refactored to batch updates outside setState to fix closure and concurrency issues
           if (status.videos) {
+            // STEP 1: Compute deltas FIRST, using functional state accessors
+            const newStatuses = new Map<string, { status: string; message?: string }>();
+            const newFailures: string[] = [];
+            const resolvedFailures: string[] = [];
+            
+            Object.entries(status.videos).forEach(([videoId, videoStatus]: [string, any]) => {
+              newStatuses.set(videoId, { status: videoStatus.status, message: videoStatus.message });
+              
+              const message = videoStatus.message || '';
+              const charMatch = message.match(/^(\d+)\s*caratteri/i);
+              const charCount = charMatch ? parseInt(charMatch[1], 10) : -1;
+              
+              // Check if this is a failure (0 chars or error)
+              const isZeroChars = charCount === 0;
+              const isError = videoStatus.status === 'error';
+              const isFailure = isZeroChars || isError;
+              
+              // Check if this is a success (completed with >50 chars)
+              const isSuccess = videoStatus.status === 'completed' && charCount > 50;
+              
+              if (isSuccess) {
+                resolvedFailures.push(videoId);
+              } else if (isFailure) {
+                newFailures.push(videoId);
+              }
+            });
+            
+            // STEP 2: Update savingVideoStatuses
             setSavingVideoStatuses(prev => {
               const next = new Map(prev);
-              Object.entries(status.videos).forEach(([videoId, videoStatus]: [string, any]) => {
-                next.set(videoId, { status: videoStatus.status, message: videoStatus.message });
-              });
+              newStatuses.forEach((value, key) => next.set(key, value as any));
               return next;
             });
+            
+            // STEP 3: Handle resolved failures (remove from tracking)
+            if (resolvedFailures.length > 0) {
+              setCountedFailures(prev => {
+                const next = new Set(prev);
+                let decrementCount = 0;
+                resolvedFailures.forEach(id => {
+                  if (next.has(id)) {
+                    next.delete(id);
+                    decrementCount++;
+                  }
+                });
+                if (decrementCount > 0) {
+                  setTranscriptFailureCount(c => Math.max(0, c - decrementCount));
+                }
+                return next;
+              });
+              setVideosNeedingManualTranscript(prev => prev.filter(id => !resolvedFailures.includes(id)));
+            }
+            
+            // STEP 4: Handle new failures (add to tracking, dedupe)
+            if (newFailures.length > 0) {
+              setCountedFailures(prev => {
+                const next = new Set(prev);
+                let incrementCount = 0;
+                const newIds: string[] = [];
+                
+                newFailures.forEach(id => {
+                  if (!next.has(id)) {
+                    next.add(id);
+                    incrementCount++;
+                    newIds.push(id);
+                  }
+                });
+                
+                if (incrementCount > 0) {
+                  setTranscriptFailureCount(c => c + incrementCount);
+                  setVideosNeedingManualTranscript(prevVideos => {
+                    // Dedupe using Set
+                    const combined = new Set([...prevVideos, ...newIds]);
+                    return Array.from(combined);
+                  });
+                }
+                
+                return next;
+              });
+            }
           }
           
           // Check if completed or error
@@ -812,6 +910,15 @@ export default function ConsultantLibraryAIBuilder() {
               setIsSavingVideos(false);
               setCurrentStep(3);
               toast({ title: "Video caricati", description: `${savedVideosList.length} video pronti per la generazione` });
+              
+              // Check if we need to show transcript failure modal
+              // Use a callback to get the current failure count
+              setTranscriptFailureCount(currentFailureCount => {
+                if (currentFailureCount >= 3) {
+                  setShowTranscriptFailureModal(true);
+                }
+                return currentFailureCount;
+              });
             }, 1000);
             
           } else if (status.status === 'error') {
@@ -865,14 +972,90 @@ export default function ConsultantLibraryAIBuilder() {
       await apiRequest("PUT", `/api/youtube/video/${previewVideo.id}/transcript`, { transcript: editedTranscript });
       setPreviewTranscript(editedTranscript);
       setIsEditingTranscript(false);
+      
+      // Update savedVideos with new transcript and transcriptLength
       setSavedVideos(prev => prev.map(v => 
-        v.id === previewVideo.id ? { ...v, transcript: editedTranscript, transcriptStatus: 'completed' } : v
+        v.id === previewVideo.id ? { 
+          ...v, 
+          transcript: editedTranscript, 
+          transcriptStatus: 'completed',
+          transcriptLength: editedTranscript.length 
+        } : v
       ));
+      
+      // Update savingVideoStatuses to show completed status
+      setSavingVideoStatuses(prev => {
+        const next = new Map(prev);
+        next.set(previewVideo.videoId, { 
+          status: 'completed', 
+          message: `${editedTranscript.length} caratteri` 
+        });
+        return next;
+      });
+      
+      // Remove from failure tracking - ALWAYS, not just in manual mode
+      setVideosNeedingManualTranscript(prev => prev.filter(id => id !== previewVideo.id && id !== previewVideo.videoId));
+      setCountedFailures(prev => {
+        const next = new Set(prev);
+        const hadId = prev.has(previewVideo.id);
+        const hadVideoId = prev.has(previewVideo.videoId);
+        next.delete(previewVideo.id);
+        next.delete(previewVideo.videoId);
+        // Decrement failure count if we actually removed something
+        if (hadId || hadVideoId) {
+          setTranscriptFailureCount(count => Math.max(0, count - 1));
+        }
+        return next;
+      });
+      
       toast({ title: "Salvato", description: "Trascrizione salvata con successo" });
+      
+      // If in manual transcript mode, move to next video or finish
+      if (manualTranscriptMode) {
+        const remainingVideos = videosNeedingManualTranscript.filter(id => id !== previewVideo.id && id !== previewVideo.videoId);
+        
+        if (remainingVideos.length > 0) {
+          // Open next video for transcript editing
+          const nextVideoId = remainingVideos[0];
+          const nextVideo = savedVideos.find(v => v.id === nextVideoId || v.videoId === nextVideoId);
+          if (nextVideo) {
+            setTimeout(() => handlePreviewTranscript(nextVideo), 500);
+          }
+        } else {
+          // All videos done
+          setManualTranscriptMode(false);
+          toast({ title: "Completato", description: "Tutte le trascrizioni sono state inserite" });
+        }
+      }
     } catch (error: any) {
       toast({ title: "Errore", description: error.message || "Errore nel salvataggio", variant: "destructive" });
     }
     setSavingTranscript(false);
+  };
+
+  // Start manual transcript entry for videos with failed transcripts
+  const handleStartManualTranscriptEntry = () => {
+    setShowTranscriptFailureModal(false);
+    
+    // Check if there are still videos needing manual transcript before proceeding
+    if (videosNeedingManualTranscript.length === 0) {
+      toast({ title: "Completato", description: "Tutte le trascrizioni sono già state inserite" });
+      setManualTranscriptMode(false);
+      return;
+    }
+    
+    setManualTranscriptMode(true);
+    setCurrentManualTranscriptIndex(0);
+    
+    const firstVideoId = videosNeedingManualTranscript[0];
+    // Find the video by either id or videoId
+    const video = savedVideos.find(v => v.id === firstVideoId || v.videoId === firstVideoId);
+    if (video) {
+      handlePreviewTranscript(video);
+    } else {
+      toast({ title: "Errore", description: "Video non trovato", variant: "destructive" });
+      setManualTranscriptMode(false);
+    }
   };
 
   const handleSaveDraft = async (name?: string, autoSave = false) => {
@@ -1697,35 +1880,52 @@ export default function ConsultantLibraryAIBuilder() {
                         {playlistVideos
                           .filter(v => selectedVideoIds.includes(v.videoId))
                           .map((video) => {
-                            const status = savingVideoStatuses.get(video.videoId);
+                            const pollingStatus = savingVideoStatuses.get(video.videoId);
+                            // Check savedVideos first for most current data (e.g., after manual transcript save)
+                            const savedVideo = savedVideos.find(sv => sv.videoId === video.videoId);
+                            const hasValidSavedTranscript = savedVideo && 
+                              savedVideo.transcriptStatus === 'completed' && 
+                              (savedVideo.transcriptLength ?? 0) > 50;
+                            
+                            // Determine effective status: prioritize savedVideos if it has valid transcript
+                            const effectiveStatus = hasValidSavedTranscript 
+                              ? { status: 'completed' as const, message: `${savedVideo.transcriptLength} caratteri` }
+                              : pollingStatus;
+                            
+                            const isSuccess = effectiveStatus?.status === 'completed' && 
+                              effectiveStatus.message && 
+                              !/^0\s*caratteri/i.test(effectiveStatus.message.trim());
+                            const isError = effectiveStatus?.status === 'error' || 
+                              (effectiveStatus?.status === 'completed' && effectiveStatus.message && /^0\s*caratteri/i.test(effectiveStatus.message.trim()));
+                            
                             return (
                               <div 
                                 key={video.videoId}
                                 className={`flex items-center gap-3 p-2 rounded-lg transition-all ${
-                                  status?.status === 'completed' || status?.status === 'reused'
+                                  isSuccess || effectiveStatus?.status === 'reused'
                                     ? 'bg-green-100 dark:bg-green-900/30'
-                                    : status?.status === 'error'
+                                    : isError
                                     ? 'bg-red-100 dark:bg-red-900/30'
-                                    : status?.status === 'downloading' || status?.status === 'transcribing'
+                                    : effectiveStatus?.status === 'downloading' || effectiveStatus?.status === 'transcribing'
                                     ? 'bg-blue-100 dark:bg-blue-900/30'
                                     : 'bg-white/50 dark:bg-gray-800/50'
                                 }`}
                               >
                                 {/* Status icon */}
                                 <div className="w-6 h-6 flex items-center justify-center">
-                                  {status?.status === 'waiting' && (
+                                  {effectiveStatus?.status === 'waiting' && (
                                     <Clock className="w-4 h-4 text-gray-400" />
                                   )}
-                                  {status?.status === 'downloading' && (
+                                  {effectiveStatus?.status === 'downloading' && (
                                     <Download className="w-4 h-4 text-blue-500 animate-bounce" />
                                   )}
-                                  {status?.status === 'transcribing' && (
+                                  {effectiveStatus?.status === 'transcribing' && (
                                     <Music className="w-4 h-4 text-purple-500 animate-pulse" />
                                   )}
-                                  {(status?.status === 'completed' || status?.status === 'reused') && (
+                                  {(isSuccess || effectiveStatus?.status === 'reused') && (
                                     <CheckCircle2 className="w-4 h-4 text-green-500" />
                                   )}
-                                  {status?.status === 'error' && (
+                                  {isError && (
                                     <XCircle className="w-4 h-4 text-red-500" />
                                   )}
                                 </div>
@@ -1739,12 +1939,22 @@ export default function ConsultantLibraryAIBuilder() {
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium truncate">{video.title}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    {status?.status === 'waiting' && 'In attesa...'}
-                                    {status?.status === 'downloading' && (status.message || 'Scaricando...')}
-                                    {status?.status === 'transcribing' && (status.message || 'Estraendo trascrizione...')}
-                                    {status?.status === 'reused' && '♻️ Trascrizione riutilizzata'}
-                                    {status?.status === 'completed' && (status.message || 'Completato')}
-                                    {status?.status === 'error' && (status.message || 'Errore')}
+                                    {effectiveStatus?.status === 'waiting' && 'In attesa...'}
+                                    {effectiveStatus?.status === 'downloading' && (effectiveStatus.message || 'Scaricando...')}
+                                    {effectiveStatus?.status === 'transcribing' && (effectiveStatus.message || 'Estraendo trascrizione...')}
+                                    {effectiveStatus?.status === 'reused' && '♻️ Trascrizione riutilizzata'}
+                                    {effectiveStatus?.status === 'completed' && (
+                                      isError ? (
+                                        <span className="text-red-600 dark:text-red-400 font-medium">
+                                          ❌ Trascrizione fallita (0 caratteri)
+                                        </span>
+                                      ) : (effectiveStatus.message || 'Completato')
+                                    )}
+                                    {effectiveStatus?.status === 'error' && (
+                                      <span className="text-red-600 dark:text-red-400 font-medium">
+                                        ❌ {effectiveStatus.message || 'Errore trascrizione'}
+                                      </span>
+                                    )}
                                   </p>
                                 </div>
                               </div>
@@ -3266,7 +3476,20 @@ export default function ConsultantLibraryAIBuilder() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!previewVideo} onOpenChange={(open) => { if (!open) { setPreviewVideo(null); setIsEditingTranscript(false); } }}>
+      <Dialog open={!!previewVideo} onOpenChange={(open) => { 
+        if (!open) { 
+          setPreviewVideo(null); 
+          setIsEditingTranscript(false);
+          // If in manual mode and there are still videos needing transcripts, prompt to continue
+          if (manualTranscriptMode && videosNeedingManualTranscript.length > 0) {
+            toast({ 
+              title: "Trascrizioni incomplete", 
+              description: `Ci sono ancora ${videosNeedingManualTranscript.length} video che necessitano di trascrizione manuale. Clicca su "Inserisci Manualmente" per continuare.`,
+              variant: "default"
+            });
+          }
+        } 
+      }}>
         <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -3327,6 +3550,35 @@ export default function ConsultantLibraryAIBuilder() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Transcript Failure Modal */}
+      <AlertDialog open={showTranscriptFailureModal} onOpenChange={setShowTranscriptFailureModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              Trascrizione automatica non disponibile
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                YouTube sta bloccando le richieste di trascrizione automatica.
+              </p>
+              <p>
+                Puoi inserire manualmente le trascrizioni per i <strong>{videosNeedingManualTranscript.length}</strong> video con problemi, 
+                oppure continuare senza trascrizione (la generazione AI sarà limitata).
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowTranscriptFailureModal(false)}>
+              Continua comunque
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleStartManualTranscriptEntry}>
+              Inserisci manualmente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
