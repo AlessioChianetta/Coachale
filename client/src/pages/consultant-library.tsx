@@ -65,7 +65,9 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
+import { ExerciseAIGeneratorPanel } from "@/components/exercise-ai-generator-panel";
 import { getAuthHeaders } from "@/lib/auth";
+import { Wand2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { type LibraryCategory, type LibraryDocument, type LibrarySubcategory } from "@shared/schema";
 import { COURSE_THEMES } from "@shared/course-themes";
@@ -96,6 +98,7 @@ export default function ConsultantLibrary() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
   const [viewingDocument, setViewingDocument] = useState<LibraryDocument | null>(null);
+  const [aiGeneratorCourse, setAiGeneratorCourse] = useState<{ id: string; name: string } | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1267,6 +1270,16 @@ export default function ConsultantLibrary() {
                         >
                           <Users size={12} className="sm:mr-1" /> 
                           <span className="hidden sm:inline">Assegna</span>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setAiGeneratorCourse({ id: category.id, name: category.name })}
+                          className="flex-1 h-7 text-xs hover:bg-purple-100 hover:text-purple-600 dark:hover:bg-purple-900/30 min-w-0 px-1 sm:px-2"
+                          title="Genera Esercizi AI"
+                        >
+                          <Wand2 size={12} className="sm:mr-1" /> 
+                          <span className="hidden sm:inline">Esercizi AI</span>
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -3390,6 +3403,21 @@ export default function ConsultantLibrary() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {aiGeneratorCourse && (
+        <ExerciseAIGeneratorPanel
+          courseId={aiGeneratorCourse.id}
+          courseName={aiGeneratorCourse.name}
+          onClose={() => setAiGeneratorCourse(null)}
+          onExercisesGenerated={(templates) => {
+            queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+            toast({
+              title: "Esercizi generati",
+              description: `${templates.length} esercizi creati e salvati con successo`,
+            });
+          }}
+        />
+      )}
 
       <ConsultantAIAssistant />
     </div>

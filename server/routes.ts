@@ -1063,6 +1063,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Exercise Categories routes - Dynamic categories from database
+  app.get("/api/exercise-categories", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { active, search } = req.query;
+      let categories = await db.select().from(schema.exerciseCategories).orderBy(schema.exerciseCategories.sortOrder);
+      
+      if (active === 'true') {
+        categories = categories.filter(c => c.isActive);
+      }
+      
+      if (search) {
+        const searchTerm = (search as string).toLowerCase();
+        categories = categories.filter(c => 
+          c.name.toLowerCase().includes(searchTerm) ||
+          (c.slug && c.slug.toLowerCase().includes(searchTerm)) ||
+          (c.description && c.description.toLowerCase().includes(searchTerm))
+        );
+      }
+      
+      res.json(categories);
+    } catch (error: any) {
+      console.error("Error fetching exercise categories:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/exercise-categories", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { name, slug, description, icon, color, sortOrder } = req.body;
+      
+      if (!name || !slug) {
+        return res.status(400).json({ message: "Name and slug are required" });
+      }
+      
+      const existingCategory = await db.select().from(schema.exerciseCategories).where(eq(schema.exerciseCategories.slug, slug)).limit(1);
+      if (existingCategory.length > 0) {
+        return res.status(400).json({ message: "A category with this slug already exists" });
+      }
+      
+      const maxSortOrder = await db.select({ max: sql<number>`COALESCE(MAX(sort_order), 0)` }).from(schema.exerciseCategories);
+      const newSortOrder = sortOrder ?? (maxSortOrder[0]?.max || 0) + 1;
+      
+      const [newCategory] = await db.insert(schema.exerciseCategories).values({
+        name,
+        slug,
+        description: description || null,
+        icon: icon || 'BookOpen',
+        color: color || 'purple',
+        sortOrder: newSortOrder,
+        isActive: true,
+        createdBy: req.user!.id,
+      }).returning();
+      
+      res.status(201).json(newCategory);
+    } catch (error: any) {
+      console.error("Error creating exercise category:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/exercise-categories/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { name, description, icon, color, sortOrder, isActive } = req.body;
+      
+      const updateData: any = { updatedAt: new Date() };
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (icon !== undefined) updateData.icon = icon;
+      if (color !== undefined) updateData.color = color;
+      if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
+      if (isActive !== undefined) updateData.isActive = isActive;
+      
+      const [updatedCategory] = await db.update(schema.exerciseCategories)
+        .set(updateData)
+        .where(eq(schema.exerciseCategories.id, id))
+        .returning();
+      
+      if (!updatedCategory) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      res.json(updatedCategory);
+    } catch (error: any) {
+      console.error("Error updating exercise category:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/exercise-categories/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const [deletedCategory] = await db.delete(schema.exerciseCategories)
+        .where(eq(schema.exerciseCategories.id, id))
+        .returning();
+      
+      if (!deletedCategory) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      res.json({ message: "Category deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting exercise category:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Exercise template routes
   app.post("/api/templates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
@@ -5946,6 +6054,68 @@ Rispondi SOLO con un JSON array, senza altri testi:
     } catch (error: any) {
       console.error('Error deleting draft:', error);
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ===== GET DOCUMENTS FOR A SPECIFIC COURSE =====
+
+  app.get("/api/library/courses/:courseId/documents", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { courseId } = req.params;
+      
+      // Fetch documents (lessons) for this course/category
+      const documents = await db.select()
+        .from(schema.libraryDocuments)
+        .where(eq(schema.libraryDocuments.categoryId, courseId))
+        .orderBy(schema.libraryDocuments.sortOrder, schema.libraryDocuments.createdAt);
+      
+      console.log(`📚 [LIBRARY-DOCS] Found ${documents.length} documents for course ${courseId}`);
+      
+      res.json(documents);
+    } catch (error: any) {
+      console.error('Error fetching course documents:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ===== AI EXERCISE GENERATOR ENDPOINT =====
+
+  app.post("/api/library/courses/:courseId/generate-exercises", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { courseId } = req.params;
+      const { lessonIds, difficulty, questionsPerLesson, questionMix } = req.body;
+      const consultantId = req.user!.id;
+
+      console.log(`🎯 [AI-EXERCISE-ROUTE] Starting exercise generation for course: ${courseId}`);
+      console.log(`📊 [AI-EXERCISE-ROUTE] Options: lessonIds=${lessonIds?.length || 'all'}, difficulty=${difficulty || 'base'}, questionsPerLesson=${questionsPerLesson || 3}`);
+
+      const { generateExercisesForCourse } = await import("./services/ai-exercise-generator");
+
+      const result = await generateExercisesForCourse({
+        consultantId,
+        courseId,
+        options: {
+          lessonIds,
+          difficulty,
+          questionsPerLesson,
+          questionMix,
+        },
+      });
+
+      if (!result.success) {
+        console.log(`❌ [AI-EXERCISE-ROUTE] Generation failed: ${result.error}`);
+        return res.status(400).json({ success: false, error: result.error });
+      }
+
+      console.log(`✅ [AI-EXERCISE-ROUTE] Generated ${result.templates?.length || 0} exercise templates`);
+      res.json({
+        success: true,
+        templates: result.templates,
+        categorySlug: result.categorySlug,
+      });
+    } catch (error: any) {
+      console.error('❌ [AI-EXERCISE-ROUTE] Error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Errore nella generazione degli esercizi' });
     }
   });
 

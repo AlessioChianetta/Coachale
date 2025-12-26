@@ -56,7 +56,7 @@ export const exercises = pgTable("exercises", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   type: text("type").notNull().$type<"general" | "personalized">(),
-  category: text("category").notNull().$type<"post-consulenza" | "newsletter" | "finanza-personale" | "vendita" | "marketing" | "imprenditoria" | "risparmio-investimenti" | "contabilità" | "gestione-risorse" | "strategia" | "metodo-turbo" | "metodo-hybrid">(),
+  category: text("category").notNull(), // Dynamic category slug from exerciseCategories
   estimatedDuration: integer("estimated_duration"), // in minutes
   instructions: text("instructions"),
   attachments: json("attachments").$type<string[]>().default([]),
@@ -267,19 +267,35 @@ export const clientAnalyticsSummary = pgTable("client_analytics_summary", {
 export type Question = {
   id: string;
   question: string;
-  type: "text" | "number" | "select" | "multiple_choice" | "true_false" | "multiple_answer" | "file_upload";
+  type: "multiple_choice" | "true_false" | "open_ended" | "multiple_answer" | "select" | "file_upload";
   options?: string[];
   correctAnswers?: string[]; // For auto-grading (multiple choice, true/false, multiple answer)
+  explanation?: string; // Explanation of the correct answer
   points?: number; // Custom points for this question
   timeLimit?: number; // Time limit in seconds for this question
   allowFileUpload?: boolean; // Whether file upload is allowed
 };
 
+// Exercise Categories - Dynamic categories from database
+export const exerciseCategories = pgTable("exercise_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  icon: text("icon").default("BookOpen"),
+  color: text("color").default("purple"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 export const exerciseTemplates = pgTable("exercise_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description").notNull(),
-  category: text("category").notNull().$type<"post-consulenza" | "newsletter" | "finanza-personale" | "vendita" | "marketing" | "imprenditoria" | "risparmio-investimenti" | "contabilità" | "gestione-risorse" | "strategia">(),
+  category: text("category").notNull(), // Dynamic category slug from exerciseCategories
   type: text("type").notNull().$type<"general" | "personalized">(),
   estimatedDuration: integer("estimated_duration"), // in minutes
   timeLimit: integer("time_limit"), // in minutes, optional
@@ -291,6 +307,7 @@ export const exerciseTemplates = pgTable("exercise_templates", {
   createdBy: varchar("created_by").references(() => users.id).notNull(),
   isPublic: boolean("is_public").default(false),
   usageCount: integer("usage_count").default(0),
+  sortOrder: integer("sort_order").default(0), // Order within course/category
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -1376,6 +1393,8 @@ export type ExerciseTemplate = typeof exerciseTemplates.$inferSelect;
 export type InsertExerciseTemplate = z.infer<typeof insertExerciseTemplateSchema>;
 export type TemplateClientAssociation = typeof templateClientAssociations.$inferSelect;
 export type InsertTemplateClientAssociation = z.infer<typeof insertTemplateClientAssociationSchema>;
+export type ExerciseCategory = typeof exerciseCategories.$inferSelect;
+export type InsertExerciseCategory = typeof exerciseCategories.$inferInsert;
 
 // Library tables
 export const libraryCategories = pgTable("library_categories", {

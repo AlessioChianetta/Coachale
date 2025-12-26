@@ -282,6 +282,18 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
     enabled: !!existingExercise?.id,
   });
 
+  // Fetch dynamic exercise categories from database
+  const { data: exerciseCategories = [] } = useQuery({
+    queryKey: ["/api/exercise-categories"],
+    queryFn: async () => {
+      const response = await fetch("/api/exercise-categories?active=true", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch categories");
+      return response.json();
+    },
+  });
+
   // Save template mutation
   const saveTemplateMutation = useMutation({
     mutationFn: async (templateData: any) => {
@@ -1222,21 +1234,17 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
                             <SelectValue placeholder="Seleziona categoria" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="post-consulenza">📋 Post Consulenza</SelectItem>
-                            <SelectItem value="finanza-personale">💰 Finanza Personale</SelectItem>
-                            <SelectItem value="vendita">💼 Vendita</SelectItem>
-                            <SelectItem value="marketing">📈 Marketing</SelectItem>
-                            <SelectItem value="imprenditoria">🚀 Imprenditoria</SelectItem>
-                            <SelectItem value="risparmio-investimenti">📊 Risparmio e Investimenti</SelectItem>
-                            <SelectItem value="contabilità">🧮 Contabilità</SelectItem>
-                            <SelectItem value="gestione-risorse">⚙️ Gestione Risorse</SelectItem>
-                            <SelectItem value="strategia">🎯 Strategia</SelectItem>
-                            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                              📚 Corsi
-                            </div>
-                            <SelectItem value="newsletter">🌟 Metodo Orbitale - Finanza</SelectItem>
-                            <SelectItem value="metodo-turbo">⚡ Metodo Turbo - Vendita</SelectItem>
-                            <SelectItem value="metodo-hybrid">🔄 Metodo Hybrid - Azienda</SelectItem>
+                            {exerciseCategories.length === 0 ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                Caricamento categorie...
+                              </div>
+                            ) : (
+                              exerciseCategories.map((cat: any) => (
+                                <SelectItem key={cat.id} value={cat.slug}>
+                                  {cat.name}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                         {form.formState.errors.category && (
