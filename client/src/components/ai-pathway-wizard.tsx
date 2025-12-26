@@ -303,11 +303,19 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
   };
 
   const handleLetAIDecide = (courseId: string) => {
+    const assignment = assignments.find((a) => a.courseId === courseId);
+    if (!assignment) return;
+    
     setAssignments((prev) =>
       prev.map((a) =>
         a.courseId === courseId ? { ...a, trimesters: [a.originalAISuggestion] } : a
       )
     );
+    
+    toast({
+      title: "Suggerimento AI ripristinato",
+      description: `Trimestre impostato su ${assignment.originalAISuggestion}`,
+    });
   };
 
   const handleAnalyze = async () => {
