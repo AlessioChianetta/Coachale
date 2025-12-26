@@ -407,212 +407,342 @@ export function ExerciseAIGeneratorPanel({
           {phase === "selection" && (
             <ScrollArea className="h-[60vh] pr-4">
               <div className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">Seleziona Lezioni</Label>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                        Seleziona tutte
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={handleDeselectAll}>
-                        Deseleziona tutte
-                      </Button>
+                {/* Summary Stats Header */}
+                {!lessonsLoading && lessons.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card className="p-3 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-0 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                          <BookOpen size={16} className="text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold">{lessons.length}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Totale</p>
+                        </div>
+                      </div>
+                    </Card>
+                    <Card className="p-3 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-0 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                          <Sparkles size={16} className="text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold">{availableLessons.length}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Disponibili</p>
+                        </div>
+                      </div>
+                    </Card>
+                    <Card className="p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-0 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                          <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold">{lessons.length - availableLessons.length}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Completate</p>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Lesson Selection */}
+                <Card className="border-0 shadow-sm overflow-hidden">
+                  <div className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BookOpen size={18} className="text-purple-600" />
+                        <Label className="text-base font-semibold">Seleziona Lezioni</Label>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={handleSelectAll}
+                          disabled={availableLessons.length === 0}
+                          className="text-xs h-7 hover:bg-purple-100 hover:text-purple-700 dark:hover:bg-purple-900/30"
+                        >
+                          <Check size={12} className="mr-1" />
+                          Tutte
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={handleDeselectAll}
+                          disabled={selectedLessons.length === 0}
+                          className="text-xs h-7 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        >
+                          <X size={12} className="mr-1" />
+                          Nessuna
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
-                  {lessonsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="animate-spin mr-2" />
-                      <span>Caricamento lezioni...</span>
-                    </div>
-                  ) : lessons.length === 0 ? (
-                    <Card className="p-6 text-center">
-                      <BookOpen className="mx-auto text-muted-foreground mb-2" size={32} />
-                      <p className="text-muted-foreground">
-                        Nessuna lezione trovata in questo corso
-                      </p>
-                    </Card>
-                  ) : (
-                    <div className="grid gap-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-                      {lessons
-                        .sort((a: Lesson, b: Lesson) => (a.sortOrder || 0) - (b.sortOrder || 0))
-                        .map((lesson: Lesson) => (
-                          <div
-                            key={lesson.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                              lesson.hasExercise
-                                ? "bg-gray-100 border-gray-200 cursor-not-allowed opacity-60 dark:bg-slate-900 dark:border-slate-700"
-                                : selectedLessons.includes(lesson.id)
-                                ? "bg-purple-50 border-purple-300 dark:bg-purple-900/20 dark:border-purple-700 cursor-pointer"
-                                : "bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer"
-                            }`}
-                            onClick={() => handleLessonToggle(lesson.id)}
-                          >
-                            <Checkbox
-                              checked={selectedLessons.includes(lesson.id)}
-                              onCheckedChange={() => handleLessonToggle(lesson.id)}
-                              disabled={lesson.hasExercise}
-                            />
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <Badge variant="secondary" className="text-xs flex-shrink-0">
-                                {lesson.sortOrder || "-"}
-                              </Badge>
-                              <span className={`text-sm font-medium truncate ${lesson.hasExercise ? "text-muted-foreground" : ""}`}>
-                                {lesson.title}
-                              </span>
+                  <div className="p-3">
+                    {lessonsLoading ? (
+                      <div className="flex flex-col items-center justify-center py-12 gap-3">
+                        <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                          <Loader2 className="animate-spin text-purple-600" size={24} />
+                        </div>
+                        <span className="text-sm text-muted-foreground">Caricamento lezioni...</span>
+                      </div>
+                    ) : lessons.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 gap-3">
+                        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                          <BookOpen className="text-muted-foreground" size={32} />
+                        </div>
+                        <p className="text-muted-foreground text-center">
+                          Nessuna lezione trovata in questo corso
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                        {lessons
+                          .sort((a: Lesson, b: Lesson) => (a.sortOrder || 0) - (b.sortOrder || 0))
+                          .map((lesson: Lesson, index: number) => (
+                            <div
+                              key={lesson.id}
+                              className={`group flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 ${
+                                lesson.hasExercise
+                                  ? "bg-slate-50 border-slate-200 cursor-not-allowed dark:bg-slate-900/50 dark:border-slate-800"
+                                  : selectedLessons.includes(lesson.id)
+                                  ? "bg-gradient-to-r from-purple-50 to-pink-50 border-purple-300 shadow-sm dark:from-purple-900/20 dark:to-pink-900/20 dark:border-purple-700 cursor-pointer"
+                                  : "bg-white border-transparent hover:border-purple-200 hover:bg-purple-50/50 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:hover:border-purple-800 cursor-pointer"
+                              }`}
+                              onClick={() => handleLessonToggle(lesson.id)}
+                            >
+                              <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors ${
+                                lesson.hasExercise
+                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                  : selectedLessons.includes(lesson.id)
+                                  ? "bg-purple-600 text-white"
+                                  : "bg-slate-100 text-slate-600 group-hover:bg-purple-100 group-hover:text-purple-600 dark:bg-slate-700 dark:text-slate-300"
+                              }`}>
+                                {lesson.hasExercise ? (
+                                  <CheckCircle2 size={16} />
+                                ) : selectedLessons.includes(lesson.id) ? (
+                                  <Check size={16} />
+                                ) : (
+                                  lesson.sortOrder || index + 1
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-medium truncate ${lesson.hasExercise ? "text-muted-foreground" : ""}`}>
+                                  {lesson.title}
+                                </p>
+                                {lesson.hasExercise && (
+                                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
+                                    Esercizio gia creato
+                                  </p>
+                                )}
+                              </div>
+                              {!lesson.hasExercise && lesson.level && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] px-2 py-0.5 ${
+                                    lesson.level === "base"
+                                      ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
+                                      : lesson.level === "intermedio"
+                                      ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+                                      : "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+                                  }`}
+                                >
+                                  {lesson.level}
+                                </Badge>
+                              )}
                             </div>
-                            {lesson.hasExercise ? (
-                              <Badge
-                                variant="outline"
-                                className="text-xs bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-700"
-                              >
-                                <CheckCircle2 size={12} className="mr-1" />
-                                Esercizio esistente
-                              </Badge>
-                            ) : lesson.level ? (
-                              <Badge
-                                variant="outline"
-                                className={`text-xs ${
-                                  lesson.level === "base"
-                                    ? "bg-green-50 text-green-700"
-                                    : lesson.level === "intermedio"
-                                    ? "bg-yellow-50 text-yellow-700"
-                                    : "bg-red-50 text-red-700"
-                                }`}
-                              >
-                                {lesson.level}
-                              </Badge>
-                            ) : null}
-                          </div>
-                        ))}
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {lessons.length > 0 && (
+                    <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-t">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-semibold text-purple-600 dark:text-purple-400">{selectedLessons.length}</span> di {availableLessons.length} selezionate
+                        </p>
+                        {selectedLessons.length > 0 && (
+                          <Badge variant="secondary" className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                            {selectedLessons.length * questionsPerLesson} domande totali
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   )}
-                  <p className="text-sm text-muted-foreground">
-                    {selectedLessons.length} di {availableLessons.length} lezioni disponibili selezionate
-                    {lessons.length > availableLessons.length && (
-                      <span className="ml-2 text-emerald-600">
-                        ({lessons.length - availableLessons.length} con esercizio)
-                      </span>
-                    )}
-                  </p>
-                </div>
+                </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <Label className="text-base font-semibold">Difficoltà</Label>
+                {/* Configuration Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="p-4 border-0 shadow-sm bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                        <Sparkles size={14} className="text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <Label className="text-sm font-semibold">Difficolta</Label>
+                    </div>
                     <Select value={difficulty} onValueChange={setDifficulty}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona difficoltà" />
+                      <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                        <SelectValue placeholder="Seleziona difficolta" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="base">🟢 Base</SelectItem>
-                        <SelectItem value="intermedio">🟡 Intermedio</SelectItem>
-                        <SelectItem value="avanzato">🔴 Avanzato</SelectItem>
+                        <SelectItem value="base">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                            Base
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="intermedio">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                            Intermedio
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="avanzato">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            Avanzato
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </Card>
 
-                  <div className="space-y-4">
-                    <Label className="text-base font-semibold">Domande per lezione</Label>
-                    <div className="flex items-center gap-4">
-                      <Input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={questionsPerLesson}
-                        onChange={(e) =>
-                          setQuestionsPerLesson(
-                            Math.max(1, Math.min(10, parseInt(e.target.value) || 1))
-                          )
-                        }
-                        className="w-24"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        (min: 1, max: 10)
-                      </span>
+                  <Card className="p-4 border-0 shadow-sm bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <HelpCircle size={14} className="text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <Label className="text-sm font-semibold">Domande per lezione</Label>
                     </div>
-                  </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setQuestionsPerLesson(Math.max(1, questionsPerLesson - 1))}
+                        disabled={questionsPerLesson <= 1}
+                        className="h-9 w-9 p-0"
+                      >
+                        -
+                      </Button>
+                      <div className="flex-1 text-center">
+                        <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{questionsPerLesson}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setQuestionsPerLesson(Math.min(10, questionsPerLesson + 1))}
+                        disabled={questionsPerLesson >= 10}
+                        className="h-9 w-9 p-0"
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </Card>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">Mix Tipologie Domande</Label>
-                    <Badge
-                      variant={mixTotal === 100 ? "default" : "destructive"}
-                      className="text-xs"
-                    >
-                      Totale: {mixTotal}%
-                    </Badge>
+                {/* Question Mix Section */}
+                <Card className="border-0 shadow-sm overflow-hidden">
+                  <div className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                          <FileText size={14} className="text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <Label className="text-base font-semibold">Mix Tipologie Domande</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={mixTotal === 100 ? "secondary" : "destructive"}
+                          className={`text-xs ${mixTotal === 100 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : ""}`}
+                        >
+                          {mixTotal === 100 ? <CheckCircle2 size={12} className="mr-1" /> : <XCircle size={12} className="mr-1" />}
+                          {mixTotal}%
+                        </Badge>
+                        {mixTotal !== 100 && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={normalizeMix}>
+                            Bilancia
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Risposta aperta</span>
-                        <span className="font-medium">{questionMix.text}%</span>
+                  <div className="p-4 grid grid-cols-2 gap-3">
+                    {/* Risposta aperta */}
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-lg bg-blue-500 flex items-center justify-center">
+                          <FileText size={12} className="text-white" />
+                        </div>
+                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">Risposta aperta</span>
+                        <span className="ml-auto text-sm font-bold text-blue-600 dark:text-blue-400">{questionMix.text}%</span>
                       </div>
                       <Slider
                         value={[questionMix.text]}
                         onValueChange={([v]) => handleMixChange("text", v)}
                         max={100}
                         step={5}
-                        className="w-full"
+                        className="w-full [&_[role=slider]]:bg-blue-500 [&_[role=slider]]:border-blue-600"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Scelta multipla</span>
-                        <span className="font-medium">{questionMix.multiple_choice}%</span>
+                    {/* Scelta multipla */}
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/10 border border-green-200 dark:border-green-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-lg bg-green-500 flex items-center justify-center">
+                          <CheckCircle2 size={12} className="text-white" />
+                        </div>
+                        <span className="text-xs font-semibold text-green-700 dark:text-green-300">Scelta multipla</span>
+                        <span className="ml-auto text-sm font-bold text-green-600 dark:text-green-400">{questionMix.multiple_choice}%</span>
                       </div>
                       <Slider
                         value={[questionMix.multiple_choice]}
                         onValueChange={([v]) => handleMixChange("multiple_choice", v)}
                         max={100}
                         step={5}
-                        className="w-full"
+                        className="w-full [&_[role=slider]]:bg-green-500 [&_[role=slider]]:border-green-600"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Vero/Falso</span>
-                        <span className="font-medium">{questionMix.true_false}%</span>
+                    {/* Vero/Falso */}
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/10 border border-amber-200 dark:border-amber-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-lg bg-amber-500 flex items-center justify-center">
+                          <HelpCircle size={12} className="text-white" />
+                        </div>
+                        <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">Vero/Falso</span>
+                        <span className="ml-auto text-sm font-bold text-amber-600 dark:text-amber-400">{questionMix.true_false}%</span>
                       </div>
                       <Slider
                         value={[questionMix.true_false]}
                         onValueChange={([v]) => handleMixChange("true_false", v)}
                         max={100}
                         step={5}
-                        className="w-full"
+                        className="w-full [&_[role=slider]]:bg-amber-500 [&_[role=slider]]:border-amber-600"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Risposta multipla</span>
-                        <span className="font-medium">{questionMix.multiple_answer}%</span>
+                    {/* Risposta multipla */}
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/20 dark:to-purple-800/10 border border-purple-200 dark:border-purple-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-lg bg-purple-500 flex items-center justify-center">
+                          <Check size={12} className="text-white" />
+                        </div>
+                        <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">Risposta multipla</span>
+                        <span className="ml-auto text-sm font-bold text-purple-600 dark:text-purple-400">{questionMix.multiple_answer}%</span>
                       </div>
                       <Slider
                         value={[questionMix.multiple_answer]}
                         onValueChange={([v]) => handleMixChange("multiple_answer", v)}
                         max={100}
                         step={5}
-                        className="w-full"
+                        className="w-full [&_[role=slider]]:bg-purple-500 [&_[role=slider]]:border-purple-600"
                       />
                     </div>
                   </div>
-
-                  {mixTotal !== 100 && (
-                    <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-                      <XCircle size={16} />
-                      <span>La somma delle percentuali deve essere 100%</span>
-                      <Button variant="link" size="sm" className="h-auto p-0" onClick={normalizeMix}>
-                        Normalizza
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                </Card>
               </div>
             </ScrollArea>
           )}
