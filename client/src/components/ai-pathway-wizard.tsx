@@ -71,10 +71,13 @@ interface Client {
   email: string;
 }
 
+type TrimesterValue = "Q1" | "Q2" | "Q3" | "Q4";
+
 interface TrimesterAssignment {
   courseId: string;
   courseName: string;
-  trimester: "Q1" | "Q2" | "Q3" | "Q4";
+  trimesters: TrimesterValue[];
+  originalAISuggestion: TrimesterValue;
   reasoning: string;
 }
 
@@ -108,11 +111,11 @@ const steps: Step[] = [
   },
 ];
 
-const trimesterOptions = [
-  { value: "Q1", label: "Trimestre 1 (Q1)" },
-  { value: "Q2", label: "Trimestre 2 (Q2)" },
-  { value: "Q3", label: "Trimestre 3 (Q3)" },
-  { value: "Q4", label: "Trimestre 4 (Q4)" },
+const trimesterOptions: { value: TrimesterValue; label: string }[] = [
+  { value: "Q1", label: "Q1" },
+  { value: "Q2", label: "Q2" },
+  { value: "Q3", label: "Q3" },
+  { value: "Q4", label: "Q4" },
 ];
 
 export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWizardProps) {
@@ -187,7 +190,8 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       const newAssignments: TrimesterAssignment[] = data.assignments.map((analysis) => ({
         courseId: analysis.courseId,
         courseName: analysis.courseName,
-        trimester: analysis.suggestedTrimester,
+        trimesters: [analysis.suggestedTrimester],
+        originalAISuggestion: analysis.suggestedTrimester,
         reasoning: analysis.reasoning,
       }));
       setAssignments(newAssignments);
@@ -210,9 +214,9 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       const payload = {
         name: pathwayName,
         description: pathwayDescription,
-        assignments: assignments.map((a) => ({
+        courseAssignments: assignments.map((a) => ({
           courseId: a.courseId,
-          trimester: a.trimester,
+          trimesters: a.trimesters,
         })),
       };
       return await apiRequest("POST", "/api/university/ai/generate", payload);
@@ -275,10 +279,33 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
     );
   };
 
-  const handleTrimesterChange = (courseId: string, newTrimester: "Q1" | "Q2" | "Q3" | "Q4") => {
+  const handleTrimesterToggle = (courseId: string, trimester: TrimesterValue) => {
+    const assignment = assignments.find((a) => a.courseId === courseId);
+    if (assignment?.trimesters.includes(trimester) && assignment.trimesters.length === 1) {
+      toast({
+        title: "Almeno un trimestre richiesto",
+        description: "Seleziona prima un altro trimestre per rimuovere questo",
+        variant: "destructive",
+      });
+      return;
+    }
+    setAssignments((prev) =>
+      prev.map((a) => {
+        if (a.courseId !== courseId) return a;
+        const hasIt = a.trimesters.includes(trimester);
+        if (hasIt) {
+          return { ...a, trimesters: a.trimesters.filter((t) => t !== trimester) };
+        } else {
+          return { ...a, trimesters: [...a.trimesters, trimester].sort() as TrimesterValue[] };
+        }
+      })
+    );
+  };
+
+  const handleLetAIDecide = (courseId: string) => {
     setAssignments((prev) =>
       prev.map((a) =>
-        a.courseId === courseId ? { ...a, trimester: newTrimester } : a
+        a.courseId === courseId ? { ...a, trimesters: [a.originalAISuggestion] } : a
       )
     );
   };
@@ -376,7 +403,9 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       Q4: [],
     };
     assignments.forEach((a) => {
-      grouped[a.trimester].push(a);
+      a.trimesters.forEach((t) => {
+        grouped[t].push(a);
+      });
     });
     return grouped;
   };
@@ -561,26 +590,33 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
                                 {assignment.reasoning}
                               </p>
                             </div>
-                            <Select
-                              value={assignment.trimester}
-                              onValueChange={(value) =>
-                                handleTrimesterChange(
-                                  assignment.courseId,
-                                  value as "Q1" | "Q2" | "Q3" | "Q4"
-                                )
-                              }
-                            >
-                              <SelectTrigger className="w-[180px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {trimesterOptions.map((opt) => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <div className="flex flex-col gap-2 items-end">
+                              <div className="flex items-center gap-1">
+                                {trimesterOptions.map((opt) => {
+                                  const isSelected = assignment.trimesters.includes(opt.value);
+                                  return (
+                                    <Button
+                                      key={opt.value}
+                                      variant={isSelected ? "default" : "outline"}
+                                      size="sm"
+                                      className="h-8 w-10 p-0"
+                                      onClick={() => handleTrimesterToggle(assignment.courseId, opt.value)}
+                                    >
+                                      {opt.label}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-xs text-muted-foreground hover:text-primary"
+                                onClick={() => handleLetAIDecide(assignment.courseId)}
+                              >
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Lascia decidere all'AI
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -593,7 +629,11 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
                     <ArrowLeft className="h-4 w-4" />
                     Indietro
                   </Button>
-                  <Button onClick={() => setCurrentStep(2)} className="gap-2">
+                  <Button 
+                    onClick={() => setCurrentStep(2)} 
+                    disabled={assignments.some((a) => a.trimesters.length === 0)}
+                    className="gap-2"
+                  >
                     Genera Percorso
                     <ArrowRight className="h-4 w-4" />
                   </Button>

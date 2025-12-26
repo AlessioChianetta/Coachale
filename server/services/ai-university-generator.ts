@@ -40,7 +40,7 @@ interface TrimesterAssignment {
 
 interface CourseAssignment {
   courseId: string;
-  trimester: "Q1" | "Q2" | "Q3" | "Q4";
+  trimesters: Array<"Q1" | "Q2" | "Q3" | "Q4">;
   sortOrder?: number;
 }
 
@@ -465,6 +465,14 @@ export async function generateUniversityPathway(
       return { success: false, error: "Nessuna assegnazione di corso fornita" };
     }
 
+    const invalidAssignments = courseAssignments.filter(
+      (a) => !a.trimesters || a.trimesters.length === 0
+    );
+    if (invalidAssignments.length > 0) {
+      console.warn(`⚠️ [AI-UNIVERSITY] Found ${invalidAssignments.length} courses with no trimesters assigned`);
+      return { success: false, error: "Ogni corso deve avere almeno un trimestre assegnato" };
+    }
+
     const [template] = await db
       .insert(universityTemplates)
       .values({
@@ -511,7 +519,9 @@ export async function generateUniversityPathway(
     };
 
     for (const assignment of courseAssignments) {
-      groupedAssignments[assignment.trimester].push(assignment);
+      for (const trimester of assignment.trimesters) {
+        groupedAssignments[trimester].push(assignment);
+      }
     }
 
     for (const key of Object.keys(groupedAssignments)) {
