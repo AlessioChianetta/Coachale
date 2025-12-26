@@ -73,6 +73,7 @@ import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { UniversityTemplate, TemplateTrimester, TemplateModule, TemplateLesson } from "@shared/schema";
 import LibraryDocumentTableSelector from "@/components/library-document-table-selector";
+import { AIPathwayWizard } from "@/components/ai-pathway-wizard";
 
 interface TemplateWithStructure extends UniversityTemplate {
   trimesters?: (TemplateTrimester & {
@@ -112,6 +113,7 @@ export default function ConsultantTemplates() {
 
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
+  const [aiWizardOpen, setAiWizardOpen] = useState(false);
 
   const [templateFormData, setTemplateFormData] = useState({ name: "", description: "", isActive: true });
   const [trimesterFormData, setTrimesterFormData] = useState({ title: "", description: "", sortOrder: 0 });
@@ -1009,10 +1011,17 @@ export default function ConsultantTemplates() {
                 </div>
                 <div className="flex items-center space-x-3">
                   <Button
-                    onClick={() => handleOpenTemplateDialog()}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    onClick={() => setAiWizardOpen(true)}
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <Sparkles size={16} className="mr-2" />
+                    Crea con AI
+                  </Button>
+                  <Button
+                    onClick={() => handleOpenTemplateDialog()}
+                    variant="outline"
+                  >
+                    <Plus size={16} className="mr-2" />
                     Nuovo Template
                   </Button>
                 </div>
@@ -1367,6 +1376,14 @@ export default function ConsultantTemplates() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AIPathwayWizard 
+        open={aiWizardOpen} 
+        onOpenChange={setAiWizardOpen}
+        onComplete={(templateId) => {
+          queryClient.invalidateQueries({ queryKey: ["/api/university/templates"] });
+          toast({ title: "Percorso creato con successo", description: "Il template è stato generato dall'AI" });
+        }}
+      />
       <ConsultantAIAssistant />
     </div>
   );
