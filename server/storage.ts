@@ -2183,6 +2183,49 @@ export class DatabaseStorage implements IStorage {
         }
       }
     }
+
+    // Update custom links for existing clients (not new, not removed)
+    const existingClientIds = currentClientIds.filter(id => clientIds.includes(id));
+    const clientsWithCustomLinks = existingClientIds.filter(id => customPlatformLinks[id]?.trim());
+    
+    if (clientsWithCustomLinks.length > 0) {
+      console.log(`🔄 Updating custom links for ${clientsWithCustomLinks.length} existing clients`);
+      
+      // Find related exercises for this template
+      const relatedExercises = await db.select({ id: schema.exercises.id })
+        .from(schema.exercises)
+        .where(
+          or(
+            eq(schema.exercises.templateId, templateId),
+            template.libraryDocumentId ? eq(schema.exercises.libraryDocumentId, template.libraryDocumentId) : sql`false`,
+            and(
+              eq(schema.exercises.title, template.name),
+              eq(schema.exercises.category, template.category),
+              eq(schema.exercises.createdBy, consultantId)
+            )
+          )
+        );
+      
+      const exerciseIds = relatedExercises.map(e => e.id);
+      
+      if (exerciseIds.length > 0) {
+        for (const clientId of clientsWithCustomLinks) {
+          const customLink = customPlatformLinks[clientId];
+          
+          // Update all assignments for this client and these exercises
+          const updateResult = await db.update(schema.exerciseAssignments)
+            .set({ workPlatform: customLink })
+            .where(and(
+              inArray(schema.exerciseAssignments.exerciseId, exerciseIds),
+              eq(schema.exerciseAssignments.clientId, clientId)
+            ));
+          
+          console.log(`🔗 Updated custom link for client ${clientId}: ${customLink} (affected rows: ${updateResult.rowCount})`);
+        }
+      } else {
+        console.log(`ℹ️ No related exercises found for updating custom links`);
+      }
+    }
     
     // Delete all existing template associations
     await db.delete(schema.templateClientAssociations)

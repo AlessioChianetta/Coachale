@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,6 +11,14 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -273,6 +281,8 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
   const [activeTab, setActiveTab] = useState(templateData ? "clients" : "basic");
   const [customPlatformLinks, setCustomPlatformLinks] = useState<Record<string, string>>({});
   const [pastedOptionsText, setPastedOptionsText] = useState<Record<string, string>>({});
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<ExerciseFormData | null>(null);
 
   // Ref to track the last initialized exercise/template ID to prevent unnecessary resets
   const lastInitializedIdRef = useRef<string | null>(null);
@@ -305,6 +315,18 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch categories");
+      return response.json();
+    },
+  });
+
+  // Fetch clients for confirmation dialog
+  const { data: clients = [] } = useQuery({
+    queryKey: ["/api/clients", "active"],
+    queryFn: async () => {
+      const response = await fetch("/api/clients?activeOnly=true", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
       return response.json();
     },
   });
@@ -424,6 +446,50 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
 
   // Watch selected clients
   const selectedClientIds = form.watch("selectedClients") || [];
+
+  // Calculate changes for template usage (new clients vs updates)
+  const templateChanges = useMemo(() => {
+    if (!templateData && !isEditingTemplate) {
+      return { newClients: [], updatedClients: [], hasChanges: false, onlyUpdates: false };
+    }
+
+    const existingAssociatedClientIds = new Set(
+      templateAssociations
+        .filter((assoc: any) => assoc.isVisible)
+        .map((assoc: any) => assoc.clientId)
+    );
+
+    const newClients: any[] = [];
+    const updatedClients: any[] = [];
+
+    selectedClientIds.forEach((clientId: string) => {
+      const client = clients.find((c: any) => c.id === clientId);
+      if (!client) return;
+
+      if (existingAssociatedClientIds.has(clientId)) {
+        // Client already associated - check if custom link changed
+        const hasCustomLink = customPlatformLinks[clientId] && customPlatformLinks[clientId].trim() !== '';
+        updatedClients.push({
+          ...client,
+          customLink: customPlatformLinks[clientId] || null,
+          hasCustomLink
+        });
+      } else {
+        // New client to add
+        newClients.push({
+          ...client,
+          customLink: customPlatformLinks[clientId] || null
+        });
+      }
+    });
+
+    return {
+      newClients,
+      updatedClients,
+      hasChanges: newClients.length > 0 || updatedClients.some(c => c.hasCustomLink),
+      onlyUpdates: newClients.length === 0 && updatedClients.length > 0
+    };
+  }, [templateData, isEditingTemplate, templateAssociations, selectedClientIds, clients, customPlatformLinks]);
 
   // Fetch university years for exam selection (filtered by selected clients if any)
   const { data: allUniversityYears = [] } = useQuery({
@@ -619,68 +685,8 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
     }
   }, [existingExercise?.id, templateData?.id, templateAssociations, existingAssignments, form, isEditingTemplate, isLoadingAssociations]);
 
-  const handleSubmit = async (data: ExerciseFormData) => {
-    console.log('📝 EXERCISE FORM SUBMIT START', {
-      timestamp: new Date().toISOString(),
-      isEditing: !!existingExercise,
-      exerciseId: existingExercise?.id,
-      formData: {
-        title: data.title,
-        useLibraryLesson: data.useLibraryLesson,
-        libraryDocumentId: data.libraryDocumentId
-      }
-    });
-
-    if (!data.title || !data.description || !data.category) {
-      console.log('❌ VALIDATION FAILED - Missing required fields', {
-        hasTitle: !!data.title,
-        hasDescription: !!data.description,
-        hasCategory: !!data.category
-      });
-      toast({
-        title: "Errore",
-        description: "Titolo, descrizione e categoria sono obbligatori.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validation for assignment - either public or has selected clients (only for exercises, not templates)
-    if (!templateData && !data.isPublic && (!data.selectedClients || data.selectedClients.length === 0)) {
-      toast({
-        title: "Errore",
-        description: "Seleziona almeno un cliente per assegnare l'esercizio, o scegli l'opzione pubblica.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Additional validation for content type
-    const hasQuestions = data.useQuestions && questions && questions.length > 0;
-    const hasWorkPlatform = data.usePlatform && data.workPlatform && data.workPlatform.trim() !== '';
-    const hasLibraryLesson = data.useLibraryLesson && data.libraryDocumentId && data.libraryDocumentId.trim() !== '';
-
-    console.log('🔍 CONTENT TYPE VALIDATION', {
-      hasQuestions,
-      hasWorkPlatform,
-      hasLibraryLesson,
-      details: {
-        useLibraryLesson: data.useLibraryLesson,
-        libraryDocumentId: data.libraryDocumentId,
-        libraryDocumentIdTrimmed: data.libraryDocumentId?.trim(),
-        libraryDocumentIdLength: data.libraryDocumentId?.length
-      }
-    });
-
-    if (!hasQuestions && !hasWorkPlatform && !hasLibraryLesson) {
-      toast({
-        title: "Errore",
-        description: "Devi abilitare e configurare almeno domande, piattaforma di lavoro o lezione del corso.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Execute submit - this is called either directly or after confirmation dialog
+  const executeSubmit = async (data: ExerciseFormData) => {
     const exerciseData: ExerciseFormData = {
       title: data.title,
       description: data.description,
@@ -701,7 +707,6 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
       useQuestions: data.useQuestions,
       usePlatform: data.usePlatform,
       useLibraryLesson: data.useLibraryLesson,
-      // Exam-specific fields
       isExam: data.isExam || false,
       examDate: data.isExam && data.examDate ? data.examDate : undefined,
       yearId: data.isExam && data.yearId ? data.yearId : undefined,
@@ -711,68 +716,50 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
       examTimeLimit: data.isExam && data.examTimeLimit ? data.examTimeLimit : undefined,
     };
 
-    console.log('📦 FINAL EXERCISE DATA PREPARED', {
-      exerciseData,
-      libraryDocumentId: exerciseData.libraryDocumentId,
-      libraryDocumentIdType: typeof exerciseData.libraryDocumentId,
-      libraryDocumentIdIsUndefined: exerciseData.libraryDocumentId === undefined,
-      libraryDocumentIdIsNull: exerciseData.libraryDocumentId === null,
-      libraryDocumentIdIsEmpty: exerciseData.libraryDocumentId === ''
-    });
+    console.log('📦 EXECUTING SUBMIT', { exerciseData });
 
-    // Determine if we're working with a template (either using one or editing one)
+    // Determine if we're working with a template
     const templateIdToUpdate = templateData?.id || (isEditingTemplate ? existingExercise?.id : null);
 
-    // Update template-client associations for both new template usage and template editing
+    // Update template-client associations
     if (templateIdToUpdate && !data.isPublic && data.selectedClients && data.selectedClients.length > 0) {
       try {
-        // Get existing associated client IDs from templateAssociations
         const existingAssociatedClientIds = new Set(
           templateAssociations
             .filter((assoc: any) => assoc.isVisible)
             .map((assoc: any) => assoc.clientId)
         );
 
-        // When USING a template (not editing), only send NEW clients that aren't already associated
-        // When EDITING a template, send ALL selected clients (to allow add/remove)
         const isUsingTemplate = templateData && !isEditingTemplate;
         const clientIdsToSend = isUsingTemplate
           ? data.selectedClients.filter((id: string) => !existingAssociatedClientIds.has(id))
           : data.selectedClients;
 
+        // Check if there are custom links to update for existing clients
+        const hasCustomLinksToUpdate = Object.keys(customPlatformLinks).some(clientId => 
+          existingAssociatedClientIds.has(clientId) && customPlatformLinks[clientId]?.trim()
+        );
+
         console.log('💾 Saving template associations:', {
           templateId: templateIdToUpdate,
-          isEditingTemplate,
-          isUsingTemplate,
-          allSelectedClients: data.selectedClients,
-          existingAssociatedClientIds: Array.from(existingAssociatedClientIds),
-          clientIdsToSend
+          clientIdsToSend,
+          customPlatformLinks,
+          hasCustomLinksToUpdate
         });
 
-        // Only call the API if there are new clients to add (when using) or any changes (when editing)
-        if (clientIdsToSend.length > 0 || isEditingTemplate) {
-          console.log('🔗 Sending template association with custom links:', {
-            clientIds: clientIdsToSend,
-            customPlatformLinks: customPlatformLinks
-          });
+        // Send API call if: new clients to add, editing template, OR custom links to update
+        if (clientIdsToSend.length > 0 || isEditingTemplate || hasCustomLinksToUpdate) {
           await apiRequest("POST", `/api/templates/${templateIdToUpdate}/associate-clients`, {
             clientIds: clientIdsToSend,
             customPlatformLinks: customPlatformLinks,
           });
-        } else {
-          console.log('ℹ️ No new clients to associate, skipping API call');
         }
       } catch (error: any) {
         console.error('Failed to update template associations:', error);
       }
     } else if (templateIdToUpdate && !data.isPublic && (!data.selectedClients || data.selectedClients.length === 0)) {
-      // If editing a template and clearing all client associations
       if (isEditingTemplate) {
         try {
-          console.log('🗑️ Clearing template associations:', {
-            templateId: templateIdToUpdate,
-            isEditingTemplate
-          });
           await apiRequest("POST", `/api/templates/${templateIdToUpdate}/associate-clients`, {
             clientIds: [],
           });
@@ -782,32 +769,91 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
       }
     }
 
-    console.log('🚀 CALLING onSubmit WITH DATA', {
-      timestamp: new Date().toISOString(),
-      isEditing: !!existingExercise,
-      exerciseId: existingExercise?.id,
-      hasLibraryDocumentId: !!exerciseData.libraryDocumentId,
-      selectedClientsCount: exerciseData.selectedClients?.length || 0,
-      isPublic: exerciseData.isPublic
-    });
-
-    // When USING a template to assign to clients, associateTemplateWithClients already created the exercises.
-    // Only call onSubmit for: editing existing exercises, editing templates, or creating new exercises from scratch.
+    // When USING a template, associateTemplateWithClients already created the exercises
     const isUsingTemplateToCreate = templateData && !isEditingTemplate && !existingExercise;
 
     if (isUsingTemplateToCreate) {
-      console.log('✅ Template usage complete - exercises created via associateTemplateWithClients');
+      console.log('✅ Template usage complete');
+      
+      // Show success message based on what was done
+      const newCount = templateChanges.newClients.length;
+      const updatedCount = templateChanges.updatedClients.filter((c: any) => c.hasCustomLink).length;
+      
+      let description = "";
+      if (newCount > 0 && updatedCount > 0) {
+        description = `Creati ${newCount} nuovi esercizi e aggiornati ${updatedCount} link personalizzati`;
+      } else if (newCount > 0) {
+        description = `Creati e assegnati ${newCount} nuovi esercizi`;
+      } else if (updatedCount > 0) {
+        description = `Aggiornati ${updatedCount} link personalizzati`;
+      } else {
+        description = "Nessuna modifica effettuata";
+      }
+      
       toast({
-        title: "Esercizio assegnato",
-        description: "L'esercizio è stato creato e assegnato ai clienti selezionati",
+        title: newCount > 0 ? "Esercizio assegnato" : "Link aggiornati",
+        description,
       });
-      // Call onSuccess to close the modal
+      
       if (onSuccess) {
         onSuccess();
       }
     } else {
       onSubmit(exerciseData, files);
     }
+  };
+
+  const handleSubmit = async (data: ExerciseFormData) => {
+    console.log('📝 EXERCISE FORM SUBMIT START', {
+      timestamp: new Date().toISOString(),
+      isEditing: !!existingExercise,
+      templateChanges
+    });
+
+    // Basic validation
+    if (!data.title || !data.description || !data.category) {
+      toast({
+        title: "Errore",
+        description: "Titolo, descrizione e categoria sono obbligatori.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!templateData && !data.isPublic && (!data.selectedClients || data.selectedClients.length === 0)) {
+      toast({
+        title: "Errore",
+        description: "Seleziona almeno un cliente per assegnare l'esercizio, o scegli l'opzione pubblica.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const hasQuestions = data.useQuestions && questions && questions.length > 0;
+    const hasWorkPlatform = data.usePlatform && data.workPlatform && data.workPlatform.trim() !== '';
+    const hasLibraryLesson = data.useLibraryLesson && data.libraryDocumentId && data.libraryDocumentId.trim() !== '';
+
+    if (!hasQuestions && !hasWorkPlatform && !hasLibraryLesson) {
+      toast({
+        title: "Errore",
+        description: "Devi abilitare e configurare almeno domande, piattaforma di lavoro o lezione del corso.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For template usage, show confirmation dialog
+    const isUsingTemplateToCreate = templateData && !isEditingTemplate && !existingExercise;
+    
+    if (isUsingTemplateToCreate && templateChanges.hasChanges) {
+      console.log('🔔 Showing confirmation dialog', { templateChanges });
+      setPendingSubmitData(data);
+      setShowConfirmDialog(true);
+      return;
+    }
+
+    // Otherwise execute directly
+    await executeSubmit(data);
   };
 
   const handleSaveAsTemplate = () => {
@@ -2369,6 +2415,7 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
                           isEditing: !!existingExercise,
                           exerciseId: existingExercise?.id,
                           isLoading,
+                          templateChanges,
                           formValues: {
                             title: form.getValues('title'),
                             category: form.getValues('category'),
@@ -2390,7 +2437,13 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
                           ? "Aggiorna Esercizio"
                           : form.watch("isPublic")
                             ? "Crea Esercizio Pubblico"
-                            : "Crea e Assegna Esercizio"
+                            : templateData
+                              ? templateChanges.onlyUpdates
+                                ? "Aggiorna Link"
+                                : templateChanges.newClients.length > 0 && templateChanges.updatedClients.length > 0
+                                  ? "Crea, Assegna e Aggiorna"
+                                  : "Crea e Assegna Esercizio"
+                              : "Crea e Assegna Esercizio"
                       }
                     </Button>
                   </div>
@@ -2406,6 +2459,94 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
           )}
         </div>
       </CardContent>
+
+      {/* Confirmation Dialog for Template Changes */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-blue-500" />
+              Conferma Modifiche
+            </DialogTitle>
+            <DialogDescription>
+              Riepilogo delle modifiche che verranno applicate:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* New Clients */}
+            {templateChanges.newClients.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-green-700 dark:text-green-400 flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nuovi esercizi da creare ({templateChanges.newClients.length})
+                </h4>
+                <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 space-y-2">
+                  {templateChanges.newClients.map((client: any) => (
+                    <div key={client.id} className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{client.firstName} {client.lastName}</span>
+                      {client.customLink && (
+                        <Badge variant="outline" className="text-xs">
+                          Link personalizzato
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Updated Clients */}
+            {templateChanges.updatedClients.filter((c: any) => c.hasCustomLink).length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Link personalizzati aggiornati ({templateChanges.updatedClients.filter((c: any) => c.hasCustomLink).length})
+                </h4>
+                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 space-y-2">
+                  {templateChanges.updatedClients.filter((c: any) => c.hasCustomLink).map((client: any) => (
+                    <div key={client.id} className="text-sm">
+                      <div className="font-medium">{client.firstName} {client.lastName}</div>
+                      <div className="text-xs text-muted-foreground truncate mt-1">
+                        {client.customLink}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No Changes Warning */}
+            {!templateChanges.hasChanges && templateChanges.updatedClients.length > 0 && (
+              <div className="bg-yellow-50 dark:bg-yellow-950/30 rounded-lg p-3">
+                <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                  Nessuna modifica rilevata. I clienti selezionati sono già assegnati senza modifiche ai link.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+            >
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                setShowConfirmDialog(false);
+                if (pendingSubmitData) {
+                  executeSubmit(pendingSubmitData);
+                }
+              }}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+            >
+              Conferma
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
