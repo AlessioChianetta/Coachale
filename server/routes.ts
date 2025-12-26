@@ -7537,6 +7537,124 @@ Rispondi SOLO con un JSON array, senza altri testi:
     }
   });
 
+  // ===== AI UNIVERSITY PATHWAY GENERATOR =====
+  
+  // Get courses available for pathway creation (from library where category isCourse)
+  app.get("/api/university/ai/courses", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const categories = await db.select()
+        .from(schema.libraryCategories)
+        .where(
+          and(
+            eq(schema.libraryCategories.createdBy, req.user!.id),
+            eq(schema.libraryCategories.isActive, true)
+          )
+        )
+        .orderBy(asc(schema.libraryCategories.sortOrder));
+
+      const coursesWithLessons = await Promise.all(
+        categories.map(async (cat) => {
+          const lessons = await db.select()
+            .from(schema.libraryDocuments)
+            .where(
+              and(
+                eq(schema.libraryDocuments.categoryId, cat.id),
+                eq(schema.libraryDocuments.isPublished, true)
+              )
+            )
+            .orderBy(asc(schema.libraryDocuments.sortOrder));
+          
+          return {
+            id: cat.id,
+            name: cat.name,
+            description: cat.description,
+            icon: cat.icon,
+            lessonCount: lessons.length,
+            lessons: lessons.map(l => ({
+              id: l.id,
+              title: l.title,
+              description: l.description,
+            })),
+          };
+        })
+      );
+
+      // Filter to only courses with at least 1 lesson
+      res.json(coursesWithLessons.filter(c => c.lessonCount > 0));
+    } catch (error: any) {
+      console.error('[AI-UNIVERSITY] Error fetching courses:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // AI analyze courses and suggest trimester assignments
+  app.post("/api/university/ai/analyze", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { courseIds } = req.body;
+      
+      if (!Array.isArray(courseIds) || courseIds.length === 0) {
+        return res.status(400).json({ message: "courseIds deve essere un array non vuoto" });
+      }
+
+      const { analyzeCoursesForTrimesterAssignment } = await import("./services/ai-university-generator");
+      const suggestions = await analyzeCoursesForTrimesterAssignment(req.user!.id, courseIds);
+      
+      res.json(suggestions);
+    } catch (error: any) {
+      console.error('[AI-UNIVERSITY] Error analyzing courses:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Generate complete pathway from course assignments
+  app.post("/api/university/ai/generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { name, description, courseAssignments } = req.body;
+      
+      if (!name || !Array.isArray(courseAssignments) || courseAssignments.length === 0) {
+        return res.status(400).json({ 
+          message: "name e courseAssignments sono richiesti" 
+        });
+      }
+
+      const { generateUniversityPathway } = await import("./services/ai-university-generator");
+      const pathway = await generateUniversityPathway(req.user!.id, name, courseAssignments, description);
+      
+      res.status(201).json(pathway);
+    } catch (error: any) {
+      console.error('[AI-UNIVERSITY] Error generating pathway:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Instantiate pathway for specific clients
+  app.post("/api/university/ai/instantiate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { templateId, clientIds, yearTitle } = req.body;
+      
+      if (!templateId || !Array.isArray(clientIds) || clientIds.length === 0) {
+        return res.status(400).json({ 
+          message: "templateId e clientIds sono richiesti" 
+        });
+      }
+
+      const { instantiatePathwayForClients } = await import("./services/ai-university-generator");
+      const result = await instantiatePathwayForClients(templateId, req.user!.id, clientIds, yearTitle);
+      
+      // Sync to client stores for privacy isolation
+      for (const assignment of result.clientAssignments) {
+        fileSearchSyncService.syncUniversityYearToClient(result.yearId, assignment.clientId, req.user!.id).catch(err => {
+          console.error(`[FileSync] Failed to sync university year to client ${assignment.clientId}:`, err.message);
+        });
+      }
+      
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error('[AI-UNIVERSITY] Error instantiating pathway:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Statistics - Overview for all clients (consultant only)
   app.get("/api/university/stats/overview", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
