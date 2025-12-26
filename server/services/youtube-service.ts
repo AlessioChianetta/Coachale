@@ -155,7 +155,8 @@ async function downloadAudioWithYtDlp(videoId: string, maxRetries: number = 3): 
       console.log(`      📹 URL: https://www.youtube.com/watch?v=${videoId}`);
       
       // Usa python -m yt_dlp per la versione aggiornata
-      const cmd = `python -m yt_dlp -x --audio-format mp3 --audio-quality 5 -o "${path.join(tempDir, videoId)}.%(ext)s" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
+      // --js-runtimes node richiesto per YouTube dal Nov 2024
+      const cmd = `python -m yt_dlp --js-runtimes node -x --audio-format mp3 --audio-quality 5 -o "${path.join(tempDir, videoId)}.%(ext)s" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
       
       const { stdout, stderr } = await execAsync(cmd, { timeout: 180000 }); // 3 minuti timeout
       const output = stdout + stderr;
@@ -427,7 +428,8 @@ async function fetchSubtitlesWithYtDlp(videoId: string, lang: string = 'it'): Pr
       try {
         console.log(`   📝 yt-dlp tentativo lingua: ${tryLang}`);
         
-        const cmd = `yt-dlp --write-auto-subs --skip-download --sub-lang "${tryLang}" --sub-format "vtt" --extractor-args "youtube:player_skip=webpage,configs" --socket-timeout 10 -o "${outputPath}" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
+        // --js-runtimes node richiesto per YouTube dal Nov 2024
+        const cmd = `yt-dlp --js-runtimes node --write-auto-subs --skip-download --sub-lang "${tryLang}" --sub-format "vtt" --extractor-args "youtube:player_skip=webpage,configs" --socket-timeout 10 -o "${outputPath}" "https://www.youtube.com/watch?v=${videoId}" 2>&1`;
         
         const { stdout, stderr } = await execAsync(cmd, { timeout: 45000 });
         const output = stdout + stderr;
@@ -663,6 +665,7 @@ export async function fetchPlaylistVideos(playlistId: string): Promise<PlaylistV
     // Usa execFile con array di argomenti per prevenire shell injection
     const videos = await new Promise<PlaylistVideo[]>((resolve, reject) => {
       const args = [
+        '--js-runtimes', 'node',  // Richiesto per YouTube dal Nov 2024
         '--flat-playlist',
         '-J',
         '--socket-timeout', '30',
