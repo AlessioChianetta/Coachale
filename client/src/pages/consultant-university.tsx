@@ -1345,33 +1345,34 @@ return (
 
       <main className="flex-1 overflow-y-auto bg-transparent">
         <div className="container mx-auto px-4 lg:px-8 pt-6 pb-8">
-          {/* Header Compatto e Moderno */}
-          <div className="mb-6">
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-6 lg:p-8 text-white shadow-2xl relative overflow-hidden">
-              {/* Decorazioni di sfondo */}
-              <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+          {/* Header Moderno Minimalista */}
+          <div className="mb-8">
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 lg:p-8 text-white shadow-xl relative overflow-hidden border border-slate-700/50">
+              {/* Accenti decorativi */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl"></div>
 
               <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-4 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-xl">
-                    <GraduationCap className="h-10 w-10 text-white" />
+                  <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-lg shadow-cyan-500/25">
+                    <GraduationCap className="h-8 w-8 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-3xl lg:text-4xl font-black tracking-tight">La Mia Università</h1>
-                    <p className="text-white/80 text-base lg:text-lg mt-1 font-medium">
-                      Sistema di formazione avanzato per i tuoi clienti
+                    <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">La Mia Università</h1>
+                    <p className="text-slate-400 text-sm lg:text-base mt-0.5">
+                      Gestisci i percorsi formativi dei tuoi clienti
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={() => setAiWizardOpen(true)}
-                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0 shadow-lg transition-all hover:scale-105"
-                    size="lg"
+                    className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-cyan-500/25 transition-all hover:shadow-xl"
+                    size="default"
                   >
-                    <Sparkles className="h-5 w-5 mr-2" />
+                    <Sparkles className="h-4 w-4 mr-2" />
                     Crea con AI
                   </Button>
                   <Button
@@ -1383,18 +1384,19 @@ return (
                         setTemplateDialogOpen(true);
                       }
                     }}
-                    className="bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-xl shadow-lg transition-all hover:scale-105"
-                    size="lg"
+                    variant="outline"
+                    className="bg-slate-800/50 hover:bg-slate-700/50 text-white border-slate-600 hover:border-slate-500"
+                    size="default"
                   >
-                    <FileText className="h-5 w-5 mr-2" />
+                    <FileText className="h-4 w-4 mr-2" />
                     Template
                   </Button>
                   <Button
                     onClick={() => setYearDialogOpen(true)}
-                    className="bg-white text-indigo-600 hover:bg-white/90 border-0 shadow-2xl font-bold transition-all hover:scale-105"
-                    size="lg"
+                    className="bg-white text-slate-900 hover:bg-slate-100 border-0 font-semibold"
+                    size="default"
                   >
-                    <Plus className="h-5 w-5 mr-2" />
+                    <Plus className="h-4 w-4 mr-2" />
                     Nuovo Anno
                   </Button>
                 </div>
@@ -1427,191 +1429,228 @@ return (
 
             {/* Dashboard Tab */}
             <TabsContent value="dashboard">
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-card to-muted/10">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5 text-blue-600" />
-                        Panoramica Clienti
-                      </CardTitle>
-                      <CardDescription>
-                        Statistiche e progressi di tutti i tuoi clienti
-                      </CardDescription>
-                    </div>
+              <div className="space-y-6">
+                {/* Header con ricerca */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold text-foreground">Panoramica Clienti</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {overviewStats.length} {overviewStats.length === 1 ? 'cliente attivo' : 'clienti attivi'}
+                    </p>
                   </div>
                   {overviewStats.length > 0 && (
-                    <div className="mt-4">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Cerca per nome, email o percorso..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-10 max-w-md"
-                        />
-                      </div>
+                    <div className="relative w-full sm:w-auto">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Cerca cliente..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 w-full sm:w-72 bg-background border-border"
+                      />
                     </div>
                   )}
-                </CardHeader>
-                <CardContent>
-                  {overviewStats.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="w-20 h-20 bg-gradient-to-br from-blue-500/10 to-purple-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Users className="h-10 w-10 text-muted-foreground" />
+                </div>
+
+                {overviewStats.length === 0 ? (
+                  <Card className="border border-dashed">
+                    <CardContent className="flex flex-col items-center justify-center py-16">
+                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                        <Users className="h-8 w-8 text-muted-foreground" />
                       </div>
-                      <p className="text-muted-foreground">Nessun cliente con percorso universitario attivo</p>
+                      <p className="text-muted-foreground text-center">Nessun cliente con percorso universitario attivo</p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => setYearDialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Crea primo percorso
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Sorting Pills */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleSort("clientName")}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                          sortColumn === "clientName" 
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' 
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                        }`}
+                      >
+                        Nome {sortColumn === "clientName" && (sortDirection === "asc" ? "↑" : "↓")}
+                      </button>
+                      <button
+                        onClick={() => handleSort("completionPercentage")}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                          sortColumn === "completionPercentage" 
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' 
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                        }`}
+                      >
+                        Progresso {sortColumn === "completionPercentage" && (sortDirection === "asc" ? "↑" : "↓")}
+                      </button>
+                      <button
+                        onClick={() => handleSort("averageGrade")}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                          sortColumn === "averageGrade" 
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' 
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                        }`}
+                      >
+                        Media {sortColumn === "averageGrade" && (sortDirection === "asc" ? "↑" : "↓")}
+                      </button>
+                      <button
+                        onClick={() => handleSort("enrolledAt")}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                          sortColumn === "enrolledAt" 
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' 
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                        }`}
+                      >
+                        Data {sortColumn === "enrolledAt" && (sortDirection === "asc" ? "↑" : "↓")}
+                      </button>
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead 
-                              className="cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => handleSort("clientName")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Cliente
-                                {sortColumn === "clientName" && (
-                                  sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                                )}
-                                {sortColumn !== "clientName" && <ArrowUpDown className="h-4 w-4 text-muted-foreground" />}
-                              </div>
-                            </TableHead>
-                            <TableHead 
-                              className="cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => handleSort("enrolledAt")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Data Iscrizione
-                                {sortColumn === "enrolledAt" && (
-                                  sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                                )}
-                                {sortColumn !== "enrolledAt" && <ArrowUpDown className="h-4 w-4 text-muted-foreground" />}
-                              </div>
-                            </TableHead>
-                            <TableHead>Percorso Corrente</TableHead>
-                            <TableHead 
-                              className="text-center cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => handleSort("completionPercentage")}
-                            >
-                              <div className="flex items-center justify-center gap-2">
-                                % Completamento
-                                {sortColumn === "completionPercentage" && (
-                                  sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                                )}
-                                {sortColumn !== "completionPercentage" && <ArrowUpDown className="h-4 w-4 text-muted-foreground" />}
-                              </div>
-                            </TableHead>
-                            <TableHead 
-                              className="text-center cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => handleSort("averageGrade")}
-                            >
-                              <div className="flex items-center justify-center gap-2">
-                                Media Voti
-                                {sortColumn === "averageGrade" && (
-                                  sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                                )}
-                                {sortColumn !== "averageGrade" && <ArrowUpDown className="h-4 w-4 text-muted-foreground" />}
-                              </div>
-                            </TableHead>
-                            <TableHead className="text-center">Attestati</TableHead>
-                            <TableHead className="w-[50px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredAndSortedStats.length === 0 ? (
-                            <TableRow>
-                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                                Nessun risultato trovato
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            filteredAndSortedStats.map((clientStats) => {
-                              const isExpanded = expandedDashboardClients.includes(clientStats.clientId);
-                              const client = clients.find(c => c.id === clientStats.clientId);
-                              return (
-                                <React.Fragment key={clientStats.clientId}>
-                                  <TableRow 
-                                    className="hover:bg-muted/50 transition-colors cursor-pointer"
-                                    onClick={() => {
-                                      setExpandedDashboardClients(prev => 
-                                        prev.includes(clientStats.clientId) 
-                                          ? prev.filter(id => id !== clientStats.clientId)
-                                          : [...prev, clientStats.clientId]
-                                      );
-                                    }}
-                                  >
-                                    <TableCell className="font-medium">{clientStats.clientName}</TableCell>
-                                    <TableCell className="text-sm">
-                                      <div className="flex items-center gap-2">
-                                        <Calendar className="h-3 w-3 text-muted-foreground" />
-                                        {formatEnrollmentDate(clientStats.enrolledAt)}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="text-sm">
-                                        {clientStats.currentPath || (
-                                          <span className="text-muted-foreground italic">Nessun percorso attivo</span>
-                                        )}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      <div className="flex flex-col items-center gap-1">
-                                        <span className="font-bold text-green-600">{clientStats.completionPercentage}%</span>
-                                        <Progress value={clientStats.completionPercentage} className="w-20 h-1.5" />
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      <Badge className="bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border-0">
-                                        <Star className="h-3 w-3 mr-1" />
-                                        {clientStats.averageGrade ? clientStats.averageGrade.toFixed(1) : '-'}/10
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border-0">
-                                        <Award className="h-3 w-3 mr-1" />
-                                        {clientStats.totalCertificates}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                    </TableCell>
-                                  </TableRow>
-                                  {isExpanded && client && (
-                                    <TableRow>
-                                      <TableCell colSpan={7} className="p-0 bg-muted/30">
-                                        <div className="p-4">
-                                          <ClientPathsInline
-                                            client={client}
-                                            useClientYears={useClientYears}
-                                            useTrimesters={useTrimesters}
-                                            onEditYear={(year: UniversityYear) => {
-                                              setEditingYear(year);
-                                              setEditYearDialogOpen(true);
-                                            }}
-                                            onDeleteYear={(yearId: string) => {
-                                              deleteYearMutation.mutate(yearId);
-                                            }}
-                                            onToggleLock={(yearId: string, isLocked: boolean) => {
-                                              toggleYearLockMutation.mutate({ yearId, isLocked });
-                                            }}
+
+                    {/* Client Cards */}
+                    {filteredAndSortedStats.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        Nessun risultato trovato per "{searchQuery}"
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {filteredAndSortedStats.map((clientStats) => {
+                          const isExpanded = expandedDashboardClients.includes(clientStats.clientId);
+                          const client = clients.find(c => c.id === clientStats.clientId);
+                          return (
+                            <div key={clientStats.clientId}>
+                              <div 
+                                className={`bg-card border rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${
+                                  isExpanded ? 'border-cyan-500/50 shadow-sm' : 'border-border hover:border-border/80'
+                                }`}
+                                onClick={() => {
+                                  setExpandedDashboardClients(prev => 
+                                    prev.includes(clientStats.clientId) 
+                                      ? prev.filter(id => id !== clientStats.clientId)
+                                      : [...prev, clientStats.clientId]
+                                  );
+                                }}
+                              >
+                                <div className="flex items-center gap-4">
+                                  {/* Avatar */}
+                                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                    {clientStats.clientName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                  </div>
+                                  
+                                  {/* Info principale */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <h3 className="font-semibold text-foreground truncate">{clientStats.clientName}</h3>
+                                      <span className="text-xs text-muted-foreground hidden sm:inline">
+                                        · {formatEnrollmentDate(clientStats.enrolledAt)}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground truncate">
+                                      {clientStats.currentPath || "Nessun percorso attivo"}
+                                    </p>
+                                  </div>
+
+                                  {/* Stats compatte */}
+                                  <div className="hidden md:flex items-center gap-6">
+                                    {/* Progresso */}
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-24">
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="text-xs text-muted-foreground">Progresso</span>
+                                          <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">{clientStats.completionPercentage}%</span>
+                                        </div>
+                                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                          <div 
+                                            className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full transition-all"
+                                            style={{ width: `${clientStats.completionPercentage}%` }}
                                           />
                                         </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                                      </div>
+                                    </div>
+
+                                    {/* Media */}
+                                    <div className="text-center">
+                                      <p className="text-xs text-muted-foreground mb-0.5">Media</p>
+                                      <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                                        {clientStats.averageGrade ? clientStats.averageGrade.toFixed(1) : '-'}
+                                      </p>
+                                    </div>
+
+                                    {/* Attestati */}
+                                    <div className="text-center">
+                                      <p className="text-xs text-muted-foreground mb-0.5">Attestati</p>
+                                      <p className="text-sm font-semibold">{clientStats.totalCertificates}</p>
+                                    </div>
+                                  </div>
+
+                                  {/* Expand arrow */}
+                                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+                                </div>
+
+                                {/* Stats mobile */}
+                                <div className="flex md:hidden items-center gap-4 mt-3 pt-3 border-t">
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-xs text-muted-foreground">Progresso</span>
+                                      <span className="text-xs font-semibold text-cyan-600">{clientStats.completionPercentage}%</span>
+                                    </div>
+                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full"
+                                        style={{ width: `${clientStats.completionPercentage}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1">
+                                      <Star className="h-3 w-3 text-amber-500" />
+                                      <span className="text-xs font-medium">{clientStats.averageGrade ? clientStats.averageGrade.toFixed(1) : '-'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <Award className="h-3 w-3 text-muted-foreground" />
+                                      <span className="text-xs font-medium">{clientStats.totalCertificates}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Expanded content */}
+                              {isExpanded && client && (
+                                <div className="mt-2 ml-4 pl-4 border-l-2 border-cyan-500/30">
+                                  <div className="bg-muted/30 rounded-xl p-4">
+                                    <ClientPathsInline
+                                      client={client}
+                                      useClientYears={useClientYears}
+                                      useTrimesters={useTrimesters}
+                                      onEditYear={(year: UniversityYear) => {
+                                        setEditingYear(year);
+                                        setEditYearDialogOpen(true);
+                                      }}
+                                      onDeleteYear={(yearId: string) => {
+                                        deleteYearMutation.mutate(yearId);
+                                      }}
+                                      onToggleLock={(yearId: string, isLocked: boolean) => {
+                                        toggleYearLockMutation.mutate({ yearId, isLocked });
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
             {/* Manage Client Tab */}
