@@ -286,6 +286,7 @@ export const exerciseCategories = pgTable("exercise_categories", {
   color: text("color").default("purple"),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").default(true),
+  isCourse: boolean("is_course").default(false), // True if generated from a library course
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

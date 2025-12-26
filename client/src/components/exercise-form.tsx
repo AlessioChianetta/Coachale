@@ -33,7 +33,22 @@ import {
   Save,
   Download,
   Globe,
-  Sparkles
+  Sparkles,
+  GraduationCap,
+  Zap,
+  MessageSquare,
+  Mail,
+  Wallet,
+  TrendingUp,
+  Megaphone,
+  Building,
+  PiggyBank,
+  Calculator,
+  Users,
+  Compass,
+  Rocket,
+  Layers,
+  FolderOpen
 } from "lucide-react";
 import FileUpload from "./file-upload";
 import { insertExerciseSchema, insertExerciseTemplateSchema, type InsertExerciseTemplate, type Question } from "@shared/schema";
@@ -1233,17 +1248,88 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
                           <SelectTrigger>
                             <SelectValue placeholder="Seleziona categoria" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-80">
                             {exerciseCategories.length === 0 ? (
                               <div className="px-2 py-1.5 text-sm text-muted-foreground">
                                 Caricamento categorie...
                               </div>
                             ) : (
-                              exerciseCategories.map((cat: any) => (
-                                <SelectItem key={cat.id} value={cat.slug}>
-                                  {cat.name}
-                                </SelectItem>
-                              ))
+                              <>
+                                {/* Course Categories */}
+                                {exerciseCategories.filter((cat: any) => cat.isCourse).length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/20">
+                                      <GraduationCap size={12} />
+                                      Corsi
+                                    </div>
+                                    {exerciseCategories
+                                      .filter((cat: any) => cat.isCourse)
+                                      .map((cat: any) => (
+                                        <SelectItem key={cat.id} value={cat.slug}>
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-5 h-5 rounded bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                                              <GraduationCap size={12} className="text-indigo-600 dark:text-indigo-400" />
+                                            </div>
+                                            <span>{cat.name}</span>
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    <Separator className="my-1" />
+                                  </>
+                                )}
+                                {/* Regular Categories */}
+                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/20">
+                                  <FolderOpen size={12} />
+                                  Categorie
+                                </div>
+                                {exerciseCategories
+                                  .filter((cat: any) => !cat.isCourse)
+                                  .map((cat: any) => {
+                                    const iconMap: Record<string, React.ReactNode> = {
+                                      'Zap': <Zap size={12} className="text-amber-600" />,
+                                      'MessageSquare': <MessageSquare size={12} className="text-blue-600" />,
+                                      'Mail': <Mail size={12} className="text-green-600" />,
+                                      'Wallet': <Wallet size={12} className="text-emerald-600" />,
+                                      'TrendingUp': <TrendingUp size={12} className="text-orange-600" />,
+                                      'Megaphone': <Megaphone size={12} className="text-pink-600" />,
+                                      'Building': <Building size={12} className="text-purple-600" />,
+                                      'PiggyBank': <PiggyBank size={12} className="text-teal-600" />,
+                                      'Calculator': <Calculator size={12} className="text-slate-600" />,
+                                      'Users': <Users size={12} className="text-cyan-600" />,
+                                      'Compass': <Compass size={12} className="text-indigo-600" />,
+                                      'Rocket': <Rocket size={12} className="text-red-600" />,
+                                      'Layers': <Layers size={12} className="text-violet-600" />,
+                                      'BookOpen': <BookOpen size={12} className="text-blue-600" />,
+                                    };
+                                    const colorMap: Record<string, string> = {
+                                      'amber': 'bg-amber-100 dark:bg-amber-900/30',
+                                      'blue': 'bg-blue-100 dark:bg-blue-900/30',
+                                      'green': 'bg-green-100 dark:bg-green-900/30',
+                                      'emerald': 'bg-emerald-100 dark:bg-emerald-900/30',
+                                      'orange': 'bg-orange-100 dark:bg-orange-900/30',
+                                      'pink': 'bg-pink-100 dark:bg-pink-900/30',
+                                      'purple': 'bg-purple-100 dark:bg-purple-900/30',
+                                      'teal': 'bg-teal-100 dark:bg-teal-900/30',
+                                      'slate': 'bg-slate-100 dark:bg-slate-900/30',
+                                      'cyan': 'bg-cyan-100 dark:bg-cyan-900/30',
+                                      'indigo': 'bg-indigo-100 dark:bg-indigo-900/30',
+                                      'red': 'bg-red-100 dark:bg-red-900/30',
+                                      'violet': 'bg-violet-100 dark:bg-violet-900/30',
+                                    };
+                                    const icon = iconMap[cat.icon] || <BookOpen size={12} className="text-purple-600" />;
+                                    const bgColor = colorMap[cat.color] || 'bg-purple-100 dark:bg-purple-900/30';
+                                    return (
+                                      <SelectItem key={cat.id} value={cat.slug}>
+                                        <div className="flex items-center gap-2">
+                                          <div className={`w-5 h-5 rounded flex items-center justify-center ${bgColor}`}>
+                                            {icon}
+                                          </div>
+                                          <span>{cat.name}</span>
+                                        </div>
+                                      </SelectItem>
+                                    );
+                                  })}
+                              </>
                             )}
                           </SelectContent>
                         </Select>

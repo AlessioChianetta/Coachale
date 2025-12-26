@@ -69,10 +69,11 @@ async function ensureCategoryExists(courseName: string, consultantId: string): P
     name: courseName,
     slug: slug,
     description: `Esercizi generati automaticamente dal corso "${courseName}"`,
-    icon: 'BookOpen',
-    color: 'purple',
+    icon: 'GraduationCap',
+    color: 'indigo',
     sortOrder: 0,
     isActive: true,
+    isCourse: true,
     createdBy: consultantId,
   }).returning();
 
