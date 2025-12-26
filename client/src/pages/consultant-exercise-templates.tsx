@@ -604,9 +604,16 @@ export default function ConsultantTemplates() {
                         >
                           <CardContent className="p-4">
                             <div className="flex items-start gap-4">
-                              {/* Icon */}
-                              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl flex-shrink-0">
-                                {categoryEmoji}
+                              {/* Order Number + Icon */}
+                              <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                                {template.sortOrder ? (
+                                  <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                                    {template.sortOrder}
+                                  </div>
+                                ) : null}
+                                <div className={`${template.sortOrder ? 'w-10 h-10 text-lg' : 'w-14 h-14 text-2xl'} rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center`}>
+                                  {categoryEmoji}
+                                </div>
                               </div>
 
                               {/* Content */}
@@ -760,9 +767,16 @@ export default function ConsultantTemplates() {
                             >
                               <CardContent className="p-4">
                                 <div className="flex items-start gap-4">
-                                  {/* Icon */}
-                                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl flex-shrink-0">
-                                    {categoryEmoji}
+                                  {/* Order Number + Icon */}
+                                  <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                                    {template.sortOrder ? (
+                                      <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                                        {template.sortOrder}
+                                      </div>
+                                    ) : null}
+                                    <div className={`${template.sortOrder ? 'w-10 h-10 text-lg' : 'w-14 h-14 text-2xl'} rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center`}>
+                                      {categoryEmoji}
+                                    </div>
                                   </div>
 
                                   {/* Content */}
