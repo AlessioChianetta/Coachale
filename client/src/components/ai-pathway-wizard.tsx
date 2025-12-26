@@ -161,8 +161,16 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
     mutationFn: async (courseIds: string[]) => {
       return await apiRequest("POST", "/api/university/ai/analyze", { courseIds });
     },
-    onSuccess: (data: AIAnalysis[]) => {
-      const newAssignments: TrimesterAssignment[] = data.map((analysis) => ({
+    onSuccess: (data: { success: boolean; assignments: AIAnalysis[] }) => {
+      if (!data.assignments || !Array.isArray(data.assignments)) {
+        toast({
+          title: "Errore analisi",
+          description: "L'AI non ha restituito suggerimenti validi",
+          variant: "destructive",
+        });
+        return;
+      }
+      const newAssignments: TrimesterAssignment[] = data.assignments.map((analysis) => ({
         courseId: analysis.courseId,
         courseName: analysis.courseName,
         trimester: analysis.suggestedTrimester,
@@ -171,7 +179,7 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       setAssignments(newAssignments);
       toast({
         title: "Analisi completata",
-        description: `L'AI ha analizzato ${data.length} corsi e suggerito l'organizzazione ottimale`,
+        description: `L'AI ha analizzato ${data.assignments.length} corsi e suggerito l'organizzazione ottimale`,
       });
     },
     onError: (error: Error) => {
