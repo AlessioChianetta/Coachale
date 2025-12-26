@@ -60,7 +60,7 @@ interface Course {
 interface AIAnalysis {
   courseId: string;
   courseName: string;
-  suggestedTrimester: "Q1" | "Q2" | "Q3" | "Q4";
+  trimester: "Q1" | "Q2" | "Q3" | "Q4";
   reasoning: string;
 }
 
@@ -190,8 +190,8 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       const newAssignments: TrimesterAssignment[] = data.assignments.map((analysis) => ({
         courseId: analysis.courseId,
         courseName: analysis.courseName,
-        trimesters: [analysis.suggestedTrimester],
-        originalAISuggestion: analysis.suggestedTrimester,
+        trimesters: [analysis.trimester],
+        originalAISuggestion: analysis.trimester,
         reasoning: analysis.reasoning,
       }));
       setAssignments(newAssignments);
