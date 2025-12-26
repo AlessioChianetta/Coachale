@@ -1720,168 +1720,54 @@ return (
                       </CardContent>
                     </Card>
 
-                    {/* Stats Cards - Design Modernizzato */}
+                    {/* Stats Cards - Design Minimalista */}
                     {stats && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Card Completamento */}
-                        <Card className="group relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 opacity-90"></div>
-                          <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))]"></div>
-
-                          <CardContent className="relative z-10 p-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 shadow-lg">
-                                <CheckCircle2 className="h-6 w-6 text-white" />
-                              </div>
-                              <TrendingUp className="h-5 w-5 text-white/80" />
-                            </div>
-
-                            <div className="space-y-2">
-                              <p className="text-white/90 text-sm font-medium uppercase tracking-wide">Completamento</p>
-                              <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-black text-white">{stats.completionPercentage}</span>
-                                <span className="text-2xl font-bold text-white/80">%</span>
-                              </div>
-                            </div>
-
-                            <div className="mt-4 space-y-2">
-                              <div className="flex justify-between text-xs text-white/90">
-                                <span>Progresso</span>
-                                <span>{stats.completionPercentage}%</span>
-                              </div>
-                              <div className="h-2 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                                <div 
-                                  className="h-full bg-white rounded-full transition-all duration-500 shadow-lg"
-                                  style={{ width: `${stats.completionPercentage}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                        <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900/50 dark:to-emerald-800/50 rounded-xl flex items-center justify-center">
+                            <CheckCircle2 className="text-emerald-600 dark:text-emerald-400" size={24} />
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Completamento</p>
+                            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.completionPercentage}%</p>
+                          </div>
+                        </div>
 
                         {/* Card Lezioni */}
-                        <Card className="group relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-                          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 opacity-90"></div>
-                          <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))]"></div>
-
-                          <CardContent className="relative z-10 p-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 shadow-lg">
-                                <BookOpen className="h-6 w-6 text-white" />
-                              </div>
-                              <FileText className="h-5 w-5 text-white/80" />
-                            </div>
-
-                            <div className="space-y-2">
-                              <p className="text-white/90 text-sm font-medium uppercase tracking-wide">Lezioni</p>
-                              <div className="flex items-baseline gap-3">
-                                <span className="text-5xl font-black text-white">{stats.completedLessons}</span>
-                                <span className="text-3xl font-bold text-white/60">/</span>
-                                <span className="text-3xl font-bold text-white/80">{stats.totalLessons}</span>
-                              </div>
-                            </div>
-
-                            <div className="mt-4 flex items-center gap-2">
-                              <div className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                                <div 
-                                  className="h-full bg-white rounded-full transition-all duration-500 shadow-lg"
-                                  style={{ width: `${stats.totalLessons > 0 ? (stats.completedLessons / stats.totalLessons * 100) : 0}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-xs text-white/90 font-medium">
-                                {stats.totalLessons > 0 ? Math.round((stats.completedLessons / stats.totalLessons) * 100) : 0}%
-                              </span>
-                            </div>
-                          </CardContent>
-                        </Card>
+                        <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-cyan-100 to-cyan-200 dark:from-cyan-900/50 dark:to-cyan-800/50 rounded-xl flex items-center justify-center">
+                            <BookOpen className="text-cyan-600 dark:text-cyan-400" size={24} />
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Lezioni</p>
+                            <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{stats.completedLessons}/{stats.totalLessons}</p>
+                          </div>
+                        </div>
 
                         {/* Card Media Voti */}
-                        <Card className="group relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-                          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 opacity-90"></div>
-                          <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))]"></div>
-
-                          <CardContent className="relative z-10 p-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 shadow-lg">
-                                <Star className="h-6 w-6 text-white fill-white" />
-                              </div>
-                              <div className="flex gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star 
-                                    key={i} 
-                                    className={`h-3 w-3 ${
-                                      stats.averageGrade && (stats.averageGrade / 2) > i 
-                                        ? 'text-white fill-white' 
-                                        : 'text-white/40'
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <p className="text-white/90 text-sm font-medium uppercase tracking-wide">Media Voti</p>
-                              <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-black text-white">
-                                  {stats.averageGrade ? stats.averageGrade.toFixed(1) : '-'}
-                                </span>
-                                <span className="text-2xl font-bold text-white/80">/10</span>
-                              </div>
-                            </div>
-
-                            <div className="mt-4">
-                              <div className="flex items-center justify-between text-xs text-white/90 mb-1">
-                                <span>Rendimento</span>
-                                <span className="font-bold">
-                                  {stats.averageGrade ? 
-                                    stats.averageGrade >= 8 ? 'Eccellente' : 
-                                    stats.averageGrade >= 6 ? 'Buono' : 'In miglioramento'
-                                  : 'N/D'}
-                                </span>
-                              </div>
-                              <div className="h-2 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                                <div 
-                                  className="h-full bg-white rounded-full transition-all duration-500 shadow-lg"
-                                  style={{ width: `${stats.averageGrade ? (stats.averageGrade * 10) : 0}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                        <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/50 dark:to-amber-800/50 rounded-xl flex items-center justify-center">
+                            <Star className="text-amber-600 dark:text-amber-400" size={24} />
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Media Voti</p>
+                            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                              {stats.averageGrade ? stats.averageGrade.toFixed(1) : '-'}/10
+                            </p>
+                          </div>
+                        </div>
 
                         {/* Card Attestati */}
-                        <Card className="group relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-                          <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 opacity-90"></div>
-                          <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))]"></div>
-
-                          <CardContent className="relative z-10 p-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 shadow-lg">
-                                <Award className="h-6 w-6 text-white" />
-                              </div>
-                              <Sparkles className="h-5 w-5 text-white/80" />
-                            </div>
-
-                            <div className="space-y-2">
-                              <p className="text-white/90 text-sm font-medium uppercase tracking-wide">Attestati</p>
-                              <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-black text-white">{stats.totalCertificates}</span>
-                                <span className="text-lg font-bold text-white/80">
-                                  {stats.totalCertificates === 1 ? 'conseguito' : 'conseguiti'}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="mt-4 flex items-center gap-2 text-white/90">
-                              <div className="flex-1 h-1 bg-white/20 rounded-full">
-                                <div className="h-full bg-white rounded-full w-full shadow-lg"></div>
-                              </div>
-                              <span className="text-xs font-medium whitespace-nowrap">
-                                {stats.totalCertificates > 0 ? 'Completato' : 'In corso'}
-                              </span>
-                            </div>
-                          </CardContent>
-                        </Card>
+                        <div className="bg-card border rounded-xl p-4 flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-violet-100 to-violet-200 dark:from-violet-900/50 dark:to-violet-800/50 rounded-xl flex items-center justify-center">
+                            <Award className="text-violet-600 dark:text-violet-400" size={24} />
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Attestati</p>
+                            <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">{stats.totalCertificates}</p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </>
@@ -1892,17 +1778,28 @@ return (
                     {clientYearsLoading ? (
                       <div className="text-center py-12">Caricamento...</div>
                     ) : clientYears.length === 0 ? (
-                      <Card className="border-0 shadow-lg">
-                        <CardContent className="py-12 text-center">
-                          <div className="w-20 h-20 bg-gradient-to-br from-blue-500/10 to-purple-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <GraduationCap className="h-10 w-10 text-muted-foreground" />
+                      <Card className="border border-dashed">
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                            <GraduationCap className="h-8 w-8 text-muted-foreground" />
                           </div>
                           <h3 className="text-lg font-semibold mb-2">Nessun anno accademico</h3>
-                          <p className="text-muted-foreground mb-4">Inizia creando il primo anno del percorso universitario</p>
-                          <Button onClick={() => setYearDialogOpen(true)} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Crea Primo Anno
-                          </Button>
+                          <p className="text-muted-foreground text-center mb-4">Inizia creando il primo anno del percorso universitario</p>
+                          <div className="flex gap-3">
+                            <Button onClick={() => setYearDialogOpen(true)} variant="outline">
+                              <Plus className="h-4 w-4 mr-2" />
+                              Crea Primo Anno
+                            </Button>
+                            {templates.filter((t: any) => t.isActive).length > 0 && (
+                              <Button 
+                                onClick={() => setApplyTemplateDialogOpen(true)} 
+                                className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                Assegna da Template
+                              </Button>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     ) : (
@@ -2079,7 +1976,7 @@ return (
                         <Button 
                           type="submit" 
                           disabled={applyTemplateToClientMutation.isPending}
-                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                          className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
                         >
                           {applyTemplateToClientMutation.isPending ? "Applicazione..." : "Applica Template"}
                         </Button>
