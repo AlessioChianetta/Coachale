@@ -364,9 +364,16 @@ export default function ConsultantTemplates() {
     return 0;
   };
 
-  // Ordina i template filtrati per numeri nel nome (Modulo, Lezione, Esercizio, etc)
+  // Ordina i template filtrati per sortOrder (priorità), poi per numeri nel nome
   const sortedFilteredTemplates = useMemo(() => {
     return [...filteredTemplates].sort((a: ExerciseTemplate, b: ExerciseTemplate) => {
+      // Prima ordina per sortOrder (se presente)
+      const aSortOrder = a.sortOrder ?? Infinity;
+      const bSortOrder = b.sortOrder ?? Infinity;
+      if (aSortOrder !== bSortOrder) {
+        return aSortOrder - bSortOrder;
+      }
+      // Poi ordina per numeri nel nome
       const aKey = naturalSortKey(a.name);
       const bKey = naturalSortKey(b.name);
       const numCompare = compareArrays(aKey, bKey);

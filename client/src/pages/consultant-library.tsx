@@ -53,6 +53,7 @@ import {
   Menu,
   AlertTriangle,
   MoreVertical,
+  ClipboardList,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -242,6 +243,40 @@ export default function ConsultantLibrary() {
       return response.json();
     },
   });
+
+  // Fetch ALL documents (unfiltered for counting exercises per category)
+  const { data: allDocuments = [] } = useQuery({
+    queryKey: ["/api/library/documents", "all"],
+    queryFn: async () => {
+      const response = await fetch("/api/library/documents", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch all documents");
+      return response.json();
+    },
+  });
+
+  // Fetch exercise templates for counting
+  const { data: exerciseTemplates = [] } = useQuery({
+    queryKey: ["/api/templates"],
+    queryFn: async () => {
+      const response = await fetch("/api/templates", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch templates");
+      return response.json();
+    },
+  });
+
+  // Helper to count exercises per category
+  const getExerciseCountForCategory = (categoryId: string): number => {
+    const categoryDocIds = new Set(
+      allDocuments
+        .filter((d: LibraryDocument) => d.categoryId === categoryId)
+        .map((d: LibraryDocument) => d.id)
+    );
+    return exerciseTemplates.filter((t: any) => t.libraryDocumentId && categoryDocIds.has(t.libraryDocumentId)).length;
+  };
 
   // Fetch clients
   const { data: clients = [] } = useQuery({
@@ -1249,6 +1284,10 @@ export default function ConsultantLibrary() {
                         <span className="flex items-center gap-1">
                           <Folder size={12} />
                           {categorySubcats.length} moduli
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ClipboardList size={12} />
+                          {getExerciseCountForCategory(category.id)} esercizi
                         </span>
                       </div>
                       

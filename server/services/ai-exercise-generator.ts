@@ -24,6 +24,7 @@ interface GenerateExercisesOptions {
 }
 
 interface GeneratedExerciseTemplate {
+  id: string;
   lessonId: string;
   lessonTitle: string;
   name: string;
@@ -404,6 +405,7 @@ async function generateExerciseForSingleLesson(params: {
     const questions: Question[] = parsedExercise.questions.map(q => convertAIQuestionToSchemaQuestion(q));
 
     const template: GeneratedExerciseTemplate = {
+      id: nanoid(),
       lessonId: lesson.id,
       lessonTitle: lesson.title,
       name: parsedExercise.name,
