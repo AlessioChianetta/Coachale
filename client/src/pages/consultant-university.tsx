@@ -427,6 +427,7 @@ export default function ConsultantUniversity() {
   const [expandedYears, setExpandedYears] = useState<string[]>([]);
   const [expandedTrimesters, setExpandedTrimesters] = useState<string[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
+  const [expandedDashboardClients, setExpandedDashboardClients] = useState<string[]>([]);
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [trimesterDialogOpen, setTrimesterDialogOpen] = useState(false);
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
@@ -1392,14 +1393,10 @@ return (
           </div>
 
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted/50">
+            <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/50">
               <TabsTrigger value="dashboard" className="flex items-center gap-2">
                 <LayoutDashboard className="h-4 w-4" />
                 Dashboard Clienti
-              </TabsTrigger>
-              <TabsTrigger value="all-paths" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Tutti i Percorsi
               </TabsTrigger>
               <TabsTrigger value="manage" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
@@ -1510,105 +1507,97 @@ return (
                               </div>
                             </TableHead>
                             <TableHead className="text-center">Attestati</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredAndSortedStats.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                 Nessun risultato trovato
                               </TableCell>
                             </TableRow>
                           ) : (
-                            filteredAndSortedStats.map((clientStats) => (
-                              <TableRow key={clientStats.clientId} className="hover:bg-muted/50 transition-colors">
-                                <TableCell className="font-medium">{clientStats.clientName}</TableCell>
-                                <TableCell className="text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className="h-3 w-3 text-muted-foreground" />
-                                    {formatEnrollmentDate(clientStats.enrolledAt)}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="text-sm">
-                                    {clientStats.currentPath || (
-                                      <span className="text-muted-foreground italic">Nessun percorso attivo</span>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <div className="flex flex-col items-center gap-1">
-                                    <span className="font-bold text-green-600">{clientStats.completionPercentage}%</span>
-                                    <Progress value={clientStats.completionPercentage} className="w-20 h-1.5" />
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Badge className="bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border-0">
-                                    <Star className="h-3 w-3 mr-1" />
-                                    {clientStats.averageGrade ? clientStats.averageGrade.toFixed(1) : '-'}/10
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border-0">
-                                    <Award className="h-3 w-3 mr-1" />
-                                    {clientStats.totalCertificates}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))
+                            filteredAndSortedStats.map((clientStats) => {
+                              const isExpanded = expandedDashboardClients.includes(clientStats.clientId);
+                              const client = clients.find(c => c.id === clientStats.clientId);
+                              return (
+                                <React.Fragment key={clientStats.clientId}>
+                                  <TableRow 
+                                    className="hover:bg-muted/50 transition-colors cursor-pointer"
+                                    onClick={() => {
+                                      setExpandedDashboardClients(prev => 
+                                        prev.includes(clientStats.clientId) 
+                                          ? prev.filter(id => id !== clientStats.clientId)
+                                          : [...prev, clientStats.clientId]
+                                      );
+                                    }}
+                                  >
+                                    <TableCell className="font-medium">{clientStats.clientName}</TableCell>
+                                    <TableCell className="text-sm">
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                                        {formatEnrollmentDate(clientStats.enrolledAt)}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="text-sm">
+                                        {clientStats.currentPath || (
+                                          <span className="text-muted-foreground italic">Nessun percorso attivo</span>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <div className="flex flex-col items-center gap-1">
+                                        <span className="font-bold text-green-600">{clientStats.completionPercentage}%</span>
+                                        <Progress value={clientStats.completionPercentage} className="w-20 h-1.5" />
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Badge className="bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border-0">
+                                        <Star className="h-3 w-3 mr-1" />
+                                        {clientStats.averageGrade ? clientStats.averageGrade.toFixed(1) : '-'}/10
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border-0">
+                                        <Award className="h-3 w-3 mr-1" />
+                                        {clientStats.totalCertificates}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </TableCell>
+                                  </TableRow>
+                                  {isExpanded && client && (
+                                    <TableRow>
+                                      <TableCell colSpan={7} className="p-0 bg-muted/30">
+                                        <div className="p-4">
+                                          <ClientPathsInline
+                                            client={client}
+                                            useClientYears={useClientYears}
+                                            useTrimesters={useTrimesters}
+                                            onEditYear={(year: UniversityYear) => {
+                                              setEditingYear(year);
+                                              setEditYearDialogOpen(true);
+                                            }}
+                                            onDeleteYear={(yearId: string) => {
+                                              deleteYearMutation.mutate(yearId);
+                                            }}
+                                            onToggleLock={(yearId: string, isLocked: boolean) => {
+                                              toggleYearLockMutation.mutate({ yearId, isLocked });
+                                            }}
+                                          />
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })
                           )}
                         </TableBody>
                       </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* All Paths Tab */}
-            <TabsContent value="all-paths">
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-card to-muted/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-600" />
-                    Panoramica Completa Percorsi
-                  </CardTitle>
-                  <CardDescription>
-                    Tutti i clienti e i loro percorsi formativi assegnati
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {clients.length === 0 ? (
-                    <Card className="border-0 shadow-lg">
-                      <CardContent className="py-12 text-center">
-                        <div className="w-20 h-20 bg-gradient-to-br from-blue-500/10 to-purple-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Users className="h-10 w-10 text-muted-foreground" />
-                        </div>
-                        <h3 className="text-lg font-semibold mb-2">Nessun cliente attivo</h3>
-                        <p className="text-muted-foreground mb-4">Aggiungi clienti per iniziare a gestire i percorsi formativi</p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="space-y-4">
-                      {sortedClients.map((client) => (
-                        <ClientPathsCard
-                          key={client.id}
-                          client={client}
-                          useClientYears={useClientYears}
-                          useTrimesters={useTrimesters}
-                          onEditYear={(year: UniversityYear) => {
-                            console.log("🔧 Setting editingYear in All Paths tab:", year);
-                            setEditingYear(year);
-                            setEditYearDialogOpen(true);
-                          }}
-                          onDeleteYear={(yearId: string) => {
-                            deleteYearMutation.mutate(yearId);
-                          }}
-                          onToggleLock={(yearId: string, isLocked: boolean) => {
-                            toggleYearLockMutation.mutate({ yearId, isLocked });
-                          }}
-                        />
-                      ))}
                     </div>
                   )}
                 </CardContent>
@@ -3438,6 +3427,70 @@ function AllPathsYearCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// Client Paths Inline - versione compatta per la dashboard espandibile
+function ClientPathsInline({
+  client,
+  useClientYears,
+  useTrimesters,
+  onEditYear,
+  onDeleteYear,
+  onToggleLock
+}: {
+  client: Client;
+  useClientYears: (clientId: string) => any;
+  useTrimesters: (yearId: string) => any;
+  onEditYear: (year: UniversityYear) => void;
+  onDeleteYear: (yearId: string) => void;
+  onToggleLock: (yearId: string, isLocked: boolean) => void;
+}) {
+  const [expandedYears, setExpandedYears] = useState<string[]>([]);
+  const { data: years = [], isLoading } = useClientYears(client.id);
+
+  const toggleYear = (yearId: string) => {
+    setExpandedYears(prev =>
+      prev.includes(yearId) ? prev.filter(id => id !== yearId) : [...prev, yearId]
+    );
+  };
+
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground">Caricamento percorsi...</div>;
+  }
+
+  if (years.length === 0) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-sm text-muted-foreground italic">Nessun percorso assegnato</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 mb-2">
+        <FolderKanban className="h-4 w-4 text-blue-600" />
+        <span className="text-sm font-medium">
+          {years.length} {years.length === 1 ? 'percorso' : 'percorsi'} assegnati
+        </span>
+      </div>
+      {years.map((year: UniversityYear) => {
+        const isExpanded = expandedYears.includes(year.id);
+        return (
+          <YearItemCard
+            key={year.id}
+            year={year}
+            isExpanded={isExpanded}
+            onToggle={() => toggleYear(year.id)}
+            useTrimesters={useTrimesters}
+            onEditYear={onEditYear}
+            onDeleteYear={onDeleteYear}
+            onToggleLock={onToggleLock}
+          />
+        );
+      })}
+    </div>
   );
 }
 
