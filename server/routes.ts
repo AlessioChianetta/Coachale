@@ -1430,12 +1430,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const associations = await storage.getTemplateClientAssociations(req.params.id, req.user!.id);
 
-      // Get client details
+      // Get the template to match exercises by title
+      const templateName = template.name;
+
+      // Get client details and custom platform links
       const associationsWithClients = await Promise.all(
         associations.map(async (assoc) => {
           const client = await storage.getUser(assoc.clientId);
+          
+          // Find custom link for this client from their exercise assignment
+          // Look for assignments where the exercise title matches the template name
+          const customPlatformLink = await storage.getCustomLinkForTemplateClient(
+            req.params.id,
+            assoc.clientId,
+            req.user!.id,
+            templateName
+          );
+          
           return {
             ...assoc,
+            customPlatformLink,
             client: client ? {
               id: client.id,
               firstName: client.firstName,

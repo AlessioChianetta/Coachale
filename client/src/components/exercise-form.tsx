@@ -645,6 +645,18 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
 
       console.log('👥 Pre-selected clients:', preSelectedClients);
 
+      // Initialize custom platform links from template associations
+      const initialCustomLinks: Record<string, string> = {};
+      if (templateAssociations.length > 0) {
+        templateAssociations.forEach((assoc: any) => {
+          if (assoc.customPlatformLink) {
+            initialCustomLinks[assoc.clientId] = assoc.customPlatformLink;
+          }
+        });
+        console.log('🔗 Initialized custom platform links:', initialCustomLinks);
+      }
+      setCustomPlatformLinks(initialCustomLinks);
+
       // Reset form with values from existing exercise or template
       form.reset({
         title: dataSource.name || dataSource.title || "",

@@ -343,6 +343,7 @@ export interface IStorage {
   getAssociatedTemplatesForClient(clientId: string): Promise<ExerciseTemplate[]>;
   removeTemplateAssociation(templateId: string, clientId: string): Promise<boolean>;
   isTemplateAssociatedWithClient(templateId: string, clientId: string): Promise<boolean>;
+  getCustomLinkForTemplateClient(templateId: string, clientId: string, consultantId: string, templateName: string): Promise<string | null>;
 
   // Analytics operations
   createClientEngagementMetrics(metrics: InsertClientEngagementMetrics): Promise<ClientEngagementMetrics>;
@@ -2250,6 +2251,25 @@ export class DatabaseStorage implements IStorage {
         eq(schema.templateClientAssociations.templateId, templateId),
         eq(schema.templateClientAssociations.consultantId, consultantId)
       ));
+  }
+
+  async getCustomLinkForTemplateClient(templateId: string, clientId: string, consultantId: string, templateName: string): Promise<string | null> {
+    // Find assignment where the exercise title matches the template name
+    // and the client/consultant match
+    const result = await db.select({
+      workPlatform: schema.exerciseAssignments.workPlatform
+    })
+      .from(schema.exerciseAssignments)
+      .innerJoin(schema.exercises, eq(schema.exerciseAssignments.exerciseId, schema.exercises.id))
+      .where(and(
+        eq(schema.exerciseAssignments.clientId, clientId),
+        eq(schema.exerciseAssignments.consultantId, consultantId),
+        eq(schema.exercises.title, templateName)
+      ))
+      .orderBy(desc(schema.exerciseAssignments.assignedAt))
+      .limit(1);
+    
+    return result[0]?.workPlatform || null;
   }
 
   // Analytics stubs - returning empty data for now
