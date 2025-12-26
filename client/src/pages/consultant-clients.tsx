@@ -255,9 +255,9 @@ export default function ConsultantClientsPage() {
 
   if (clientsLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto">
             <Activity className="h-8 w-8 animate-spin text-white" />
           </div>
           <div>
@@ -271,7 +271,7 @@ export default function ConsultantClientsPage() {
 
   if (clientsError) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 p-4">
         <div className="text-center space-y-6 max-w-md">
           <div className="w-20 h-20 bg-red-100 rounded-2xl flex items-center justify-center mx-auto">
             <Users className="h-10 w-10 text-red-600" />
@@ -283,7 +283,7 @@ export default function ConsultantClientsPage() {
             </p>
             <p className="text-sm text-slate-500">{clientsError.message}</p>
           </div>
-          <Button onClick={() => window.location.reload()} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+          <Button onClick={() => window.location.reload()} className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600">
             <Activity className="w-4 h-4 mr-2" />
             Riprova
           </Button>
@@ -307,7 +307,7 @@ export default function ConsultantClientsPage() {
   }).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
@@ -324,27 +324,28 @@ export default function ConsultantClientsPage() {
 
           {/* Premium Header */}
           <div className="mb-4 sm:mb-6 md:mb-8">
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl">
+            <div className="bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl relative overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400"></div>
               <div className="flex items-center justify-between">
                 <div className="space-y-1 sm:space-y-2">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl">
+                    <div className="p-2 sm:p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl sm:rounded-2xl">
                       <Users className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
                     </div>
                     <div>
                       <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">Gestione Clienti</h1>
-                      <p className="text-blue-100 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">Dashboard completa per la gestione dei tuoi clienti</p>
+                      <p className="text-slate-400 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">Dashboard completa per la gestione dei tuoi clienti</p>
                     </div>
                   </div>
                 </div>
                 <div className="hidden lg:flex items-center space-x-4">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 text-center border border-slate-700/50">
                     <div className="text-3xl font-bold">{clients.length}</div>
-                    <div className="text-sm text-blue-100">Clienti Totali</div>
+                    <div className="text-sm text-slate-400">Clienti Totali</div>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 text-center border border-slate-700/50">
                     <div className="text-3xl font-bold">{activeClientsCount}</div>
-                    <div className="text-sm text-blue-100">Attivi</div>
+                    <div className="text-sm text-slate-400">Attivi</div>
                   </div>
                 </div>
               </div>
@@ -353,64 +354,64 @@ export default function ConsultantClientsPage() {
 
           {/* Enhanced Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm">
               <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 sm:space-y-1">
-                    <p className="text-xs sm:text-sm font-medium text-blue-700">Clienti Totali</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900">{clients.length}</p>
-                    <p className="text-[10px] sm:text-xs text-blue-600 hidden sm:block">Tutti i clienti registrati</p>
+                    <p className="text-xs sm:text-sm font-medium text-cyan-700">Clienti Totali</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">{clients.length}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">Tutti i clienti registrati</p>
                   </div>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-blue-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
                     <Users className="text-white" size={16} />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100">
+            <Card className="border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm">
               <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 sm:space-y-1">
                     <p className="text-xs sm:text-sm font-medium text-emerald-700">Nuovi Clienti</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-emerald-900">{newClientsCount}</p>
-                    <p className="text-[10px] sm:text-xs text-emerald-600 hidden sm:block">Ultimo mese</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">{newClientsCount}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">Ultimo mese</p>
                   </div>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-emerald-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
                     <UserPlus className="text-white" size={16} />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 to-amber-100">
+            <Card className="border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm">
               <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 sm:space-y-1">
                     <p className="text-xs sm:text-sm font-medium text-amber-700">Clienti Attivi</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-amber-900">{activeClientsCount}</p>
-                    <p className="text-[10px] sm:text-xs text-amber-600 hidden sm:block">Con esercizi in corso</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">{activeClientsCount}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">Con esercizi in corso</p>
                   </div>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-amber-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
                     <Zap className="text-white" size={16} />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+            <Card className="border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm">
               <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 sm:space-y-1">
-                    <p className="text-xs sm:text-sm font-medium text-purple-700">Progresso Medio</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-900">
+                    <p className="text-xs sm:text-sm font-medium text-teal-700">Progresso Medio</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">
                       {assignments.length > 0 ? 
                         Math.round((assignments.filter((a: any) => a.status === 'completed').length / assignments.length) * 100) 
                         : 0}%
                     </p>
-                    <p className="text-[10px] sm:text-xs text-purple-600 hidden sm:block">Esercizi completati</p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">Esercizi completati</p>
                   </div>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-purple-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
                     <Target className="text-white" size={16} />
                   </div>
                 </div>
@@ -435,14 +436,14 @@ export default function ConsultantClientsPage() {
                       placeholder="Cerca clienti..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 bg-white/80 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                      className="pl-9 bg-white/80 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                     />
                   </div>
                   <div className="flex gap-2">
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value as any)}
-                      className="px-3 py-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="px-3 py-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     >
                       <option value="all">Tutti i clienti</option>
                       <option value="active">Solo attivi</option>
@@ -450,7 +451,7 @@ export default function ConsultantClientsPage() {
                     </select>
                     <Button 
                       onClick={() => setIsNewClientDialogOpen(true)}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                      className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
                       size="sm"
                     >
                       <UserPlus className="w-4 h-4 mr-2" />
@@ -497,7 +498,7 @@ export default function ConsultantClientsPage() {
                     return (
                       <Card 
                         key={client.id}
-                        className="border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 bg-white"
+                        className="border border-slate-200 hover:border-cyan-300 hover:shadow-md transition-all duration-200 bg-white"
                       >
                         <CardContent className="p-3 lg:p-4">
                           <div className="grid grid-cols-12 gap-2 lg:gap-3 items-center">
@@ -505,7 +506,7 @@ export default function ConsultantClientsPage() {
                             <div className="col-span-12 lg:col-span-2 flex items-center gap-2">
                               <Avatar className="w-9 h-9 lg:w-10 lg:h-10 ring-2 ring-slate-100">
                                 <AvatarImage src={client.avatar} />
-                                <AvatarFallback className="bg-gradient-to-br from-blue-400 to-indigo-500 text-white font-semibold text-xs">
+                                <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-teal-500 text-white font-semibold text-xs">
                                   {client.firstName?.[0]}{client.lastName?.[0]}
                                 </AvatarFallback>
                               </Avatar>
@@ -575,7 +576,7 @@ export default function ConsultantClientsPage() {
                                 size="sm" 
                                 title="Modifica cliente"
                                 onClick={() => handleEditClient(client)}
-                                className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-600"
+                                className="h-8 w-8 p-0 hover:bg-cyan-100 hover:text-cyan-600"
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
@@ -636,7 +637,7 @@ export default function ConsultantClientsPage() {
                             <div className="flex-1 w-full sm:w-auto sm:max-w-xs lg:max-w-md">
                               <div className="w-full bg-slate-200 rounded-full h-2">
                                 <div 
-                                  className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-300" 
+                                  className="bg-gradient-to-r from-cyan-500 to-teal-500 h-2 rounded-full transition-all duration-300" 
                                   style={{ width: `${completionRate}%` }}
                                 ></div>
                               </div>
@@ -677,7 +678,7 @@ export default function ConsultantClientsPage() {
                 id="newFirstName"
                 value={newClientForm.firstName}
                 onChange={(e) => setNewClientForm(prev => ({...prev, firstName: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Nome"
               />
             </div>
@@ -690,7 +691,7 @@ export default function ConsultantClientsPage() {
                 id="newLastName"
                 value={newClientForm.lastName}
                 onChange={(e) => setNewClientForm(prev => ({...prev, lastName: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Cognome"
               />
             </div>
@@ -704,7 +705,7 @@ export default function ConsultantClientsPage() {
                 type="email"
                 value={newClientForm.email}
                 onChange={(e) => setNewClientForm(prev => ({...prev, email: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="email@esempio.com"
               />
             </div>
@@ -718,7 +719,7 @@ export default function ConsultantClientsPage() {
                 type="password"
                 value={newClientForm.password}
                 onChange={(e) => setNewClientForm(prev => ({...prev, password: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Minimo 6 caratteri"
               />
             </div>
@@ -758,8 +759,8 @@ export default function ConsultantClientsPage() {
         <DialogContent className="max-w-md bg-white/95 backdrop-blur-sm border-slate-200">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Edit className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-cyan-100 rounded-lg">
+                <Edit className="h-5 w-5 text-cyan-600" />
               </div>
               Modifica Cliente
             </DialogTitle>
@@ -777,7 +778,7 @@ export default function ConsultantClientsPage() {
                 id="firstName"
                 value={editForm.firstName}
                 onChange={(e) => setEditForm(prev => ({...prev, firstName: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Nome"
               />
             </div>
@@ -790,7 +791,7 @@ export default function ConsultantClientsPage() {
                 id="lastName"
                 value={editForm.lastName}
                 onChange={(e) => setEditForm(prev => ({...prev, lastName: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Cognome"
               />
             </div>
@@ -804,7 +805,7 @@ export default function ConsultantClientsPage() {
                 type="email"
                 value={editForm.email}
                 onChange={(e) => setEditForm(prev => ({...prev, email: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="email@esempio.com"
               />
             </div>
@@ -817,7 +818,7 @@ export default function ConsultantClientsPage() {
                 id="phoneNumber"
                 value={editForm.phoneNumber}
                 onChange={(e) => setEditForm(prev => ({...prev, phoneNumber: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="+39 123 456 7890"
               />
             </div>
@@ -830,7 +831,7 @@ export default function ConsultantClientsPage() {
                 id="username"
                 value={editForm.username}
                 onChange={(e) => setEditForm(prev => ({...prev, username: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="username"
               />
             </div>
@@ -869,7 +870,7 @@ export default function ConsultantClientsPage() {
                         type="password"
                         value={apiKey}
                         onChange={(e) => handleApiKeyChange(index, e.target.value)}
-                        className="flex-1 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                        className="flex-1 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                         placeholder={`API Key ${index + 1}`}
                       />
                       <Button
@@ -902,7 +903,7 @@ export default function ConsultantClientsPage() {
             </Button>
             <Button 
               onClick={handleSaveClient}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
             >
               Salva Modifiche
             </Button>
