@@ -1271,6 +1271,9 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
                                               <GraduationCap size={12} className="text-indigo-600 dark:text-indigo-400" />
                                             </div>
                                             <span>{cat.name}</span>
+                                            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-medium">
+                                              Corso
+                                            </span>
                                           </div>
                                         </SelectItem>
                                       ))}
@@ -1325,6 +1328,9 @@ export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading,
                                             {icon}
                                           </div>
                                           <span>{cat.name}</span>
+                                          <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                                            Categoria
+                                          </span>
                                         </div>
                                       </SelectItem>
                                     );

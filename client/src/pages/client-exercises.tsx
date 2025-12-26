@@ -44,9 +44,6 @@ interface ExerciseAssignment {
   consultantFeedback?: string | Array<{ feedback: string; date: string }>; // Modificato per gestire feedback
 }
 
-// Course categories constant - centralized definition
-const COURSE_CATEGORIES = ['newsletter', 'metodo-turbo', 'metodo-hybrid'];
-
 export default function ClientExercises() {
   const [, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -101,6 +98,25 @@ export default function ClientExercises() {
       return response.json();
     },
   });
+
+  // Fetch exercise categories to determine course vs consulenza dynamically
+  const { data: exerciseCategories = [] } = useQuery<Array<{ slug: string; isCourse: boolean }>>({
+    queryKey: ["/api/exercise-categories"],
+    queryFn: async () => {
+      const response = await fetch("/api/exercise-categories", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
+  // Dynamic course categories based on isCourse field from database
+  const COURSE_CATEGORIES = useMemo(() => {
+    return exerciseCategories
+      .filter((cat) => cat.isCourse)
+      .map((cat) => cat.slug);
+  }, [exerciseCategories]);
 
   const startPublicExerciseMutation = useMutation({
     mutationFn: async (exerciseId: string) => {
