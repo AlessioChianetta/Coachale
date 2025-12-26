@@ -160,44 +160,45 @@ export default function ConsultantExercises() {
 
   const isMobile = window.innerWidth < 768; // Define isMobile based on a breakpoint
 
-  // Function to get category label
+  // Function to get category label - uses database categories with fallback
   const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case "post-consulenza": return "Post Consulenza";
-      case "newsletter": return "Metodo Orbitale - Finanza";
-      case "metodo-turbo": return "Metodo Turbo - Vendita";
-      case "metodo-hybrid": return "Metodo Hybrid - Azienda";
-      case "finanza-personale": return "Finanza Personale";
-      case "vendita": return "Vendita";
-      case "marketing": return "Marketing";
-      case "imprenditoria": return "Imprenditoria";
-      case "risparmio-investimenti": return "Risparmio & Investimenti";
-      case "contabilità": return "Contabilità";
-      case "gestione-risorse": return "Gestione Risorse";
-      case "strategia": return "Strategia";
-      case "sconosciuto": return "Non Categorizzato";
-      default: return "Generale";
-    }
+    const dbCategory = exerciseCategories.find(c => c.slug === category);
+    if (dbCategory) return dbCategory.name;
+    // Fallback for legacy/unknown categories
+    const fallbackLabels: Record<string, string> = {
+      "post-consulenza": "Post Consulenza",
+      "finanza-personale": "Finanza Personale",
+      "vendita": "Vendita",
+      "marketing": "Marketing",
+      "imprenditoria": "Imprenditoria",
+      "risparmio-investimenti": "Risparmio & Investimenti",
+      "contabilità": "Contabilità",
+      "gestione-risorse": "Gestione Risorse",
+      "strategia": "Strategia",
+      "sconosciuto": "Non Categorizzato"
+    };
+    return fallbackLabels[category] || category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
   };
 
-  // Function to get category icon
+  // Function to get category icon - uses database categories with fallback
   const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "post-consulenza": return "📝";
-      case "newsletter": return "🌟";
-      case "metodo-turbo": return "⚡";
-      case "metodo-hybrid": return "🔄";
-      case "finanza-personale": return "💰";
-      case "vendita": return "💼";
-      case "marketing": return "📈";
-      case "imprenditoria": return "🚀";
-      case "risparmio-investimenti": return "💎";
-      case "contabilità": return "📊";
-      case "gestione-risorse": return "⚙️";
-      case "strategia": return "🎯";
-      case "sconosciuto": return "❓";
-      default: return "💪";
+    const dbCategory = exerciseCategories.find(c => c.slug === category);
+    if (dbCategory) {
+      const iconMap: Record<string, string> = {
+        'Mail': '📧', 'Zap': '⚡', 'Layers': '🔄', 'MessageSquare': '📝',
+        'TrendingUp': '📈', 'Wallet': '💰', 'PiggyBank': '💎', 'Building': '🏢',
+        'Calculator': '🧮', 'Users': '👥', 'Compass': '🧭', 'Rocket': '🚀',
+        'BookOpen': '📖', 'GraduationCap': '🎓', 'Target': '🎯'
+      };
+      return iconMap[dbCategory.icon] || (dbCategory.isCourse ? '🎓' : '📋');
     }
+    // Fallback icons for legacy categories
+    const fallbackIcons: Record<string, string> = {
+      "post-consulenza": "📝", "finanza-personale": "💰", "vendita": "💼",
+      "marketing": "📈", "imprenditoria": "🚀", "risparmio-investimenti": "💎",
+      "contabilità": "📊", "gestione-risorse": "⚙️", "strategia": "🎯", "sconosciuto": "❓"
+    };
+    return fallbackIcons[category] || "💪";
   };
 
   // Function to group assignments by category (handles missing exercises)
@@ -295,6 +296,18 @@ export default function ConsultantExercises() {
       return response.json();
     },
     refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+  });
+
+  // Fetch exercise categories from database
+  const { data: exerciseCategories = [] } = useQuery<Array<{ id: string; name: string; slug: string; icon: string; color: string; isCourse: boolean }>>({
+    queryKey: ["/api/exercise-categories"],
+    queryFn: async () => {
+      const response = await fetch("/api/exercise-categories", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
   });
 
   // Create exercise mutation
@@ -1455,14 +1468,11 @@ export default function ConsultantExercises() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tutte le categorie</SelectItem>
-                        <SelectItem value="post-consulenza">Post Consulenza</SelectItem>
-                        <SelectItem value="metodo-turbo">Metodo Turbo</SelectItem>
-                        <SelectItem value="metodo-hybrid">Metodo Hybrid</SelectItem>
-                        <SelectItem value="newsletter">Metodo Orbitale</SelectItem>
-                        <SelectItem value="finanza-personale">Finanza Personale</SelectItem>
-                        <SelectItem value="vendita">Vendita</SelectItem>
-                        <SelectItem value="marketing">Marketing</SelectItem>
-                        <SelectItem value="risparmio-investimenti">Risparmio</SelectItem>
+                        {exerciseCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.slug}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 
@@ -1501,30 +1511,30 @@ export default function ConsultantExercises() {
                           >
                             <span className="mr-2">📚</span>Tutte
                           </button>
-                          {/* Categories with counts */}
-                          {[
-                            { key: 'post-consulenza', icon: '📝', label: 'Post Consulenza' },
-                            { key: 'newsletter', icon: '🌟', label: 'Finanza' },
-                            { key: 'metodo-turbo', icon: '⚡', label: 'Vendita' },
-                            { key: 'metodo-hybrid', icon: '🔄', label: 'Azienda' },
-                            { key: 'marketing', icon: '📈', label: 'Marketing' },
-                            { key: 'risparmio-investimenti', icon: '💎', label: 'Risparmio' },
-                          ].map(({ key, icon, label }) => {
+                          {/* Categories with counts - loaded from database */}
+                          {exerciseCategories.map((cat) => {
                             const count = assignmentsData.filter((a: ExerciseAssignment) => {
                               const exercise = exercises.find((e: Exercise) => e.id === a.exerciseId);
-                              return exercise && exercise.category === key;
+                              return exercise && exercise.category === cat.slug;
                             }).length;
                             if (count === 0) return null;
+                            const iconMap: Record<string, string> = {
+                              'Mail': '📧', 'Zap': '⚡', 'Layers': '🔄', 'MessageSquare': '📝',
+                              'TrendingUp': '📈', 'Wallet': '💰', 'PiggyBank': '💎', 'Building': '🏢',
+                              'Calculator': '🧮', 'Users': '👥', 'Compass': '🧭', 'Rocket': '🚀',
+                              'BookOpen': '📖', 'GraduationCap': '🎓'
+                            };
+                            const icon = iconMap[cat.icon] || (cat.isCourse ? '🎓' : '📋');
                             return (
                               <button
-                                key={key}
-                                onClick={() => setSelectedCategory(key)}
-                                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${selectedCategory === key 
+                                key={cat.id}
+                                onClick={() => setSelectedCategory(cat.slug)}
+                                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${selectedCategory === cat.slug 
                                   ? 'bg-primary text-primary-foreground' 
                                   : 'hover:bg-muted'}`}
                               >
-                                <span><span className="mr-2">{icon}</span>{label}</span>
-                                <span className={`text-xs ${selectedCategory === key ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{count}</span>
+                                <span><span className="mr-2">{icon}</span>{cat.name}</span>
+                                <span className={`text-xs ${selectedCategory === cat.slug ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{count}</span>
                               </button>
                             );
                           })}
