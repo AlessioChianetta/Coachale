@@ -280,16 +280,49 @@ export default function ClientFileSearchDocuments() {
             </Card>
           ) : filteredDocuments.length === 0 ? (
             <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardContent className="p-8 text-center">
-                <FileSearch className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">
-                  {searchTerm || sourceFilter !== "all" || ownerFilter !== "all"
-                    ? "Nessun documento corrisponde ai filtri"
-                    : "Nessun documento indicizzato"}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  L'Assistente AI non ha ancora documenti su cui basare le risposte
-                </p>
+              <CardContent className="p-10 sm:p-12 text-center">
+                {searchTerm || sourceFilter !== "all" || ownerFilter !== "all" ? (
+                  <>
+                    <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-lg font-medium text-muted-foreground mb-2">
+                      Nessun documento corrisponde ai filtri
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Prova a modificare i criteri di ricerca
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900/30 mx-auto mb-4 flex items-center justify-center">
+                      <FileSearch className="w-8 h-8 text-violet-500" />
+                    </div>
+                    <p className="text-lg font-medium text-foreground mb-2">
+                      Nessun documento disponibile
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+                      L'Assistente AI non ha ancora documenti specifici per il tuo percorso. 
+                      Il tuo consulente può sincronizzare materiali personalizzati che l'AI utilizzerà 
+                      per darti risposte più precise e contestualizzate.
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2 mb-4">
+                      <Badge variant="outline" className="text-xs">
+                        <ClipboardList className="w-3 h-3 mr-1" />Esercizi
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <MessageSquare className="w-3 h-3 mr-1" />Consulenze
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <BookOpen className="w-3 h-3 mr-1" />Libreria
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <GraduationCap className="w-3 h-3 mr-1" />University
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Questi contenuti verranno sincronizzati automaticamente dal tuo consulente
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           ) : (
