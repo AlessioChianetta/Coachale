@@ -911,6 +911,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
           assignedExercises: clientDocuments.filter(d => d.sourceType === 'exercise' && d.sourceId !== client.id),
           assignedLibrary: clientDocuments.filter(d => d.sourceType === 'library'),
           assignedUniversity: clientDocuments.filter(d => d.sourceType === 'university_lesson'),
+          externalDocs: clientDocuments.filter(d => d.sourceType === 'exercise_external_doc'),
         },
         totals: {
           exerciseResponses: clientDocuments.filter(d => d.sourceType === 'exercise').length,
@@ -925,6 +926,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
           assignedExercises: clientDocuments.filter(d => d.sourceType === 'exercise' && d.sourceId !== client.id).length,
           assignedLibrary: clientDocuments.filter(d => d.sourceType === 'library').length,
           assignedUniversity: clientDocuments.filter(d => d.sourceType === 'university_lesson').length,
+          externalDocs: clientDocuments.filter(d => d.sourceType === 'exercise_external_doc').length,
           total: clientDocuments.length,
         },
         potentialContent: {

@@ -347,8 +347,8 @@ interface MissingExternalDoc {
 interface MissingExternalDocsClient {
   clientId: string;
   clientName: string;
-  clientEmail: string;
-  docs: MissingExternalDoc[];
+  missingDocs: MissingExternalDoc[];
+  count: number;
 }
 
 interface MissingExternalDocsData {
@@ -4466,13 +4466,12 @@ export default function ConsultantFileSearchAnalyticsPage() {
                               {openExternalDocsClients[client.clientId] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
                               <User className="h-4 w-4 text-orange-600" />
                               <span className="font-medium text-orange-900">{client.clientName}</span>
-                              <span className="text-sm text-gray-500">({client.clientEmail})</span>
                               <Badge className="ml-auto bg-orange-200 text-orange-800">
-                                {client.docs.length} mancanti
+                                {client.count} mancanti
                               </Badge>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="mt-2 ml-6 space-y-2">
-                              {client.docs.map(doc => (
+                              {client.missingDocs.map(doc => (
                                 <div key={doc.assignmentId} className="flex items-center justify-between p-2 bg-white rounded border border-orange-200">
                                   <div className="flex items-center gap-2 flex-1 min-w-0">
                                     <Link className="h-4 w-4 text-orange-500 flex-shrink-0" />
