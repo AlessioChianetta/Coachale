@@ -12,6 +12,7 @@ import { InputArea } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
 import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
 import { WelcomeScreen } from "@/components/ai-assistant/WelcomeScreen";
+import { ConversationSidebar } from "@/components/ai-assistant/ConversationSidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -497,14 +498,11 @@ export default function ConsultantAIAssistant() {
 
         <div className="flex-1 flex overflow-hidden">
           {(!isMobile || chatSidebarOpen) && (
-            <div
-              className={cn(
-                "border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col transition-all duration-300",
-                isMobile ? "absolute inset-0 z-50 w-full" : sidebarMinimized ? "w-16" : "w-[280px]"
-              )}
-            >
+            <div className={cn(
+              isMobile && "absolute inset-0 z-50 w-full bg-slate-50 dark:bg-slate-900"
+            )}>
               {isMobile && (
-                <div className="flex items-center justify-between p-4 border-b">
+                <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
                   <h2 className="text-lg font-semibold">Conversazioni</h2>
                   <Button
                     variant="ghost"
@@ -515,202 +513,23 @@ export default function ConsultantAIAssistant() {
                   </Button>
                 </div>
               )}
-
-              <div className="p-3 sm:p-4 space-y-3">
-                <div className="flex gap-2">
-                  {!sidebarMinimized ? (
-                    <>
-                      <Button
-                        onClick={handleNewConversation}
-                        variant="secondary"
-                        className="flex-1 bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:from-cyan-600 hover:to-teal-600 shadow-none hover:shadow-none"
-                      >
-                        <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                        <span className="font-semibold">Nuova</span>
-                      </Button>
-                      {!isMobile && !sidebarMinimized && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setSidebarMinimized(!sidebarMinimized)}
-                          className="h-11 w-11 min-h-[44px] min-w-[44px]"
-                          title="Minimizza sidebar"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <Button
-                      onClick={handleNewConversation}
-                      variant="ghost"
-                      size="icon"
-                      className="h-11 w-11 min-h-[44px] min-w-[44px] bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
-                      title="Nuova conversazione"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </Button>
-                  )}
-                </div>
-
-                {!sidebarMinimized && (
-                  <Button
-                    onClick={() => setLocation('/consultant/ai-settings')}
-                    variant="outline"
-                    className="w-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-                  >
-                    <Settings className="h-4 w-4 mr-2 text-teal-600 dark:text-teal-400" />
-                    <span className="font-medium text-sm">Impostazioni Assistant</span>
-                  </Button>
-                )}
-
-                {!sidebarMinimized && <Separator />}
-
-                {!sidebarMinimized && (
-                  <Select
-                    value={conversationFilter}
-                    onValueChange={setConversationFilter}
-                  >
-                    <SelectTrigger className="w-full h-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                      <div className="flex items-center gap-2">
-                        <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                        <SelectValue placeholder="Filtra conversazioni" />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        <span className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4" />
-                          Tutte le conversazioni
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="base">
-                        <span className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-cyan-500" />
-                          Assistenza base
-                        </span>
-                      </SelectItem>
-                      {availableAgents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          <span className="flex items-center gap-2">
-                            <Bot className="h-4 w-4 text-teal-500" />
-                            {agent.name}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              {!sidebarMinimized && <ScrollArea className="flex-1 px-4">
-                <div className="space-y-2 pb-4">
-                  {conversationsLoading ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Caricamento...
-                    </div>
-                  ) : filteredConversations.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Nessuna conversazione</p>
-                      <p className="text-xs mt-1">Inizia una nuova conversazione</p>
-                    </div>
-                  ) : (
-                    filteredConversations.map((conversation) => (
-                      <div key={conversation.id} className="relative overflow-hidden w-full">
-                        <motion.div 
-                          className="absolute right-0 top-0 bottom-0 flex items-center"
-                          initial={{ opacity: 0 }}
-                          animate={{ 
-                            opacity: swipedConversationId === conversation.id ? 1 : 0 
-                          }}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-full w-16 rounded-none bg-red-600 hover:bg-red-700 text-white"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingConversationId(conversation.id);
-                              setSwipedConversationId(null);
-                            }}
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </Button>
-                        </motion.div>
-
-                        <motion.div
-                          className="relative z-10 bg-slate-50 dark:bg-slate-900"
-                          drag="x"
-                          dragConstraints={{ left: -64, right: 0 }}
-                          dragElastic={0.2}
-                          onDragEnd={(event: any, info: PanInfo) => {
-                            if (info.offset.x < -50) {
-                              setSwipedConversationId(conversation.id);
-                            } else {
-                              setSwipedConversationId(null);
-                            }
-                          }}
-                          animate={{
-                            x: swipedConversationId === conversation.id ? -64 : 0
-                          }}
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        >
-                          <Button
-                            variant={selectedConversationId === conversation.id ? "secondary" : "ghost"}
-                            className={cn(
-                              "w-full justify-start text-left h-auto min-h-[44px] py-2 px-2.5 rounded-none hover:bg-cyan-50 dark:hover:bg-cyan-900/20",
-                              selectedConversationId === conversation.id && "bg-cyan-100 dark:bg-cyan-900/30"
-                            )}
-                            onClick={() => {
-                              handleSelectConversation(conversation.id);
-                              setSwipedConversationId(null);
-                            }}
-                            disabled={loadingConversationId === conversation.id}
-                          >
-                            <div className="flex-1 min-w-0 space-y-1">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <p className="font-medium text-xs sm:text-sm whitespace-normal break-words min-w-0 flex-1" title={conversation.title}>
-                                  {conversation.title}
-                                </p>
-                                {loadingConversationId === conversation.id && (
-                                  <svg className="animate-spin h-3 w-3 text-blue-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                  {new Date(conversation.updatedAt).toLocaleDateString('it-IT', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric',
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-                          </Button>
-                        </motion.div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>}
-
-              {sidebarMinimized && !isMobile && (
-                <div className="flex-1 flex flex-col items-center justify-between py-4">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSidebarMinimized(false)}
-                    className="h-11 w-11 min-h-[44px] min-w-[44px]"
-                    title="Espandi sidebar"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              <ConversationSidebar
+                conversations={filteredConversations}
+                conversationsLoading={conversationsLoading}
+                selectedConversationId={selectedConversationId}
+                loadingConversationId={loadingConversationId}
+                onNewConversation={handleNewConversation}
+                onSelectConversation={handleSelectConversation}
+                onDeleteConversation={(id) => setDeletingConversationId(id)}
+                variant="consultant"
+                isMobile={isMobile}
+                sidebarMinimized={sidebarMinimized}
+                onToggleMinimize={() => setSidebarMinimized(!sidebarMinimized)}
+                availableAgents={availableAgents}
+                agentFilter={conversationFilter}
+                onAgentFilterChange={setConversationFilter}
+                onSettingsClick={() => setLocation('/consultant/ai-settings')}
+              />
             </div>
           )}
 
