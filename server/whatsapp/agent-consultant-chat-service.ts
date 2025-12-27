@@ -12,6 +12,7 @@ import { eq, and, asc } from 'drizzle-orm';
 import { getMandatoryBookingBlock } from './instruction-blocks';
 import { fileSearchSyncService } from '../services/file-search-sync-service';
 import { fileSearchService } from '../ai/file-search-service';
+import { isRetryableError, RETRY_DELAYS_MS } from '../ai/retry-manager';
 
 /**
  * Build system prompt for WhatsApp agent based on consultant configuration
@@ -640,25 +641,56 @@ Confermi definitivamente la cancellazione?"
     
     yield { type: 'promptBreakdown', data: promptBreakdown };
 
-    const streamResult = await aiProvider.client.generateContentStream({
-      model,
-      contents: [
-        ...geminiMessages,
-        {
-          role: 'user',
-          parts: [{ text: messageContent }],
-        },
-      ],
-      generationConfig: {
-        systemInstruction: systemPrompt,
-        temperature: 0.7,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 2048,
-        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
-      },
-      ...(fileSearchTool && { tools: [fileSearchTool] }),
-    });
+    // Retry logic for Gemini INTERNAL/503/500 errors
+    const MAX_RETRIES = 3;
+    let streamResult: any = null;
+    let lastError: any = null;
+    
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delayMs = RETRY_DELAYS_MS[attempt - 1] || 3000;
+          console.log(`⏳ [RETRY] Attempt ${attempt + 1}/${MAX_RETRIES} after ${delayMs}ms delay...`);
+          yield { type: 'retry', attempt: attempt + 1, maxAttempts: MAX_RETRIES, delayMs };
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+        
+        streamResult = await aiProvider.client.generateContentStream({
+          model,
+          contents: [
+            ...geminiMessages,
+            {
+              role: 'user',
+              parts: [{ text: messageContent }],
+            },
+          ],
+          generationConfig: {
+            systemInstruction: systemPrompt,
+            temperature: 0.7,
+            topP: 0.95,
+            topK: 40,
+            maxOutputTokens: 2048,
+            ...(useThinking && { thinkingConfig: { thinkingLevel } }),
+          },
+          ...(fileSearchTool && { tools: [fileSearchTool] }),
+        });
+        
+        // Success - break out of retry loop
+        break;
+      } catch (error: any) {
+        lastError = error;
+        if (isRetryableError(error) && attempt < MAX_RETRIES - 1) {
+          console.warn(`⚠️ [RETRY] Retryable error on attempt ${attempt + 1}: ${error.message}`);
+          continue;
+        }
+        // Non-retryable error or max retries reached
+        throw error;
+      }
+    }
+    
+    if (!streamResult) {
+      throw lastError || new Error('Failed to initialize stream after retries');
+    }
 
     console.log('✅ Stream initialized, yielding chunks...');
 

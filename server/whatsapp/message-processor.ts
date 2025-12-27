@@ -43,6 +43,7 @@ import {
 import { generateSpeech } from "../ai/tts-service";
 import { fileSearchService } from "../ai/file-search-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
+import { isRetryableError } from "../ai/retry-manager";
 import { shouldRespondWithAudio } from "./audio-response-utils";
 import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction, ActionDetails } from "../booking/booking-intent-detector";
 import {
@@ -1653,13 +1654,11 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
       } catch (error: any) {
         lastError = error;
 
-        // Check if it's a 503 error (overloaded)
-        const is503 = error.status === 503 ||
-          error.message?.includes('overloaded') ||
-          error.message?.includes('UNAVAILABLE');
+        // Check if it's a retryable error (500, 503, INTERNAL, UNAVAILABLE, overloaded)
+        const isRetryable = isRetryableError(error);
 
-        if (is503) {
-          console.log(`⚠️ [RETRY] API overloaded (503) on attempt ${attempt}`);
+        if (isRetryable) {
+          console.log(`⚠️ [RETRY] Retryable error on attempt ${attempt}: ${error.message}`);
 
           // Mark API Studio key as failed (Vertex AI doesn't use key rotation)
           if (currentProvider.type === 'studio' && currentKeyId) {
@@ -1672,15 +1671,15 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
             console.log(`⏱️ [RETRY] Waiting ${backoffMs}ms before ${currentProvider.type === 'vertex' ? 'retrying' : 'rotating to new key'}...`);
             await new Promise(resolve => setTimeout(resolve, backoffMs));
           } else {
-            console.log(`❌ [RETRY] All ${maxRetries} attempts failed with 503 errors`);
+            console.log(`❌ [RETRY] All ${maxRetries} attempts failed with retryable errors`);
             const errorMsg = currentProvider.type === 'vertex'
-              ? `Vertex AI overloaded after ${maxRetries} attempts. Please try again later.`
-              : `Gemini API overloaded after ${maxRetries} attempts with different keys. Please try again later.`;
+              ? `Vertex AI unavailable after ${maxRetries} attempts. Please try again later.`
+              : `Gemini API unavailable after ${maxRetries} attempts with different keys. Please try again later.`;
             throw new Error(errorMsg);
           }
         } else {
-          // Not a 503 error - throw immediately (no retry for other errors)
-          console.log(`❌ [RETRY] Non-503 error on attempt ${attempt}: ${error.message}`);
+          // Not a retryable error - throw immediately
+          console.log(`❌ [RETRY] Non-retryable error on attempt ${attempt}: ${error.message}`);
           throw error;
         }
       }
