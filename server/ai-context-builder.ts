@@ -1266,18 +1266,8 @@ export async function buildUserContext(
     }
   }
 
-  // Apply intent-based document count limits
-  if (intent === 'library') {
-    // For library intent: show up to 20 documents
-    libraryDocs = libraryDocs.slice(0, 20);
-  } else if (intent === 'exercises' || intent === 'finances_current' || intent === 'finances_historical') {
-    // For exercises and finance intents: omit library documents to save tokens
-    libraryDocs = [];
-  } else {
-    // For other intents: show only 5 documents
-    libraryDocs = libraryDocs.slice(0, 5);
-  }
-
+  // SEMPRE include tutti i library docs - nessun filtro per intent
+  // Il client ha richiesto che siano SEMPRE disponibili
   console.log(`📚 Total library documents included in context: ${libraryDocs.length} (intent: ${intent})`);
 
   // ========================================
