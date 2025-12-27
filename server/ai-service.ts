@@ -630,9 +630,15 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   );
   // FIX: Only consider File Search active if stores have actual documents
   const totalDocsInStores = fileSearchBreakdown.reduce((sum, store) => sum + store.totalDocs, 0);
-  const hasFileSearch = fileSearchStoreNames.length > 0 && totalDocsInStores > 0;
   
-  if (fileSearchStoreNames.length > 0 && totalDocsInStores === 0) {
+  // Check if client has File Search disabled by consultant
+  const clientFileSearchEnabled = user.fileSearchEnabled !== false; // Default to true if null/undefined
+  
+  let hasFileSearch = fileSearchStoreNames.length > 0 && totalDocsInStores > 0 && clientFileSearchEnabled;
+  
+  if (!clientFileSearchEnabled) {
+    console.log(`🚫 [FileSearch] File Search DISABLED for client ${clientId} by consultant - using traditional context`);
+  } else if (fileSearchStoreNames.length > 0 && totalDocsInStores === 0) {
     console.log(`⚠️ [FileSearch] Stores exist but are EMPTY (0 documents) - disabling File Search mode`);
   }
   
@@ -1261,9 +1267,15 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     );
     // FIX: Only consider File Search active if stores have actual documents
     const totalDocsInStores = fileSearchBreakdown.reduce((sum, store) => sum + store.totalDocs, 0);
-    const hasFileSearch = fileSearchStoreNames.length > 0 && totalDocsInStores > 0;
     
-    if (fileSearchStoreNames.length > 0 && totalDocsInStores === 0) {
+    // Check if client has File Search disabled by consultant
+    const clientFileSearchEnabledStreaming = user.fileSearchEnabled !== false; // Default to true if null/undefined
+    
+    const hasFileSearch = fileSearchStoreNames.length > 0 && totalDocsInStores > 0 && clientFileSearchEnabledStreaming;
+    
+    if (!clientFileSearchEnabledStreaming) {
+      console.log(`🚫 [FileSearch] File Search DISABLED for client ${clientId} by consultant - using traditional context`);
+    } else if (fileSearchStoreNames.length > 0 && totalDocsInStores === 0) {
       console.log(`⚠️ [FileSearch] Stores exist but are EMPTY (0 documents) - disabling File Search mode`);
     }
 
