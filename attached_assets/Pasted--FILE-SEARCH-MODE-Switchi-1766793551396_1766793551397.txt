@@ -1,0 +1,61 @@
+══════════════════════════════════════════════════════════════════════
+🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)
+══════════════════════════════════════════════════════════════════════
+   📦 Provider: Google AI Studio (@google/genai)
+   ✅ File Search API: SUPPORTED
+   ⚠️  Vertex AI: NOT compatible with File Search
+══════════════════════════════════════════════════════════════════════
+
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Gemini key for File Search (1/1)
+✅ Using cached context for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: general, sessionType: normal, age: 107s)
+⏱️  [TIMING] Context building: 2ms
+🔔 [EXERCISE CACHE] Modification hint detected in message
+🔍 [FileSearch] Exercises indexed check: 10/10 checked, using FileSearch: true
+⏱️  [TIMING] Exercise scraping: 1005ms
+⏱️  [TIMING] Prompt building: 8ms
+
+📊 Token Usage Estimation (Intent: general):
+  - System Prompt: ~4,106 tokens
+  - User Message: ~15 tokens
+  - Conversation History: ~2,165 tokens
+  - Total Estimated: ~6,286 tokens
+  - File Search Mode: ✅ ACTIVE (RAG via stores)
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~4,106 tokens)
+══════════════════════════════════════════════════════════════════════
+
+📍 NEL SYSTEM PROMPT (4,106 tokens):
+   💰 Finance Data: 14,244 tokens
+   🎯 Goals & Tasks: 12 tokens
+   ⚡ Momentum & Calendar: 67 tokens
+   👤 User Profile & Base: 5,055 tokens
+
+🔍 VIA FILE SEARCH RAG (non nel prompt, cercati su richiesta):
+   📚 Exercises: 94,852 tokens → via RAG
+   📖 Library Docs: 1,573 tokens → via RAG
+   💬 Consultations: 46,363 tokens → via RAG
+   📚 Knowledge Base: 41 tokens → via RAG
+   🎓 University: 10,102 tokens → via RAG
+
+   💰 RISPARMIO: ~152,931 tokens spostati su File Search
+
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👥 Private Store - Client 7e40b56c (2 documenti):
+      🏋️ Esercizi: 2
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~142,829 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~146,935 a ~4,106 tokens
+══════════════════════════════════════════════════════════════════════
