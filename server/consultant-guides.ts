@@ -10,7 +10,7 @@
  * - Ogni pagina ha: emoji, titolo, path, descrizione, sezioni con steps
  * - Sezione speciale ONBOARDING per tracciare setup wizard
  * 
- * ULTIMO AGGIORNAMENTO: Dicembre 2025
+ * ULTIMO AGGIORNAMENTO: 27 Dicembre 2025 - AI Assistant Agent Integration v2
  */
 
 export interface GuideStep {
@@ -460,6 +460,49 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Guida Piattaforma",
             content: "L'AI conosce ogni funzionalità della piattaforma e può guidarti passo passo."
+          }
+        ]
+      },
+      {
+        title: "PREFERENZE AI STILE CHATGPT (v2)",
+        icon: "⚙️",
+        description: "Personalizza come l'AI comunica con te. Clicca l'icona ingranaggio nella chat per aprire il pannello preferenze.",
+        steps: [
+          {
+            title: "Stili di Scrittura Disponibili",
+            content: "9 stili tra cui scegliere: Predefinito (naturale e bilanciato), Professionale (cortese e preciso), Amichevole (espansivo e caloroso), Schietto (diretto e incoraggiante), Eccentrico (vivace e fantasioso), Efficiente (essenziale e semplice), Nerd (curioso e approfondito), Cinico (critico e sarcastico), Personalizzato (istruzioni custom).",
+            tips: ["Lo stile 'Predefinito' è il più versatile", "Usa 'Professionale' per comunicazioni formali", "Lo stile 'Personalizzato' permette istruzioni libere"]
+          },
+          {
+            title: "Lunghezza Risposte",
+            content: "3 opzioni: Breve (risposte concise e dirette), Bilanciata (equilibrio tra completezza e brevità), Completa (risposte dettagliate e approfondite).",
+            tips: ["'Breve' ideale per domande semplici", "'Completa' per analisi approfondite"]
+          },
+          {
+            title: "Istruzioni Personalizzate",
+            content: "Se scegli lo stile 'Personalizzato', puoi scrivere istruzioni specifiche che l'AI seguirà in tutte le conversazioni.",
+            tips: ["Es: 'Rispondi sempre in italiano formale, usa elenchi puntati'", "Le istruzioni si applicano a TUTTE le tue conversazioni"]
+          }
+        ]
+      },
+      {
+        title: "SELEZIONE AGENTE (v2)",
+        icon: "🤖",
+        description: "Puoi usare i tuoi agenti WhatsApp anche nell'AI Assistant.",
+        steps: [
+          {
+            title: "Dropdown Agente",
+            content: "In alto nella chat trovi un dropdown per selezionare un agente. Gli agenti con 'Abilita in AI Assistant' attivo appaiono qui.",
+            tips: ["Ogni agente ha personalità e istruzioni diverse", "L'agente selezionato influenza il tono e le risposte"]
+          },
+          {
+            title: "Cronologia Per-Agente",
+            content: "Le conversazioni sono separate per ogni agente. Cambiando agente vedrai solo le conversazioni fatte con quell'agente specifico.",
+            tips: ["Utile per mantenere contesti separati", "Le nuove conversazioni vengono associate all'agente selezionato"]
+          },
+          {
+            title: "Condividere Agenti con Clienti",
+            content: "Puoi condividere agenti specifici con i tuoi clienti usando 'Condividi con Clienti' nelle impostazioni agente. I clienti vedranno solo gli agenti condivisi con loro."
           }
         ]
       }
@@ -1473,9 +1516,9 @@ export const consultantGuides: ConsultantGuides = {
         ]
       },
       {
-        title: "TAB: PERSONALITÀ",
+        title: "TAB: PERSONALITÀ E BRAND VOICE",
         icon: "🎭",
-        description: "Definisci il carattere e lo stile dell'agente.",
+        description: "Definisci il carattere, lo stile dell'agente e le categorie di contenuti che può usare.",
         steps: [
           {
             title: "Tono",
@@ -1489,6 +1532,17 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Linee Guida",
             content: "Cosa deve e non deve fare: argomenti da evitare, limiti, escalation a umano."
+          },
+          {
+            title: "Categorie File Search (v2)",
+            content: "Seleziona quali tipi di contenuti l'agente può cercare e utilizzare nelle risposte. 6 categorie disponibili: Corsi, Lezioni, Esercizi, Knowledge Base, Libreria, University.",
+            tips: ["Disabilita categorie non rilevanti per risposte più focalizzate", "Le categorie influenzano sia WhatsApp che link pubblici e AI Assistant"],
+            warnings: ["Se disabiliti tutte le categorie, l'agente non potrà usare File Search"]
+          },
+          {
+            title: "Abilita in AI Assistant (v2)",
+            content: "Attiva questa opzione per rendere l'agente disponibile anche nell'AI Assistant del consulente e dei clienti condivisi.",
+            tips: ["Utile per testare l'agente senza usare WhatsApp", "I clienti vedranno solo agenti condivisi esplicitamente con loro"]
           }
         ]
       },
