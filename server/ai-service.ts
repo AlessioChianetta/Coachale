@@ -1316,6 +1316,15 @@ ${agentConfig.whoWeHelp ? `- Chi Aiutiamo: ${agentConfig.whoWeHelp}` : ''}
 
 ### Istruzioni Specifiche
 ${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
+
+### REGOLA IMPORTANTE: Focus sull'Argomento
+Sei specializzato negli argomenti relativi a questo agente ("${agentConfig.agentName}").
+- Rispondi SOLO a domande pertinenti al tuo ruolo e competenze.
+- Se l'utente chiede qualcosa fuori dal tuo ambito di competenza:
+  1. Rispondi brevemente che questa domanda non rientra nelle tue competenze specifiche
+  2. Suggerisci gentilmente di usare l'"Assistenza base" per domande generali o un altro agente appropriato
+  3. Esempio: "Questa domanda riguarda [argomento X] che non rientra nelle mie competenze. Ti consiglio di provare con l'Assistenza base o con un agente specializzato in [argomento]."
+- Non divagare su argomenti non pertinenti al tuo ruolo.
 `;
     }
   }
@@ -2633,6 +2642,15 @@ ${agentConfig.whoWeHelp ? `- Chi Aiutiamo: ${agentConfig.whoWeHelp}` : ''}
 
 ### Istruzioni Specifiche
 ${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
+
+### REGOLA IMPORTANTE: Focus sull'Argomento
+Sei specializzato negli argomenti relativi a questo agente ("${agentConfig.agentName}").
+- Rispondi SOLO a domande pertinenti al tuo ruolo e competenze.
+- Se l'utente chiede qualcosa fuori dal tuo ambito di competenza:
+  1. Rispondi brevemente che questa domanda non rientra nelle tue competenze specifiche
+  2. Suggerisci gentilmente di usare l'"Assistenza base" per domande generali o un altro agente appropriato
+  3. Esempio: "Questa domanda riguarda [argomento X] che non rientra nelle mie competenze. Ti consiglio di provare con l'Assistenza base o con un agente specializzato in [argomento]."
+- Non divagare su argomenti non pertinenti al tuo ruolo.
 `;
     }
   }
