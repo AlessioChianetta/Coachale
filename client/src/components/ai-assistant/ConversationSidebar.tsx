@@ -1,8 +1,15 @@
-import { useState } from "react";
-import { motion, PanInfo } from "framer-motion";
+import { useState, useMemo, type ReactNode } from "react";
+import { motion, PanInfo, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Plus, 
   MessageSquare, 
@@ -11,7 +18,12 @@ import {
   Trash2,
   Sparkles,
   Settings,
-  Bot
+  Bot,
+  Search,
+  Filter,
+  ChevronDown,
+  Mic,
+  UserCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -70,22 +82,33 @@ export function ConversationSidebar({
 }: ConversationSidebarProps) {
   const [swipedConversationId, setSwipedConversationId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
-  const filteredConversations = conversations.filter((conv) => {
-    if (agentFilter !== "all") {
-      if (agentFilter === "base") {
-        if (conv.agentId) return false;
-      } else {
-        if (conv.agentId !== agentFilter) return false;
+  const filteredConversations = useMemo(() => {
+    return conversations.filter((conv) => {
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        if (!conv.title.toLowerCase().includes(query)) {
+          return false;
+        }
       }
-    }
-    
-    if (activeFilter === "all") return true;
-    if (activeFilter === "assistenza") return conv.mode === "assistenza";
-    if (activeFilter === "vocale") return conv.mode === "live_voice";
-    if (activeFilter === "consulente") return conv.mode === "consulente";
-    return true;
-  });
+      
+      if (agentFilter !== "all") {
+        if (agentFilter === "base") {
+          if (conv.agentId) return false;
+        } else {
+          if (conv.agentId !== agentFilter) return false;
+        }
+      }
+      
+      if (activeFilter === "all") return true;
+      if (activeFilter === "assistenza") return conv.mode === "assistenza";
+      if (activeFilter === "vocale") return conv.mode === "live_voice";
+      if (activeFilter === "consulente") return conv.mode === "consulente";
+      return true;
+    });
+  }, [conversations, searchQuery, agentFilter, activeFilter]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -98,35 +121,48 @@ export function ConversationSidebar({
     return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
   };
 
-  const filterPills: { value: FilterType; label: string }[] = [
-    { value: "all", label: "Tutte" },
-    { value: "assistenza", label: "Assistenza" },
-    { value: "consulente", label: "Consulente" },
-    { value: "vocale", label: "Vocale" },
+  const getModeIcon = (mode?: string) => {
+    switch (mode) {
+      case "live_voice":
+        return <Mic className="h-3 w-3 text-orange-500" />;
+      case "consulente":
+        return <UserCircle className="h-3 w-3 text-purple-500" />;
+      default:
+        return <Sparkles className="h-3 w-3 text-cyan-500" />;
+    }
+  };
+
+  const filterOptions: { value: FilterType; label: string; icon: ReactNode }[] = [
+    { value: "all", label: "Tutte", icon: <MessageSquare className="h-3.5 w-3.5" /> },
+    { value: "assistenza", label: "Assistenza", icon: <Sparkles className="h-3.5 w-3.5" /> },
+    { value: "consulente", label: "Consulente", icon: <UserCircle className="h-3.5 w-3.5" /> },
+    { value: "vocale", label: "Vocale", icon: <Mic className="h-3.5 w-3.5" /> },
   ];
+
+  const activeFiltersCount = (activeFilter !== "all" ? 1 : 0) + (agentFilter !== "all" ? 1 : 0);
 
   return (
     <div className={cn(
       "h-full border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col transition-all duration-300 overflow-hidden",
       sidebarMinimized ? "w-16" : "w-72"
     )}>
-      <div className="p-3 space-y-3 flex-shrink-0 overflow-hidden">
+      <div className="p-3 space-y-2 flex-shrink-0 overflow-hidden">
         <div className="flex items-center gap-2">
           {!sidebarMinimized ? (
             <>
               <Button
                 onClick={onNewConversation}
-                className="flex-1 h-10 bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:from-cyan-600 hover:to-teal-600 border-0 shadow-sm hover:shadow-md transition-all duration-200"
+                className="flex-1 h-9 bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:from-cyan-600 hover:to-teal-600 border-0 shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                <span className="font-medium">Nuova chat</span>
+                <span className="font-medium text-sm">Nuova chat</span>
               </Button>
               {!isMobile && (
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={onToggleMinimize}
-                  className="h-10 w-10 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
+                  className="h-9 w-9 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -136,108 +172,149 @@ export function ConversationSidebar({
             <Button
               onClick={onNewConversation}
               size="icon"
-              className="h-10 w-10 mx-auto bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:from-cyan-600 hover:to-teal-600 border-0"
+              className="h-9 w-9 mx-auto bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:from-cyan-600 hover:to-teal-600 border-0"
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4" />
             </Button>
           )}
         </div>
 
-        {!sidebarMinimized && variant === "consultant" && onSettingsClick && (
-          <Button
-            onClick={onSettingsClick}
-            variant="ghost"
-            className="w-full h-9 justify-start text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            <span className="text-sm">Impostazioni</span>
-          </Button>
-        )}
-
         {!sidebarMinimized && (
           <>
-            <Separator className="bg-slate-200 dark:bg-slate-800" />
-            
-            <div className="flex flex-wrap gap-1.5">
-              {filterPills.map((pill) => (
-                <button
-                  key={pill.value}
-                  onClick={() => setActiveFilter(pill.value)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                    activeFilter === pill.value
-                      ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm"
-                      : "bg-slate-200/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-300/60 dark:hover:bg-slate-700/60"
-                  )}
-                >
-                  {pill.label}
-                </button>
-              ))}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Input
+                type="text"
+                placeholder="Cerca chat..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 pl-8 pr-3 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+              />
             </div>
 
-            {availableAgents.length > 0 && onAgentFilterChange && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                <button
-                  onClick={() => onAgentFilterChange("all")}
-                  className={cn(
-                    "px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1.5",
-                    agentFilter === "all"
-                      ? "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 ring-1 ring-teal-300 dark:ring-teal-700"
-                      : "bg-slate-100 dark:bg-slate-800/40 text-slate-500 dark:text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-700/40"
-                  )}
-                >
-                  <Bot className="h-3 w-3" />
-                  Tutti
-                </button>
-                <button
-                  onClick={() => onAgentFilterChange("base")}
-                  className={cn(
-                    "px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1.5",
-                    agentFilter === "base"
-                      ? "bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 ring-1 ring-cyan-300 dark:ring-cyan-700"
-                      : "bg-slate-100 dark:bg-slate-800/40 text-slate-500 dark:text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-700/40"
-                  )}
-                >
-                  <Sparkles className="h-3 w-3" />
-                  Base
-                </button>
-                {availableAgents.slice(0, 2).map((agent) => (
-                  <button
-                    key={agent.id}
-                    onClick={() => onAgentFilterChange(agent.id)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 truncate max-w-[100px]",
-                      agentFilter === agent.id
-                        ? "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 ring-1 ring-teal-300 dark:ring-teal-700"
-                        : "bg-slate-100 dark:bg-slate-800/40 text-slate-500 dark:text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-700/40"
-                    )}
-                    title={agent.name}
-                  >
-                    {agent.name}
-                  </button>
-                ))}
+            <button
+              onClick={() => setFiltersExpanded(!filtersExpanded)}
+              className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <Filter className="h-3 w-3" />
+                <span>Filtri</span>
+                {activeFiltersCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 text-[10px] font-semibold">
+                    {activeFiltersCount}
+                  </span>
+                )}
               </div>
-            )}
+              <ChevronDown className={cn(
+                "h-3 w-3 transition-transform duration-200",
+                filtersExpanded && "rotate-180"
+              )} />
+            </button>
+
+            <AnimatePresence>
+              {filtersExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-2 pb-1">
+                    <div className="flex flex-wrap gap-1">
+                      {filterOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setActiveFilter(option.value)}
+                          className={cn(
+                            "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-150",
+                            activeFilter === option.value
+                              ? "bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300"
+                              : "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-700/60"
+                          )}
+                        >
+                          {option.icon}
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {availableAgents.length > 0 && onAgentFilterChange && (
+                      <Select value={agentFilter} onValueChange={onAgentFilterChange}>
+                        <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                          <div className="flex items-center gap-1.5">
+                            <Bot className="h-3 w-3 text-slate-400" />
+                            <SelectValue placeholder="Tutti gli agenti" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            <div className="flex items-center gap-1.5">
+                              <Bot className="h-3 w-3" />
+                              Tutti gli agenti
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="base">
+                            <div className="flex items-center gap-1.5">
+                              <Sparkles className="h-3 w-3" />
+                              Assistente Base
+                            </div>
+                          </SelectItem>
+                          {availableAgents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              <div className="flex items-center gap-1.5">
+                                <Bot className="h-3 w-3" />
+                                <span className="truncate max-w-[140px]">{agent.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
+        )}
+
+        {!sidebarMinimized && variant === "consultant" && onSettingsClick && (
+          <button
+            onClick={onSettingsClick}
+            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-md transition-colors"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            <span>Impostazioni</span>
+          </button>
         )}
       </div>
 
       {!sidebarMinimized && (
         <ScrollArea className="flex-1 overflow-hidden">
           <div className="px-2 pb-4 overflow-hidden">
+            <div className="px-2 py-1.5 mb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Le tue chat
+              </span>
+            </div>
+            
             {conversationsLoading ? (
-              <div className="space-y-2 p-2">
+              <div className="space-y-1 p-1">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-14 rounded-lg bg-slate-200/50 dark:bg-slate-800/50 animate-pulse" />
+                  <div key={i} className="h-10 rounded-md bg-slate-200/50 dark:bg-slate-800/50 animate-pulse" />
                 ))}
               </div>
             ) : filteredConversations.length === 0 ? (
-              <div className="text-center py-12 px-4">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
-                  <MessageSquare className="h-6 w-6 text-slate-400 dark:text-slate-600" />
+              <div className="text-center py-8 px-4">
+                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5 text-slate-400 dark:text-slate-600" />
                 </div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Nessuna conversazione</p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Inizia una nuova chat</p>
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  {searchQuery ? "Nessun risultato" : "Nessuna conversazione"}
+                </p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-0.5">
+                  {searchQuery ? "Prova un altro termine" : "Inizia una nuova chat"}
+                </p>
               </div>
             ) : (
               <div className="space-y-0.5 overflow-hidden w-full">
@@ -254,31 +331,31 @@ export function ConversationSidebar({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-full w-12 rounded-none rounded-r-lg bg-red-500 hover:bg-red-600 text-white"
+                        className="h-full w-10 rounded-none rounded-r-md bg-red-500 hover:bg-red-600 text-white"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteConversation(conversation.id);
                           setSwipedConversationId(null);
                         }}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </motion.div>
 
                     <motion.div
                       className="relative z-0 overflow-hidden w-full"
                       drag="x"
-                      dragConstraints={{ left: -48, right: 0 }}
+                      dragConstraints={{ left: -40, right: 0 }}
                       dragElastic={0.1}
                       onDragEnd={(event: any, info: PanInfo) => {
-                        if (info.offset.x < -40) {
+                        if (info.offset.x < -30) {
                           setSwipedConversationId(conversation.id);
                         } else {
                           setSwipedConversationId(null);
                         }
                       }}
                       animate={{
-                        x: swipedConversationId === conversation.id ? -48 : 0
+                        x: swipedConversationId === conversation.id ? -40 : 0
                       }}
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     >
@@ -289,30 +366,36 @@ export function ConversationSidebar({
                         }}
                         disabled={loadingConversationId === conversation.id}
                         className={cn(
-                          "w-full text-left py-2 px-3 rounded-lg transition-all duration-150 overflow-hidden",
-                          "hover:bg-slate-200/60 dark:hover:bg-slate-800/60",
+                          "w-full text-left py-2 px-2 rounded-md transition-all duration-150 overflow-hidden",
+                          "hover:bg-slate-100 dark:hover:bg-slate-800/60",
                           selectedConversationId === conversation.id
-                            ? "bg-cyan-100/80 dark:bg-cyan-900/30 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
+                            ? "bg-cyan-50 dark:bg-cyan-900/20 hover:bg-cyan-100/80 dark:hover:bg-cyan-900/30"
                             : "bg-transparent"
                         )}
                       >
                         <div className="flex items-center gap-2 overflow-hidden w-full">
+                          <div className="flex-shrink-0">
+                            {getModeIcon(conversation.mode)}
+                          </div>
                           <div className="flex-1 w-0 overflow-hidden">
                             <p className={cn(
-                              "text-sm font-medium overflow-hidden text-ellipsis whitespace-nowrap",
+                              "text-sm overflow-hidden text-ellipsis whitespace-nowrap",
                               selectedConversationId === conversation.id
-                                ? "text-cyan-900 dark:text-cyan-100"
-                                : "text-slate-800 dark:text-slate-200"
+                                ? "text-cyan-900 dark:text-cyan-100 font-medium"
+                                : "text-slate-700 dark:text-slate-300"
                             )}>
                               {conversation.title}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap">
-                              {formatDate(conversation.updatedAt)}
-                            </p>
                           </div>
-                          {loadingConversationId === conversation.id && (
-                            <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                          )}
+                          <div className="flex-shrink-0 flex items-center gap-1">
+                            {loadingConversationId === conversation.id ? (
+                              <div className="w-3 h-3 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                                {formatDate(conversation.updatedAt)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </button>
                     </motion.div>
@@ -325,14 +408,22 @@ export function ConversationSidebar({
       )}
 
       {sidebarMinimized && !isMobile && (
-        <div className="flex-1 flex flex-col items-center pt-4">
+        <div className="flex-1 flex flex-col items-center pt-4 gap-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleMinimize}
-            className="h-10 w-10 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            className="h-9 w-9 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
           >
             <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            title="Cerca"
+          >
+            <Search className="h-4 w-4" />
           </Button>
         </div>
       )}
