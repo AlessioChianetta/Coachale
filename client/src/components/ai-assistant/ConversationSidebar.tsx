@@ -240,9 +240,9 @@ export function ConversationSidebar({
                 <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Inizia una nuova chat</p>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1 overflow-hidden">
                 {filteredConversations.map((conversation) => (
-                  <div key={conversation.id} className="relative group">
+                  <div key={conversation.id} className="relative group overflow-hidden">
                     <motion.div 
                       className="absolute right-0 top-0 bottom-0 flex items-center z-10"
                       initial={{ opacity: 0, x: 10 }}
@@ -266,7 +266,7 @@ export function ConversationSidebar({
                     </motion.div>
 
                     <motion.div
-                      className="relative z-0"
+                      className="relative z-0 overflow-hidden"
                       drag="x"
                       dragConstraints={{ left: -48, right: 0 }}
                       dragElastic={0.1}
@@ -299,7 +299,7 @@ export function ConversationSidebar({
                         <div className="flex items-start justify-between gap-2 overflow-hidden">
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <p className={cn(
-                              "text-sm font-medium truncate block w-full",
+                              "text-sm font-medium truncate block max-w-full overflow-hidden text-ellipsis whitespace-nowrap",
                               selectedConversationId === conversation.id
                                 ? "text-cyan-900 dark:text-cyan-100"
                                 : "text-slate-800 dark:text-slate-200"
