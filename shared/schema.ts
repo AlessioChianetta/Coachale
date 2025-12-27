@@ -2357,9 +2357,52 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   googleCalendarAccountReference: text("google_calendar_account_reference"), // Which Google account for calendar (e.g., "villonbajana2021@gmail.com")
   googleCalendarNotes: text("google_calendar_notes"), // Notes about Google Calendar configuration
 
+  // AI Assistant Integration - Enable agent in /consultant/ai-assistant or /client/ai-assistant
+  enableInAIAssistant: boolean("enable_in_ai_assistant").default(false).notNull(),
+  
+  // File Search Categories - Select which categories to include as context via File Search
+  fileSearchCategories: jsonb("file_search_categories").$type<{
+    courses?: boolean;
+    lessons?: boolean;
+    exercises?: boolean;
+    knowledgeBase?: boolean;
+    library?: boolean;
+    university?: boolean;
+  }>().default(sql`'{}'::jsonb`).notNull(),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
+
+// Agent-Client Assignments - Which clients can access which agents in their AI assistant
+export const agentClientAssignments = pgTable("agent_client_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  assignedAt: timestamp("assigned_at").default(sql`now()`),
+  isActive: boolean("is_active").default(true).notNull(),
+}, (table) => ({
+  uniqueAgentClient: unique().on(table.agentConfigId, table.clientId),
+  agentIdx: index("idx_agent_client_assignments_agent").on(table.agentConfigId),
+  clientIdx: index("idx_agent_client_assignments_client").on(table.clientId),
+}));
+
+export type AgentClientAssignment = typeof agentClientAssignments.$inferSelect;
+export type InsertAgentClientAssignment = typeof agentClientAssignments.$inferInsert;
+
+// AI Assistant Preferences - ChatGPT-style settings for writing style and response length
+export const aiAssistantPreferences = pgTable("ai_assistant_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  writingStyle: text("writing_style").$type<"conversational" | "professional" | "concise" | "detailed" | "custom">().default("professional").notNull(),
+  responseLength: text("response_length").$type<"short" | "balanced" | "comprehensive">().default("balanced").notNull(),
+  customInstructions: text("custom_instructions"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type AIAssistantPreferences = typeof aiAssistantPreferences.$inferSelect;
+export type InsertAIAssistantPreferences = typeof aiAssistantPreferences.$inferInsert;
 
 // WhatsApp Agent Knowledge Base Items - Modular knowledge system (text + documents)
 export const whatsappAgentKnowledgeItems = pgTable("whatsapp_agent_knowledge_items", {
