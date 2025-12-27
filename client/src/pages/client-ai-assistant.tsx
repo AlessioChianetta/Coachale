@@ -6,7 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, AlertCircle, Sun, Moon, Mic, DollarSign, TrendingUp, Zap } from "lucide-react";
+import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, AlertCircle, Sun, Moon, Mic, DollarSign, TrendingUp, Zap, Bot } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ModeSelector } from "@/components/ai-assistant/ModeSelector";
 import { ConsultantTypePicker } from "@/components/ai-assistant/ConsultantTypePicker";
 import { MessageList } from "@/components/ai-assistant/MessageList";
@@ -68,6 +75,16 @@ interface Message {
   }>;
 }
 
+interface AgentForAssistant {
+  id: string;
+  name: string;
+  businessName?: string;
+  agentType: string;
+  aiPersonality?: string;
+  fileSearchCategories?: Record<string, boolean>;
+  consultantId: string;
+}
+
 export default function ClientAIAssistant() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
@@ -102,6 +119,18 @@ export default function ClientAIAssistant() {
   const safetyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isLiveModeActive, setIsLiveModeActive] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
+  const { data: availableAgents = [] } = useQuery<AgentForAssistant[]>({
+    queryKey: ["/api/ai-assistant/client/agents-for-assistant"],
+    queryFn: async () => {
+      const response = await fetch("/api/ai-assistant/client/agents-for-assistant", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
 
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
     queryKey: ["/api/ai/conversations"],
@@ -208,6 +237,7 @@ export default function ClientAIAssistant() {
           mode,
           consultantType: mode === "consulente" ? consultantType : undefined,
           conversationId: selectedConversationId,
+          agentId: selectedAgentId,
         }),
       });
 
@@ -862,6 +892,47 @@ export default function ClientAIAssistant() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Agent Selector - Only show if agents are available */}
+                  {availableAgents.length > 0 && (
+                    <div className="w-full">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Seleziona Agente
+                        </label>
+                      </div>
+                      <Select
+                        value={selectedAgentId || "base"}
+                        onValueChange={(value) => setSelectedAgentId(value === "base" ? null : value)}
+                      >
+                        <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <SelectValue placeholder="Assistente Base" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="base">
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="h-4 w-4 text-purple-500" />
+                              <span>Assistente Base</span>
+                            </div>
+                          </SelectItem>
+                          {availableAgents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              <div className="flex items-center gap-2">
+                                <Bot className="h-4 w-4 text-blue-500" />
+                                <span>{agent.name}</span>
+                                {agent.businessName && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    ({agent.businessName})
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   {/* Mode Selector */}
                   <div className="w-full">

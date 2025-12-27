@@ -5,7 +5,7 @@
 import { performance } from 'perf_hooks';
 import { GoogleGenAI } from "@google/genai";
 import { db } from "./db";
-import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig } from "../shared/schema";
+import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig, consultantWhatsappConfig } from "../shared/schema";
 import { decrypt } from "./encryption";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { buildUserContext, UserContext } from "./ai-context-builder";
@@ -628,6 +628,8 @@ export interface ChatRequest {
   userRole?: 'consultant' | 'client';
   // Email Condivisa: Pass consultant ID from active profile for mixed-role users
   activeConsultantId?: string;
+  // Agent context: Use selected WhatsApp agent as AI persona
+  agentId?: string;
 }
 
 export interface ChatResponse {
@@ -1280,7 +1282,43 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
 }
 
 export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerator<ChatStreamChunk> {
-  const { clientId, message, conversationId, mode, consultantType, pageContext, focusedDocument, userRole, activeConsultantId } = request;
+  const { clientId, message, conversationId, mode, consultantType, pageContext, focusedDocument, userRole, activeConsultantId, agentId } = request;
+
+  // ========================================
+  // AGENT CONTEXT: Fetch agent persona if agentId is provided
+  // ========================================
+  let agentContext = '';
+  let agentConfig: typeof consultantWhatsappConfig.$inferSelect | null = null;
+  
+  if (agentId) {
+    const [fetchedAgentConfig] = await db.select()
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.id, agentId))
+      .limit(1);
+    
+    if (fetchedAgentConfig) {
+      agentConfig = fetchedAgentConfig;
+      console.log(`🤖 [Agent Context] Using agent "${agentConfig.agentName}" (${agentConfig.agentType}) for AI response`);
+      
+      agentContext = `
+## Contesto Agente Attivo
+Stai operando come l'agente "${agentConfig.agentName}".
+
+### Personalità e Tono
+- Tipo: ${agentConfig.agentType || 'general'}
+- Personalità: ${agentConfig.aiPersonality || 'professional'}
+
+### Informazioni Business
+${agentConfig.businessName ? `- Nome Business: ${agentConfig.businessName}` : ''}
+${agentConfig.businessDescription ? `- Descrizione: ${agentConfig.businessDescription}` : ''}
+${agentConfig.whatWeDo ? `- Cosa Facciamo: ${agentConfig.whatWeDo}` : ''}
+${agentConfig.whoWeHelp ? `- Chi Aiutiamo: ${agentConfig.whoWeHelp}` : ''}
+
+### Istruzioni Specifiche
+${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
+`;
+    }
+  }
 
   // ========================================
   // PERFORMANCE TIMING TRACKING
@@ -1726,7 +1764,12 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
 
     // Build system prompt (with hasFileSearch flag to omit exercises/consultations when using RAG)
     timings.promptBuildStart = performance.now();
-    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: exercisesIndexedInFileSearch });
+    let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: exercisesIndexedInFileSearch });
+    
+    // Append agent context if available
+    if (agentContext) {
+      systemPrompt = systemPrompt + '\n\n' + agentContext;
+    }
 
     // Calculate detailed token breakdown by section
     const breakdown = calculateTokenBreakdown(userContext, intent);
@@ -2503,10 +2546,48 @@ export interface ConsultantChatRequest {
   conversationId?: string;
   pageContext?: import('./consultant-context-builder').ConsultantPageContext;
   focusedDocument?: FocusedDocument;
+  // Agent context: Use selected WhatsApp agent as AI persona
+  agentId?: string;
 }
 
 export async function* sendConsultantChatMessageStream(request: ConsultantChatRequest) {
-  const { consultantId, message, conversationId, pageContext, focusedDocument } = request;
+  const { consultantId, message, conversationId, pageContext, focusedDocument, agentId } = request;
+
+  // ========================================
+  // AGENT CONTEXT: Fetch agent persona if agentId is provided
+  // ========================================
+  let agentContext = '';
+  let agentConfig: typeof consultantWhatsappConfig.$inferSelect | null = null;
+  
+  if (agentId) {
+    const [fetchedAgentConfig] = await db.select()
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.id, agentId))
+      .limit(1);
+    
+    if (fetchedAgentConfig) {
+      agentConfig = fetchedAgentConfig;
+      console.log(`🤖 [Agent Context] Using agent "${agentConfig.agentName}" (${agentConfig.agentType}) for AI response`);
+      
+      agentContext = `
+## Contesto Agente Attivo
+Stai operando come l'agente "${agentConfig.agentName}".
+
+### Personalità e Tono
+- Tipo: ${agentConfig.agentType || 'general'}
+- Personalità: ${agentConfig.aiPersonality || 'professional'}
+
+### Informazioni Business
+${agentConfig.businessName ? `- Nome Business: ${agentConfig.businessName}` : ''}
+${agentConfig.businessDescription ? `- Descrizione: ${agentConfig.businessDescription}` : ''}
+${agentConfig.whatWeDo ? `- Cosa Facciamo: ${agentConfig.whatWeDo}` : ''}
+${agentConfig.whoWeHelp ? `- Chi Aiutiamo: ${agentConfig.whoWeHelp}` : ''}
+
+### Istruzioni Specifiche
+${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
+`;
+    }
+  }
 
   const timings = {
     requestStart: performance.now(),
@@ -2653,7 +2734,12 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
 
     // Build consultant-specific system prompt
     timings.promptBuildStart = performance.now();
-    const systemPrompt = buildConsultantSystemPrompt(consultantContext);
+    let systemPrompt = buildConsultantSystemPrompt(consultantContext);
+    
+    // Append agent context if available
+    if (agentContext) {
+      systemPrompt = systemPrompt + '\n\n' + agentContext;
+    }
     timings.promptBuildEnd = performance.now();
     promptBuildTime = Math.round(timings.promptBuildEnd - timings.promptBuildStart);
     console.log(`⏱️  [TIMING] Consultant prompt building: ${promptBuildTime}ms`);

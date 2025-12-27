@@ -245,7 +245,10 @@ router.get("/:agentId/analytics", authenticateToken, requireRole("consultant"), 
         // Who we help (brief)
         whoWeHelp: agent.whoWeHelp,
         whatWeDo: agent.whatWeDo,
-        createdAt: agent.createdAt
+        createdAt: agent.createdAt,
+        // AI Assistant Integration
+        enableInAIAssistant: agent.enableInAIAssistant,
+        fileSearchCategories: agent.fileSearchCategories
       },
       metrics: {
         score,

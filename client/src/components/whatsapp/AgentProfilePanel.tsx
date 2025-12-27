@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   LineChart,
   Line,
@@ -46,7 +48,8 @@ import {
   BadgeDollarSign,
   UserX,
   Sparkles,
-  FileText
+  FileText,
+  Share2
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -58,6 +61,15 @@ interface Agent {
   status: "active" | "paused" | "test";
   performanceScore: number;
   trend: "up" | "down" | "stable";
+}
+
+interface FileSearchCategories {
+  courses?: boolean;
+  lessons?: boolean;
+  exercises?: boolean;
+  knowledgeBase?: boolean;
+  library?: boolean;
+  university?: boolean;
 }
 
 interface AgentAnalytics {
@@ -73,6 +85,8 @@ interface AgentAnalytics {
     phone?: string;
     isDryRun?: boolean;
     isProactive?: boolean;
+    enableInAIAssistant?: boolean;
+    fileSearchCategories?: FileSearchCategories;
     features?: {
       bookingEnabled: boolean;
       objectionHandlingEnabled: boolean;
@@ -114,6 +128,12 @@ interface AgentProfilePanelProps {
   selectedAgent: Agent | null;
   onDeleteAgent?: (agentId: string) => void;
   onDuplicateAgent?: (agentId: string) => void;
+}
+
+interface ConsultantClient {
+  id: string;
+  name: string;
+  email?: string;
 }
 
 function PerformanceGauge({ score, trend }: { score: number; trend: string }) {
@@ -221,6 +241,7 @@ function LoadingSkeleton() {
 export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAgent }: AgentProfilePanelProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [calendarStatus, setCalendarStatus] = useState<{
     connected: boolean;
@@ -231,6 +252,81 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+
+  const [enableInAIAssistant, setEnableInAIAssistant] = useState(false);
+  const [fileSearchCategories, setFileSearchCategories] = useState<FileSearchCategories>({
+    courses: false,
+    lessons: false,
+    exercises: false,
+    knowledgeBase: false,
+    library: false,
+    university: false,
+  });
+  const [isSavingAISettings, setIsSavingAISettings] = useState(false);
+
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+
+  const { data: consultantClients } = useQuery<ConsultantClient[]>({
+    queryKey: ["/api/ai-assistant/consultant/clients"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-assistant/consultant/clients", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch clients");
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const { data: clientAssignments, isLoading: isLoadingAssignments } = useQuery<{ clientIds: string[] }>({
+    queryKey: ["/api/ai-assistant/agent", selectedAgent?.id, "client-assignments"],
+    queryFn: async () => {
+      const res = await fetch(`/api/ai-assistant/agent/${selectedAgent?.id}/client-assignments`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch assignments");
+      return res.json();
+    },
+    enabled: !!selectedAgent?.id,
+  });
+
+  useEffect(() => {
+    if (clientAssignments?.clientIds) {
+      setSelectedClientIds(clientAssignments.clientIds);
+    } else {
+      setSelectedClientIds([]);
+    }
+  }, [clientAssignments?.clientIds, selectedAgent?.id]);
+
+  const saveClientAssignments = useMutation({
+    mutationFn: async (clientIds: string[]) => {
+      const res = await fetch(`/api/ai-assistant/agent/${selectedAgent?.id}/client-assignments`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientIds })
+      });
+      if (!res.ok) throw new Error("Failed to save assignments");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-assistant/agent", selectedAgent?.id, "client-assignments"] });
+      toast({
+        title: "Assegnazioni Salvate",
+        description: "Le assegnazioni clienti sono state aggiornate"
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: "Impossibile salvare le assegnazioni"
+      });
+    }
+  });
+
+  const handleClientToggle = (clientId: string, checked: boolean) => {
+    const newSelectedIds = checked 
+      ? [...selectedClientIds, clientId]
+      : selectedClientIds.filter(id => id !== clientId);
+    setSelectedClientIds(newSelectedIds);
+    saveClientAssignments.mutate(newSelectedIds);
+  };
 
   useEffect(() => {
     if (selectedAgent?.id) {
@@ -345,6 +441,53 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
     }
   };
 
+  const saveAIAssistantSettings = async (
+    enabled: boolean,
+    categories: FileSearchCategories
+  ) => {
+    if (!selectedAgent?.id) return;
+
+    setIsSavingAISettings(true);
+    try {
+      const response = await fetch(`/api/ai-assistant/agent/${selectedAgent.id}/ai-assistant-settings`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enableInAIAssistant: enabled,
+          fileSearchCategories: categories
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore durante il salvataggio');
+      }
+
+      toast({
+        title: "Impostazioni Salvate",
+        description: "Le impostazioni AI Assistant sono state aggiornate"
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile salvare le impostazioni"
+      });
+    } finally {
+      setIsSavingAISettings(false);
+    }
+  };
+
+  const handleEnableAIAssistantChange = async (checked: boolean) => {
+    setEnableInAIAssistant(checked);
+    await saveAIAssistantSettings(checked, fileSearchCategories);
+  };
+
+  const handleCategoryChange = async (category: keyof FileSearchCategories, checked: boolean) => {
+    const newCategories = { ...fileSearchCategories, [category]: checked };
+    setFileSearchCategories(newCategories);
+    await saveAIAssistantSettings(enableInAIAssistant, newCategories);
+  };
+
   const { data, isLoading, isError } = useQuery<AgentAnalytics>({
     queryKey: ["/api/whatsapp/agents", selectedAgent?.id, "analytics"],
     queryFn: async () => {
@@ -359,6 +502,20 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
     enabled: !!selectedAgent?.id,
     staleTime: 30000,
   });
+
+  useEffect(() => {
+    if (data?.agent) {
+      setEnableInAIAssistant(data.agent.enableInAIAssistant ?? false);
+      setFileSearchCategories({
+        courses: data.agent.fileSearchCategories?.courses ?? false,
+        lessons: data.agent.fileSearchCategories?.lessons ?? false,
+        exercises: data.agent.fileSearchCategories?.exercises ?? false,
+        knowledgeBase: data.agent.fileSearchCategories?.knowledgeBase ?? false,
+        library: data.agent.fileSearchCategories?.library ?? false,
+        university: data.agent.fileSearchCategories?.university ?? false,
+      });
+    }
+  }, [data?.agent]);
 
   if (!selectedAgent) {
     return <PlaceholderPanel />;
@@ -770,6 +927,157 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                 </Button>
               </div>
             )}
+          </div>
+
+          <div className="pt-4 border-t border-slate-200">
+            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+              <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <Bot className="h-4 w-4 text-blue-500" />
+                AI Assistant Integration
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">
+                Quando abilitato, questo agente può essere utilizzato come contesto nella chat AI Assistant, 
+                permettendo all'assistente di accedere alle informazioni e conversazioni dell'agente.
+              </p>
+              
+              <div className="flex items-center justify-between mb-4">
+                <label htmlFor="ai-assistant-toggle" className="text-sm font-medium text-slate-700">
+                  Abilita in AI Assistant
+                </label>
+                <Switch
+                  id="ai-assistant-toggle"
+                  checked={enableInAIAssistant}
+                  onCheckedChange={handleEnableAIAssistantChange}
+                  disabled={isSavingAISettings}
+                />
+              </div>
+
+              {enableInAIAssistant && (
+                <div className="space-y-3 pt-3 border-t border-blue-100">
+                  <p className="text-sm font-medium text-slate-700">Categorie File Search</p>
+                  <p className="text-xs text-slate-500 mb-2">
+                    Seleziona quali categorie di documenti l'AI Assistant può cercare per questo agente.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                      <Checkbox
+                        checked={fileSearchCategories.courses}
+                        onCheckedChange={(checked) => handleCategoryChange('courses', checked as boolean)}
+                        disabled={isSavingAISettings}
+                      />
+                      <span className="text-sm text-slate-600">Corsi</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                      <Checkbox
+                        checked={fileSearchCategories.lessons}
+                        onCheckedChange={(checked) => handleCategoryChange('lessons', checked as boolean)}
+                        disabled={isSavingAISettings}
+                      />
+                      <span className="text-sm text-slate-600">Lezioni</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                      <Checkbox
+                        checked={fileSearchCategories.exercises}
+                        onCheckedChange={(checked) => handleCategoryChange('exercises', checked as boolean)}
+                        disabled={isSavingAISettings}
+                      />
+                      <span className="text-sm text-slate-600">Esercizi</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                      <Checkbox
+                        checked={fileSearchCategories.knowledgeBase}
+                        onCheckedChange={(checked) => handleCategoryChange('knowledgeBase', checked as boolean)}
+                        disabled={isSavingAISettings}
+                      />
+                      <span className="text-sm text-slate-600">Knowledge Base</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                      <Checkbox
+                        checked={fileSearchCategories.library}
+                        onCheckedChange={(checked) => handleCategoryChange('library', checked as boolean)}
+                        disabled={isSavingAISettings}
+                      />
+                      <span className="text-sm text-slate-600">Libreria</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                      <Checkbox
+                        checked={fileSearchCategories.university}
+                        onCheckedChange={(checked) => handleCategoryChange('university', checked as boolean)}
+                        disabled={isSavingAISettings}
+                      />
+                      <span className="text-sm text-slate-600">Università</span>
+                    </label>
+                  </div>
+                  {isSavingAISettings && (
+                    <div className="flex items-center gap-2 text-xs text-blue-600 mt-2">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Salvataggio in corso...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-200">
+            <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                  <Share2 className="h-4 w-4 text-emerald-500" />
+                  Condividi con Clienti
+                </h3>
+                {selectedClientIds.length > 0 && (
+                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                    {selectedClientIds.length} {selectedClientIds.length === 1 ? 'cliente' : 'clienti'}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mb-4">
+                Seleziona quali clienti potranno vedere e utilizzare questo agente nel loro AI Assistant.
+              </p>
+              
+              {isLoadingAssignments ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                </div>
+              ) : consultantClients && consultantClients.length > 0 ? (
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {consultantClients.map((client) => (
+                    <label
+                      key={client.id}
+                      className="flex items-center gap-3 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                    >
+                      <Checkbox
+                        checked={selectedClientIds.includes(client.id)}
+                        onCheckedChange={(checked) => handleClientToggle(client.id, checked as boolean)}
+                        disabled={saveClientAssignments.isPending}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700 truncate">{client.name}</p>
+                        {client.email && (
+                          <p className="text-xs text-slate-400 truncate">{client.email}</p>
+                        )}
+                      </div>
+                      {selectedClientIds.includes(client.id) && (
+                        <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white border border-slate-200">
+                  <Users className="h-5 w-5 text-slate-400" />
+                  <p className="text-sm text-slate-500">Nessun cliente disponibile</p>
+                </div>
+              )}
+              
+              {saveClientAssignments.isPending && (
+                <div className="flex items-center gap-2 text-xs text-emerald-600 mt-3">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Salvataggio in corso...
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="pt-4 border-t border-slate-200">
