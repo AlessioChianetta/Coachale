@@ -217,12 +217,35 @@ router.get("/:agentId/analytics", authenticateToken, requireRole("consultant"), 
         id: agent.id,
         name: agent.agentName,
         businessName: agent.businessName,
+        businessDescription: agent.businessDescription,
+        consultantDisplayName: agent.consultantDisplayName,
         type: agent.agentType,
         personality: agent.aiPersonality,
         isActive: agent.autoResponseEnabled,
         phone: agent.twilioWhatsappNumber,
         isDryRun: agent.isDryRun,
-        isProactive: agent.isProactiveAgent
+        isProactive: agent.isProactiveAgent,
+        // Features enabled
+        features: {
+          bookingEnabled: agent.bookingEnabled,
+          objectionHandlingEnabled: agent.objectionHandlingEnabled,
+          disqualificationEnabled: agent.disqualificationEnabled,
+          upsellingEnabled: agent.upsellingEnabled,
+          ttsEnabled: agent.ttsEnabled,
+          hasCalendar: !!agent.googleCalendarId,
+          hasKnowledgeBase: !!agent.agentInstructions,
+          hasSalesScript: !!agent.salesScript
+        },
+        // Working hours
+        workingHours: agent.workingHoursEnabled ? {
+          start: agent.workingHoursStart,
+          end: agent.workingHoursEnd,
+          timezone: agent.workingHoursTimezone
+        } : null,
+        // Who we help (brief)
+        whoWeHelp: agent.whoWeHelp,
+        whatWeDo: agent.whatWeDo,
+        createdAt: agent.createdAt
       },
       metrics: {
         score,

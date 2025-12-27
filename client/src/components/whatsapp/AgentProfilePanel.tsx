@@ -38,7 +38,15 @@ import {
   Link,
   Unlink,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Info,
+  Mic,
+  BookOpen,
+  ShieldCheck,
+  BadgeDollarSign,
+  UserX,
+  Sparkles,
+  FileText
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -56,29 +64,49 @@ interface AgentAnalytics {
   agent: {
     id: string;
     name: string;
-    agentType: string;
-    status: string;
-    createdAt: string;
+    type: string;
     businessName?: string;
+    businessDescription?: string;
     consultantDisplayName?: string;
+    personality?: string;
+    isActive?: boolean;
+    phone?: string;
+    isDryRun?: boolean;
+    isProactive?: boolean;
+    features?: {
+      bookingEnabled: boolean;
+      objectionHandlingEnabled: boolean;
+      disqualificationEnabled: boolean;
+      upsellingEnabled: boolean;
+      ttsEnabled: boolean;
+      hasCalendar: boolean;
+      hasKnowledgeBase: boolean;
+      hasSalesScript: boolean;
+    };
+    workingHours?: {
+      start: number;
+      end: number;
+      timezone?: string;
+    } | null;
+    whoWeHelp?: string;
+    whatWeDo?: string;
+    createdAt?: string;
   };
-  performance: {
+  metrics: {
     score: number;
-    trend: "up" | "down" | "stable";
-    conversationsTotal: number;
-    conversationsToday: number;
-    avgResponseTime: string;
-    successRate: number;
+    conversations7d: number;
+    conversations30d: number;
+    messages7d: number;
+    avgResponseTime: number;
   };
-  trendData: Array<{
+  trend: Array<{
     date: string;
     conversations: number;
-    successRate: number;
   }>;
   skills: Array<{
     name: string;
     level: number;
-    description: string;
+    description?: string;
   }>;
 }
 
@@ -392,6 +420,30 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
     intake_coordinator: "Coordinatore Intake",
   };
 
+  const agentTypeDescriptions: Record<string, string> = {
+    reactive_lead: "Risponde ai messaggi in arrivo, qualifica i lead e li guida verso la prenotazione di una consulenza.",
+    proactive_setter: "Contatta proattivamente i potenziali clienti per fissare appuntamenti e gestire le obiezioni.",
+    informative_advisor: "Fornisce informazioni dettagliate sui servizi senza spingere alla vendita diretta.",
+    customer_success: "Segue i clienti esistenti per garantire la loro soddisfazione e favorire il successo.",
+    intake_coordinator: "Raccoglie documenti e informazioni necessarie prima delle consulenze.",
+  };
+
+  const personalityLabels: Record<string, string> = {
+    amico_fidato: "Amico Fidato",
+    coach_motivazionale: "Coach Motivazionale",
+    consulente_professionale: "Consulente Professionale",
+    mentore_paziente: "Mentore Paziente",
+    venditore_energico: "Venditore Energico",
+    consigliere_empatico: "Consigliere Empatico",
+    stratega_diretto: "Stratega Diretto",
+    educatore_socratico: "Educatore Socratico",
+    esperto_tecnico: "Esperto Tecnico",
+    compagno_entusiasta: "Compagno Entusiasta",
+  };
+
+  const agentData = data?.agent;
+  const features = agentData?.features;
+
   const statusConfig = {
     active: { label: "Attivo", color: "bg-green-100 text-green-700" },
     paused: { label: "In Pausa", color: "bg-amber-100 text-amber-700" },
@@ -420,6 +472,119 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
               </div>
             </div>
           </div>
+
+          {/* Summary Section - Cosa fa questo agente */}
+          <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+            <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+              <Info className="h-4 w-4 text-blue-500" />
+              Cosa fa questo agente
+            </h3>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              {agentTypeDescriptions[selectedAgent.agentType] || "Gestisce le conversazioni WhatsApp in modo intelligente."}
+            </p>
+            
+            {/* Business Info */}
+            {(agentData?.businessName || agentData?.businessDescription) && (
+              <div className="mt-3 pt-3 border-t border-blue-100">
+                {agentData.businessName && (
+                  <p className="text-xs text-slate-500">
+                    <span className="font-medium text-slate-600">Business:</span> {agentData.businessName}
+                  </p>
+                )}
+                {agentData.businessDescription && (
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                    {agentData.businessDescription}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Personality */}
+            {agentData?.personality && (
+              <div className="mt-3 flex items-center gap-2">
+                <Sparkles className="h-3 w-3 text-purple-500" />
+                <span className="text-xs text-purple-600 font-medium">
+                  {personalityLabels[agentData.personality] || agentData.personality}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Features enabled badges */}
+          {features && (
+            <div>
+              <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-500" />
+                Funzionalità Attive
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {features.bookingEnabled && (
+                  <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
+                    <CalendarCheck className="h-3 w-3 mr-1" />
+                    Prenotazioni
+                  </Badge>
+                )}
+                {features.objectionHandlingEnabled && (
+                  <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200">
+                    <ShieldCheck className="h-3 w-3 mr-1" />
+                    Obiezioni
+                  </Badge>
+                )}
+                {features.upsellingEnabled && (
+                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200">
+                    <BadgeDollarSign className="h-3 w-3 mr-1" />
+                    Upselling
+                  </Badge>
+                )}
+                {features.disqualificationEnabled && (
+                  <Badge variant="secondary" className="bg-red-50 text-red-700 border-red-200">
+                    <UserX className="h-3 w-3 mr-1" />
+                    Disqualifica
+                  </Badge>
+                )}
+                {features.ttsEnabled && (
+                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                    <Mic className="h-3 w-3 mr-1" />
+                    Vocali
+                  </Badge>
+                )}
+                {features.hasCalendar && (
+                  <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    Calendario
+                  </Badge>
+                )}
+                {features.hasKnowledgeBase && (
+                  <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                    <BookOpen className="h-3 w-3 mr-1" />
+                    Knowledge Base
+                  </Badge>
+                )}
+                {features.hasSalesScript && (
+                  <Badge variant="secondary" className="bg-pink-50 text-pink-700 border-pink-200">
+                    <FileText className="h-3 w-3 mr-1" />
+                    Script Vendita
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Working Hours */}
+          {agentData?.workingHours && (
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <div className="flex items-center gap-2 text-slate-600">
+                <Clock className="h-4 w-4 text-slate-500" />
+                <span className="text-sm font-medium">Orari di Lavoro</span>
+              </div>
+              <p className="text-sm text-slate-500 mt-1">
+                {String(agentData.workingHours.start).padStart(2, '0')}:00 - {String(agentData.workingHours.end).padStart(2, '0')}:00
+                {agentData.workingHours.timezone && (
+                  <span className="text-xs text-slate-400 ml-1">({agentData.workingHours.timezone})</span>
+                )}
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-center py-4">
             <PerformanceGauge 
