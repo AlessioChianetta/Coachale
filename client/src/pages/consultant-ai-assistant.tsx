@@ -11,6 +11,7 @@ import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
 import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
+import { WelcomeScreen } from "@/components/ai-assistant/WelcomeScreen";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -490,7 +491,7 @@ export default function ConsultantAIAssistant() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-teal-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <div className="flex h-screen">
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
@@ -498,7 +499,7 @@ export default function ConsultantAIAssistant() {
           {(!isMobile || chatSidebarOpen) && (
             <div
               className={cn(
-                "border-r bg-white dark:bg-gray-800 flex flex-col transition-all duration-300",
+                "border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col transition-all duration-300",
                 isMobile ? "absolute inset-0 z-50 w-full" : sidebarMinimized ? "w-16" : "w-[280px]"
               )}
             >
@@ -522,7 +523,7 @@ export default function ConsultantAIAssistant() {
                       <Button
                         onClick={handleNewConversation}
                         variant="secondary"
-                        className="flex-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 shadow-none hover:shadow-none"
+                        className="flex-1 bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:from-cyan-600 hover:to-teal-600 shadow-none hover:shadow-none"
                       >
                         <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                         <span className="font-semibold">Nuova</span>
@@ -570,7 +571,7 @@ export default function ConsultantAIAssistant() {
                     value={conversationFilter}
                     onValueChange={setConversationFilter}
                   >
-                    <SelectTrigger className="w-full h-9 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                    <SelectTrigger className="w-full h-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                       <div className="flex items-center gap-2">
                         <Filter className="h-3.5 w-3.5 text-muted-foreground" />
                         <SelectValue placeholder="Filtra conversazioni" />
@@ -639,7 +640,7 @@ export default function ConsultantAIAssistant() {
                         </motion.div>
 
                         <motion.div
-                          className="relative z-10 bg-white dark:bg-gray-800"
+                          className="relative z-10 bg-slate-50 dark:bg-slate-900"
                           drag="x"
                           dragConstraints={{ left: -64, right: 0 }}
                           dragElastic={0.2}
@@ -658,8 +659,8 @@ export default function ConsultantAIAssistant() {
                           <Button
                             variant={selectedConversationId === conversation.id ? "secondary" : "ghost"}
                             className={cn(
-                              "w-full justify-start text-left h-auto min-h-[44px] py-2 px-2.5 rounded-none",
-                              selectedConversationId === conversation.id && "bg-blue-100 dark:bg-blue-900/20"
+                              "w-full justify-start text-left h-auto min-h-[44px] py-2 px-2.5 rounded-none hover:bg-cyan-50 dark:hover:bg-cyan-900/20",
+                              selectedConversationId === conversation.id && "bg-cyan-100 dark:bg-cyan-900/30"
                             )}
                             onClick={() => {
                               handleSelectConversation(conversation.id);
@@ -761,212 +762,12 @@ export default function ConsultantAIAssistant() {
 
             <div className="flex-1 flex flex-col overflow-hidden">
               {messages.length === 0 ? (
-                <div className="flex-1 overflow-y-auto relative">
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <motion.div
-                      className="absolute top-20 right-20 w-72 h-72 bg-purple-400/20 rounded-full blur-3xl"
-                      animate={{ 
-                        scale: [1, 1.2, 1],
-                        x: [0, 30, 0],
-                        y: [0, -20, 0]
-                      }}
-                      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                    <motion.div
-                      className="absolute bottom-20 left-20 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl"
-                      animate={{ 
-                        scale: [1, 1.3, 1],
-                        x: [0, -30, 0],
-                        y: [0, 30, 0]
-                      }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                    />
-                    <motion.div
-                      className="absolute top-1/2 left-1/2 w-64 h-64 bg-pink-400/15 rounded-full blur-3xl"
-                      animate={{ 
-                        scale: [1, 1.1, 1],
-                        rotate: [0, 180, 360]
-                      }}
-                      transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                    />
-                  </div>
-
-                  <div className="min-h-full flex flex-col items-center justify-start p-3 sm:p-6 lg:p-8 relative z-10">
-                    <div className="w-full max-w-5xl mx-auto space-y-3 sm:space-y-6 lg:space-y-8">
-                      <div className="flex flex-col items-center text-center">
-                        <motion.div 
-                          className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 flex items-center justify-center mb-3 sm:mb-6 shadow-xl"
-                          animate={{ 
-                            scale: [1, 1.05, 1],
-                            rotate: [0, 5, -5, 0],
-                            boxShadow: [
-                              "0 10px 30px rgba(168, 85, 247, 0.4)",
-                              "0 15px 40px rgba(236, 72, 153, 0.5)",
-                              "0 10px 30px rgba(168, 85, 247, 0.4)"
-                            ]
-                          }}
-                          transition={{ 
-                            duration: 3, 
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                          }}
-                        >
-                          <Sparkles className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
-                        </motion.div>
-                        <h3 className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
-                          AI Assistant Consulente
-                        </h3>
-                        
-                        {/* Active AI Provider Badge */}
-                        {activeProvider && (
-                          <div className="flex items-center gap-2 px-3 py-1.5 mb-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full border border-gray-200 dark:border-gray-700 shadow-sm">
-                            <div className={`w-2 h-2 rounded-full ${activeProvider.source === 'google' ? 'bg-yellow-400' : 'bg-green-400'} animate-pulse`} />
-                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{activeProvider.provider}</span>
-                          </div>
-                        )}
-                        
-                        <p className="text-xs sm:text-base text-gray-600 dark:text-gray-400 mb-3 sm:mb-6 max-w-md px-2">
-                          Assistenza intelligente per la gestione clienti, analisi dati e ottimizzazione del tuo business.
-                        </p>
-                      </div>
-
-                      <div className="hidden lg:block fixed top-4 right-4 z-40 w-auto max-w-[300px] bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-700 shadow-xl">
-                        <div className="text-xs font-bold text-blue-900 dark:text-blue-200 mb-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                            <span>Cosa posso fare:</span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowTestQuestionsDialog(true)}
-                            className="h-6 px-2 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300"
-                          >
-                            🧪 Esempi
-                          </Button>
-                        </div>
-                        <div className="space-y-2 text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">👥</span>
-                            <span className="text-gray-800 dark:text-gray-200 font-medium">Gestione clienti</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">📊</span>
-                            <span className="text-gray-800 dark:text-gray-200 font-medium">Analisi e report</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">📈</span>
-                            <span className="text-gray-800 dark:text-gray-200 font-medium">Campagne marketing</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">📅</span>
-                            <span className="text-gray-800 dark:text-gray-200 font-medium">Appuntamenti e task</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="lg:hidden w-full mb-4">
-                        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border-2 border-blue-200 dark:border-blue-700 shadow-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2 text-xs font-bold text-blue-900 dark:text-blue-200">
-                              <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                              <span>Cosa posso fare:</span>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setShowTestQuestionsDialog(true)}
-                              className="h-6 px-2 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300"
-                            >
-                              🧪 Esempi
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm">👥</span>
-                              <span className="text-gray-800 dark:text-gray-200 font-medium">Clienti</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm">📊</span>
-                              <span className="text-gray-800 dark:text-gray-200 font-medium">Analisi</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm">📈</span>
-                              <span className="text-gray-800 dark:text-gray-200 font-medium">Marketing</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm">📅</span>
-                              <span className="text-gray-800 dark:text-gray-200 font-medium">Task</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="w-full">
-                        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                          <CardContent className="p-4">
-                            <div className="mb-3">
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                                <Sparkles className="h-3.5 w-3.5 text-purple-600" />
-                                Azioni Rapide
-                              </h4>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                              <Button
-                                variant="outline"
-                                className="h-auto py-3 px-3 flex flex-col items-start gap-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-700 transition-all group"
-                                onClick={() => handleQuickAction("Mostrami un riepilogo dei miei clienti attivi")}
-                              >
-                                <Users className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
-                                <div className="text-left">
-                                  <div className="text-xs font-semibold text-gray-900 dark:text-white">Clienti Attivi</div>
-                                  <div className="text-[10px] text-gray-500 dark:text-gray-400">Stato clienti</div>
-                                </div>
-                              </Button>
-
-                              <Button
-                                variant="outline"
-                                className="h-auto py-3 px-3 flex flex-col items-start gap-1.5 hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-300 dark:hover:border-green-700 transition-all group"
-                                onClick={() => handleQuickAction("Quali sono le campagne marketing più performanti?")}
-                              >
-                                <TrendingUp className="h-4 w-4 text-green-600 group-hover:scale-110 transition-transform" />
-                                <div className="text-left">
-                                  <div className="text-xs font-semibold text-gray-900 dark:text-white">Campagne Top</div>
-                                  <div className="text-[10px] text-gray-500 dark:text-gray-400">Performance</div>
-                                </div>
-                              </Button>
-
-                              <Button
-                                variant="outline"
-                                className="h-auto py-3 px-3 flex flex-col items-start gap-1.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:border-purple-300 dark:hover:border-purple-700 transition-all group"
-                                onClick={() => handleQuickAction("Mostrami gli appuntamenti di questa settimana")}
-                              >
-                                <Calendar className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
-                                <div className="text-left">
-                                  <div className="text-xs font-semibold text-gray-900 dark:text-white">Appuntamenti</div>
-                                  <div className="text-[10px] text-gray-500 dark:text-gray-400">Questa settimana</div>
-                                </div>
-                              </Button>
-
-                              <Button
-                                variant="outline"
-                                className="h-auto py-3 px-3 flex flex-col items-start gap-1.5 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-300 dark:hover:border-orange-700 transition-all group"
-                                onClick={() => handleQuickAction("Genera un report delle attività recenti")}
-                              >
-                                <BarChart className="h-4 w-4 text-orange-600 group-hover:scale-110 transition-transform" />
-                                <div className="text-left">
-                                  <div className="text-xs font-semibold text-gray-900 dark:text-white">Report</div>
-                                  <div className="text-[10px] text-gray-500 dark:text-gray-400">Attività recenti</div>
-                                </div>
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <WelcomeScreen 
+                  variant="consultant" 
+                  onSuggestionClick={handleQuickAction} 
+                  disabled={isTyping} 
+                  agentName={selectedAgentId ? availableAgents.find(a => a.id === selectedAgentId)?.name : undefined} 
+                />
               ) : (
                 <MessageList messages={messages} isTyping={isTyping} />
               )}
