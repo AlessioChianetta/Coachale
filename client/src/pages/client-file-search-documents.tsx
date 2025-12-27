@@ -112,7 +112,7 @@ export default function ClientFileSearchDocuments() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [ownerFilter, setOwnerFilter] = useState<string>("all");
+  const [ownerFilter, setOwnerFilter] = useState<string>("client");
 
   const { data: response, isLoading, error } = useQuery<DocumentsResponse>({
     queryKey: ["/api/file-search/client/documents"],
@@ -166,10 +166,10 @@ export default function ClientFileSearchDocuments() {
                     </div>
                     <div>
                       <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">
-                        Documenti AI
+                        I Miei Documenti AI
                       </h1>
                       <p className="text-violet-100 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">
-                        Documenti disponibili per l'Assistente AI
+                        I tuoi documenti personali indicizzati per l'Assistente AI
                       </p>
                     </div>
                   </div>
@@ -178,36 +178,25 @@ export default function ClientFileSearchDocuments() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/30 border-emerald-200 dark:border-emerald-700">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
+                  <div>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">I Miei Documenti</p>
+                    <p className="text-lg sm:text-xl font-bold text-emerald-800 dark:text-emerald-200">{summary.clientDocs}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center gap-2">
                   <Database className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Totale</p>
+                    <p className="text-xs text-muted-foreground">Totale Disponibili</p>
                     <p className="text-lg sm:text-xl font-bold">{summary.total}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Consulente</p>
-                    <p className="text-lg sm:text-xl font-bold">{summary.consultantDocs}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">I Miei</p>
-                    <p className="text-lg sm:text-xl font-bold">{summary.clientDocs}</p>
                   </div>
                 </div>
               </CardContent>
