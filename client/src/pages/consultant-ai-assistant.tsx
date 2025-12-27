@@ -56,6 +56,7 @@ interface Conversation {
   title: string;
   createdAt: string;
   updatedAt: string;
+  agentId?: string | null;
 }
 
 interface Message {
@@ -165,6 +166,10 @@ export default function ConsultantAIAssistant() {
     },
   });
 
+  const filteredConversations = selectedAgentId
+    ? conversations.filter((c) => c.agentId === selectedAgentId)
+    : conversations.filter((c) => !c.agentId || c.agentId === null);
+
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: string) => {
       const response = await fetch(`/api/consultant/ai/conversations/${conversationId}`, {
@@ -197,7 +202,7 @@ export default function ConsultantAIAssistant() {
 
   const deleteAllConversationsMutation = useMutation({
     mutationFn: async () => {
-      const conversationIds = conversations.map(c => c.id);
+      const conversationIds = filteredConversations.map(c => c.id);
       await Promise.all(
         conversationIds.map(id =>
           fetch(`/api/consultant/ai/conversations/${id}`, {
@@ -446,6 +451,11 @@ export default function ConsultantAIAssistant() {
   }, [selectedConversationId, isNewConversation]);
 
   useEffect(() => {
+    setSelectedConversationId(null);
+    setMessages([]);
+  }, [selectedAgentId]);
+
+  useEffect(() => {
     setSidebarOpen(false);
     
     if (!isMobile) {
@@ -558,14 +568,14 @@ export default function ConsultantAIAssistant() {
                     <div className="text-center py-8 text-muted-foreground">
                       Caricamento...
                     </div>
-                  ) : conversations.length === 0 ? (
+                  ) : filteredConversations.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">Nessuna conversazione</p>
                       <p className="text-xs mt-1">Inizia una nuova conversazione</p>
                     </div>
                   ) : (
-                    conversations.map((conversation) => (
+                    filteredConversations.map((conversation) => (
                       <div key={conversation.id} className="relative overflow-hidden w-full">
                         <motion.div 
                           className="absolute right-0 top-0 bottom-0 flex items-center"

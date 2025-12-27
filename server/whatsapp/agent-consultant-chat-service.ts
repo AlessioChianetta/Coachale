@@ -199,6 +199,35 @@ Esempio: "Secondo il documento 'Listino Prezzi 2024'..."
 `;
   }
   
+  // Build File Search Categories section (if any categories are enabled)
+  let fileSearchCategoriesSection = '';
+  const categories = agentConfig?.fileSearchCategories;
+  if (categories && typeof categories === 'object') {
+    const enabledCategories: string[] = [];
+    if (categories.courses) enabledCategories.push('📚 Corsi');
+    if (categories.lessons) enabledCategories.push('📖 Lezioni');
+    if (categories.exercises) enabledCategories.push('✏️ Esercizi');
+    if (categories.knowledgeBase) enabledCategories.push('🧠 Knowledge Base');
+    if (categories.library) enabledCategories.push('📁 Libreria');
+    if (categories.university) enabledCategories.push('🎓 University');
+    
+    if (enabledCategories.length > 0) {
+      fileSearchCategoriesSection = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 CATEGORIE CONTENUTI DISPONIBILI (File Search)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Puoi cercare e utilizzare contenuti delle seguenti categorie:
+${enabledCategories.map(cat => `• ${cat}`).join('\n')}
+
+⚠️ IMPORTANTE: Concentra le tue ricerche su queste categorie quando rispondi.
+Utilizza il File Search per trovare informazioni rilevanti da questi contenuti.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+    }
+  }
+  
   const today = new Date();
   const todayFormatter = new Intl.DateTimeFormat('it-IT', {
     weekday: 'long',
@@ -241,7 +270,7 @@ ${customInstructions ? `
 ${customInstructions}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-` : ''}${authoritySection}${targetAudienceSection}${creationsSection}${credibilitySection}${servicesSection}${consultantProfileSection}${knowledgeBaseSection}
+` : ''}${authoritySection}${targetAudienceSection}${creationsSection}${credibilitySection}${servicesSection}${consultantProfileSection}${knowledgeBaseSection}${fileSearchCategoriesSection}
 📌 ISTRUZIONI:
 - Rispondi SEMPRE in italiano
 - Usa messaggi brevi e concisi (stile WhatsApp)

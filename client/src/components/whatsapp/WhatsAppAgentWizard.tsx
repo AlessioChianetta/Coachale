@@ -103,6 +103,14 @@ const emptyFormData = {
   agentInstructionsEnabled: false,
   selectedTemplate: "receptionist" as const,
   useCentralCredentials: false,
+  fileSearchCategories: {
+    courses: false,
+    lessons: false,
+    exercises: false,
+    knowledgeBase: false,
+    library: false,
+    university: false,
+  },
 };
 
 export default function WhatsAppAgentWizard({

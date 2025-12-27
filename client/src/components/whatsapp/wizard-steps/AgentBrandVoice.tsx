@@ -84,6 +84,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [fileSearchCategoriesOpen, setFileSearchCategoriesOpen] = useState(false);
   
   const [knowledgeItems, setKnowledgeItems] = useState<WhatsappAgentKnowledgeItem[]>([]);
   const [knowledgeDrafts, setKnowledgeDrafts] = useState<KnowledgeItemDraft[]>([]);
@@ -1371,6 +1372,139 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
                   📥 Importa da Knowledge Base
                 </Button>
               </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      <Collapsible open={fileSearchCategoriesOpen} onOpenChange={setFileSearchCategoriesOpen}>
+        <Card className="border-2 border-purple-500/20 shadow-lg">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="bg-gradient-to-r from-purple-500/5 to-purple-500/10 cursor-pointer hover:from-purple-500/10 hover:to-purple-500/15 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-purple-500" />
+                  <CardTitle>🔍 Categorie File Search</CardTitle>
+                </div>
+                {fileSearchCategoriesOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+              <CardDescription className="text-left">
+                Seleziona quali categorie di documenti l'AI può cercare
+              </CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Seleziona quali tipi di contenuti l'agente AI può cercare e utilizzare nelle risposte.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
+                  <Checkbox
+                    checked={formData.fileSearchCategories?.courses ?? false}
+                    onCheckedChange={(checked) => {
+                      onChange('fileSearchCategories', {
+                        ...formData.fileSearchCategories,
+                        courses: !!checked
+                      });
+                    }}
+                  />
+                  <div>
+                    <span className="text-sm font-medium">📚 Corsi</span>
+                    <p className="text-xs text-muted-foreground">Corsi dalla libreria formativa</p>
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
+                  <Checkbox
+                    checked={formData.fileSearchCategories?.lessons ?? false}
+                    onCheckedChange={(checked) => {
+                      onChange('fileSearchCategories', {
+                        ...formData.fileSearchCategories,
+                        lessons: !!checked
+                      });
+                    }}
+                  />
+                  <div>
+                    <span className="text-sm font-medium">📖 Lezioni</span>
+                    <p className="text-xs text-muted-foreground">Contenuti delle lezioni</p>
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
+                  <Checkbox
+                    checked={formData.fileSearchCategories?.exercises ?? false}
+                    onCheckedChange={(checked) => {
+                      onChange('fileSearchCategories', {
+                        ...formData.fileSearchCategories,
+                        exercises: !!checked
+                      });
+                    }}
+                  />
+                  <div>
+                    <span className="text-sm font-medium">📝 Esercizi</span>
+                    <p className="text-xs text-muted-foreground">Esercizi e compiti</p>
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
+                  <Checkbox
+                    checked={formData.fileSearchCategories?.knowledgeBase ?? false}
+                    onCheckedChange={(checked) => {
+                      onChange('fileSearchCategories', {
+                        ...formData.fileSearchCategories,
+                        knowledgeBase: !!checked
+                      });
+                    }}
+                  />
+                  <div>
+                    <span className="text-sm font-medium">🧠 Knowledge Base</span>
+                    <p className="text-xs text-muted-foreground">Documenti knowledge base</p>
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
+                  <Checkbox
+                    checked={formData.fileSearchCategories?.library ?? false}
+                    onCheckedChange={(checked) => {
+                      onChange('fileSearchCategories', {
+                        ...formData.fileSearchCategories,
+                        library: !!checked
+                      });
+                    }}
+                  />
+                  <div>
+                    <span className="text-sm font-medium">📁 Libreria</span>
+                    <p className="text-xs text-muted-foreground">Documenti dalla libreria</p>
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
+                  <Checkbox
+                    checked={formData.fileSearchCategories?.university ?? false}
+                    onCheckedChange={(checked) => {
+                      onChange('fileSearchCategories', {
+                        ...formData.fileSearchCategories,
+                        university: !!checked
+                      });
+                    }}
+                  />
+                  <div>
+                    <span className="text-sm font-medium">🎓 University</span>
+                    <p className="text-xs text-muted-foreground">Percorsi universitari</p>
+                  </div>
+                </label>
+              </div>
+
+              {Object.values(formData.fileSearchCategories || {}).some(v => v) && (
+                <div className="flex items-center gap-2 pt-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-muted-foreground">
+                    {Object.values(formData.fileSearchCategories || {}).filter(v => v).length} categoria/e selezionata/e
+                  </span>
+                </div>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Card>

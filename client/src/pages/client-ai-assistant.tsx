@@ -20,6 +20,7 @@ import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
 import { LiveModeScreen } from "@/components/ai-assistant/live-mode/LiveModeScreen";
+import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
 import { AIMode, ConsultantType } from "@/components/ai-assistant/AIAssistant";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -61,6 +62,7 @@ interface Conversation {
   updatedAt: string;
   mode?: "assistenza" | "consulente" | "live_voice";
   consultantType?: "finanziario" | "vendita" | "business";
+  agentId?: string | null;
 }
 
 interface Message {
@@ -483,6 +485,12 @@ export default function ClientAIAssistant() {
     };
   }, []);
 
+  // Clear chat view when selectedAgentId changes
+  useEffect(() => {
+    setSelectedConversationId(null);
+    setMessages([]);
+  }, [selectedAgentId]);
+
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} bg-gradient-to-br ${theme === 'dark' ? 'from-gray-900 via-gray-900 to-gray-900' : 'from-slate-50 via-blue-50 to-purple-50'}`}>
       <div className="flex h-screen">
@@ -576,6 +584,11 @@ export default function ClientAIAssistant() {
                       Caricamento...
                     </div>
                   ) : conversations.filter((conv) => {
+                      // First filter by agent - if agent selected, only show that agent's conversations
+                      if (selectedAgentId && conv.agentId !== selectedAgentId) return false;
+                      // If no agent selected, show all (or those without agentId)
+                      if (!selectedAgentId && conv.agentId) return false;
+                      // Then apply the mode/type filter
                       if (conversationFilter === "all") return true;
                       if (conversationFilter === "assistenza") return conv.mode === "assistenza";
                       if (conversationFilter === "live_voice") return conv.mode === "live_voice";
@@ -585,7 +598,9 @@ export default function ClientAIAssistant() {
                       <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">Nessuna conversazione</p>
                       <p className="text-xs mt-1">
-                        {conversationFilter === "all" 
+                        {selectedAgentId
+                          ? "Nessuna conversazione con questo agente"
+                          : conversationFilter === "all" 
                           ? "Inizia una nuova conversazione"
                           : conversationFilter === "live_voice"
                           ? "Nessuna conversazione vocale"
@@ -596,6 +611,11 @@ export default function ClientAIAssistant() {
                   ) : (
                     conversations
                       .filter((conv) => {
+                        // First filter by agent - if agent selected, only show that agent's conversations
+                        if (selectedAgentId && conv.agentId !== selectedAgentId) return false;
+                        // If no agent selected, show all (or those without agentId)
+                        if (!selectedAgentId && conv.agentId) return false;
+                        // Then apply the mode/type filter
                         if (conversationFilter === "all") return true;
                         if (conversationFilter === "assistenza") return conv.mode === "assistenza";
                         if (conversationFilter === "live_voice") return conv.mode === "live_voice";
@@ -748,6 +768,29 @@ export default function ClientAIAssistant() {
           )}
 
           <div className={`flex-1 flex flex-col ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
+            {/* Chat Header with Agent info and Preferences */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {selectedAgentId 
+                      ? availableAgents.find(a => a.id === selectedAgentId)?.name || "Assistente AI"
+                      : "Assistente AI"
+                    }
+                  </h2>
+                  {selectedAgentId && (
+                    <p className="text-xs text-muted-foreground">
+                      Conversazioni filtrate per questo agente
+                    </p>
+                  )}
+                </div>
+              </div>
+              <AIPreferencesSheet />
+            </div>
+
             <div className="flex-1 flex flex-col overflow-hidden">
               {messages.length === 0 ? (
                 <div className="flex-1 overflow-y-auto relative">

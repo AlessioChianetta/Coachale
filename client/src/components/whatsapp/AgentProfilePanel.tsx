@@ -948,7 +948,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                 permettendo all'assistente di accedere alle informazioni e conversazioni dell'agente.
               </p>
               
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between">
                 <label htmlFor="ai-assistant-toggle" className="text-sm font-medium text-slate-700">
                   Abilita in AI Assistant
                 </label>
@@ -959,69 +959,10 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                   disabled={isSavingAISettings}
                 />
               </div>
-
-              {enableInAIAssistant && (
-                <div className="space-y-3 pt-3 border-t border-blue-100">
-                  <p className="text-sm font-medium text-slate-700">Categorie File Search</p>
-                  <p className="text-xs text-slate-500 mb-2">
-                    Seleziona quali categorie di documenti l'AI Assistant può cercare per questo agente.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <Checkbox
-                        checked={fileSearchCategories.courses}
-                        onCheckedChange={(checked) => handleCategoryChange('courses', checked as boolean)}
-                        disabled={isSavingAISettings}
-                      />
-                      <span className="text-sm text-slate-600">Corsi</span>
-                    </label>
-                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <Checkbox
-                        checked={fileSearchCategories.lessons}
-                        onCheckedChange={(checked) => handleCategoryChange('lessons', checked as boolean)}
-                        disabled={isSavingAISettings}
-                      />
-                      <span className="text-sm text-slate-600">Lezioni</span>
-                    </label>
-                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <Checkbox
-                        checked={fileSearchCategories.exercises}
-                        onCheckedChange={(checked) => handleCategoryChange('exercises', checked as boolean)}
-                        disabled={isSavingAISettings}
-                      />
-                      <span className="text-sm text-slate-600">Esercizi</span>
-                    </label>
-                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <Checkbox
-                        checked={fileSearchCategories.knowledgeBase}
-                        onCheckedChange={(checked) => handleCategoryChange('knowledgeBase', checked as boolean)}
-                        disabled={isSavingAISettings}
-                      />
-                      <span className="text-sm text-slate-600">Knowledge Base</span>
-                    </label>
-                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <Checkbox
-                        checked={fileSearchCategories.library}
-                        onCheckedChange={(checked) => handleCategoryChange('library', checked as boolean)}
-                        disabled={isSavingAISettings}
-                      />
-                      <span className="text-sm text-slate-600">Libreria</span>
-                    </label>
-                    <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <Checkbox
-                        checked={fileSearchCategories.university}
-                        onCheckedChange={(checked) => handleCategoryChange('university', checked as boolean)}
-                        disabled={isSavingAISettings}
-                      />
-                      <span className="text-sm text-slate-600">Università</span>
-                    </label>
-                  </div>
-                  {isSavingAISettings && (
-                    <div className="flex items-center gap-2 text-xs text-blue-600 mt-2">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Salvataggio in corso...
-                    </div>
-                  )}
+              {isSavingAISettings && (
+                <div className="flex items-center gap-2 text-xs text-blue-600 mt-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Salvataggio in corso...
                 </div>
               )}
             </div>
