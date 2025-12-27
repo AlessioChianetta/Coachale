@@ -545,7 +545,7 @@ export default function ConsultantAIAssistant() {
                       onClick={handleNewConversation}
                       variant="ghost"
                       size="icon"
-                      className="h-11 w-11 min-h-[44px] min-w-[44px] bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                      className="h-11 w-11 min-h-[44px] min-w-[44px] bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
                       title="Nuova conversazione"
                     >
                       <Plus className="h-5 w-5" />
@@ -557,9 +557,9 @@ export default function ConsultantAIAssistant() {
                   <Button
                     onClick={() => setLocation('/consultant/ai-settings')}
                     variant="outline"
-                    className="w-full bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-700"
+                    className="w-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
                   >
-                    <Settings className="h-4 w-4 mr-2" />
+                    <Settings className="h-4 w-4 mr-2 text-teal-600 dark:text-teal-400" />
                     <span className="font-medium text-sm">Impostazioni Assistant</span>
                   </Button>
                 )}
@@ -586,14 +586,14 @@ export default function ConsultantAIAssistant() {
                       </SelectItem>
                       <SelectItem value="base">
                         <span className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-purple-500" />
+                          <Sparkles className="h-4 w-4 text-cyan-500" />
                           Assistenza base
                         </span>
                       </SelectItem>
                       {availableAgents.map((agent) => (
                         <SelectItem key={agent.id} value={agent.id}>
                           <span className="flex items-center gap-2">
-                            <Bot className="h-4 w-4 text-blue-500" />
+                            <Bot className="h-4 w-4 text-teal-500" />
                             {agent.name}
                           </span>
                         </SelectItem>
@@ -714,33 +714,33 @@ export default function ConsultantAIAssistant() {
             </div>
           )}
 
-          <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
+          <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
             {/* Agent Selection Header */}
-            <div className="border-b bg-gray-50/50 dark:bg-gray-900/50 px-4 py-3 flex-shrink-0">
+            <div className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 px-4 py-3 flex-shrink-0">
               <div className="flex items-center justify-between max-w-4xl mx-auto">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Agente:</span>
+                    <Bot className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Agente:</span>
                   </div>
                   <Select
                     value={selectedAgentId || "base"}
                     onValueChange={(value) => setSelectedAgentId(value === "base" ? null : value)}
                   >
-                    <SelectTrigger className="w-[280px] h-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <SelectTrigger className="w-[280px] h-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                       <SelectValue placeholder="Seleziona agente" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="base">
                         <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-purple-500" />
+                          <Sparkles className="h-4 w-4 text-cyan-500" />
                           <span>Assistente Base</span>
                         </div>
                       </SelectItem>
                       {availableAgents.map((agent) => (
                         <SelectItem key={agent.id} value={agent.id}>
                           <div className="flex items-center gap-2">
-                            <Bot className="h-4 w-4 text-blue-500" />
+                            <Bot className="h-4 w-4 text-teal-500" />
                             <span>{agent.name}</span>
                             {agent.businessName && (
                               <span className="text-xs text-muted-foreground">({agent.businessName})</span>
@@ -751,7 +751,7 @@ export default function ConsultantAIAssistant() {
                     </SelectContent>
                   </Select>
                   {selectedAgentId && (
-                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
                       L'AI userà il contesto dell'agente selezionato
                     </span>
                   )}
@@ -773,7 +773,7 @@ export default function ConsultantAIAssistant() {
               )}
             </div>
             
-            <div className="border-t pt-6 px-4 pb-4 bg-white dark:bg-gray-800 flex-shrink-0 shadow-lg">
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0 shadow-lg">
               <div className="max-w-4xl mx-auto space-y-3">
                 {isRetrying && (
                   <Alert className="border-orange-300 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-700">

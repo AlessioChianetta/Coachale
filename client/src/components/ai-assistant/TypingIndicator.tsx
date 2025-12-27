@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Sparkles, Brain, Lightbulb, Search, BookOpen } from "lucide-react";
+import { Bot, Brain, Lightbulb, Search, BookOpen, Sparkles } from "lucide-react";
 
 const thinkingMessages = [
   { text: "Sto analizzando le tue lezioni", icon: BookOpen },
@@ -26,19 +26,32 @@ export function TypingIndicator() {
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
       className="flex items-start gap-3"
     >
-      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg ring-2 ring-purple-200 dark:ring-purple-800">
-        <Loader2 className="h-5 w-5 animate-spin text-white" />
+      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md ring-2 ring-cyan-200/50 dark:ring-cyan-700/50">
+        <Bot className="h-4 w-4 text-white" />
       </div>
-      <div className="flex-1 mt-1">
-        <div className="inline-flex items-center gap-3 bg-white dark:bg-gray-800 rounded-2xl px-5 py-3.5 min-w-[220px] shadow-lg border border-gray-200 dark:border-gray-700">
+      <div className="flex-1">
+        <div className="inline-flex items-center gap-3 bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-slate-800 dark:to-slate-800/80 rounded-2xl rounded-tl-md px-5 py-3.5 min-w-[220px] shadow-sm border border-cyan-100 dark:border-slate-700">
           <div className="flex gap-1.5">
-            <span className="w-2.5 h-2.5 bg-purple-500 dark:bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-            <span className="w-2.5 h-2.5 bg-purple-500 dark:bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-            <span className="w-2.5 h-2.5 bg-purple-500 dark:bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+            <motion.span 
+              className="w-2.5 h-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
+            />
+            <motion.span 
+              className="w-2.5 h-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: 0.15 }}
+            />
+            <motion.span 
+              className="w-2.5 h-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: 0.3 }}
+            />
           </div>
           
           <AnimatePresence mode="wait">
@@ -50,8 +63,8 @@ export function TypingIndicator() {
               transition={{ duration: 0.3 }}
               className="flex items-center gap-2"
             >
-              <CurrentIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-              <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+              <CurrentIcon className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">
                 {thinkingMessages[currentMessageIndex].text}
               </span>
             </motion.div>
@@ -65,9 +78,9 @@ export function TypingIndicator() {
           transition={{ delay: 0.5 }}
         >
           <div className="flex items-center gap-2">
-            <div className="h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full flex-1 max-w-[240px] overflow-hidden shadow-sm">
+            <div className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full flex-1 max-w-[240px] overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full"
+                className="h-full bg-gradient-to-r from-cyan-500 via-teal-500 to-cyan-500 rounded-full"
                 initial={{ width: "0%" }}
                 animate={{ width: "100%" }}
                 transition={{
@@ -76,7 +89,7 @@ export function TypingIndicator() {
                 }}
               />
             </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
               In elaborazione...
             </span>
           </div>

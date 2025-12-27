@@ -494,7 +494,7 @@ export default function ClientAIAssistant() {
   }, [selectedAgentId]);
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} bg-gradient-to-br ${theme === 'dark' ? 'from-gray-900 via-gray-900 to-gray-900' : 'from-slate-50 via-blue-50 to-purple-50'}`}>
+    <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} bg-gradient-to-br ${theme === 'dark' ? 'from-slate-900 via-slate-900 to-slate-900' : 'from-slate-50 via-cyan-50/30 to-teal-50/20'}`}>
       <div className="flex h-screen">
         <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
@@ -502,7 +502,7 @@ export default function ClientAIAssistant() {
           {(!isMobile || chatSidebarOpen) && (
             <div
               className={cn(
-                "border-r bg-white dark:bg-gray-800 flex flex-col transition-all duration-300 space-y-3",
+                "border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col transition-all duration-300 space-y-3",
                 isMobile ? "absolute inset-0 z-50 w-full" : sidebarMinimized ? "w-16" : "w-[280px]"
               )}
             >
@@ -526,7 +526,7 @@ export default function ClientAIAssistant() {
                       <Button
                         onClick={handleNewConversation}
                         variant="secondary"
-                        className="flex-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 shadow-none hover:shadow-none"
+                        className="flex-1 bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:from-cyan-600 hover:to-teal-600 shadow-none hover:shadow-none"
                       >
                         <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                         <span className="font-semibold">Nuova</span>
@@ -548,7 +548,7 @@ export default function ClientAIAssistant() {
                       onClick={handleNewConversation}
                       variant="ghost"
                       size="icon"
-                      className="h-11 w-11 min-h-[44px] min-w-[44px] bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                      className="h-11 w-11 min-h-[44px] min-w-[44px] bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
                       title="Nuova conversazione"
                     >
                       <Plus className="h-5 w-5" />
@@ -559,7 +559,7 @@ export default function ClientAIAssistant() {
                 {!sidebarMinimized && (
                   <>
                     <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                      <label className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                         <Filter className="h-3.5 w-3.5" />
                         Filtra per agente
                       </label>
@@ -567,7 +567,7 @@ export default function ClientAIAssistant() {
                         value={agentFilter}
                         onValueChange={setAgentFilter}
                       >
-                        <SelectTrigger className="w-full h-9 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                        <SelectTrigger className="w-full h-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                           <SelectValue placeholder="Filtra per agente" />
                         </SelectTrigger>
                         <SelectContent>
@@ -579,14 +579,14 @@ export default function ClientAIAssistant() {
                           </SelectItem>
                           <SelectItem value="base">
                             <span className="flex items-center gap-2">
-                              <Sparkles className="h-4 w-4 text-purple-500" />
+                              <Sparkles className="h-4 w-4 text-cyan-500" />
                               Assistenza base
                             </span>
                           </SelectItem>
                           {availableAgents.map((agent) => (
                             <SelectItem key={agent.id} value={agent.id}>
                               <span className="flex items-center gap-2">
-                                <Bot className="h-4 w-4 text-blue-500" />
+                                <Bot className="h-4 w-4 text-teal-500" />
                                 {agent.name}
                               </span>
                             </SelectItem>
@@ -596,11 +596,11 @@ export default function ClientAIAssistant() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-medium text-muted-foreground">Filtra per tipo</label>
+                      <label className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Filtra per tipo</label>
                       <select
                         value={conversationFilter}
                         onChange={(e) => setConversationFilter(e.target.value as any)}
-                        className="w-full h-11 min-h-[44px] px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-600 transition-all"
+                        className="w-full h-11 min-h-[44px] px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-600 transition-all"
                       >
                         <option value="all">📋 Tutte le conversazioni</option>
                         <option value="assistenza">💬 Assistenza</option>
@@ -698,7 +698,7 @@ export default function ClientAIAssistant() {
 
                         {/* Conversazione swipeable */}
                         <motion.div
-                          className="relative z-10 bg-white dark:bg-gray-750 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600"
+                          className="relative z-10 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-200 hover:shadow-md hover:border-cyan-300 dark:hover:border-cyan-600"
                           drag="x"
                           dragConstraints={{ left: -64, right: 0 }}
                           dragElastic={0.2}
@@ -818,22 +818,22 @@ export default function ClientAIAssistant() {
             </div>
           )}
 
-          <div className={`flex-1 flex flex-col ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
+          <div className={`flex-1 flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
             {/* Chat Header with Agent info and Preferences */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md ring-2 ring-cyan-200/50 dark:ring-cyan-700/50">
                   <Sparkles className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                     {selectedAgentId 
                       ? availableAgents.find(a => a.id === selectedAgentId)?.name || "Assistente AI"
                       : "Assistente AI"
                     }
                   </h2>
                   {selectedAgentId && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Conversazioni filtrate per questo agente
                     </p>
                   )}
@@ -848,7 +848,7 @@ export default function ClientAIAssistant() {
                   {/* Animated background blobs */}
                   <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <motion.div
-                      className="absolute top-20 right-20 w-72 h-72 bg-purple-400/20 rounded-full blur-3xl"
+                      className="absolute top-20 right-20 w-72 h-72 bg-cyan-400/20 rounded-full blur-3xl"
                       animate={{ 
                         scale: [1, 1.2, 1],
                         x: [0, 30, 0],
@@ -857,7 +857,7 @@ export default function ClientAIAssistant() {
                       transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
                     />
                     <motion.div
-                      className="absolute bottom-20 left-20 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl"
+                      className="absolute bottom-20 left-20 w-96 h-96 bg-teal-400/20 rounded-full blur-3xl"
                       animate={{ 
                         scale: [1, 1.3, 1],
                         x: [0, -30, 0],
@@ -866,7 +866,7 @@ export default function ClientAIAssistant() {
                       transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
                     />
                     <motion.div
-                      className="absolute top-1/2 left-1/2 w-64 h-64 bg-pink-400/15 rounded-full blur-3xl"
+                      className="absolute top-1/2 left-1/2 w-64 h-64 bg-cyan-400/15 rounded-full blur-3xl"
                       animate={{ 
                         scale: [1, 1.1, 1],
                         rotate: [0, 180, 360]
@@ -879,14 +879,14 @@ export default function ClientAIAssistant() {
                       <div className="w-full max-w-5xl mx-auto space-y-3 sm:space-y-6 lg:space-y-8">
                         <div className="flex flex-col items-center text-center">
                           <motion.div 
-                            className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 flex items-center justify-center mb-3 sm:mb-6 shadow-xl"
+                            className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-cyan-500 via-teal-500 to-emerald-500 flex items-center justify-center mb-3 sm:mb-6 shadow-xl ring-4 ring-cyan-200/50 dark:ring-cyan-800/50"
                             animate={{ 
                               scale: [1, 1.05, 1],
                               rotate: [0, 5, -5, 0],
                               boxShadow: [
-                                "0 10px 30px rgba(168, 85, 247, 0.4)",
-                                "0 15px 40px rgba(236, 72, 153, 0.5)",
-                                "0 10px 30px rgba(168, 85, 247, 0.4)"
+                                "0 10px 30px rgba(6, 182, 212, 0.4)",
+                                "0 15px 40px rgba(20, 184, 166, 0.5)",
+                                "0 10px 30px rgba(6, 182, 212, 0.4)"
                               ]
                             }}
                             transition={{ 
@@ -897,10 +897,10 @@ export default function ClientAIAssistant() {
                           >
                             <Sparkles className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
                           </motion.div>
-                          <h3 className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
+                          <h3 className="text-lg sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-3">
                             Come posso aiutarti oggi?
                           </h3>
-                          <p className="text-xs sm:text-base text-gray-600 dark:text-gray-400 mb-3 sm:mb-6 max-w-md px-2">
+                          <p className="text-xs sm:text-base text-slate-600 dark:text-slate-400 mb-3 sm:mb-6 max-w-md px-2">
                             {mode === "assistenza"
                               ? "Sono qui per supportarti nella tua formazione. Chiedimi informazioni su lezioni, esercizi, task e molto altro."
                               : `Sono il tuo consulente personale ${
@@ -914,74 +914,74 @@ export default function ClientAIAssistant() {
                         </div>
 
                   {/* Legenda Compatta - Posizione Fissa in Alto a Destra - Solo su schermi grandi */}
-                  <div className="hidden lg:block fixed top-4 right-4 z-40 w-auto max-w-[300px] bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-700 shadow-xl">
-                    <div className="text-xs font-bold text-blue-900 dark:text-blue-200 mb-3 flex items-center justify-between">
+                  <div className="hidden lg:block fixed top-4 right-4 z-40 w-auto max-w-[300px] bg-white dark:bg-slate-800 rounded-xl p-4 border-2 border-cyan-200 dark:border-cyan-700 shadow-xl">
+                    <div className="text-xs font-bold text-cyan-900 dark:text-cyan-200 mb-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <Sparkles className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
                         <span>Cosa posso fare:</span>
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setShowTestQuestionsDialog(true)}
-                        className="h-6 px-2 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300"
+                        className="h-6 px-2 text-[10px] font-semibold bg-cyan-100 dark:bg-cyan-900 hover:bg-cyan-200 dark:hover:bg-cyan-800 text-cyan-700 dark:text-cyan-300"
                       >
-                        🧪 Esempi
+                        Esempi
                       </Button>
                     </div>
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center gap-2">
                         <span className="text-base">📚</span>
-                        <span className="text-gray-800 dark:text-gray-200 font-medium">Lezioni e spiegazioni</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-medium">Lezioni e spiegazioni</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-base">✅</span>
-                        <span className="text-gray-800 dark:text-gray-200 font-medium">Esercizi e feedback</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-medium">Esercizi e feedback</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-base">🎯</span>
-                        <span className="text-gray-800 dark:text-gray-200 font-medium">Progressi e obiettivi</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-medium">Progressi e obiettivi</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-base">📅</span>
-                        <span className="text-gray-800 dark:text-gray-200 font-medium">Task e scadenze</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-medium">Task e scadenze</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Legenda Mobile - Sotto il titolo principale, visibile solo su schermi piccoli */}
                   <div className="lg:hidden w-full mb-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border-2 border-blue-200 dark:border-blue-700 shadow-lg">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl p-3 border-2 border-cyan-200 dark:border-cyan-700 shadow-lg">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2 text-xs font-bold text-blue-900 dark:text-blue-200">
-                          <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        <div className="flex items-center gap-2 text-xs font-bold text-cyan-900 dark:text-cyan-200">
+                          <Sparkles className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
                           <span>Cosa posso fare:</span>
                         </div>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowTestQuestionsDialog(true)}
-                          className="h-6 px-2 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300"
+                          className="h-6 px-2 text-[10px] font-semibold bg-cyan-100 dark:bg-cyan-900 hover:bg-cyan-200 dark:hover:bg-cyan-800 text-cyan-700 dark:text-cyan-300"
                         >
-                          🧪 Esempi
+                          Esempi
                         </Button>
                       </div>
                       <div className="grid grid-cols-2 gap-1.5 text-[10px]">
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm">📚</span>
-                          <span className="text-gray-800 dark:text-gray-200 font-medium">Lezioni</span>
+                          <span className="text-slate-800 dark:text-slate-200 font-medium">Lezioni</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm">✅</span>
-                          <span className="text-gray-800 dark:text-gray-200 font-medium">Esercizi</span>
+                          <span className="text-slate-800 dark:text-slate-200 font-medium">Esercizi</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm">🎯</span>
-                          <span className="text-gray-800 dark:text-gray-200 font-medium">Progressi</span>
+                          <span className="text-slate-800 dark:text-slate-200 font-medium">Progressi</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm">📅</span>
-                          <span className="text-gray-800 dark:text-gray-200 font-medium">Task</span>
+                          <span className="text-slate-800 dark:text-slate-200 font-medium">Task</span>
                         </div>
                       </div>
                     </div>
@@ -991,8 +991,8 @@ export default function ClientAIAssistant() {
                   {availableAgents.length > 0 && (
                     <div className="w-full">
                       <div className="flex items-center gap-2 mb-2">
-                        <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <Bot className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                           Seleziona Agente
                         </label>
                       </div>
@@ -1000,23 +1000,23 @@ export default function ClientAIAssistant() {
                         value={selectedAgentId || "base"}
                         onValueChange={(value) => setSelectedAgentId(value === "base" ? null : value)}
                       >
-                        <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <SelectTrigger className="w-full h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
                           <SelectValue placeholder="Assistente Base" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="base">
                             <div className="flex items-center gap-2">
-                              <Sparkles className="h-4 w-4 text-purple-500" />
+                              <Sparkles className="h-4 w-4 text-cyan-500" />
                               <span>Assistente Base</span>
                             </div>
                           </SelectItem>
                           {availableAgents.map((agent) => (
                             <SelectItem key={agent.id} value={agent.id}>
                               <div className="flex items-center gap-2">
-                                <Bot className="h-4 w-4 text-blue-500" />
+                                <Bot className="h-4 w-4 text-teal-500" />
                                 <span>{agent.name}</span>
                                 {agent.businessName && (
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">
                                     ({agent.businessName})
                                   </span>
                                 )}
@@ -1088,7 +1088,7 @@ export default function ClientAIAssistant() {
                 </div>
               )}
 
-              <div className="border-t pt-6 px-4 pb-4 bg-white dark:bg-gray-800 flex-shrink-0 shadow-lg">
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0 shadow-lg">
                 <div className="max-w-4xl mx-auto">
                   <InputArea
                     onSend={handleSendMessage}

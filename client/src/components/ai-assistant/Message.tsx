@@ -579,11 +579,14 @@ export function Message({ message, onActionClick }: MessageProps) {
 
   if (message.role === "user") {
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
         <div className="max-w-[85%]">
-          <div className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-2xl px-4 py-3">
+          <div className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tr-md px-4 py-3 shadow-sm">
             <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content || ''}</p>
           </div>
+        </div>
+        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center shadow-sm">
+          <span className="text-white text-xs font-semibold">Tu</span>
         </div>
       </div>
     );
@@ -844,28 +847,25 @@ export function Message({ message, onActionClick }: MessageProps) {
   };
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
-          <Bot className="h-4 w-4 text-white" />
-        </div>
-        <span className="font-semibold text-gray-900 dark:text-white text-sm">AI Assistant</span>
+    <div className="flex gap-3">
+      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md ring-2 ring-cyan-200/50 dark:ring-cyan-700/50">
+        <Bot className="h-4 w-4 text-white" />
       </div>
+      <div className="flex-1 min-w-0">
 
-      <div className="flex-1 min-w-0 max-w-full overflow-hidden flex flex-col">
         {isProcessing && (
-          <div className="flex items-center gap-3 py-2">
-            <div className="flex gap-1.5">
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
+          <div className="flex items-center gap-3 py-2 px-4 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 rounded-2xl rounded-tl-md">
+            <div className="flex gap-1">
+              <span className="w-2 h-2 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+              <span className="w-2 h-2 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+              <span className="w-2 h-2 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
             </div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">Sto organizzando la risposta...</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">Sto elaborando...</span>
           </div>
         )}
         {!isPlaceholder && (
           <div 
-            className="documentation-content prose prose-sm max-w-none break-words overflow-wrap-anywhere word-break-break-word overflow-hidden text-gray-700 dark:text-gray-300"
+            className="documentation-content prose prose-sm max-w-none break-words overflow-wrap-anywhere word-break-break-word overflow-hidden text-slate-700 dark:text-slate-300 bg-gradient-to-br from-cyan-50/50 to-teal-50/50 dark:from-slate-800/50 dark:to-slate-800/30 rounded-2xl rounded-tl-md px-4 py-3"
             style={{ 
               wordBreak: 'break-word',
               overflowWrap: 'anywhere',
@@ -886,7 +886,7 @@ export function Message({ message, onActionClick }: MessageProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => handleAction(action)}
-                className="text-sm h-auto min-h-[2.5rem] py-2 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:border-blue-400 dark:hover:border-blue-500 rounded-xl transition-all shadow-sm hover:shadow-md font-medium hover:scale-105 whitespace-normal text-left break-words"
+                className="text-sm h-auto min-h-[2.5rem] py-2 px-4 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 hover:from-cyan-100 hover:to-teal-100 dark:hover:from-cyan-900/40 dark:hover:to-teal-900/40 border-cyan-300 dark:border-cyan-700 text-cyan-700 dark:text-cyan-300 hover:border-teal-400 dark:hover:border-teal-500 rounded-xl transition-all shadow-sm hover:shadow-md font-medium hover:scale-105 whitespace-normal text-left break-words"
               >
                 {action.label}
               </Button>

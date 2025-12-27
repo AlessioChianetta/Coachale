@@ -57,7 +57,7 @@ export function InputArea({ onSend, disabled, onLiveModeClick, rateLimitInfo }: 
           </span>
         </div>
       )}
-      <div className="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 focus-within:border-violet-400 dark:focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-100 dark:focus-within:ring-violet-900/30">
+      <div className="relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 focus-within:border-cyan-400 dark:focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-100 dark:focus-within:ring-cyan-900/30 focus-within:shadow-[0_0_15px_rgba(6,182,212,0.15)]">
         <div className="flex gap-2 items-end p-3">
           <div className="flex-1 relative">
             <Textarea
@@ -66,7 +66,7 @@ export function InputArea({ onSend, disabled, onLiveModeClick, rateLimitInfo }: 
               onKeyDown={handleKeyDown}
               placeholder={disabled ? "L'assistente sta scrivendo..." : "Scrivi un messaggio..."}
               disabled={disabled}
-              className="resize-none min-h-[40px] max-h-[100px] bg-transparent border-0 focus:ring-0 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 p-0"
+              className="resize-none min-h-[40px] max-h-[100px] bg-transparent border-0 focus:ring-0 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 p-0"
               rows={1}
             />
           </div>
@@ -76,7 +76,7 @@ export function InputArea({ onSend, disabled, onLiveModeClick, rateLimitInfo }: 
               disabled={disabled}
               size="icon"
               variant="outline"
-              className="flex-shrink-0 h-10 w-10 border border-red-200 dark:border-red-800 hover:bg-red-500 hover:border-red-500 hover:text-white disabled:border-gray-200 dark:disabled:border-gray-700 disabled:cursor-not-allowed transition-all duration-200 rounded-lg group"
+              className="flex-shrink-0 h-10 w-10 border border-red-200 dark:border-red-800 hover:bg-red-500 hover:border-red-500 hover:text-white disabled:border-slate-200 dark:disabled:border-slate-700 disabled:cursor-not-allowed transition-all duration-200 rounded-xl group"
               title="Modalità Live Vocale"
             >
               <Mic className="h-4 w-4 text-red-500 group-hover:text-white transition-colors" />
@@ -86,13 +86,13 @@ export function InputArea({ onSend, disabled, onLiveModeClick, rateLimitInfo }: 
             onClick={handleSend}
             disabled={!message.trim() || disabled}
             size="icon"
-            className="flex-shrink-0 h-10 w-10 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:cursor-not-allowed transition-all duration-200 rounded-lg group"
+            className="flex-shrink-0 h-10 w-10 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:cursor-not-allowed transition-all duration-200 rounded-xl group shadow-sm hover:shadow-md"
           >
             {disabled ? (
               <div className="flex gap-0.5">
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
               </div>
             ) : (
               <Send className="h-4 w-4 text-white transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
