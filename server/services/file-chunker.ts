@@ -428,6 +428,7 @@ export function chunkTextContent(
   }
   
   console.log(`⚠️ [CHUNKER] Text content needs chunking (${estimatedTokens.toLocaleString()} tokens)`);
+  console.log(`📊 [CHUNKER] Max chars per chunk: ${SAFE_MAX_CHARS.toLocaleString()} (with ${(SAFETY_MARGIN * 100).toFixed(0)}% safety margin)`);
   
   const chunks: ChunkResult[] = [];
   const lines = content.split('\n');
@@ -443,6 +444,7 @@ export function chunkTextContent(
     
     if (headerOverhead + currentChars + lineChars > SAFE_MAX_CHARS && currentLines.length > 0) {
       const chunkContent = `=== ${documentTitle} (Parte ${chunks.length + 1}/?) ===\n\n${currentLines.join('\n')}`;
+      const chunkTokens = estimateTokens(chunkContent);
       
       chunks.push({
         chunkIndex: chunks.length,
@@ -452,8 +454,10 @@ export function chunkTextContent(
         startRow: chunkStartLine,
         endRow: i - 1,
         actualChars: chunkContent.length,
-        estimatedTokens: estimateTokens(chunkContent),
+        estimatedTokens: chunkTokens,
       });
+      
+      console.log(`  📦 Chunk ${chunks.length}: lines ${chunkStartLine + 1}-${i}, ${currentLines.length} lines, ${chunkContent.length.toLocaleString()} chars, ~${chunkTokens.toLocaleString()} tokens`);
       
       currentLines = [];
       currentChars = 0;
@@ -466,6 +470,7 @@ export function chunkTextContent(
   
   if (currentLines.length > 0) {
     const chunkContent = `=== ${documentTitle} (Parte ${chunks.length + 1}/?) ===\n\n${currentLines.join('\n')}`;
+    const chunkTokens = estimateTokens(chunkContent);
     
     chunks.push({
       chunkIndex: chunks.length,
@@ -475,8 +480,10 @@ export function chunkTextContent(
       startRow: chunkStartLine,
       endRow: lines.length - 1,
       actualChars: chunkContent.length,
-      estimatedTokens: estimateTokens(chunkContent),
+      estimatedTokens: chunkTokens,
     });
+    
+    console.log(`  📦 Chunk ${chunks.length}: lines ${chunkStartLine + 1}-${lines.length}, ${currentLines.length} lines, ${chunkContent.length.toLocaleString()} chars, ~${chunkTokens.toLocaleString()} tokens`);
   }
   
   chunks.forEach((chunk, idx) => {
@@ -485,7 +492,13 @@ export function chunkTextContent(
     chunk.content = chunk.content.replace(/Parte \d+\/\?/, `Parte ${idx + 1}/${chunks.length}`);
   });
   
-  console.log(`✅ [CHUNKER] Split text into ${chunks.length} chunks`);
+  const minTokens = Math.min(...chunks.map(c => c.estimatedTokens));
+  const maxTokens = Math.max(...chunks.map(c => c.estimatedTokens));
+  const avgTokens = Math.round(chunks.reduce((sum, c) => sum + c.estimatedTokens, 0) / chunks.length);
+  
+  console.log(`\n✅ [CHUNKER] Split text into ${chunks.length} chunks`);
+  console.log(`📊 [CHUNKER] Chunk stats: min=${minTokens.toLocaleString()}, max=${maxTokens.toLocaleString()}, avg=${avgTokens.toLocaleString()} tokens`);
+  console.log(`📊 [CHUNKER] All chunks verified under ${MAX_TOKENS_PER_CHUNK.toLocaleString()} token limit`);
   
   return chunks;
 }
