@@ -1332,10 +1332,14 @@ ${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
     
     if (prefs) {
       const writingStyleLabels: Record<string, string> = {
-        conversational: 'Usa un tono colloquiale, amichevole e informale',
-        professional: 'Usa un tono professionale, formale e business-like',
-        concise: 'Sii breve e diretto, vai dritto al punto',
-        detailed: 'Fornisci spiegazioni approfondite e dettagliate',
+        default: 'Usa uno stile e tono predefiniti, naturali e bilanciati',
+        professional: 'Sii cortese e preciso, mantieni un tono professionale',
+        friendly: 'Sii espansivo e loquace, usa un tono amichevole e caloroso',
+        direct: 'Sii diretto e incoraggiante, vai dritto al punto',
+        eccentric: 'Sii vivace e fantasioso, usa un tono creativo e originale',
+        efficient: 'Sii essenziale e semplice, rispondi in modo efficiente',
+        nerd: 'Sii curioso e appassionato, approfondisci i dettagli tecnici',
+        cynical: 'Sii critico e sarcastico, usa un tono ironico',
         custom: 'Segui le istruzioni personalizzate dell\'utente'
       };
       
@@ -2645,10 +2649,14 @@ ${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
     
     if (prefs) {
       const writingStyleLabels: Record<string, string> = {
-        conversational: 'Usa un tono colloquiale, amichevole e informale',
-        professional: 'Usa un tono professionale, formale e business-like',
-        concise: 'Sii breve e diretto, vai dritto al punto',
-        detailed: 'Fornisci spiegazioni approfondite e dettagliate',
+        default: 'Usa uno stile e tono predefiniti, naturali e bilanciati',
+        professional: 'Sii cortese e preciso, mantieni un tono professionale',
+        friendly: 'Sii espansivo e loquace, usa un tono amichevole e caloroso',
+        direct: 'Sii diretto e incoraggiante, vai dritto al punto',
+        eccentric: 'Sii vivace e fantasioso, usa un tono creativo e originale',
+        efficient: 'Sii essenziale e semplice, rispondi in modo efficiente',
+        nerd: 'Sii curioso e appassionato, approfondisci i dettagli tecnici',
+        cynical: 'Sii critico e sarcastico, usa un tono ironico',
         custom: 'Segui le istruzioni personalizzate dell\'utente'
       };
       

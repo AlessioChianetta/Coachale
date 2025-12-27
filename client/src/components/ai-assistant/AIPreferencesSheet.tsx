@@ -19,22 +19,26 @@ import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
 interface AIPreferences {
-  writingStyle: "conversational" | "professional" | "concise" | "detailed" | "custom";
+  writingStyle: "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom";
   responseLength: "short" | "balanced" | "comprehensive";
-  customInstructions: string;
+  customInstructions: string | null;
 }
 
 const DEFAULT_PREFERENCES: AIPreferences = {
-  writingStyle: "professional",
+  writingStyle: "default",
   responseLength: "balanced",
-  customInstructions: "",
+  customInstructions: null,
 };
 
 const WRITING_STYLE_OPTIONS = [
-  { value: "conversational", label: "Colloquiale", description: "Amichevole e informale" },
-  { value: "professional", label: "Professionale", description: "Formale e business-like" },
-  { value: "concise", label: "Conciso", description: "Breve e diretto" },
-  { value: "detailed", label: "Dettagliato", description: "Spiegazioni approfondite" },
+  { value: "default", label: "Predefinito", description: "Stile e tono predefiniti" },
+  { value: "professional", label: "Professionale", description: "Cortese e preciso" },
+  { value: "friendly", label: "Amichevole", description: "Espansivo e loquace" },
+  { value: "direct", label: "Schietto", description: "Diretto e incoraggiante" },
+  { value: "eccentric", label: "Eccentrico", description: "Vivace e fantasioso" },
+  { value: "efficient", label: "Efficiente", description: "Essenziale e semplice" },
+  { value: "nerd", label: "Nerd", description: "Curioso e appassionato" },
+  { value: "cynical", label: "Cinico", description: "Critico e sarcastico" },
   { value: "custom", label: "Personalizzato", description: "Usa istruzioni personalizzate" },
 ];
 
@@ -249,13 +253,13 @@ export function AIPreferencesSheet() {
                     Scrivi istruzioni specifiche su come vuoi che l'AI risponda. Ad esempio: "Rispondi sempre in modo empatico" o "Includi esempi pratici".
                   </p>
                   <Textarea
-                    value={localPreferences.customInstructions}
+                    value={localPreferences.customInstructions || ""}
                     onChange={(e) => handleCustomInstructionsChange(e.target.value)}
                     placeholder="Es: Rispondi in modo empatico, usa esempi pratici, evita termini tecnici..."
                     className="min-h-[120px] resize-none"
                   />
                   <p className="text-xs text-muted-foreground text-right">
-                    {localPreferences.customInstructions.length}/500 caratteri
+                    {(localPreferences.customInstructions || "").length}/500 caratteri
                   </p>
                 </div>
               </>
