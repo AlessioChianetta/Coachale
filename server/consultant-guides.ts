@@ -33,6 +33,7 @@ export interface Guide {
   emoji: string;
   title: string;
   path: string;
+  navigation: string;
   description: string;
   category: 'onboarding' | 'core' | 'clients' | 'communication' | 'automation' | 'content' | 'analytics' | 'settings';
   sections: GuideSection[];
@@ -52,6 +53,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🚀",
     title: "Setup Wizard - Configurazione Iniziale",
     path: "/consultant/setup-wizard",
+    navigation: "Sidebar → PRINCIPALE → Setup Iniziale",
     description: "Il percorso guidato in 4 fasi per configurare completamente la piattaforma. Ogni fase sblocca funzionalità avanzate.",
     category: "onboarding",
     sections: [
@@ -268,6 +270,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🏠",
     title: "Dashboard Principale",
     path: "/consultant",
+    navigation: "Sidebar → PRINCIPALE → Dashboard",
     description: "La home del consulente con panoramica completa: KPI, attività in sospeso, navigazione rapida verso tutte le sezioni.",
     category: "core",
     sections: [
@@ -393,6 +396,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🤖",
     title: "Assistente AI",
     path: "/consultant/ai-assistant",
+    navigation: "Sidebar → PRINCIPALE → AI Assistant",
     description: "Il tuo assistente personale basato su AI. Chat per domande, analisi, generazione contenuti e supporto operativo.",
     category: "core",
     sections: [
@@ -513,6 +517,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "👥",
     title: "Gestione Clienti",
     path: "/consultant/clients",
+    navigation: "Sidebar → LAVORO QUOTIDIANO → Clienti",
     description: "Lista completa dei tuoi clienti con profili dettagliati, filtri avanzati e azioni rapide.",
     category: "clients",
     sections: [
@@ -621,6 +626,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📅",
     title: "Gestione Consulenze",
     path: "/consultant/appointments",
+    navigation: "Sidebar → LAVORO QUOTIDIANO → Calendario",
     description: "Calendario professionale per gestire tutte le tue consulenze. Vista mensile, gestione email post-consulenza, integrazione video.",
     category: "clients",
     sections: [
@@ -750,6 +756,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "✅",
     title: "Gestione Task",
     path: "/consultant/tasks",
+    navigation: "Sidebar → LAVORO QUOTIDIANO → Task",
     description: "Vista centralizzata di tutti i task del consulente. Filtra per stato, priorità, categoria. Raggruppa per consulenza.",
     category: "clients",
     sections: [
@@ -830,6 +837,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "⚙️",
     title: "Configurazione AI & Email",
     path: "/consultant/ai-config",
+    navigation: "Sidebar → LAVORO QUOTIDIANO → Email Journey",
     description: "Centro di controllo per email automatiche, journey email, scheduler, template e configurazioni SMTP.",
     category: "communication",
     sections: [
@@ -988,6 +996,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📬",
     title: "Email Journey",
     path: "/consultant/email-journey",
+    navigation: "Sidebar → LAVORO QUOTIDIANO → Email Journey → Tab Journey",
     description: "Vista dedicata al percorso email dei clienti. Monitora progressi, azioni completate e engagement.",
     category: "communication",
     sections: [
@@ -1037,6 +1046,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📋",
     title: "Log Email",
     path: "/consultant/email-logs",
+    navigation: "Sidebar → LAVORO QUOTIDIANO → Email Journey → Tab Log",
     description: "Storico completo di tutte le email inviate. Utile per debugging e analytics.",
     category: "communication",
     sections: [
@@ -1070,6 +1080,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🎯",
     title: "Lead Hub - Centro Controllo",
     path: "/consultant/lead-hub",
+    navigation: "Sidebar → COMUNICAZIONE → HUB Lead",
     description: "Centro di controllo per l'acquisizione clienti. Visualizza il flusso completo: Lead → Campagne → Template → Automazioni.",
     category: "automation",
     sections: [
@@ -1155,6 +1166,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "👥",
     title: "Lead Proattivi",
     path: "/consultant/proactive-leads",
+    navigation: "Sidebar → COMUNICAZIONE → HUB Lead → Tab Lead",
     description: "Gestione completa dei lead: importazione, creazione manuale, tagging, scoring, assegnazione a campagne.",
     category: "automation",
     sections: [
@@ -1248,6 +1260,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📢",
     title: "Campagne Marketing",
     path: "/consultant/campaigns",
+    navigation: "Sidebar → COMUNICAZIONE → HUB Lead → Tab Campagne",
     description: "Crea e gestisci campagne WhatsApp per raggiungere gruppi di lead. Traccia conversioni e performance.",
     category: "automation",
     sections: [
@@ -1344,6 +1357,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "⚡",
     title: "Automazioni",
     path: "/consultant/automations",
+    navigation: "Sidebar → COMUNICAZIONE → HUB Lead → Tab Automazioni",
     description: "Configura regole automatiche per follow-up, reminder, gestione pipeline. L'AI lavora per te 24/7.",
     category: "automation",
     sections: [
@@ -1420,6 +1434,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "💚",
     title: "WhatsApp Dashboard",
     path: "/consultant/whatsapp",
+    navigation: "Sidebar → COMUNICAZIONE → I tuoi dipendenti",
     description: "Centro di controllo WhatsApp: statistiche, agenti attivi, conversazioni recenti, pipeline lead.",
     category: "automation",
     sections: [
@@ -1493,6 +1508,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🤖",
     title: "Configurazione Agente WhatsApp",
     path: "/consultant/whatsapp/agent/new",
+    navigation: "Sidebar → COMUNICAZIONE → I tuoi dipendenti → Nuovo Agente",
     description: "Wizard di creazione agente AI: personalità, script, knowledge base, configurazioni avanzate.",
     category: "automation",
     sections: [
@@ -1620,6 +1636,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📝",
     title: "Template WhatsApp",
     path: "/consultant/whatsapp-templates",
+    navigation: "Sidebar → COMUNICAZIONE → I tuoi dipendenti → Tab Template",
     description: "Gestione template approvati da Meta per messaggi WhatsApp Business.",
     category: "automation",
     sections: [
@@ -1688,6 +1705,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "✏️",
     title: "Template Personalizzati",
     path: "/consultant/whatsapp/custom-templates/list",
+    navigation: "Sidebar → COMUNICAZIONE → I tuoi dipendenti → Tab Template Custom",
     description: "Crea template WhatsApp personalizzati con header, footer e pulsanti. Sottometti a Meta per approvazione.",
     category: "automation",
     sections: [
@@ -1747,6 +1765,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "💬",
     title: "Conversazioni WhatsApp",
     path: "/consultant/whatsapp-conversations",
+    navigation: "Sidebar → COMUNICAZIONE → I tuoi dipendenti → Tab Conversazioni",
     description: "Tutte le conversazioni WhatsApp con lead e clienti. Storico messaggi, stato, note.",
     category: "automation",
     sections: [
@@ -1800,6 +1819,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🔗",
     title: "Link Pubblici Agenti",
     path: "/consultant/whatsapp-agents-chat",
+    navigation: "Sidebar → COMUNICAZIONE → I tuoi dipendenti → Tab Link Pubblici",
     description: "Gestisci i link pubblici per i tuoi agenti WhatsApp. I lead possono iniziare conversazioni direttamente.",
     category: "automation",
     sections: [
@@ -1853,6 +1873,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🎓",
     title: "University - Formazione",
     path: "/consultant/university",
+    navigation: "Sidebar → FORMAZIONE → Università",
     description: "Crea e gestisci corsi formativi per i tuoi clienti. Moduli, lezioni, quiz, certificati.",
     category: "content",
     sections: [
@@ -1943,6 +1964,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📝",
     title: "Template Esercizi",
     path: "/consultant/exercise-templates",
+    navigation: "Sidebar → FORMAZIONE → Template",
     description: "Crea template riutilizzabili per esercizi da assegnare ai clienti.",
     category: "content",
     sections: [
@@ -1991,6 +2013,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "✍️",
     title: "Esercizi Assegnati",
     path: "/consultant/exercises",
+    navigation: "Sidebar → FORMAZIONE → Esercizi",
     description: "Tutti gli esercizi assegnati ai clienti. Revisiona, dai feedback, traccia completamenti.",
     category: "content",
     sections: [
@@ -2043,6 +2066,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📖",
     title: "Libreria Documenti",
     path: "/consultant/library",
+    navigation: "Sidebar → FORMAZIONE → Corsi",
     description: "Documenti condivisi con i clienti: PDF, guide, risorse. Organizza per categoria.",
     category: "content",
     sections: [
@@ -2087,6 +2111,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🤖",
     title: "Crea Corso con AI",
     path: "/consultant/library/ai-builder",
+    navigation: "Sidebar → FORMAZIONE → Corsi → Crea Corso con AI",
     description: "Crea corsi formativi automaticamente da video YouTube usando l'intelligenza artificiale. Estrai trascrizioni, genera lezioni e organizza in moduli.",
     category: "content",
     sections: [
@@ -2318,6 +2343,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🧠",
     title: "Knowledge Base - Documenti",
     path: "/consultant/knowledge-documents",
+    navigation: "Sidebar → BASE DI CONOSCENZA → Documenti",
     description: "Documenti che alimentano l'AI. Carica PDF, testi, FAQ per risposte più accurate.",
     category: "analytics",
     sections: [
@@ -2366,6 +2392,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🔌",
     title: "Knowledge Base - API",
     path: "/consultant/knowledge-apis",
+    navigation: "Sidebar → BASE DI CONOSCENZA → API Esterne",
     description: "Connetti API esterne per arricchire la Knowledge Base con dati in tempo reale.",
     category: "analytics",
     sections: [
@@ -2395,6 +2422,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🔍",
     title: "File Search Analytics",
     path: "/consultant/file-search-analytics",
+    navigation: "Sidebar → AI AVANZATO → File Search",
     description: "Analytics sulle ricerche effettuate nella Knowledge Base. Vedi cosa cercano clienti e AI.",
     category: "analytics",
     sections: [
@@ -2449,6 +2477,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🔑",
     title: "API Keys Unificate",
     path: "/consultant/api-keys-unified",
+    navigation: "Sidebar → IMPOSTAZIONI → API Keys",
     description: "Centro unico per tutte le integrazioni API: Vertex AI, Twilio, Google, SMTP.",
     category: "settings",
     sections: [
@@ -2520,6 +2549,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "👤",
     title: "Impostazioni Profilo",
     path: "/consultant/profile-settings",
+    navigation: "Sidebar → IMPOSTAZIONI → Profilo",
     description: "Gestisci il tuo profilo consulente: foto, bio, contatti, preferenze.",
     category: "settings",
     sections: [
@@ -2572,6 +2602,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📅",
     title: "Impostazioni Calendario",
     path: "/consultant/calendar-settings",
+    navigation: "Sidebar → IMPOSTAZIONI → Calendario",
     description: "Configura integrazione Google Calendar per gli agenti, disponibilità, durata slot.",
     category: "settings",
     sections: [
@@ -2620,6 +2651,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📧",
     title: "Impostazioni SMTP",
     path: "/consultant/smtp-settings",
+    navigation: "Sidebar → IMPOSTAZIONI → API Keys → Tab Email",
     description: "Configurazione server email per invio automatico.",
     category: "settings",
     sections: [
@@ -2681,6 +2713,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🎙️",
     title: "Consulenze AI",
     path: "/consultant/ai-consultations",
+    navigation: "Sidebar → AI AVANZATO → Consulenze AI",
     description: "Storico delle consulenze con trascrizioni AI, analisi e insights generati automaticamente.",
     category: "analytics",
     sections: [
@@ -2729,6 +2762,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🔊",
     title: "Echo Dashboard",
     path: "/consultant/echo-dashboard",
+    navigation: "Sidebar → AI AVANZATO → Consulenze AI → Tab Echo",
     description: "Dashboard per l'integrazione Echo/Fathom: trascrizioni video, estrazione task, analisi conversazioni.",
     category: "analytics",
     sections: [
@@ -2777,6 +2811,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "🗺️",
     title: "Roadmap Clienti",
     path: "/consultant/roadmap",
+    navigation: "Sidebar → LAVORO QUOTIDIANO → Clienti → [Dettaglio Cliente] → Roadmap",
     description: "Visualizza e gestisci i percorsi dei tuoi clienti. Timeline obiettivi, milestone, progressi.",
     category: "clients",
     sections: [
@@ -2806,6 +2841,7 @@ export const consultantGuides: ConsultantGuides = {
     emoji: "📚",
     title: "Centro Guide",
     path: "/consultant/guides",
+    navigation: "Sidebar → GUIDE → Centro Guide",
     description: "Hub con tutte le guide disponibili per navigare la piattaforma.",
     category: "core",
     sections: [
@@ -2825,6 +2861,467 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Best Practices",
             content: "Consigli per ottenere il massimo dalla piattaforma."
+          }
+        ]
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEZIONE 10: NUOVE PAGINE - Aggiunte Dicembre 2025
+  // ═══════════════════════════════════════════════════════════════════
+
+  aiSettings: {
+    emoji: "⚙️",
+    title: "Impostazioni AI",
+    path: "/consultant/ai-settings",
+    navigation: "Sidebar → AI AVANZATO → Impostazioni AI",
+    description: "Configurazione modelli AI, preferenze di generazione, parametri avanzati per personalizzare il comportamento dell'intelligenza artificiale.",
+    category: "settings",
+    sections: [
+      {
+        title: "MODELLI AI",
+        icon: "🤖",
+        description: "Selezione e configurazione dei modelli AI.",
+        steps: [
+          {
+            title: "Modello Predefinito",
+            content: "Scegli quale modello AI usare per le risposte: Gemini Flash (veloce), Gemini Pro (bilanciato), Gemini Ultra (massima qualità)."
+          },
+          {
+            title: "Parametri Generazione",
+            content: "Configura temperatura, top-p, top-k per controllare creatività e coerenza delle risposte."
+          },
+          {
+            title: "Token Limits",
+            content: "Imposta limiti massimi di token per input e output."
+          }
+        ]
+      },
+      {
+        title: "PREFERENZE",
+        icon: "🎯",
+        description: "Personalizza il comportamento dell'AI.",
+        steps: [
+          {
+            title: "Stile Risposte",
+            content: "Definisci lo stile predefinito per le risposte AI."
+          },
+          {
+            title: "Contesto Automatico",
+            content: "Scegli quali informazioni includere automaticamente nel contesto."
+          }
+        ]
+      }
+    ]
+  },
+
+  pathwayGenerator: {
+    emoji: "🛤️",
+    title: "Generatore Percorsi AI",
+    path: "/consultant/templates",
+    navigation: "Sidebar → FORMAZIONE → Template",
+    description: "AI University Pathway Generator - wizard 4 step per creare percorsi formativi AI personalizzati. Genera automaticamente corsi, moduli e lezioni.",
+    category: "content",
+    sections: [
+      {
+        title: "WIZARD 4 STEP",
+        icon: "🧙",
+        description: "Processo guidato per creare percorsi formativi.",
+        steps: [
+          {
+            title: "Step 1: Obiettivo",
+            content: "Definisci l'obiettivo del percorso formativo e il target di riferimento."
+          },
+          {
+            title: "Step 2: Argomenti",
+            content: "Specifica gli argomenti principali da coprire nel percorso."
+          },
+          {
+            title: "Step 3: Struttura",
+            content: "L'AI propone una struttura di moduli e lezioni. Personalizza secondo le tue esigenze."
+          },
+          {
+            title: "Step 4: Generazione",
+            content: "Genera automaticamente i contenuti delle lezioni usando l'AI."
+          }
+        ]
+      },
+      {
+        title: "PERSONALIZZAZIONE",
+        icon: "✏️",
+        description: "Modifica i contenuti generati.",
+        steps: [
+          {
+            title: "Modifica Lezioni",
+            content: "Ogni lezione generata può essere modificata prima della pubblicazione."
+          },
+          {
+            title: "Aggiungi Esercizi",
+            content: "Associa esercizi pratici alle lezioni generate."
+          }
+        ]
+      }
+    ]
+  },
+
+  whatsappAgentDetail: {
+    emoji: "🤖",
+    title: "Dettaglio Agente WhatsApp",
+    path: "/consultant/whatsapp/agent/:agentId",
+    navigation: "Sidebar → COMUNICAZIONE → I tuoi dipendenti → [Seleziona Agente]",
+    description: "Configurazione dettagliata di un singolo agente WhatsApp. Modifica personalità, script, knowledge base e impostazioni avanzate.",
+    category: "automation",
+    sections: [
+      {
+        title: "CONFIGURAZIONE AGENTE",
+        icon: "⚙️",
+        description: "Impostazioni principali dell'agente.",
+        steps: [
+          {
+            title: "Informazioni Base",
+            content: "Nome, descrizione, tipo (inbound/outbound/consultative), stato attivo/pausa."
+          },
+          {
+            title: "Personalità",
+            content: "Definisci il tono, lo stile di comunicazione e le linee guida comportamentali."
+          },
+          {
+            title: "Script Conversazione",
+            content: "Configura il flusso della conversazione: saluto, qualifica, proposta, chiusura."
+          },
+          {
+            title: "Knowledge Base",
+            content: "Collega documenti e FAQ che l'agente può consultare per rispondere."
+          }
+        ]
+      },
+      {
+        title: "IMPOSTAZIONI AVANZATE",
+        icon: "🔧",
+        description: "Configurazioni avanzate dell'agente.",
+        steps: [
+          {
+            title: "Orari Attività",
+            content: "Quando l'agente può rispondere. Fuori orario: messaggio automatico."
+          },
+          {
+            title: "Google Calendar",
+            content: "Collega un calendario per la prenotazione appuntamenti."
+          },
+          {
+            title: "Categorie File Search",
+            content: "Seleziona quali tipi di contenuti l'agente può usare nelle risposte."
+          }
+        ]
+      }
+    ]
+  },
+
+  // Guide specifiche del Centro Guide
+
+  guideAgents: {
+    emoji: "🤖",
+    title: "Guida Agenti WhatsApp",
+    path: "/consultant/guides/agents",
+    navigation: "Sidebar → GUIDE → Centro Guide → Agenti WhatsApp",
+    description: "Guida completa per creare e gestire gli agenti AI WhatsApp.",
+    category: "core",
+    sections: [
+      {
+        title: "INTRODUZIONE AGENTI",
+        icon: "📖",
+        description: "Tutto quello che devi sapere sugli agenti AI.",
+        steps: [
+          {
+            title: "Cosa sono gli Agenti",
+            content: "Gli agenti AI sono assistenti virtuali che gestiscono conversazioni WhatsApp automaticamente."
+          },
+          {
+            title: "Tipi di Agenti",
+            content: "Inbound (ricevono messaggi), Outbound (inviano proattivamente), Consultative (supporto)."
+          },
+          {
+            title: "Come Crearli",
+            content: "Vai su I tuoi dipendenti → Nuovo Agente e segui il wizard."
+          }
+        ]
+      }
+    ]
+  },
+
+  guideApiKeys: {
+    emoji: "🔑",
+    title: "Guida API Keys",
+    path: "/consultant/guides/api-keys",
+    navigation: "Sidebar → GUIDE → Centro Guide → API Keys",
+    description: "Guida alla configurazione di tutte le API: Vertex AI, Twilio, Google, SMTP.",
+    category: "core",
+    sections: [
+      {
+        title: "CONFIGURAZIONE API",
+        icon: "⚙️",
+        description: "Come configurare ogni integrazione.",
+        steps: [
+          {
+            title: "Vertex AI",
+            content: "Configura l'AI principale: Project ID, Location, Credenziali JSON."
+          },
+          {
+            title: "Twilio",
+            content: "Per WhatsApp: Account SID, Auth Token, Numero WhatsApp."
+          },
+          {
+            title: "Google",
+            content: "Per Calendar: autorizza con OAuth2."
+          },
+          {
+            title: "SMTP",
+            content: "Per email: Host, Porta, Credenziali."
+          }
+        ]
+      }
+    ]
+  },
+
+  guideCampagne: {
+    emoji: "📢",
+    title: "Guida Campagne",
+    path: "/consultant/guides/campagne",
+    navigation: "Sidebar → GUIDE → Centro Guide → Campagne",
+    description: "Guida completa per creare e gestire campagne marketing WhatsApp.",
+    category: "core",
+    sections: [
+      {
+        title: "CREARE CAMPAGNE",
+        icon: "📖",
+        description: "Come creare campagne efficaci.",
+        steps: [
+          {
+            title: "Struttura Campagna",
+            content: "Una campagna collega: Lead → Template WhatsApp → Agente AI."
+          },
+          {
+            title: "L'Uncino",
+            content: "La frase di apertura che cattura l'attenzione. Fondamentale per il successo."
+          },
+          {
+            title: "Metriche",
+            content: "Monitora: Delivery rate, Response rate, Conversion rate."
+          }
+        ]
+      }
+    ]
+  },
+
+  guideClients: {
+    emoji: "👥",
+    title: "Guida Gestione Clienti",
+    path: "/consultant/guides/clients",
+    navigation: "Sidebar → GUIDE → Centro Guide → Gestione Clienti",
+    description: "Guida alla gestione completa dei clienti: profili, percorsi, documenti.",
+    category: "core",
+    sections: [
+      {
+        title: "GESTIONE CLIENTI",
+        icon: "📖",
+        description: "Come gestire i tuoi clienti.",
+        steps: [
+          {
+            title: "Creare Clienti",
+            content: "Vai su Clienti → Nuovo Cliente. Inserisci nome, email, obiettivi."
+          },
+          {
+            title: "Profilo Cliente",
+            content: "Visualizza storico consulenze, esercizi, documenti, progressi."
+          },
+          {
+            title: "Azioni Rapide",
+            content: "Prenota consulenza, assegna esercizio, invia email."
+          }
+        ]
+      }
+    ]
+  },
+
+  guideEmail: {
+    emoji: "📧",
+    title: "Guida Email Journey",
+    path: "/consultant/guides/email",
+    navigation: "Sidebar → GUIDE → Centro Guide → Email Journey",
+    description: "Guida al sistema di email automatiche per il percorso clienti.",
+    category: "core",
+    sections: [
+      {
+        title: "EMAIL JOURNEY",
+        icon: "📖",
+        description: "Come funziona l'email journey.",
+        steps: [
+          {
+            title: "Il Percorso 31 Giorni",
+            content: "Ogni cliente riceve email automatiche basate sui template del giorno."
+          },
+          {
+            title: "Template",
+            content: "31 template personalizzabili: motivazionali, riflessione, azione."
+          },
+          {
+            title: "Scheduler",
+            content: "Configura frequenza e orario invio."
+          }
+        ]
+      }
+    ]
+  },
+
+  guideLeadHub: {
+    emoji: "🎯",
+    title: "Guida Lead Hub",
+    path: "/consultant/guides/lead-hub",
+    navigation: "Sidebar → GUIDE → Centro Guide → Lead Hub",
+    description: "Guida al centro di controllo per l'acquisizione clienti.",
+    category: "core",
+    sections: [
+      {
+        title: "LEAD HUB",
+        icon: "📖",
+        description: "Come usare il Lead Hub.",
+        steps: [
+          {
+            title: "Il Flusso",
+            content: "Lead → Campagne → Template → Automazioni → Conversioni."
+          },
+          {
+            title: "Importare Lead",
+            content: "Carica da Excel/CSV o crea manualmente."
+          },
+          {
+            title: "Lead Scoring",
+            content: "Punteggio automatico basato su interazioni."
+          }
+        ]
+      }
+    ]
+  },
+
+  guideOverview: {
+    emoji: "🌐",
+    title: "Guida Panoramica",
+    path: "/consultant/guides/overview",
+    navigation: "Sidebar → GUIDE → Centro Guide → Panoramica",
+    description: "Panoramica generale della piattaforma e delle sue funzionalità principali.",
+    category: "core",
+    sections: [
+      {
+        title: "PANORAMICA PIATTAFORMA",
+        icon: "📖",
+        description: "Introduzione alla piattaforma.",
+        steps: [
+          {
+            title: "Cosa Offre",
+            content: "Gestione clienti, formazione, WhatsApp automation, AI assistant, analytics."
+          },
+          {
+            title: "Per Chi È",
+            content: "Consulenti, coach, formatori che vogliono scalare il loro business."
+          },
+          {
+            title: "Primi Passi",
+            content: "Inizia dal Setup Wizard per configurare le integrazioni base."
+          }
+        ]
+      }
+    ]
+  },
+
+  guideTemplates: {
+    emoji: "📝",
+    title: "Guida Template",
+    path: "/consultant/guides/templates",
+    navigation: "Sidebar → GUIDE → Centro Guide → Template",
+    description: "Guida ai template: esercizi, WhatsApp, email.",
+    category: "core",
+    sections: [
+      {
+        title: "TIPI DI TEMPLATE",
+        icon: "📖",
+        description: "I diversi template disponibili.",
+        steps: [
+          {
+            title: "Template Esercizi",
+            content: "Modelli riutilizzabili per assegnare esercizi ai clienti."
+          },
+          {
+            title: "Template WhatsApp",
+            content: "Messaggi pre-approvati da Meta per comunicazioni proattive."
+          },
+          {
+            title: "Template Email",
+            content: "I 31 template del journey email personalizzabili."
+          }
+        ]
+      }
+    ]
+  },
+
+  guideUniversity: {
+    emoji: "🎓",
+    title: "Guida Università",
+    path: "/consultant/guides/university",
+    navigation: "Sidebar → GUIDE → Centro Guide → Università",
+    description: "Guida alla creazione e gestione dei corsi formativi.",
+    category: "core",
+    sections: [
+      {
+        title: "UNIVERSITY",
+        icon: "📖",
+        description: "Come creare corsi formativi.",
+        steps: [
+          {
+            title: "Struttura Corsi",
+            content: "Ogni corso contiene moduli, ogni modulo contiene lezioni."
+          },
+          {
+            title: "Creare Lezioni",
+            content: "Manualmente o con l'AI Course Builder da video YouTube."
+          },
+          {
+            title: "Assegnare Corsi",
+            content: "I clienti accedono ai corsi dalla loro area University."
+          }
+        ]
+      }
+    ]
+  },
+
+  guideWhatsapp: {
+    emoji: "💚",
+    title: "Guida WhatsApp",
+    path: "/consultant/guides/whatsapp",
+    navigation: "Sidebar → GUIDE → Centro Guide → WhatsApp",
+    description: "Guida completa all'integrazione WhatsApp Business.",
+    category: "core",
+    sections: [
+      {
+        title: "WHATSAPP BUSINESS",
+        icon: "📖",
+        description: "Come usare WhatsApp Business API.",
+        steps: [
+          {
+            title: "Configurazione Twilio",
+            content: "Crea account Twilio, richiedi WhatsApp Business API, configura le credenziali."
+          },
+          {
+            title: "Template Approvati",
+            content: "Crea template e sottomettili a Meta per approvazione."
+          },
+          {
+            title: "Agenti AI",
+            content: "Crea agenti che rispondono automaticamente ai messaggi."
+          },
+          {
+            title: "Campagne",
+            content: "Invia messaggi proattivi a gruppi di lead."
           }
         ]
       }
