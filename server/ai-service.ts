@@ -1530,6 +1530,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         .insert(aiConversations)
         .values({
           clientId,
+          agentId: agentId || null, // Save agent ID if provided, null for base assistance
           mode,
           consultantType: consultantType || null,
           title: message.substring(0, 50),
@@ -2822,6 +2823,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         .insert(aiConversations)
         .values({
           clientId: consultantId,
+          agentId: agentId || null, // Save agent ID if provided, null for base assistance
           mode: 'assistenza',
           consultantType: null,
           title: message.substring(0, 50),
