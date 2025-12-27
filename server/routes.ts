@@ -10749,6 +10749,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           // TTS/Audio Configuration
           ttsEnabled: config.ttsEnabled,
           audioResponseMode: config.audioResponseMode,
+          // File Search Categories
+          fileSearchCategories: config.fileSearchCategories,
+          // AI Assistant Integration
+          enableInAIAssistant: config.enableInAIAssistant,
           // Agent Instructions Configuration
           agentInstructions: config.agentInstructions,
           agentInstructionsEnabled: config.agentInstructionsEnabled,
@@ -10846,7 +10850,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         availabilityMinHoursNotice,
         availabilityWorkingHours,
         // File Search Categories
-        fileSearchCategories
+        fileSearchCategories,
+        // AI Assistant Integration
+        enableInAIAssistant
       } = req.body;
 
       // Verify agent belongs to consultant
@@ -10967,6 +10973,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       
       // File Search Categories
       if (fileSearchCategories !== undefined) updateData.fileSearchCategories = fileSearchCategories;
+
+      // AI Assistant Integration
+      if (enableInAIAssistant !== undefined) updateData.enableInAIAssistant = enableInAIAssistant;
 
       // Agent Instructions Configuration
       if (agentInstructions !== undefined) updateData.agentInstructions = agentInstructions;
@@ -11193,7 +11202,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         professionalRole,
         customBusinessHeader,
         // File Search Categories
-        fileSearchCategories
+        fileSearchCategories,
+        // AI Assistant Integration
+        enableInAIAssistant
       } = req.body;
 
       console.log("📝 [WHATSAPP CONFIG] POST request received:", {
@@ -11384,6 +11395,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           customBusinessHeader: customBusinessHeader || existingConfig.customBusinessHeader || null,
           // File Search Categories
           fileSearchCategories: fileSearchCategories || existingConfig.fileSearchCategories || null,
+          // AI Assistant Integration
+          enableInAIAssistant: enableInAIAssistant ?? existingConfig.enableInAIAssistant ?? false,
         };
 
         // Only update twilioAuthToken if explicitly provided and not "KEEP_EXISTING"
@@ -11499,6 +11512,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
             customBusinessHeader: customBusinessHeader || null,
             // File Search Categories
             fileSearchCategories: fileSearchCategories || null,
+            // AI Assistant Integration
+            enableInAIAssistant: enableInAIAssistant ?? false,
           })
           .returning();
 

@@ -1,0 +1,53 @@
+a messaggi brevi e concisi (stile WhatsApp)
+- Mantieni la personalità: stratega_diretto
+- Comportati come tipo: customer_success
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔌 [STEP 6] Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+✅ AI Provider obtained: google (undefined)
+🔍 [FILE SEARCH] Agent has FileSearchStore: WhatsApp Agent: Assistente di Missione
+   📦 Store: fileSearchStores/whatsapp-agent-assistente-d-7s1w9qbk81di
+   📄 Documents: 1
+
+🤖 [STEP 7] Generating AI response (streaming)...
+📊 Input - History: 7 messages, New message: "pensaci meglio..."
+   🧠 [AI] Using model: gemini-3-flash-preview, thinking: enabled (low)
+📋 [PROMPT BREAKDOWN] Sent to client - 26095 chars, File Search ACTIVE
+✅ Stream initialized, yielding chunks...
+
+❌ [ERROR] Failed to process consultant-agent message
+   Error: got status: INTERNAL. {"error":{"code":500,"message":"Internal error encountered.","status":"INTERNAL"}}
+   Stack: ApiError: got status: INTERNAL. {"error":{"code":500,"message":"Internal error encountered.","status":"INTERNAL"}}
+    at ApiClient.processStreamResponse_1 (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:564:32)
+    at processStreamResponse_1.next (<anonymous>)
+    at resume (/home/runner/workspace/node_modules/@google/genai/src/caches.ts:481:2)
+    at fulfill (/home/runner/workspace/node_modules/@google/genai/src/caches.ts:481:2)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+❌ [STREAMING ERROR]: Error: Failed to process message: got status: INTERNAL. {"error":{"code":500,"message":"Internal error encountered.","status":"INTERNAL"}}
+    at Module.processConsultantAgentMessage (/home/runner/workspace/server/whatsapp/agent-consultant-chat-service.ts:717:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/whatsapp/public-share-router.ts:995:28)
+4:26:12 AM [express] POST /api/activity/session/heartbeat 200 in 312ms :: {"success":true,"lastActiv…
+Getting active sessions for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+Found active sessions: 1
+Returning sessions with users: 1
+4:26:15 AM [express] GET /api/activity/sessions/active 304 in 511ms :: [{"id":"76e512e1-1156-46cb-87…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 9 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Assistente Viaggio Spaziale (514afe1d-8e43-47c7-90fc-17d05b0783ac) - last processed: 2025-12-22T20:43:31.572Z
+✅ [WHATSAPP POLLING] No new messages for agent Assistente Viaggio Spaziale
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
