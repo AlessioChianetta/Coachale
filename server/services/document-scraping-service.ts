@@ -38,6 +38,8 @@ export async function scrapeAndCacheDocumentContent(
 
   let allScrapedContent = content;
   let totalScrapedChars = 0;
+  let successfulScrapes = 0;
+  const failedUrls: string[] = [];
 
   for (const url of googleDocUrls) {
     try {
@@ -47,13 +49,24 @@ export async function scrapeAndCacheDocumentContent(
       if (result.success && result.content) {
         allScrapedContent += `\n\n=== SCRAPED CONTENT FROM: ${url} ===\n${result.content}\n=== END SCRAPED CONTENT ===`;
         totalScrapedChars += result.content.length;
+        successfulScrapes++;
         console.log(`✅ [Scraper] Scraped ${result.content.length} chars from ${url.substring(0, 40)}...`);
       } else {
+        failedUrls.push(url);
         console.warn(`⚠️ [Scraper] Failed to scrape ${url}: ${result.error}`);
       }
     } catch (error: any) {
+      failedUrls.push(url);
       console.error(`❌ [Scraper] Error scraping ${url}:`, error.message);
     }
+  }
+
+  if (successfulScrapes === 0 && googleDocUrls.length > 0) {
+    console.error(`❌ [Scraper] All ${googleDocUrls.length} scrape(s) failed for document ${documentId.substring(0, 8)}`);
+    return { 
+      success: false, 
+      error: `All ${googleDocUrls.length} scrape(s) failed: ${failedUrls.join(', ')}` 
+    };
   }
 
   const tokenCount = estimateTokenCount(allScrapedContent);
@@ -66,7 +79,10 @@ export async function scrapeAndCacheDocumentContent(
     })
     .where(eq(schema.libraryDocuments.id, documentId));
 
-  console.log(`💾 [Scraper] Cached scraped content for document ${documentId.substring(0, 8)}: ${tokenCount} tokens (${totalScrapedChars} chars from Google Docs)`);
+  const partialWarning = failedUrls.length > 0 
+    ? ` (${failedUrls.length} URL(s) failed: ${failedUrls.join(', ')})` 
+    : '';
+  console.log(`💾 [Scraper] Cached scraped content for document ${documentId.substring(0, 8)}: ${tokenCount} tokens (${totalScrapedChars} chars from Google Docs)${partialWarning}`);
 
   return { success: true, content: allScrapedContent, tokenCount };
 }
