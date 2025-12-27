@@ -49,6 +49,7 @@ import crypto from "crypto";
 import { scrapeGoogleDoc } from "../web-scraper";
 import { extractTextFromFile } from "./document-processor";
 import { getGuideAsDocument } from "../consultant-guides";
+import { chunkTextContent, estimateTokens, needsChunking } from "./file-chunker";
 
 export type SyncEventType = 'start' | 'progress' | 'error' | 'complete' | 'all_complete' | 'orphan_start' | 'orphan_progress' | 'orphan_complete';
 
@@ -446,6 +447,64 @@ export class FileSearchSyncService {
 
       const content = doc.extractedContent || doc.contentSummary || `${doc.title}\n\n${doc.description || ''}`;
       
+      // Check if content needs chunking (for large XLSX/CSV files)
+      const isTabularFile = ['xlsx', 'xls', 'csv'].includes(doc.fileType);
+      const contentNeedsChunking = needsChunking(content);
+      
+      if (isTabularFile && contentNeedsChunking) {
+        console.log(`📦 [FileSync] Large tabular file detected - splitting into chunks: ${doc.title}`);
+        
+        // If outdated, delete all existing chunks first
+        if (indexInfo.exists) {
+          const existingChunks = await db.query.fileSearchDocuments.findMany({
+            where: and(
+              eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+              eq(fileSearchDocuments.sourceId, documentId),
+            ),
+          });
+          for (const existingChunk of existingChunks) {
+            await fileSearchService.deleteDocument(existingChunk.id);
+          }
+        }
+        
+        const chunks = chunkTextContent(content, doc.title);
+        console.log(`📦 [FileSync] Created ${chunks.length} chunks for: ${doc.title}`);
+        
+        let uploadedChunks = 0;
+        let lastError: string | undefined;
+        
+        for (const chunk of chunks) {
+          const chunkDisplayName = `[KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
+          const chunkSourceId = `${documentId}_chunk_${chunk.chunkIndex}`;
+          
+          const uploadResult = await fileSearchService.uploadDocumentFromContent({
+            content: chunk.content,
+            displayName: chunkDisplayName,
+            storeId: consultantStore.id,
+            sourceType: 'knowledge_base',
+            sourceId: chunkSourceId,
+            userId: consultantId,
+          });
+          
+          if (uploadResult.success) {
+            uploadedChunks++;
+            console.log(`✅ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} uploaded for: ${doc.title}`);
+          } else {
+            lastError = uploadResult.error;
+            console.error(`❌ [FileSync] Failed to upload chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks}: ${uploadResult.error}`);
+          }
+        }
+        
+        const wasUpdated = indexInfo.exists;
+        if (uploadedChunks === chunks.length) {
+          console.log(`✅ [FileSync] All ${chunks.length} chunks uploaded for: ${doc.title}`);
+          return { success: true, updated: wasUpdated };
+        } else {
+          return { success: false, error: `Only ${uploadedChunks}/${chunks.length} chunks uploaded. Last error: ${lastError}` };
+        }
+      }
+      
+      // Standard single-document upload for non-chunked content
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[KB] ${doc.title}`,
@@ -2815,7 +2874,7 @@ export class FileSearchSyncService {
     clientId: string,
     consultantId: string,
     maxRetries: number = 3,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; chunksUploaded?: number }> {
     let doc = null;
     let lastStatus = 'unknown';
     
@@ -2870,7 +2929,59 @@ export class FileSearchSyncService {
       // Build content from the document
       const content = this.buildClientKnowledgeDocumentContent(doc);
       
-      // Upload to client's PRIVATE store with clientId set to distinguish from consultant docs
+      // Check if content needs chunking (for large XLSX/CSV files)
+      const isTabularFile = ['xlsx', 'xls', 'csv'].includes(doc.fileType);
+      const contentNeedsChunking = needsChunking(content);
+      
+      if (isTabularFile && contentNeedsChunking) {
+        console.log(`📦 [FileSync] Large tabular file detected - splitting into chunks: ${doc.title}`);
+        
+        const chunks = chunkTextContent(content, doc.title);
+        console.log(`📦 [FileSync] Created ${chunks.length} chunks for: ${doc.title}`);
+        
+        let uploadedChunks = 0;
+        let lastError: string | undefined;
+        
+        for (const chunk of chunks) {
+          const chunkDisplayName = `[CLIENT KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
+          const chunkSourceId = `${documentId}_chunk_${chunk.chunkIndex}`;
+          
+          // Check if this chunk is already indexed
+          const chunkIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', chunkSourceId);
+          if (chunkIndexed) {
+            console.log(`📌 [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} already indexed`);
+            uploadedChunks++;
+            continue;
+          }
+          
+          const uploadResult = await fileSearchService.uploadDocumentFromContent({
+            content: chunk.content,
+            displayName: chunkDisplayName,
+            storeId: clientStore.storeId,
+            sourceType: 'knowledge_base',
+            sourceId: chunkSourceId,
+            clientId: clientId,
+            userId: clientId,
+          });
+          
+          if (uploadResult.success) {
+            uploadedChunks++;
+            console.log(`✅ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} uploaded for: ${doc.title}`);
+          } else {
+            lastError = uploadResult.error;
+            console.error(`❌ [FileSync] Failed to upload chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks}: ${uploadResult.error}`);
+          }
+        }
+        
+        if (uploadedChunks === chunks.length) {
+          console.log(`✅ [FileSync] All ${chunks.length} chunks uploaded for: ${doc.title} (client: ${clientId.substring(0, 8)})`);
+          return { success: true, chunksUploaded: uploadedChunks };
+        } else {
+          return { success: false, error: `Only ${uploadedChunks}/${chunks.length} chunks uploaded. Last error: ${lastError}`, chunksUploaded: uploadedChunks };
+        }
+      }
+      
+      // Standard single-document upload for non-chunked content
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
         displayName: `[CLIENT KB] ${doc.title}`,
