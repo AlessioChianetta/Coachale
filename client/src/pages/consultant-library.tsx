@@ -1576,6 +1576,16 @@ export default function ConsultantLibrary() {
                                         {document.estimatedDuration}m
                                       </Badge>
                                     )}
+                                    {(document as any).scrapedTokens ? (
+                                      <Badge variant="outline" className="text-xs flex items-center gap-1 flex-shrink-0 border-cyan-500/50 text-cyan-600 dark:text-cyan-400">
+                                        <Sparkles size={10} />
+                                        {((document as any).scrapedTokens / 1000).toFixed(1)}k token
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs flex items-center gap-1 flex-shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">
+                                        Non scrapato
+                                      </Badge>
+                                    )}
                                   </div>
                                   {document.subtitle && (
                                     <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-1">{document.subtitle}</p>
