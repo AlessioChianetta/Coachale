@@ -538,25 +538,56 @@ export default function ClientAIAssistant() {
           )}
 
           <div className={`flex-1 flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-            {/* Chat Header with Agent info and Preferences */}
+            {/* Chat Header with Agent Selector and Preferences */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md ring-2 ring-cyan-200/50 dark:ring-cyan-700/50">
-                  <Sparkles className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-                    {selectedAgentId 
-                      ? availableAgents.find(a => a.id === selectedAgentId)?.name || "Assistente AI"
-                      : "Assistente AI"
-                    }
-                  </h2>
-                  {selectedAgentId && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Conversazioni filtrate per questo agente
-                    </p>
+                  {selectedAgentId ? (
+                    <Bot className="h-4 w-4 text-white" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 text-white" />
                   )}
                 </div>
+                {availableAgents.length > 0 ? (
+                  <Select 
+                    value={selectedAgentId || "base"} 
+                    onValueChange={(value) => {
+                      const newAgentId = value === "base" ? null : value;
+                      setSelectedAgentId(newAgentId);
+                      setAgentFilter(value);
+                    }}
+                  >
+                    <SelectTrigger className="w-auto min-w-[180px] h-9 border-0 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 focus:ring-0 shadow-none">
+                      <div className="flex flex-col items-start">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                          <SelectValue />
+                        </span>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="base">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-cyan-500" />
+                          <span>Assistente Base</span>
+                        </div>
+                      </SelectItem>
+                      {availableAgents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          <div className="flex items-center gap-2">
+                            <Bot className="h-4 w-4 text-teal-500" />
+                            <span>{agent.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      Assistente AI
+                    </h2>
+                  </div>
+                )}
               </div>
               <AIPreferencesSheet />
             </div>
