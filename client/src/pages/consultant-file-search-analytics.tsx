@@ -43,7 +43,8 @@ import {
   Trash2,
   Target,
   Heart,
-  Mail
+  Mail,
+  Link
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -103,6 +104,7 @@ interface FileSearchSettings {
   autoSyncAssignedExercises: boolean;
   autoSyncAssignedLibrary: boolean;
   autoSyncAssignedUniversity: boolean;
+  autoSyncExerciseExternalDocs: boolean;
   scheduledSyncEnabled: boolean;
   scheduledSyncHour: number;
   lastScheduledSync: string | null;
@@ -118,7 +120,7 @@ interface SyncedDocument {
   displayName: string;
   mimeType: string;
   status: 'pending' | 'processing' | 'indexed' | 'failed';
-  sourceType: 'library' | 'knowledge_base' | 'manual' | 'exercise' | 'consultation' | 'university' | 'consultant_guide';
+  sourceType: 'library' | 'knowledge_base' | 'manual' | 'exercise' | 'consultation' | 'university' | 'consultant_guide' | 'exercise_external_doc';
   sourceId: string | null;
   uploadedAt: string;
   storeDisplayName?: string;
@@ -166,6 +168,7 @@ interface HierarchicalData {
       assignedExercises: SyncedDocument[];
       assignedLibrary: SyncedDocument[];
       assignedUniversity: SyncedDocument[];
+      externalDocs: SyncedDocument[];
     };
     totals: {
       exerciseResponses: number;
@@ -180,6 +183,7 @@ interface HierarchicalData {
       assignedExercises: number;
       assignedLibrary: number;
       assignedUniversity: number;
+      externalDocs: number;
       total: number;
     };
     potentialContent: {
@@ -331,6 +335,28 @@ interface ClientFileSearchStatus {
   isActive: boolean;
 }
 
+interface MissingExternalDoc {
+  assignmentId: string;
+  exerciseId: string;
+  exerciseTitle: string;
+  workPlatformUrl: string;
+  isPersonalized: boolean;
+  assignedAt: string;
+}
+
+interface MissingExternalDocsClient {
+  clientId: string;
+  clientName: string;
+  clientEmail: string;
+  docs: MissingExternalDoc[];
+}
+
+interface MissingExternalDocsData {
+  totalMissing: number;
+  clientsWithMissing: number;
+  byClient: MissingExternalDocsClient[];
+}
+
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
 
 interface SyncLogEntry {
@@ -373,6 +399,7 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: stri
   library_progress: { label: 'Progressi Libreria', icon: '📚', color: 'bg-blue-400' },
   email_journey: { label: 'Email Journey', icon: '📧', color: 'bg-purple-400' },
   consultant_guide: { label: 'Guide Consulente', icon: '📖', color: 'bg-indigo-400' },
+  exercise_external_docs: { label: 'Documenti Esterni Esercizi', icon: '🔗', color: 'bg-orange-500' },
 };
 
 export default function ConsultantFileSearchAnalyticsPage() {
@@ -1043,7 +1070,87 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
+  const { data: missingExternalDocs, isLoading: missingExternalDocsLoading, refetch: refetchMissingExternalDocs } = useQuery<MissingExternalDocsData>({
+    queryKey: ["/api/file-search/external-docs/missing"],
+    queryFn: async () => {
+      const response = await fetch("/api/file-search/external-docs/missing", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch missing external docs");
+      return response.json();
+    },
+  });
+
+  const syncExternalDocMutation = useMutation({
+    mutationFn: async (params: { assignmentId: string; clientId: string }) => {
+      const response = await fetch("/api/file-search/external-docs/sync", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Sync failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/external-docs/missing"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      toast({
+        title: "Documento sincronizzato!",
+        description: "Il documento esterno è stato aggiunto al File Search.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore sincronizzazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const syncAllExternalDocsMutation = useMutation({
+    mutationFn: async (params?: { clientId?: string }) => {
+      const response = await fetch("/api/file-search/external-docs/sync-all", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params || {}),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Sync all failed");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/external-docs/missing"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      toast({
+        title: "Sincronizzazione completata!",
+        description: data.message || "Tutti i documenti esterni sono stati sincronizzati.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore sincronizzazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const [openAuditCategories, setOpenAuditCategories] = useState<Record<string, boolean>>({});
+  const [openExternalDocsClients, setOpenExternalDocsClients] = useState<Record<string, boolean>>({});
   const [openAuditClients, setOpenAuditClients] = useState<Record<string, boolean>>({});
   const [openAuditAgents, setOpenAuditAgents] = useState<Record<string, boolean>>({});
   const [migratingClients, setMigratingClients] = useState<Record<string, boolean>>({});
@@ -1059,6 +1166,10 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
   const toggleAuditAgent = (agentId: string) => {
     setOpenAuditAgents(prev => ({ ...prev, [agentId]: !prev[agentId] }));
+  };
+
+  const toggleExternalDocsClient = (clientId: string) => {
+    setOpenExternalDocsClients(prev => ({ ...prev, [clientId]: !prev[clientId] }));
   };
 
   const toggleClientAuditCategory = (clientId: string, category: string) => {
@@ -2318,10 +2429,32 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                   </CollapsibleContent>
                                                 </Collapsible>
                                               )}
+                                              {(client.totals?.externalDocs || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-extdocs`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-extdocs`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-extdocs`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <Link className="h-4 w-4 text-orange-600" />
+                                                    <span className="text-sm text-gray-700">Documenti Esterni</span>
+                                                    {getSyncStatusBadge(client.documents?.externalDocs || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.externalDocs || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <Link className="h-3 w-3 text-orange-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
                                               {client.totals.exerciseResponses === 0 && client.totals.consultationNotes === 0 && client.totals.knowledgeBase === 0 && 
                                                (client.totals?.goals || 0) === 0 && (client.totals?.tasks || 0) === 0 && (client.totals?.dailyReflections || 0) === 0 &&
                                                (client.totals?.clientProgressHistory || 0) === 0 && (client.totals?.libraryProgress || 0) === 0 && (client.totals?.emailJourneyProgress || 0) === 0 &&
-                                               (client.totals?.assignedExercises || 0) === 0 && (client.totals?.assignedLibrary || 0) === 0 && (client.totals?.assignedUniversity || 0) === 0 && (
+                                               (client.totals?.assignedExercises || 0) === 0 && (client.totals?.assignedLibrary || 0) === 0 && (client.totals?.assignedUniversity || 0) === 0 && 
+                                               (client.totals?.externalDocs || 0) === 0 && (
                                                 <p className="text-gray-500 text-sm text-center py-2">Nessun documento categorizzato</p>
                                               )}
                                             </div>
@@ -2341,6 +2474,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                 <Badge variant="outline" className="text-xs"><BookOpen className="h-3 w-3 mr-1" />Libreria</Badge>
                                                 <Badge variant="outline" className="text-xs"><Mail className="h-3 w-3 mr-1" />Email Journey</Badge>
                                                 <Badge variant="outline" className="text-xs"><GraduationCap className="h-3 w-3 mr-1" />University</Badge>
+                                                <Badge variant="outline" className="text-xs"><Link className="h-3 w-3 mr-1" />Doc Esterni</Badge>
                                               </div>
                                               <p className="text-gray-400 text-xs mt-3">Vai alla tab Audit per sincronizzare</p>
                                             </div>
@@ -2764,6 +2898,18 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <Switch
                             checked={settings?.autoSyncAssignedUniversity ?? false}
                             onCheckedChange={(checked) => handleToggle('autoSyncAssignedUniversity', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Documenti Esterni Esercizi</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente i Google Docs collegati agli esercizi</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncExerciseExternalDocs ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncExerciseExternalDocs', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
                         </div>
@@ -4263,6 +4409,120 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       <AlertCircle className="h-3 w-3" />
                       I dati finanziari vengono recuperati da Percorso Capitale e salvati nello store privato di ogni cliente
                     </p>
+                  </CardContent>
+                </Card>
+
+                {/* External Docs from Exercises Section */}
+                <Card className="border-orange-200 bg-orange-50/30">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-orange-700">
+                      <Link className="h-5 w-5" />
+                      Documenti Esterni Esercizi - Elementi Mancanti
+                    </CardTitle>
+                    <CardDescription>
+                      Google Docs collegati agli esercizi tramite workPlatform URL non ancora indicizzati
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {missingExternalDocsLoading ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Caricamento...</span>
+                      </div>
+                    ) : (!missingExternalDocs?.byClient || missingExternalDocs.byClient.length === 0) ? (
+                      <div className="flex items-center gap-2 text-emerald-600 p-4 bg-emerald-50 rounded-lg">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="text-sm">Tutti i documenti esterni sono sincronizzati!</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-4">
+                          <Badge className="bg-orange-200 text-orange-800">
+                            {missingExternalDocs.totalMissing} documenti mancanti in {missingExternalDocs.clientsWithMissing} client
+                          </Badge>
+                          <Button
+                            size="sm"
+                            onClick={() => syncAllExternalDocsMutation.mutate({})}
+                            disabled={syncAllExternalDocsMutation.isPending}
+                            className="bg-orange-600 hover:bg-orange-700"
+                          >
+                            {syncAllExternalDocsMutation.isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Sincronizzazione...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                Sincronizza Tutti
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        
+                        {missingExternalDocs.byClient.map(client => (
+                          <Collapsible key={client.clientId} open={openExternalDocsClients[client.clientId]} onOpenChange={() => toggleExternalDocsClient(client.clientId)}>
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-orange-100 hover:bg-orange-200 rounded-lg border border-orange-200 transition-colors">
+                              {openExternalDocsClients[client.clientId] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                              <User className="h-4 w-4 text-orange-600" />
+                              <span className="font-medium text-orange-900">{client.clientName}</span>
+                              <span className="text-sm text-gray-500">({client.clientEmail})</span>
+                              <Badge className="ml-auto bg-orange-200 text-orange-800">
+                                {client.docs.length} mancanti
+                              </Badge>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                              {client.docs.map(doc => (
+                                <div key={doc.assignmentId} className="flex items-center justify-between p-2 bg-white rounded border border-orange-200">
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <Link className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                      <span className="text-sm font-medium block truncate">{doc.exerciseTitle}</span>
+                                      <a 
+                                        href={doc.workPlatformUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 hover:underline truncate block"
+                                      >
+                                        {doc.workPlatformUrl}
+                                      </a>
+                                    </div>
+                                    {doc.isPersonalized ? (
+                                      <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-xs flex-shrink-0">
+                                        Personalizzato
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs flex-shrink-0">
+                                        Template
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    className="border-orange-300 text-orange-700 hover:bg-orange-100 ml-2 flex-shrink-0"
+                                    onClick={() => syncExternalDocMutation.mutate({ 
+                                      assignmentId: doc.assignmentId, 
+                                      clientId: client.clientId 
+                                    })}
+                                    disabled={syncExternalDocMutation.isPending}
+                                  >
+                                    {syncExternalDocMutation.isPending ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <RefreshCw className="h-3 w-3 mr-1" />
+                                        Sync
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              ))}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ))}
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
