@@ -107,7 +107,7 @@ export function ConversationSidebar({
 
   return (
     <div className={cn(
-      "border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col transition-all duration-300",
+      "h-full border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col transition-all duration-300",
       sidebarMinimized ? "w-16" : "w-72"
     )}>
       <div className="p-3 space-y-3">

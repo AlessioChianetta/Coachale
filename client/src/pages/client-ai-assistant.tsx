@@ -503,6 +503,7 @@ export default function ClientAIAssistant() {
         <div className="flex-1 flex overflow-hidden">
           {(!isMobile || chatSidebarOpen) && (
             <div className={cn(
+              "h-full",
               isMobile && "absolute inset-0 z-50 w-full bg-slate-50 dark:bg-slate-900"
             )}>
               {isMobile && (
