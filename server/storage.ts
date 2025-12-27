@@ -3003,6 +3003,14 @@ export class DatabaseStorage implements IStorage {
       console.log("13. document.isPublished from DB:", document.isPublished);
       console.log("========== STORAGE CREATE DOCUMENT DEBUG END ==========");
 
+      if (document.content) {
+        import("./services/document-scraping-service").then(({ scrapeAndCacheDocumentContent }) => {
+          scrapeAndCacheDocumentContent(document.id, document.content).catch(err => 
+            console.error("Background scraping failed:", err.message)
+          );
+        }).catch(err => console.error("Failed to load scraping service:", err.message));
+      }
+
       return document;
     } catch (error: any) {
       console.error("ERROR in storage createLibraryDocument:", error);
@@ -3076,6 +3084,15 @@ export class DatabaseStorage implements IStorage {
         .set({ ...updates, updatedAt: new Date() })
         .where(eq(schema.libraryDocuments.id, documentId))
         .returning();
+
+      if (updatedDocument && (updates.content !== undefined)) {
+        import("./services/document-scraping-service").then(({ scrapeAndCacheDocumentContent }) => {
+          scrapeAndCacheDocumentContent(documentId, updatedDocument.content).catch(err => 
+            console.error("Background scraping failed:", err.message)
+          );
+        }).catch(err => console.error("Failed to load scraping service:", err.message));
+      }
+
       return updatedDocument || null;
     } catch (error: any) {
       console.error("Error updating library document:", error);
