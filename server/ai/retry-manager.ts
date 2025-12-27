@@ -26,6 +26,16 @@ export interface AiRetryContext {
 }
 
 /**
+ * Usage metadata from Gemini API (real token counts)
+ */
+export interface GeminiUsageMetadata {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+  cachedContentTokenCount?: number;
+}
+
+/**
  * Events emitted during retry process
  */
 export type AiRetryEvent =
@@ -61,6 +71,7 @@ export type AiRetryEvent =
       conversationId: string;
       provider: AiProviderMetadata;
       content: string;
+      usageMetadata?: GeminiUsageMetadata;
     }
   | {
       type: 'error';
@@ -212,7 +223,7 @@ export async function retryWithBackoff<T>(
  * Streaming retry with backoff
  * For streaming AI calls (generateContentStream, etc.)
  */
-export async function* streamWithBackoff<TChunk extends { text?: string }>(
+export async function* streamWithBackoff<TChunk extends { text?: string; usageMetadata?: GeminiUsageMetadata }>(
   streamFactory: (ctx: OperationAttemptContext) => Promise<AsyncIterable<TChunk>>,
   context: AiRetryContext,
   options: RetryOptions = {}
@@ -224,6 +235,7 @@ export async function* streamWithBackoff<TChunk extends { text?: string }>(
   let accumulatedMessage = '';
   let streamSuccess = false;
   let lastError: any;
+  let lastUsageMetadata: GeminiUsageMetadata | undefined;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
@@ -267,8 +279,9 @@ export async function* streamWithBackoff<TChunk extends { text?: string }>(
           }
         }
 
-        // Reset accumulated message on retry
+        // Reset accumulated message and usage metadata on retry
         accumulatedMessage = '';
+        lastUsageMetadata = undefined;
       }
 
       console.log(`🔄 AI stream attempt ${attempt + 1}/${maxAttempts}...`);
@@ -301,6 +314,11 @@ export async function* streamWithBackoff<TChunk extends { text?: string }>(
             content: chunkText,
           };
         }
+        
+        // Capture usageMetadata from chunks (typically available in final chunk)
+        if (chunk.usageMetadata) {
+          lastUsageMetadata = chunk.usageMetadata;
+        }
       }
 
       // Success - streaming completed
@@ -325,12 +343,13 @@ export async function* streamWithBackoff<TChunk extends { text?: string }>(
     throw lastError || new Error('Failed to complete AI streaming after retries');
   }
 
-  // Emit complete event
+  // Emit complete event with usageMetadata if available
   yield {
     type: 'complete',
     conversationId: context.conversationId,
     provider: context.provider,
     content: accumulatedMessage,
+    usageMetadata: lastUsageMetadata,
   };
 
   return accumulatedMessage;

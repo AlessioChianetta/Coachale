@@ -30,6 +30,7 @@ import {
   AiProviderMetadata,
   AiRetryContext,
   OperationAttemptContext,
+  GeminiUsageMetadata,
 } from "./ai/retry-manager";
 import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch } from "./ai/provider-factory";
 import { fileSearchService } from "./ai/file-search-service";
@@ -128,6 +129,7 @@ async function* streamWithRetriesAdapter(
           conversationId: event.conversationId,
           provider: event.provider,
           content: event.content,
+          usageMetadata: event.usageMetadata,
         };
         break;
 
@@ -149,23 +151,15 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-// Average tokens per document type for estimation
-const TOKENS_PER_DOCUMENT: Record<string, number> = {
-  'exercise': 500,
-  'library': 1000,
-  'consultation': 300,
-  'knowledge_base': 500,
-  'university': 800,
-  'university_lesson': 800,
-};
-
-// Type for fileSearchBreakdown
+// Type for fileSearchBreakdown - includes REAL token counts from contentSize
 type FileSearchBreakdownItem = {
   storeName: string;
   storeDisplayName: string;
   ownerType: string;
   categories: Record<string, number>;
+  categoryTokens: Record<string, number>;  // REAL tokens from contentSize
   totalDocs: number;
+  totalTokens: number;  // REAL total tokens
 };
 
 // Helper function to log token breakdown with File Search awareness
@@ -181,73 +175,85 @@ function logTokenBreakdown(
   console.log(`${'═'.repeat(70)}`);
 
   if (hasFileSearch && fileSearchBreakdown && fileSearchBreakdown.length > 0) {
-    // Count ACTUAL indexed documents per category from fileSearchBreakdown
+    // Aggregate REAL token counts from contentSize across all stores
     const indexedCounts: Record<string, number> = {};
+    const indexedTokens: Record<string, number> = {};
+    let totalIndexedTokens = 0;
+    
     for (const store of fileSearchBreakdown) {
       for (const [cat, count] of Object.entries(store.categories)) {
         indexedCounts[cat] = (indexedCounts[cat] || 0) + count;
       }
+      for (const [cat, tokens] of Object.entries(store.categoryTokens)) {
+        indexedTokens[cat] = (indexedTokens[cat] || 0) + tokens;
+      }
+      totalIndexedTokens += store.totalTokens;
     }
     
-    // Calculate ACTUAL indexed tokens based on document counts
-    const indexedExerciseTokens = (indexedCounts['exercise'] || 0) * TOKENS_PER_DOCUMENT['exercise'];
-    const indexedLibraryTokens = (indexedCounts['library'] || 0) * TOKENS_PER_DOCUMENT['library'];
-    const indexedConsultationTokens = (indexedCounts['consultation'] || 0) * TOKENS_PER_DOCUMENT['consultation'];
-    const indexedKnowledgeBaseTokens = (indexedCounts['knowledge_base'] || 0) * TOKENS_PER_DOCUMENT['knowledge_base'];
-    const indexedUniversityTokens = ((indexedCounts['university'] || 0) + (indexedCounts['university_lesson'] || 0)) * TOKENS_PER_DOCUMENT['university'];
+    // Calculate total items in userContext (from breakdown which uses userContext)
+    // These are approximate counts based on token estimates
+    const TOKENS_PER_EXERCISE = 500;
+    const TOKENS_PER_LIBRARY = 1000;
+    const TOKENS_PER_CONSULTATION = 300;
+    const TOKENS_PER_UNIVERSITY = 800;
     
-    // Calculate NON-indexed tokens (still in system prompt)
-    const nonIndexedExerciseTokens = Math.max(0, breakdown.exercises - indexedExerciseTokens);
-    const nonIndexedLibraryTokens = Math.max(0, breakdown.library - indexedLibraryTokens);
-    const nonIndexedConsultationTokens = Math.max(0, breakdown.consultations - indexedConsultationTokens);
-    const nonIndexedKnowledgeBaseTokens = Math.max(0, breakdown.knowledgeBase - indexedKnowledgeBaseTokens);
-    const nonIndexedUniversityTokens = Math.max(0, breakdown.university - indexedUniversityTokens);
+    const totalExercisesInContext = Math.ceil(breakdown.exercises / TOKENS_PER_EXERCISE);
+    const totalLibraryInContext = Math.ceil(breakdown.library / TOKENS_PER_LIBRARY);
+    const totalConsultationsInContext = Math.ceil(breakdown.consultations / TOKENS_PER_CONSULTATION);
+    const totalUniversityInContext = Math.ceil(breakdown.university / TOKENS_PER_UNIVERSITY);
     
-    // File Search attivo - mostra cosa è nel prompt vs cosa è REALMENTE su RAG
+    // File Search attivo - mostra cosa è nel prompt (solo metadata base)
     console.log(`\n📍 NEL SYSTEM PROMPT (${systemPromptTokens.toLocaleString()} tokens):`);
-    console.log(`   💰 Finance Data: ${breakdown.financeData.toLocaleString()} tokens`);
-    console.log(`   🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens`);
-    console.log(`   ⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens`);
-    console.log(`   👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens`);
-    
-    // Show non-indexed content (still in prompt)
-    if (nonIndexedExerciseTokens > 0) {
-      console.log(`   📚 Exercises (non indicizzati): ~${nonIndexedExerciseTokens.toLocaleString()} tokens`);
-    }
-    if (nonIndexedLibraryTokens > 0) {
-      console.log(`   📖 Library (non indicizzati): ~${nonIndexedLibraryTokens.toLocaleString()} tokens`);
-    }
-    if (nonIndexedConsultationTokens > 0) {
-      console.log(`   💬 Consultations (non indicizzati): ~${nonIndexedConsultationTokens.toLocaleString()} tokens`);
-    }
-    if (nonIndexedKnowledgeBaseTokens > 0) {
-      console.log(`   🧠 Knowledge Base (non indicizzati): ~${nonIndexedKnowledgeBaseTokens.toLocaleString()} tokens`);
-    }
-    if (nonIndexedUniversityTokens > 0) {
-      console.log(`   🎓 University (non indicizzati): ~${nonIndexedUniversityTokens.toLocaleString()} tokens`);
-    }
+    console.log(`   👤 User Profile & Base: ~${systemPromptTokens.toLocaleString()} tokens`);
+    console.log(`   ℹ️  (Include: data/ora, profilo utente, istruzioni AI, metadata esercizi)`);
     
     console.log(`\n🔍 VIA FILE SEARCH RAG (indicizzati, cercati su richiesta):`);
     if (indexedCounts['exercise'] > 0) {
-      console.log(`   📚 Exercises: ~${indexedExerciseTokens.toLocaleString()} tokens (${indexedCounts['exercise']} documenti indicizzati)`);
+      console.log(`   📚 Exercises: ${(indexedTokens['exercise'] || 0).toLocaleString()} tokens (${indexedCounts['exercise']}/${totalExercisesInContext} documenti)`);
     }
     if (indexedCounts['library'] > 0) {
-      console.log(`   📖 Library: ~${indexedLibraryTokens.toLocaleString()} tokens (${indexedCounts['library']} documenti indicizzati)`);
+      console.log(`   📖 Library: ${(indexedTokens['library'] || 0).toLocaleString()} tokens (${indexedCounts['library']}/${totalLibraryInContext} documenti)`);
     }
     if (indexedCounts['consultation'] > 0) {
-      console.log(`   💬 Consultations: ~${indexedConsultationTokens.toLocaleString()} tokens (${indexedCounts['consultation']} documenti indicizzati)`);
+      console.log(`   💬 Consultations: ${(indexedTokens['consultation'] || 0).toLocaleString()} tokens (${indexedCounts['consultation']}/${totalConsultationsInContext} documenti)`);
     }
     if (indexedCounts['knowledge_base'] > 0) {
-      console.log(`   🧠 Knowledge Base: ~${indexedKnowledgeBaseTokens.toLocaleString()} tokens (${indexedCounts['knowledge_base']} documenti indicizzati)`);
+      console.log(`   🧠 Knowledge Base: ${(indexedTokens['knowledge_base'] || 0).toLocaleString()} tokens (${indexedCounts['knowledge_base']} documenti)`);
     }
     const totalUniversityDocs = (indexedCounts['university'] || 0) + (indexedCounts['university_lesson'] || 0);
+    const totalUniversityTokens = (indexedTokens['university'] || 0) + (indexedTokens['university_lesson'] || 0);
     if (totalUniversityDocs > 0) {
-      console.log(`   🎓 University: ~${indexedUniversityTokens.toLocaleString()} tokens (${totalUniversityDocs} documenti indicizzati)`);
+      console.log(`   🎓 University: ${totalUniversityTokens.toLocaleString()} tokens (${totalUniversityDocs}/${totalUniversityInContext} documenti)`);
+    }
+    if (indexedCounts['consultant_guide'] > 0) {
+      console.log(`   📘 Consultant Guide: ${(indexedTokens['consultant_guide'] || 0).toLocaleString()} tokens (${indexedCounts['consultant_guide']} documenti)`);
     }
     
-    const actualRagTokens = indexedExerciseTokens + indexedLibraryTokens + indexedConsultationTokens + indexedKnowledgeBaseTokens + indexedUniversityTokens;
     const totalIndexedDocs = Object.values(indexedCounts).reduce((sum, count) => sum + count, 0);
-    console.log(`\n   💰 RISPARMIO REALE: ~${actualRagTokens.toLocaleString()} tokens via RAG (${totalIndexedDocs} documenti indicizzati)`);
+    console.log(`\n   💰 TOTALE FILE SEARCH: ${totalIndexedTokens.toLocaleString()} tokens (${totalIndexedDocs} documenti indicizzati)`);
+    
+    // Show what's NOT available to AI (in userContext but not synced)
+    const missingExercises = Math.max(0, totalExercisesInContext - (indexedCounts['exercise'] || 0));
+    const missingLibrary = Math.max(0, totalLibraryInContext - (indexedCounts['library'] || 0));
+    const missingConsultations = Math.max(0, totalConsultationsInContext - (indexedCounts['consultation'] || 0));
+    const missingUniversity = Math.max(0, totalUniversityInContext - totalUniversityDocs);
+    
+    if (missingExercises > 0 || missingLibrary > 0 || missingConsultations > 0 || missingUniversity > 0) {
+      console.log(`\n⚠️  NON DISPONIBILI ALL'AI (non sincronizzati in File Search):`);
+      if (missingExercises > 0) {
+        console.log(`   📚 Exercises: ~${(missingExercises * TOKENS_PER_EXERCISE).toLocaleString()} tokens (${missingExercises} documenti)`);
+      }
+      if (missingLibrary > 0) {
+        console.log(`   📖 Library: ~${(missingLibrary * TOKENS_PER_LIBRARY).toLocaleString()} tokens (${missingLibrary} documenti)`);
+      }
+      if (missingConsultations > 0) {
+        console.log(`   💬 Consultations: ~${(missingConsultations * TOKENS_PER_CONSULTATION).toLocaleString()} tokens (${missingConsultations} documenti)`);
+      }
+      if (missingUniversity > 0) {
+        console.log(`   🎓 University: ~${(missingUniversity * TOKENS_PER_UNIVERSITY).toLocaleString()} tokens (${missingUniversity} documenti)`);
+      }
+      console.log(`   💡 TIP: Sincronizza questi documenti in File Search per renderli disponibili all'AI`);
+    }
   } else {
     // File Search non attivo - tutto nel prompt
     console.log(`\n💰 Finance Data: ${breakdown.financeData.toLocaleString()} tokens (${((breakdown.financeData / systemPromptTokens) * 100).toFixed(1)}%)`);
@@ -649,6 +655,7 @@ export interface ChatStreamChunk {
   nextRetryAt?: Date;
   message?: string;
   remainingMs?: number;
+  usageMetadata?: GeminiUsageMetadata;
   suggestedActions?: Array<{
     type: string;
     label: string;
@@ -1808,6 +1815,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     });
 
     // Stream with automatic retry and heartbeat using unified retry manager
+    let clientUsageMetadata: GeminiUsageMetadata | undefined;
     for await (const chunk of streamWithRetriesAdapter(makeStreamAttempt, conversation.id, providerMetadata)) {
       yield chunk;
       
@@ -1815,11 +1823,29 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
       if (chunk.type === 'delta' && chunk.content) {
         accumulatedMessage += chunk.content;
       }
+      
+      // Capture usageMetadata from complete event
+      if (chunk.type === 'complete' && chunk.usageMetadata) {
+        clientUsageMetadata = chunk.usageMetadata;
+      }
     }
 
     timings.geminiCallEnd = performance.now();
     geminiCallTime = Math.round(timings.geminiCallEnd - timings.geminiCallStart);
     console.log(`⏱️  [TIMING] Gemini API call (with streaming): ${geminiCallTime}ms`);
+    
+    // Log REAL token usage from Gemini API (CLIENT)
+    if (clientUsageMetadata) {
+      console.log(`\n📊 TOKEN USAGE (REAL from Gemini) [CLIENT]:`);
+      console.log(`   - Prompt tokens: ${(clientUsageMetadata.promptTokenCount || 0).toLocaleString()}`);
+      console.log(`   - Response tokens: ${(clientUsageMetadata.candidatesTokenCount || 0).toLocaleString()}`);
+      console.log(`   - Total tokens: ${(clientUsageMetadata.totalTokenCount || 0).toLocaleString()}`);
+      if (clientUsageMetadata.cachedContentTokenCount) {
+        console.log(`   - Cached tokens: ${clientUsageMetadata.cachedContentTokenCount.toLocaleString()}`);
+      }
+    } else {
+      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CLIENT]`);
+    }
 
     let assistantMessage = accumulatedMessage || "Mi dispiace, non sono riuscito a generare una risposta.";
 
@@ -2702,6 +2728,7 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
     });
 
     // Stream with automatic retry and heartbeat using unified retry manager
+    let consultantUsageMetadata: GeminiUsageMetadata | undefined;
     for await (const chunk of streamWithRetriesAdapter(makeStreamAttempt, conversation.id, providerMetadata)) {
       yield chunk;
       
@@ -2709,11 +2736,29 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       if (chunk.type === 'delta' && chunk.content) {
         accumulatedMessage += chunk.content;
       }
+      
+      // Capture usageMetadata from complete event
+      if (chunk.type === 'complete' && chunk.usageMetadata) {
+        consultantUsageMetadata = chunk.usageMetadata;
+      }
     }
 
     timings.geminiCallEnd = performance.now();
     geminiCallTime = Math.round(timings.geminiCallEnd - timings.geminiCallStart);
     console.log(`⏱️  [TIMING] Gemini API call (with streaming): ${geminiCallTime}ms`);
+    
+    // Log REAL token usage from Gemini API (CONSULTANT)
+    if (consultantUsageMetadata) {
+      console.log(`\n📊 TOKEN USAGE (REAL from Gemini) [CONSULTANT]:`);
+      console.log(`   - Prompt tokens: ${(consultantUsageMetadata.promptTokenCount || 0).toLocaleString()}`);
+      console.log(`   - Response tokens: ${(consultantUsageMetadata.candidatesTokenCount || 0).toLocaleString()}`);
+      console.log(`   - Total tokens: ${(consultantUsageMetadata.totalTokenCount || 0).toLocaleString()}`);
+      if (consultantUsageMetadata.cachedContentTokenCount) {
+        console.log(`   - Cached tokens: ${consultantUsageMetadata.cachedContentTokenCount.toLocaleString()}`);
+      }
+    } else {
+      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CONSULTANT]`);
+    }
 
     let assistantMessage = accumulatedMessage || "Mi dispiace, non sono riuscito a generare una risposta.";
 

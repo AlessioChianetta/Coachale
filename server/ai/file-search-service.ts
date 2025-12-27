@@ -1350,7 +1350,9 @@ export class FileSearchService {
       storeDisplayName: string;
       ownerType: string;
       categories: Record<string, number>;
+      categoryTokens: Record<string, number>;
       totalDocs: number;
+      totalTokens: number;
     }> = [];
 
     for (const store of stores) {
@@ -1362,9 +1364,17 @@ export class FileSearchService {
       });
 
       const categories: Record<string, number> = {};
+      const categoryTokens: Record<string, number> = {};
+      let totalTokens = 0;
+      
       for (const doc of docs) {
         const cat = doc.sourceType || 'other';
         categories[cat] = (categories[cat] || 0) + 1;
+        
+        // Convert contentSize (chars/bytes) to estimated tokens (1 token ≈ 4 chars)
+        const docTokens = doc.contentSize ? Math.ceil(doc.contentSize / 4) : 0;
+        categoryTokens[cat] = (categoryTokens[cat] || 0) + docTokens;
+        totalTokens += docTokens;
       }
 
       breakdown.push({
@@ -1372,7 +1382,9 @@ export class FileSearchService {
         storeDisplayName: store.displayName,
         ownerType: store.ownerType,
         categories,
+        categoryTokens,
         totalDocs: docs.length,
+        totalTokens,
       });
     }
 
