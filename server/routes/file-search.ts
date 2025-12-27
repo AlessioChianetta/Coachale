@@ -1966,4 +1966,176 @@ router.post('/migrate-all-clients', authenticateToken, requireRole('consultant')
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// EXTERNAL DOCS FROM EXERCISES (workPlatform Google Docs)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/file-search/external-docs/missing
+ * Get all missing external docs (workPlatform URLs) across all clients
+ * Optional query param: ?clientId=xxx to filter for specific client
+ */
+router.get('/external-docs/missing', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientId } = req.query;
+    
+    if (clientId && typeof clientId === 'string') {
+      // Get missing docs for specific client
+      const missing = await fileSearchSyncService.getMissingExternalDocsForClient(clientId, consultantId);
+      
+      // Get client name
+      const client = await db.query.users.findFirst({
+        where: eq(users.id, clientId),
+      });
+      
+      res.json({
+        clientId,
+        clientName: client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : 'Unknown',
+        missingDocs: missing,
+        total: missing.length,
+      });
+    } else {
+      // Get all missing docs across all clients
+      const allMissing = await fileSearchSyncService.getAllMissingExternalDocs(consultantId);
+      
+      // Group by client
+      const byClient = new Map<string, { clientName: string; docs: typeof allMissing }>();
+      for (const doc of allMissing) {
+        if (!byClient.has(doc.clientId)) {
+          byClient.set(doc.clientId, { clientName: doc.clientName, docs: [] });
+        }
+        byClient.get(doc.clientId)!.docs.push(doc);
+      }
+      
+      res.json({
+        totalMissing: allMissing.length,
+        clientsWithMissing: byClient.size,
+        byClient: Array.from(byClient.entries()).map(([clientId, data]) => ({
+          clientId,
+          clientName: data.clientName,
+          missingDocs: data.docs,
+          count: data.docs.length,
+        })),
+      });
+    }
+  } catch (error: any) {
+    console.error('[FileSearch API] Error fetching missing external docs:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/external-docs/sync
+ * Sync a single external doc
+ * Body: { assignmentId: string, clientId: string }
+ */
+router.post('/external-docs/sync', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { assignmentId, clientId } = req.body;
+    
+    if (!assignmentId || !clientId) {
+      return res.status(400).json({ error: 'Missing assignmentId or clientId' });
+    }
+    
+    // Verify client belongs to this consultant
+    const client = await db.query.users.findFirst({
+      where: and(
+        eq(users.id, clientId),
+        eq(users.consultantId, consultantId),
+      ),
+    });
+    
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found or not authorized' });
+    }
+    
+    const result = await fileSearchSyncService.syncExerciseExternalDoc(assignmentId, clientId, consultantId);
+    
+    res.json({
+      success: result.success,
+      error: result.error,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing external doc:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/external-docs/sync-all
+ * Sync all missing external docs
+ * Body: { clientId?: string } - optional, syncs all clients if not provided
+ */
+router.post('/external-docs/sync-all', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientId } = req.body;
+    
+    if (clientId) {
+      // Sync for specific client
+      const client = await db.query.users.findFirst({
+        where: and(
+          eq(users.id, clientId),
+          eq(users.consultantId, consultantId),
+        ),
+      });
+      
+      if (!client) {
+        return res.status(404).json({ error: 'Client not found or not authorized' });
+      }
+      
+      const result = await fileSearchSyncService.syncAllExternalDocsForClient(clientId, consultantId);
+      
+      res.json({
+        success: result.success,
+        clientId,
+        clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim(),
+        synced: result.synced,
+        failed: result.failed,
+        errors: result.errors,
+      });
+    } else {
+      // Sync for all clients
+      const clients = await db.query.users.findMany({
+        where: eq(users.consultantId, consultantId),
+      });
+      
+      let totalSynced = 0;
+      let totalFailed = 0;
+      const allErrors: string[] = [];
+      const clientResults: Array<{ clientId: string; clientName: string; synced: number; failed: number }> = [];
+      
+      for (const client of clients) {
+        const result = await fileSearchSyncService.syncAllExternalDocsForClient(client.id, consultantId);
+        
+        totalSynced += result.synced;
+        totalFailed += result.failed;
+        allErrors.push(...result.errors);
+        
+        if (result.synced > 0 || result.failed > 0) {
+          clientResults.push({
+            clientId: client.id,
+            clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim(),
+            synced: result.synced,
+            failed: result.failed,
+          });
+        }
+      }
+      
+      res.json({
+        success: totalFailed === 0,
+        totalSynced,
+        totalFailed,
+        clientResults,
+        errors: allErrors,
+      });
+    }
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing all external docs:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
