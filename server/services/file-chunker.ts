@@ -27,7 +27,7 @@ export interface ChunkingResult {
   fileType: 'xlsx' | 'csv';
 }
 
-const MAX_TOKENS_PER_CHUNK = 200000; // Reduced from 400k for faster uploads
+const MAX_TOKENS_PER_CHUNK = 100000; // Reduced to 100k for reliable uploads
 const CHARS_PER_TOKEN = 4;
 const MAX_CHARS_PER_CHUNK = MAX_TOKENS_PER_CHUNK * CHARS_PER_TOKEN;
 

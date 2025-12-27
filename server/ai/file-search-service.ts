@@ -402,7 +402,7 @@ export class FileSearchService {
       // Poll for operation completion
       // SDK expects: client.operations.get({ operation }) where operation is the object returned
       let attempts = 0;
-      const maxAttempts = 150; // 5 minutes timeout (150 * 2s = 300s)
+      const maxAttempts = 240; // 8 minutes timeout (240 * 2s = 480s)
       while (!operation.done && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         attempts++;
@@ -622,7 +622,7 @@ export class FileSearchService {
       });
 
       let attempts = 0;
-      const maxAttempts = 150; // 5 minutes timeout (150 * 2s = 300s)
+      const maxAttempts = 240; // 8 minutes timeout (240 * 2s = 480s)
       while (!operation.done && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         attempts++;
