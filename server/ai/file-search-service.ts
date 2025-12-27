@@ -402,7 +402,7 @@ export class FileSearchService {
       // Poll for operation completion
       // SDK expects: client.operations.get({ operation }) where operation is the object returned
       let attempts = 0;
-      const maxAttempts = 60;
+      const maxAttempts = 150; // 5 minutes timeout (150 * 2s = 300s)
       while (!operation.done && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         attempts++;
@@ -411,15 +411,15 @@ export class FileSearchService {
           // Pass the full operation object as per Google GenAI SDK
           operation = await client.operations.get({ operation });
           
-          if (attempts % 10 === 0) {
-            console.log(`⏳ [FileSearch] Upload in progress... (attempt ${attempts}/${maxAttempts})`);
+          if (attempts % 15 === 0) {
+            console.log(`⏳ [FileSearch] Upload in progress... (attempt ${attempts}/${maxAttempts}, ~${Math.round(attempts * 2 / 60)}min)`);
           }
         } catch (pollError: any) {
           // Log but continue - sometimes polling can temporarily fail
           console.warn(`⚠️ [FileSearch] Polling attempt ${attempts} warning:`, pollError.message);
           
           // If we've had too many consecutive errors, break
-          if (attempts >= 5 && !operation.done) {
+          if (attempts >= 10 && !operation.done) {
             console.error(`❌ [FileSearch] Too many polling errors, stopping`);
             break;
           }
@@ -622,15 +622,18 @@ export class FileSearchService {
       });
 
       let attempts = 0;
-      const maxAttempts = 60;
+      const maxAttempts = 150; // 5 minutes timeout (150 * 2s = 300s)
       while (!operation.done && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         attempts++;
         try {
           operation = await client.operations.get({ operation });
+          if (attempts % 15 === 0) {
+            console.log(`⏳ [FileSearch] Upload in progress... (attempt ${attempts}/${maxAttempts}, ~${Math.round(attempts * 2 / 60)}min)`);
+          }
         } catch (pollError: any) {
           console.warn(`⚠️ [FileSearch] Polling attempt ${attempts} warning:`, pollError.message);
-          if (attempts >= 5 && !operation.done) break;
+          if (attempts >= 10 && !operation.done) break;
         }
       }
 
