@@ -322,6 +322,15 @@ interface SourceOrphansData {
   message?: string;
 }
 
+interface ClientFileSearchStatus {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  fileSearchEnabled: boolean | null;
+  isActive: boolean;
+}
+
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
 
 interface SyncLogEntry {
@@ -698,6 +707,46 @@ export default function ConsultantFileSearchAnalyticsPage() {
       return response.json();
     },
     enabled: !!selectedStoreForOrphans,
+  });
+
+  const { data: clientsFileSearch, isLoading: clientsFileSearchLoading } = useQuery<ClientFileSearchStatus[]>({
+    queryKey: ["/api/file-search/clients"],
+    queryFn: async () => {
+      const response = await fetch("/api/file-search/clients", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch clients");
+      return response.json();
+    },
+  });
+
+  const updateClientFileSearchMutation = useMutation({
+    mutationFn: async ({ clientId, fileSearchEnabled }: { clientId: string; fileSearchEnabled: boolean }) => {
+      const response = await fetch(`/api/file-search/clients/${clientId}`, {
+        method: "PATCH",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ fileSearchEnabled }),
+      });
+      if (!response.ok) throw new Error("Failed to update client");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/clients"] });
+      toast({
+        title: "Impostazione aggiornata",
+        description: "Lo stato File Search del cliente è stato aggiornato.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'aggiornamento",
+        variant: "destructive",
+      });
+    },
   });
 
   const cleanupOrphansMutation = useMutation({
@@ -3009,6 +3058,78 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         Reset Tutti gli Store
                       </Button>
                     </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-blue-600" />
+                      File Search per Cliente
+                    </CardTitle>
+                    <CardDescription>
+                      Attiva o disattiva File Search per ogni cliente. Quando disattivato, l'AI userà il contesto tradizionale.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {clientsFileSearchLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                      </div>
+                    ) : clientsFileSearch && clientsFileSearch.length > 0 ? (
+                      <div className="space-y-3">
+                        {clientsFileSearch.map((client) => (
+                          <div
+                            key={client.id}
+                            className={`flex items-center justify-between p-4 rounded-lg border ${
+                              client.isActive ? 'bg-white' : 'bg-gray-50 opacity-60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${
+                                client.fileSearchEnabled !== false ? 'bg-emerald-500' : 'bg-gray-400'
+                              }`}>
+                                {client.firstName?.[0]?.toUpperCase() || '?'}
+                                {client.lastName?.[0]?.toUpperCase() || ''}
+                              </div>
+                              <div>
+                                <p className="font-medium">
+                                  {client.firstName} {client.lastName}
+                                  {!client.isActive && (
+                                    <Badge variant="secondary" className="ml-2 text-xs">
+                                      Inattivo
+                                    </Badge>
+                                  )}
+                                </p>
+                                <p className="text-sm text-gray-500">{client.email}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className={`text-sm font-medium ${
+                                client.fileSearchEnabled !== false ? 'text-emerald-600' : 'text-gray-500'
+                              }`}>
+                                {client.fileSearchEnabled !== false ? 'Attivo' : 'Disattivato'}
+                              </span>
+                              <Switch
+                                checked={client.fileSearchEnabled !== false}
+                                onCheckedChange={(checked) => 
+                                  updateClientFileSearchMutation.mutate({ 
+                                    clientId: client.id, 
+                                    fileSearchEnabled: checked 
+                                  })
+                                }
+                                disabled={updateClientFileSearchMutation.isPending}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p>Nessun cliente trovato</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
