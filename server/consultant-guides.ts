@@ -995,9 +995,9 @@ export const consultantGuides: ConsultantGuides = {
   emailJourney: {
     emoji: "📬",
     title: "Email Journey",
-    path: "/consultant/email-journey",
-    navigation: "Sidebar → LAVORO QUOTIDIANO → Email Journey → Tab Journey",
-    description: "Vista dedicata al percorso email dei clienti. Monitora progressi, azioni completate e engagement.",
+    path: "/consultant/ai-config",
+    navigation: "Sidebar → LAVORO QUOTIDIANO → Email Journey",
+    description: "Vista dedicata al percorso email dei clienti. Monitora progressi, azioni completate e engagement. Questa è la pagina principale dell'Email Journey accessibile dalla sidebar.",
     category: "communication",
     sections: [
       {
@@ -2871,55 +2871,10 @@ export const consultantGuides: ConsultantGuides = {
   // SEZIONE 10: NUOVE PAGINE - Aggiunte Dicembre 2025
   // ═══════════════════════════════════════════════════════════════════
 
-  aiSettings: {
-    emoji: "⚙️",
-    title: "Impostazioni AI",
-    path: "/consultant/ai-settings",
-    navigation: "Sidebar → AI AVANZATO → Impostazioni AI",
-    description: "Configurazione modelli AI, preferenze di generazione, parametri avanzati per personalizzare il comportamento dell'intelligenza artificiale.",
-    category: "settings",
-    sections: [
-      {
-        title: "MODELLI AI",
-        icon: "🤖",
-        description: "Selezione e configurazione dei modelli AI.",
-        steps: [
-          {
-            title: "Modello Predefinito",
-            content: "Scegli quale modello AI usare per le risposte: Gemini Flash (veloce), Gemini Pro (bilanciato), Gemini Ultra (massima qualità)."
-          },
-          {
-            title: "Parametri Generazione",
-            content: "Configura temperatura, top-p, top-k per controllare creatività e coerenza delle risposte."
-          },
-          {
-            title: "Token Limits",
-            content: "Imposta limiti massimi di token per input e output."
-          }
-        ]
-      },
-      {
-        title: "PREFERENZE",
-        icon: "🎯",
-        description: "Personalizza il comportamento dell'AI.",
-        steps: [
-          {
-            title: "Stile Risposte",
-            content: "Definisci lo stile predefinito per le risposte AI."
-          },
-          {
-            title: "Contesto Automatico",
-            content: "Scegli quali informazioni includere automaticamente nel contesto."
-          }
-        ]
-      }
-    ]
-  },
-
   pathwayGenerator: {
     emoji: "🛤️",
-    title: "Generatore Percorsi AI",
-    path: "/consultant/templates",
+    title: "Generatore Percorsi AI / Template Esercizi",
+    path: "/consultant/exercise-templates",
     navigation: "Sidebar → FORMAZIONE → Template",
     description: "AI University Pathway Generator - wizard 4 step per creare percorsi formativi AI personalizzati. Genera automaticamente corsi, moduli e lezioni.",
     category: "content",
