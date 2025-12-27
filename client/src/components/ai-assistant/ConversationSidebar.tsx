@@ -240,9 +240,9 @@ export function ConversationSidebar({
                 <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Inizia una nuova chat</p>
               </div>
             ) : (
-              <div className="space-y-1 overflow-hidden">
+              <div className="space-y-0.5 overflow-hidden w-full">
                 {filteredConversations.map((conversation) => (
-                  <div key={conversation.id} className="relative group overflow-hidden">
+                  <div key={conversation.id} className="relative group overflow-hidden w-full">
                     <motion.div 
                       className="absolute right-0 top-0 bottom-0 flex items-center z-10"
                       initial={{ opacity: 0, x: 10 }}
@@ -266,7 +266,7 @@ export function ConversationSidebar({
                     </motion.div>
 
                     <motion.div
-                      className="relative z-0 overflow-hidden"
+                      className="relative z-0 overflow-hidden w-full"
                       drag="x"
                       dragConstraints={{ left: -48, right: 0 }}
                       dragElastic={0.1}
@@ -289,24 +289,24 @@ export function ConversationSidebar({
                         }}
                         disabled={loadingConversationId === conversation.id}
                         className={cn(
-                          "w-full text-left p-3 rounded-lg transition-all duration-150 overflow-hidden",
+                          "w-full text-left py-2 px-3 rounded-lg transition-all duration-150 overflow-hidden",
                           "hover:bg-slate-200/60 dark:hover:bg-slate-800/60",
                           selectedConversationId === conversation.id
                             ? "bg-cyan-100/80 dark:bg-cyan-900/30 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
                             : "bg-transparent"
                         )}
                       >
-                        <div className="flex items-start justify-between gap-2 overflow-hidden">
-                          <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2 overflow-hidden w-full">
+                          <div className="flex-1 w-0 overflow-hidden">
                             <p className={cn(
-                              "text-sm font-medium truncate block max-w-full overflow-hidden text-ellipsis whitespace-nowrap",
+                              "text-sm font-medium overflow-hidden text-ellipsis whitespace-nowrap",
                               selectedConversationId === conversation.id
                                 ? "text-cyan-900 dark:text-cyan-100"
                                 : "text-slate-800 dark:text-slate-200"
                             )}>
                               {conversation.title}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5 truncate">
+                            <p className="text-xs text-slate-500 dark:text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap">
                               {formatDate(conversation.updatedAt)}
                             </p>
                           </div>
