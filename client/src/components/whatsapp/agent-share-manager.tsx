@@ -28,11 +28,12 @@ interface AgentShare {
 }
 
 interface AgentShareManagerProps {
-  agentConfigId: string;
+  agentId: string;
   agentName: string;
+  onClose?: () => void;
 }
 
-export function AgentShareManager({ agentConfigId, agentName }: AgentShareManagerProps) {
+export function AgentShareManager({ agentId, agentName, onClose }: AgentShareManagerProps) {
   const [shares, setShares] = useState<AgentShare[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -63,7 +64,7 @@ export function AgentShareManager({ agentConfigId, agentName }: AgentShareManage
       
       const data = await res.json();
       // Filter shares for this agent
-      const agentShares = data.shares.filter((s: AgentShare) => s.agent?.id === agentConfigId);
+      const agentShares = data.shares.filter((s: AgentShare) => s.agent?.id === agentId);
       setShares(agentShares);
     } catch (error: any) {
       toast({
@@ -79,7 +80,7 @@ export function AgentShareManager({ agentConfigId, agentName }: AgentShareManage
   const createShare = async () => {
     try {
       const body: any = {
-        agentConfigId,
+        agentConfigId: agentId,
         accessType,
       };
 
@@ -248,6 +249,12 @@ export function AgentShareManager({ agentConfigId, agentName }: AgentShareManage
             Condividi questo agente tramite link pubblico o iframe embed
           </p>
         </div>
+
+        {onClose && (
+          <Button variant="ghost" size="icon" onClick={onClose} className="-mr-2">
+            <X className="h-4 w-4" />
+          </Button>
+        )}
 
         {!activeShare && nonRevokedShares.length === 0 && (
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

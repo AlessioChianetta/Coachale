@@ -6,10 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot } from "lucide-react";
+import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot, Settings2 } from "lucide-react";
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
+import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -665,43 +666,46 @@ export default function ConsultantAIAssistant() {
           <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
             {/* Agent Selection Header */}
             <div className="border-b bg-gray-50/50 dark:bg-gray-900/50 px-4 py-3 flex-shrink-0">
-              <div className="flex items-center gap-3 max-w-4xl mx-auto">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Agente:</span>
-                </div>
-                <Select
-                  value={selectedAgentId || "base"}
-                  onValueChange={(value) => setSelectedAgentId(value === "base" ? null : value)}
-                >
-                  <SelectTrigger className="w-[280px] h-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                    <SelectValue placeholder="Seleziona agente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="base">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-purple-500" />
-                        <span>Assistente Base</span>
-                      </div>
-                    </SelectItem>
-                    {availableAgents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
+              <div className="flex items-center justify-between max-w-4xl mx-auto">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Agente:</span>
+                  </div>
+                  <Select
+                    value={selectedAgentId || "base"}
+                    onValueChange={(value) => setSelectedAgentId(value === "base" ? null : value)}
+                  >
+                    <SelectTrigger className="w-[280px] h-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <SelectValue placeholder="Seleziona agente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="base">
                         <div className="flex items-center gap-2">
-                          <Bot className="h-4 w-4 text-blue-500" />
-                          <span>{agent.name}</span>
-                          {agent.businessName && (
-                            <span className="text-xs text-muted-foreground">({agent.businessName})</span>
-                          )}
+                          <Sparkles className="h-4 w-4 text-purple-500" />
+                          <span>Assistente Base</span>
                         </div>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedAgentId && (
-                  <span className="text-xs text-muted-foreground">
-                    L'AI userà il contesto dell'agente selezionato
-                  </span>
-                )}
+                      {availableAgents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          <div className="flex items-center gap-2">
+                            <Bot className="h-4 w-4 text-blue-500" />
+                            <span>{agent.name}</span>
+                            {agent.businessName && (
+                              <span className="text-xs text-muted-foreground">({agent.businessName})</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedAgentId && (
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      L'AI userà il contesto dell'agente selezionato
+                    </span>
+                  )}
+                </div>
+                <AIPreferencesSheet />
               </div>
             </div>
 

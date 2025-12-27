@@ -53,6 +53,13 @@ import {
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { AgentShareManager } from "./agent-share-manager";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Agent {
   id: string;
@@ -265,6 +272,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [isSavingAISettings, setIsSavingAISettings] = useState(false);
 
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [showShareManager, setShowShareManager] = useState(false);
 
   const { data: consultantClients } = useQuery<ConsultantClient[]>({
     queryKey: ["/api/ai-assistant/consultant/clients"],
@@ -1085,7 +1093,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
               <Zap className="h-4 w-4 text-amber-500" />
               Azioni Rapide
             </h3>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -1103,6 +1111,15 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
               >
                 <MessageSquare className="h-4 w-4" />
                 <span className="text-xs">Chat</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-col h-auto py-3 gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                onClick={() => setShowShareManager(true)}
+              >
+                <Share2 className="h-4 w-4" />
+                <span className="text-xs">Condividi</span>
               </Button>
               <Button
                 variant="outline"
@@ -1126,6 +1143,19 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
           </div>
         </CardContent>
       </ScrollArea>
+
+      <Dialog open={showShareManager} onOpenChange={setShowShareManager}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Condividi Agente</DialogTitle>
+          </DialogHeader>
+          <AgentShareManager 
+            agentId={selectedAgent.id} 
+            agentName={selectedAgent.name} 
+            onClose={() => setShowShareManager(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

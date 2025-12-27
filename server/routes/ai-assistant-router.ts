@@ -97,14 +97,20 @@ router.get("/agent/:agentId/client-assignments", authenticateToken, requireRole(
       clientId: agentClientAssignments.clientId,
       assignedAt: agentClientAssignments.assignedAt,
       isActive: agentClientAssignments.isActive,
-      clientName: users.displayName,
+      clientFirstName: users.firstName,
+      clientLastName: users.lastName,
       clientEmail: users.email,
     })
     .from(agentClientAssignments)
     .innerJoin(users, eq(agentClientAssignments.clientId, users.id))
     .where(eq(agentClientAssignments.agentConfigId, agentId));
+    
+    const formattedAssignments = assignments.map(a => ({
+      ...a,
+      clientName: `${a.clientFirstName} ${a.clientLastName}`.trim(),
+    }));
 
-    res.json(assignments);
+    res.json(formattedAssignments);
   } catch (error) {
     console.error("[AI Assistant] Error fetching client assignments:", error);
     res.status(500).json({ error: "Failed to fetch assignments" });
@@ -268,7 +274,8 @@ router.get("/consultant/clients", authenticateToken, requireRole("consultant"), 
 
     const clients = await db.select({
       id: users.id,
-      displayName: users.displayName,
+      firstName: users.firstName,
+      lastName: users.lastName,
       email: users.email,
     })
     .from(users)
@@ -277,7 +284,13 @@ router.get("/consultant/clients", authenticateToken, requireRole("consultant"), 
       eq(users.role, "client")
     ));
 
-    res.json(clients);
+    const formattedClients = clients.map(c => ({
+      id: c.id,
+      displayName: `${c.firstName} ${c.lastName}`.trim(),
+      email: c.email,
+    }));
+
+    res.json(formattedClients);
   } catch (error) {
     console.error("[AI Assistant] Error fetching clients:", error);
     res.status(500).json({ error: "Failed to fetch clients" });

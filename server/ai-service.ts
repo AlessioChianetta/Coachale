@@ -5,7 +5,7 @@
 import { performance } from 'perf_hooks';
 import { GoogleGenAI } from "@google/genai";
 import { db } from "./db";
-import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig, consultantWhatsappConfig } from "../shared/schema";
+import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig, consultantWhatsappConfig, aiAssistantPreferences } from "../shared/schema";
 import { decrypt } from "./encryption";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { buildUserContext, UserContext } from "./ai-context-builder";
@@ -1321,6 +1321,45 @@ ${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
   }
 
   // ========================================
+  // USER PREFERENCES CONTEXT: Fetch AI assistant preferences
+  // ========================================
+  let userPreferencesContext = '';
+  try {
+    const [prefs] = await db.select()
+      .from(aiAssistantPreferences)
+      .where(eq(aiAssistantPreferences.userId, clientId))
+      .limit(1);
+    
+    if (prefs) {
+      const writingStyleLabels: Record<string, string> = {
+        conversational: 'Usa un tono colloquiale, amichevole e informale',
+        professional: 'Usa un tono professionale, formale e business-like',
+        concise: 'Sii breve e diretto, vai dritto al punto',
+        detailed: 'Fornisci spiegazioni approfondite e dettagliate',
+        custom: 'Segui le istruzioni personalizzate dell\'utente'
+      };
+      
+      const responseLengthLabels: Record<string, string> = {
+        short: 'Mantieni le risposte brevi (1-2 paragrafi)',
+        balanced: 'Usa una lunghezza moderata',
+        comprehensive: 'Fornisci risposte complete e dettagliate'
+      };
+      
+      userPreferencesContext = `
+## Preferenze di Comunicazione dell'Utente
+- Stile di Scrittura: ${writingStyleLabels[prefs.writingStyle] || 'Professionale'}
+- Lunghezza Risposte: ${responseLengthLabels[prefs.responseLength] || 'Bilanciata'}
+${prefs.customInstructions ? `- Istruzioni Personalizzate: ${prefs.customInstructions}` : ''}
+
+IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
+`;
+      console.log(`📝 [User Preferences] Applying preferences - Style: ${prefs.writingStyle}, Length: ${prefs.responseLength}`);
+    }
+  } catch (prefError) {
+    console.log(`⚠️ [User Preferences] Could not fetch preferences:`, prefError);
+  }
+
+  // ========================================
   // PERFORMANCE TIMING TRACKING
   // ========================================
   const timings = {
@@ -1769,6 +1808,11 @@ ${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
     // Append agent context if available
     if (agentContext) {
       systemPrompt = systemPrompt + '\n\n' + agentContext;
+    }
+    
+    // Append user preferences if available
+    if (userPreferencesContext) {
+      systemPrompt = systemPrompt + '\n\n' + userPreferencesContext;
     }
 
     // Calculate detailed token breakdown by section
@@ -2589,6 +2633,45 @@ ${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
     }
   }
 
+  // ========================================
+  // USER PREFERENCES CONTEXT: Fetch AI assistant preferences for consultant
+  // ========================================
+  let userPreferencesContext = '';
+  try {
+    const [prefs] = await db.select()
+      .from(aiAssistantPreferences)
+      .where(eq(aiAssistantPreferences.userId, consultantId))
+      .limit(1);
+    
+    if (prefs) {
+      const writingStyleLabels: Record<string, string> = {
+        conversational: 'Usa un tono colloquiale, amichevole e informale',
+        professional: 'Usa un tono professionale, formale e business-like',
+        concise: 'Sii breve e diretto, vai dritto al punto',
+        detailed: 'Fornisci spiegazioni approfondite e dettagliate',
+        custom: 'Segui le istruzioni personalizzate dell\'utente'
+      };
+      
+      const responseLengthLabels: Record<string, string> = {
+        short: 'Mantieni le risposte brevi (1-2 paragrafi)',
+        balanced: 'Usa una lunghezza moderata',
+        comprehensive: 'Fornisci risposte complete e dettagliate'
+      };
+      
+      userPreferencesContext = `
+## Preferenze di Comunicazione dell'Utente
+- Stile di Scrittura: ${writingStyleLabels[prefs.writingStyle] || 'Professionale'}
+- Lunghezza Risposte: ${responseLengthLabels[prefs.responseLength] || 'Bilanciata'}
+${prefs.customInstructions ? `- Istruzioni Personalizzate: ${prefs.customInstructions}` : ''}
+
+IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
+`;
+      console.log(`📝 [User Preferences] Applying preferences - Style: ${prefs.writingStyle}, Length: ${prefs.responseLength}`);
+    }
+  } catch (prefError) {
+    console.log(`⚠️ [User Preferences] Could not fetch preferences:`, prefError);
+  }
+
   const timings = {
     requestStart: performance.now(),
     contextBuildStart: 0,
@@ -2739,6 +2822,11 @@ ${agentConfig.agentInstructions || 'Nessuna istruzione specifica.'}
     // Append agent context if available
     if (agentContext) {
       systemPrompt = systemPrompt + '\n\n' + agentContext;
+    }
+    
+    // Append user preferences if available
+    if (userPreferencesContext) {
+      systemPrompt = systemPrompt + '\n\n' + userPreferencesContext;
     }
     timings.promptBuildEnd = performance.now();
     promptBuildTime = Math.round(timings.promptBuildEnd - timings.promptBuildStart);
