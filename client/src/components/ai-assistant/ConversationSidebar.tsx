@@ -107,10 +107,10 @@ export function ConversationSidebar({
 
   return (
     <div className={cn(
-      "h-full border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col transition-all duration-300",
+      "h-full border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col transition-all duration-300 overflow-hidden",
       sidebarMinimized ? "w-16" : "w-72"
     )}>
-      <div className="p-3 space-y-3">
+      <div className="p-3 space-y-3 flex-shrink-0 overflow-hidden">
         <div className="flex items-center gap-2">
           {!sidebarMinimized ? (
             <>
@@ -223,8 +223,8 @@ export function ConversationSidebar({
       </div>
 
       {!sidebarMinimized && (
-        <ScrollArea className="flex-1">
-          <div className="px-2 pb-4">
+        <ScrollArea className="flex-1 overflow-hidden">
+          <div className="px-2 pb-4 overflow-hidden">
             {conversationsLoading ? (
               <div className="space-y-2 p-2">
                 {[1, 2, 3].map((i) => (
@@ -289,24 +289,24 @@ export function ConversationSidebar({
                         }}
                         disabled={loadingConversationId === conversation.id}
                         className={cn(
-                          "w-full text-left p-3 rounded-lg transition-all duration-150",
+                          "w-full text-left p-3 rounded-lg transition-all duration-150 overflow-hidden",
                           "hover:bg-slate-200/60 dark:hover:bg-slate-800/60",
                           selectedConversationId === conversation.id
                             ? "bg-cyan-100/80 dark:bg-cyan-900/30 hover:bg-cyan-100 dark:hover:bg-cyan-900/40"
                             : "bg-transparent"
                         )}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 overflow-hidden">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <p className={cn(
-                              "text-sm font-medium truncate",
+                              "text-sm font-medium truncate block w-full",
                               selectedConversationId === conversation.id
                                 ? "text-cyan-900 dark:text-cyan-100"
                                 : "text-slate-800 dark:text-slate-200"
                             )}>
                               {conversation.title}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
+                            <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5 truncate">
                               {formatDate(conversation.updatedAt)}
                             </p>
                           </div>
