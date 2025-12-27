@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, AlertCircle, Sun, Moon, Mic, DollarSign, TrendingUp, Zap, Bot } from "lucide-react";
+import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, AlertCircle, Sun, Moon, Mic, DollarSign, TrendingUp, Zap, Bot, Filter } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -122,6 +122,7 @@ export default function ClientAIAssistant() {
 
   const [isLiveModeActive, setIsLiveModeActive] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [agentFilter, setAgentFilter] = useState<string>("all");
 
   const { data: availableAgents = [] } = useQuery<AgentForAssistant[]>({
     queryKey: ["/api/ai-assistant/client/agents-for-assistant"],
@@ -485,10 +486,11 @@ export default function ClientAIAssistant() {
     };
   }, []);
 
-  // Clear chat view when selectedAgentId changes
+  // Clear chat view and sync filter when selectedAgentId changes
   useEffect(() => {
     setSelectedConversationId(null);
     setMessages([]);
+    setAgentFilter(selectedAgentId || "base");
   }, [selectedAgentId]);
 
   return (
@@ -557,7 +559,44 @@ export default function ClientAIAssistant() {
                 {!sidebarMinimized && (
                   <>
                     <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-medium text-muted-foreground">Filtra conversazioni</label>
+                      <label className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Filter className="h-3.5 w-3.5" />
+                        Filtra per agente
+                      </label>
+                      <Select
+                        value={agentFilter}
+                        onValueChange={setAgentFilter}
+                      >
+                        <SelectTrigger className="w-full h-9 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                          <SelectValue placeholder="Filtra per agente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            <span className="flex items-center gap-2">
+                              <MessageSquare className="h-4 w-4" />
+                              Tutte le conversazioni
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="base">
+                            <span className="flex items-center gap-2">
+                              <Sparkles className="h-4 w-4 text-purple-500" />
+                              Assistenza base
+                            </span>
+                          </SelectItem>
+                          {availableAgents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              <span className="flex items-center gap-2">
+                                <Bot className="h-4 w-4 text-blue-500" />
+                                {agent.name}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs sm:text-sm font-medium text-muted-foreground">Filtra per tipo</label>
                       <select
                         value={conversationFilter}
                         onChange={(e) => setConversationFilter(e.target.value as any)}
@@ -584,10 +623,16 @@ export default function ClientAIAssistant() {
                       Caricamento...
                     </div>
                   ) : conversations.filter((conv) => {
-                      // First filter by agent - if agent selected, only show that agent's conversations
-                      if (selectedAgentId && conv.agentId !== selectedAgentId) return false;
-                      // If no agent selected, show all (or those without agentId)
-                      if (!selectedAgentId && conv.agentId) return false;
+                      // First filter by agent using agentFilter
+                      if (agentFilter === "all") {
+                        // Show all conversations
+                      } else if (agentFilter === "base") {
+                        // Show only base conversations (no agent)
+                        if (conv.agentId) return false;
+                      } else {
+                        // Show only specific agent's conversations
+                        if (conv.agentId !== agentFilter) return false;
+                      }
                       // Then apply the mode/type filter
                       if (conversationFilter === "all") return true;
                       if (conversationFilter === "assistenza") return conv.mode === "assistenza";
@@ -611,10 +656,16 @@ export default function ClientAIAssistant() {
                   ) : (
                     conversations
                       .filter((conv) => {
-                        // First filter by agent - if agent selected, only show that agent's conversations
-                        if (selectedAgentId && conv.agentId !== selectedAgentId) return false;
-                        // If no agent selected, show all (or those without agentId)
-                        if (!selectedAgentId && conv.agentId) return false;
+                        // First filter by agent using agentFilter
+                        if (agentFilter === "all") {
+                          // Show all conversations
+                        } else if (agentFilter === "base") {
+                          // Show only base conversations (no agent)
+                          if (conv.agentId) return false;
+                        } else {
+                          // Show only specific agent's conversations
+                          if (conv.agentId !== agentFilter) return false;
+                        }
                         // Then apply the mode/type filter
                         if (conversationFilter === "all") return true;
                         if (conversationFilter === "assistenza") return conv.mode === "assistenza";

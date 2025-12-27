@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot, Settings2 } from "lucide-react";
+import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot, Settings2, Filter } from "lucide-react";
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
@@ -100,6 +100,7 @@ export default function ConsultantAIAssistant() {
   const [swipedConversationId, setSwipedConversationId] = useState<string | null>(null);
   const [loadingConversationId, setLoadingConversationId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [conversationFilter, setConversationFilter] = useState<string>("all");
 
   const tempAssistantIdRef = useRef<string | null>(null);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
@@ -166,9 +167,11 @@ export default function ConsultantAIAssistant() {
     },
   });
 
-  const filteredConversations = selectedAgentId
-    ? conversations.filter((c) => c.agentId === selectedAgentId)
-    : conversations.filter((c) => !c.agentId || c.agentId === null);
+  const filteredConversations = conversationFilter === "all"
+    ? conversations
+    : conversationFilter === "base"
+      ? conversations.filter((c) => !c.agentId || c.agentId === null)
+      : conversations.filter((c) => c.agentId === conversationFilter);
 
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: string) => {
@@ -453,6 +456,7 @@ export default function ConsultantAIAssistant() {
   useEffect(() => {
     setSelectedConversationId(null);
     setMessages([]);
+    setConversationFilter(selectedAgentId || "base");
   }, [selectedAgentId]);
 
   useEffect(() => {
@@ -560,6 +564,42 @@ export default function ConsultantAIAssistant() {
                 )}
 
                 {!sidebarMinimized && <Separator />}
+
+                {!sidebarMinimized && (
+                  <Select
+                    value={conversationFilter}
+                    onValueChange={setConversationFilter}
+                  >
+                    <SelectTrigger className="w-full h-9 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                        <SelectValue placeholder="Filtra conversazioni" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        <span className="flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4" />
+                          Tutte le conversazioni
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="base">
+                        <span className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-purple-500" />
+                          Assistenza base
+                        </span>
+                      </SelectItem>
+                      {availableAgents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          <span className="flex items-center gap-2">
+                            <Bot className="h-4 w-4 text-blue-500" />
+                            {agent.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {!sidebarMinimized && <ScrollArea className="flex-1 px-4">
