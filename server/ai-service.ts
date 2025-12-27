@@ -149,33 +149,105 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+// Average tokens per document type for estimation
+const TOKENS_PER_DOCUMENT: Record<string, number> = {
+  'exercise': 500,
+  'library': 1000,
+  'consultation': 300,
+  'knowledge_base': 500,
+  'university': 800,
+  'university_lesson': 800,
+};
+
+// Type for fileSearchBreakdown
+type FileSearchBreakdownItem = {
+  storeName: string;
+  storeDisplayName: string;
+  ownerType: string;
+  categories: Record<string, number>;
+  totalDocs: number;
+};
+
 // Helper function to log token breakdown with File Search awareness
+// NOW uses ACTUAL indexed document counts from fileSearchBreakdown
 function logTokenBreakdown(
   breakdown: ReturnType<typeof calculateTokenBreakdown>,
   systemPromptTokens: number,
-  hasFileSearch: boolean
+  hasFileSearch: boolean,
+  fileSearchBreakdown?: FileSearchBreakdownItem[]
 ): void {
   console.log(`\n${'═'.repeat(70)}`);
   console.log(`📊 SYSTEM PROMPT BREAKDOWN (~${systemPromptTokens.toLocaleString()} tokens)`);
   console.log(`${'═'.repeat(70)}`);
 
-  if (hasFileSearch) {
-    // File Search attivo - mostra cosa è nel prompt vs cosa è su RAG
+  if (hasFileSearch && fileSearchBreakdown && fileSearchBreakdown.length > 0) {
+    // Count ACTUAL indexed documents per category from fileSearchBreakdown
+    const indexedCounts: Record<string, number> = {};
+    for (const store of fileSearchBreakdown) {
+      for (const [cat, count] of Object.entries(store.categories)) {
+        indexedCounts[cat] = (indexedCounts[cat] || 0) + count;
+      }
+    }
+    
+    // Calculate ACTUAL indexed tokens based on document counts
+    const indexedExerciseTokens = (indexedCounts['exercise'] || 0) * TOKENS_PER_DOCUMENT['exercise'];
+    const indexedLibraryTokens = (indexedCounts['library'] || 0) * TOKENS_PER_DOCUMENT['library'];
+    const indexedConsultationTokens = (indexedCounts['consultation'] || 0) * TOKENS_PER_DOCUMENT['consultation'];
+    const indexedKnowledgeBaseTokens = (indexedCounts['knowledge_base'] || 0) * TOKENS_PER_DOCUMENT['knowledge_base'];
+    const indexedUniversityTokens = ((indexedCounts['university'] || 0) + (indexedCounts['university_lesson'] || 0)) * TOKENS_PER_DOCUMENT['university'];
+    
+    // Calculate NON-indexed tokens (still in system prompt)
+    const nonIndexedExerciseTokens = Math.max(0, breakdown.exercises - indexedExerciseTokens);
+    const nonIndexedLibraryTokens = Math.max(0, breakdown.library - indexedLibraryTokens);
+    const nonIndexedConsultationTokens = Math.max(0, breakdown.consultations - indexedConsultationTokens);
+    const nonIndexedKnowledgeBaseTokens = Math.max(0, breakdown.knowledgeBase - indexedKnowledgeBaseTokens);
+    const nonIndexedUniversityTokens = Math.max(0, breakdown.university - indexedUniversityTokens);
+    
+    // File Search attivo - mostra cosa è nel prompt vs cosa è REALMENTE su RAG
     console.log(`\n📍 NEL SYSTEM PROMPT (${systemPromptTokens.toLocaleString()} tokens):`);
     console.log(`   💰 Finance Data: ${breakdown.financeData.toLocaleString()} tokens`);
     console.log(`   🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens`);
     console.log(`   ⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens`);
     console.log(`   👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens`);
     
-    console.log(`\n🔍 VIA FILE SEARCH RAG (non nel prompt, cercati su richiesta):`);
-    console.log(`   📚 Exercises: ${breakdown.exercises.toLocaleString()} tokens → via RAG`);
-    console.log(`   📖 Library Docs: ${breakdown.library.toLocaleString()} tokens → via RAG`);
-    console.log(`   💬 Consultations: ${breakdown.consultations.toLocaleString()} tokens → via RAG`);
-    console.log(`   📚 Knowledge Base: ${breakdown.knowledgeBase.toLocaleString()} tokens → via RAG`);
-    console.log(`   🎓 University: ${breakdown.university.toLocaleString()} tokens → via RAG`);
+    // Show non-indexed content (still in prompt)
+    if (nonIndexedExerciseTokens > 0) {
+      console.log(`   📚 Exercises (non indicizzati): ~${nonIndexedExerciseTokens.toLocaleString()} tokens`);
+    }
+    if (nonIndexedLibraryTokens > 0) {
+      console.log(`   📖 Library (non indicizzati): ~${nonIndexedLibraryTokens.toLocaleString()} tokens`);
+    }
+    if (nonIndexedConsultationTokens > 0) {
+      console.log(`   💬 Consultations (non indicizzati): ~${nonIndexedConsultationTokens.toLocaleString()} tokens`);
+    }
+    if (nonIndexedKnowledgeBaseTokens > 0) {
+      console.log(`   🧠 Knowledge Base (non indicizzati): ~${nonIndexedKnowledgeBaseTokens.toLocaleString()} tokens`);
+    }
+    if (nonIndexedUniversityTokens > 0) {
+      console.log(`   🎓 University (non indicizzati): ~${nonIndexedUniversityTokens.toLocaleString()} tokens`);
+    }
     
-    const ragTokens = breakdown.exercises + breakdown.library + breakdown.consultations + breakdown.knowledgeBase + breakdown.university;
-    console.log(`\n   💰 RISPARMIO: ~${ragTokens.toLocaleString()} tokens spostati su File Search`);
+    console.log(`\n🔍 VIA FILE SEARCH RAG (indicizzati, cercati su richiesta):`);
+    if (indexedCounts['exercise'] > 0) {
+      console.log(`   📚 Exercises: ~${indexedExerciseTokens.toLocaleString()} tokens (${indexedCounts['exercise']} documenti indicizzati)`);
+    }
+    if (indexedCounts['library'] > 0) {
+      console.log(`   📖 Library: ~${indexedLibraryTokens.toLocaleString()} tokens (${indexedCounts['library']} documenti indicizzati)`);
+    }
+    if (indexedCounts['consultation'] > 0) {
+      console.log(`   💬 Consultations: ~${indexedConsultationTokens.toLocaleString()} tokens (${indexedCounts['consultation']} documenti indicizzati)`);
+    }
+    if (indexedCounts['knowledge_base'] > 0) {
+      console.log(`   🧠 Knowledge Base: ~${indexedKnowledgeBaseTokens.toLocaleString()} tokens (${indexedCounts['knowledge_base']} documenti indicizzati)`);
+    }
+    const totalUniversityDocs = (indexedCounts['university'] || 0) + (indexedCounts['university_lesson'] || 0);
+    if (totalUniversityDocs > 0) {
+      console.log(`   🎓 University: ~${indexedUniversityTokens.toLocaleString()} tokens (${totalUniversityDocs} documenti indicizzati)`);
+    }
+    
+    const actualRagTokens = indexedExerciseTokens + indexedLibraryTokens + indexedConsultationTokens + indexedKnowledgeBaseTokens + indexedUniversityTokens;
+    const totalIndexedDocs = Object.values(indexedCounts).reduce((sum, count) => sum + count, 0);
+    console.log(`\n   💰 RISPARMIO REALE: ~${actualRagTokens.toLocaleString()} tokens via RAG (${totalIndexedDocs} documenti indicizzati)`);
   } else {
     // File Search non attivo - tutto nel prompt
     console.log(`\n💰 Finance Data: ${breakdown.financeData.toLocaleString()} tokens (${((breakdown.financeData / systemPromptTokens) * 100).toFixed(1)}%)`);
@@ -978,8 +1050,8 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
     console.log(`  - File Search Mode: ${hasActiveFileSearch ? '✅ ACTIVE (RAG via stores)' : '❌ OFF (full content in prompt)'}`);
 
-    // Log token breakdown with File Search awareness
-    logTokenBreakdown(breakdown, systemPromptTokens, hasActiveFileSearch);
+    // Log token breakdown with File Search awareness (pass actual indexed docs breakdown)
+    logTokenBreakdown(breakdown, systemPromptTokens, hasActiveFileSearch, fileSearchBreakdown);
 
     // Prepare messages for Gemini
     const geminiMessages = [
@@ -1672,8 +1744,8 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
     console.log(`  - File Search Mode: ${hasActiveFileSearchClient ? '✅ ACTIVE (RAG via stores)' : '❌ OFF (full content in prompt)'}`);
 
-    // Log token breakdown with File Search awareness
-    logTokenBreakdown(breakdown, systemPromptTokens, hasActiveFileSearchClient);
+    // Log token breakdown with File Search awareness (pass actual indexed docs breakdown)
+    logTokenBreakdown(breakdown, systemPromptTokens, hasActiveFileSearchClient, fileSearchBreakdown);
 
     // Prepare messages for Gemini
     const geminiMessages = [
