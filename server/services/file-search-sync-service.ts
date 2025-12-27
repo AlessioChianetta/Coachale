@@ -5751,6 +5751,283 @@ export class FileSearchSyncService {
       errors,
     };
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EXTERNAL DOCS FROM EXERCISES (workPlatform Google Docs)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Get missing external docs (workPlatform URLs) for a specific client
+   * Logic:
+   * - If exerciseAssignments.workPlatform exists → use that (personalized)
+   * - Else if exercises.workPlatform exists → use that (from template)
+   * - Only returns assignments NOT yet synced to File Search
+   */
+  static async getMissingExternalDocsForClient(
+    clientId: string,
+    consultantId: string,
+  ): Promise<Array<{
+    assignmentId: string;
+    exerciseId: string;
+    exerciseTitle: string;
+    workPlatformUrl: string;
+    isPersonalized: boolean;
+  }>> {
+    try {
+      // Get all assignments for this client with exercise details
+      const assignments = await db.query.exerciseAssignments.findMany({
+        where: eq(exerciseAssignments.clientId, clientId),
+      });
+
+      if (assignments.length === 0) return [];
+
+      // Get exercise IDs
+      const exerciseIds = [...new Set(assignments.map(a => a.exerciseId))];
+      
+      // Fetch exercises
+      const exerciseList = await db.query.exercises.findMany({
+        where: inArray(exercises.id, exerciseIds),
+      });
+      const exerciseMap = new Map(exerciseList.map(e => [e.id, e]));
+
+      // Get already indexed external docs for this client
+      const indexedDocs = await db.query.fileSearchDocuments.findMany({
+        where: and(
+          eq(fileSearchDocuments.sourceType, 'exercise_external_doc'),
+          eq(fileSearchDocuments.clientId, clientId),
+          eq(fileSearchDocuments.status, 'indexed'),
+        ),
+      });
+      const indexedAssignmentIds = new Set(indexedDocs.map(d => d.sourceId));
+
+      const missing: Array<{
+        assignmentId: string;
+        exerciseId: string;
+        exerciseTitle: string;
+        workPlatformUrl: string;
+        isPersonalized: boolean;
+      }> = [];
+
+      for (const assignment of assignments) {
+        const exercise = exerciseMap.get(assignment.exerciseId);
+        if (!exercise) continue;
+
+        // Determine which URL to use
+        let workPlatformUrl: string | null = null;
+        let isPersonalized = false;
+
+        if (assignment.workPlatform) {
+          // Personalized link for this client
+          workPlatformUrl = assignment.workPlatform;
+          isPersonalized = true;
+        } else if (exercise.workPlatform) {
+          // Template link
+          workPlatformUrl = exercise.workPlatform;
+          isPersonalized = false;
+        }
+
+        // Skip if no workPlatform URL
+        if (!workPlatformUrl) continue;
+
+        // Skip if already indexed
+        if (indexedAssignmentIds.has(assignment.id)) continue;
+
+        missing.push({
+          assignmentId: assignment.id,
+          exerciseId: exercise.id,
+          exerciseTitle: exercise.title,
+          workPlatformUrl,
+          isPersonalized,
+        });
+      }
+
+      return missing;
+    } catch (error: any) {
+      console.error(`[FileSync] Error getting missing external docs for client ${clientId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Sync a single external doc (workPlatform) to the client's private store
+   */
+  static async syncExerciseExternalDoc(
+    assignmentId: string,
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get the assignment
+      const assignment = await db.query.exerciseAssignments.findFirst({
+        where: eq(exerciseAssignments.id, assignmentId),
+      });
+
+      if (!assignment) {
+        return { success: false, error: 'Assignment not found' };
+      }
+
+      // Get the exercise
+      const exercise = await db.query.exercises.findFirst({
+        where: eq(exercises.id, assignment.exerciseId),
+      });
+
+      if (!exercise) {
+        return { success: false, error: 'Exercise not found' };
+      }
+
+      // Determine which URL to use
+      const workPlatformUrl = assignment.workPlatform || exercise.workPlatform;
+      if (!workPlatformUrl) {
+        return { success: false, error: 'No workPlatform URL found' };
+      }
+
+      const isPersonalized = !!assignment.workPlatform;
+
+      console.log(`\n📄 [FileSync] Syncing external doc for exercise "${exercise.title}" (client: ${clientId.substring(0, 8)})`);
+      console.log(`   🔗 URL: ${workPlatformUrl}`);
+      console.log(`   📌 Type: ${isPersonalized ? 'Personalizzato' : 'Template'}`);
+
+      // Scrape the Google Doc content
+      const scraped = await scrapeGoogleDoc(workPlatformUrl, 100000);
+      
+      if (!scraped.success || !scraped.content) {
+        console.error(`   ❌ Scraping failed: ${scraped.error}`);
+        return { success: false, error: scraped.error || 'Failed to scrape document' };
+      }
+
+      console.log(`   ✅ Scraped ${scraped.content.length.toLocaleString()} chars`);
+
+      // Get or create the client's private store
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, error: 'Failed to get or create client private store' };
+      }
+
+      // Build display name
+      const displayName = isPersonalized 
+        ? `[DOC ESTERNO PERS.] ${exercise.title}`
+        : `[DOC ESTERNO] ${exercise.title}`;
+
+      // Upload to client's PRIVATE store
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: scraped.content,
+        displayName: displayName,
+        storeId: clientStore.storeId,
+        sourceType: 'exercise_external_doc',
+        sourceId: assignmentId,
+        clientId: clientId,
+        userId: clientId,
+        customMetadata: {
+          docType: 'external_exercise_doc',
+          category: exercise.category,
+        },
+      });
+
+      if (uploadResult.success) {
+        console.log(`   ✅ Synced to client private store`);
+      } else {
+        console.error(`   ❌ Upload failed: ${uploadResult.error}`);
+      }
+
+      return uploadResult.success
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing external doc:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Sync all missing external docs for a client
+   */
+  static async syncAllExternalDocsForClient(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; synced: number; failed: number; errors: string[] }> {
+    const missing = await this.getMissingExternalDocsForClient(clientId, consultantId);
+    
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`📄 [FileSync] Syncing ${missing.length} external docs for client ${clientId.substring(0, 8)}`);
+    console.log(`${'═'.repeat(60)}`);
+
+    let synced = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const doc of missing) {
+      const result = await this.syncExerciseExternalDoc(doc.assignmentId, clientId, consultantId);
+      
+      if (result.success) {
+        synced++;
+      } else {
+        failed++;
+        errors.push(`${doc.exerciseTitle}: ${result.error}`);
+      }
+
+      // Small delay to avoid rate limiting
+      if (synced % 3 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`✅ [FileSync] External docs sync complete`);
+    console.log(`   📊 Synced: ${synced}/${missing.length}`);
+    console.log(`   ❌ Failed: ${failed}`);
+    console.log(`${'═'.repeat(60)}\n`);
+
+    return { success: failed === 0, synced, failed, errors };
+  }
+
+  /**
+   * Get ALL missing external docs across all clients for a consultant
+   */
+  static async getAllMissingExternalDocs(
+    consultantId: string,
+  ): Promise<Array<{
+    clientId: string;
+    clientName: string;
+    assignmentId: string;
+    exerciseId: string;
+    exerciseTitle: string;
+    workPlatformUrl: string;
+    isPersonalized: boolean;
+  }>> {
+    try {
+      // Get all clients for this consultant
+      const clients = await db.query.users.findMany({
+        where: eq(users.consultantId, consultantId),
+      });
+
+      const allMissing: Array<{
+        clientId: string;
+        clientName: string;
+        assignmentId: string;
+        exerciseId: string;
+        exerciseTitle: string;
+        workPlatformUrl: string;
+        isPersonalized: boolean;
+      }> = [];
+
+      for (const client of clients) {
+        const clientMissing = await this.getMissingExternalDocsForClient(client.id, consultantId);
+        
+        for (const doc of clientMissing) {
+          allMissing.push({
+            ...doc,
+            clientId: client.id,
+            clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.email,
+          });
+        }
+      }
+
+      return allMissing;
+    } catch (error: any) {
+      console.error(`[FileSync] Error getting all missing external docs:`, error);
+      return [];
+    }
+  }
 }
 
 export const fileSearchSyncService = FileSearchSyncService;

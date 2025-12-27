@@ -496,7 +496,7 @@ export class FileSearchService {
     content: string;
     displayName: string;
     storeId: string;
-    sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide';
+    sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc';
     sourceId?: string;
     clientId?: string;
     userId?: string;
@@ -1411,7 +1411,7 @@ export class FileSearchService {
       mimeType: doc.mimeType,
       status: doc.status as 'pending' | 'processing' | 'indexed' | 'failed',
       uploadedAt: doc.uploadedAt!,
-      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide',
+      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc',
       sourceId: doc.sourceId || undefined,
       contentHash: doc.contentHash || undefined,
       clientId: doc.clientId || undefined,
@@ -1421,7 +1421,7 @@ export class FileSearchService {
   /**
    * Check if a document is already indexed
    */
-  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide', sourceId: string): Promise<boolean> {
+  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc', sourceId: string): Promise<boolean> {
     const doc = await db.query.fileSearchDocuments.findFirst({
       where: and(
         eq(fileSearchDocuments.sourceType, sourceType),
@@ -1437,7 +1437,7 @@ export class FileSearchService {
    * Get document index info including indexedAt and contentHash
    * Used for staleness detection during sync
    */
-  async getDocumentIndexInfo(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide', sourceId: string): Promise<{
+  async getDocumentIndexInfo(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc', sourceId: string): Promise<{
     exists: boolean;
     documentId?: string;
     indexedAt?: Date;
