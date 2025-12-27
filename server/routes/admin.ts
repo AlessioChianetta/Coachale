@@ -1353,34 +1353,4 @@ router.delete(
   }
 );
 
-router.post(
-  "/admin/backfill-document-scraping",
-  authenticateToken,
-  requireSuperAdmin,
-  async (req: AuthRequest, res) => {
-    try {
-      const { consultantId } = req.body;
-      
-      const { backfillAllDocuments } = await import("../services/document-scraping-service");
-      const result = await backfillAllDocuments(consultantId);
-      
-      await db.insert(adminAuditLog).values({
-        adminId: req.user!.id,
-        action: "backfill_document_scraping",
-        targetType: "system",
-        targetId: consultantId || "all",
-        details: result as any,
-      });
-
-      res.json({
-        success: true,
-        ...result,
-      });
-    } catch (error: any) {
-      console.error("Backfill document scraping error:", error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  }
-);
-
 export default router;

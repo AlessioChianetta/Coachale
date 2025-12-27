@@ -6,7 +6,6 @@ export interface ScrapedContent {
   url: string;
   content?: string;
   length?: number;
-  tokenCount?: number;
   error?: string;
 }
 
@@ -43,19 +42,12 @@ function getExportUrl(docId: string): string {
 }
 
 /**
- * Estimate token count from text (rough approximation: ~4 chars per token for Italian/English)
- */
-export function estimateTokenCount(text: string): number {
-  return Math.ceil(text.length / 4);
-}
-
-/**
  * Scrapes text content from a public Google Docs document
  * @param url - The Google Docs URL
- * @param maxLength - Maximum content length (default 400000 chars = ~100k tokens)
+ * @param maxLength - Maximum content length (default 100000 chars to capture full documents)
  * @returns Promise with scraped content
  */
-export async function scrapeGoogleDoc(url: string, maxLength: number = 400000): Promise<ScrapedContent> {
+export async function scrapeGoogleDoc(url: string, maxLength: number = 100000): Promise<ScrapedContent> {
   // Verify it's a Google Docs URL
   if (!isGoogleDocsUrl(url)) {
     return {
@@ -152,15 +144,11 @@ export async function scrapeGoogleDoc(url: string, maxLength: number = 400000): 
     console.log(`🧹 Cleaned: ${originalLength} → ${cleanedLength} chars (${reduction}% reduction)`);
 
 
-    const tokenCount = estimateTokenCount(content);
-    console.log(`📊 Token count: ~${tokenCount.toLocaleString()} tokens`);
-
     return {
       success: true,
       url,
       content,
       length: originalLength,
-      tokenCount,
     };
   } catch (error: any) {
     // Handle timeout
@@ -205,7 +193,7 @@ export function isGoogleSheetsUrl(url: string): boolean {
  * @param maxLength - Maximum content length per document (default 100000 chars)
  * @returns Promise with array of scraped content (one result per input URL)
  */
-export async function scrapeMultipleUrls(urls: string[], maxLength: number = 400000): Promise<ScrapedContent[]> {
+export async function scrapeMultipleUrls(urls: string[], maxLength: number = 100000): Promise<ScrapedContent[]> {
   // Scrape each URL individually to maintain positional alignment
   // Non-Google-Docs URLs will get an error result
   const scrapePromises = urls.map(url => scrapeGoogleDoc(url, maxLength));

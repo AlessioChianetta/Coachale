@@ -1450,10 +1450,6 @@ export const libraryDocuments = pgTable("library_documents", {
   youtubeVideoId: varchar("youtube_video_id"),
   aiGenerated: boolean("ai_generated").default(false),
   aiGenerationLog: json("ai_generation_log"),
-  // Document scraping cache fields
-  scrapedContent: text("scraped_content"),
-  scrapedTokens: integer("scraped_tokens"),
-  scrapedAt: timestamp("scraped_at"),
 });
 
 export const libraryDocumentSections = pgTable("library_document_sections", {
