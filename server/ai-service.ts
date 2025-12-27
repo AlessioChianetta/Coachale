@@ -705,7 +705,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     let enhancedMessage = message;
     const messageLower = message.toLowerCase();
 
-    // Check if exercises are indexed in File Search (for metadata/other content)
+    // Check if exercises are indexed in File Search before deciding to scrape
     let exercisesIndexedInFileSearch = false;
     if (hasFileSearch && userContext.exercises.all.length > 0) {
       // Check how many exercises are indexed in File Search
@@ -718,20 +718,12 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       }
       // Consider exercises indexed if at least 50% are in File Search
       exercisesIndexedInFileSearch = indexedCount >= Math.min(5, exerciseIds.length * 0.5);
-      console.log(`🔍 [FileSearch] Exercises indexed check: ${indexedCount}/${Math.min(10, exerciseIds.length)} checked, FileSearch for metadata: ${exercisesIndexedInFileSearch}`);
+      console.log(`🔍 [FileSearch] Exercises indexed check: ${indexedCount}/${Math.min(10, exerciseIds.length)} checked, using FileSearch: ${exercisesIndexedInFileSearch}`);
     }
 
-    // ALWAYS scrape exercises with workPlatform (Google Docs) - File Search doesn't have live content
-    // File Search only has metadata, not the actual Google Doc content that user is working on
-    const exercisesWithWorkPlatformNonStreaming = userContext.exercises.all.filter(e => e.workPlatform);
-    const shouldScrapeExercisesNonStreaming = exercisesWithWorkPlatformNonStreaming.length > 0 || (userContext.exercises.all.length > 0 && !exercisesIndexedInFileSearch);
-    
-    if (shouldScrapeExercisesNonStreaming) {
-      if (exercisesWithWorkPlatformNonStreaming.length > 0) {
-        console.log(`📚 FORCE SCRAPING: ${exercisesWithWorkPlatformNonStreaming.length} exercise(s) have workPlatform (Google Docs) - scraping live content...`);
-      } else {
-        console.log('📚 Loading exercise content - exercises NOT in File Search, need full access...');
-      }
+    // Load exercise content ONLY if NOT indexed in File Search
+    if (userContext.exercises.all.length > 0 && !exercisesIndexedInFileSearch) {
+      console.log('📚 Loading exercise content - exercises NOT in File Search, need full Google Docs access...');
 
       // Try to find which exercise(s) the user is referring to
       const matchedExercises = userContext.exercises.all.filter(exercise => {
@@ -1401,7 +1393,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     // Update conversational context
     updateConversationalContext(conversation.id, mentionedExerciseIds, modificationHintDetected);
 
-    // Check if exercises are indexed in File Search (for metadata/other content)
+    // Check if exercises are indexed in File Search before deciding to scrape
     let exercisesIndexedInFileSearch = false;
     if (hasFileSearch && userContext.exercises.all.length > 0) {
       // FIX: Use exerciseId (original exercise ID) instead of id (assignment ID) for File Search lookup
@@ -1412,20 +1404,12 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
         if (isIndexed) indexedCount++;
       }
       exercisesIndexedInFileSearch = indexedCount >= Math.min(5, exerciseIds.length * 0.5);
-      console.log(`🔍 [FileSearch] Exercises indexed check: ${indexedCount}/${Math.min(10, exerciseIds.length)} checked, FileSearch for metadata: ${exercisesIndexedInFileSearch}`);
+      console.log(`🔍 [FileSearch] Exercises indexed check: ${indexedCount}/${Math.min(10, exerciseIds.length)} checked, using FileSearch: ${exercisesIndexedInFileSearch}`);
     }
 
-    // ALWAYS scrape exercises with workPlatform (Google Docs) - File Search doesn't have live content
-    // File Search only has metadata, not the actual Google Doc content that user is working on
-    const exercisesWithWorkPlatform = userContext.exercises.all.filter(e => e.workPlatform);
-    const shouldScrapeExercises = exercisesWithWorkPlatform.length > 0 || (userContext.exercises.all.length > 0 && !exercisesIndexedInFileSearch);
-    
-    if (shouldScrapeExercises) {
-      if (exercisesWithWorkPlatform.length > 0) {
-        console.log(`📚 FORCE SCRAPING: ${exercisesWithWorkPlatform.length} exercise(s) have workPlatform (Google Docs) - scraping live content...`);
-      } else {
-        console.log('📚 Loading exercise content - exercises NOT in File Search, need full access...');
-      }
+    // Load exercise content ONLY if NOT indexed in File Search
+    if (userContext.exercises.all.length > 0 && !exercisesIndexedInFileSearch) {
+      console.log('📚 Loading exercise content - exercises NOT in File Search, need full Google Docs access...');
 
       // Try to find which exercise(s) the user is referring to
       const matchedExercises = userContext.exercises.all.filter(exercise => {

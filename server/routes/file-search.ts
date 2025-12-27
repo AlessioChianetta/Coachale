@@ -686,6 +686,87 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
 });
 
 /**
+ * GET /api/file-search/clients
+ * Get all clients for current consultant with their File Search enabled status
+ */
+router.get('/clients', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const clients = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        fileSearchEnabled: users.fileSearchEnabled,
+        isActive: users.isActive,
+      })
+      .from(users)
+      .where(and(
+        eq(users.consultantId, consultantId),
+        eq(users.role, 'client')
+      ));
+    
+    res.json(clients);
+  } catch (error: any) {
+    console.error('[FileSearch API] Error fetching clients:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PATCH /api/file-search/clients/:clientId
+ * Update File Search enabled status for a specific client
+ */
+router.patch('/clients/:clientId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientId } = req.params;
+    const { fileSearchEnabled } = req.body;
+    
+    if (typeof fileSearchEnabled !== 'boolean') {
+      return res.status(400).json({ error: 'fileSearchEnabled must be a boolean' });
+    }
+    
+    // Verify client belongs to consultant
+    const [client] = await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.id, clientId),
+        eq(users.consultantId, consultantId),
+        eq(users.role, 'client')
+      ))
+      .limit(1);
+    
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+    
+    // Update the client's File Search status
+    const [updated] = await db
+      .update(users)
+      .set({ fileSearchEnabled })
+      .where(eq(users.id, clientId))
+      .returning({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        fileSearchEnabled: users.fileSearchEnabled,
+      });
+    
+    console.log(`[FileSearch] Client ${clientId} File Search ${fileSearchEnabled ? 'ENABLED' : 'DISABLED'} by consultant ${consultantId}`);
+    
+    res.json(updated);
+  } catch (error: any) {
+    console.error('[FileSearch API] Error updating client File Search status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/file-search/analytics
  * Get File Search usage analytics for consultant
  */

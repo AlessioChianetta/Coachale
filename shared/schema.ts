@@ -45,6 +45,9 @@ export const users = pgTable("users", {
   // Gemini AI Inheritance - consultants can use SuperAdmin's Gemini API keys or their own
   useSuperadminGemini: boolean("use_superadmin_gemini").default(true), // If true, consultant uses SuperAdmin's Gemini; if false, uses their own
 
+  // File Search Configuration (per-client setting, controlled by consultant)
+  fileSearchEnabled: boolean("file_search_enabled").default(true), // If true, use File Search RAG for this client; if false, use traditional context
+
   // External Services Configuration
   siteUrl: text("site_url"), // Custom site URL for SiteAle external service (e.g., client's website)
 
