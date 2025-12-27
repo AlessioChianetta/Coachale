@@ -398,23 +398,24 @@ export class FileSearchSyncService {
     
     try {
       // Check if document exists and get its metadata for staleness detection
-      const indexInfo = await fileSearchService.getDocumentIndexInfo('knowledge_base', documentId);
+      // For chunked documents, check the first chunk; for regular docs, check the base ID
+      const baseIndexInfo = await fileSearchService.getDocumentIndexInfo('knowledge_base', documentId);
+      const firstChunkIndexInfo = await fileSearchService.getDocumentIndexInfo('knowledge_base', `${documentId}_chunk_0`);
       
-      if (indexInfo.exists) {
+      // Document exists if either the base doc or chunks exist
+      const hasExistingContent = baseIndexInfo.exists || firstChunkIndexInfo.exists;
+      const indexedAt = baseIndexInfo.indexedAt || firstChunkIndexInfo.indexedAt;
+      
+      if (hasExistingContent) {
         // Check if outdated by comparing source updatedAt vs indexedAt
         const sourceUpdatedAt = doc.updatedAt;
-        const indexedAt = indexInfo.indexedAt;
         
         if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
           console.log(`📌 [FileSync] Knowledge document already indexed and up-to-date: ${documentId}`);
           return { success: true, updated: false };
         }
         
-        // Document is outdated - delete and re-upload
-        if (indexInfo.documentId) {
-          console.log(`🔄 [FileSync] Knowledge document "${doc.title}" outdated - re-syncing...`);
-          await fileSearchService.deleteDocument(indexInfo.documentId);
-        }
+        console.log(`🔄 [FileSync] Knowledge document "${doc.title}" outdated - re-syncing...`);
       }
 
       let consultantStore = await db.query.fileSearchStores.findFirst({
@@ -454,16 +455,20 @@ export class FileSearchSyncService {
       if (isTabularFile && contentNeedsChunking) {
         console.log(`📦 [FileSync] Large tabular file detected - splitting into chunks: ${doc.title}`);
         
-        // If outdated, delete all existing chunks first
-        if (indexInfo.exists) {
+        // Delete any existing content (base doc or chunks) before uploading new chunks
+        if (hasExistingContent) {
+          // Delete base document if exists
+          if (baseIndexInfo.exists && baseIndexInfo.documentId) {
+            await fileSearchService.deleteDocument(baseIndexInfo.documentId);
+          }
+          // Delete all existing chunks using LIKE pattern
           const existingChunks = await db.query.fileSearchDocuments.findMany({
-            where: and(
-              eq(fileSearchDocuments.sourceType, 'knowledge_base'),
-              eq(fileSearchDocuments.sourceId, documentId),
-            ),
+            where: eq(fileSearchDocuments.sourceType, 'knowledge_base'),
           });
-          for (const existingChunk of existingChunks) {
-            await fileSearchService.deleteDocument(existingChunk.id);
+          for (const chunk of existingChunks) {
+            if (chunk.sourceId?.startsWith(`${documentId}_chunk_`)) {
+              await fileSearchService.deleteDocument(chunk.id);
+            }
           }
         }
         
@@ -495,13 +500,29 @@ export class FileSearchSyncService {
           }
         }
         
-        const wasUpdated = indexInfo.exists;
         if (uploadedChunks === chunks.length) {
           console.log(`✅ [FileSync] All ${chunks.length} chunks uploaded for: ${doc.title}`);
-          return { success: true, updated: wasUpdated };
+          return { success: true, updated: hasExistingContent };
         } else {
           return { success: false, error: `Only ${uploadedChunks}/${chunks.length} chunks uploaded. Last error: ${lastError}` };
         }
+      }
+      
+      // Delete any existing chunks if switching from chunked to non-chunked
+      if (firstChunkIndexInfo.exists) {
+        const existingChunks = await db.query.fileSearchDocuments.findMany({
+          where: eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+        });
+        for (const chunk of existingChunks) {
+          if (chunk.sourceId?.startsWith(`${documentId}_chunk_`)) {
+            await fileSearchService.deleteDocument(chunk.id);
+          }
+        }
+      }
+      
+      // Delete existing base doc if updating
+      if (baseIndexInfo.exists && baseIndexInfo.documentId) {
+        await fileSearchService.deleteDocument(baseIndexInfo.documentId);
       }
       
       // Standard single-document upload for non-chunked content
@@ -514,7 +535,7 @@ export class FileSearchSyncService {
         userId: consultantId,
       });
 
-      const wasUpdated = indexInfo.exists; // If it existed before, this was an update
+      const wasUpdated = hasExistingContent; // If it existed before, this was an update
       if (uploadResult.success) {
         console.log(`✅ [FileSync] Knowledge document ${wasUpdated ? 'UPDATED' : 'synced'}: ${doc.title}`);
       }
@@ -2914,12 +2935,6 @@ export class FileSearchSyncService {
     }
     
     try {
-      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', documentId);
-      if (isAlreadyIndexed) {
-        console.log(`📌 [FileSync] Client knowledge document already indexed: ${documentId}`);
-        return { success: true };
-      }
-
       // Get or create the client's PRIVATE store (NOT the consultant's store)
       const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
       if (!clientStore) {
@@ -2936,6 +2951,29 @@ export class FileSearchSyncService {
       if (isTabularFile && contentNeedsChunking) {
         console.log(`📦 [FileSync] Large tabular file detected - splitting into chunks: ${doc.title}`);
         
+        // Delete any existing base document (non-chunked version) before uploading chunks
+        const existingBaseDoc = await db.query.fileSearchDocuments.findFirst({
+          where: and(
+            eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+            eq(fileSearchDocuments.sourceId, documentId),
+          ),
+        });
+        if (existingBaseDoc) {
+          console.log(`🗑️ [FileSync] Removing old non-chunked version before uploading chunks`);
+          await fileSearchService.deleteDocument(existingBaseDoc.id);
+        }
+        
+        // Delete all existing chunks to ensure fresh upload (handles staleness)
+        const existingChunkDocs = await db.query.fileSearchDocuments.findMany({
+          where: eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+        });
+        for (const chunkDoc of existingChunkDocs) {
+          if (chunkDoc.sourceId?.startsWith(`${documentId}_chunk_`)) {
+            console.log(`🗑️ [FileSync] Removing old chunk: ${chunkDoc.sourceId}`);
+            await fileSearchService.deleteDocument(chunkDoc.id);
+          }
+        }
+        
         const chunks = chunkTextContent(content, doc.title);
         console.log(`📦 [FileSync] Created ${chunks.length} chunks for: ${doc.title}`);
         
@@ -2945,14 +2983,6 @@ export class FileSearchSyncService {
         for (const chunk of chunks) {
           const chunkDisplayName = `[CLIENT KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
           const chunkSourceId = `${documentId}_chunk_${chunk.chunkIndex}`;
-          
-          // Check if this chunk is already indexed
-          const chunkIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', chunkSourceId);
-          if (chunkIndexed) {
-            console.log(`📌 [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} already indexed`);
-            uploadedChunks++;
-            continue;
-          }
           
           const uploadResult = await fileSearchService.uploadDocumentFromContent({
             content: chunk.content,
@@ -2979,6 +3009,13 @@ export class FileSearchSyncService {
         } else {
           return { success: false, error: `Only ${uploadedChunks}/${chunks.length} chunks uploaded. Last error: ${lastError}`, chunksUploaded: uploadedChunks };
         }
+      }
+      
+      // For non-chunked content, check if already indexed
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', documentId);
+      if (isAlreadyIndexed) {
+        console.log(`📌 [FileSync] Client knowledge document already indexed: ${documentId}`);
+        return { success: true };
       }
       
       // Standard single-document upload for non-chunked content
