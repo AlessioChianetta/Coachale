@@ -2985,7 +2985,11 @@ export default function ConsultantLibraryAIBuilder() {
                                       
                                       setAiSuggestions(newSuggestions);
                                       setModuleAssignments(newAssignments);
-                                      toast({ title: "Suggerimenti AI pronti!", description: "Puoi modificare le assegnazioni prima di procedere" });
+                                      const batchInfo = data.batchCount > 1 ? ` (${data.batchCount} batch completati)` : '';
+                                      toast({ 
+                                        title: "Suggerimenti AI pronti!", 
+                                        description: `${newAssignments.size} lezioni assegnate${batchInfo}. Puoi modificare le assegnazioni prima di procedere.`
+                                      });
                                     }
                                   } catch (error: any) {
                                     toast({ title: "Errore AI", description: error.message, variant: "destructive" });
@@ -3001,9 +3005,28 @@ export default function ConsultantLibraryAIBuilder() {
                           )}
                           
                           {isAiAssigning && (
-                            <div className="text-center py-8">
-                              <Loader2 className="w-8 h-8 mx-auto animate-spin text-purple-500 mb-3" />
-                              <p className="text-muted-foreground">L'AI sta analizzando le lezioni...</p>
+                            <div className="text-center py-8 space-y-4">
+                              <div className="relative">
+                                <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center">
+                                  <Loader2 className="w-8 h-8 animate-spin text-white" />
+                                </div>
+                              </div>
+                              <div>
+                                <p className="font-medium text-purple-700 dark:text-purple-300">
+                                  L'AI sta analizzando le lezioni...
+                                </p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {generatedLessons.length > 20 
+                                    ? `Elaborazione in ${Math.ceil(generatedLessons.length / 20)} batch da 20 lezioni ciascuno`
+                                    : "Analisi contenuti e assegnazione ai moduli"
+                                  }
+                                </p>
+                                {generatedLessons.length > 50 && (
+                                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                                    ⏱️ Con {generatedLessons.length} lezioni potrebbero volerci alcuni minuti
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           )}
                           

@@ -5415,7 +5415,7 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
     }
   });
 
-  // AI auto-assign lessons to modules based on content analysis
+  // AI auto-assign lessons to modules based on content analysis (with batching for large datasets)
   app.post("/api/library/ai-auto-assign", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { lessons, modules } = req.body;
@@ -5431,7 +5431,6 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
       const providerResult = await getAIProvider(req.user!.id);
       
       if (!providerResult.client) {
-        // Fallback: assegna tutte al primo modulo
         const assignments = lessons.map((l: any) => ({
           lessonId: l.id,
           moduleId: modules[0].id,
@@ -5441,10 +5440,24 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         return res.json({ assignments, aiGenerated: false });
       }
       
-      const prompt = `Sei un esperto nella creazione e organizzazione di corsi formativi.
+      // BATCHING: Process lessons in batches of 20 to avoid timeout/parsing issues
+      const BATCH_SIZE = 20;
+      const allAssignments: any[] = [];
+      const totalBatches = Math.ceil(lessons.length / BATCH_SIZE);
+      
+      console.log(`📦 [AI-AUTO-ASSIGN] Processing ${lessons.length} lessons in ${totalBatches} batches of ${BATCH_SIZE}`);
+      
+      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+        const startIdx = batchIndex * BATCH_SIZE;
+        const endIdx = Math.min(startIdx + BATCH_SIZE, lessons.length);
+        const batchLessons = lessons.slice(startIdx, endIdx);
+        
+        console.log(`📦 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}/${totalBatches}: lessons ${startIdx + 1}-${endIdx}`);
+        
+        const prompt = `Sei un esperto nella creazione e organizzazione di corsi formativi.
 
-LEZIONI DA ASSEGNARE:
-${lessons.map((l: any, i: number) => `${i + 1}. ID: "${l.id}"
+LEZIONI DA ASSEGNARE (batch ${batchIndex + 1} di ${totalBatches}):
+${batchLessons.map((l: any, i: number) => `${startIdx + i + 1}. ID: "${l.id}"
    Titolo: "${l.title}"
    Sottotitolo: "${l.subtitle || 'N/A'}"
    Tags: ${l.tags?.join(', ') || 'N/A'}`).join('\n\n')}
@@ -5458,12 +5471,13 @@ Per ogni lezione, fornisci:
 1. L'ID della lezione
 2. L'ID del modulo più adatto
 3. Un punteggio di confidenza (0.0-1.0)
-4. Una breve spiegazione (max 20 parole)
+4. Una breve spiegazione (max 15 parole)
 
 CRITERI DI ASSEGNAZIONE:
 - Affinità tematica tra titolo lezione e nome modulo
 - Coerenza con eventuali tags
 - Progressione logica del contenuto
+- Distribuisci le lezioni equamente tra i moduli disponibili
 
 Rispondi SOLO con un JSON array, senza altri testi:
 [
@@ -5475,54 +5489,91 @@ Rispondi SOLO con un JSON array, senza altri testi:
   }
 ]`;
 
-      const response = await providerResult.client.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        try {
+          const response = await providerResult.client.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 4000,
+            },
+          });
+          
+          const text = response.response.text() || '';
+          const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const batchAssignments = JSON.parse(cleanJson);
+          
+          if (Array.isArray(batchAssignments) && batchAssignments.length > 0) {
+            const validAssignments = batchAssignments.map((a: any) => {
+              const lessonExists = batchLessons.some((l: any) => l.id === a.lessonId);
+              const moduleExists = modules.some((m: any) => m.id === a.moduleId);
+              if (!lessonExists || !moduleExists) {
+                const matchingLesson = batchLessons.find((l: any) => 
+                  l.id === a.lessonId || l.title?.includes(a.lessonId?.slice(0, 10))
+                );
+                return {
+                  lessonId: matchingLesson?.id || a.lessonId,
+                  moduleId: modules[0].id,
+                  confidence: 0.3,
+                  reason: "Assegnazione di fallback"
+                };
+              }
+              return a;
+            });
+            allAssignments.push(...validAssignments);
+            console.log(`✅ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} completed: ${validAssignments.length} assignments`);
+          } else {
+            throw new Error('Invalid batch response format');
+          }
+        } catch (batchError: any) {
+          console.error(`❌ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} failed:`, batchError.message);
+          // Fallback for failed batch: distribute evenly among modules
+          const moduleCount = modules.length;
+          batchLessons.forEach((l: any, idx: number) => {
+            const moduleIndex = idx % moduleCount;
+            allAssignments.push({
+              lessonId: l.id,
+              moduleId: modules[moduleIndex].id,
+              confidence: 0.4,
+              reason: "Distribuzione automatica (errore batch)"
+            });
+          });
+        }
+        
+        // Small delay between batches to avoid rate limiting
+        if (batchIndex < totalBatches - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      // Ensure all lessons have an assignment
+      const assignedLessonIds = new Set(allAssignments.map(a => a.lessonId));
+      const moduleCount = modules.length;
+      lessons.forEach((l: any, idx: number) => {
+        if (!assignedLessonIds.has(l.id)) {
+          const moduleIndex = idx % moduleCount;
+          allAssignments.push({
+            lessonId: l.id,
+            moduleId: modules[moduleIndex].id,
+            confidence: 0.3,
+            reason: "Assegnazione mancante recuperata"
+          });
+        }
       });
       
-      const text = response.response.text() || '';
+      console.log(`✅ [AI-AUTO-ASSIGN] Completed: ${allAssignments.length} total assignments for ${lessons.length} lessons`);
+      res.json({ assignments: allAssignments, aiGenerated: true, batchCount: totalBatches });
       
-      try {
-        const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        const assignments = JSON.parse(cleanJson);
-        if (Array.isArray(assignments) && assignments.length > 0) {
-          // Valida che tutti gli ID esistano
-          const validAssignments = assignments.map((a: any) => {
-            const lessonExists = lessons.some((l: any) => l.id === a.lessonId);
-            const moduleExists = modules.some((m: any) => m.id === a.moduleId);
-            if (!lessonExists || !moduleExists) {
-              // Fallback se ID non valido
-              return {
-                lessonId: a.lessonId,
-                moduleId: modules[0].id,
-                confidence: 0.3,
-                reason: "Assegnazione di fallback"
-              };
-            }
-            return a;
-          });
-          res.json({ assignments: validAssignments, aiGenerated: true });
-        } else {
-          throw new Error('Invalid response format');
-        }
-      } catch {
-        // Fallback se parsing fallisce
-        const assignments = lessons.map((l: any) => ({
-          lessonId: l.id,
-          moduleId: modules[0].id,
-          confidence: 0.5,
-          reason: "Assegnazione automatica (parsing fallito)"
-        }));
-        res.json({ assignments, aiGenerated: false });
-      }
     } catch (error: any) {
       console.error('Error auto-assigning lessons:', error);
       const { lessons, modules } = req.body;
-      const assignments = lessons?.map((l: any) => ({
+      // Fallback: distribute evenly among modules
+      const moduleCount = modules?.length || 1;
+      const assignments = lessons?.map((l: any, idx: number) => ({
         lessonId: l.id,
-        moduleId: modules?.[0]?.id || '',
-        confidence: 0.5,
-        reason: "Errore durante l'analisi AI"
+        moduleId: modules?.[idx % moduleCount]?.id || modules?.[0]?.id || '',
+        confidence: 0.4,
+        reason: "Distribuzione automatica (errore globale)"
       })) || [];
       res.json({ assignments, aiGenerated: false });
     }
