@@ -366,6 +366,73 @@ router.get(
 );
 
 /**
+ * DELETE /public/whatsapp/shares/:slug/conversations/:conversationId
+ * Delete a conversation and its messages (manager only)
+ */
+router.delete(
+  '/:slug/conversations/:conversationId',
+  validateShareExists,
+  validateDomainAccess,
+  validateVisitorSession,
+  async (req: Request & { share?: schema.WhatsappAgentShare; managerId?: string }, res) => {
+    try {
+      const { conversationId } = req.params;
+      const managerId = req.managerId;
+      const share = req.share!;
+      
+      if (!managerId) {
+        return res.status(401).json({ error: 'Solo i manager possono eliminare conversazioni' });
+      }
+      
+      if (!conversationId) {
+        return res.status(400).json({ error: 'ID conversazione mancante' });
+      }
+      
+      console.log(`\n🗑️ [DELETE CONVERSATION] Manager ${managerId} deleting conversation ${conversationId}`);
+      
+      const visitorId = `manager_${managerId}`;
+      const [conversation] = await db
+        .select()
+        .from(schema.whatsappAgentConsultantConversations)
+        .where(
+          and(
+            eq(schema.whatsappAgentConsultantConversations.id, conversationId),
+            eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+            eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
+            eq(schema.whatsappAgentConsultantConversations.externalVisitorId, visitorId)
+          )
+        )
+        .limit(1);
+      
+      if (!conversation) {
+        console.log(`   ❌ Conversation not found or access denied`);
+        return res.status(404).json({ error: 'Conversazione non trovata o accesso negato' });
+      }
+      
+      console.log(`   ✅ Conversation verified, deleting messages...`);
+      await db
+        .delete(schema.whatsappAgentConsultantMessages)
+        .where(eq(schema.whatsappAgentConsultantMessages.conversationId, conversationId));
+      
+      console.log(`   ✅ Messages deleted, deleting conversation...`);
+      await db
+        .delete(schema.whatsappAgentConsultantConversations)
+        .where(eq(schema.whatsappAgentConsultantConversations.id, conversationId));
+      
+      console.log(`   ✅ Conversation deleted successfully`);
+      
+      res.json({
+        success: true,
+        message: 'Conversazione eliminata con successo',
+      });
+    } catch (error: any) {
+      console.error('Error deleting conversation:', error);
+      res.status(500).json({ error: 'Errore durante l\'eliminazione della conversazione' });
+    }
+  }
+);
+
+/**
  * POST /public/whatsapp/shares/:slug/message
  * Send a message to the shared agent (STREAMING SSE)
  */
@@ -378,8 +445,15 @@ router.post(
     // SECURITY: Get visitorId from query OR use managerId from JWT (for manager_login shares)
     const managerId = req.managerId;
     const visitorId = managerId ? `manager_${managerId}` : (req.query.visitorId as string);
-    const { message } = req.body;
+    const { message, preferences } = req.body;
     const share = req.share!;
+    
+    // Extract manager preferences if provided
+    const managerPreferences = preferences ? {
+      writingStyle: preferences.writingStyle as string | undefined,
+      responseLength: preferences.responseLength as string | undefined,
+      customInstructions: preferences.customInstructions as string | undefined,
+    } : undefined;
     
     const isManager = !!managerId;
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -1025,7 +1099,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             conversation.id,
             message,
             pendingModification,
-            bookingContextForAI
+            bookingContextForAI,
+            managerPreferences
           )) {
             // Handle different event types from the generator
             if (event.type === 'promptBreakdown') {

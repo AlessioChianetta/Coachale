@@ -414,17 +414,34 @@ export default function ManagerChat() {
 
   const isAuthenticated = !!getManagerToken() && agentInfo?.requiresLogin === true;
 
-  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
-    queryKey: ["manager-conversations", slug],
+  const { data: conversationData, isLoading: conversationsLoading, refetch: refetchConversation } = useQuery<{
+    conversation: Conversation | null;
+    messages: Message[];
+  }>({
+    queryKey: ["manager-conversation", slug],
     queryFn: async () => {
-      const response = await fetch(`/api/public/agent/${slug}/conversations`, {
+      const response = await fetch(`/public/whatsapp/shares/${slug}/conversation`, {
         headers: getManagerAuthHeaders(),
       });
-      if (!response.ok) throw new Error("Failed to fetch conversations");
-      return response.json();
+      if (!response.ok) throw new Error("Failed to fetch conversation");
+      const data = await response.json();
+      if (data.conversation) {
+        setSelectedConversationId(data.conversation.id);
+        setMessages(data.messages || []);
+      }
+      return data;
     },
     enabled: isAuthenticated,
   });
+
+  const conversations: Conversation[] = conversationData?.conversation 
+    ? [{
+        id: conversationData.conversation.id,
+        title: "Conversazione",
+        createdAt: conversationData.conversation.createdAt,
+        updatedAt: conversationData.conversation.createdAt,
+      }]
+    : [];
 
   const { refetch: fetchConversationMessages } = useQuery({
     queryKey: ["manager-conversation-messages", slug, selectedConversationId],
@@ -433,7 +450,7 @@ export default function ManagerChat() {
       setLoadingConversationId(selectedConversationId);
       try {
         const response = await fetch(
-          `/api/public/agent/${slug}/conversations/${selectedConversationId}`,
+          `/public/whatsapp/shares/${slug}/conversation`,
           { headers: getManagerAuthHeaders() }
         );
         if (!response.ok) throw new Error("Failed to fetch messages");
@@ -462,7 +479,7 @@ export default function ManagerChat() {
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: string) => {
       const response = await fetch(
-        `/api/public/agent/${slug}/conversations/${conversationId}`,
+        `/public/whatsapp/shares/${slug}/conversations/${conversationId}`,
         {
           method: "DELETE",
           headers: getManagerAuthHeaders(),
@@ -472,7 +489,7 @@ export default function ManagerChat() {
       return response.json();
     },
     onSuccess: (_, conversationId) => {
-      queryClient.invalidateQueries({ queryKey: ["manager-conversations", slug] });
+      queryClient.invalidateQueries({ queryKey: ["manager-conversation", slug] });
       if (selectedConversationId === conversationId) {
         setSelectedConversationId(null);
         setMessages([]);
@@ -494,25 +511,21 @@ export default function ManagerChat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      let conversationId = selectedConversationId;
-
-      if (!conversationId) {
-        const createResponse = await fetch(`/api/public/agent/${slug}/conversations`, {
-          method: "POST",
-          headers: {
-            ...getManagerAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ title: message.slice(0, 50) }),
-        });
-        if (!createResponse.ok) throw new Error("Failed to create conversation");
-        const newConv = await createResponse.json();
-        conversationId = newConv.id;
-        setSelectedConversationId(conversationId);
-      }
-
+      const hasNonDefaultPreferences = preferences && (
+        preferences.writingStyle !== 'default' ||
+        preferences.responseLength !== 'balanced' ||
+        (preferences.customInstructions && preferences.customInstructions.trim().length > 0)
+      );
+      const currentPreferences = hasNonDefaultPreferences 
+        ? {
+            writingStyle: preferences.writingStyle,
+            responseLength: preferences.responseLength,
+            customInstructions: preferences.customInstructions,
+          }
+        : undefined;
+      
       const response = await fetch(
-        `/api/public/agent/${slug}/conversations/${conversationId}/messages`,
+        `/public/whatsapp/shares/${slug}/message`,
         {
           method: "POST",
           headers: {
@@ -520,8 +533,8 @@ export default function ManagerChat() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            content: message,
-            preferences: preferences || DEFAULT_PREFERENCES,
+            message: message,
+            preferences: currentPreferences,
           }),
         }
       );
@@ -570,7 +583,7 @@ export default function ManagerChat() {
         }
       }
 
-      return { conversationId, content: fullContent };
+      return { content: fullContent };
     },
     onMutate: async (message) => {
       const userMessage: Message = {
@@ -591,10 +604,6 @@ export default function ManagerChat() {
       setIsTyping(true);
     },
     onSuccess: (data) => {
-      if (data.conversationId && !selectedConversationId) {
-        setSelectedConversationId(data.conversationId);
-      }
-
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === tempAssistantIdRef.current
@@ -606,7 +615,7 @@ export default function ManagerChat() {
       setIsTyping(false);
       tempAssistantIdRef.current = null;
       setIsNewConversation(false);
-      queryClient.invalidateQueries({ queryKey: ["manager-conversations", slug] });
+      queryClient.invalidateQueries({ queryKey: ["manager-conversation", slug] });
     },
     onError: () => {
       setIsTyping(false);

@@ -339,12 +339,19 @@ export type AgentStreamEvent =
   | { type: 'promptBreakdown'; data: PromptBreakdownData }
   | { type: 'citations'; data: CitationData[] };
 
+export interface ManagerPreferences {
+  writingStyle?: string;
+  responseLength?: string;
+  customInstructions?: string;
+}
+
 export async function* processConsultantAgentMessage(
   consultantId: string,
   conversationId: string,
   messageContent: string,
   pendingModification?: PendingModificationContext,
-  bookingContext?: BookingContext
+  bookingContext?: BookingContext,
+  managerPreferences?: ManagerPreferences
 ): AsyncGenerator<AgentStreamEvent, void, unknown> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🤖 [CONSULTANT-AGENT CHAT] Processing message');
@@ -536,6 +543,54 @@ Confermi definitivamente la cancellazione?"
       });
       
       systemPrompt += bookingBlock;
+    }
+    
+    // Add manager preferences if provided
+    if (managerPreferences && (managerPreferences.writingStyle || managerPreferences.responseLength || managerPreferences.customInstructions)) {
+      console.log(`\n📝 [MANAGER PREFERENCES] Adding preferences to prompt...`);
+      
+      let preferencesBlock = `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 PREFERENZE MANAGER PER LE RISPOSTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
+`;
+      
+      if (managerPreferences.writingStyle) {
+        const styleDescriptions: Record<string, string> = {
+          'professional': 'Usa un tono professionale e formale',
+          'friendly': 'Usa un tono amichevole e informale',
+          'concise': 'Sii estremamente conciso e diretto',
+          'detailed': 'Fornisci risposte dettagliate e approfondite',
+        };
+        preferencesBlock += `\n📝 STILE DI SCRITTURA: ${styleDescriptions[managerPreferences.writingStyle] || managerPreferences.writingStyle}`;
+        console.log(`   Style: ${managerPreferences.writingStyle}`);
+      }
+      
+      if (managerPreferences.responseLength) {
+        const lengthDescriptions: Record<string, string> = {
+          'short': 'Mantieni le risposte brevi (max 2-3 frasi)',
+          'medium': 'Mantieni le risposte di media lunghezza (4-6 frasi)',
+          'long': 'Fornisci risposte approfondite e complete',
+        };
+        preferencesBlock += `\n📏 LUNGHEZZA RISPOSTE: ${lengthDescriptions[managerPreferences.responseLength] || managerPreferences.responseLength}`;
+        console.log(`   Length: ${managerPreferences.responseLength}`);
+      }
+      
+      if (managerPreferences.customInstructions) {
+        preferencesBlock += `\n✨ ISTRUZIONI PERSONALIZZATE: ${managerPreferences.customInstructions}`;
+        console.log(`   Custom: "${managerPreferences.customInstructions.substring(0, 50)}..."`);
+      }
+      
+      preferencesBlock += `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+      
+      systemPrompt += preferencesBlock;
+      console.log(`   ✅ Preferences block added to prompt`);
     }
     
     const promptLength = systemPrompt.length;
