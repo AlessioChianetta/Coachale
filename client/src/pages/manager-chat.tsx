@@ -36,9 +36,11 @@ interface Message {
 }
 
 interface AgentInfo {
-  id: string;
-  name: string;
-  slug: string;
+  agentName: string;
+  description: string | null;
+  requiresLogin: boolean;
+  businessName: string | null;
+  consultantName: string | null;
 }
 
 interface ManagerInfo {
@@ -128,13 +130,6 @@ export default function ManagerChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tempAssistantIdRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    const token = getManagerToken();
-    if (!token) {
-      setLocation(`/agent/${slug}/login`);
-    }
-  }, [slug, setLocation]);
-
   const { data: agentInfo, isLoading: agentLoading } = useQuery<AgentInfo>({
     queryKey: ["public-agent", slug],
     queryFn: async () => {
@@ -144,6 +139,15 @@ export default function ManagerChat() {
     },
     enabled: !!slug,
   });
+
+  useEffect(() => {
+    if (agentInfo && agentInfo.requiresLogin) {
+      const token = getManagerToken();
+      if (!token) {
+        setLocation(`/agent/${slug}/login`);
+      }
+    }
+  }, [agentInfo, slug, setLocation]);
 
   const { data: managerInfo } = useQuery<ManagerInfo>({
     queryKey: ["manager-info", slug],
@@ -160,8 +164,10 @@ export default function ManagerChat() {
       }
       return response.json();
     },
-    enabled: !!slug && !!getManagerToken(),
+    enabled: !!slug && !!getManagerToken() && agentInfo?.requiresLogin === true,
   });
+
+  const isAuthenticated = !!getManagerToken() && agentInfo?.requiresLogin === true;
 
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
     queryKey: ["manager-conversations", slug],
@@ -178,7 +184,7 @@ export default function ManagerChat() {
       }
       return response.json();
     },
-    enabled: !!slug && !!getManagerToken(),
+    enabled: isAuthenticated,
   });
 
   const { refetch: fetchMessages } = useQuery({
@@ -199,6 +205,21 @@ export default function ManagerChat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
+      if (!isAuthenticated) {
+        const response = await fetch(`/api/public/agent/${slug}/anonymous/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            content: message,
+            conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
+          }),
+        });
+
+        if (!response.ok) throw new Error("Failed to send message");
+        const data = await response.json();
+        return { conversationId: null, messageId: `anon-${Date.now()}`, content: data.content };
+      }
+
       let convId = selectedConversationId;
 
       if (!convId) {
@@ -375,7 +396,7 @@ export default function ManagerChat() {
     <div className="h-screen flex flex-col bg-slate-50">
       <header className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          {isMobile && (
+          {isMobile && isAuthenticated && (
             <Button
               variant="ghost"
               size="icon"
@@ -389,7 +410,7 @@ export default function ManagerChat() {
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center">
               <Bot className="h-4 w-4 text-white" />
             </div>
-            <span className="font-semibold">{agentInfo?.name || "Assistente"}</span>
+            <span className="font-semibold">{agentInfo?.agentName || "Assistente"}</span>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -398,21 +419,28 @@ export default function ManagerChat() {
               Benvenuto, {managerInfo.name}
             </span>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-slate-300 hover:text-white hover:bg-slate-800"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Esci</span>
-          </Button>
+          {!agentInfo?.requiresLogin && (
+            <span className="text-sm text-slate-400 hidden sm:block">
+              Modalità ospite
+            </span>
+          )}
+          {agentInfo?.requiresLogin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-slate-300 hover:text-white hover:bg-slate-800"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Esci</span>
+            </Button>
+          )}
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         <AnimatePresence>
-          {(sidebarOpen || !isMobile) && (
+          {isAuthenticated && (sidebarOpen || !isMobile) && (
             <motion.aside
               initial={isMobile ? { x: -280 } : false}
               animate={{ x: 0 }}
@@ -489,7 +517,7 @@ export default function ManagerChat() {
           )}
         </AnimatePresence>
 
-        {isMobile && sidebarOpen && (
+        {isMobile && sidebarOpen && isAuthenticated && (
           <div
             className="fixed inset-0 bg-black/50 z-30 top-[56px]"
             onClick={() => setSidebarOpen(false)}

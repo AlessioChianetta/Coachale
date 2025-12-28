@@ -178,6 +178,10 @@ router.post("/login", async (req: Request, res: Response) => {
       return res.status(403).json({ message: "This share link is no longer active" });
     }
 
+    if (!share.requiresLogin) {
+      return res.status(400).json({ message: "This agent does not require login. Access directly via the public link." });
+    }
+
     const [manager] = await db.select()
       .from(managerUsers)
       .where(and(

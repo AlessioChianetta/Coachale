@@ -103,19 +103,18 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
     enabled: activeTab === 'managers',
   });
 
-  const { data: availableAgents = [] } = useQuery<AgentConfig[]>({
-    queryKey: ['/api/whatsapp/agents/list'],
-    queryFn: async () => {
-      const res = await fetch('/api/whatsapp/agents', {
-        headers: getAuthHeaders(),
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Errore caricamento agenti');
-      const data = await res.json();
-      return data.agents || [];
-    },
-    enabled: inviteDrawerOpen,
-  });
+  // Use the current agent from props - no need to fetch
+  const currentAgent: AgentConfig = { id: agentId, name: agentName };
+  
+  // Auto-select current agent when drawer opens
+  useEffect(() => {
+    if (inviteDrawerOpen && agentId && !inviteForm.selectedAgents.includes(agentId)) {
+      setInviteForm(prev => ({
+        ...prev,
+        selectedAgents: [agentId]
+      }));
+    }
+  }, [inviteDrawerOpen, agentId]);
 
   const createManagerMutation = useMutation({
     mutationFn: async (data: { name: string; email: string; password: string; sendEmail: boolean; agentIds: string[] }) => {
@@ -1032,41 +1031,36 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
             </div>
 
             <div className="space-y-2">
-              <Label>Agenti da Assegnare</Label>
-              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                {availableAgents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    Nessun agente disponibile
-                  </p>
-                ) : (
-                  availableAgents.map((agent) => (
-                    <div key={agent.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`agent-${agent.id}`}
-                        checked={inviteForm.selectedAgents.includes(agent.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setInviteForm(prev => ({
-                              ...prev,
-                              selectedAgents: [...prev.selectedAgents, agent.id]
-                            }));
-                          } else {
-                            setInviteForm(prev => ({
-                              ...prev,
-                              selectedAgents: prev.selectedAgents.filter(id => id !== agent.id)
-                            }));
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor={`agent-${agent.id}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {agent.name}
-                      </label>
-                    </div>
-                  ))
-                )}
+              <Label>Agente Assegnato</Label>
+              <div className="border rounded-lg p-3 bg-muted/50">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`agent-${currentAgent.id}`}
+                    checked={inviteForm.selectedAgents.includes(currentAgent.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setInviteForm(prev => ({
+                          ...prev,
+                          selectedAgents: [...prev.selectedAgents, currentAgent.id]
+                        }));
+                      } else {
+                        setInviteForm(prev => ({
+                          ...prev,
+                          selectedAgents: prev.selectedAgents.filter(id => id !== currentAgent.id)
+                        }));
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`agent-${currentAgent.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {currentAgent.name}
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Il manager avrà accesso a questo agente
+                </p>
               </div>
             </div>
 

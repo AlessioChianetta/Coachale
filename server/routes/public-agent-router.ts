@@ -136,6 +136,41 @@ router.get("/:slug", loadShareAndAgent, async (req: ManagerRequest, res: Respons
 });
 
 router.get(
+  "/:slug/manager/me",
+  loadShareAndAgent,
+  verifyManagerToken,
+  async (req: ManagerRequest, res: Response) => {
+    try {
+      const manager = req.manager!;
+      const share = req.share!;
+
+      if (manager.shareId !== share.id) {
+        return res.status(403).json({ message: "Access denied to this agent" });
+      }
+
+      const [managerData] = await db.select({
+        id: managerUsers.id,
+        name: managerUsers.name,
+        email: managerUsers.email,
+        status: managerUsers.status,
+      })
+        .from(managerUsers)
+        .where(eq(managerUsers.id, manager.managerId))
+        .limit(1);
+
+      if (!managerData) {
+        return res.status(404).json({ message: "Manager not found" });
+      }
+
+      res.json(managerData);
+    } catch (error: any) {
+      console.error("[PUBLIC AGENT] Get manager info error:", error);
+      res.status(500).json({ message: "Failed to get manager info" });
+    }
+  }
+);
+
+router.get(
   "/:slug/conversations",
   loadShareAndAgent,
   verifyManagerToken,
@@ -428,6 +463,79 @@ router.delete(
     } catch (error: any) {
       console.error("[PUBLIC AGENT] Delete conversation error:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  }
+);
+
+router.post(
+  "/:slug/anonymous/chat",
+  loadShareAndAgent,
+  async (req: ManagerRequest, res: Response) => {
+    try {
+      const share = req.share!;
+      const agentConfig = req.agentConfig!;
+      const { content, conversationHistory = [] } = req.body;
+
+      if (share.requiresLogin) {
+        return res.status(403).json({ message: "This agent requires login. Please authenticate first." });
+      }
+
+      if (!content || typeof content !== "string" || content.trim().length === 0) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+
+      let aiResponseContent = "Mi dispiace, si è verificato un errore. Riprova più tardi.";
+
+      try {
+        const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+        const { model: modelName } = getModelWithThinking(aiProvider.metadata.name);
+
+        const systemPrompt = agentConfig.agentInstructions || 
+          `Sei ${agentConfig.agentName}, un assistente AI professionale per ${agentConfig.businessName || "l'azienda"}.
+${agentConfig.businessDescription ? `Descrizione: ${agentConfig.businessDescription}` : ""}
+Rispondi in modo professionale e utile.`;
+
+        const geminiHistory = conversationHistory.map((msg: { role: string; content: string }) => ({
+          role: msg.role === "user" ? "user" : "model",
+          parts: [{ text: msg.content }],
+        }));
+
+        geminiHistory.push({
+          role: "user",
+          parts: [{ text: content.trim() }],
+        });
+
+        const result = await aiProvider.client.models.generateContent({
+          model: modelName,
+          systemInstruction: systemPrompt,
+          contents: geminiHistory,
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.95,
+            maxOutputTokens: 4096,
+          },
+        });
+
+        aiResponseContent = result.response.text() || aiResponseContent;
+
+        await db.update(whatsappAgentShares)
+          .set({ 
+            totalMessagesCount: sql`${whatsappAgentShares.totalMessagesCount} + 1`,
+            lastAccessAt: new Date(),
+          })
+          .where(eq(whatsappAgentShares.id, share.id));
+
+      } catch (aiError: any) {
+        console.error("[PUBLIC AGENT] Anonymous AI error:", aiError);
+      }
+
+      res.json({
+        role: "assistant",
+        content: aiResponseContent,
+      });
+    } catch (error: any) {
+      console.error("[PUBLIC AGENT] Anonymous chat error:", error);
+      res.status(500).json({ message: "Failed to process message" });
     }
   }
 );
