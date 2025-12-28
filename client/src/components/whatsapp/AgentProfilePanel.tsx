@@ -49,7 +49,8 @@ import {
   UserX,
   Sparkles,
   FileText,
-  Share2
+  Share2,
+  Instagram
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -273,6 +274,84 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [showShareManager, setShowShareManager] = useState(false);
+  
+  // Instagram integration state
+  const [selectedInstagramConfigId, setSelectedInstagramConfigId] = useState<string | null>(null);
+  const [isSavingInstagram, setIsSavingInstagram] = useState(false);
+
+  // Fetch Instagram configs
+  const { data: instagramConfigs, isLoading: isLoadingInstagramConfigs } = useQuery<{
+    configs: Array<{
+      id: string;
+      instagramPageId: string;
+      agentName: string | null;
+      isActive: boolean;
+      linkedAgent: { agentId: string; agentName: string } | null;
+    }>;
+  }>({
+    queryKey: ["/api/whatsapp/instagram-configs"],
+    queryFn: async () => {
+      const res = await fetch("/api/whatsapp/instagram-configs", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch Instagram configs");
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
+  // Load agent's current Instagram config
+  const { data: agentDetails } = useQuery<{ config: { instagramConfigId?: string } }>({
+    queryKey: ["/api/whatsapp/config", selectedAgent?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/whatsapp/config/${selectedAgent?.id}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch agent details");
+      return res.json();
+    },
+    enabled: !!selectedAgent?.id,
+  });
+
+  useEffect(() => {
+    if (agentDetails?.config?.instagramConfigId) {
+      setSelectedInstagramConfigId(agentDetails.config.instagramConfigId);
+    } else {
+      setSelectedInstagramConfigId(null);
+    }
+  }, [agentDetails?.config?.instagramConfigId, selectedAgent?.id]);
+
+  const handleLinkInstagram = async (configId: string | null) => {
+    if (!selectedAgent?.id) return;
+    
+    setIsSavingInstagram(true);
+    try {
+      const response = await fetch(`/api/whatsapp/config/${selectedAgent.id}/instagram`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instagramConfigId: configId })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Errore durante il collegamento');
+      }
+      
+      setSelectedInstagramConfigId(configId);
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instagram-configs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/config", selectedAgent.id] });
+      
+      toast({
+        title: configId ? "Instagram Collegato" : "Instagram Scollegato",
+        description: data.message
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile collegare Instagram"
+      });
+    } finally {
+      setIsSavingInstagram(false);
+    }
+  };
 
   const { data: consultantClients } = useQuery<ConsultantClient[]>({
     queryKey: ["/api/ai-assistant/consultant/clients"],
@@ -933,6 +1012,94 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                   )}
                   Collega Google Calendar
                 </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-4 border-t border-slate-200">
+            <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
+              <Instagram className="h-4 w-4 text-pink-500" />
+              Instagram DM
+            </h3>
+            {isLoadingInstagramConfigs ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+              </div>
+            ) : instagramConfigs?.configs && instagramConfigs.configs.length > 0 ? (
+              <div className="space-y-3">
+                {selectedInstagramConfigId ? (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200">
+                    <Instagram className="h-5 w-5 text-pink-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-pink-700">Collegato</p>
+                      <p className="text-xs text-pink-600 truncate">
+                        {instagramConfigs.configs.find(c => c.id === selectedInstagramConfigId)?.instagramPageId || "Account Instagram"}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleLinkInstagram(null)}
+                      disabled={isSavingInstagram}
+                      className="flex-shrink-0 text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-300"
+                    >
+                      {isSavingInstagram ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Unlink className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-500">Seleziona un account Instagram da collegare:</p>
+                    {instagramConfigs.configs.map((config) => {
+                      const isLinkedToOther = config.linkedAgent && config.linkedAgent.agentId !== selectedAgent?.id;
+                      return (
+                        <button
+                          key={config.id}
+                          onClick={() => !isLinkedToOther && handleLinkInstagram(config.id)}
+                          disabled={isSavingInstagram || isLinkedToOther}
+                          className={cn(
+                            "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left",
+                            isLinkedToOther 
+                              ? "bg-slate-50 border-slate-200 cursor-not-allowed opacity-60"
+                              : "bg-white border-slate-200 hover:bg-pink-50 hover:border-pink-300"
+                          )}
+                        >
+                          <Instagram className={cn("h-5 w-5", isLinkedToOther ? "text-slate-400" : "text-pink-500")} />
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("text-sm font-medium truncate", isLinkedToOther ? "text-slate-500" : "text-slate-700")}>
+                              {config.instagramPageId}
+                            </p>
+                            {isLinkedToOther && (
+                              <p className="text-xs text-slate-400">
+                                Collegato a: {config.linkedAgent?.agentName}
+                              </p>
+                            )}
+                          </div>
+                          {!isLinkedToOther && (
+                            <Link className="h-4 w-4 text-pink-500" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {isSavingInstagram && (
+                  <div className="flex items-center gap-2 text-xs text-pink-600">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Salvataggio in corso...
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <Instagram className="h-5 w-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-600">Nessun account Instagram configurato</p>
+                  <p className="text-xs text-slate-400">Configura un account nella sezione API Keys</p>
+                </div>
               </div>
             )}
           </div>

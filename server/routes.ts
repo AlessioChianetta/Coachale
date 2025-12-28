@@ -11560,6 +11560,146 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // Link/Unlink Instagram account to WhatsApp agent
+  app.patch("/api/whatsapp/config/:agentId/instagram", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { agentId } = req.params;
+      const { instagramConfigId } = req.body;
+
+      // Verify agent belongs to consultant
+      const [existingConfig] = await db
+        .select()
+        .from(schema.consultantWhatsappConfig)
+        .where(
+          and(
+            eq(schema.consultantWhatsappConfig.id, agentId),
+            eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+        
+      if (!existingConfig) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Agent not found or access denied" 
+        });
+      }
+
+      // If linking, verify Instagram config belongs to consultant and is not already linked to another agent
+      if (instagramConfigId) {
+        const [instagramConfig] = await db
+          .select()
+          .from(schema.consultantInstagramConfig)
+          .where(
+            and(
+              eq(schema.consultantInstagramConfig.id, instagramConfigId),
+              eq(schema.consultantInstagramConfig.consultantId, consultantId)
+            )
+          )
+          .limit(1);
+          
+        if (!instagramConfig) {
+          return res.status(404).json({ 
+            success: false,
+            message: "Instagram config not found or access denied" 
+          });
+        }
+
+        // Check if another agent is already linked to this Instagram config
+        const [existingLink] = await db
+          .select()
+          .from(schema.consultantWhatsappConfig)
+          .where(
+            and(
+              eq(schema.consultantWhatsappConfig.instagramConfigId, instagramConfigId),
+              eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+            )
+          )
+          .limit(1);
+          
+        if (existingLink && existingLink.id !== agentId) {
+          return res.status(400).json({ 
+            success: false,
+            message: `Questo account Instagram è già collegato all'agente "${existingLink.agentName}"` 
+          });
+        }
+      }
+
+      // Update agent with Instagram config ID (null to unlink)
+      const [updatedConfig] = await db
+        .update(schema.consultantWhatsappConfig)
+        .set({ 
+          instagramConfigId: instagramConfigId || null,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.consultantWhatsappConfig.id, agentId))
+        .returning();
+
+      console.log(`✅ [INSTAGRAM LINK] Agent ${agentId} ${instagramConfigId ? 'linked to' : 'unlinked from'} Instagram config ${instagramConfigId || 'N/A'}`);
+
+      res.json({
+        success: true,
+        message: instagramConfigId ? "Account Instagram collegato con successo" : "Account Instagram scollegato",
+        instagramConfigId: updatedConfig.instagramConfigId,
+      });
+    } catch (error: any) {
+      console.error("❌ Error linking Instagram to agent:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
+  // Get Instagram configs for linking dropdown
+  app.get("/api/whatsapp/instagram-configs", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const configs = await db
+        .select({
+          id: schema.consultantInstagramConfig.id,
+          instagramPageId: schema.consultantInstagramConfig.instagramPageId,
+          agentName: schema.consultantInstagramConfig.agentName,
+          isActive: schema.consultantInstagramConfig.isActive,
+        })
+        .from(schema.consultantInstagramConfig)
+        .where(eq(schema.consultantInstagramConfig.consultantId, consultantId));
+
+      // Get which agents are linked to each config
+      const linkedAgents = await db
+        .select({
+          instagramConfigId: schema.consultantWhatsappConfig.instagramConfigId,
+          agentId: schema.consultantWhatsappConfig.id,
+          agentName: schema.consultantWhatsappConfig.agentName,
+        })
+        .from(schema.consultantWhatsappConfig)
+        .where(
+          and(
+            eq(schema.consultantWhatsappConfig.consultantId, consultantId),
+            sql`${schema.consultantWhatsappConfig.instagramConfigId} IS NOT NULL`
+          )
+        );
+
+      const configsWithLinks = configs.map(config => ({
+        ...config,
+        linkedAgent: linkedAgents.find(la => la.instagramConfigId === config.id) || null,
+      }));
+
+      res.json({
+        success: true,
+        configs: configsWithLinks,
+      });
+    } catch (error: any) {
+      console.error("❌ Error fetching Instagram configs:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
   app.post("/api/whatsapp/config/:agentId/reset-circuit-breaker", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { agentId } = req.params;
