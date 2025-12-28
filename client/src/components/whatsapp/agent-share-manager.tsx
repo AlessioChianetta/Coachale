@@ -446,11 +446,17 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
     const embedUrl = `${shareUrl}?embed=true`;
     return `<iframe 
   src="${embedUrl}"
-  width="400" 
-  height="600"
-  frameborder="0"
-  allow="clipboard-write"
-  style="border: none; border-radius: 8px;"
+  loading="lazy"
+  allow="clipboard-write; microphone"
+  style="
+    width: 100%;
+    max-width: 420px;
+    height: 600px;
+    min-height: 400px;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  "
 ></iframe>`;
   };
 
