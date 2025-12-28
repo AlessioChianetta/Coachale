@@ -382,11 +382,11 @@ Rispondi in modo professionale e utile.`) + styleInstructions;
           parts: [{ text: content.trim() }],
         });
 
-        const result = await aiProvider.client.models.generateContent({
+        const result = await aiProvider.client.generateContent({
           model: modelName,
-          systemInstruction: systemPrompt,
           contents: conversationHistory,
           generationConfig: {
+            systemInstruction: systemPrompt,
             temperature: 0.7,
             topP: 0.95,
             maxOutputTokens: 4096,
@@ -424,10 +424,14 @@ Rispondi in modo professionale e utile.`) + styleInstructions;
           const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
           const { model: modelName } = getModelWithThinking(aiProvider.metadata.name);
           
-          const titleResult = await aiProvider.client.models.generateContent({
+          const titleResult = await aiProvider.client.generateContent({
             model: modelName,
             contents: [{ role: "user", parts: [{ text: titlePrompt }] }],
-            generationConfig: { temperature: 0.5, maxOutputTokens: 50 },
+            generationConfig: { 
+              systemInstruction: "Rispondi solo con il titolo, senza virgolette o altro testo.",
+              temperature: 0.5, 
+              maxOutputTokens: 50 
+            },
           });
 
           const generatedTitle = (titleResult.response.text() || "").trim().replace(/["\n]/g, "").slice(0, 100);
@@ -526,11 +530,11 @@ Rispondi in modo professionale e utile.`;
           parts: [{ text: content.trim() }],
         });
 
-        const result = await aiProvider.client.models.generateContent({
+        const result = await aiProvider.client.generateContent({
           model: modelName,
-          systemInstruction: systemPrompt,
           contents: geminiHistory,
           generationConfig: {
+            systemInstruction: systemPrompt,
             temperature: 0.7,
             topP: 0.95,
             maxOutputTokens: 4096,
