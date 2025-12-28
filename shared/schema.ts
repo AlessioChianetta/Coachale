@@ -3613,6 +3613,9 @@ export const whatsappAgentShares = pgTable("whatsapp_agent_shares", {
   slug: text("slug").notNull().unique(), // Unique URL slug (e.g., "demo-monitor-abc123")
   accessType: text("access_type").$type<"public" | "password" | "token">().default("public").notNull(),
   passwordHash: text("password_hash"), // bcrypt hash if accessType = 'password'
+  
+  // Manager authentication - requires login for persistent chat history
+  requiresLogin: boolean("requires_login").default(false).notNull(),
 
   // Domain whitelisting for iframe embeds
   allowedDomains: jsonb("allowed_domains").$type<string[]>().default(sql`'[]'::jsonb`), // Empty array = allow all domains
@@ -5981,3 +5984,132 @@ export const aiUsageStats = pgTable("ai_usage_stats", {
 
 export type AiUsageStats = typeof aiUsageStats.$inferSelect;
 export type InsertAiUsageStats = typeof aiUsageStats.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MANAGER USERS - Authenticated Public Agent Access
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const managerUsers = pgTable("manager_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  
+  status: text("status").$type<"active" | "invited" | "suspended">().default("invited").notNull(),
+  
+  lastLoginAt: timestamp("last_login_at"),
+  loginCount: integer("login_count").default(0).notNull(),
+  
+  metadata: jsonb("metadata").$type<{
+    invitedAt?: string;
+    activatedAt?: string;
+    company?: string;
+    department?: string;
+    notes?: string;
+    [key: string]: any;
+  }>().default(sql`'{}'::jsonb`),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_manager_users_consultant").on(table.consultantId),
+  emailConsultantUnique: unique("manager_users_email_consultant_unique").on(table.email, table.consultantId),
+}));
+
+export type ManagerUser = typeof managerUsers.$inferSelect;
+export type InsertManagerUser = typeof managerUsers.$inferInsert;
+
+export const insertManagerUserSchema = createInsertSchema(managerUsers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+  loginCount: true,
+});
+
+// Manager Link Assignments - Assign managers to specific public links
+export const managerLinkAssignments = pgTable("manager_link_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  managerId: varchar("manager_id").references(() => managerUsers.id, { onDelete: "cascade" }).notNull(),
+  shareId: varchar("share_id").references(() => whatsappAgentShares.id, { onDelete: "cascade" }).notNull(),
+  
+  assignedAt: timestamp("assigned_at").default(sql`now()`),
+  assignedBy: varchar("assigned_by").references(() => users.id),
+}, (table) => ({
+  managerShareUnique: unique("manager_link_assignments_unique").on(table.managerId, table.shareId),
+  managerIdx: index("idx_manager_link_assignments_manager").on(table.managerId),
+  shareIdx: index("idx_manager_link_assignments_share").on(table.shareId),
+}));
+
+export type ManagerLinkAssignment = typeof managerLinkAssignments.$inferSelect;
+export type InsertManagerLinkAssignment = typeof managerLinkAssignments.$inferInsert;
+
+// Manager Conversations - Persistent chat history for authenticated managers
+export const managerConversations = pgTable("manager_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  managerId: varchar("manager_id").references(() => managerUsers.id, { onDelete: "cascade" }).notNull(),
+  shareId: varchar("share_id").references(() => whatsappAgentShares.id, { onDelete: "cascade" }).notNull(),
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
+  
+  title: text("title").default("Nuova conversazione"),
+  
+  messageCount: integer("message_count").default(0).notNull(),
+  lastMessageAt: timestamp("last_message_at"),
+  
+  metadata: jsonb("metadata").$type<{
+    userAgent?: string;
+    ipAddress?: string;
+    [key: string]: any;
+  }>().default(sql`'{}'::jsonb`),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  managerIdx: index("idx_manager_conversations_manager").on(table.managerId),
+  shareIdx: index("idx_manager_conversations_share").on(table.shareId),
+  lastMessageIdx: index("idx_manager_conversations_last_message").on(table.lastMessageAt),
+}));
+
+export type ManagerConversation = typeof managerConversations.$inferSelect;
+export type InsertManagerConversation = typeof managerConversations.$inferInsert;
+
+// Manager Messages - Individual messages in manager conversations
+export const managerMessages = pgTable("manager_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => managerConversations.id, { onDelete: "cascade" }).notNull(),
+  
+  role: text("role").$type<"user" | "assistant">().notNull(),
+  content: text("content").notNull(),
+  
+  status: text("status").$type<"sending" | "completed" | "error">().default("completed"),
+  
+  metadata: jsonb("metadata").$type<{
+    tokensUsed?: number;
+    modelUsed?: string;
+    errorMessage?: string;
+    [key: string]: any;
+  }>().default(sql`'{}'::jsonb`),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  conversationIdx: index("idx_manager_messages_conversation").on(table.conversationId),
+  createdAtIdx: index("idx_manager_messages_created_at").on(table.createdAt),
+}));
+
+export type ManagerMessage = typeof managerMessages.$inferSelect;
+export type InsertManagerMessage = typeof managerMessages.$inferInsert;
+
+export const insertManagerConversationSchema = createInsertSchema(managerConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  messageCount: true,
+  lastMessageAt: true,
+});
+
+export const insertManagerMessageSchema = createInsertSchema(managerMessages).omit({
+  id: true,
+  createdAt: true,
+});
