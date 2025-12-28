@@ -18,6 +18,7 @@ import {
   instagramMessages,
   instagramConversations,
   consultantInstagramConfig,
+  consultantWhatsappConfig,
   users,
 } from "../../shared/schema";
 import { eq, isNull, and, desc, asc, sql } from "drizzle-orm";
@@ -131,6 +132,25 @@ async function processInstagramConversation(
       return;
     }
 
+    // Look for linked WhatsApp agent (1 agent per Instagram account)
+    const [linkedAgent] = await db
+      .select()
+      .from(consultantWhatsappConfig)
+      .where(
+        and(
+          eq(consultantWhatsappConfig.instagramConfigId, config.id),
+          eq(consultantWhatsappConfig.consultantId, consultantId),
+          eq(consultantWhatsappConfig.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (linkedAgent) {
+      console.log(`🔗 [INSTAGRAM] Found linked WhatsApp agent: ${linkedAgent.agentName} (${linkedAgent.id})`);
+    } else {
+      console.log(`⚠️ [INSTAGRAM] No linked WhatsApp agent, using Instagram config settings`);
+    }
+
     // Combine pending messages
     const combinedMessage = pendingMessages
       .map((m) => m.messageText)
@@ -164,13 +184,14 @@ async function processInstagramConversation(
         content: m.messageText,
       }));
 
-    // Generate AI response using shared logic
+    // Generate AI response using shared logic (prefer linked agent settings)
     const aiResponse = await generateAIResponse(
       config,
       consultant,
       conversation,
       combinedMessage,
-      formattedHistory
+      formattedHistory,
+      linkedAgent || null
     );
 
     if (!aiResponse) {
@@ -201,43 +222,50 @@ async function processInstagramConversation(
 
 /**
  * Generate AI response using shared AI logic
+ * If a linked WhatsApp agent exists, use its settings; otherwise fall back to Instagram config
  */
 async function generateAIResponse(
   config: typeof consultantInstagramConfig.$inferSelect,
   consultant: typeof users.$inferSelect,
   conversation: typeof instagramConversations.$inferSelect,
   userMessage: string,
-  messageHistory: Array<{ role: "user" | "assistant"; content: string }>
+  messageHistory: Array<{ role: "user" | "assistant"; content: string }>,
+  linkedAgent: typeof consultantWhatsappConfig.$inferSelect | null
 ): Promise<string | null> {
   try {
+    // Use linked WhatsApp agent settings if available, otherwise fall back to Instagram config
+    const source = linkedAgent || config;
+    
     // Build agent config object compatible with WhatsApp structure
     const agentConfigForAI = {
-      id: config.id,
+      id: linkedAgent?.id || config.id,
       consultantId: config.consultantId,
-      agentName: config.agentName,
-      agentType: config.agentType,
-      businessName: config.businessName,
-      consultantDisplayName: config.consultantDisplayName,
-      businessDescription: config.businessDescription,
-      consultantBio: config.consultantBio,
-      salesScript: config.salesScript,
-      aiPersonality: config.aiPersonality,
-      vision: config.vision,
-      mission: config.mission,
-      values: config.values,
-      usp: config.usp,
-      whoWeHelp: config.whoWeHelp,
-      whoWeDontHelp: config.whoWeDontHelp,
-      whatWeDo: config.whatWeDo,
-      howWeDoIt: config.howWeDoIt,
-      agentInstructions: config.agentInstructions,
-      agentInstructionsEnabled: config.agentInstructionsEnabled,
-      bookingEnabled: config.bookingEnabled,
-      objectionHandlingEnabled: config.objectionHandlingEnabled,
-      disqualificationEnabled: config.disqualificationEnabled,
-      isProactiveAgent: false,
+      agentName: source.agentName,
+      agentType: source.agentType,
+      businessName: source.businessName,
+      consultantDisplayName: source.consultantDisplayName,
+      businessDescription: source.businessDescription,
+      consultantBio: source.consultantBio,
+      salesScript: source.salesScript,
+      aiPersonality: source.aiPersonality,
+      vision: source.vision,
+      mission: source.mission,
+      values: source.values,
+      usp: source.usp,
+      whoWeHelp: source.whoWeHelp,
+      whoWeDontHelp: source.whoWeDontHelp,
+      whatWeDo: source.whatWeDo,
+      howWeDoIt: source.howWeDoIt,
+      agentInstructions: source.agentInstructions,
+      agentInstructionsEnabled: source.agentInstructionsEnabled,
+      bookingEnabled: source.bookingEnabled,
+      objectionHandlingEnabled: source.objectionHandlingEnabled,
+      disqualificationEnabled: source.disqualificationEnabled,
+      isProactiveAgent: linkedAgent?.isProactiveAgent || false,
       integrationMode: "whatsapp_ai" as const,
     };
+    
+    console.log(`🤖 [INSTAGRAM] Using ${linkedAgent ? 'linked WhatsApp agent' : 'Instagram config'} settings for AI: ${agentConfigForAI.agentName}`);
 
     // Build system prompt using shared logic
     const systemPrompt = buildSystemPrompt({
