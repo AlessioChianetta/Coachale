@@ -1870,106 +1870,140 @@ export const consultantGuides: ConsultantGuides = {
     title: "Instagram DM Integration",
     path: "/consultant/guide-instagram",
     navigation: "Sidebar → COMUNICAZIONE → Guide → Instagram DM",
-    description: "Configura Instagram Business per ricevere e rispondere automaticamente ai DM con AI. Gestisci la finestra 24 ore, story replies e comment-to-DM.",
+    description: "Configura Instagram Business per ricevere e rispondere automaticamente ai DM con AI. A differenza di ManyChat (flussi if/then), Coachale usa AI Gemini con comprensione naturale e Knowledge Base integrata.",
     category: "communication",
     sections: [
       {
         title: "PREREQUISITI E SETUP ACCOUNT",
         icon: "🔧",
-        description: "Configurazione dell'account Instagram Business e delle credenziali Meta.",
+        description: "Configurazione dell'account Instagram Business e delle credenziali Meta. Senza questi passaggi l'integrazione NON funziona.",
         steps: [
           {
             title: "Requisiti Account",
-            content: "Devi avere: 1) Account Instagram Business o Creator (non personale) 2) Pagina Facebook collegata all'account Instagram 3) App Meta for Developers creata con prodotto 'Instagram' aggiunto.",
-            warnings: ["Account personali NON possono ricevere webhook DM", "La pagina Facebook DEVE essere collegata all'account Instagram"]
+            content: "Prima di iniziare, assicurati di avere tutti i requisiti base: 1) Account Instagram Business o Creator (gli account personali NON supportano le API) - per convertire vai su Instagram → Impostazioni → Account → Passa a account professionale. 2) Facebook Page collegata all'account Instagram - devi essere admin o editor della pagina. 3) App Meta for Developers creata con prodotto 'Messenger' aggiunto.",
+            warnings: ["Account personali NON possono ricevere webhook DM", "Devi essere ADMIN della Facebook Page, non solo contributor"],
+            externalLinks: [
+              { text: "Come convertire a Business", url: "https://help.instagram.com/502981923235522" },
+              { text: "Collegare Instagram a Facebook", url: "https://www.facebook.com/help/1148909221857370" }
+            ]
+          },
+          {
+            title: "Creare App su Meta for Developers",
+            content: "Devi creare un'app Meta per ottenere le credenziali API. Procedura: 1) Vai su developers.facebook.com e accedi con Facebook. 2) Clicca 'My Apps' in alto a destra. 3) Clicca 'Create App'. 4) Seleziona 'Business' come tipo. 5) Dai un nome (es: 'Coachale Instagram Bot'). 6) Aggiungi il prodotto 'Messenger' alla tua app.",
+            tips: ["Usa lo stesso account Facebook che è admin della Page"],
+            externalLinks: [
+              { text: "Apri Meta for Developers", url: "https://developers.facebook.com/apps/" }
+            ]
           },
           {
             title: "Trovare Page ID",
-            content: "Vai su business.facebook.com → La tua Pagina → Impostazioni → Trasparenza della Pagina. Il Page ID è il numero identificativo della tua pagina Facebook collegata a Instagram.",
-            tips: ["Il Page ID è un numero lungo (es: 123456789012345)", "Puoi anche trovarlo nell'URL della pagina Facebook"]
+            content: "Il Page ID identifica la tua Facebook Page (numero di circa 15 cifre). Dove trovarlo: 1) Apri Facebook Business Suite (business.facebook.com). 2) Seleziona la tua Page nel menu a sinistra. 3) Vai su Impostazioni (icona ingranaggio). 4) Cerca 'Informazioni sulla Pagina' o 'About'. 5) Scorri fino a trovare 'Page ID'. 6) Copia il numero (es: 123456789012345).",
+            tips: ["Il Page ID è un numero lungo (es: 123456789012345)", "Puoi anche trovarlo nell'URL della pagina Facebook"],
+            externalLinks: [
+              { text: "Apri Facebook Business Suite", url: "https://business.facebook.com/" },
+              { text: "Guida ufficiale Page ID", url: "https://www.facebook.com/help/1503421039731588" }
+            ]
           },
           {
             title: "Generare Access Token",
-            content: "Vai su developers.facebook.com → La tua App → Tools → Graph API Explorer. Seleziona la tua App e la Page, poi aggiungi i permessi: instagram_manage_messages, pages_messaging. Genera il token e copialo.",
-            tips: ["Token temporanei scadono dopo 1 ora", "Per produzione usa Long-Lived Token (60 giorni) o System User Token (permanente)"],
-            warnings: ["Senza permessi corretti, i webhook non funzioneranno"]
+            content: "L'Access Token permette a Coachale di inviare messaggi per conto del tuo account. Procedura nel Graph API Explorer: 1) Apri il Graph API Explorer. 2) Nel menu 'Meta App', seleziona la tua app. 3) Clicca 'Add a Permission'. 4) Aggiungi: instagram_manage_messages, pages_messaging, pages_manage_metadata. 5) Clicca 'Generate Access Token'. 6) Copia il token generato. TIPI DI TOKEN: Temporaneo (1 ora, per test), Long-Lived (60 giorni, per produzione), System User (permanente, consigliato).",
+            tips: ["Token temporanei scadono dopo 1 ora - per produzione genera un Long-Lived Token", "System User Token è il più sicuro e non scade mai"],
+            warnings: ["Senza permessi corretti, i webhook non funzioneranno"],
+            externalLinks: [
+              { text: "Apri Graph API Explorer", url: "https://developers.facebook.com/tools/explorer/" },
+              { text: "Come creare Long-Lived Token", url: "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived" }
+            ]
           },
           {
             title: "Trovare App Secret",
-            content: "Vai su developers.facebook.com → La tua App → Settings → Basic. Clicca 'Show' accanto a 'App Secret' e copia la stringa alfanumerica. L'App Secret serve per verificare le richieste webhook (HMAC signature).",
-            actionText: "Vai a API Keys",
-            actionHref: "/consultant/api-keys-unified?tab=instagram"
+            content: "L'App Secret è una chiave segreta per verificare che i webhook provengano da Meta (HMAC signature). Dove trovarlo: 1) Vai su developers.facebook.com → 'My Apps' → seleziona la tua app. 2) Nel menu a sinistra, clicca 'Settings' → 'Basic'. 3) Trova il campo 'App Secret'. 4) Clicca 'Show' (dovrai confermare la password). 5) Copia la stringa alfanumerica (es: abc123def456ghi789jkl012).",
+            externalLinks: [
+              { text: "Apri Meta for Developers", url: "https://developers.facebook.com/apps/" }
+            ]
           },
           {
             title: "Configurare in Coachale",
-            content: "Vai su API Keys → Tab 'Instagram'. Inserisci: Page ID, Access Token, App Secret. Seleziona l'Agente WhatsApp da collegare (l'agente Instagram usa le stesse impostazioni AI dell'agente WhatsApp). Salva la configurazione.",
+            content: "Ora hai tutte le credenziali. Inseriscile in Coachale: 1) Vai su API Keys → Tab 'Instagram'. 2) Inserisci il Page ID. 3) Inserisci l'Access Token. 4) Inserisci l'App Secret. 5) Seleziona l'Agente WhatsApp da collegare (l'agente Instagram usa le stesse impostazioni AI). 6) Clicca 'Testa Connessione' per verificare. 7) Se verde, clicca 'Salva'.",
             actionText: "Configura Instagram",
-            actionHref: "/consultant/api-keys-unified?tab=instagram"
+            actionHref: "/consultant/api-keys"
           }
         ]
       },
       {
         title: "CONFIGURAZIONE WEBHOOK",
         icon: "🔗",
-        description: "Setup del webhook per ricevere notifiche in tempo reale da Instagram.",
+        description: "Il webhook è come un 'campanello' che avvisa Coachale ogni volta che ricevi un messaggio su Instagram. Senza webhook, i messaggi non arriverebbero in tempo reale.",
         steps: [
           {
-            title: "Accedere a Meta for Developers",
-            content: "Vai su developers.facebook.com → La tua App → Prodotti → Messenger (o Instagram) → Webhooks.",
-            tips: ["Se non vedi Webhooks, aggiungi prima il prodotto 'Messenger' o 'Instagram' alla tua app"]
+            title: "Accedere alla Configurazione Webhook",
+            content: "Navigazione: 1) Apri Meta for Developers (developers.facebook.com). 2) Vai su 'My Apps' → seleziona la tua app. 3) Nel menu a sinistra cerca 'Instagram' (o 'Messenger'). 4) Sotto Instagram, clicca 'Webhooks'. 5) Se non vedi 'Instagram', prima aggiungi il prodotto 'Messenger' alla tua app.",
+            externalLinks: [
+              { text: "Apri Meta for Developers", url: "https://developers.facebook.com/apps/" }
+            ]
           },
           {
-            title: "URL Callback Webhook",
-            content: "Inserisci l'URL callback: https://TUO-DOMINIO/api/instagram/webhook. Sostituisci TUO-DOMINIO con il dominio del tuo deployment Coachale.",
-            warnings: ["L'URL deve essere HTTPS", "L'URL deve essere accessibile pubblicamente"]
+            title: "Configurare Callback URL",
+            content: "Il Callback URL è l'indirizzo del tuo server Coachale dove Meta invierà le notifiche. Formato: https://tuodominio.coachale.com/api/instagram/webhook. Sostituisci 'tuodominio' con il tuo dominio. IMPORTANTE: L'URL deve essere HTTPS (SSL obbligatorio) e il server deve essere online quando configuri.",
+            warnings: ["L'URL deve essere HTTPS", "L'URL deve essere accessibile pubblicamente", "Se il webhook non si verifica, controlla che il server sia attivo"]
           },
           {
-            title: "Token di Verifica",
-            content: "Inserisci un token di verifica a tua scelta (es: 'coachale_instagram_verify_2024'). Questo token deve corrispondere a quello configurato nel server.",
-            tips: ["Usa una stringa lunga e casuale per sicurezza"]
+            title: "Impostare Verify Token",
+            content: "Il Verify Token è una password segreta che conferma la tua identità. Come funziona: 1) Inventa una stringa segreta (es: 'coachale_instagram_webhook_2024'). 2) Inseriscila in Meta for Developers nel campo 'Verify Token'. 3) Inserisci la STESSA stringa nelle API Keys di Coachale → Instagram. Le due stringhe devono essere IDENTICHE, altrimenti la verifica fallisce.",
+            tips: ["Usa una stringa lunga e casuale per sicurezza", "Non condividere il Verify Token con nessuno"]
           },
           {
-            title: "Sottoscrizioni Webhook",
-            content: "Abilita le sottoscrizioni: 'messages' (per ricevere DM), 'messaging_postbacks' (per quick replies). Opzionali: 'story_mentions', 'comments' per funzionalità avanzate.",
-            tips: ["Inizia solo con 'messages', poi aggiungi altre sottoscrizioni"]
+            title: "Sottoscrivere agli Eventi",
+            content: "Scegli quali notifiche ricevere. OBBLIGATORI: 'messages' (ricevi notifica quando arriva un DM), 'messaging_postbacks' (risposte ai bottoni interattivi). OPZIONALI: 'messaging_seen' (sapere quando il messaggio è stato letto), 'messaging_referrals' (link di riferimento), 'story_mentions' e 'comments' per funzionalità avanzate.",
+            tips: ["Inizia solo con 'messages' e 'messaging_postbacks', poi aggiungi altre sottoscrizioni"]
           },
           {
-            title: "Verifica Webhook",
-            content: "Clicca 'Verify and Save'. Meta invierà una richiesta GET al tuo endpoint. Se la verifica fallisce, controlla: URL corretto, token corretto, server attivo."
+            title: "Verificare e Testare",
+            content: "Procedura di test: 1) In Meta for Developers, clicca 'Verify and Save'. 2) Se vedi verde/success, il webhook è attivo. 3) Apri Instagram da un ALTRO account. 4) Invia un DM al tuo account Business. 5) Apri Coachale → Conversazioni → Tab Instagram. 6) Verifica che il messaggio sia arrivato.",
+            actionText: "Vai alle Conversazioni",
+            actionHref: "/consultant/conversations",
+            externalLinks: [
+              { text: "Documentazione Webhooks Meta", url: "https://developers.facebook.com/docs/messenger-platform/webhooks" }
+            ]
           }
         ]
       },
       {
         title: "FUNZIONALITÀ E LIMITI",
         icon: "⚡",
-        description: "Come funziona l'integrazione Instagram e le limitazioni da conoscere.",
+        description: "Come funziona l'integrazione Instagram e le limitazioni imposte da Meta. Coachale vs ManyChat: noi usiamo AI Gemini con comprensione naturale, loro usano flussi if/then pre-scritti.",
         steps: [
           {
-            title: "Finestra 24 Ore",
-            content: "Instagram permette di rispondere ai DM solo entro 24 ore dall'ultimo messaggio dell'utente. Dopo 24 ore, non puoi più inviare messaggi finché l'utente non scrive di nuovo. L'agente AI risponde automaticamente entro questa finestra.",
-            warnings: ["Messaggi fuori dalla finestra 24h vengono messi in coda 'pending'", "L'utente deve scrivere per riaprire la finestra"],
-            tips: ["Il sistema traccia automaticamente lo stato della finestra per ogni conversazione"]
+            title: "Finestra 24 Ore (LIMITE CRITICO)",
+            content: "Instagram impone una regola ferrea: puoi rispondere ai DM SOLO entro 24 ore dall'ultimo messaggio dell'utente. Come funziona: FINESTRA APERTA (verde) = L'utente ti ha scritto nelle ultime 24h → Puoi rispondere liberamente. FINESTRA CHIUSA (rossa) = Sono passate 24h → Devi aspettare che l'utente scriva di nuovo. L'agente AI risponde automaticamente solo quando la finestra è aperta. Questa è una policy di Instagram per prevenire spam.",
+            warnings: ["Messaggi fuori dalla finestra 24h vengono messi in coda 'pending'", "L'utente DEVE scrivere per riaprire la finestra - non puoi forzare"],
+            tips: ["Il sistema traccia automaticamente lo stato della finestra per ogni conversazione", "Vedrai un badge verde/rosso accanto a ogni conversazione"],
+            externalLinks: [
+              { text: "Policy Instagram Messaging", url: "https://developers.facebook.com/docs/messenger-platform/policy/policy-overview" }
+            ]
           },
           {
             title: "Rate Limit 200 DM/Ora",
-            content: "Meta impone un limite di 200 DM all'ora per account. Se superi questo limite, i messaggi vengono ritardati. Il sistema gestisce automaticamente la coda.",
-            tips: ["Monitora le conversazioni attive per evitare di superare il limite"]
+            content: "Meta limita a 200 messaggi DM all'ora per account per prevenire spam. Cosa significa: puoi inviare massimo 200 messaggi in un'ora, il conteggio si resetta ogni ora, se superi il limite i messaggi vanno in coda. Non preoccuparti troppo: Coachale gestisce automaticamente la coda e per la maggior parte degli utenti 200 DM/ora sono più che sufficienti.",
+            tips: ["Monitora le conversazioni attive per evitare di superare il limite", "Coachale invia automaticamente i messaggi in coda quando disponibile"]
           },
           {
             title: "Collegamento con Agente WhatsApp",
-            content: "Ogni configurazione Instagram è collegata a un Agente WhatsApp esistente. L'agente Instagram usa le stesse impostazioni: personalità, script, knowledge base, istruzioni AI. Non devi configurare l'AI due volte.",
+            content: "L'agente Instagram riusa la configurazione AI dell'agente WhatsApp selezionato. Perché? Così puoi avere un unico agente AI che risponde in modo coerente su tutti i canali con la stessa personalità e knowledge base. Cosa viene condiviso: personalità e tono di voce, istruzioni e comportamenti configurati, Knowledge Base e documenti caricati, script di vendita e fasi configurate.",
             actionText: "Gestisci Agenti",
             actionHref: "/consultant/whatsapp"
           },
           {
             title: "Story Replies e Mentions",
-            content: "L'agente può rispondere automaticamente quando qualcuno: 1) Risponde alle tue storie 2) Ti menziona nelle loro storie. Queste interazioni aprono una nuova finestra 24h.",
-            tips: ["Le risposte alle storie sono ottime per engagement", "Configura risposte specifiche per story mentions"]
+            content: "L'agente risponde automaticamente quando qualcuno interagisce con le tue storie. STORY REPLY: Qualcuno risponde alla tua storia → L'agente risponde nel DM. STORY MENTION: Qualcuno ti menziona nella sua storia → L'agente manda un DM di ringraziamento. Queste interazioni aprono automaticamente una nuova finestra 24h. Esempio risposta: 'Ciao! Ho visto che mi hai menzionato nella tua storia. Grazie mille per la condivisione! C'è qualcosa in cui posso aiutarti?'",
+            tips: ["Le risposte alle storie sono ottime per aumentare engagement", "Configura risposte specifiche per story mentions nell'agente"]
           },
           {
-            title: "Comment-to-DM",
-            content: "Funzionalità per inviare DM automatici quando qualcuno commenta un tuo post. Il flusso: Utente commenta → Sistema rileva → Invia DM automatico. Utile per lead generation da post.",
-            tips: ["Configura parole chiave specifiche per attivare il DM", "Non spammare: invia DM solo per commenti rilevanti"]
+            title: "Comment-to-DM Automation",
+            content: "Invia un DM automatico quando qualcuno commenta un tuo post con una parola chiave. Come funziona: 1) Pubblichi un post con CTA (es: 'Commenta INFO per ricevere dettagli'). 2) Un utente commenta: 'INFO'. 3) L'agente invia automaticamente un DM con le informazioni. 4) L'utente risponde → Inizia conversazione AI. Perfetto per lead generation dai post organici: trasforma i commenti in conversazioni private dove l'AI può qualificare il lead.",
+            tips: ["Configura parole chiave specifiche per attivare il DM", "Non spammare: invia DM solo per commenti rilevanti"],
+            externalLinks: [
+              { text: "Documentazione Instagram Messaging API", url: "https://developers.facebook.com/docs/messenger-platform/instagram" }
+            ]
           }
         ]
       }
