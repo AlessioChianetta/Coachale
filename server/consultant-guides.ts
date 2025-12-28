@@ -1916,12 +1916,12 @@ export const consultantGuides: ConsultantGuides = {
           },
           {
             title: "Generare Access Token",
-            content: "L'Access Token permette a Coachale di inviare messaggi per conto del tuo account. Procedura nel Graph API Explorer: 1) Apri il Graph API Explorer. 2) Nel menu 'Meta App', seleziona la tua app. 3) Clicca 'Add a Permission'. 4) Aggiungi: instagram_manage_messages, pages_messaging, pages_manage_metadata. 5) Clicca 'Generate Access Token'. 6) Copia il token generato. TIPI DI TOKEN: Temporaneo (1 ora, per test), Long-Lived (60 giorni, per produzione), System User (permanente, consigliato).",
-            tips: ["Token temporanei scadono dopo 1 ora - per produzione genera un Long-Lived Token", "System User Token è il più sicuro e non scade mai"],
+            content: "L'Access Token permette a Coachale di inviare messaggi per conto del tuo account. PROCEDURA RAPIDA (Dashboard App): 1) Apri la dashboard della tua App su Meta for Developers. 2) Clicca su 'Personalizza' (icona matita) nel riquadro 'Gestisci i messaggi e i contenuti su Instagram'. 3) PERMESSI: Nel riquadro 1, clicca il pulsante blu 'Add all required permissions' (aggiunge instagram_manage_messages automaticamente). 4) GENERA TOKEN: Nel riquadro 2 ('Genera i token d'accesso'), clicca 'Aggiungi account' e seleziona il tuo Instagram Business, poi clicca 'Generate token' accanto al nome. 5) Copia il token generato. VANTAGGIO: Questo metodo è più veloce del Graph API Explorer e aggiunge tutti i permessi con un solo click! NOTA: Il token generato è Long-Lived (60 giorni). Per uno permanente, usa System User nel Business Manager.",
+            tips: ["Usa la dashboard dell'app invece del Graph API Explorer - è più semplice!", "Il pulsante 'Add all required permissions' aggiunge tutto automaticamente"],
             warnings: ["Senza permessi corretti, i webhook non funzioneranno"],
             externalLinks: [
-              { text: "Apri Graph API Explorer", url: "https://developers.facebook.com/tools/explorer/" },
-              { text: "Come creare Long-Lived Token", url: "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived" }
+              { text: "Apri Meta for Developers", url: "https://developers.facebook.com/apps/" },
+              { text: "Documentazione Token", url: "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived" }
             ]
           },
           {
@@ -1945,8 +1945,9 @@ export const consultantGuides: ConsultantGuides = {
         description: "Il webhook è come un 'campanello' che avvisa Coachale ogni volta che ricevi un messaggio su Instagram. Senza webhook, i messaggi non arriverebbero in tempo reale.",
         steps: [
           {
-            title: "Accedere alla Configurazione Webhook",
-            content: "Navigazione: 1) Apri Meta for Developers (developers.facebook.com). 2) Vai su 'My Apps' → seleziona la tua app. 3) Nel menu a sinistra cerca 'Instagram' (o 'Messenger'). 4) Sotto Instagram, clicca 'Webhooks'. 5) Se non vedi 'Instagram', prima aggiungi il prodotto 'Messenger' alla tua app.",
+            title: "Configurare Webhook (Dalla stessa pagina)",
+            content: "NON serve cambiare menu! Rimani nella stessa pagina 'Personalizza caso d'uso' dove hai generato il token. PROCEDURA: 1) Scorri in basso fino al riquadro '3. Configura i webhooks'. 2) Inserisci il Callback URL (vedi step successivo). 3) Inserisci il Verify Token. 4) Clicca 'Verifica e salva'. 5) Una volta salvato, clicca su 'Gestisci' (o Edit Subscription). 6) Seleziona 'messages' e 'messaging_postbacks'. VANTAGGIO: Token e Webhook si configurano dalla stessa pagina, senza navigare tra menu diversi!",
+            tips: ["Rimani nella stessa pagina dove hai generato il token - scorri solo in basso", "Token e Webhook si fanno nella stessa schermata 'Personalizza caso d'uso'"],
             externalLinks: [
               { text: "Apri Meta for Developers", url: "https://developers.facebook.com/apps/" }
             ]
