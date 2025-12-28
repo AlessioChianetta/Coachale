@@ -5879,7 +5879,61 @@ export default function ConsultantApiKeysUnified() {
                             <p className="text-sm text-gray-700 mt-1">
                               Incolla le credenziali nei campi qui sotto e salva la configurazione
                             </p>
-                            <p className="text-xs text-emerald-700 mt-2 font-semibold">✅ Clicca "Salva Configurazione" e il sistema è pronto!</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            7
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-orange-900">Configura il Webhook su Twilio</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Vai su <a href="https://console.twilio.com/us1/develop/sms/senders/whatsapp-senders" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">WhatsApp Senders</a>, clicca sul tuo numero e nella sezione <strong>"Endpoint Configuration"</strong> inserisci:
+                            </p>
+                            <div className="bg-slate-100 p-3 rounded-lg font-mono text-xs space-y-2 mt-2">
+                              <div>
+                                <p className="text-gray-500 mb-1">Webhook URL per i messaggi in arrivo:</p>
+                                <div className="flex items-center gap-2">
+                                  <code className="bg-white px-2 py-1 rounded border text-green-700 flex-1 break-all">
+                                    {window.location.origin}/api/whatsapp/webhook
+                                  </code>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 flex-shrink-0"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(`${window.location.origin}/api/whatsapp/webhook`);
+                                      toast({
+                                        title: "URL copiato!",
+                                        description: "Incollalo nella configurazione Twilio",
+                                      });
+                                    }}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <p className="text-gray-500 text-[10px]">Metodo HTTP: <strong>POST</strong></p>
+                            </div>
+                            <p className="text-xs text-orange-700 mt-2">
+                              ⚠️ Questo passaggio è fondamentale per ricevere i messaggi WhatsApp nella piattaforma
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-green-700 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            ✓
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-green-900">Fatto! Il sistema è pronto</p>
+                            <p className="text-xs text-green-700 mt-1">Ora puoi creare agenti WhatsApp e iniziare a ricevere messaggi</p>
                           </div>
                         </div>
                       </div>
