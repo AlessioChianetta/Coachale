@@ -1,0 +1,40 @@
+atch 40/87: "Here is the JSON requested:\n```json"
+❌ [AI-AUTO-ASSIGN] Batch 40 JSON parse failed: Unexpected token 'H', "Here is th"... is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is the JSON requested:\n```json"
+2:56:30 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+📝 [AI-AUTO-ASSIGN] Batch 41/87: "Here is the JSON requested:\n"
+❌ [AI-AUTO-ASSIGN] Batch 41 JSON parse failed: Unexpected token 'H', "Here is th"... is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is the JSON requested:\n"
+2:56:31 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+2:56:32 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 304 i…
+📝 [AI-AUTO-ASSIGN] Batch 42/87: "{"
+❌ [AI-AUTO-ASSIGN] Batch 42 JSON parse failed: Expected property name or '}' in JSON at position 1
+❌ [AI-AUTO-ASSIGN] Raw text was: "{"
+2:56:34 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+❌ [AI-AUTO-ASSIGN] Batch 43 failed: Failed to extract text from response
+2:56:35 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+2:56:36 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 304 i…
+📝 [AI-AUTO-ASSIGN] Batch 44/87: "Here is the JSON requested:\n```json"
+❌ [AI-AUTO-ASSIGN] Batch 44 JSON parse failed: Unexpected token 'H', "Here is th"... is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is the JSON requested:\n```json"
+2:56:37 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+2:56:38 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 304 i…
+📝 [AI-AUTO-ASSIGN] Batch 45/87: "Here is the JSON requested:\n```"
+❌ [AI-AUTO-ASSIGN] Batch 45 JSON parse failed: Unexpected token 'H', "Here is th"... is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is the JSON requested:\n```"
+2:56:39 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+📝 [AI-AUTO-ASSIGN] Batch 46/87: "Here is the JSON requested:\n```json"
+❌ [AI-AUTO-ASSIGN] Batch 46 JSON parse failed: Unexpected token 'H', "Here is th"... is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is the JSON requested:\n```json"
+2:56:40 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+2:56:41 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+📝 [AI-AUTO-ASSIGN] Batch 47/87: "Here is the JSON requested:\n```json"
+❌ [AI-AUTO-ASSIGN] Batch 47 JSON parse failed: Unexpected token 'H', "Here is th"... is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is the JSON requested:\n```json"
+2:56:42 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+2:56:43 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 304 i…
+📝 [AI-AUTO-ASSIGN] Batch 48/87: "{"
+❌ [AI-AUTO-ASSIGN] Batch 48 JSON parse failed: Expected property name or '}' in JSON at position 1
+❌ [AI-AUTO-ASSIGN] Raw text was: "{"
+2:56:44 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890522389_69pxbnuxr 200 i…
+2:56:45 AM [express] GET /api/library/ai-auto-assign
