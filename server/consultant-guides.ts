@@ -2046,6 +2046,12 @@ export const consultantGuides: ConsultantGuides = {
             content: "SINTOMO: Vedi la pagina Facebook ma non riesci a selezionarla o collegarla a Instagram. CAUSA: L'utente che sta provando a fare il collegamento non ha i permessi di Amministratore sulla Pagina Facebook. Essere solo Editor o Moderatore NON basta per gestire le connessioni API. SOLUZIONE: 1) Vai su Facebook → la tua Pagina. 2) Clicca Impostazioni Pagina. 3) Vai su 'Nuova esperienza delle Pagine' → 'Accesso alla Pagina'. 4) Verifica di avere 'Facebook Access' completo (accesso amministratore). Se non sei admin, chiedi al proprietario della Pagina di aggiungerti come Amministratore.",
             warnings: ["Devi essere ADMIN della Pagina, non solo Editor o Moderatore"],
             tips: ["Se non sei admin, chiedi al proprietario della Pagina di aggiungerti come Amministratore nelle impostazioni"]
+          },
+          {
+            title: "Errore 'Temporaneo' nella Verifica Account Developer",
+            content: "SINTOMO: Durante la creazione dell'app su Meta for Developers, la verifica del numero di cellulare mostra 'Si è verificato un errore temporaneo. Riprova più tardi' anche se i dati sono corretti. CAUSA: È un blocco di sicurezza dei sistemi anti-spam di Meta che impedisce l'invio dell'SMS. ATTENDERE NON RISOLVE IL PROBLEMA. SOLUZIONE 1 (Consigliata - Carta di Credito): 1) Nella schermata di errore, guarda in basso. 2) Clicca il link 'Puoi anche verificare il tuo account aggiungendo una carta di credito'. 3) Inserisci una carta valida (anche prepagata va bene). 4) Completa la procedura (transazione di prova a 0€ stornata subito). 5) L'account sarà immediatamente verificato senza SMS. SOLUZIONE 2 (Verifica via Facebook): 1) Chiudi la scheda con l'errore su developers.facebook.com. 2) Vai su Facebook → Impostazioni e privacy → Impostazioni. 3) Clicca 'Centro gestione account' (Meta Accounts Center). 4) Vai su Dettagli personali → Informazioni di contatto. 5) Clicca 'Aggiungi numero di cellulare'. 6) Inserisci il numero e conferma con il codice SMS (da qui funziona!). 7) Torna su developers.facebook.com. 8) Il sistema rileverà il numero già verificato.",
+            warnings: ["Attendere NON risolve questo errore", "L'errore non dipende dai dati inseriti, è un blocco anti-spam di Meta"],
+            tips: ["La verifica con carta di credito è il metodo più rapido e immediato", "Anche le carte prepagate/ricaricabili funzionano"]
           }
         ]
       }

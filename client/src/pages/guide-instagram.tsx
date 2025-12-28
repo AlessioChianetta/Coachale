@@ -958,6 +958,58 @@ export default function GuideInstagram() {
                 </div>
               </StepCard>
 
+              <StepCard
+                number={5}
+                title="Errore 'Temporaneo' nella Verifica Account Developer"
+                description="Durante la creazione dell'app Meta, la verifica telefonica mostra 'Si e verificato un errore temporaneo'."
+                icon={AlertTriangle}
+                iconColor="bg-purple-500"
+                badge="META DEVELOPERS"
+                badgeVariant="secondary"
+              >
+                <WarningBox>
+                  <strong>Causa:</strong> E un blocco di sicurezza dei sistemi anti-spam di Meta che impedisce l'invio dell'SMS 
+                  di verifica. <strong>Attendere NON risolve il problema</strong>.
+                </WarningBox>
+                
+                <div className="bg-green-50 dark:bg-green-950/40 rounded-lg p-4 border border-green-200 dark:border-green-800 mt-4">
+                  <p className="text-sm font-medium mb-3 text-green-800 dark:text-green-200 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Soluzione 1: Verifica con Carta di Credito (Consigliata)
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                    Metodo piu rapido - Meta considera la verifica bancaria piu affidabile di quella telefonica.
+                  </p>
+                  <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                    <li>Nella schermata di errore, guarda in basso</li>
+                    <li>Clicca il link: <strong>"Puoi anche verificare il tuo account aggiungendo una carta di credito"</strong></li>
+                    <li>Inserisci una carta valida (anche prepagata va bene)</li>
+                    <li>Completa la procedura (transazione di prova a 0€ stornata subito)</li>
+                    <li>L'account sara <strong>immediatamente verificato</strong> senza SMS</li>
+                  </ol>
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-950/40 rounded-lg p-4 border border-blue-200 dark:border-blue-800 mt-4">
+                  <p className="text-sm font-medium mb-3 text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Soluzione 2: Verifica tramite Profilo Facebook Personale
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                    Se non vuoi usare la carta, verifica il numero dalle impostazioni Facebook.
+                  </p>
+                  <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                    <li>Chiudi la scheda con l'errore su developers.facebook.com</li>
+                    <li>Vai su <strong>Facebook</strong> → <strong>Impostazioni e privacy</strong> → <strong>Impostazioni</strong></li>
+                    <li>Clicca <strong>"Centro gestione account"</strong> (Meta Accounts Center)</li>
+                    <li>Vai su <strong>Dettagli personali</strong> → <strong>Informazioni di contatto</strong></li>
+                    <li>Clicca <strong>"Aggiungi numero di cellulare"</strong></li>
+                    <li>Inserisci il numero e conferma con il codice SMS (da qui funziona!)</li>
+                    <li>Torna su <strong>developers.facebook.com</strong></li>
+                    <li>Il sistema rilevera il numero gia verificato</li>
+                  </ol>
+                </div>
+              </StepCard>
+
               <div className="flex flex-wrap gap-3 pt-4">
                 <Link href="/consultant/api-keys">
                   <Button className="gap-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600">
