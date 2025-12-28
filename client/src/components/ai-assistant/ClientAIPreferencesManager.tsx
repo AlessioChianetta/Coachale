@@ -7,7 +7,8 @@ import {
   Sparkles, 
   Users, 
   Search,
-  ChevronRight
+  ChevronRight,
+  Wand2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -120,6 +121,56 @@ export function ClientAIPreferencesManager() {
       });
     },
   });
+
+  const enhanceInstructionsMutation = useMutation({
+    mutationFn: async (instructions: string) => {
+      const response = await fetch("/api/ai-assistant/enhance-instructions", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ instructions, mode: "enhance" }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to enhance instructions");
+      }
+      return response.json();
+    },
+    onSuccess: (result) => {
+      if (result.data?.enhanced) {
+        setLocalPreferences((prev) => ({
+          ...prev,
+          customInstructions: result.data.enhanced,
+        }));
+        toast({
+          title: "Istruzioni migliorate",
+          description: `Da ${result.data.originalLength} a ${result.data.enhancedLength} caratteri`,
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Non è stato possibile migliorare le istruzioni.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEnhanceInstructions = () => {
+    const instructions = localPreferences.customInstructions;
+    if (!instructions || instructions.length < 20) {
+      toast({
+        title: "Testo insufficiente",
+        description: "Scrivi almeno 20 caratteri prima di usare l'AI.",
+        variant: "destructive",
+      });
+      return;
+    }
+    enhanceInstructionsMutation.mutate(instructions);
+  };
 
   const handleSelectClient = (client: ClientWithPreferences) => {
     setSelectedClient(client);
@@ -339,9 +390,30 @@ export function ClientAIPreferencesManager() {
                 <Separator />
 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-pink-600" />
-                    <Label className="text-base font-semibold">Istruzioni Personalizzate</Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-pink-600" />
+                      <Label className="text-base font-semibold">Istruzioni Personalizzate</Label>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleEnhanceInstructions}
+                      disabled={enhanceInstructionsMutation.isPending || !localPreferences.customInstructions || localPreferences.customInstructions.length < 20}
+                      className="gap-1.5 text-xs h-7 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-200"
+                    >
+                      {enhanceInstructionsMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Elaboro...
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="h-3 w-3" />
+                          Migliora con AI
+                        </>
+                      )}
+                    </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Scrivi istruzioni specifiche per questo cliente. Verranno applicate ogni volta che usa l'AI Assistant.
@@ -350,10 +422,10 @@ export function ClientAIPreferencesManager() {
                     value={localPreferences.customInstructions || ""}
                     onChange={(e) => handleCustomInstructionsChange(e.target.value)}
                     placeholder="Es: Rispondi in modo empatico, usa esempi pratici relativi al suo settore..."
-                    className="min-h-[100px] resize-none"
+                    className="min-h-[120px] resize-none"
                   />
                   <p className="text-xs text-muted-foreground text-right">
-                    {(localPreferences.customInstructions || "").length}/500 caratteri
+                    {(localPreferences.customInstructions || "").length}/2000 caratteri
                   </p>
                 </div>
               </div>

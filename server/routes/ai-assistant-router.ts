@@ -471,4 +471,153 @@ router.get("/consultant/clients-with-preferences", authenticateToken, requireRol
   }
 });
 
+/**
+ * POST /api/ai-assistant/enhance-instructions
+ * Use AI to enhance and improve custom instructions
+ */
+router.post("/enhance-instructions", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const { instructions, mode = "enhance" } = req.body;
+
+    if (!instructions || typeof instructions !== "string") {
+      return res.status(400).json({ error: "Instructions text is required" });
+    }
+
+    if (instructions.length < 20) {
+      return res.status(400).json({ error: "Le istruzioni devono contenere almeno 20 caratteri" });
+    }
+
+    // Import AI provider
+    const { getAIProvider, getModelWithThinking } = await import("../ai/provider-factory");
+    
+    // Determine which user's AI provider to use
+    // For clients, use their consultant's provider; for consultants, use their own
+    let providerUserId = userId;
+    if (userRole === "client") {
+      const [clientUser] = await db.select({ consultantId: users.consultantId })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      if (clientUser?.consultantId) {
+        providerUserId = clientUser.consultantId;
+      }
+    }
+    
+    // Get AI provider (using consultant's provider for clients)
+    const providerResult = await getAIProvider(providerUserId, providerUserId);
+    
+    if (!providerResult || !providerResult.client) {
+      return res.status(503).json({ error: "AI non disponibile. Configura le impostazioni AI." });
+    }
+
+    console.log(`✅ [AI ENHANCEMENT] Using provider: ${providerResult.metadata.name}`);
+    console.log(`   - Enhancement mode: ${mode}`);
+
+    // Build mode-specific enhancement instructions
+    const modeInstructions: Record<string, string> = {
+      enhance: `Il tuo compito è migliorare queste istruzioni per l'AI Assistant rendendole:
+1. **Più strutturate e chiare** - dividi in sezioni logiche se necessario
+2. **Più specifiche** - aggiungi dettagli concreti dove utile
+3. **Più actionable** - aggiungi indicazioni su COSA fare e COME farlo
+4. **Mantenendo ESATTAMENTE l'intento originale** - non cambiare il significato, solo migliorare la qualità`,
+
+      simplify: `Il tuo compito è SEMPLIFICARE queste istruzioni:
+1. **Elimina ridondanze** - rimuovi ripetizioni e informazioni superflue
+2. **Mantieni solo l'essenziale** - focalizzati sui concetti chiave
+3. **Frasi brevi e dirette** - ogni frase deve comunicare un solo concetto`,
+
+      expand: `Il tuo compito è ESPANDERE queste istruzioni:
+1. **Aggiungi dettagli** - elabora ogni punto con maggiori informazioni
+2. **Includi esempi** - aggiungi esempi concreti dove utile
+3. **Copri più casi** - pensa a scenari aggiuntivi da gestire`,
+
+      formalize: `Il tuo compito è rendere queste istruzioni più FORMALI e PROFESSIONALI:
+1. **Tono professionale** - usa un linguaggio formale e preciso
+2. **Struttura chiara** - organizza in modo ordinato
+3. **Terminologia appropriata** - usa termini tecnici dove opportuno`,
+
+      friendly: `Il tuo compito è rendere queste istruzioni più AMICHEVOLI e ACCESSIBILI:
+1. **Tono caldo** - usa un linguaggio accogliente
+2. **Semplifica** - evita gergo tecnico
+3. **Incoraggiante** - aggiungi elementi positivi e motivanti`,
+    };
+
+    const selectedMode = modeInstructions[mode] || modeInstructions.enhance;
+
+    const systemPrompt = `Sei un esperto nella scrittura di istruzioni per assistenti AI.
+
+${selectedMode}
+
+REGOLE IMPORTANTI:
+- Rispondi SOLO con le istruzioni migliorate, niente altro
+- NON aggiungere commenti, spiegazioni o meta-testo
+- Mantieni la stessa lingua delle istruzioni originali
+- Lunghezza massima: circa 2000 caratteri`;
+
+    const userPrompt = `Ecco le istruzioni da migliorare:
+
+${instructions}`;
+
+    // Get model configuration
+    const modelConfig = getModelWithThinking("low", providerResult.metadata.providerType);
+
+    // Call AI
+    let enhancedText = "";
+    
+    if (providerResult.metadata.providerType === "vertex") {
+      const { GoogleGenAI } = await import("@google/genai");
+      const vertexClient = providerResult.client as InstanceType<typeof GoogleGenAI>;
+      
+      const response = await vertexClient.models.generateContent({
+        model: modelConfig.modelId,
+        contents: userPrompt,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.7,
+          maxOutputTokens: 2000,
+        },
+      });
+      
+      enhancedText = response.text || "";
+    } else {
+      const { GoogleGenAI } = await import("@google/genai");
+      const geminiClient = providerResult.client as InstanceType<typeof GoogleGenAI>;
+      
+      const response = await geminiClient.models.generateContent({
+        model: modelConfig.modelId,
+        contents: userPrompt,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.7,
+          maxOutputTokens: 2000,
+        },
+      });
+      
+      enhancedText = response.text || "";
+    }
+
+    // Clean up the response
+    enhancedText = enhancedText.trim();
+
+    console.log(`✅ [AI ENHANCEMENT] Enhanced from ${instructions.length} to ${enhancedText.length} chars`);
+
+    res.json({
+      success: true,
+      data: {
+        original: instructions,
+        enhanced: enhancedText,
+        originalLength: instructions.length,
+        enhancedLength: enhancedText.length,
+        provider: providerResult.metadata.name,
+        mode,
+      },
+    });
+  } catch (error: any) {
+    console.error("[AI Assistant] Error enhancing instructions:", error);
+    res.status(500).json({ error: error.message || "Errore nel miglioramento delle istruzioni" });
+  }
+});
+
 export default router;
