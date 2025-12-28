@@ -1037,8 +1037,8 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       }
     }
 
-    // Build system prompt (with hasFileSearch flag to omit exercises/consultations when using RAG)
-    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: exercisesIndexedInFileSearch });
+    // Build system prompt (with hasFileSearch flag to omit KB content when using RAG)
+    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch });
 
     // Calculate detailed token breakdown by section
     const breakdown = calculateTokenBreakdown(userContext, intent);
@@ -1815,9 +1815,9 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     exerciseScrapingTime = Math.round(timings.exerciseScrapingEnd - timings.exerciseScrapingStart);
     console.log(`⏱️  [TIMING] Exercise scraping: ${exerciseScrapingTime}ms`);
 
-    // Build system prompt (with hasFileSearch flag to omit exercises/consultations when using RAG)
+    // Build system prompt (with hasFileSearch flag to omit KB content when using RAG)
     timings.promptBuildStart = performance.now();
-    let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: exercisesIndexedInFileSearch });
+    let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch });
     
     // Append agent context if available
     if (agentContext) {
