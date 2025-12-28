@@ -1041,16 +1041,17 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     // Include both client-owned and consultant-owned KB docs that are indexed
     const indexedKnowledgeDocIds = new Set<string>();
     if (hasFileSearch && userContext.knowledgeBase) {
-      // Build owner condition: always include client docs, add consultant docs only if consultantId exists
-      const ownerCondition = consultantId 
-        ? or(eq(fileSearchDocuments.clientId, clientId), eq(fileSearchDocuments.consultantId, consultantId))
-        : eq(fileSearchDocuments.clientId, clientId);
+      // Build owner conditions as an array, then combine with or()
+      const ownerConditions = [eq(fileSearchDocuments.clientId, clientId)];
+      if (consultantId && consultantId !== clientId) {
+        ownerConditions.push(eq(fileSearchDocuments.consultantId, consultantId));
+      }
       
       // Get all indexed KB doc IDs from fileSearchDocuments (both client and consultant stores)
       const indexedKbDocs = await db.query.fileSearchDocuments.findMany({
         where: and(
           eq(fileSearchDocuments.sourceType, 'knowledge_base'),
-          ownerCondition,
+          ownerConditions.length > 1 ? or(...ownerConditions) : ownerConditions[0],
           eq(fileSearchDocuments.status, 'indexed')
         ),
         columns: { sourceId: true }
@@ -1852,16 +1853,17 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Include both client-owned and consultant-owned KB docs that are indexed
     const indexedKnowledgeDocIds = new Set<string>();
     if (hasFileSearch && userContext.knowledgeBase) {
-      // Build owner condition: always include client docs, add consultant docs only if consultantId exists
-      const ownerCondition = consultantId 
-        ? or(eq(fileSearchDocuments.clientId, clientId), eq(fileSearchDocuments.consultantId, consultantId))
-        : eq(fileSearchDocuments.clientId, clientId);
+      // Build owner conditions as an array, then combine with or()
+      const ownerConditions = [eq(fileSearchDocuments.clientId, clientId)];
+      if (consultantId && consultantId !== clientId) {
+        ownerConditions.push(eq(fileSearchDocuments.consultantId, consultantId));
+      }
       
       // Get all indexed KB doc IDs from fileSearchDocuments (both client and consultant stores)
       const indexedKbDocs = await db.query.fileSearchDocuments.findMany({
         where: and(
           eq(fileSearchDocuments.sourceType, 'knowledge_base'),
-          ownerCondition,
+          ownerConditions.length > 1 ? or(...ownerConditions) : ownerConditions[0],
           eq(fileSearchDocuments.status, 'indexed')
         ),
         columns: { sourceId: true }
