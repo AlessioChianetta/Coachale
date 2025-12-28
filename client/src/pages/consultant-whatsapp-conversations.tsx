@@ -51,6 +51,7 @@ import {
   Beaker,
   Mic,
   X,
+  XCircle,
   Instagram,
 } from "lucide-react";
 import WhatsAppLayout from "@/components/whatsapp/WhatsAppLayout";
@@ -212,10 +213,18 @@ export default function ConsultantWhatsAppConversationsPage() {
   const conversationInfo = messagesData?.conversation;
 
   // Instagram queries
-  const { data: instagramConversationsData } = useInstagramConversations({ refetchInterval: 5000 });
+  const { 
+    data: instagramConversationsData, 
+    isLoading: instagramConversationsLoading,
+    isError: instagramConversationsError 
+  } = useInstagramConversations({ refetchInterval: 5000 });
   const instagramConversations = instagramConversationsData?.conversations || [];
 
-  const { data: instagramMessagesData, isLoading: instagramMessagesLoading } = useInstagramMessages(
+  const { 
+    data: instagramMessagesData, 
+    isLoading: instagramMessagesLoading,
+    isError: instagramMessagesError 
+  } = useInstagramMessages(
     selectedInstagramConversationId,
     { refetchInterval: 5000 }
   );
@@ -1348,13 +1357,22 @@ export default function ConsultantWhatsAppConversationsPage() {
                       <CardTitle className="text-sm font-medium text-cyan-700">Conversazioni Instagram</CardTitle>
                     </CardHeader>
                     <ScrollArea className="h-[calc(100vh-300px)]">
-                      {instagramConversations.length === 0 ? (
+                      {instagramConversationsLoading ? (
+                        <div className="flex items-center justify-center p-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-cyan-500" />
+                        </div>
+                      ) : instagramConversationsError ? (
+                        <div className="p-4 text-center text-red-500">
+                          <XCircle className="h-12 w-12 mx-auto mb-2 text-red-300" />
+                          <p className="text-sm">Errore nel caricamento</p>
+                        </div>
+                      ) : instagramConversations.length === 0 ? (
                         <div className="p-4 text-center text-slate-500">
                           <Instagram className="h-12 w-12 mx-auto mb-2 text-slate-300" />
                           <p className="text-sm">Nessuna conversazione Instagram</p>
                         </div>
                       ) : (
-                        instagramConversations.map((conv: any) => (
+                        instagramConversations.map((conv) => (
                           <div
                             key={conv.id}
                             onClick={() => setSelectedInstagramConversationId(conv.id)}

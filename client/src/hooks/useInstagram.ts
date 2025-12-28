@@ -1,8 +1,80 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAuthHeaders } from "@/lib/auth";
 
+export interface InstagramConfig {
+  id: string;
+  consultantId: string;
+  instagramPageId: string | null;
+  pageAccessToken: string | null;
+  appSecret: string | null;
+  verifyToken: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InstagramStats {
+  totalConversations: number;
+  activeConversations: number;
+  unreadCount: number;
+  messagesSent24h: number;
+  messagesReceived24h: number;
+}
+
+export interface InstagramConversation {
+  id: string;
+  consultantId: string;
+  instagramUserId: string;
+  instagramUsername: string | null;
+  isWindowOpen: boolean;
+  windowExpiresAt: string | null;
+  lastMessageAt: string | null;
+  lastMessageText: string | null;
+  unreadByConsultant: number;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InstagramMessage {
+  id: string;
+  conversationId: string;
+  instagramMessageId: string;
+  text: string | null;
+  direction: "inbound" | "outbound";
+  sender: "user" | "ai" | "consultant";
+  messageType: "text" | "image" | "story_reply" | "story_mention";
+  mediaUrl: string | null;
+  storyUrl: string | null;
+  status: string;
+  createdAt: string;
+}
+
+interface InstagramConfigResponse {
+  config: InstagramConfig | null;
+}
+
+interface InstagramConversationsResponse {
+  conversations: InstagramConversation[];
+}
+
+interface InstagramMessagesResponse {
+  conversation: InstagramConversation;
+  messages: InstagramMessage[];
+}
+
+interface TestConnectionResponse {
+  success: boolean;
+  message: string;
+  pageInfo?: {
+    id: string;
+    username: string;
+    name: string;
+  };
+}
+
 export function useInstagramConfig() {
-  return useQuery({
+  return useQuery<InstagramConfigResponse>({
     queryKey: ["/api/instagram/config"],
     queryFn: async () => {
       const response = await fetch("/api/instagram/config", {
@@ -15,7 +87,7 @@ export function useInstagramConfig() {
 }
 
 export function useInstagramStats() {
-  return useQuery({
+  return useQuery<InstagramStats>({
     queryKey: ["/api/instagram/stats"],
     queryFn: async () => {
       const response = await fetch("/api/instagram/stats", {
@@ -28,7 +100,7 @@ export function useInstagramStats() {
 }
 
 export function useInstagramConversations(options?: { refetchInterval?: number }) {
-  return useQuery({
+  return useQuery<InstagramConversationsResponse>({
     queryKey: ["/api/instagram/conversations"],
     queryFn: async () => {
       const response = await fetch("/api/instagram/conversations", {
@@ -42,7 +114,7 @@ export function useInstagramConversations(options?: { refetchInterval?: number }
 }
 
 export function useInstagramMessages(conversationId: string | null, options?: { refetchInterval?: number }) {
-  return useQuery({
+  return useQuery<InstagramMessagesResponse | null>({
     queryKey: ["/api/instagram/conversations", conversationId, "messages"],
     queryFn: async () => {
       if (!conversationId) return null;
@@ -79,7 +151,7 @@ export function useSaveInstagramConfig() {
 }
 
 export function useTestInstagramConnection() {
-  return useMutation({
+  return useMutation<TestConnectionResponse>({
     mutationFn: async () => {
       const response = await fetch("/api/instagram/config/test-connection", {
         method: "POST",
