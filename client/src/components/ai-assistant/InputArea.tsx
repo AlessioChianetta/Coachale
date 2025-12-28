@@ -6,7 +6,8 @@ import { Send, Sparkles, Mic } from "lucide-react";
 
 interface InputAreaProps {
   onSend: (message: string) => void;
-  disabled: boolean;
+  disabled?: boolean;
+  isProcessing?: boolean;
   onLiveModeClick?: () => void;
   rateLimitInfo?: {
     tokensUsed: number;
@@ -15,19 +16,20 @@ interface InputAreaProps {
   };
 }
 
-export function InputArea({ onSend, disabled, onLiveModeClick, rateLimitInfo }: InputAreaProps) {
+export function InputArea({ onSend, disabled = false, isProcessing = false, onLiveModeClick, rateLimitInfo }: InputAreaProps) {
+  const cannotSend = disabled || isProcessing;
   const [message, setMessage] = useState("");
   const [, setLocation] = useLocation();
 
   const handleSend = () => {
-    if (message.trim() && !disabled) {
+    if (message.trim() && !cannotSend) {
       onSend(message.trim());
       setMessage("");
     }
   };
 
   const handleLiveModeClick = () => {
-    if (!disabled) {
+    if (!cannotSend) {
       setLocation('/live-consultation');
     }
   };
@@ -64,7 +66,7 @@ export function InputArea({ onSend, disabled, onLiveModeClick, rateLimitInfo }: 
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={disabled ? "L'assistente sta scrivendo..." : "Scrivi un messaggio..."}
+              placeholder={isProcessing ? "L'assistente sta scrivendo... (puoi continuare a scrivere)" : "Scrivi un messaggio..."}
               disabled={disabled}
               className="resize-none min-h-[40px] max-h-[100px] bg-transparent border-0 focus:ring-0 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 p-0"
               rows={1}
@@ -73,7 +75,7 @@ export function InputArea({ onSend, disabled, onLiveModeClick, rateLimitInfo }: 
           {onLiveModeClick && (
             <Button
               onClick={handleLiveModeClick}
-              disabled={disabled}
+              disabled={cannotSend}
               size="icon"
               variant="outline"
               className="flex-shrink-0 h-10 w-10 border border-red-200 dark:border-red-800 hover:bg-red-500 hover:border-red-500 hover:text-white disabled:border-slate-200 dark:disabled:border-slate-700 disabled:cursor-not-allowed transition-all duration-200 rounded-xl group"
@@ -84,11 +86,11 @@ export function InputArea({ onSend, disabled, onLiveModeClick, rateLimitInfo }: 
           )}
           <Button
             onClick={handleSend}
-            disabled={!message.trim() || disabled}
+            disabled={!message.trim() || cannotSend}
             size="icon"
             className="flex-shrink-0 h-10 w-10 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:cursor-not-allowed transition-all duration-200 rounded-xl group shadow-sm hover:shadow-md"
           >
-            {disabled ? (
+            {isProcessing ? (
               <div className="flex gap-0.5">
                 <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                 <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>

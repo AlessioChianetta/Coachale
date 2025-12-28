@@ -1056,7 +1056,7 @@ export function ChatPanel({
                   </AlertDescription>
                 </Alert>
               )}
-              <InputArea onSend={handleSendMessage} disabled={isTyping || rateLimitInfo.isWaiting} />
+              <InputArea onSend={handleSendMessage} isProcessing={isTyping} disabled={rateLimitInfo.isWaiting} />
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 text-center">
                 L'AI potrebbe generare informazioni inaccurate
               </p>

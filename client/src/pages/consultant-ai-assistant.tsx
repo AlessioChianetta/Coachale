@@ -613,7 +613,7 @@ export default function ConsultantAIAssistant() {
                     </AlertDescription>
                   </Alert>
                 )}
-                <InputArea onSend={handleSendMessage} disabled={isTyping} />
+                <InputArea onSend={handleSendMessage} isProcessing={isTyping} />
               </div>
             </div>
           </div>
