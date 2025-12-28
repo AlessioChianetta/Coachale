@@ -440,7 +440,9 @@ router.post(
           }
         }
 
-        const systemPrompt = (agentConfig.agentInstructions || 
+        // Use share.agentInstructions first (customized per public share), fallback to agentConfig
+        const baseInstructions = share.agentInstructions || agentConfig.agentInstructions;
+        const systemPrompt = (baseInstructions || 
           `Sei ${agentConfig.agentName}, un assistente AI professionale per ${agentConfig.businessName || "l'azienda"}.
 ${agentConfig.businessDescription ? `Descrizione: ${agentConfig.businessDescription}` : ""}
 Rispondi in modo professionale e utile.`) + styleInstructions;
