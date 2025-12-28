@@ -2398,6 +2398,7 @@ export const aiAssistantPreferences = pgTable("ai_assistant_preferences", {
   writingStyle: text("writing_style").$type<"default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom">().default("default").notNull(),
   responseLength: text("response_length").$type<"short" | "balanced" | "comprehensive">().default("balanced").notNull(),
   customInstructions: text("custom_instructions"),
+  defaultSystemInstructions: text("default_system_instructions"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

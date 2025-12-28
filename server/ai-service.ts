@@ -1389,26 +1389,46 @@ Sei specializzato negli argomenti relativi a questo agente ("${agentConfig.agent
       .where(eq(aiAssistantPreferences.userId, clientId))
       .limit(1);
     
+    // Also fetch consultant's default system instructions for clients
+    let consultantDefaultInstructions: string | null = null;
+    const [clientUser] = await db.select({ consultantId: users.consultantId })
+      .from(users)
+      .where(eq(users.id, clientId))
+      .limit(1);
+    
+    if (clientUser?.consultantId) {
+      const [consultantPrefs] = await db.select({ defaultSystemInstructions: aiAssistantPreferences.defaultSystemInstructions })
+        .from(aiAssistantPreferences)
+        .where(eq(aiAssistantPreferences.userId, clientUser.consultantId))
+        .limit(1);
+      consultantDefaultInstructions = consultantPrefs?.defaultSystemInstructions || null;
+    }
+    
+    const writingStyleLabels: Record<string, string> = {
+      default: 'Usa uno stile e tono predefiniti, naturali e bilanciati',
+      professional: 'Sii cortese e preciso, mantieni un tono professionale',
+      friendly: 'Sii espansivo e loquace, usa un tono amichevole e caloroso',
+      direct: 'Sii diretto e incoraggiante, vai dritto al punto',
+      eccentric: 'Sii vivace e fantasioso, usa un tono creativo e originale',
+      efficient: 'Sii essenziale e semplice, rispondi in modo efficiente',
+      nerd: 'Sii curioso e appassionato, approfondisci i dettagli tecnici',
+      cynical: 'Sii critico e sarcastico, usa un tono ironico',
+      custom: 'Segui le istruzioni personalizzate dell\'utente'
+    };
+    
+    const responseLengthLabels: Record<string, string> = {
+      short: 'Mantieni le risposte brevi (1-2 paragrafi)',
+      balanced: 'Usa una lunghezza moderata',
+      comprehensive: 'Fornisci risposte complete e dettagliate'
+    };
+    
+    // Build preferences context with consultant's base instructions + client's overrides
+    const baseInstructions = consultantDefaultInstructions 
+      ? `\n## Istruzioni Base del Consulente\n${consultantDefaultInstructions}\n`
+      : '';
+    
     if (prefs) {
-      const writingStyleLabels: Record<string, string> = {
-        default: 'Usa uno stile e tono predefiniti, naturali e bilanciati',
-        professional: 'Sii cortese e preciso, mantieni un tono professionale',
-        friendly: 'Sii espansivo e loquace, usa un tono amichevole e caloroso',
-        direct: 'Sii diretto e incoraggiante, vai dritto al punto',
-        eccentric: 'Sii vivace e fantasioso, usa un tono creativo e originale',
-        efficient: 'Sii essenziale e semplice, rispondi in modo efficiente',
-        nerd: 'Sii curioso e appassionato, approfondisci i dettagli tecnici',
-        cynical: 'Sii critico e sarcastico, usa un tono ironico',
-        custom: 'Segui le istruzioni personalizzate dell\'utente'
-      };
-      
-      const responseLengthLabels: Record<string, string> = {
-        short: 'Mantieni le risposte brevi (1-2 paragrafi)',
-        balanced: 'Usa una lunghezza moderata',
-        comprehensive: 'Fornisci risposte complete e dettagliate'
-      };
-      
-      userPreferencesContext = `
+      userPreferencesContext = `${baseInstructions}
 ## Preferenze di Comunicazione dell'Utente
 - Stile di Scrittura: ${writingStyleLabels[prefs.writingStyle] || 'Professionale'}
 - Lunghezza Risposte: ${responseLengthLabels[prefs.responseLength] || 'Bilanciata'}
@@ -1416,7 +1436,10 @@ ${prefs.customInstructions ? `- Istruzioni Personalizzate: ${prefs.customInstruc
 
 IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
 `;
-      console.log(`📝 [User Preferences] Applying preferences - Style: ${prefs.writingStyle}, Length: ${prefs.responseLength}`);
+      console.log(`📝 [User Preferences] Applying preferences - Style: ${prefs.writingStyle}, Length: ${prefs.responseLength}${consultantDefaultInstructions ? ', with consultant base instructions' : ''}`);
+    } else if (consultantDefaultInstructions) {
+      userPreferencesContext = baseInstructions;
+      console.log(`📝 [User Preferences] Applying consultant's default system instructions only`);
     }
   } catch (prefError) {
     console.log(`⚠️ [User Preferences] Could not fetch preferences:`, prefError);
@@ -2767,26 +2790,31 @@ Sei specializzato negli argomenti relativi a questo agente ("${agentConfig.agent
       .where(eq(aiAssistantPreferences.userId, consultantId))
       .limit(1);
     
+    const writingStyleLabels: Record<string, string> = {
+      default: 'Usa uno stile e tono predefiniti, naturali e bilanciati',
+      professional: 'Sii cortese e preciso, mantieni un tono professionale',
+      friendly: 'Sii espansivo e loquace, usa un tono amichevole e caloroso',
+      direct: 'Sii diretto e incoraggiante, vai dritto al punto',
+      eccentric: 'Sii vivace e fantasioso, usa un tono creativo e originale',
+      efficient: 'Sii essenziale e semplice, rispondi in modo efficiente',
+      nerd: 'Sii curioso e appassionato, approfondisci i dettagli tecnici',
+      cynical: 'Sii critico e sarcastico, usa un tono ironico',
+      custom: 'Segui le istruzioni personalizzate dell\'utente'
+    };
+    
+    const responseLengthLabels: Record<string, string> = {
+      short: 'Mantieni le risposte brevi (1-2 paragrafi)',
+      balanced: 'Usa una lunghezza moderata',
+      comprehensive: 'Fornisci risposte complete e dettagliate'
+    };
+    
     if (prefs) {
-      const writingStyleLabels: Record<string, string> = {
-        default: 'Usa uno stile e tono predefiniti, naturali e bilanciati',
-        professional: 'Sii cortese e preciso, mantieni un tono professionale',
-        friendly: 'Sii espansivo e loquace, usa un tono amichevole e caloroso',
-        direct: 'Sii diretto e incoraggiante, vai dritto al punto',
-        eccentric: 'Sii vivace e fantasioso, usa un tono creativo e originale',
-        efficient: 'Sii essenziale e semplice, rispondi in modo efficiente',
-        nerd: 'Sii curioso e appassionato, approfondisci i dettagli tecnici',
-        cynical: 'Sii critico e sarcastico, usa un tono ironico',
-        custom: 'Segui le istruzioni personalizzate dell\'utente'
-      };
+      // For consultants, include their own base instructions
+      const baseInstructions = prefs.defaultSystemInstructions 
+        ? `\n## Istruzioni Base del Sistema\n${prefs.defaultSystemInstructions}\n`
+        : '';
       
-      const responseLengthLabels: Record<string, string> = {
-        short: 'Mantieni le risposte brevi (1-2 paragrafi)',
-        balanced: 'Usa una lunghezza moderata',
-        comprehensive: 'Fornisci risposte complete e dettagliate'
-      };
-      
-      userPreferencesContext = `
+      userPreferencesContext = `${baseInstructions}
 ## Preferenze di Comunicazione dell'Utente
 - Stile di Scrittura: ${writingStyleLabels[prefs.writingStyle] || 'Professionale'}
 - Lunghezza Risposte: ${responseLengthLabels[prefs.responseLength] || 'Bilanciata'}
@@ -2794,7 +2822,7 @@ ${prefs.customInstructions ? `- Istruzioni Personalizzate: ${prefs.customInstruc
 
 IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
 `;
-      console.log(`📝 [User Preferences] Applying preferences - Style: ${prefs.writingStyle}, Length: ${prefs.responseLength}`);
+      console.log(`📝 [User Preferences] Applying preferences - Style: ${prefs.writingStyle}, Length: ${prefs.responseLength}${prefs.defaultSystemInstructions ? ', with base instructions' : ''}`);
     }
   } catch (prefError) {
     console.log(`⚠️ [User Preferences] Could not fetch preferences:`, prefError);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings2, Loader2, MessageSquare, FileText, Sparkles } from "lucide-react";
+import { Settings2, Loader2, MessageSquare, FileText, Sparkles, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,12 +22,16 @@ interface AIPreferences {
   writingStyle: "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom";
   responseLength: "short" | "balanced" | "comprehensive";
   customInstructions: string | null;
+  defaultSystemInstructions?: string | null;
+  consultantDefaultInstructions?: string | null;
 }
 
 const DEFAULT_PREFERENCES: AIPreferences = {
   writingStyle: "default",
   responseLength: "balanced",
   customInstructions: null,
+  defaultSystemInstructions: null,
+  consultantDefaultInstructions: null,
 };
 
 const WRITING_STYLE_OPTIONS = [
@@ -53,6 +57,19 @@ export function AIPreferencesSheet() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [localPreferences, setLocalPreferences] = useState<AIPreferences>(DEFAULT_PREFERENCES);
+
+  const { data: userProfile } = useQuery<{ role: string }>({
+    queryKey: ["/api/user/profile"],
+    queryFn: async () => {
+      const response = await fetch("/api/user/profile", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { role: "client" };
+      return response.json();
+    },
+  });
+
+  const isConsultant = userProfile?.role === "consultant";
 
   const { data: preferences, isLoading } = useQuery<AIPreferences>({
     queryKey: ["/api/ai-assistant/preferences"],
@@ -109,8 +126,16 @@ export function AIPreferencesSheet() {
     const preferencesToSave = {
       ...localPreferences,
       customInstructions: localPreferences.customInstructions || null,
+      defaultSystemInstructions: isConsultant ? (localPreferences.defaultSystemInstructions || null) : undefined,
     };
     savePreferencesMutation.mutate(preferencesToSave);
+  };
+
+  const handleDefaultSystemInstructionsChange = (value: string) => {
+    setLocalPreferences((prev) => ({
+      ...prev,
+      defaultSystemInstructions: value,
+    }));
   };
 
   const handleWritingStyleChange = (value: string) => {
@@ -240,18 +265,56 @@ export function AIPreferencesSheet() {
             </div>
 
             <Separator />
+
+            {isConsultant && (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-teal-600" />
+                    <Label className="text-base font-semibold">Istruzioni Base del Sistema</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Definisci le istruzioni base che l'AI userà per tutti i tuoi clienti. Queste istruzioni sostituiscono il prompt predefinito del sistema.
+                  </p>
+                  <Textarea
+                    value={localPreferences.defaultSystemInstructions || ""}
+                    onChange={(e) => handleDefaultSystemInstructionsChange(e.target.value)}
+                    placeholder="Es: Sei un assistente virtuale per consulenti finanziari. Aiuti i clienti a raggiungere i loro obiettivi finanziari in modo chiaro e professionale..."
+                    className="min-h-[120px] resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {(localPreferences.defaultSystemInstructions || "").length}/1000 caratteri
+                  </p>
+                </div>
+                <Separator />
+              </>
+            )}
+
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-pink-600" />
                 <Label className="text-base font-semibold">Istruzioni Personalizzate</Label>
               </div>
               <p className="text-xs text-muted-foreground">
-                Scrivi istruzioni specifiche su come vuoi che l'AI risponda. Queste istruzioni verranno sempre applicate indipendentemente dallo stile scelto.
+                {isConsultant 
+                  ? "Istruzioni aggiuntive per te stesso. Queste si sommano alle istruzioni base del sistema."
+                  : "Scrivi istruzioni specifiche su come vuoi che l'AI risponda. Queste istruzioni verranno sempre applicate indipendentemente dallo stile scelto."
+                }
               </p>
+              {!isConsultant && preferences?.consultantDefaultInstructions && (
+                <div className="p-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-700">
+                  <p className="text-xs text-teal-700 dark:text-teal-300 font-medium mb-1">Istruzioni base dal tuo consulente:</p>
+                  <p className="text-xs text-teal-600 dark:text-teal-400 italic">{preferences.consultantDefaultInstructions}</p>
+                </div>
+              )}
               <Textarea
                 value={localPreferences.customInstructions || ""}
                 onChange={(e) => handleCustomInstructionsChange(e.target.value)}
-                placeholder="Es: Rispondi in modo empatico, usa esempi pratici, evita termini tecnici, parlami come se fossi un amico..."
+                placeholder={
+                  !isConsultant && preferences?.consultantDefaultInstructions
+                    ? "Aggiungi istruzioni aggiuntive a quelle del tuo consulente..."
+                    : "Es: Rispondi in modo empatico, usa esempi pratici, evita termini tecnici, parlami come se fossi un amico..."
+                }
                 className="min-h-[120px] resize-none"
               />
               <p className="text-xs text-muted-foreground text-right">
