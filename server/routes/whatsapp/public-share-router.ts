@@ -304,9 +304,10 @@ router.get(
   validateShareExists,
   validateDomainAccess,
   validateVisitorSession,
-  async (req: Request & { share?: schema.WhatsappAgentShare }, res) => {
+  async (req: Request & { share?: schema.WhatsappAgentShare; managerId?: string }, res) => {
     try {
-      const { visitorId } = req.query;
+      const managerId = req.managerId;
+      const visitorId = managerId ? `manager_${managerId}` : (req.query.visitorId as string);
       const share = req.share!;
       
       if (!visitorId) {
