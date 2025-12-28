@@ -5521,16 +5521,29 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
               job.currentBatch = batchIndex + 1;
             }
             
-            const prompt = `Assegna ogni lezione al modulo più appropriato.
+            // Build lesson descriptions with all available metadata
+            const lessonDescriptions = batchLessons.map((l: any, i: number) => {
+              const title = sanitizeText(l.title).substring(0, 80);
+              const subtitle = l.subtitle ? ` - ${sanitizeText(l.subtitle).substring(0, 60)}` : '';
+              const tags = l.tags && l.tags.length > 0 ? ` [${l.tags.slice(0, 3).join(', ')}]` : '';
+              return `${i + 1}. "${title}"${subtitle}${tags}`;
+            }).join('\n');
+
+            const prompt = `Sei un esperto di organizzazione didattica. Analizza ogni lezione e assegnala al modulo più pertinente.
+
+CRITERI DI ASSEGNAZIONE:
+- Considera l'argomento principale della lezione
+- Valuta la corrispondenza semantica tra titolo/sottotitolo e nome del modulo
+- I tags indicano le parole chiave della lezione
+- Scegli il modulo che meglio rappresenta il tema trattato
 
 LEZIONI:
-${batchLessons.map((l: any, i: number) => `${i + 1}. ${sanitizeText(l.title).substring(0, 60)}`).join('\n')}
+${lessonDescriptions}
 
-MODULI:
+MODULI DISPONIBILI:
 ${modules.map((m: any, i: number) => `${moduleLetters[i]}. ${sanitizeText(m.name)}`).join('\n')}
 
-Rispondi SOLO con un oggetto JSON nel formato: {"1":"A","2":"B","3":"C","4":"D","5":"E"}
-Non aggiungere spiegazioni, solo il JSON.`;
+Rispondi SOLO con JSON: {"1":"A","2":"B",...}`;
 
             try {
               const response = await providerResult.client.generateContent({
