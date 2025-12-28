@@ -891,7 +891,7 @@ export default function ManagerChat() {
         )}
 
         <main className="flex-1 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
-          {messages.length === 0 && !selectedConversationId ? (
+          {messages.length === 0 ? (
             <ManagerWelcomeScreen
               agentName={agentInfo?.agentName}
               userName={managerInfo?.name}
@@ -899,104 +899,103 @@ export default function ManagerChat() {
               disabled={isTyping}
             />
           ) : (
-            <>
-              <ScrollArea className="flex-1">
-                <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-                  {messages.map((msg) => (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}
-                    >
+            <ScrollArea className="flex-1">
+              <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+                {messages.map((msg) => (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}
+                  >
+                    <div className={cn(
+                      "flex gap-3 max-w-[85%]",
+                      msg.role === "user" && "flex-row-reverse"
+                    )}>
                       <div className={cn(
-                        "flex gap-3 max-w-[85%]",
-                        msg.role === "user" && "flex-row-reverse"
+                        "w-8 h-8 rounded-lg shrink-0 flex items-center justify-center",
+                        msg.role === "user"
+                          ? "bg-slate-700"
+                          : "bg-gradient-to-br from-cyan-500 to-teal-500"
                       )}>
-                        <div className={cn(
-                          "w-8 h-8 rounded-lg shrink-0 flex items-center justify-center",
-                          msg.role === "user"
-                            ? "bg-slate-700"
-                            : "bg-gradient-to-br from-cyan-500 to-teal-500"
-                        )}>
-                          {msg.role === "user" ? (
-                            <span className="text-sm font-medium text-white">
-                              {managerInfo?.name?.charAt(0).toUpperCase() || "U"}
-                            </span>
-                          ) : (
-                            <Bot className="w-4 h-4 text-white" />
-                          )}
-                        </div>
-                        <div className={cn(
-                          "rounded-2xl px-4 py-3",
-                          msg.role === "user"
-                            ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-                            : "bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 text-slate-800 dark:text-slate-100"
-                        )}>
-                          {msg.role === "assistant" ? (
-                            <div className="prose prose-sm prose-slate dark:prose-invert max-w-none">
-                              <ReactMarkdown>{msg.content || "..."}</ReactMarkdown>
-                            </div>
-                          ) : (
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                  {isTyping && messages[messages.length - 1]?.content === "" && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex justify-start"
-                    >
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center">
+                        {msg.role === "user" ? (
+                          <span className="text-sm font-medium text-white">
+                            {managerInfo?.name?.charAt(0).toUpperCase() || "U"}
+                          </span>
+                        ) : (
                           <Bot className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 rounded-2xl">
-                          <TypingIndicator />
-                        </div>
+                        )}
                       </div>
-                    </motion.div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </ScrollArea>
-
-              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                <div className="max-w-3xl mx-auto">
-                  <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-2 shadow-sm">
-                    <Input
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                      placeholder="Scrivi un messaggio..."
-                      className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
-                      disabled={isTyping}
-                    />
-                    <Button
-                      size="icon"
-                      onClick={() => handleSendMessage()}
-                      disabled={!inputValue.trim() || isTyping}
-                      className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-xl h-10 w-10 shadow-md"
-                    >
-                      {isTyping ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
+                      <div className={cn(
+                        "rounded-2xl px-4 py-3",
+                        msg.role === "user"
+                          ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                          : "bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 text-slate-800 dark:text-slate-100"
+                      )}>
+                        {msg.role === "assistant" ? (
+                          <div className="prose prose-sm prose-slate dark:prose-invert max-w-none">
+                            <ReactMarkdown>{msg.content || "..."}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+                {isTyping && messages[messages.length - 1]?.content === "" && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex justify-start"
+                  >
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center">
+                        <Bot className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 rounded-2xl">
+                        <TypingIndicator />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
-            </>
+            </ScrollArea>
           )}
+
+          {/* Input sempre visibile */}
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+            <div className="max-w-3xl mx-auto">
+              <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-2 shadow-sm">
+                <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Scrivi un messaggio..."
+                  className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+                  disabled={isTyping}
+                />
+                <Button
+                  size="icon"
+                  onClick={() => handleSendMessage()}
+                  disabled={!inputValue.trim() || isTyping}
+                  className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-xl h-10 w-10 shadow-md"
+                >
+                  {isTyping ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         </main>
       </div>
 
