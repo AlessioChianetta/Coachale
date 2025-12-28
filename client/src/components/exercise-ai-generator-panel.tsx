@@ -58,6 +58,7 @@ import {
   GripVertical,
   ArrowUp,
   ArrowDown,
+  Layers,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -75,6 +76,13 @@ interface Lesson {
   sortOrder: number;
   level?: string;
   hasExercise?: boolean;
+  subcategoryId?: string;
+}
+
+interface Subcategory {
+  id: string;
+  name: string;
+  categoryId: string;
 }
 
 interface Question {
@@ -134,6 +142,7 @@ export function ExerciseAIGeneratorPanel({
   const [writingStyle, setWritingStyle] = useState<string>("standard");
   const [customWritingStyle, setCustomWritingStyle] = useState<string>("");
   const [questionsMode, setQuestionsMode] = useState<"auto" | "fixed">("fixed");
+  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
 
   // Stati per progress pool
   const [lessonProgress, setLessonProgress] = useState<Record<string, { status: 'pending' | 'analyzing' | 'generating' | 'completed' | 'error'; questionsCount?: number; message?: string }>>({});
@@ -146,6 +155,18 @@ export function ExerciseAIGeneratorPanel({
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch lessons");
+      return response.json();
+    },
+  });
+
+  // Fetch only subcategories for this course (server-side filtering for performance)
+  const { data: courseSubcategories = [] } = useQuery({
+    queryKey: ["/api/library/subcategories", courseId],
+    queryFn: async () => {
+      const response = await fetch(`/api/library/subcategories?categoryId=${courseId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch subcategories");
       return response.json();
     },
   });
@@ -203,8 +224,16 @@ export function ExerciseAIGeneratorPanel({
 
   const availableLessons = lessons.filter((l: Lesson) => !l.hasExercise);
 
+  const filteredLessons = selectedModuleId 
+    ? lessons.filter((l: Lesson) => l.subcategoryId === selectedModuleId)
+    : lessons;
+  
+  const filteredAvailableLessons = selectedModuleId
+    ? availableLessons.filter((l: Lesson) => l.subcategoryId === selectedModuleId)
+    : availableLessons;
+
   const handleSelectAll = () => {
-    setSelectedLessons(availableLessons.map((l: Lesson) => l.id));
+    setSelectedLessons(filteredAvailableLessons.map((l: Lesson) => l.id));
   };
 
   const handleDeselectAll = () => {
@@ -458,7 +487,7 @@ export function ExerciseAIGeneratorPanel({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="w-[95vw] max-w-5xl h-[90vh] md:h-[85vh] max-h-[900px] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
@@ -502,7 +531,7 @@ export function ExerciseAIGeneratorPanel({
                           <Sparkles size={16} className="text-purple-600 dark:text-purple-400" />
                         </div>
                         <div>
-                          <p className="text-lg font-bold">{availableLessons.length}</p>
+                          <p className="text-lg font-bold">{filteredAvailableLessons.length}</p>
                           <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Disponibili</p>
                         </div>
                       </div>
@@ -521,6 +550,58 @@ export function ExerciseAIGeneratorPanel({
                   </div>
                 )}
 
+                {/* Module Selection */}
+                {courseSubcategories.length > 0 && (
+                  <Card className="border-0 shadow-sm overflow-hidden">
+                    <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border-b">
+                      <div className="flex items-center gap-2">
+                        <Layers size={18} className="text-indigo-600" />
+                        <Label className="text-base font-semibold">Filtra per Modulo</Label>
+                        {selectedModuleId && (
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            {courseSubcategories.find((s: Subcategory) => s.id === selectedModuleId)?.name}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant={selectedModuleId === null ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setSelectedModuleId(null);
+                            setSelectedLessons([]);
+                          }}
+                          className={`text-xs h-8 ${selectedModuleId === null ? "bg-gradient-to-r from-indigo-500 to-purple-500" : ""}`}
+                        >
+                          Tutti i moduli
+                        </Button>
+                        {courseSubcategories.map((sub: Subcategory) => {
+                          const moduleCount = lessons.filter((l: Lesson) => l.subcategoryId === sub.id).length;
+                          return (
+                            <Button
+                              key={sub.id}
+                              variant={selectedModuleId === sub.id ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                setSelectedModuleId(sub.id);
+                                setSelectedLessons([]);
+                              }}
+                              className={`text-xs h-8 ${selectedModuleId === sub.id ? "bg-gradient-to-r from-indigo-500 to-purple-500" : ""}`}
+                            >
+                              {sub.name}
+                              <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
+                                {moduleCount}
+                              </Badge>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
                 {/* Lesson Selection */}
                 <Card className="border-0 shadow-sm overflow-hidden">
                   <div className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b">
@@ -534,7 +615,7 @@ export function ExerciseAIGeneratorPanel({
                           variant="ghost" 
                           size="sm" 
                           onClick={handleSelectAll}
-                          disabled={availableLessons.length === 0}
+                          disabled={filteredAvailableLessons.length === 0}
                           className="text-xs h-7 hover:bg-purple-100 hover:text-purple-700 dark:hover:bg-purple-900/30"
                         >
                           <Check size={12} className="mr-1" />
@@ -562,7 +643,7 @@ export function ExerciseAIGeneratorPanel({
                         </div>
                         <span className="text-sm text-muted-foreground">Caricamento lezioni...</span>
                       </div>
-                    ) : lessons.length === 0 ? (
+                    ) : filteredLessons.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 gap-3">
                         <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                           <BookOpen className="text-muted-foreground" size={32} />
@@ -573,7 +654,7 @@ export function ExerciseAIGeneratorPanel({
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                        {lessons
+                        {filteredLessons
                           .sort((a: Lesson, b: Lesson) => (a.sortOrder || 0) - (b.sortOrder || 0))
                           .map((lesson: Lesson, index: number) => (
                             <div
@@ -632,11 +713,11 @@ export function ExerciseAIGeneratorPanel({
                     )}
                   </div>
 
-                  {lessons.length > 0 && (
+                  {filteredLessons.length > 0 && (
                     <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-t">
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">
-                          <span className="font-semibold text-purple-600 dark:text-purple-400">{selectedLessons.length}</span> di {availableLessons.length} selezionate
+                          <span className="font-semibold text-purple-600 dark:text-purple-400">{selectedLessons.length}</span> di {filteredAvailableLessons.length} selezionate
                         </p>
                         {selectedLessons.length > 0 && (
                           <Badge variant="secondary" className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
