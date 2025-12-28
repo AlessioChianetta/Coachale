@@ -1,0 +1,74 @@
+🚀 Metodo PRO: Generare un Token Illimitato (System User)
+Usa questa procedura se vuoi un token che non scade mai. Richiede l'accesso al Meta Business Manager.
+
+1. Accedi alle Impostazioni Business
+
+Vai su business.facebook.com/settings.
+
+Seleziona il tuo account Business Manager aziendale.
+
+2. Crea un Utente di Sistema
+
+Nel menu a sinistra, vai su Utenti → Utenti di sistema.
+
+Clicca su Aggiungi.
+
+Nome: Inserisci un nome riconoscibile (es: Coachale API User).
+
+Ruolo: Seleziona Amministratore (System Administrator).
+
+Clicca su Crea utente di sistema.
+
+3. Assegna l'App all'Utente
+
+Seleziona l'utente appena creato nella lista.
+
+Clicca su Aggiungi risorse (Add Assets).
+
+Seleziona App nel menu risorse.
+
+Seleziona la tua app (Coachale).
+
+Attiva l'interruttore "Gestisci App" (Controllo completo).
+
+Clicca Salva modifiche.
+
+4. Genera il Token
+
+Rimanendo sull'utente selezionato, clicca su Genera nuovo token.
+
+Seleziona la tua App dal menu a tendina.
+
+Scadenza Token: Seleziona Non scade mai (Never).
+
+Permessi (Importante): Scorri la lista e seleziona esattamente questi 5 permessi (puoi usare la barra di ricerca):
+
+instagram_manage_messages (per i DM)
+
+instagram_manage_comments (per rispondere ai commenti)
+
+instagram_basic (per i dati del profilo)
+
+pages_messaging
+
+pages_show_list
+
+🔴 ERRORE: "Autorizzazioni non aggiunte alla tua app"? Se mentre selezioni i permessi appare un errore rosso che dice "Ci sono autorizzazioni selezionate che non sono aggiunte alla tua app", significa che devi prima abilitarle nella Dashboard.
+
+Come risolvere:
+
+Lascia aperta questa scheda e aprine una nuova su developers.facebook.com.
+
+Vai nella tua App → Casi d'uso → Gestisci i messaggi... Instagram → Personalizza.
+
+Nella sezione Autorizzazioni, clicca Aggiungi accanto ai permessi che ti davano errore (es. instagram_manage_comments).
+
+Torna qui e riprova a generare il token.
+
+5. Copia e Salva
+
+Clicca su Genera token.
+
+Copia la stringa lunga che appare. ATTENZIONE: Questa stringa verrà mostrata una sola volta. Salvala subito in un posto sicuro.
+
+Usa questo token nelle API Keys di Coachale al posto di quello temporaneo.

@@ -32,7 +32,8 @@ import {
   MessageSquareX,
   UserX,
   ShieldX,
-  Smartphone
+  Smartphone,
+  Star
 } from "lucide-react";
 import { Link } from "wouter";
 import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
@@ -483,11 +484,108 @@ export default function GuideInstagram() {
                     <strong>Vantaggio:</strong> Questo metodo e piu veloce del Graph API Explorer e aggiunge automaticamente tutti i permessi necessari con un solo click!
                   </p>
                 </div>
-                <WarningBox>
-                  <strong>Nota sul Token:</strong> Il token generato dalla dashboard e un Long-Lived Token (60 giorni). 
-                  Per un token che non scade mai, considera l'uso di un System User nel Business Manager.
-                </WarningBox>
-                <div className="flex flex-wrap gap-2 mt-4">
+
+                {/* Sezione PRO - Token Illimitato */}
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40 rounded-lg border border-purple-200 dark:border-purple-800 overflow-hidden mb-4">
+                  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2">
+                    <p className="text-white font-semibold flex items-center gap-2">
+                      <Star className="h-4 w-4" />
+                      Metodo PRO: Token Illimitato (System User)
+                    </p>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Usa questa procedura se vuoi un token che <strong>non scade mai</strong>. Richiede accesso al Meta Business Manager.
+                    </p>
+                    
+                    <div className="space-y-4">
+                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
+                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">1. Accedi alle Impostazioni Business</p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>Vai su <strong>business.facebook.com/settings</strong></li>
+                          <li>Seleziona il tuo account Business Manager aziendale</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
+                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">2. Crea un Utente di Sistema</p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>Menu sinistra → <strong>Utenti</strong> → <strong>Utenti di sistema</strong></li>
+                          <li>Clicca <strong>Aggiungi</strong></li>
+                          <li>Nome: es. <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">Coachale API User</code></li>
+                          <li>Ruolo: <strong>Amministratore</strong> (System Administrator)</li>
+                          <li>Clicca <strong>Crea utente di sistema</strong></li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
+                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">3. Assegna l'App all'Utente</p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>Seleziona l'utente appena creato</li>
+                          <li>Clicca <strong>Aggiungi risorse</strong> (Add Assets)</li>
+                          <li>Seleziona <strong>App</strong> → la tua app (Coachale)</li>
+                          <li>Attiva <strong>"Gestisci App"</strong> (Controllo completo)</li>
+                          <li>Clicca <strong>Salva modifiche</strong></li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
+                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">4. Genera il Token</p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>Clicca <strong>Genera nuovo token</strong></li>
+                          <li>Seleziona la tua App dal menu</li>
+                          <li>Scadenza Token: <strong>Non scade mai</strong> (Never)</li>
+                          <li>Permessi da selezionare:</li>
+                        </ul>
+                        <div className="flex flex-wrap gap-1 mt-2 ml-4">
+                          <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">instagram_manage_messages</code>
+                          <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">instagram_manage_comments</code>
+                          <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">instagram_basic</code>
+                          <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">pages_messaging</code>
+                          <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">pages_show_list</code>
+                        </div>
+                      </div>
+
+                      <div className="bg-red-50 dark:bg-red-950/40 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                        <p className="text-sm font-medium mb-2 text-red-700 dark:text-red-300 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4" />
+                          Errore: "Autorizzazioni non aggiunte alla tua app"?
+                        </p>
+                        <p className="text-sm text-red-600 dark:text-red-400 mb-2">
+                          Se appare questo errore rosso mentre selezioni i permessi:
+                        </p>
+                        <ol className="text-sm text-red-600 dark:text-red-400 list-decimal list-inside space-y-1">
+                          <li>Lascia aperta questa scheda</li>
+                          <li>Apri <strong>developers.facebook.com</strong> → la tua App</li>
+                          <li>Vai su <strong>Casi d'uso</strong> → <strong>Gestisci i messaggi... Instagram</strong> → <strong>Personalizza</strong></li>
+                          <li>Nella sezione Autorizzazioni, clicca <strong>Aggiungi</strong> accanto ai permessi mancanti</li>
+                          <li>Torna qui e riprova</li>
+                        </ol>
+                      </div>
+
+                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
+                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">5. Copia e Salva</p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>Clicca <strong>Genera token</strong></li>
+                          <li>Copia la stringa lunga che appare</li>
+                        </ul>
+                        <div className="bg-amber-50 dark:bg-amber-950/40 rounded p-2 mt-2 border border-amber-200 dark:border-amber-800">
+                          <p className="text-xs text-amber-700 dark:text-amber-300">
+                            <strong>ATTENZIONE:</strong> Questa stringa verra mostrata una sola volta. Salvala subito in un posto sicuro!
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      <ExternalLinkButton href="https://business.facebook.com/settings">
+                        Apri Business Manager
+                      </ExternalLinkButton>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
                   <ExternalLinkButton href="https://developers.facebook.com/apps/">
                     Apri Meta for Developers
                   </ExternalLinkButton>

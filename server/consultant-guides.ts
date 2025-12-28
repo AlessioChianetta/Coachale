@@ -1916,12 +1916,21 @@ export const consultantGuides: ConsultantGuides = {
           },
           {
             title: "Generare Access Token",
-            content: "L'Access Token permette a Coachale di inviare messaggi per conto del tuo account. PROCEDURA RAPIDA (Dashboard App): 1) Apri la dashboard della tua App su Meta for Developers. 2) Clicca su 'Personalizza' (icona matita) nel riquadro 'Gestisci i messaggi e i contenuti su Instagram'. 3) PERMESSI: Nel riquadro 1, clicca il pulsante blu 'Add all required permissions' (aggiunge instagram_manage_messages automaticamente). 4) GENERA TOKEN: Nel riquadro 2 ('Genera i token d'accesso'), clicca 'Aggiungi account' e seleziona il tuo Instagram Business, poi clicca 'Generate token' accanto al nome. 5) Copia il token generato. VANTAGGIO: Questo metodo è più veloce del Graph API Explorer e aggiunge tutti i permessi con un solo click! NOTA: Il token generato è Long-Lived (60 giorni). Per uno permanente, usa System User nel Business Manager.",
+            content: "L'Access Token permette a Coachale di inviare messaggi per conto del tuo account. PROCEDURA RAPIDA (Dashboard App): 1) Apri la dashboard della tua App su Meta for Developers. 2) Clicca su 'Personalizza' (icona matita) nel riquadro 'Gestisci i messaggi e i contenuti su Instagram'. 3) PERMESSI: Nel riquadro 1, clicca il pulsante blu 'Add all required permissions' (aggiunge instagram_manage_messages automaticamente). 4) GENERA TOKEN: Nel riquadro 2 ('Genera i token d'accesso'), clicca 'Aggiungi account' e seleziona il tuo Instagram Business, poi clicca 'Generate token' accanto al nome. 5) Copia il token generato. VANTAGGIO: Questo metodo è più veloce del Graph API Explorer e aggiunge tutti i permessi con un solo click! NOTA: Il token generato è Long-Lived (60 giorni). Per uno permanente, segui la procedura METODO PRO sotto.",
             tips: ["Usa la dashboard dell'app invece del Graph API Explorer - è più semplice!", "Il pulsante 'Add all required permissions' aggiunge tutto automaticamente"],
             warnings: ["Senza permessi corretti, i webhook non funzioneranno"],
             externalLinks: [
               { text: "Apri Meta for Developers", url: "https://developers.facebook.com/apps/" },
               { text: "Documentazione Token", url: "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived" }
+            ]
+          },
+          {
+            title: "METODO PRO: Token Illimitato (System User)",
+            content: "Usa questa procedura se vuoi un token che NON SCADE MAI. Richiede accesso al Meta Business Manager. PROCEDURA: 1) Vai su business.facebook.com/settings e seleziona il tuo Business Manager. 2) Menu sinistra → Utenti → Utenti di sistema → Aggiungi. Nome: 'Coachale API User', Ruolo: Amministratore (System Administrator). 3) Seleziona l'utente creato → Aggiungi risorse → App → la tua app → attiva 'Gestisci App' → Salva. 4) Clicca 'Genera nuovo token', seleziona la tua App, Scadenza: 'Non scade mai' (Never). 5) Permessi da selezionare: instagram_manage_messages, instagram_manage_comments, instagram_basic, pages_messaging, pages_show_list. 6) Clicca 'Genera token' e copia subito la stringa (viene mostrata UNA SOLA VOLTA!).",
+            tips: ["Il token System User non scade mai - ideale per produzione", "Salva subito il token in un posto sicuro, non verrà più mostrato"],
+            warnings: ["ERRORE 'Autorizzazioni non aggiunte alla tua app'? Vai su developers.facebook.com → la tua App → Casi d'uso → Gestisci i messaggi Instagram → Personalizza → Autorizzazioni → clicca Aggiungi accanto ai permessi mancanti, poi torna a generare il token"],
+            externalLinks: [
+              { text: "Apri Business Manager", url: "https://business.facebook.com/settings" }
             ]
           },
           {
