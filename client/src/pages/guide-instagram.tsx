@@ -26,7 +26,13 @@ import {
   Image,
   ArrowRight,
   BookOpen,
-  Sparkles
+  Sparkles,
+  AlertCircle,
+  RefreshCw,
+  MessageSquareX,
+  UserX,
+  ShieldX,
+  Smartphone
 } from "lucide-react";
 import { Link } from "wouter";
 import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
@@ -79,7 +85,7 @@ function SectionCard({
               <CardDescription className="mt-1">{subtitle}</CardDescription>
             </div>
           </div>
-          <ProgressIndicator current={sectionNumber} total={3} />
+          <ProgressIndicator current={sectionNumber} total={4} />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -821,6 +827,136 @@ export default function GuideInstagram() {
                   Trasforma i commenti in conversazioni private dove l'AI puo qualificare il lead.
                 </InfoBox>
               </StepCard>
+            </SectionCard>
+
+            <SectionCard
+              sectionNumber={4}
+              title="Troubleshooting - Problemi Comuni"
+              subtitle="Soluzioni ai problemi piu frequenti durante la configurazione"
+              icon={AlertCircle}
+              gradient="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30"
+              borderColor="border-amber-200 dark:border-amber-800"
+            >
+              <StepCard
+                number={1}
+                title="Caricamento Infinito o 'Impossibile collegare l'account'"
+                description="La finestra di popup carica all'infinito o restituisce un errore generico subito dopo il login."
+                icon={RefreshCw}
+                iconColor="bg-amber-500"
+                badge="COMUNE"
+                badgeVariant="secondary"
+              >
+                <WarningBox>
+                  <strong>Causa:</strong> Disallineamento nello stato della connessione ("Handshake failure"). 
+                  Instagram crede di essere gia collegato alla Pagina Facebook, ma Facebook non ha ricevuto la conferma.
+                </WarningBox>
+                <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mt-4">
+                  <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Smartphone className="h-4 w-4" />
+                    Soluzione (da smartphone):
+                  </p>
+                  <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                    <li>Apri l'<strong>app Instagram</strong> dallo smartphone</li>
+                    <li>Vai su <strong>Modifica Profilo</strong> → <strong>Pagina</strong></li>
+                    <li>Se la pagina risulta collegata, clicca <strong>"Scollega pagina"</strong> o <strong>"Disconnetti"</strong></li>
+                    <li>Torna al computer e riavvia la procedura di collegamento</li>
+                  </ol>
+                </div>
+              </StepCard>
+
+              <StepCard
+                number={2}
+                title="Il Chatbot/AI non risponde ai messaggi"
+                description="L'account e collegato correttamente (spunta verde), ma l'AI non riceve i messaggi inviati dagli utenti."
+                icon={MessageSquareX}
+                iconColor="bg-red-500"
+                badge="FREQUENTE"
+                badgeVariant="destructive"
+              >
+                <WarningBox>
+                  <strong>Causa:</strong> Manca il permesso specifico per l'accesso ai messaggi nelle impostazioni 
+                  della privacy dell'app Instagram. I webhook non partono senza questo permesso.
+                </WarningBox>
+                <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mt-4">
+                  <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Smartphone className="h-4 w-4" />
+                    Soluzione (da smartphone):
+                  </p>
+                  <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                    <li>Apri l'<strong>app Instagram</strong> dallo smartphone</li>
+                    <li>Vai in <strong>Impostazioni e privacy</strong> → <strong>Messaggi e risposte alle storie</strong></li>
+                    <li>Trova <strong>"Controlli per i messaggi"</strong></li>
+                    <li>Attiva l'interruttore <strong>"Consenti l'accesso ai messaggi"</strong> (Allow Access to Messages)</li>
+                  </ol>
+                </div>
+                <div className="bg-green-50 dark:bg-green-950/40 rounded-lg p-3 border border-green-200 dark:border-green-800 mt-4">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>Verifica:</strong> Dopo aver attivato, invia un messaggio di test da un altro account 
+                    e verifica che appaia in Coachale → Conversazioni → Instagram.
+                  </p>
+                </div>
+              </StepCard>
+
+              <StepCard
+                number={3}
+                title="Account non idoneo (Personal Account)"
+                description="L'account non viene rilevato nella lista delle risorse collegabili o da errore di permessi insufficienti."
+                icon={UserX}
+                iconColor="bg-orange-500"
+                badge="REQUISITO"
+                badgeVariant="secondary"
+              >
+                <WarningBox>
+                  <strong>Causa:</strong> L'account Instagram e impostato come "Personale". 
+                  Le API di Meta funzionano <strong>SOLO</strong> con account Business o Creator.
+                </WarningBox>
+                <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mt-4">
+                  <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Smartphone className="h-4 w-4" />
+                    Soluzione (da smartphone):
+                  </p>
+                  <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                    <li>Apri l'app Instagram → <strong>Impostazioni</strong></li>
+                    <li>Vai su <strong>Tipo di account e strumenti</strong></li>
+                    <li>Seleziona <strong>"Passa a un account per professionisti"</strong></li>
+                    <li>Scegli <strong>Business</strong> o <strong>Creator</strong></li>
+                    <li>Collega l'account a una <strong>Pagina Facebook</strong> durante il processo</li>
+                  </ol>
+                </div>
+                <ExternalLinkButton href="https://help.instagram.com/502981923235522">
+                  Guida ufficiale conversione account
+                </ExternalLinkButton>
+              </StepCard>
+
+              <StepCard
+                number={4}
+                title="Permessi Facebook mancanti"
+                description="Vedi la pagina Facebook ma non riesci a selezionarla o collegarla a Instagram."
+                icon={ShieldX}
+                iconColor="bg-red-600"
+                badge="PERMESSI"
+                badgeVariant="destructive"
+              >
+                <WarningBox>
+                  <strong>Causa:</strong> L'utente che sta provando a fare il collegamento non ha i permessi di <strong>Amministratore</strong> 
+                  sulla Pagina Facebook. Essere solo Editor o Moderatore <strong>NON basta</strong> per gestire le connessioni API.
+                </WarningBox>
+                <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mt-4">
+                  <p className="text-sm font-medium mb-3">Come verificare i permessi:</p>
+                  <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                    <li>Vai su <strong>Facebook</strong> → la tua Pagina</li>
+                    <li>Clicca <strong>Impostazioni Pagina</strong></li>
+                    <li>Vai su <strong>"Nuova esperienza delle Pagine"</strong> → <strong>"Accesso alla Pagina"</strong></li>
+                    <li>Verifica di avere <strong>"Facebook Access"</strong> completo (accesso amministratore)</li>
+                  </ol>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-950/40 rounded-lg p-3 border border-blue-200 dark:border-blue-800 mt-4">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Suggerimento:</strong> Se non sei admin, chiedi al proprietario della Pagina di aggiungerti 
+                    come Amministratore nelle impostazioni della Pagina.
+                  </p>
+                </div>
+              </StepCard>
 
               <div className="flex flex-wrap gap-3 pt-4">
                 <Link href="/consultant/api-keys">
@@ -855,7 +991,7 @@ export default function GuideInstagram() {
           guideId: "guide-instagram",
           guideTitle: "Guida Instagram DM Integration",
           guideDescription: "Configura Instagram Business per ricevere e rispondere automaticamente ai DM con AI.",
-          guideSections: ["Prerequisiti e Setup Account", "Configurazione Webhook", "Funzionalità e Limiti"]
+          guideSections: ["Prerequisiti e Setup Account", "Configurazione Webhook", "Funzionalità e Limiti", "Troubleshooting - Problemi Comuni"]
         }}
       />
     </div>

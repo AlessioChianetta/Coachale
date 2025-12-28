@@ -2016,6 +2016,38 @@ export const consultantGuides: ConsultantGuides = {
             ]
           }
         ]
+      },
+      {
+        title: "TROUBLESHOOTING - PROBLEMI COMUNI",
+        icon: "⚠️",
+        description: "Soluzioni ai problemi più frequenti durante la configurazione dell'integrazione Instagram.",
+        steps: [
+          {
+            title: "Caricamento Infinito o 'Impossibile collegare l'account'",
+            content: "SINTOMO: La finestra di popup carica all'infinito o restituisce un errore generico subito dopo il login. CAUSA: Disallineamento nello stato della connessione ('Handshake failure'). Instagram crede di essere già collegato alla Pagina Facebook, ma Facebook non ha ricevuto la conferma (stato di 'collegamento a metà'). SOLUZIONE (da smartphone): 1) Apri l'app Instagram dallo smartphone. 2) Vai su Modifica Profilo → Pagina. 3) Se la pagina risulta collegata, clicca 'Scollega pagina' o 'Disconnetti'. 4) Torna al computer e riavvia la procedura di collegamento.",
+            warnings: ["Questo problema va risolto SOLO dall'app Instagram su smartphone, non dal computer"]
+          },
+          {
+            title: "Il Chatbot/AI non risponde ai messaggi",
+            content: "SINTOMO: L'account è collegato correttamente (spunta verde), ma l'AI non riceve i messaggi inviati dagli utenti. I webhook non partono. CAUSA: Manca il permesso specifico per l'accesso ai messaggi nelle impostazioni della privacy dell'app Instagram. SOLUZIONE (da smartphone): 1) Apri l'app Instagram dallo smartphone. 2) Vai in Impostazioni e privacy → Messaggi e risposte alle storie → Controlli per i messaggi. 3) Attiva l'interruttore 'Consenti l'accesso ai messaggi' (Allow Access to Messages). 4) Verifica inviando un messaggio di test da un altro account.",
+            warnings: ["Senza questo permesso attivo, i webhook di Meta non invieranno MAI i messaggi a Coachale"],
+            tips: ["Dopo aver attivato, invia un messaggio di test da un altro account e verifica che appaia in Coachale → Conversazioni → Instagram"]
+          },
+          {
+            title: "Account non idoneo (Personal Account)",
+            content: "SINTOMO: L'account non viene rilevato nella lista delle risorse collegabili o dà errore di permessi insufficienti. CAUSA: L'account Instagram è impostato come 'Personale'. Le API di Meta funzionano SOLO con account Business o Creator. SOLUZIONE (da smartphone): 1) Apri l'app Instagram → Impostazioni. 2) Vai su Tipo di account e strumenti. 3) Seleziona 'Passa a un account per professionisti'. 4) Scegli Business o Creator. 5) Collega l'account a una Pagina Facebook durante il processo.",
+            warnings: ["Gli account PERSONALI non possono MAI usare le API Instagram Messaging"],
+            externalLinks: [
+              { text: "Guida ufficiale conversione account", url: "https://help.instagram.com/502981923235522" }
+            ]
+          },
+          {
+            title: "Permessi Facebook mancanti",
+            content: "SINTOMO: Vedi la pagina Facebook ma non riesci a selezionarla o collegarla a Instagram. CAUSA: L'utente che sta provando a fare il collegamento non ha i permessi di Amministratore sulla Pagina Facebook. Essere solo Editor o Moderatore NON basta per gestire le connessioni API. SOLUZIONE: 1) Vai su Facebook → la tua Pagina. 2) Clicca Impostazioni Pagina. 3) Vai su 'Nuova esperienza delle Pagine' → 'Accesso alla Pagina'. 4) Verifica di avere 'Facebook Access' completo (accesso amministratore). Se non sei admin, chiedi al proprietario della Pagina di aggiungerti come Amministratore.",
+            warnings: ["Devi essere ADMIN della Pagina, non solo Editor o Moderatore"],
+            tips: ["Se non sei admin, chiedi al proprietario della Pagina di aggiungerti come Amministratore nelle impostazioni"]
+          }
+        ]
       }
     ]
   },

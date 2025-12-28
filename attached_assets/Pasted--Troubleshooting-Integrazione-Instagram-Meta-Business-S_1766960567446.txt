@@ -1,0 +1,32 @@
+📘 Troubleshooting Integrazione Instagram (Meta Business Suite)
+1. Errore: Caricamento Infinito o "Impossibile collegare l'account"
+Sintomo: Durante la fase di collegamento nella dashboard, la finestra di popup carica all'infinito o restituisce un errore generico subito dopo il login. Causa: Disallineamento nello stato della connessione ("Handshake failure"). Instagram crede di essere già collegato alla Pagina Facebook, ma Facebook non ha ricevuto la conferma (stato di "collegamento a metà"). Soluzione:
+
+Aprire l'app Instagram dallo smartphone.
+
+Andare su Modifica Profilo > Pagina.
+
+Se la pagina risulta collegata, cliccare su Scollega pagina o Disconnetti.
+
+Tornare al computer/dashboard e riavviare la procedura di collegamento.
+
+2. Errore: Il Chatbot/AI non risponde ai messaggi
+Sintomo: L'account è collegato correttamente (spunta verde), ma l'AI non riceve i messaggi inviati dagli utenti (i webhook non partono). Causa: Manca il permesso specifico per l'accesso ai messaggi nelle impostazioni della privacy dell'app Instagram. Soluzione:
+
+Aprire l'app Instagram dallo smartphone.
+
+Andare in Impostazioni e privacy > Messaggi e risposte alle storie > Controlli per i messaggi.
+
+Attivare l'interruttore Consenti l'accesso ai messaggi (Allow Access to Messages).
+
+3. Errore: Account non idoneo (Personal Account)
+Sintomo: L'account non viene rilevato nella lista delle risorse collegabili o dà errore di permessi insufficienti. Causa: L'account Instagram è impostato come "Personale". Le API di Meta funzionano solo con account Business o Creator. Soluzione:
+
+Dall'app Instagram: Impostazioni > Tipo di account e strumenti.
+
+Selezionare Passa a un account per professionisti (Business o Creator).
+
+Collegare l'account a una Pagina Facebook durante il processo.
+
+4. Errore: Permessi Facebook mancanti
+Sintomo: Vedi la pagina Facebook ma non riesci a selezionarla o collegarla a Instagram. Causa: L'utente che sta provando a fare il collegamento non ha i permessi di Amministratore sulla Pagina Facebook (essere solo Editor o Moderatore non basta per gestire le connessioni API). Soluzione: Verificare su Facebook (Impostazioni Pagina > Nuova esperienza delle Pagine > Accesso alla Pagina) di avere accesso completo ("Facebook Access").
