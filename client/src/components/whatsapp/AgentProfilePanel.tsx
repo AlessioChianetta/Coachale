@@ -1086,14 +1086,14 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                                 ? "bg-emerald-500 text-white" 
                                 : "bg-slate-200 text-slate-600"
                             )}>
-                              {client.name.charAt(0).toUpperCase()}
+                              {(client.name || client.email || "?").charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className={cn(
                                 "text-sm font-medium truncate transition-colors",
                                 isSelected ? "text-emerald-700" : "text-slate-700"
                               )}>
-                                {client.name}
+                                {client.name || client.email || "Cliente"}
                               </p>
                             </div>
                             <Checkbox
