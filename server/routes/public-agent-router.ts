@@ -341,7 +341,7 @@ router.post(
 
       try {
         const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-        const { model: modelName, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+        const { model: modelName } = getModelWithThinking(aiProvider.metadata.name);
         modelUsed = modelName;
 
         let styleInstructions = "";
@@ -382,31 +382,19 @@ Rispondi in modo professionale e utile.`) + styleInstructions;
           parts: [{ text: content.trim() }],
         });
 
-        const generationConfig: any = {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-        };
-
-        if (useThinking) {
-          generationConfig.thinkingConfig = {
-            thinkingBudget: thinkingLevel === "high" ? 8192 : thinkingLevel === "medium" ? 4096 : thinkingLevel === "low" ? 2048 : 1024,
-          };
-        }
-
-        const result = await aiProvider.client.generateContentStream({
+        const result = await aiProvider.client.models.generateContent({
           model: modelName,
+          systemInstruction: systemPrompt,
           contents: conversationHistory,
-          generationConfig,
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.95,
+            maxOutputTokens: 4096,
+          },
         });
 
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) {
-            aiResponseContent += text;
-            sendSSE({ type: "delta", content: text });
-          }
-        }
+        aiResponseContent = result.response.text() || "";
+        sendSSE({ type: "delta", content: aiResponseContent });
       } catch (aiError: any) {
         console.error("[PUBLIC AGENT] AI generation error:", aiError);
         aiResponseContent = "Mi dispiace, si è verificato un errore durante l'elaborazione della risposta. Riprova più tardi.";
@@ -436,13 +424,13 @@ Rispondi in modo professionale e utile.`) + styleInstructions;
           const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
           const { model: modelName } = getModelWithThinking(aiProvider.metadata.name);
           
-          const titleResult = await aiProvider.client.generateContent({
+          const titleResult = await aiProvider.client.models.generateContent({
             model: modelName,
             contents: [{ role: "user", parts: [{ text: titlePrompt }] }],
             generationConfig: { temperature: 0.5, maxOutputTokens: 50 },
           });
 
-          const generatedTitle = titleResult.response.text().trim().replace(/["\n]/g, "").slice(0, 100);
+          const generatedTitle = (titleResult.response.text() || "").trim().replace(/["\n]/g, "").slice(0, 100);
           if (generatedTitle) {
             await db.update(managerConversations)
               .set({ title: generatedTitle })
