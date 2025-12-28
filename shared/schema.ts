@@ -6323,6 +6323,7 @@ export type InsertInstagramMessage = typeof instagramMessages.$inferInsert;
 export const instagramPendingMessages = pgTable("instagram_pending_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").references(() => instagramConversations.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   instagramUserId: varchar("instagram_user_id", { length: 100 }).notNull(),
   
   // Message Content

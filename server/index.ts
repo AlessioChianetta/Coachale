@@ -40,7 +40,25 @@ function validateEnvironmentVariables() {
 
 const app = express();
 
-app.use(express.json({ limit: '50mb' }));
+// Extend Request type to include rawBody
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: Buffer;
+    }
+  }
+}
+
+// JSON body parser with raw body capture for webhook signature verification
+app.use(express.json({ 
+  limit: '50mb',
+  verify: (req: express.Request, res, buf) => {
+    // Capture raw body for Instagram webhook signature verification
+    if (req.path === '/api/instagram/webhook') {
+      req.rawBody = buf;
+    }
+  }
+}));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 // Serve uploaded files (audio, images, etc.)

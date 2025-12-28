@@ -91,16 +91,18 @@ export async function verifyInstagramWebhook(req: Request, res: Response): Promi
  * Handle incoming webhook events (POST request from Meta)
  */
 export async function handleInstagramWebhook(req: Request, res: Response): Promise<void> {
-  // Respond immediately to Meta (they expect 200 within 20 seconds)
-  res.status(200).send("EVENT_RECEIVED");
-
   try {
     const event: MetaWebhookEvent = req.body;
 
     if (event.object !== "instagram") {
       console.log(`⚠️ [INSTAGRAM WEBHOOK] Ignoring non-Instagram event: ${event.object}`);
+      res.status(200).send("EVENT_RECEIVED");
       return;
     }
+
+    // Get signature from headers
+    const signature = req.headers["x-hub-signature-256"] as string | undefined;
+    const rawBody = req.rawBody;
 
     // Process each entry
     for (const entry of event.entry) {
@@ -123,6 +125,18 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
         continue;
       }
 
+      // Verify signature if appSecret is configured and rawBody is available
+      if (config.appSecret && rawBody && signature) {
+        const isValidSignature = verifySignature(rawBody, signature, config.appSecret);
+        if (!isValidSignature) {
+          console.log(`❌ [INSTAGRAM WEBHOOK] Invalid signature for page ${instagramPageId}`);
+          continue;
+        }
+        console.log(`✅ [INSTAGRAM WEBHOOK] Signature verified for page ${instagramPageId}`);
+      } else if (config.appSecret && !rawBody) {
+        console.log(`⚠️ [INSTAGRAM WEBHOOK] AppSecret configured but rawBody not available - skipping verification`);
+      }
+
       // Handle messaging events
       if (entry.messaging) {
         for (const messagingEvent of entry.messaging) {
@@ -137,8 +151,15 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
         }
       }
     }
+
+    // Respond 200 to Meta (they expect this within 20 seconds)
+    res.status(200).send("EVENT_RECEIVED");
   } catch (error) {
     console.error("❌ [INSTAGRAM WEBHOOK] Error processing webhook:", error);
+    // Still respond 200 to prevent Meta from retrying
+    if (!res.headersSent) {
+      res.status(200).send("EVENT_RECEIVED");
+    }
   }
 }
 
@@ -311,6 +332,7 @@ async function handleMessagingEvent(
   // Add to pending messages for batch processing
   await db.insert(instagramPendingMessages).values({
     conversationId: conversation.id,
+    consultantId: config.consultantId,
     instagramUserId: senderId,
     messageText: messageText || "[Media]",
     mediaType,
@@ -405,6 +427,7 @@ async function handlePostback(
   // Add to pending for processing
   await db.insert(instagramPendingMessages).values({
     conversationId: conversation.id,
+    consultantId: config.consultantId,
     instagramUserId: senderId,
     messageText: `[Ice Breaker] ${postback.title}`,
     instagramMessageId: postback.mid,
@@ -504,6 +527,7 @@ async function handleCommentEvent(
   // This will be handled by the message processor
   await db.insert(instagramPendingMessages).values({
     conversationId: existingConversation.id,
+    consultantId: config.consultantId,
     instagramUserId: comment.from.id,
     messageText: `[Comment Trigger] User commented: "${comment.text}"`,
     instagramMessageId: comment.id,
