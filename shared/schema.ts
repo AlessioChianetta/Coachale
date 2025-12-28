@@ -2371,6 +2371,9 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
     university?: boolean;
   }>().default(sql`'{}'::jsonb`).notNull(),
 
+  // Instagram Integration - Link to Instagram agent config for unified management
+  instagramConfigId: varchar("instagram_config_id").references(() => consultantInstagramConfig.id, { onDelete: "set null" }),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
