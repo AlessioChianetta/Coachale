@@ -2403,6 +2403,218 @@ Quando apri una conversazione, puoi:
 
 ---
 
+# Capitolo 8b: Instagram DM Integration
+
+## 📍 Dove Trovarlo
+```
+Sidebar → COMUNICAZIONE → Guide → Instagram DM
+URL: /consultant/guide-instagram
+Configurazione: API Keys → Tab Instagram
+```
+
+## 🎯 Chi Aiuta Chi
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│   INSTAGRAM DM                                               │
+│        │                                                     │
+│        └──────► IL CONSULENTE (Tu)                           │
+│                     │                                        │
+│                     ├── Riceve DM automaticamente            │
+│                     ├── Risponde con AI 24/7                 │
+│                     ├── Gestisce story replies               │
+│                     └── Converte follower in lead            │
+│                                                              │
+│   E POI                                                      │
+│        │                                                     │
+│        └──────► I FOLLOWER INSTAGRAM                         │
+│                     │                                        │
+│                     ├── Scrivono DM                          │
+│                     ├── Rispondono alle storie               │
+│                     └── Commentano i post                    │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## 📝 A Fare Cosa
+
+Collegare il tuo account Instagram Business alla piattaforma per rispondere automaticamente ai DM con l'AI. L'agente Instagram **usa le stesse impostazioni** di un agente WhatsApp esistente.
+
+---
+
+## 📖 Guida Passo-Passo
+
+### 8b.1 Prerequisiti
+
+Prima di iniziare, assicurati di avere:
+
+| Requisito | Descrizione |
+|-----------|-------------|
+| Account Instagram Business | Non funziona con account personali |
+| Pagina Facebook collegata | Instagram Business deve essere collegato a una Facebook Page |
+| App Meta for Developers | Crea un'app su developers.facebook.com |
+| Agente WhatsApp esistente | L'agente Instagram riusa la configurazione di un agente WhatsApp |
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ARCHITETTURA INSTAGRAM                        │
+│                                                                  │
+│   ┌──────────────┐       ┌──────────────┐       ┌─────────────┐ │
+│   │   INSTAGRAM  │──────►│    META      │──────►│   COACHALE  │ │
+│   │   BUSINESS   │       │   WEBHOOK    │       │   SERVER    │ │
+│   └──────────────┘       └──────────────┘       └──────┬──────┘ │
+│                                                         │        │
+│                                                         ▼        │
+│                                               ┌─────────────────┐│
+│                                               │  AGENTE AI      ││
+│                                               │  (stesso di     ││
+│                                               │   WhatsApp)     ││
+│                                               └─────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 8b.2 Ottenere le Credenziali
+
+**Step 1: Trovare il Page ID**
+
+```
+1. Vai su business.facebook.com
+2. Seleziona la tua Pagina Facebook
+3. Impostazioni → Trasparenza della Pagina
+4. Copia il Page ID (numero lungo, es: 123456789012345)
+```
+
+**Step 2: Generare l'Access Token**
+
+```
+1. Vai su developers.facebook.com
+2. La tua App → Tools → Graph API Explorer
+3. Seleziona la tua App e la Page
+4. Aggiungi permessi:
+   - instagram_manage_messages
+   - pages_messaging
+5. Genera Access Token e copia
+```
+
+> ⚠️ **IMPORTANTE:** I token temporanei scadono dopo 1 ora. Per produzione, genera un Long-Lived Token (60 giorni) o System User Token (permanente).
+
+**Step 3: Trovare l'App Secret**
+
+```
+1. Vai su developers.facebook.com
+2. La tua App → Settings → Basic
+3. Clicca "Show" accanto a "App Secret"
+4. Copia la stringa alfanumerica
+```
+
+### 8b.3 Configurare in Coachale
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    API KEYS → TAB INSTAGRAM                      │
+│                                                                  │
+│   Page ID                                                        │
+│   ┌───────────────────────────────────────────────────────┐     │
+│   │ 123456789012345                                       │     │
+│   └───────────────────────────────────────────────────────┘     │
+│                                                                  │
+│   Access Token                                                   │
+│   ┌───────────────────────────────────────────────────────┐     │
+│   │ EAABx...lungo token...                                │     │
+│   └───────────────────────────────────────────────────────┘     │
+│                                                                  │
+│   App Secret                                                     │
+│   ┌───────────────────────────────────────────────────────┐     │
+│   │ ab12cd34ef56...                                       │     │
+│   └───────────────────────────────────────────────────────┘     │
+│                                                                  │
+│   Agente WhatsApp collegato                                      │
+│   ┌───────────────────────────────────────────────────────┐     │
+│   │ Marco - Setter                                   [▼]  │     │
+│   └───────────────────────────────────────────────────────┘     │
+│                                                                  │
+│                         [Testa Connessione]  [✓ Salva]           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 8b.4 Configurare il Webhook
+
+Il webhook permette a Instagram di inviare notifiche in tempo reale quando ricevi un DM.
+
+**Procedura:**
+
+```
+1. Vai su developers.facebook.com → La tua App
+2. Prodotti → Messenger → Webhooks
+3. Inserisci:
+   - Callback URL: https://TUO-DOMINIO/api/instagram/webhook
+   - Verify Token: (una stringa a tua scelta)
+4. Sottoscrivi a:
+   - messages (obbligatorio)
+   - messaging_postbacks (consigliato)
+5. Clicca "Verify and Save"
+```
+
+### 8b.5 La Finestra 24 Ore
+
+Instagram ha una regola importante: **puoi rispondere solo entro 24 ore** dall'ultimo messaggio dell'utente.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    FINESTRA 24 ORE                               │
+│                                                                  │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │ 🟢 FINESTRA APERTA (23h 45m rimanenti)                  │   │
+│   │    Ultimo messaggio utente: 15 minuti fa                │   │
+│   │    Puoi inviare messaggi liberamente                    │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │ 🔴 FINESTRA SCADUTA                                     │   │
+│   │    Ultimo messaggio utente: 2 giorni fa                 │   │
+│   │    Devi aspettare che l'utente scriva di nuovo          │   │
+│   └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Il sistema traccia automaticamente lo stato della finestra per ogni conversazione.
+
+### 8b.6 Funzionalità Avanzate
+
+| Funzionalità | Descrizione |
+|--------------|-------------|
+| **Story Replies** | L'agente risponde quando qualcuno risponde alle tue storie |
+| **Story Mentions** | L'agente risponde quando qualcuno ti menziona nelle loro storie |
+| **Comment-to-DM** | Invia DM automatici quando qualcuno commenta un post |
+| **Rate Limit** | Massimo 200 DM/ora (gestito automaticamente) |
+
+---
+
+## ⚠️ Errori Comuni
+
+| Errore | Problema | Soluzione |
+|--------|----------|-----------|
+| Webhook non verificato | URL non raggiungibile | Verifica che il server sia online e HTTPS |
+| Token scaduto | Access Token temporaneo | Genera Long-Lived Token |
+| DM non arrivano | Account non Business | Converti a account Instagram Business |
+| Finestra scaduta | Passate 24h | Aspetta che l'utente scriva di nuovo |
+
+---
+
+## ✅ Checklist Instagram DM
+
+- [ ] Ho un account Instagram Business
+- [ ] Ho collegato Instagram a una Pagina Facebook
+- [ ] Ho creato un'app su Meta for Developers
+- [ ] Ho ottenuto Page ID, Access Token e App Secret
+- [ ] Ho configurato le credenziali in Coachale
+- [ ] Ho configurato il webhook su Meta
+- [ ] Ho verificato che il webhook funziona
+- [ ] Ho testato inviando un DM di prova
+
+---
+
 *Continua nella Parte 2B: Formazione, Knowledge Base, Email e Calendario*
 
 

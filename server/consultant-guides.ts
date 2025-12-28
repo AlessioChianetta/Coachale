@@ -1865,6 +1865,117 @@ export const consultantGuides: ConsultantGuides = {
     ]
   },
 
+  instagramDM: {
+    emoji: "📸",
+    title: "Instagram DM Integration",
+    path: "/consultant/guide-instagram",
+    navigation: "Sidebar → COMUNICAZIONE → Guide → Instagram DM",
+    description: "Configura Instagram Business per ricevere e rispondere automaticamente ai DM con AI. Gestisci la finestra 24 ore, story replies e comment-to-DM.",
+    category: "communication",
+    sections: [
+      {
+        title: "PREREQUISITI E SETUP ACCOUNT",
+        icon: "🔧",
+        description: "Configurazione dell'account Instagram Business e delle credenziali Meta.",
+        steps: [
+          {
+            title: "Requisiti Account",
+            content: "Devi avere: 1) Account Instagram Business o Creator (non personale) 2) Pagina Facebook collegata all'account Instagram 3) App Meta for Developers creata con prodotto 'Instagram' aggiunto.",
+            warnings: ["Account personali NON possono ricevere webhook DM", "La pagina Facebook DEVE essere collegata all'account Instagram"]
+          },
+          {
+            title: "Trovare Page ID",
+            content: "Vai su business.facebook.com → La tua Pagina → Impostazioni → Trasparenza della Pagina. Il Page ID è il numero identificativo della tua pagina Facebook collegata a Instagram.",
+            tips: ["Il Page ID è un numero lungo (es: 123456789012345)", "Puoi anche trovarlo nell'URL della pagina Facebook"]
+          },
+          {
+            title: "Generare Access Token",
+            content: "Vai su developers.facebook.com → La tua App → Tools → Graph API Explorer. Seleziona la tua App e la Page, poi aggiungi i permessi: instagram_manage_messages, pages_messaging. Genera il token e copialo.",
+            tips: ["Token temporanei scadono dopo 1 ora", "Per produzione usa Long-Lived Token (60 giorni) o System User Token (permanente)"],
+            warnings: ["Senza permessi corretti, i webhook non funzioneranno"]
+          },
+          {
+            title: "Trovare App Secret",
+            content: "Vai su developers.facebook.com → La tua App → Settings → Basic. Clicca 'Show' accanto a 'App Secret' e copia la stringa alfanumerica. L'App Secret serve per verificare le richieste webhook (HMAC signature).",
+            actionText: "Vai a API Keys",
+            actionHref: "/consultant/api-keys-unified?tab=instagram"
+          },
+          {
+            title: "Configurare in Coachale",
+            content: "Vai su API Keys → Tab 'Instagram'. Inserisci: Page ID, Access Token, App Secret. Seleziona l'Agente WhatsApp da collegare (l'agente Instagram usa le stesse impostazioni AI dell'agente WhatsApp). Salva la configurazione.",
+            actionText: "Configura Instagram",
+            actionHref: "/consultant/api-keys-unified?tab=instagram"
+          }
+        ]
+      },
+      {
+        title: "CONFIGURAZIONE WEBHOOK",
+        icon: "🔗",
+        description: "Setup del webhook per ricevere notifiche in tempo reale da Instagram.",
+        steps: [
+          {
+            title: "Accedere a Meta for Developers",
+            content: "Vai su developers.facebook.com → La tua App → Prodotti → Messenger (o Instagram) → Webhooks.",
+            tips: ["Se non vedi Webhooks, aggiungi prima il prodotto 'Messenger' o 'Instagram' alla tua app"]
+          },
+          {
+            title: "URL Callback Webhook",
+            content: "Inserisci l'URL callback: https://TUO-DOMINIO/api/instagram/webhook. Sostituisci TUO-DOMINIO con il dominio del tuo deployment Coachale.",
+            warnings: ["L'URL deve essere HTTPS", "L'URL deve essere accessibile pubblicamente"]
+          },
+          {
+            title: "Token di Verifica",
+            content: "Inserisci un token di verifica a tua scelta (es: 'coachale_instagram_verify_2024'). Questo token deve corrispondere a quello configurato nel server.",
+            tips: ["Usa una stringa lunga e casuale per sicurezza"]
+          },
+          {
+            title: "Sottoscrizioni Webhook",
+            content: "Abilita le sottoscrizioni: 'messages' (per ricevere DM), 'messaging_postbacks' (per quick replies). Opzionali: 'story_mentions', 'comments' per funzionalità avanzate.",
+            tips: ["Inizia solo con 'messages', poi aggiungi altre sottoscrizioni"]
+          },
+          {
+            title: "Verifica Webhook",
+            content: "Clicca 'Verify and Save'. Meta invierà una richiesta GET al tuo endpoint. Se la verifica fallisce, controlla: URL corretto, token corretto, server attivo."
+          }
+        ]
+      },
+      {
+        title: "FUNZIONALITÀ E LIMITI",
+        icon: "⚡",
+        description: "Come funziona l'integrazione Instagram e le limitazioni da conoscere.",
+        steps: [
+          {
+            title: "Finestra 24 Ore",
+            content: "Instagram permette di rispondere ai DM solo entro 24 ore dall'ultimo messaggio dell'utente. Dopo 24 ore, non puoi più inviare messaggi finché l'utente non scrive di nuovo. L'agente AI risponde automaticamente entro questa finestra.",
+            warnings: ["Messaggi fuori dalla finestra 24h vengono messi in coda 'pending'", "L'utente deve scrivere per riaprire la finestra"],
+            tips: ["Il sistema traccia automaticamente lo stato della finestra per ogni conversazione"]
+          },
+          {
+            title: "Rate Limit 200 DM/Ora",
+            content: "Meta impone un limite di 200 DM all'ora per account. Se superi questo limite, i messaggi vengono ritardati. Il sistema gestisce automaticamente la coda.",
+            tips: ["Monitora le conversazioni attive per evitare di superare il limite"]
+          },
+          {
+            title: "Collegamento con Agente WhatsApp",
+            content: "Ogni configurazione Instagram è collegata a un Agente WhatsApp esistente. L'agente Instagram usa le stesse impostazioni: personalità, script, knowledge base, istruzioni AI. Non devi configurare l'AI due volte.",
+            actionText: "Gestisci Agenti",
+            actionHref: "/consultant/whatsapp"
+          },
+          {
+            title: "Story Replies e Mentions",
+            content: "L'agente può rispondere automaticamente quando qualcuno: 1) Risponde alle tue storie 2) Ti menziona nelle loro storie. Queste interazioni aprono una nuova finestra 24h.",
+            tips: ["Le risposte alle storie sono ottime per engagement", "Configura risposte specifiche per story mentions"]
+          },
+          {
+            title: "Comment-to-DM",
+            content: "Funzionalità per inviare DM automatici quando qualcuno commenta un tuo post. Il flusso: Utente commenta → Sistema rileva → Invia DM automatico. Utile per lead generation da post.",
+            tips: ["Configura parole chiave specifiche per attivare il DM", "Non spammare: invia DM solo per commenti rilevanti"]
+          }
+        ]
+      }
+    ]
+  },
+
   // ═══════════════════════════════════════════════════════════════════
   // SEZIONE 6: CONTENT - Formazione e Contenuti
   // ═══════════════════════════════════════════════════════════════════

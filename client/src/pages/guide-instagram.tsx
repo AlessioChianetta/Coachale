@@ -558,7 +558,14 @@ export default function GuideInstagram() {
         </main>
       </div>
       
-      <GuideFloatingAssistant />
+      <GuideFloatingAssistant 
+        guideContext={{
+          guideId: "guide-instagram",
+          guideTitle: "Guida Instagram DM Integration",
+          guideDescription: "Configura Instagram Business per ricevere e rispondere automaticamente ai DM con AI.",
+          guideSections: ["Prerequisiti e Setup Account", "Configurazione Webhook", "Funzionalità e Limiti"]
+        }}
+      />
     </div>
   );
 }
