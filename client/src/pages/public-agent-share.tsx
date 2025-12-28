@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { WhatsAppMessageBubble } from "@/components/whatsapp/WhatsAppMessageBubble";
-import { Message } from "@/components/ai-assistant/Message";
+import { PublicAgentMessage } from "@/components/whatsapp/PublicAgentMessage";
 import { TypingIndicator } from "@/components/whatsapp/TypingIndicator";
 import { PromptBreakdownViewer, type PromptBreakdownData, type CitationData } from "@/components/whatsapp/PromptBreakdownViewer";
 import { useToast } from "@/hooks/use-toast";
@@ -885,12 +885,14 @@ export default function PublicAgentShare() {
                         ease: "easeOut"
                       }}
                     >
-                      <Message
+                      <PublicAgentMessage
                         message={{
                           id: message.id,
-                          role: message.role === 'agent' ? 'assistant' : 'user',
+                          role: message.role,
                           content: message.content,
+                          createdAt: new Date(message.createdAt),
                         }}
+                        agentName={metadata.agentName}
                       />
                       {message.audioUrl && (
                         <motion.div 
@@ -922,12 +924,14 @@ export default function PublicAgentShare() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <Message
+                  <PublicAgentMessage
                     message={{
                       id: optimisticMessage.id,
                       role: 'user',
                       content: optimisticMessage.content,
+                      createdAt: optimisticMessage.createdAt,
                     }}
+                    agentName={metadata.agentName}
                   />
                 </motion.div>
               )}
@@ -967,12 +971,14 @@ export default function PublicAgentShare() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <Message
+                  <PublicAgentMessage
                     message={{
                       id: streamingMessage.id,
-                      role: 'assistant',
+                      role: 'agent',
                       content: streamingMessage.content,
+                      createdAt: streamingMessage.createdAt,
                     }}
+                    agentName={metadata.agentName}
                   />
                 </motion.div>
               )}
