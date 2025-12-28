@@ -1423,8 +1423,10 @@ export class FileSearchService {
 
   /**
    * Check if a document is already indexed
+   * Also checks for chunked documents (sourceId_chunk_0, sourceId_chunk_1, etc.)
    */
   async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc', sourceId: string): Promise<boolean> {
+    // First check for exact match (non-chunked document)
     const doc = await db.query.fileSearchDocuments.findFirst({
       where: and(
         eq(fileSearchDocuments.sourceType, sourceType),
@@ -1433,7 +1435,20 @@ export class FileSearchService {
       ),
     });
 
-    return !!doc;
+    if (doc) {
+      return true;
+    }
+
+    // Check for chunked document (at least chunk 0 exists)
+    const chunkDoc = await db.query.fileSearchDocuments.findFirst({
+      where: and(
+        eq(fileSearchDocuments.sourceType, sourceType),
+        eq(fileSearchDocuments.sourceId, `${sourceId}_chunk_0`),
+        eq(fileSearchDocuments.status, 'indexed')
+      ),
+    });
+
+    return !!chunkDoc;
   }
 
   /**
