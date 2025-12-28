@@ -564,41 +564,28 @@ export default function PublicAgentShare() {
     }
   };
   
-  // Auto-scroll to bottom - migliorato per essere sempre fluido
+  // Auto-scroll to bottom - sempre affidabile
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        // Scroll sempre in basso quando:
-        // - C'è un messaggio ottimistico (utente ha appena inviato)
-        // - C'è contenuto streaming in arrivo
-        // - È in corso lo streaming
-        // - Arrivano nuovi messaggi
-        const shouldAutoScroll = 
-          optimisticMessage || 
-          streamingMessage?.content || 
-          isStreaming ||
-          sendMessageMutation.isPending;
-        
-        if (shouldAutoScroll) {
-          // Scroll fluido per nuovi messaggi
+    const scrollToBottom = () => {
+      if (scrollAreaRef.current) {
+        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
           viewport.scrollTo({ 
-            top: viewport.scrollHeight, 
+            top: viewport.scrollHeight + 100, 
             behavior: 'smooth' 
           });
-        } else {
-          // Check se l'utente è già in fondo (con tolleranza di 100px)
-          const isNearBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 100;
-          if (isNearBottom) {
-            viewport.scrollTo({ 
-              top: viewport.scrollHeight, 
-              behavior: 'instant' 
-            });
-          }
         }
       }
+    };
+    
+    // Scroll sempre quando ci sono messaggi o attività
+    if (messages.length > 0 || optimisticMessage || streamingMessage?.content || isStreaming) {
+      // Delay per dare tempo al DOM di aggiornarsi
+      requestAnimationFrame(() => {
+        scrollToBottom();
+      });
     }
-  }, [messages, streamingMessage?.content, optimisticMessage, isStreaming, sendMessageMutation.isPending]);
+  }, [messages, messages.length, streamingMessage?.content, optimisticMessage, isStreaming]);
   
   // Auto-trigger public access if no password required
   useEffect(() => {
@@ -809,8 +796,8 @@ export default function PublicAgentShare() {
       {/* Chat area - struttura migliorata per input sempre visibile */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Messages - solo questa area scorre */}
-        <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4 pb-2">
-          <div className="max-w-4xl mx-auto space-y-4">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4">
+          <div className="max-w-4xl mx-auto space-y-4 pb-4">
             {/* Welcome message - Manager Style */}
             {messages.length === 0 && !optimisticMessage && !streamingMessage && (
               <div className="flex flex-col items-center justify-center py-16">
