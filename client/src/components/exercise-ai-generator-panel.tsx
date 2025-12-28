@@ -507,9 +507,9 @@ export function ExerciseAIGeneratorPanel({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {phase === "selection" && (
-            <ScrollArea className="h-[60vh] pr-4">
+            <ScrollArea className="h-full pr-4">
               <div className="space-y-6">
                 {/* Summary Stats Header */}
                 {!lessonsLoading && lessons.length > 0 && (
@@ -1217,7 +1217,7 @@ export function ExerciseAIGeneratorPanel({
           )}
 
           {phase === "generating" && (
-            <ScrollArea className="h-[60vh] pr-4">
+            <ScrollArea className="h-full pr-4">
               <div className="space-y-4">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
@@ -1369,7 +1369,7 @@ export function ExerciseAIGeneratorPanel({
           )}
 
           {phase === "review" && (
-            <ScrollArea className="h-[60vh] pr-4">
+            <ScrollArea className="h-full pr-4">
               <div className="space-y-4">
                 {generatedTemplates.length === 0 ? (
                   <Card className="p-6 text-center">
