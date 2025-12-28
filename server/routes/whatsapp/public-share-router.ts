@@ -81,7 +81,7 @@ function validateDomainAccess(
 
 /**
  * Middleware to validate visitor session for password-protected shares
- * Also handles manager JWT tokens for manager_login shares
+ * Also handles manager JWT tokens for any share type (manager_login or public)
  */
 async function validateVisitorSession(
   req: Request & { share?: schema.WhatsappAgentShare; managerId?: string },
@@ -94,30 +94,32 @@ async function validateVisitorSession(
       return res.status(500).json({ error: 'Share non trovato in request context' });
     }
     
+    // ALWAYS check for manager JWT token first (for any share type)
+    // This allows managers to access their own shares with full context
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      const sessionSecret = process.env.SESSION_SECRET;
+      if (sessionSecret) {
+        try {
+          const decoded = jwt.verify(token, sessionSecret) as any;
+          // Check for manager role and matching shareId
+          if (decoded.role === 'manager' && decoded.shareId === share.id && decoded.managerId) {
+            // Valid manager token - attach managerId to request and proceed
+            req.managerId = decoded.managerId;
+            console.log(`✅ [MANAGER AUTH] Valid manager token for share ${share.slug}, managerId: ${decoded.managerId}`);
+            return next();
+          }
+        } catch (jwtError) {
+          // Invalid JWT - fall through to other auth methods
+          console.log(`⚠️ [MANAGER AUTH] JWT validation failed: ${(jwtError as Error).message}`);
+        }
+      }
+    }
+    
     // If share is public, no session needed
     if (share.accessType === 'public') {
       return next();
-    }
-    
-    // For manager_login shares, check for manager JWT token first
-    if (share.accessType === 'manager_login') {
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.slice(7);
-        const sessionSecret = process.env.SESSION_SECRET;
-        if (sessionSecret) {
-          try {
-            const decoded = jwt.verify(token, sessionSecret) as any;
-            if (decoded.type === 'manager_share' && decoded.shareId === share.id) {
-              // Valid manager token - attach managerId to request and proceed
-              req.managerId = decoded.managerId;
-              return next();
-            }
-          } catch (jwtError) {
-            // Invalid JWT - fall through to visitorId check
-          }
-        }
-      }
     }
     
     // For password-protected shares, verify visitor session
