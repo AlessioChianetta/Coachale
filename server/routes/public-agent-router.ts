@@ -291,7 +291,7 @@ router.post(
       const agentConfig = req.agentConfig!;
       const manager = req.manager!;
       const { conversationId } = req.params;
-      const { content } = req.body;
+      const { content, preferences } = req.body;
 
       if (manager.shareId !== share.id) {
         return res.status(403).json({ message: "Access denied to this agent" });
@@ -314,6 +314,15 @@ router.post(
         return res.status(404).json({ message: "Conversation not found" });
       }
 
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+
+      const sendSSE = (data: any) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      };
+
       const [userMessage] = await db.insert(managerMessages).values({
         conversationId,
         role: "user",
@@ -327,8 +336,7 @@ router.post(
         .orderBy(managerMessages.createdAt)
         .limit(20);
 
-      let aiResponseContent = "Mi dispiace, si è verificato un errore. Riprova più tardi.";
-      let tokensUsed = 0;
+      let aiResponseContent = "";
       let modelUsed = "";
 
       try {
@@ -336,12 +344,35 @@ router.post(
         const { model: modelName, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
         modelUsed = modelName;
 
-        const systemPrompt = agentConfig.agentInstructions || 
+        let styleInstructions = "";
+        if (preferences) {
+          const { writingStyle, responseLength, customInstructions } = preferences;
+          
+          if (writingStyle === 'conversational') {
+            styleInstructions += "\n\nStile di comunicazione: Usa un tono amichevole e informale, come se stessi parlando con un collega.";
+          } else if (writingStyle === 'professional') {
+            styleInstructions += "\n\nStile di comunicazione: Mantieni un tono formale e professionale, appropriato per contesti business.";
+          } else if (writingStyle === 'concise') {
+            styleInstructions += "\n\nStile di comunicazione: Sii breve e diretto. Vai subito al punto senza dilungarti.";
+          } else if (writingStyle === 'detailed') {
+            styleInstructions += "\n\nStile di comunicazione: Fornisci spiegazioni approfondite e dettagliate, con esempi quando utile.";
+          } else if (writingStyle === 'custom' && customInstructions) {
+            styleInstructions += `\n\nIstruzioni personalizzate dell'utente: ${customInstructions}`;
+          }
+          
+          if (responseLength === 'brief') {
+            styleInstructions += "\nLunghezza risposta: Mantieni le risposte brevi, 1-2 paragrafi al massimo.";
+          } else if (responseLength === 'comprehensive') {
+            styleInstructions += "\nLunghezza risposta: Fornisci risposte complete ed esaustive, coprendo tutti gli aspetti rilevanti.";
+          }
+        }
+
+        const systemPrompt = (agentConfig.agentInstructions || 
           `Sei ${agentConfig.agentName}, un assistente AI professionale per ${agentConfig.businessName || "l'azienda"}.
 ${agentConfig.businessDescription ? `Descrizione: ${agentConfig.businessDescription}` : ""}
-Rispondi in modo professionale e utile.`;
+Rispondi in modo professionale e utile.`) + styleInstructions;
 
-        const conversationHistory = previousMessages.map(msg => ({
+        const conversationHistory = previousMessages.slice(0, -1).map(msg => ({
           role: msg.role === "user" ? "user" : "model",
           parts: [{ text: msg.content }],
         }));
@@ -363,16 +394,23 @@ Rispondi in modo professionale e utile.`;
           };
         }
 
-        const result = await aiProvider.client.generateContent({
+        const result = await aiProvider.client.generateContentStream({
           model: modelName,
           contents: conversationHistory,
           generationConfig,
         });
 
-        aiResponseContent = result.response.text();
+        for await (const chunk of result.stream) {
+          const text = chunk.text();
+          if (text) {
+            aiResponseContent += text;
+            sendSSE({ type: "delta", content: text });
+          }
+        }
       } catch (aiError: any) {
         console.error("[PUBLIC AGENT] AI generation error:", aiError);
         aiResponseContent = "Mi dispiace, si è verificato un errore durante l'elaborazione della risposta. Riprova più tardi.";
+        sendSSE({ type: "delta", content: aiResponseContent });
       }
 
       const [assistantMessage] = await db.insert(managerMessages).values({
@@ -380,10 +418,7 @@ Rispondi in modo professionale e utile.`;
         role: "assistant",
         content: aiResponseContent,
         status: "completed",
-        metadata: {
-          tokensUsed,
-          modelUsed,
-        },
+        metadata: { modelUsed },
       }).returning();
 
       const newMessageCount = (conversation.messageCount || 0) + 2;
@@ -418,10 +453,8 @@ Rispondi in modo professionale e utile.`;
         }
       }
 
-      res.json({
-        userMessage,
-        assistantMessage,
-      });
+      sendSSE({ type: "complete", messageId: assistantMessage.id });
+      res.end();
     } catch (error: any) {
       console.error("[PUBLIC AGENT] Send message error:", error);
       res.status(500).json({ message: "Failed to send message" });
