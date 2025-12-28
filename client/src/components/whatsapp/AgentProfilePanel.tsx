@@ -986,87 +986,144 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
             {/* AI & Sharing Tab */}
             <TabsContent value="ai" className="space-y-4 mt-4">
-              {/* AI Assistant Integration */}
-              <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                <h3 className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-blue-500" />
-                  AI Assistant
-                </h3>
-                <p className="text-xs text-slate-500 mb-3">
-                  Abilita questo agente come contesto nella chat AI Assistant.
-                </p>
-                <div className="flex items-center justify-between">
-                  <label htmlFor="ai-assistant-toggle" className="text-xs font-medium text-slate-700">
-                    Abilita in AI Assistant
-                  </label>
-                  <Switch
-                    id="ai-assistant-toggle"
-                    checked={enableInAIAssistant}
-                    onCheckedChange={handleEnableAIAssistantChange}
-                    disabled={isSavingAISettings}
-                  />
+              {/* AI Assistant Integration - Card style */}
+              <div 
+                className={cn(
+                  "relative overflow-hidden rounded-xl border-2 transition-all duration-300 cursor-pointer",
+                  enableInAIAssistant 
+                    ? "border-blue-400 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 shadow-md shadow-blue-100" 
+                    : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                )}
+                onClick={() => !isSavingAISettings && handleEnableAIAssistantChange(!enableInAIAssistant)}
+              >
+                {enableInAIAssistant && (
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-blue-400/20 to-transparent rounded-bl-full" />
+                )}
+                <div className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors",
+                      enableInAIAssistant ? "bg-blue-500 text-white" : "bg-slate-200 text-slate-500"
+                    )}>
+                      <Bot className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold text-slate-800">AI Assistant</h3>
+                        <Switch
+                          id="ai-assistant-toggle"
+                          checked={enableInAIAssistant}
+                          onCheckedChange={handleEnableAIAssistantChange}
+                          disabled={isSavingAISettings}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {enableInAIAssistant 
+                          ? "L'agente è disponibile nella chat AI" 
+                          : "Abilita per usare nella chat AI"}
+                      </p>
+                      {enableInAIAssistant && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                          <span className="text-xs font-medium text-green-600">Attivo</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 {isSavingAISettings && (
-                  <div className="flex items-center gap-1.5 text-xs text-blue-600 mt-2">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Salvataggio...
+                  <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                   </div>
                 )}
               </div>
 
-              {/* Share with Clients */}
-              <div className="p-3 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg border border-emerald-100">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                    <Share2 className="h-4 w-4 text-emerald-500" />
-                    Condividi con Clienti
-                  </h3>
-                  {selectedClientIds.length > 0 && (
-                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
-                      {selectedClientIds.length}
-                    </Badge>
+              {/* Share with Clients - Improved */}
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-4 py-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center">
+                        <Share2 className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-800">Condividi</h3>
+                        <p className="text-xs text-slate-500">Accesso clienti</p>
+                      </div>
+                    </div>
+                    {selectedClientIds.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 text-white">
+                        <Users className="h-3 w-3" />
+                        <span className="text-xs font-semibold">{selectedClientIds.length}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="p-3 bg-white">
+                  {isLoadingAssignments ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                    </div>
+                  ) : consultantClients && consultantClients.length > 0 ? (
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {consultantClients.map((client) => {
+                        const isSelected = selectedClientIds.includes(client.id);
+                        return (
+                          <label
+                            key={client.id}
+                            className={cn(
+                              "flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all duration-200",
+                              isSelected 
+                                ? "bg-emerald-50 border border-emerald-200" 
+                                : "bg-slate-50 border border-transparent hover:bg-slate-100"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 transition-colors",
+                              isSelected 
+                                ? "bg-emerald-500 text-white" 
+                                : "bg-slate-200 text-slate-600"
+                            )}>
+                              {client.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={cn(
+                                "text-sm font-medium truncate transition-colors",
+                                isSelected ? "text-emerald-700" : "text-slate-700"
+                              )}>
+                                {client.name}
+                              </p>
+                            </div>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => handleClientToggle(client.id, checked as boolean)}
+                              disabled={saveClientAssignments.isPending}
+                              className={cn(
+                                "transition-colors",
+                                isSelected && "border-emerald-500 data-[state=checked]:bg-emerald-500"
+                              )}
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-2">
+                        <Users className="h-6 w-6 text-slate-400" />
+                      </div>
+                      <p className="text-sm text-slate-500">Nessun cliente</p>
+                      <p className="text-xs text-slate-400">Aggiungi clienti per condividere</p>
+                    </div>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 mb-3">
-                  Seleziona i clienti che potranno usare questo agente.
-                </p>
-                
-                {isLoadingAssignments ? (
-                  <div className="flex items-center justify-center py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-                  </div>
-                ) : consultantClients && consultantClients.length > 0 ? (
-                  <div className="max-h-40 overflow-y-auto space-y-1.5">
-                    {consultantClients.map((client) => (
-                      <label
-                        key={client.id}
-                        className="flex items-center gap-2 p-2 rounded bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
-                      >
-                        <Checkbox
-                          checked={selectedClientIds.includes(client.id)}
-                          onCheckedChange={(checked) => handleClientToggle(client.id, checked as boolean)}
-                          disabled={saveClientAssignments.isPending}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-slate-700 truncate">{client.name}</p>
-                        </div>
-                        {selectedClientIds.includes(client.id) && (
-                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
-                        )}
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 p-2 rounded bg-white border border-slate-200">
-                    <Users className="h-4 w-4 text-slate-400" />
-                    <p className="text-xs text-slate-500">Nessun cliente</p>
-                  </div>
-                )}
                 
                 {saveClientAssignments.isPending && (
-                  <div className="flex items-center gap-1.5 text-xs text-emerald-600 mt-2">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Salvataggio...
+                  <div className="px-4 py-2 bg-emerald-50 border-t border-emerald-100 flex items-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+                    <span className="text-xs font-medium text-emerald-600">Salvataggio modifiche...</span>
                   </div>
                 )}
               </div>
