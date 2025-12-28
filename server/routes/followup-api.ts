@@ -1815,7 +1815,7 @@ router.get("/ai-preferences", authenticateToken, requireRole("consultant"), asyn
           allowAiToSuggestTemplates: true,
           allowAiToWriteFreeformMessages: true,
           logAiReasoning: true,
-          isActive: true,
+          isActive: false,
         },
         isDefault: true,
       });
