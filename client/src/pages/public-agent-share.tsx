@@ -774,43 +774,36 @@ export default function PublicAgentShare() {
       "flex flex-col bg-background",
       embedMode ? "h-screen min-h-[100dvh]" : "min-h-screen min-h-[100dvh]"
     )}>
-      {/* Header - modern gradient style */}
+      {/* Header - Manager Style */}
       {!embedMode && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="border-b bg-card shadow-sm"
-        >
+        <div className="border-b bg-white shadow-sm">
           <div className="px-4 py-3 flex items-center gap-3">
-            <div className="relative">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-2.5 rounded-full shadow-lg">
-                <Bot className="h-5 w-5 text-white" />
-              </div>
-              <motion.div
-                className="absolute -top-0.5 -right-0.5"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-yellow-400 drop-shadow-sm" />
-              </motion.div>
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold flex-shrink-0 shadow-lg">
+              {metadata.agentName.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1">
-              <h1 className="font-semibold text-base">{metadata.agentName}</h1>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                <p className="text-xs text-muted-foreground">Online • Assistente AI</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg font-semibold text-slate-900 truncate">{metadata.agentName}</h1>
+                <Badge variant="outline" className="bg-green-100 text-green-700 text-xs">
+                  <span className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse mr-1" />
+                  Online
+                </Badge>
               </div>
+              <p className="text-xs text-slate-500">Assistente AI</p>
+              {metadata.businessInfo?.businessName && (
+                <p className="text-xs text-slate-400 truncate mt-0.5">{metadata.businessInfo.businessName}</p>
+              )}
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setShowInfoSheet(true)}
-              className="h-9 w-9 rounded-full hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50"
+              className="h-9 w-9 rounded-full hover:bg-slate-100"
             >
-              <Info className="h-5 w-5 text-muted-foreground" />
+              <Info className="h-5 w-5 text-slate-500" />
             </Button>
           </div>
-        </motion.div>
+        </div>
       )}
       
       {/* Chat area - struttura migliorata per input sempre visibile */}
@@ -818,52 +811,33 @@ export default function PublicAgentShare() {
         {/* Messages - solo questa area scorre */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4 pb-2">
           <div className="max-w-4xl mx-auto space-y-4">
-            {/* Welcome message with modern animation */}
+            {/* Welcome message - Manager Style */}
             {messages.length === 0 && !optimisticMessage && !streamingMessage && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="text-center py-12 space-y-4"
-              >
-                <motion.div 
-                  className="relative inline-block"
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-5 rounded-full shadow-lg mx-auto">
-                    <MessageCircle className="h-10 w-10 text-white" />
-                  </div>
-                  <motion.div
-                    className="absolute -top-1 -right-1"
-                    animate={{ rotate: [0, 10, -10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Sparkles className="h-5 w-5 text-yellow-400 drop-shadow-md" />
-                  </motion.div>
-                </motion.div>
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Inizia una conversazione
-                  </h3>
-                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                    Scrivi un messaggio per parlare con {metadata.agentName}
-                  </p>
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 shadow-lg">
+                  {metadata.agentName.charAt(0).toUpperCase()}
                 </div>
-                <motion.div 
-                  className="flex justify-center gap-2 pt-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-                    💬 Chat
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                  Inizia una conversazione
+                </h3>
+                <p className="text-sm text-slate-500 max-w-xs text-center mb-4">
+                  Scrivi un messaggio per parlare con {metadata.agentName}
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs px-2 py-1">
+                    <MessageCircle className="h-3 w-3 mr-1" />
+                    Chat 24/7
                   </Badge>
-                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 hover:bg-purple-100">
-                    🎙️ Audio
+                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-xs px-2 py-1">
+                    <Mic className="h-3 w-3 mr-1" />
+                    Messaggi Vocali
                   </Badge>
-                </motion.div>
-              </motion.div>
+                  <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-xs px-2 py-1">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    AI Powered
+                  </Badge>
+                </div>
+              </div>
             )}
             
             {/* Message list with animations - filtra messaggi di sistema */}
