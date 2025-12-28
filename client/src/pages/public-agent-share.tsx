@@ -1114,81 +1114,112 @@ export default function PublicAgentShare() {
         </motion.div>
       </div>
       
-      {/* Info Sheet - modern profile with gradient */}
+      {/* Info Sheet - Manager Style */}
       <Sheet open={showInfoSheet} onOpenChange={setShowInfoSheet}>
-        <SheetContent side="bottom" className="h-[85vh]">
-          <SheetHeader className="text-left pb-6">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center gap-4 pb-4"
-            >
-              <div className="relative">
-                <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-6 rounded-full shadow-xl">
-                  <Bot className="h-12 w-12 text-white" />
+        <SheetContent side="bottom" className="h-[85vh] p-0">
+          <div className="flex flex-col h-full">
+            {/* Header - Same style as AgentProfilePanel */}
+            <div className="p-4 border-b bg-white">
+              <div className="flex items-start gap-3">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0 shadow-lg">
+                  {metadata.agentName.charAt(0).toUpperCase()}
                 </div>
-                <motion.div
-                  className="absolute -top-1 -right-1"
-                  animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <Sparkles className="h-5 w-5 text-yellow-400 drop-shadow-md" />
-                </motion.div>
-              </div>
-              <div className="text-center">
-                <SheetTitle className="text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  {metadata.agentName}
-                </SheetTitle>
-                <SheetDescription className="flex items-center justify-center gap-1.5 mt-1">
-                  <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                  Assistente AI
-                </SheetDescription>
-              </div>
-            </motion.div>
-          </SheetHeader>
-          
-          <ScrollArea className="h-full pb-6">
-            <div className="space-y-6">
-              {/* What I can do */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Bot className="h-4 w-4" />
-                  <span className="font-medium">Cosa posso fare</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg font-semibold text-slate-900">{metadata.agentName}</h2>
+                    <Badge variant="outline" className="bg-green-100 text-green-700 text-xs">
+                      <span className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse mr-1" />
+                      Online
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500">Assistente AI</p>
+                  {metadata.businessInfo?.businessName && (
+                    <p className="text-xs text-slate-400 truncate mt-0.5">{metadata.businessInfo.businessName}</p>
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground pl-6 leading-relaxed">
-                  {metadata.businessInfo?.businessDescription || 
-                    "Sono un assistente AI sempre disponibile per rispondere alle tue domande e aiutarti. Scrivimi un messaggio per iniziare!"}
-                </p>
-              </div>
-              
-              {/* Business Info */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Building2 className="h-4 w-4" />
-                  <span className="font-medium">Business</span>
-                </div>
-                <p className="text-base font-medium pl-6">
-                  {metadata.businessInfo?.businessName || "Nessuna informazione disponibile"}
-                </p>
-              </div>
-              
-              {/* Consultant Info */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span className="font-medium">Consulente</span>
-                </div>
-                <p className="text-base pl-6">
-                  {metadata.businessInfo?.consultantName || "Nessuna informazione disponibile"}
-                </p>
-                {metadata.businessInfo?.consultantBio && (
-                  <p className="text-sm text-muted-foreground pl-6 leading-relaxed">
-                    {metadata.businessInfo.consultantBio}
-                  </p>
-                )}
               </div>
             </div>
-          </ScrollArea>
+            
+            <ScrollArea className="flex-1">
+              <div className="p-4 space-y-4">
+                {/* What I can do - Card style */}
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                  <h3 className="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-blue-500 text-white flex items-center justify-center">
+                      <Bot className="h-3.5 w-3.5" />
+                    </div>
+                    Cosa posso fare
+                  </h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {metadata.businessInfo?.businessDescription || 
+                      "Sono un assistente AI sempre disponibile per rispondere alle tue domande e aiutarti. Scrivimi un messaggio per iniziare!"}
+                  </p>
+                </div>
+                
+                {/* Business Info - Card style */}
+                {metadata.businessInfo?.businessName && (
+                  <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+                    <h3 className="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-purple-500 text-white flex items-center justify-center">
+                        <Building2 className="h-3.5 w-3.5" />
+                      </div>
+                      Business
+                    </h3>
+                    <p className="text-base font-medium text-slate-700">
+                      {metadata.businessInfo.businessName}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Consultant Info - Card style */}
+                {metadata.businessInfo?.consultantName && (
+                  <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
+                    <h3 className="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-500 text-white flex items-center justify-center">
+                        <User className="h-3.5 w-3.5" />
+                      </div>
+                      Consulente
+                    </h3>
+                    <p className="text-base font-medium text-slate-700">
+                      {metadata.businessInfo.consultantName}
+                    </p>
+                    {metadata.businessInfo?.consultantBio && (
+                      <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                        {metadata.businessInfo.consultantBio}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Features badges */}
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs px-2 py-1">
+                    <MessageCircle className="h-3 w-3 mr-1" />
+                    Chat 24/7
+                  </Badge>
+                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-xs px-2 py-1">
+                    <Mic className="h-3 w-3 mr-1" />
+                    Messaggi Vocali
+                  </Badge>
+                  <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-xs px-2 py-1">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    AI Powered
+                  </Badge>
+                </div>
+              </div>
+            </ScrollArea>
+            
+            {/* Footer button */}
+            <div className="p-4 border-t bg-white">
+              <Button 
+                onClick={() => setShowInfoSheet(false)}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg text-base font-medium"
+              >
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Inizia a Chattare
+              </Button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
     </div>
