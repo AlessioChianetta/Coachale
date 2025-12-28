@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LineChart,
   Line,
@@ -699,504 +700,381 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   return (
     <Card className="bg-white border border-slate-200 h-full flex flex-col">
       <ScrollArea className="flex-1">
-        <CardContent className="p-6 space-y-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-                {selectedAgent.name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">{selectedAgent.name}</h2>
-                <p className="text-sm text-slate-500">
-                  {agentTypeLabels[selectedAgent.agentType] || selectedAgent.agentType}
-                </p>
-                <Badge variant="outline" className={cn("mt-1", status.color)}>
+        <CardContent className="p-4 space-y-4">
+          {/* Header - Always visible */}
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
+              {selectedAgent.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-semibold text-slate-900 truncate">{selectedAgent.name}</h2>
+                <Badge variant="outline" className={cn("text-xs", status.color)}>
                   {status.label}
                 </Badge>
               </div>
-            </div>
-          </div>
-
-          {/* Summary Section - Cosa fa questo agente */}
-          <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-            <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-              <Info className="h-4 w-4 text-blue-500" />
-              Cosa fa questo agente
-            </h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              {agentTypeDescriptions[selectedAgent.agentType] || "Gestisce le conversazioni WhatsApp in modo intelligente."}
-            </p>
-            
-            {/* Business Info */}
-            {(agentData?.businessName || agentData?.businessDescription) && (
-              <div className="mt-3 pt-3 border-t border-blue-100">
-                {agentData.businessName && (
-                  <p className="text-xs text-slate-500">
-                    <span className="font-medium text-slate-600">Business:</span> {agentData.businessName}
-                  </p>
-                )}
-                {agentData.businessDescription && (
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                    {agentData.businessDescription}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Personality */}
-            {agentData?.personality && (
-              <div className="mt-3 flex items-center gap-2">
-                <Sparkles className="h-3 w-3 text-purple-500" />
-                <span className="text-xs text-purple-600 font-medium">
-                  {personalityLabels[agentData.personality] || agentData.personality}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Features enabled badges */}
-          {features && (
-            <div>
-              <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" />
-                Funzionalità Attive
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {features.bookingEnabled && (
-                  <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
-                    <CalendarCheck className="h-3 w-3 mr-1" />
-                    Prenotazioni
-                  </Badge>
-                )}
-                {features.objectionHandlingEnabled && (
-                  <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200">
-                    <ShieldCheck className="h-3 w-3 mr-1" />
-                    Obiezioni
-                  </Badge>
-                )}
-                {features.upsellingEnabled && (
-                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200">
-                    <BadgeDollarSign className="h-3 w-3 mr-1" />
-                    Upselling
-                  </Badge>
-                )}
-                {features.disqualificationEnabled && (
-                  <Badge variant="secondary" className="bg-red-50 text-red-700 border-red-200">
-                    <UserX className="h-3 w-3 mr-1" />
-                    Disqualifica
-                  </Badge>
-                )}
-                {features.ttsEnabled && (
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                    <Mic className="h-3 w-3 mr-1" />
-                    Vocali
-                  </Badge>
-                )}
-                {features.hasCalendar && (
-                  <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    Calendario
-                  </Badge>
-                )}
-                {features.hasKnowledgeBase && (
-                  <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 border-indigo-200">
-                    <BookOpen className="h-3 w-3 mr-1" />
-                    Knowledge Base
-                  </Badge>
-                )}
-                {features.hasSalesScript && (
-                  <Badge variant="secondary" className="bg-pink-50 text-pink-700 border-pink-200">
-                    <FileText className="h-3 w-3 mr-1" />
-                    Script Vendita
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Working Hours */}
-          {agentData?.workingHours && (
-            <div className="p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center gap-2 text-slate-600">
-                <Clock className="h-4 w-4 text-slate-500" />
-                <span className="text-sm font-medium">Orari di Lavoro</span>
-              </div>
-              <p className="text-sm text-slate-500 mt-1">
-                {String(agentData.workingHours.start).padStart(2, '0')}:00 - {String(agentData.workingHours.end).padStart(2, '0')}:00
-                {agentData.workingHours.timezone && (
-                  <span className="text-xs text-slate-400 ml-1">({agentData.workingHours.timezone})</span>
-                )}
+              <p className="text-xs text-slate-500">
+                {agentTypeLabels[selectedAgent.agentType] || selectedAgent.agentType}
               </p>
-            </div>
-          )}
-
-          <div className="flex justify-center py-4">
-            <PerformanceGauge 
-              score={analytics.performance.score} 
-              trend={analytics.performance.trend}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-xs">Conversazioni</span>
-              </div>
-              <p className="text-lg font-semibold text-slate-900">
-                {analytics.performance.conversationsTotal}
-              </p>
-            </div>
-            <div className="p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <Clock className="h-4 w-4" />
-                <span className="text-xs">Tempo Risposta</span>
-              </div>
-              <p className="text-lg font-semibold text-slate-900">
-                {analytics.performance.avgResponseTime}
-              </p>
-            </div>
-            <div className="p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <Target className="h-4 w-4" />
-                <span className="text-xs">Successo</span>
-              </div>
-              <p className="text-lg font-semibold text-slate-900">
-                {analytics.performance.successRate}%
-              </p>
-            </div>
-            <div className="p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <Calendar className="h-4 w-4" />
-                <span className="text-xs">Oggi</span>
-              </div>
-              <p className="text-lg font-semibold text-slate-900">
-                {analytics.performance.conversationsToday}
-              </p>
-            </div>
-          </div>
-
-          {analytics.trendData && analytics.trendData.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-blue-500" />
-                Trend Ultimi 7 Giorni
-              </h3>
-              <div className="h-48 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analytics.trendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fontSize: 10 }} 
-                      stroke="#94a3b8"
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 10 }} 
-                      stroke="#94a3b8"
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "white",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="conversations"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={{ fill: "#3b82f6", strokeWidth: 2 }}
-                      name="Conversazioni"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="successRate"
-                      stroke="#22c55e"
-                      strokeWidth={2}
-                      dot={{ fill: "#22c55e", strokeWidth: 2 }}
-                      name="Successo %"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-              <Brain className="h-4 w-4 text-purple-500" />
-              Competenze
-            </h3>
-            <div className="space-y-4">
-              {analytics.skills.map((skill, index) => (
-                <SkillBar
-                  key={index}
-                  name={skill.name}
-                  level={skill.level}
-                  description={skill.description}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-slate-200">
-            <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-              <CalendarCheck className="h-4 w-4 text-green-500" />
-              Google Calendar
-            </h3>
-            {isLoadingCalendar ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-              </div>
-            ) : calendarStatus.connected ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200">
-                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-green-700">Collegato</p>
-                    <p className="text-xs text-green-600 truncate">{calendarStatus.email}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleTestCalendar}
-                    disabled={isTesting}
-                    className="flex-1"
-                  >
-                    {isTesting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-1" />
-                    )}
-                    Test
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDisconnectCalendar}
-                    disabled={isDisconnecting}
-                    className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    {isDisconnecting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Unlink className="h-4 w-4 mr-1" />
-                    )}
-                    Scollega
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
-                  <Calendar className="h-5 w-5 text-slate-400" />
-                  <div className="flex-1">
-                    <p className="text-sm text-slate-600">Nessun calendario collegato</p>
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={handleConnectCalendar}
-                  disabled={isConnecting}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                >
-                  {isConnecting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Link className="h-4 w-4 mr-2" />
-                  )}
-                  Collega Google Calendar
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <div className="pt-4 border-t border-slate-200">
-            <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-              <Instagram className="h-4 w-4 text-pink-500" />
-              Instagram DM
-            </h3>
-            {isLoadingInstagramConfigs ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-              </div>
-            ) : instagramConfigs?.configs && instagramConfigs.configs.length > 0 ? (
-              <div className="space-y-3">
-                {selectedInstagramConfigId ? (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200">
-                    <Instagram className="h-5 w-5 text-pink-600 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-pink-700">Collegato</p>
-                      <p className="text-xs text-pink-600 truncate">
-                        {instagramConfigs.configs.find(c => c.id === selectedInstagramConfigId)?.instagramPageId || "Account Instagram"}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleLinkInstagram(null)}
-                      disabled={isSavingInstagram}
-                      className="flex-shrink-0 text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-300"
-                    >
-                      {isSavingInstagram ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Unlink className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-xs text-slate-500">Seleziona un account Instagram da collegare:</p>
-                    {instagramConfigs.configs.map((config) => {
-                      const isLinkedToOther = config.linkedAgent && config.linkedAgent.agentId !== selectedAgent?.id;
-                      return (
-                        <button
-                          key={config.id}
-                          onClick={() => !isLinkedToOther && handleLinkInstagram(config.id)}
-                          disabled={isSavingInstagram || isLinkedToOther}
-                          className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left",
-                            isLinkedToOther 
-                              ? "bg-slate-50 border-slate-200 cursor-not-allowed opacity-60"
-                              : "bg-white border-slate-200 hover:bg-pink-50 hover:border-pink-300"
-                          )}
-                        >
-                          <Instagram className={cn("h-5 w-5", isLinkedToOther ? "text-slate-400" : "text-pink-500")} />
-                          <div className="flex-1 min-w-0">
-                            <p className={cn("text-sm font-medium truncate", isLinkedToOther ? "text-slate-500" : "text-slate-700")}>
-                              {config.instagramPageId}
-                            </p>
-                            {isLinkedToOther && (
-                              <p className="text-xs text-slate-400">
-                                Collegato a: {config.linkedAgent?.agentName}
-                              </p>
-                            )}
-                          </div>
-                          {!isLinkedToOther && (
-                            <Link className="h-4 w-4 text-pink-500" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                {isSavingInstagram && (
-                  <div className="flex items-center gap-2 text-xs text-pink-600">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Salvataggio in corso...
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <Instagram className="h-5 w-5 text-slate-400" />
-                <div className="flex-1">
-                  <p className="text-sm text-slate-600">Nessun account Instagram configurato</p>
-                  <p className="text-xs text-slate-400">Configura un account nella sezione API Keys</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="pt-4 border-t border-slate-200">
-            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-              <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                <Bot className="h-4 w-4 text-blue-500" />
-                AI Assistant Integration
-              </h3>
-              <p className="text-xs text-slate-500 mb-4">
-                Quando abilitato, questo agente può essere utilizzato come contesto nella chat AI Assistant, 
-                permettendo all'assistente di accedere alle informazioni e conversazioni dell'agente.
-              </p>
-              
-              <div className="flex items-center justify-between">
-                <label htmlFor="ai-assistant-toggle" className="text-sm font-medium text-slate-700">
-                  Abilita in AI Assistant
-                </label>
-                <Switch
-                  id="ai-assistant-toggle"
-                  checked={enableInAIAssistant}
-                  onCheckedChange={handleEnableAIAssistantChange}
-                  disabled={isSavingAISettings}
-                />
-              </div>
-              {isSavingAISettings && (
-                <div className="flex items-center gap-2 text-xs text-blue-600 mt-2">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Salvataggio in corso...
-                </div>
+              {agentData?.businessName && (
+                <p className="text-xs text-slate-400 truncate mt-0.5">{agentData.businessName}</p>
               )}
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-200">
-            <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                  <Share2 className="h-4 w-4 text-emerald-500" />
-                  Condividi con Clienti
-                </h3>
-                {selectedClientIds.length > 0 && (
-                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200">
-                    {selectedClientIds.length} {selectedClientIds.length === 1 ? 'cliente' : 'clienti'}
-                  </Badge>
-                )}
+          {/* Features badges - compact row */}
+          {features && (
+            <div className="flex flex-wrap gap-1.5">
+              {features.bookingEnabled && (
+                <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-xs px-1.5 py-0.5">
+                  <CalendarCheck className="h-3 w-3 mr-0.5" />
+                  Prenotazioni
+                </Badge>
+              )}
+              {features.objectionHandlingEnabled && (
+                <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200 text-xs px-1.5 py-0.5">
+                  <ShieldCheck className="h-3 w-3 mr-0.5" />
+                  Obiezioni
+                </Badge>
+              )}
+              {features.hasCalendar && (
+                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs px-1.5 py-0.5">
+                  <Calendar className="h-3 w-3 mr-0.5" />
+                  Calendario
+                </Badge>
+              )}
+              {features.ttsEnabled && (
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs px-1.5 py-0.5">
+                  <Mic className="h-3 w-3 mr-0.5" />
+                  Vocali
+                </Badge>
+              )}
+              {agentData?.personality && (
+                <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-xs px-1.5 py-0.5">
+                  <Sparkles className="h-3 w-3 mr-0.5" />
+                  {personalityLabels[agentData.personality]?.split(' ')[0] || agentData.personality}
+                </Badge>
+              )}
+            </div>
+          )}
+
+          {/* Tabs */}
+          <Tabs defaultValue="performance" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 h-9">
+              <TabsTrigger value="performance" className="text-xs gap-1">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Performance</span>
+              </TabsTrigger>
+              <TabsTrigger value="integrations" className="text-xs gap-1">
+                <Link className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Integrazioni</span>
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="text-xs gap-1">
+                <Bot className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">AI & Sharing</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Performance Tab */}
+            <TabsContent value="performance" className="space-y-4 mt-4">
+              <div className="flex justify-center">
+                <PerformanceGauge 
+                  score={analytics.performance.score} 
+                  trend={analytics.performance.trend}
+                />
               </div>
-              <p className="text-xs text-slate-500 mb-4">
-                Seleziona quali clienti potranno vedere e utilizzare questo agente nel loro AI Assistant.
-              </p>
-              
-              {isLoadingAssignments ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span className="text-xs">Conversazioni</span>
+                  </div>
+                  <p className="text-base font-semibold text-slate-900">
+                    {analytics.performance.conversationsTotal}
+                  </p>
                 </div>
-              ) : consultantClients && consultantClients.length > 0 ? (
-                <div className="max-h-48 overflow-y-auto space-y-2">
-                  {consultantClients.map((client) => (
-                    <label
-                      key={client.id}
-                      className="flex items-center gap-3 p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
-                    >
-                      <Checkbox
-                        checked={selectedClientIds.includes(client.id)}
-                        onCheckedChange={(checked) => handleClientToggle(client.id, checked as boolean)}
-                        disabled={saveClientAssignments.isPending}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700 truncate">{client.name}</p>
-                        {client.email && (
-                          <p className="text-xs text-slate-400 truncate">{client.email}</p>
-                        )}
-                      </div>
-                      {selectedClientIds.includes(client.id) && (
-                        <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                      )}
-                    </label>
+                <div className="p-2.5 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span className="text-xs">Tempo Risposta</span>
+                  </div>
+                  <p className="text-base font-semibold text-slate-900">
+                    {analytics.performance.avgResponseTime}
+                  </p>
+                </div>
+                <div className="p-2.5 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
+                    <Target className="h-3.5 w-3.5" />
+                    <span className="text-xs">Successo</span>
+                  </div>
+                  <p className="text-base font-semibold text-slate-900">
+                    {analytics.performance.successRate}%
+                  </p>
+                </div>
+                <div className="p-2.5 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span className="text-xs">Oggi</span>
+                  </div>
+                  <p className="text-base font-semibold text-slate-900">
+                    {analytics.performance.conversationsToday}
+                  </p>
+                </div>
+              </div>
+
+              {analytics.trendData && analytics.trendData.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-medium text-slate-700 mb-2 flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
+                    Trend 7 Giorni
+                  </h3>
+                  <div className="h-40 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analytics.trendData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                        <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "white",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            fontSize: "11px",
+                          }}
+                        />
+                        <Line type="monotone" dataKey="conversations" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", strokeWidth: 2 }} name="Conversazioni" />
+                        <Line type="monotone" dataKey="successRate" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e", strokeWidth: 2 }} name="Successo %" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="text-xs font-medium text-slate-700 mb-2 flex items-center gap-1.5">
+                  <Brain className="h-3.5 w-3.5 text-purple-500" />
+                  Competenze
+                </h3>
+                <div className="space-y-3">
+                  {analytics.skills.map((skill, index) => (
+                    <SkillBar key={index} name={skill.name} level={skill.level} description={skill.description} />
                   ))}
                 </div>
-              ) : (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-white border border-slate-200">
-                  <Users className="h-5 w-5 text-slate-400" />
-                  <p className="text-sm text-slate-500">Nessun cliente disponibile</p>
-                </div>
-              )}
-              
-              {saveClientAssignments.isPending && (
-                <div className="flex items-center gap-2 text-xs text-emerald-600 mt-3">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Salvataggio in corso...
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
+            </TabsContent>
 
-          <div className="pt-4 border-t border-slate-200">
+            {/* Integrations Tab */}
+            <TabsContent value="integrations" className="space-y-4 mt-4">
+              {/* Working Hours */}
+              {agentData?.workingHours && (
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Clock className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm font-medium">Orari di Lavoro</span>
+                  </div>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {String(agentData.workingHours.start).padStart(2, '0')}:00 - {String(agentData.workingHours.end).padStart(2, '0')}:00
+                    {agentData.workingHours.timezone && (
+                      <span className="text-xs text-slate-400 ml-1">({agentData.workingHours.timezone})</span>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {/* Google Calendar */}
+              <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-100">
+                <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <CalendarCheck className="h-4 w-4 text-green-500" />
+                  Google Calendar
+                </h3>
+                {isLoadingCalendar ? (
+                  <div className="flex items-center justify-center py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  </div>
+                ) : calendarStatus.connected ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 p-2 rounded bg-green-100/50 border border-green-200">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-green-700">Collegato</p>
+                        <p className="text-xs text-green-600 truncate">{calendarStatus.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={handleTestCalendar} disabled={isTesting} className="flex-1 h-8 text-xs">
+                        {isTesting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                        Test
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleDisconnectCalendar} disabled={isDisconnecting} className="flex-1 h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50">
+                        {isDisconnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlink className="h-3 w-3 mr-1" />}
+                        Scollega
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button size="sm" onClick={handleConnectCalendar} disabled={isConnecting} className="w-full h-8 text-xs bg-green-600 hover:bg-green-700">
+                    {isConnecting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Link className="h-3 w-3 mr-1" />}
+                    Collega Google Calendar
+                  </Button>
+                )}
+              </div>
+
+              {/* Instagram DM */}
+              <div className="p-3 bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg border border-pink-100">
+                <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <Instagram className="h-4 w-4 text-pink-500" />
+                  Instagram DM
+                </h3>
+                {isLoadingInstagramConfigs ? (
+                  <div className="flex items-center justify-center py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  </div>
+                ) : instagramConfigs?.configs && instagramConfigs.configs.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedInstagramConfigId ? (
+                      <div className="flex items-center gap-2 p-2 rounded bg-pink-100/50 border border-pink-200">
+                        <Instagram className="h-4 w-4 text-pink-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-pink-700">Collegato</p>
+                          <p className="text-xs text-pink-600 truncate">
+                            {instagramConfigs.configs.find(c => c.id === selectedInstagramConfigId)?.instagramPageId || "Account Instagram"}
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleLinkInstagram(null)} disabled={isSavingInstagram} className="h-7 px-2 text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-300">
+                          {isSavingInstagram ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlink className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <p className="text-xs text-slate-500">Seleziona un account:</p>
+                        {instagramConfigs.configs.map((config) => {
+                          const isLinkedToOther = config.linkedAgent && config.linkedAgent.agentId !== selectedAgent?.id;
+                          return (
+                            <button
+                              key={config.id}
+                              onClick={() => !isLinkedToOther && handleLinkInstagram(config.id)}
+                              disabled={isSavingInstagram || isLinkedToOther}
+                              className={cn(
+                                "w-full flex items-center gap-2 p-2 rounded border transition-colors text-left",
+                                isLinkedToOther ? "bg-slate-50 border-slate-200 cursor-not-allowed opacity-60" : "bg-white border-slate-200 hover:bg-pink-50 hover:border-pink-300"
+                              )}
+                            >
+                              <Instagram className={cn("h-4 w-4", isLinkedToOther ? "text-slate-400" : "text-pink-500")} />
+                              <div className="flex-1 min-w-0">
+                                <p className={cn("text-xs font-medium truncate", isLinkedToOther ? "text-slate-500" : "text-slate-700")}>{config.instagramPageId}</p>
+                                {isLinkedToOther && <p className="text-xs text-slate-400">Collegato a: {config.linkedAgent?.agentName}</p>}
+                              </div>
+                              {!isLinkedToOther && <Link className="h-3 w-3 text-pink-500" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 p-2 rounded bg-slate-50 border border-slate-200">
+                    <Instagram className="h-4 w-4 text-slate-400" />
+                    <div className="flex-1">
+                      <p className="text-xs text-slate-600">Nessun account configurato</p>
+                      <p className="text-xs text-slate-400">Configura in API Keys</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* AI & Sharing Tab */}
+            <TabsContent value="ai" className="space-y-4 mt-4">
+              {/* AI Assistant Integration */}
+              <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                <h3 className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-blue-500" />
+                  AI Assistant
+                </h3>
+                <p className="text-xs text-slate-500 mb-3">
+                  Abilita questo agente come contesto nella chat AI Assistant.
+                </p>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="ai-assistant-toggle" className="text-xs font-medium text-slate-700">
+                    Abilita in AI Assistant
+                  </label>
+                  <Switch
+                    id="ai-assistant-toggle"
+                    checked={enableInAIAssistant}
+                    onCheckedChange={handleEnableAIAssistantChange}
+                    disabled={isSavingAISettings}
+                  />
+                </div>
+                {isSavingAISettings && (
+                  <div className="flex items-center gap-1.5 text-xs text-blue-600 mt-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Salvataggio...
+                  </div>
+                )}
+              </div>
+
+              {/* Share with Clients */}
+              <div className="p-3 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg border border-emerald-100">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                    <Share2 className="h-4 w-4 text-emerald-500" />
+                    Condividi con Clienti
+                  </h3>
+                  {selectedClientIds.length > 0 && (
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
+                      {selectedClientIds.length}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mb-3">
+                  Seleziona i clienti che potranno usare questo agente.
+                </p>
+                
+                {isLoadingAssignments ? (
+                  <div className="flex items-center justify-center py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  </div>
+                ) : consultantClients && consultantClients.length > 0 ? (
+                  <div className="max-h-40 overflow-y-auto space-y-1.5">
+                    {consultantClients.map((client) => (
+                      <label
+                        key={client.id}
+                        className="flex items-center gap-2 p-2 rounded bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                      >
+                        <Checkbox
+                          checked={selectedClientIds.includes(client.id)}
+                          onCheckedChange={(checked) => handleClientToggle(client.id, checked as boolean)}
+                          disabled={saveClientAssignments.isPending}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-slate-700 truncate">{client.name}</p>
+                        </div>
+                        {selectedClientIds.includes(client.id) && (
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 p-2 rounded bg-white border border-slate-200">
+                    <Users className="h-4 w-4 text-slate-400" />
+                    <p className="text-xs text-slate-500">Nessun cliente</p>
+                  </div>
+                )}
+                
+                {saveClientAssignments.isPending && (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-600 mt-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Salvataggio...
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* Quick Actions - Always visible */}
+          <div className="pt-3 border-t border-slate-200">
             <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" />
               Azioni Rapide
