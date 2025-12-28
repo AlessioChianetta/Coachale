@@ -19,7 +19,7 @@ function omitPasswordHash(manager: typeof managerUsers.$inferSelect) {
   return rest;
 }
 
-router.post("/", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const { name, email, password, metadata } = req.body;
@@ -58,7 +58,7 @@ router.post("/", authenticateToken, requireRole(["consultant"]), async (req: Aut
   }
 });
 
-router.get("/", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.get("/", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
 
@@ -89,7 +89,7 @@ router.get("/", authenticateToken, requireRole(["consultant"]), async (req: Auth
   }
 });
 
-router.delete("/:id", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.delete("/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const { id } = req.params;
@@ -115,7 +115,7 @@ router.delete("/:id", authenticateToken, requireRole(["consultant"]), async (req
   }
 });
 
-router.put("/:id", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.put("/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const { id } = req.params;
@@ -245,7 +245,7 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/:id/assignments", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.get("/:id/assignments", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const { id } = req.params;
@@ -283,7 +283,7 @@ router.get("/:id/assignments", authenticateToken, requireRole(["consultant"]), a
   }
 });
 
-router.post("/:id/assignments", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.post("/:id/assignments", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const { id } = req.params;
@@ -348,7 +348,7 @@ router.post("/:id/assignments", authenticateToken, requireRole(["consultant"]), 
   }
 });
 
-router.delete("/:id/assignments/:shareId", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.delete("/:id/assignments/:shareId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const { id, shareId } = req.params;
