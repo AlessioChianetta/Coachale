@@ -5521,23 +5521,27 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
               job.currentBatch = batchIndex + 1;
             }
             
-            const prompt = `Assegna ogni lezione al modulo più appropriato. Rispondi SOLO con JSON compatto su UNA SOLA RIGA.
+            const prompt = `Assegna ogni lezione al modulo più appropriato.
 
-LEZIONI: ${batchLessons.map((l: any, i: number) => `${i + 1}.${sanitizeText(l.title).substring(0, 50)}`).join(' | ')}
+LEZIONI:
+${batchLessons.map((l: any, i: number) => `${i + 1}. ${sanitizeText(l.title).substring(0, 60)}`).join('\n')}
 
-MODULI: ${modules.map((m: any, i: number) => `${moduleLetters[i]}.${sanitizeText(m.name).substring(0, 25)}`).join(' | ')}
+MODULI:
+${modules.map((m: any, i: number) => `${moduleLetters[i]}. ${sanitizeText(m.name)}`).join('\n')}
 
-Output ESATTO richiesto (una riga, nessun spazio): {"1":"A","2":"B","3":"C","4":"D","5":"E"}`;
+Rispondi SOLO con un oggetto JSON nel formato: {"1":"A","2":"B","3":"C","4":"D","5":"E"}
+Non aggiungere spiegazioni, solo il JSON.`;
 
             try {
               const response = await providerResult.client.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 generationConfig: {
-                  temperature: 0.0,
-                  maxOutputTokens: 100,
+                  temperature: 0.1,
+                  maxOutputTokens: 256,
                   responseMimeType: 'application/json',
                 },
+                thinkingConfig: { thinkingBudget: 0 },
               } as any);
               
               const text = response.response.text() || '';

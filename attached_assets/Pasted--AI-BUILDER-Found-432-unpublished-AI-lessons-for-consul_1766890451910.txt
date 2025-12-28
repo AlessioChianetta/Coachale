@@ -1,0 +1,47 @@
+📋 [AI-BUILDER] Found 432 unpublished AI lessons for consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d
+2:53:54 AM [express] GET /api/library/ai-unpublished-lessons 304 in 1249ms :: [{"id":"7dadfc6f-e9aa-…
+2:53:58 AM [express] POST /api/library/documents/by-ids 200 in 1397ms :: [{"id":"2d0bf45b-f13b-488d-…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+🚀 [AI-AUTO-ASSIGN] Job autoassign_1766890448248_ureca09el started for 432 lessons in 87 batches
+2:54:08 AM [express] POST /api/library/ai-auto-assign-stream 200 in 204ms :: {"jobId":"autoassign_17…
+🔍 Finding AI provider for client 42105c6d-d065-4f4e-b5b2-290742b4dd1d (consultant: none)...
+📋 Client preferred AI provider: vertex_admin
+⚠️ TIER 0: Skipped (no consultantId provided)
+⚠️ TIER 0.5: Skipped (no consultantId provided)
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 42105c6d-d065-4f4e-b5b2-290742b4dd1d)...
+⚠️ TIER 1: No client-managed Vertex AI settings found
+⚠️ TIER 2: Skipped (no consultantId provided)
+⚠️ TIER 3: No Vertex AI available, falling back to Google AI Studio (user: 42105c6d-d065-4f4e-b5b2-290742b4dd1d)
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+🔑 [AI] Using SuperAdmin Gemini key (1/1)
+✅ Created Google AI Studio client for user 42105c6d-d065-4f4e-b5b2-290742b4dd1d [source: superadmin]
+2:54:09 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890448248_ureca09el 200 i…
+📝 [AI-AUTO-ASSIGN] Batch 1/87: "Here is"
+❌ [AI-AUTO-ASSIGN] Batch 1 JSON parse failed: Unexpected token 'H', "Here is" is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is"
+2:54:10 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890448248_ureca09el 200 i…
+📝 [AI-AUTO-ASSIGN] Batch 2/87: "Here is the"
+❌ [AI-AUTO-ASSIGN] Batch 2 JSON parse failed: Unexpected token 'H', "Here is the" is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is the"
+2:54:11 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890448248_ureca09el 200 i…
+📝 [AI-AUTO-ASSIGN] Batch 3/87: "Here is"
+❌ [AI-AUTO-ASSIGN] Batch 3 JSON parse failed: Unexpected token 'H', "Here is" is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is"
+2:54:12 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890448248_ureca09el 200 i…
+📝 [AI-AUTO-ASSIGN] Batch 4/87: "Here is"
+❌ [AI-AUTO-ASSIGN] Batch 4 JSON parse failed: Unexpected token 'H', "Here is" is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is"
+2:54:13 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890448248_ureca09el 200 i…
+2:54:13 AM [express] POST /api/activity/session/heartbeat 200 in 306ms :: {"success":true,"lastActiv…
+📝 [AI-AUTO-ASSIGN] Batch 5/87: "Here is the JSON"
+❌ [AI-AUTO-ASSIGN] Batch 5 JSON parse failed: Unexpected token 'H', "Here is the JSON" is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is the JSON"
+2:54:14 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890448248_ureca09el 200 i…
+📝 [AI-AUTO-ASSIGN] Batch 6/87: "Here is the"
+❌ [AI-AUTO-ASSIGN] Batch 6 JSON parse failed: Unexpected token 'H', "Here is the" is not valid JSON
+❌ [AI-AUTO-ASSIGN] Raw text was: "Here is the"
+2:54:15 AM [express] GET /api/library/ai-auto-assign-status/autoassign_1766890448248_ureca09el 200 i…
+📝 [AI-AUTO-ASSIGN] Batch 7/87: "Here is the JSON"
