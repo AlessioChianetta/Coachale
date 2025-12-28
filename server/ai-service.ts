@@ -1041,14 +1041,16 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     // Include both client-owned and consultant-owned KB docs that are indexed
     const indexedKnowledgeDocIds = new Set<string>();
     if (hasFileSearch && userContext.knowledgeBase) {
+      // Build owner condition: always include client docs, add consultant docs only if consultantId exists
+      const ownerCondition = consultantId 
+        ? or(eq(fileSearchDocuments.clientId, clientId), eq(fileSearchDocuments.consultantId, consultantId))
+        : eq(fileSearchDocuments.clientId, clientId);
+      
       // Get all indexed KB doc IDs from fileSearchDocuments (both client and consultant stores)
       const indexedKbDocs = await db.query.fileSearchDocuments.findMany({
         where: and(
           eq(fileSearchDocuments.sourceType, 'knowledge_base'),
-          or(
-            eq(fileSearchDocuments.clientId, clientId),
-            eq(fileSearchDocuments.consultantId, consultantId)
-          ),
+          ownerCondition,
           eq(fileSearchDocuments.status, 'indexed')
         ),
         columns: { sourceId: true }
@@ -1850,14 +1852,16 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Include both client-owned and consultant-owned KB docs that are indexed
     const indexedKnowledgeDocIds = new Set<string>();
     if (hasFileSearch && userContext.knowledgeBase) {
+      // Build owner condition: always include client docs, add consultant docs only if consultantId exists
+      const ownerCondition = consultantId 
+        ? or(eq(fileSearchDocuments.clientId, clientId), eq(fileSearchDocuments.consultantId, consultantId))
+        : eq(fileSearchDocuments.clientId, clientId);
+      
       // Get all indexed KB doc IDs from fileSearchDocuments (both client and consultant stores)
       const indexedKbDocs = await db.query.fileSearchDocuments.findMany({
         where: and(
           eq(fileSearchDocuments.sourceType, 'knowledge_base'),
-          or(
-            eq(fileSearchDocuments.clientId, clientId),
-            eq(fileSearchDocuments.consultantId, consultantId)
-          ),
+          ownerCondition,
           eq(fileSearchDocuments.status, 'indexed')
         ),
         columns: { sourceId: true }
