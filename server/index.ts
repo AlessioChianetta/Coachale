@@ -16,6 +16,7 @@ import { setupWebSocketTest } from "./test-websocket";
 import { setupGeminiLiveWSService } from "./ai/gemini-live-ws-service";
 import { setupVideoCopilotWebSocket } from "./websocket/video-ai-copilot";
 import { initFollowupScheduler } from "./cron/followup-scheduler";
+import { initInstagramWindowCleanup } from "./cron/instagram-window-cleanup";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -317,6 +318,17 @@ app.use((req, res, next) => {
     log("✅ Follow-up scheduler started");
   } else {
     log("⚡ Follow-up scheduler is disabled (set FOLLOWUP_SCHEDULER_ENABLED=true to enable)");
+  }
+
+  // Setup Instagram Window Cleanup Scheduler
+  const instagramCleanupEnabled = process.env.INSTAGRAM_CLEANUP_ENABLED !== "false";
+  
+  if (instagramCleanupEnabled) {
+    log("🪟 Instagram window cleanup enabled - starting scheduler...");
+    initInstagramWindowCleanup();
+    log("✅ Instagram window cleanup started");
+  } else {
+    log("🪟 Instagram window cleanup is disabled (set INSTAGRAM_CLEANUP_ENABLED=true to enable)");
   }
 
   // Setup Finance Data Pre-fetch Scheduler (Daily at 6:00 AM)

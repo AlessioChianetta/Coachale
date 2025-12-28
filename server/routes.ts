@@ -105,6 +105,8 @@ import echoRouter from "./routes/echo";
 import aiAssistantRouter from "./routes/ai-assistant-router";
 import managerRouter from "./routes/manager-router";
 import publicAgentRouter from "./routes/public-agent-router";
+import instagramWebhookRouter from "./routes/instagram/instagram-webhook-router";
+import instagramConfigRouter from "./routes/instagram/instagram-config-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -9425,6 +9427,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // WhatsApp Agent Stats & Analytics routes
   app.use("/api/whatsapp/agents", agentStatsRouter);
+
+  // Instagram Integration routes
+  app.use("/api/instagram", instagramWebhookRouter); // Public webhook endpoints
+  app.use("/api/instagram", instagramConfigRouter); // Authenticated config endpoints
 
   // Live Prompts routes (requires authentication)
   // Scoped to /api/live-prompts to avoid intercepting other /api routes
