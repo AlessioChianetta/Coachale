@@ -11,6 +11,7 @@ import { db } from '../../db';
 import * as schema from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { generateSpeech } from '../../ai/tts-service';
 import { shouldRespondWithAudio } from '../../whatsapp/audio-response-utils';
@@ -80,9 +81,10 @@ function validateDomainAccess(
 
 /**
  * Middleware to validate visitor session for password-protected shares
+ * Also handles manager JWT tokens for manager_login shares
  */
 async function validateVisitorSession(
-  req: Request & { share?: schema.WhatsappAgentShare },
+  req: Request & { share?: schema.WhatsappAgentShare; managerId?: string },
   res: Response,
   next: NextFunction
 ) {
@@ -95,6 +97,27 @@ async function validateVisitorSession(
     // If share is public, no session needed
     if (share.accessType === 'public') {
       return next();
+    }
+    
+    // For manager_login shares, check for manager JWT token first
+    if (share.accessType === 'manager_login') {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7);
+        const sessionSecret = process.env.SESSION_SECRET;
+        if (sessionSecret) {
+          try {
+            const decoded = jwt.verify(token, sessionSecret) as any;
+            if (decoded.type === 'manager_share' && decoded.shareId === share.id) {
+              // Valid manager token - attach managerId to request and proceed
+              req.managerId = decoded.managerId;
+              return next();
+            }
+          } catch (jwtError) {
+            // Invalid JWT - fall through to visitorId check
+          }
+        }
+      }
     }
     
     // For password-protected shares, verify visitor session
@@ -349,22 +372,24 @@ router.post(
   validateShareExists,
   validateDomainAccess,
   validateVisitorSession,
-  async (req: Request & { share?: schema.WhatsappAgentShare }, res) => {
-    // SECURITY: Get visitorId from query (validated by middleware)
-    const visitorId = req.query.visitorId as string;
+  async (req: Request & { share?: schema.WhatsappAgentShare; managerId?: string }, res) => {
+    // SECURITY: Get visitorId from query OR use managerId from JWT (for manager_login shares)
+    const managerId = req.managerId;
+    const visitorId = managerId ? `manager_${managerId}` : (req.query.visitorId as string);
     const { message } = req.body;
     const share = req.share!;
     
+    const isManager = !!managerId;
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`📨 [PUBLIC-SHARE-STREAMING] New message from visitor`);
+    console.log(`📨 [PUBLIC-SHARE-STREAMING] New message from ${isManager ? 'MANAGER' : 'visitor'}`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`🔗 Share: ${share.slug} (${share.agentName})`);
-    console.log(`👤 Visitor: ${visitorId}`);
+    console.log(`👤 ${isManager ? 'Manager' : 'Visitor'}: ${visitorId}`);
     console.log(`📝 Message: "${message?.substring(0, 50) || '(empty)'}${message?.length > 50 ? '...' : ''}"`);
     
     try {
       if (!visitorId) {
-        console.log(`❌ Missing visitorId`);
+        console.log(`❌ Missing visitorId/managerId`);
         return res.status(400).json({ error: 'visitorId richiesto' });
       }
       

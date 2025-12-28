@@ -504,39 +504,40 @@ export default function ManagerChat() {
 
   const isAuthenticated = !!getManagerToken() && agentInfo?.requiresLogin === true;
 
-  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
-    queryKey: ["manager-conversations", slug],
+  // Simplified: no sidebar, single conversation per manager via public share endpoint
+  const conversations: Conversation[] = [];
+  const conversationsLoading = false;
+
+  // Fetch messages from the public share's conversation endpoint
+  const { refetch: refetchConversation } = useQuery({
+    queryKey: ["manager-share-conversation", slug],
     queryFn: async () => {
-      const response = await fetch(`/api/public/agent/${slug}/conversations`, {
-        headers: getManagerAuthHeaders(),
-      });
+      const response = await fetch(
+        `/public/whatsapp/shares/${slug}/conversation`,
+        { headers: getManagerAuthHeaders() }
+      );
       if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem("manager_token");
-          setLocation(`/agent/${slug}/login`);
+        // No conversation yet - this is fine
+        if (response.status === 404) {
+          setMessages([]);
+          return [];
         }
-        throw new Error("Failed to fetch conversations");
+        throw new Error("Failed to fetch messages");
       }
-      return response.json();
+      const data = await response.json();
+      const msgs = (data.messages || []).map((m: any) => ({
+        id: m.id,
+        role: m.role === 'agent' ? 'assistant' : m.role,
+        content: m.content,
+      }));
+      setMessages(msgs);
+      return msgs;
     },
     enabled: isAuthenticated,
   });
 
-  const { refetch: fetchMessages } = useQuery({
-    queryKey: ["manager-conversation-messages", slug, selectedConversationId],
-    queryFn: async () => {
-      if (!selectedConversationId) return [];
-      const response = await fetch(
-        `/api/public/agent/${slug}/conversations/${selectedConversationId}`,
-        { headers: getManagerAuthHeaders() }
-      );
-      if (!response.ok) throw new Error("Failed to fetch messages");
-      const data = await response.json();
-      setMessages(data.messages || []);
-      return data.messages;
-    },
-    enabled: !!slug && !!selectedConversationId && !isNewConversation,
-  });
+  // Alias for backwards compatibility
+  const fetchMessages = refetchConversation;
 
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: string) => {
@@ -567,25 +568,9 @@ export default function ManagerChat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      let convId = selectedConversationId;
-
-      if (!convId) {
-        const createRes = await fetch(`/api/public/agent/${slug}/conversations`, {
-          method: "POST",
-          headers: {
-            ...getManagerAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ title: message.slice(0, 50) }),
-        });
-        if (!createRes.ok) throw new Error("Failed to create conversation");
-        const newConv = await createRes.json();
-        convId = newConv.id;
-        setSelectedConversationId(convId);
-      }
-
+      // Use the same endpoint as public share - it handles conversations automatically
       const response = await fetch(
-        `/api/public/agent/${slug}/conversations/${convId}/messages`,
+        `/public/whatsapp/shares/${slug}/message`,
         {
           method: "POST",
           headers: {
@@ -593,24 +578,21 @@ export default function ManagerChat() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ 
-            content: message,
-            preferences: {
-              writingStyle: preferences.writingStyle,
-              responseLength: preferences.responseLength,
-              customInstructions: preferences.writingStyle === 'custom' ? preferences.customInstructions : undefined,
-            },
+            message: message,
           }),
         }
       );
 
-      if (!response.ok) throw new Error("Failed to send message");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to send message");
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response body");
 
       const decoder = new TextDecoder();
       let fullContent = "";
-      let messageId = "";
       let buffer = "";
 
       while (true) {
@@ -626,7 +608,8 @@ export default function ManagerChat() {
             try {
               const data = JSON.parse(line.slice(6));
 
-              if (data.type === "delta") {
+              // Public share uses 'chunk' instead of 'delta'
+              if (data.type === "chunk") {
                 fullContent += data.content;
                 if (tempAssistantIdRef.current) {
                   setMessages((prev) =>
@@ -637,11 +620,12 @@ export default function ManagerChat() {
                     )
                   );
                 }
-              } else if (data.type === "complete") {
-                messageId = data.messageId;
+              } else if (data.type === "done") {
+                // Stream complete
               } else if (data.type === "error") {
                 throw new Error(data.error || "AI error");
               }
+              // Ignore promptBreakdown and citations for now
             } catch (e) {
               console.error("Parse error:", e);
             }
@@ -649,7 +633,7 @@ export default function ManagerChat() {
         }
       }
 
-      return { conversationId: convId, messageId, content: fullContent };
+      return { content: fullContent };
     },
     onMutate: async (message) => {
       const userMessage: Message = {
@@ -673,14 +657,15 @@ export default function ManagerChat() {
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === tempAssistantIdRef.current
-            ? { ...msg, id: data.messageId || `assistant-${Date.now()}`, content: data.content }
+            ? { ...msg, id: `assistant-${Date.now()}`, content: data.content }
             : msg
         )
       );
       setIsTyping(false);
       tempAssistantIdRef.current = null;
       setIsNewConversation(false);
-      queryClient.invalidateQueries({ queryKey: ["manager-conversations", slug] });
+      // Refresh conversation from public share endpoint
+      refetchConversation();
     },
     onError: () => {
       setIsTyping(false);
