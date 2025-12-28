@@ -175,11 +175,6 @@ export default function PublicAgentShare() {
       localStorage.setItem(`visitor_session_${slug}`, newVisitorId);
       setShowPasswordGate(false);
       setPassword("");
-      
-      toast({
-        title: "✅ Accesso consentito",
-        description: `Benvenuto nella chat con ${data.agentName}`,
-      });
     },
     onError: (error: Error) => {
       toast({
