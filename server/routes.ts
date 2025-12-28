@@ -5601,10 +5601,18 @@ Rispondi SOLO con un JSON array, senza altri testi:
             model: 'gemini-2.5-flash',
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0.3,
+              temperature: 0.2,
               maxOutputTokens: 8000,
+              responseMimeType: 'application/json', // Force JSON output
             },
-          });
+            // Disable thinking mode to prevent token consumption without visible output
+            thinkingConfig: { thinkingBudget: 0 },
+          } as any);
+          
+          // Debug: check finishReason
+          const candidate = response.response.candidates?.[0];
+          const finishReason = candidate?.finishReason || 'UNKNOWN';
+          console.log(`🏁 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} finishReason: ${finishReason}`);
           
           const text = response.response.text() || '';
           console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} response length: ${text.length} chars`);
