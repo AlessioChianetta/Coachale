@@ -5415,6 +5415,240 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
     }
   });
 
+  // In-memory store for auto-assign job status (polling approach)
+  const autoAssignJobs = new Map<string, {
+    consultantId: string;
+    status: 'running' | 'completed' | 'error';
+    totalBatches: number;
+    currentBatch: number;
+    totalLessons: number;
+    assignedLessons: number;
+    assignments: any[];
+    error?: string;
+    startedAt: Date;
+  }>();
+
+  // Cleanup old auto-assign jobs after 30 minutes
+  setInterval(() => {
+    const thirtyMinsAgo = Date.now() - 30 * 60 * 1000;
+    for (const [jobId, job] of autoAssignJobs.entries()) {
+      if (job.startedAt.getTime() < thirtyMinsAgo) {
+        autoAssignJobs.delete(jobId);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  // Start auto-assign job (returns immediately with jobId for polling)
+  app.post("/api/library/ai-auto-assign-stream", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { lessons, modules } = req.body;
+      
+      if (!lessons || !Array.isArray(lessons) || lessons.length === 0) {
+        return res.status(400).json({ message: "lessons array is required" });
+      }
+      if (!modules || !Array.isArray(modules) || modules.length === 0) {
+        return res.status(400).json({ message: "modules array is required" });
+      }
+
+      const jobId = `autoassign_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const consultantId = req.user!.id;
+      const BATCH_SIZE = 5;
+      const totalBatches = Math.ceil(lessons.length / BATCH_SIZE);
+
+      // Initialize job
+      autoAssignJobs.set(jobId, {
+        consultantId,
+        status: 'running',
+        totalBatches,
+        currentBatch: 0,
+        totalLessons: lessons.length,
+        assignedLessons: 0,
+        assignments: [],
+        startedAt: new Date(),
+      });
+
+      console.log(`🚀 [AI-AUTO-ASSIGN] Job ${jobId} started for ${lessons.length} lessons in ${totalBatches} batches`);
+      
+      // Return immediately with jobId
+      res.json({ jobId, totalBatches, totalLessons: lessons.length });
+
+      // Process in background
+      (async () => {
+        try {
+          const { getAIProvider } = await import("./ai/provider-factory");
+          const providerResult = await getAIProvider(consultantId);
+          
+          const sanitizeText = (text: string): string => {
+            if (!text) return '';
+            return text.replace(/"/g, "'").replace(/\\/g, '').replace(/\n/g, ' ').replace(/\r/g, '').replace(/\t/g, ' ').trim();
+          };
+          
+          // Create module letter mapping (A, B, C, ...)
+          const moduleLetters = modules.map((_: any, i: number) => String.fromCharCode(65 + i));
+          const moduleIndexMap = new Map(modules.map((m: any, i: number) => [moduleLetters[i], m.id]));
+          
+          const allAssignments: any[] = [];
+          
+          if (!providerResult.client) {
+            // No AI available - distribute evenly
+            lessons.forEach((l: any, idx: number) => {
+              allAssignments.push({
+                lessonId: l.id,
+                moduleId: modules[idx % modules.length].id,
+                confidence: 0.5,
+                reason: "Distribuzione automatica"
+              });
+            });
+            
+            const job = autoAssignJobs.get(jobId);
+            if (job) {
+              job.status = 'completed';
+              job.assignments = allAssignments;
+              job.assignedLessons = allAssignments.length;
+              job.currentBatch = totalBatches;
+            }
+            return;
+          }
+          
+          for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const startIdx = batchIndex * BATCH_SIZE;
+            const endIdx = Math.min(startIdx + BATCH_SIZE, lessons.length);
+            const batchLessons = lessons.slice(startIdx, endIdx);
+            
+            // Update job progress
+            const job = autoAssignJobs.get(jobId);
+            if (job) {
+              job.currentBatch = batchIndex + 1;
+            }
+            
+            const prompt = `Assegna ogni lezione al modulo più appropriato.
+
+LEZIONI:
+${batchLessons.map((l: any, i: number) => `${i + 1}. ${sanitizeText(l.title).substring(0, 80)}`).join('\n')}
+
+MODULI:
+${modules.map((m: any, i: number) => `${moduleLetters[i]}. ${sanitizeText(m.name)}`).join('\n')}
+
+Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lettera è il modulo.`;
+
+            try {
+              const response = await providerResult.client.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                  temperature: 0.1,
+                  maxOutputTokens: 500,
+                  responseMimeType: 'application/json',
+                },
+                thinkingConfig: { thinkingBudget: 0 },
+              } as any);
+              
+              const text = response.response.text() || '';
+              console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}/${totalBatches}: ${text}`);
+              
+              try {
+                const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                const mapping = JSON.parse(cleanJson);
+                
+                batchLessons.forEach((l: any, idx: number) => {
+                  const lessonKey = String(idx + 1);
+                  const moduleLetter = mapping[lessonKey];
+                  const moduleId = moduleLetter ? moduleIndexMap.get(moduleLetter.toUpperCase()) : null;
+                  
+                  allAssignments.push({
+                    lessonId: l.id,
+                    moduleId: moduleId || modules[idx % modules.length].id,
+                    confidence: moduleId ? 0.85 : 0.5,
+                    reason: moduleId ? "Assegnazione AI" : "Assegnazione automatica"
+                  });
+                });
+              } catch {
+                // Fallback
+                batchLessons.forEach((l: any, idx: number) => {
+                  allAssignments.push({
+                    lessonId: l.id,
+                    moduleId: modules[idx % modules.length].id,
+                    confidence: 0.5,
+                    reason: "Assegnazione automatica"
+                  });
+                });
+              }
+              
+              // Update progress
+              if (job) {
+                job.assignedLessons = allAssignments.length;
+                job.assignments = [...allAssignments];
+              }
+              
+            } catch (batchError: any) {
+              console.error(`❌ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} failed:`, batchError.message);
+              batchLessons.forEach((l: any, idx: number) => {
+                allAssignments.push({
+                  lessonId: l.id,
+                  moduleId: modules[idx % modules.length].id,
+                  confidence: 0.4,
+                  reason: "Distribuzione automatica"
+                });
+              });
+            }
+            
+            // Small delay between batches
+            if (batchIndex < totalBatches - 1) {
+              await new Promise(resolve => setTimeout(resolve, 150));
+            }
+          }
+          
+          // Mark job as completed
+          const finalJob = autoAssignJobs.get(jobId);
+          if (finalJob) {
+            finalJob.status = 'completed';
+            finalJob.assignments = allAssignments;
+            finalJob.assignedLessons = allAssignments.length;
+            finalJob.currentBatch = totalBatches;
+          }
+          
+          console.log(`✅ [AI-AUTO-ASSIGN] Job ${jobId} completed: ${allAssignments.length} assignments`);
+          
+        } catch (error: any) {
+          console.error(`❌ [AI-AUTO-ASSIGN] Job ${jobId} failed:`, error.message);
+          const job = autoAssignJobs.get(jobId);
+          if (job) {
+            job.status = 'error';
+            job.error = error.message;
+          }
+        }
+      })();
+      
+    } catch (error: any) {
+      console.error('Error starting auto-assign job:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get auto-assign job status (for polling)
+  app.get("/api/library/ai-auto-assign-status/:jobId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    const { jobId } = req.params;
+    const job = autoAssignJobs.get(jobId);
+    
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+    
+    if (job.consultantId !== req.user!.id) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+    
+    res.json({
+      status: job.status,
+      totalBatches: job.totalBatches,
+      currentBatch: job.currentBatch,
+      totalLessons: job.totalLessons,
+      assignedLessons: job.assignedLessons,
+      assignments: job.status === 'completed' ? job.assignments : [],
+      error: job.error,
+    });
+  });
+
   // AI auto-assign lessons to modules based on content analysis (with batching for large datasets)
   app.post("/api/library/ai-auto-assign", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
@@ -5547,12 +5781,17 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         return assignments;
       };
       
-      // BATCHING: Process lessons in batches of 20 to avoid timeout/parsing issues
-      const BATCH_SIZE = 20;
+      // NEW STRATEGY: Smaller batches (5 lessons) with numeric indices for compact output
+      const BATCH_SIZE = 5;
       const allAssignments: any[] = [];
       const totalBatches = Math.ceil(lessons.length / BATCH_SIZE);
       
+      // Create module letter mapping (A, B, C, D, ...)
+      const moduleLetters = modules.map((_: any, i: number) => String.fromCharCode(65 + i)); // A, B, C, ...
+      const moduleIndexMap = new Map(modules.map((m: any, i: number) => [moduleLetters[i], m.id]));
+      
       console.log(`📦 [AI-AUTO-ASSIGN] Processing ${lessons.length} lessons in ${totalBatches} batches of ${BATCH_SIZE}`);
+      console.log(`📦 [AI-AUTO-ASSIGN] Module mapping: ${modules.map((m: any, i: number) => `${moduleLetters[i]}=${sanitizeText(m.name).substring(0, 20)}`).join(', ')}`);
       
       for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
         const startIdx = batchIndex * BATCH_SIZE;
@@ -5561,76 +5800,73 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         
         console.log(`📦 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}/${totalBatches}: lessons ${startIdx + 1}-${endIdx}`);
         
-        const prompt = `Sei un esperto nella creazione e organizzazione di corsi formativi.
+        // COMPACT PROMPT: Use numeric indices (1-5) for lessons and letters (A-Z) for modules
+        const prompt = `Assegna ogni lezione al modulo più appropriato.
 
-LEZIONI DA ASSEGNARE (batch ${batchIndex + 1} di ${totalBatches}):
-${batchLessons.map((l: any, i: number) => `${startIdx + i + 1}. ID: "${l.id}"
-   Titolo: "${sanitizeText(l.title)}"
-   Sottotitolo: "${sanitizeText(l.subtitle) || 'N/A'}"
-   Tags: ${l.tags?.join(', ') || 'N/A'}`).join('\n\n')}
+LEZIONI:
+${batchLessons.map((l: any, i: number) => `${i + 1}. ${sanitizeText(l.title).substring(0, 80)}`).join('\n')}
 
-MODULI DISPONIBILI:
-${modules.map((m: any, i: number) => `${i + 1}. ID: "${m.id}" - Nome: "${sanitizeText(m.name)}"`).join('\n')}
+MODULI:
+${modules.map((m: any, i: number) => `${moduleLetters[i]}. ${sanitizeText(m.name)}`).join('\n')}
 
-COMPITO:
-Analizza il contenuto di ogni lezione e assegnala al modulo più appropriato.
-Per ogni lezione, fornisci:
-1. L'ID della lezione
-2. L'ID del modulo più adatto
-3. Un punteggio di confidenza (0.0-1.0)
-4. Una breve spiegazione (max 15 parole)
-
-CRITERI DI ASSEGNAZIONE:
-- Affinità tematica tra titolo lezione e nome modulo
-- Coerenza con eventuali tags
-- Progressione logica del contenuto
-- Distribuisci le lezioni equamente tra i moduli disponibili
-
-Rispondi SOLO con un JSON array, senza altri testi:
-[
-  {
-    "lessonId": "id_lezione",
-    "moduleId": "id_modulo",
-    "confidence": 0.85,
-    "reason": "Spiegazione breve"
-  }
-]`;
+Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lettera è il modulo.`;
 
         try {
           const response = await providerResult.client.generateContent({
             model: 'gemini-2.5-flash',
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 8000,
-              responseMimeType: 'application/json', // Force JSON output
+              temperature: 0.1,
+              maxOutputTokens: 500, // Small output expected
+              responseMimeType: 'application/json',
             },
-            // Disable thinking mode to prevent token consumption without visible output
             thinkingConfig: { thinkingBudget: 0 },
           } as any);
           
-          // Debug: check finishReason
           const candidate = response.response.candidates?.[0];
           const finishReason = candidate?.finishReason || 'UNKNOWN';
-          console.log(`🏁 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} finishReason: ${finishReason}`);
           
           const text = response.response.text() || '';
-          console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} response length: ${text.length} chars`);
-          // Debug: log first 500 chars of response to see what AI is returning
-          console.log(`🔍 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} raw preview: ${text.substring(0, 500)}...`);
+          console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}: ${text.length} chars, finishReason=${finishReason}`);
+          console.log(`🔍 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} response: ${text}`);
           
-          // Use nuclear-proof parser
-          const batchAssignments = parseAssignmentsFromText(text, batchLessons, modules);
-          
-          if (batchAssignments.length > 0) {
-            allAssignments.push(...batchAssignments);
-            console.log(`✅ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} completed: ${batchAssignments.length}/${batchLessons.length} assignments`);
-          }
-          
-          // Fill in any missing assignments from this batch
-          const assignedInBatch = new Set(batchAssignments.map(a => a.lessonId));
-          batchLessons.forEach((l: any, idx: number) => {
-            if (!assignedInBatch.has(l.id)) {
+          // Parse compact response: {"1":"A","2":"B",...}
+          try {
+            const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const mapping = JSON.parse(cleanJson);
+            
+            let assignedCount = 0;
+            batchLessons.forEach((l: any, idx: number) => {
+              const lessonKey = String(idx + 1);
+              const moduleLetter = mapping[lessonKey];
+              const moduleId = moduleLetter ? moduleIndexMap.get(moduleLetter.toUpperCase()) : null;
+              
+              if (moduleId) {
+                allAssignments.push({
+                  lessonId: l.id,
+                  moduleId: moduleId,
+                  confidence: 0.85,
+                  reason: "Assegnazione AI"
+                });
+                assignedCount++;
+              } else {
+                // Fallback: distribute evenly
+                const fallbackModuleIndex = idx % modules.length;
+                allAssignments.push({
+                  lessonId: l.id,
+                  moduleId: modules[fallbackModuleIndex].id,
+                  confidence: 0.5,
+                  reason: "Assegnazione automatica"
+                });
+              }
+            });
+            
+            console.log(`✅ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} completed: ${assignedCount}/${batchLessons.length} AI assignments`);
+            
+          } catch (parseError) {
+            console.log(`⚠️ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} parse failed, using fallback`);
+            // Fallback for parse failure
+            batchLessons.forEach((l: any, idx: number) => {
               const moduleIndex = idx % modules.length;
               allAssignments.push({
                 lessonId: l.id,
@@ -5638,15 +5874,14 @@ Rispondi SOLO con un JSON array, senza altri testi:
                 confidence: 0.5,
                 reason: "Assegnazione automatica"
               });
-            }
-          });
+            });
+          }
           
         } catch (batchError: any) {
           console.error(`❌ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} failed:`, batchError.message);
-          // Fallback for failed batch: distribute evenly among modules
-          const moduleCount = modules.length;
+          // Fallback for failed batch
           batchLessons.forEach((l: any, idx: number) => {
-            const moduleIndex = idx % moduleCount;
+            const moduleIndex = idx % modules.length;
             allAssignments.push({
               lessonId: l.id,
               moduleId: modules[moduleIndex].id,
@@ -5658,7 +5893,7 @@ Rispondi SOLO con un JSON array, senza altri testi:
         
         // Small delay between batches to avoid rate limiting
         if (batchIndex < totalBatches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
       

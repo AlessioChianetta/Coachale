@@ -482,6 +482,12 @@ export default function ConsultantLibraryAIBuilder() {
   const [isAiAssigning, setIsAiAssigning] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<Map<string, { moduleId: string; confidence: number; reason: string }>>(new Map());
   const [isSuggestingModules, setIsSuggestingModules] = useState(false);
+  const [aiAssignProgress, setAiAssignProgress] = useState<{
+    currentBatch: number;
+    totalBatches: number;
+    assignedLessons: number;
+    totalLessons: number;
+  } | null>(null);
   
   // Step 2: Stato caricamento video con UI dettagliata
   const [isSavingVideos, setIsSavingVideos] = useState(false);
@@ -2961,6 +2967,7 @@ export default function ConsultantLibraryAIBuilder() {
                               <Button
                                 onClick={async () => {
                                   setIsAiAssigning(true);
+                                  setAiAssignProgress(null);
                                   try {
                                     const lessonsData = generatedLessons.map((l: any) => ({
                                       id: l.id,
@@ -2973,36 +2980,67 @@ export default function ConsultantLibraryAIBuilder() {
                                       name: s.name
                                     }));
                                     
-                                    const data = await apiRequest("POST", "/api/library/ai-auto-assign", {
+                                    // Start job (returns immediately with jobId)
+                                    const startResponse = await apiRequest("POST", "/api/library/ai-auto-assign-stream", {
                                       lessons: lessonsData,
                                       modules: modulesData
                                     });
                                     
-                                    if (data.assignments) {
-                                      const newSuggestions = new Map<string, { moduleId: string; confidence: number; reason: string }>();
-                                      const newAssignments = new Map<string, string>();
+                                    const { jobId, totalBatches, totalLessons } = startResponse;
+                                    console.log('[AI-ASSIGN] Job started:', jobId, 'batches:', totalBatches);
+                                    
+                                    setAiAssignProgress({
+                                      currentBatch: 0,
+                                      totalBatches,
+                                      assignedLessons: 0,
+                                      totalLessons
+                                    });
+                                    
+                                    // Poll for progress
+                                    let isCompleted = false;
+                                    while (!isCompleted) {
+                                      await new Promise(resolve => setTimeout(resolve, 500));
                                       
-                                      data.assignments.forEach((a: any) => {
-                                        newSuggestions.set(a.lessonId, {
-                                          moduleId: a.moduleId,
-                                          confidence: a.confidence,
-                                          reason: a.reason
+                                      const status = await apiRequest("GET", `/api/library/ai-auto-assign-status/${jobId}`);
+                                      
+                                      setAiAssignProgress({
+                                        currentBatch: status.currentBatch,
+                                        totalBatches: status.totalBatches,
+                                        assignedLessons: status.assignedLessons,
+                                        totalLessons: status.totalLessons
+                                      });
+                                      
+                                      if (status.status === 'completed') {
+                                        isCompleted = true;
+                                        
+                                        const newSuggestions = new Map<string, { moduleId: string; confidence: number; reason: string }>();
+                                        const newAssignments = new Map<string, string>();
+                                        
+                                        status.assignments.forEach((a: any) => {
+                                          newSuggestions.set(a.lessonId, {
+                                            moduleId: a.moduleId,
+                                            confidence: a.confidence,
+                                            reason: a.reason
+                                          });
+                                          newAssignments.set(a.lessonId, a.moduleId);
                                         });
-                                        newAssignments.set(a.lessonId, a.moduleId);
-                                      });
-                                      
-                                      setAiSuggestions(newSuggestions);
-                                      setModuleAssignments(newAssignments);
-                                      const batchInfo = data.batchCount > 1 ? ` (${data.batchCount} batch completati)` : '';
-                                      toast({ 
-                                        title: "Suggerimenti AI pronti!", 
-                                        description: `${newAssignments.size} lezioni assegnate${batchInfo}. Puoi modificare le assegnazioni prima di procedere.`
-                                      });
+                                        
+                                        setAiSuggestions(newSuggestions);
+                                        setModuleAssignments(newAssignments);
+                                        toast({ 
+                                          title: "Suggerimenti AI pronti!", 
+                                          description: `${newAssignments.size} lezioni assegnate in ${status.totalBatches} batch. Puoi modificare le assegnazioni.`
+                                        });
+                                      } else if (status.status === 'error') {
+                                        isCompleted = true;
+                                        throw new Error(status.error || 'Errore durante l\'assegnazione');
+                                      }
                                     }
                                   } catch (error: any) {
                                     toast({ title: "Errore AI", description: error.message, variant: "destructive" });
                                   }
                                   setIsAiAssigning(false);
+                                  setAiAssignProgress(null);
                                 }}
                                 className="bg-gradient-to-r from-purple-600 to-indigo-600"
                               >
@@ -3023,15 +3061,30 @@ export default function ConsultantLibraryAIBuilder() {
                                 <p className="font-medium text-purple-700 dark:text-purple-300">
                                   L'AI sta analizzando le lezioni...
                                 </p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {generatedLessons.length > 20 
-                                    ? `Elaborazione in ${Math.ceil(generatedLessons.length / 20)} batch da 20 lezioni ciascuno`
-                                    : "Analisi contenuti e assegnazione ai moduli"
-                                  }
-                                </p>
-                                {generatedLessons.length > 50 && (
-                                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                                    ⏱️ Con {generatedLessons.length} lezioni potrebbero volerci alcuni minuti
+                                {aiAssignProgress ? (
+                                  <div className="space-y-3 mt-3">
+                                    <div className="flex items-center justify-center gap-2 text-sm">
+                                      <span className="font-semibold text-purple-600">
+                                        Batch {aiAssignProgress.currentBatch}/{aiAssignProgress.totalBatches}
+                                      </span>
+                                      <span className="text-muted-foreground">•</span>
+                                      <span className="text-green-600 font-medium">
+                                        {aiAssignProgress.assignedLessons}/{aiAssignProgress.totalLessons} lezioni
+                                      </span>
+                                    </div>
+                                    <div className="w-full max-w-xs mx-auto bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                                      <div 
+                                        className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full transition-all duration-300"
+                                        style={{ width: `${Math.round((aiAssignProgress.currentBatch / aiAssignProgress.totalBatches) * 100)}%` }}
+                                      />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      {Math.round((aiAssignProgress.currentBatch / aiAssignProgress.totalBatches) * 100)}% completato
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Avvio elaborazione...
                                   </p>
                                 )}
                               </div>
