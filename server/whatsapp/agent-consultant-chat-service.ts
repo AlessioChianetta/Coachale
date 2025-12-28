@@ -18,7 +18,7 @@ import { isRetryableError, RETRY_DELAYS_MS } from '../ai/retry-manager';
  * Build system prompt for WhatsApp agent based on consultant configuration
  * Includes knowledge base items (documents + text) for enhanced AI responses
  */
-async function buildWhatsAppAgentPrompt(agentConfig: any): Promise<string> {
+export async function buildWhatsAppAgentPrompt(agentConfig: any): Promise<string> {
   const businessName = agentConfig?.businessName || "il consulente";
   const agentName = agentConfig?.agentName || "Assistente WhatsApp";
   const businessDescription = agentConfig?.businessDescription || "servizi professionali";

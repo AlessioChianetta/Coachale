@@ -11,6 +11,9 @@ import {
   consultantWhatsappConfig,
 } from "@shared/schema";
 import { getAIProvider, getModelWithThinking } from "../ai/provider-factory";
+import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
+import { fileSearchSyncService } from "../services/file-search-sync-service";
+import { fileSearchService } from "../ai/file-search-service";
 
 const router = Router();
 const JWT_SECRET = process.env.SESSION_SECRET || "manager-fallback-secret-key";
@@ -417,6 +420,24 @@ router.post(
         const { model: modelName } = getModelWithThinking(aiProvider.metadata.name);
         modelUsed = modelName;
 
+        // Build rich prompt using the same logic as WhatsApp public share
+        console.log('[PUBLIC AGENT] Building rich prompt using WhatsApp agent logic...');
+        const basePrompt = await buildWhatsAppAgentPrompt(agentConfig);
+        
+        // If share has custom instructions, they can override or complement the base prompt
+        let systemPrompt: string;
+        if (share.agentInstructions) {
+          // Share has custom instructions - append them to the rich base prompt
+          systemPrompt = basePrompt + `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 ISTRUZIONI SPECIFICHE SHARE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${share.agentInstructions}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        } else {
+          systemPrompt = basePrompt;
+        }
+        
+        // Append manager style preferences
         let styleInstructions = "";
         if (preferences) {
           const { writingStyle, responseLength, customInstructions } = preferences;
@@ -439,13 +460,37 @@ router.post(
             styleInstructions += "\nLunghezza risposta: Fornisci risposte complete ed esaustive, coprendo tutti gli aspetti rilevanti.";
           }
         }
+        
+        if (styleInstructions) {
+          systemPrompt += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 PREFERENZE MANAGER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${styleInstructions}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        }
+        
+        console.log(`[PUBLIC AGENT] System prompt built: ${systemPrompt.length} characters`);
 
-        // Use share.agentInstructions first (customized per public share), fallback to agentConfig
-        const baseInstructions = share.agentInstructions || agentConfig.agentInstructions;
-        const systemPrompt = (baseInstructions || 
-          `Sei ${agentConfig.agentName}, un assistente AI professionale per ${agentConfig.businessName || "l'azienda"}.
-${agentConfig.businessDescription ? `Descrizione: ${agentConfig.businessDescription}` : ""}
-Rispondi in modo professionale e utile.`) + styleInstructions;
+        // Check for File Search support (same logic as processConsultantAgentMessage)
+        let fileSearchTool: any = null;
+        try {
+          // First try agent-specific store
+          const agentStore = await fileSearchSyncService.getWhatsappAgentStore(agentConfig.id);
+          if (agentStore && agentStore.documentCount > 0) {
+            fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
+            console.log(`[PUBLIC AGENT] File Search enabled with agent store: ${agentStore.displayName} (${agentStore.documentCount} docs)`);
+          } else {
+            // Fallback to consultant's store
+            const consultantStore = await fileSearchSyncService.getConsultantStore(agentConfig.consultantId);
+            if (consultantStore && consultantStore.documentCount > 0) {
+              fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
+              console.log(`[PUBLIC AGENT] File Search enabled with consultant store: ${consultantStore.displayName} (${consultantStore.documentCount} docs)`);
+            } else {
+              console.log('[PUBLIC AGENT] No File Search store available');
+            }
+          }
+        } catch (fsError: any) {
+          console.warn(`[PUBLIC AGENT] Error checking File Search stores: ${fsError.message}`);
+        }
 
         const conversationHistory = previousMessages.slice(0, -1).map(msg => ({
           role: msg.role === "user" ? "user" : "model",
@@ -457,16 +502,26 @@ Rispondi in modo professionale e utile.`) + styleInstructions;
           parts: [{ text: content.trim() }],
         });
 
-        const result = await aiProvider.client.generateContent({
+        // Build generation config
+        const generationConfig: any = {
+          systemInstruction: systemPrompt,
+          temperature: 0.7,
+          topP: 0.95,
+          maxOutputTokens: 4096,
+        };
+
+        // Build request with optional File Search tool
+        const requestConfig: any = {
           model: modelName,
           contents: conversationHistory,
-          generationConfig: {
-            systemInstruction: systemPrompt,
-            temperature: 0.7,
-            topP: 0.95,
-            maxOutputTokens: 4096,
-          },
-        });
+          generationConfig,
+        };
+        
+        if (fileSearchTool) {
+          requestConfig.tools = [fileSearchTool];
+        }
+
+        const result = await aiProvider.client.generateContent(requestConfig);
 
         aiResponseContent = result.response.text() || "";
         sendSSE({ type: "delta", content: aiResponseContent });
