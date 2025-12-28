@@ -161,6 +161,18 @@ const guides = [
     difficulty: "Medio" as const
   },
   {
+    title: "Instagram DM Integration",
+    description: "Configura Instagram Business per ricevere e rispondere automaticamente ai DM. Gestisci la finestra 24h e le risposte alle storie.",
+    icon: MessageSquare,
+    href: "/consultant/guide-instagram",
+    gradient: "bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 border-cyan-200 dark:border-cyan-800",
+    iconColor: "bg-gradient-to-br from-cyan-500 to-teal-600",
+    badge: "NUOVO",
+    badgeColor: "bg-cyan-500",
+    duration: "12 min",
+    difficulty: "Medio" as const
+  },
+  {
     title: "Template WhatsApp",
     description: "Gestisci template Twilio approvati e template custom per messaggi personalizzati. Impara le best practice per l'approvazione.",
     icon: FileText,

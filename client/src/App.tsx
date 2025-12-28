@@ -91,6 +91,7 @@ const GuideTemplates = lazy(() => import("@/pages/guide-templates"));
 const GuideLeads = lazy(() => import("@/pages/guide-leads"));
 const GuideAgents = lazy(() => import("@/pages/guide-agents"));
 const GuideApiKeys = lazy(() => import("@/pages/guide-api-keys"));
+const GuideInstagram = lazy(() => import("@/pages/guide-instagram"));
 const GuidesHub = lazy(() => import("@/pages/guides-hub"));
 const ConsultantSetupWizard = lazy(() => import("@/pages/consultant-setup-wizard"));
 const OnboardingStory = lazy(() => import("@/pages/onboarding-story"));
@@ -467,6 +468,12 @@ function Router() {
           <Route path="/consultant/guide-api-keys">
             <AuthGuard requiredRole="consultant">
               <GuideApiKeys />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/guide-instagram">
+            <AuthGuard requiredRole="consultant">
+              <GuideInstagram />
             </AuthGuard>
           </Route>
 
