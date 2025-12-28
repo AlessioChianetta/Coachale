@@ -10,6 +10,8 @@ import {
   whatsappAgentShares 
 } from "@shared/schema";
 import { authenticateToken, requireRole, type AuthRequest } from "../middleware/auth";
+import { sendEmail } from "../services/email-scheduler";
+import { storage } from "../storage";
 
 const router = Router();
 const JWT_SECRET = process.env.SESSION_SECRET || "manager-fallback-secret-key";
@@ -22,10 +24,22 @@ function omitPasswordHash(manager: typeof managerUsers.$inferSelect) {
 router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { name, email, password, metadata, agentIds, sendEmail } = req.body;
+    const { name, email, password, metadata, agentIds, sendEmail: shouldSendEmail } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email and password are required" });
+    }
+
+    // Check SMTP configuration if email sending is requested
+    let smtpSettings = null;
+    if (shouldSendEmail) {
+      smtpSettings = await storage.getConsultantSmtpSettings(consultantId);
+      if (!smtpSettings || !smtpSettings.isActive) {
+        return res.status(400).json({ 
+          message: "Per inviare email devi prima configurare le impostazioni SMTP. Vai su Impostazioni > Email per configurarle.",
+          code: "SMTP_NOT_CONFIGURED"
+        });
+      }
     }
 
     const existing = await db.select()
@@ -52,6 +66,7 @@ router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthR
     }).returning();
 
     // Auto-assign manager to agent shares if agentIds provided
+    let assignedShareUrls: string[] = [];
     if (agentIds && Array.isArray(agentIds) && agentIds.length > 0) {
       // Get all shares for the specified agents that belong to this consultant
       const agentShares = await db.select()
@@ -70,6 +85,11 @@ router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthR
             managerId: created.id,
             shareId: share.id,
           });
+          // Collect share URLs for email
+          const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+            : 'https://example.com';
+          assignedShareUrls.push(`${baseUrl}/agent/${share.slug}/login`);
         } catch (assignError) {
           console.log(`[MANAGER] Assignment already exists or failed for share ${share.id}`);
         }
@@ -77,9 +97,41 @@ router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthR
       console.log(`[MANAGER] Created ${matchingShares.length} share assignments for manager ${created.id}`);
     }
 
-    // TODO: Send email with credentials if sendEmail is true
-    if (sendEmail) {
-      console.log(`[MANAGER] Email sending requested for ${email} (not implemented yet)`);
+    // Send email with credentials if requested and SMTP is configured
+    if (shouldSendEmail && smtpSettings) {
+      try {
+        const loginUrl = assignedShareUrls.length > 0 
+          ? assignedShareUrls[0] 
+          : (process.env.REPLIT_DEV_DOMAIN 
+              ? `https://${process.env.REPLIT_DEV_DOMAIN}/agent/login` 
+              : 'Link di accesso');
+
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #0891b2;">Benvenuto come Manager</h2>
+            <p>Ciao <strong>${name}</strong>,</p>
+            <p>Sei stato invitato come manager per accedere all'assistente AI.</p>
+            <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0 0 10px 0;"><strong>Le tue credenziali di accesso:</strong></p>
+              <p style="margin: 5px 0;">Email: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${email}</code></p>
+              <p style="margin: 5px 0;">Password: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${password}</code></p>
+            </div>
+            <p><a href="${loginUrl}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Accedi Ora</a></p>
+            <p style="color: #64748b; font-size: 14px; margin-top: 20px;">Ti consigliamo di cambiare la password al primo accesso.</p>
+          </div>
+        `;
+
+        await sendEmail({
+          to: email,
+          subject: "Invito Manager - Credenziali di Accesso",
+          html: emailHtml,
+          consultantId: consultantId,
+        });
+        console.log(`[MANAGER] Email sent successfully to ${email}`);
+      } catch (emailError: any) {
+        console.error(`[MANAGER] Failed to send email to ${email}:`, emailError.message);
+        // Don't fail the request if email fails - manager is still created
+      }
     }
 
     res.status(201).json(omitPasswordHash(created));

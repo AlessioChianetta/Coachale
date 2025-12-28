@@ -22,7 +22,7 @@ router.use(requireRole('consultant'));
  */
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { agentConfigId, accessType, password, allowedDomains, expireAt } = req.body;
+    const { agentConfigId, accessType, password, allowedDomains, expireAt, requiresLogin } = req.body;
     const consultantId = req.user!.id;
     
     // Validate required fields
@@ -59,6 +59,7 @@ router.post('/', async (req: AuthRequest, res) => {
       allowedDomains: allowedDomains || [],
       expireAt: expireAt ? new Date(expireAt) : undefined,
       createdBy: consultantId,
+      requiresLogin: requiresLogin || false,
     });
     
     // Generate public URL
@@ -107,6 +108,7 @@ router.get('/', async (req: AuthRequest, res) => {
       totalMessagesCount: share.totalMessagesCount,
       createdAt: share.createdAt,
       revokedAt: share.revokedAt,
+      requiresLogin: share.requiresLogin || false,
       agent: {
         id: share.agentConfigId, // Use agentConfigId as agent.id for filtering
         agentName: agent?.agentName || share.agentName,

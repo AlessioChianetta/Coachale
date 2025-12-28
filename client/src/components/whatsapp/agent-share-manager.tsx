@@ -72,9 +72,12 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
   const queryClient = useQueryClient();
 
   const [accessType, setAccessType] = useState<'public' | 'password'>('public');
+  const [shareMode, setShareMode] = useState<'public' | 'manager'>('public');
   const [password, setPassword] = useState('');
   const [allowedDomains, setAllowedDomains] = useState('');
   const [expireDays, setExpireDays] = useState('');
+  
+  const MAX_SHARES_PER_AGENT = 2;
 
   const [inviteDrawerOpen, setInviteDrawerOpen] = useState(false);
   const [managerSearch, setManagerSearch] = useState('');
@@ -263,9 +266,20 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
 
   const createShare = async () => {
     try {
+      // Check limit
+      if (nonRevokedShares.length >= MAX_SHARES_PER_AGENT) {
+        toast({
+          title: 'Limite Raggiunto',
+          description: `Puoi creare massimo ${MAX_SHARES_PER_AGENT} link per agente. Elimina un link esistente per crearne uno nuovo.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const body: any = {
         agentConfigId: agentId,
         accessType,
+        requiresLogin: shareMode === 'manager',
       };
 
       if (accessType === 'password') {
@@ -549,43 +563,86 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
         </TabsList>
 
         <TabsContent value="shares" className="space-y-4 mt-4">
-          {!activeShare && nonRevokedShares.length === 0 && (
-            <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              {nonRevokedShares.length} / {MAX_SHARES_PER_AGENT} link creati
+            </div>
+            {nonRevokedShares.length < MAX_SHARES_PER_AGENT && (
               <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button className="bg-cyan-500 hover:bg-cyan-600">
                     <Plus className="w-4 h-4 mr-2" />
-                    Crea Condivisione
+                    Nuovo Link
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Crea Condivisione Pubblica</DialogTitle>
+                    <DialogTitle>Crea Nuovo Link</DialogTitle>
                     <DialogDescription>
-                      Genera un link pubblico per permettere ai visitatori di chattare con "{agentName}"
+                      Scegli come vuoi condividere l'accesso a "{agentName}"
                     </DialogDescription>
                   </DialogHeader>
 
-                  <div className="space-y-4">
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <Label className="text-base font-medium">Modalità di Accesso</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div
+                          onClick={() => setShareMode('public')}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            shareMode === 'public' 
+                              ? 'border-cyan-500 bg-cyan-50' 
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <Globe className={`w-8 h-8 mb-2 ${shareMode === 'public' ? 'text-cyan-500' : 'text-gray-400'}`} />
+                          <p className="font-medium">Pubblico</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Chiunque con il link può accedere senza login
+                          </p>
+                        </div>
+                        <div
+                          onClick={() => setShareMode('manager')}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            shareMode === 'manager' 
+                              ? 'border-teal-500 bg-teal-50' 
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <Users className={`w-8 h-8 mb-2 ${shareMode === 'manager' ? 'text-teal-500' : 'text-gray-400'}`} />
+                          <p className="font-medium">Solo Manager</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Richiede login con credenziali manager
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {shareMode === 'public' && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-sm text-amber-800">
+                          <strong>Nota:</strong> Il link pubblico permette a chiunque di chattare con l'agente. Le conversazioni non saranno salvate.
+                        </p>
+                      </div>
+                    )}
+
+                    {shareMode === 'manager' && (
+                      <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                        <p className="text-sm text-teal-800">
+                          <strong>Nota:</strong> I manager potranno accedere con le loro credenziali. Le conversazioni saranno salvate nel loro storico.
+                        </p>
+                      </div>
+                    )}
+
                     <div>
-                      <Label>Tipo di Accesso</Label>
+                      <Label>Protezione Password (opzionale)</Label>
                       <Select value={accessType} onValueChange={(v: any) => setAccessType(v)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="mt-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="public">
-                            <div className="flex items-center">
-                              <Globe className="w-4 h-4 mr-2" />
-                              <span>Pubblico - Accessibile a tutti</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="password">
-                            <div className="flex items-center">
-                              <Lock className="w-4 h-4 mr-2" />
-                              <span>Protetto da Password</span>
-                            </div>
-                          </SelectItem>
+                          <SelectItem value="public">Nessuna password aggiuntiva</SelectItem>
+                          <SelectItem value="password">Richiedi password per accedere</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -598,6 +655,7 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Inserisci password"
+                          className="mt-1"
                         />
                       </div>
                     )}
@@ -607,10 +665,11 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                       <Input
                         value={allowedDomains}
                         onChange={(e) => setAllowedDomains(e.target.value)}
-                        placeholder="example.com, mysite.com (separati da virgola)"
+                        placeholder="example.com, mysite.com"
+                        className="mt-1"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Lascia vuoto per permettere tutti i domini. Utile per embed iframe.
+                        Utile per embed iframe. Lascia vuoto per tutti i domini.
                       </p>
                     </div>
 
@@ -620,11 +679,9 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                         type="number"
                         value={expireDays}
                         onChange={(e) => setExpireDays(e.target.value)}
-                        placeholder="30"
+                        placeholder="Nessuna scadenza"
+                        className="mt-1"
                       />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Lascia vuoto per nessuna scadenza
-                      </p>
                     </div>
                   </div>
 
@@ -632,14 +689,17 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                     <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                       Annulla
                     </Button>
-                    <Button onClick={createShare}>
-                      Crea Condivisione
+                    <Button 
+                      onClick={createShare}
+                      className={shareMode === 'manager' ? 'bg-teal-500 hover:bg-teal-600' : 'bg-cyan-500 hover:bg-cyan-600'}
+                    >
+                      Crea Link {shareMode === 'manager' ? 'Manager' : 'Pubblico'}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            </div>
-          )}
+            )}
+          </div>
 
           {nonRevokedShares.length === 0 ? (
             <Card>
@@ -653,30 +713,40 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
           ) : (
             <div className="space-y-4">
               {nonRevokedShares.map((share) => (
-                <Card key={share.id}>
-                  <CardHeader>
+                <Card key={share.id} className={`border-l-4 ${share.requiresLogin ? 'border-l-teal-500' : 'border-l-cyan-500'}`}>
+                  <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-base">{share.agentName}</CardTitle>
-                          <Badge variant={share.isActive ? 'default' : 'secondary'}>
-                            {share.isActive ? 'Attivo' : 'Disattivato'}
-                          </Badge>
-                          <Badge variant="outline">
-                            {share.accessType === 'public' ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge 
+                            className={share.requiresLogin 
+                              ? 'bg-teal-500 hover:bg-teal-600' 
+                              : 'bg-cyan-500 hover:bg-cyan-600'
+                            }
+                          >
+                            {share.requiresLogin ? (
+                              <>
+                                <Users className="w-3 h-3 mr-1" />
+                                Solo Manager
+                              </>
+                            ) : (
                               <>
                                 <Globe className="w-3 h-3 mr-1" />
                                 Pubblico
                               </>
-                            ) : (
-                              <>
-                                <Lock className="w-3 h-3 mr-1" />
-                                Password
-                              </>
                             )}
                           </Badge>
+                          <Badge variant={share.isActive ? 'default' : 'secondary'}>
+                            {share.isActive ? 'Attivo' : 'Disattivato'}
+                          </Badge>
+                          {share.accessType === 'password' && (
+                            <Badge variant="outline">
+                              <Lock className="w-3 h-3 mr-1" />
+                              Password
+                            </Badge>
+                          )}
                         </div>
-                        <CardDescription className="mt-1">
+                        <CardDescription className="mt-2">
                           Creato il {new Date(share.createdAt).toLocaleDateString('it-IT')}
                         </CardDescription>
                       </div>
@@ -686,6 +756,7 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                           variant="outline"
                           size="sm"
                           onClick={() => toggleShareActive(share.id)}
+                          title={share.isActive ? 'Disattiva' : 'Attiva'}
                         >
                           {share.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </Button>
@@ -693,8 +764,9 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                           variant="outline"
                           size="sm"
                           onClick={() => revokeShare(share.id)}
+                          title="Elimina"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 text-red-500" />
                         </Button>
                       </div>
                     </div>
@@ -777,76 +849,63 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                       </div>
                     )}
 
-                    <div className="pt-4 border-t space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-sm font-medium">Richiedi Login</Label>
-                          <p className="text-xs text-muted-foreground">
-                            I visitatori devono autenticarsi come manager
-                          </p>
+                    {share.requiresLogin && (
+                      <div className="pt-4 border-t space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium flex items-center gap-2">
+                            <Users className="h-4 w-4 text-teal-600" />
+                            Manager Autorizzati
+                          </Label>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedShareForAssignment(share);
+                              setAssignManagerDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Aggiungi
+                          </Button>
                         </div>
-                        <Switch
-                          checked={share.requiresLogin || false}
-                          onCheckedChange={(checked) => toggleRequiresLogin(share.id, checked)}
-                        />
-                      </div>
 
-                      {share.requiresLogin && (
-                        <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm font-medium flex items-center gap-2">
-                              <Users className="h-4 w-4 text-cyan-600" />
-                              Manager Autorizzati
-                            </Label>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedShareForAssignment(share);
-                                setAssignManagerDialogOpen(true);
-                              }}
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Aggiungi
-                            </Button>
-                          </div>
-
-                          {share.assignedManagers && share.assignedManagers.length > 0 ? (
-                            <div className="space-y-2">
-                              {share.assignedManagers.map((manager) => (
-                                <div
-                                  key={manager.id}
-                                  className="flex items-center justify-between p-2 bg-white rounded border"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center">
-                                      <span className="text-sm font-medium text-cyan-700">
-                                        {manager.name.charAt(0).toUpperCase()}
-                                      </span>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">{manager.name}</p>
-                                      <p className="text-xs text-muted-foreground">{manager.email}</p>
-                                    </div>
+                        {share.assignedManagers && share.assignedManagers.length > 0 ? (
+                          <div className="space-y-2">
+                            {share.assignedManagers.map((manager) => (
+                              <div
+                                key={manager.id}
+                                className="flex items-center justify-between p-2 bg-teal-50 rounded border border-teal-200"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
+                                    <span className="text-sm font-medium text-teal-700">
+                                      {manager.name.charAt(0).toUpperCase()}
+                                    </span>
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => unassignManagerMutation.mutate({ managerId: manager.id, shareId: share.id })}
-                                  >
-                                    <X className="w-4 h-4 text-red-500" />
-                                  </Button>
+                                  <div>
+                                    <p className="text-sm font-medium">{manager.name}</p>
+                                    <p className="text-xs text-muted-foreground">{manager.email}</p>
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground text-center py-2">
-                              Nessun manager assegnato
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => unassignManagerMutation.mutate({ managerId: manager.id, shareId: share.id })}
+                                >
+                                  <X className="w-4 h-4 text-red-500" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-sm text-amber-800">
+                              Nessun manager assegnato. Aggiungi manager per permettere l'accesso a questo link.
                             </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}

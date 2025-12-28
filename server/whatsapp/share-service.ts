@@ -54,10 +54,13 @@ export async function createShare(params: {
   allowedDomains?: string[];
   expireAt?: Date;
   createdBy: string;
+  requiresLogin?: boolean;
 }) {
-  const { consultantId, agentConfigId, agentName, accessType, password, allowedDomains, expireAt, createdBy } = params;
+  const { consultantId, agentConfigId, agentName, accessType, password, allowedDomains, expireAt, createdBy, requiresLogin } = params;
   
-  // Check if an active (non-revoked) share already exists for this agent
+  const MAX_SHARES_PER_AGENT = 2;
+  
+  // Check if max shares limit is reached for this agent
   const existing = await db
     .select()
     .from(schema.whatsappAgentShares)
@@ -66,11 +69,10 @@ export async function createShare(params: {
         eq(schema.whatsappAgentShares.agentConfigId, agentConfigId),
         sql`${schema.whatsappAgentShares.revokedAt} IS NULL`
       )
-    )
-    .limit(1);
+    );
   
-  if (existing.length > 0) {
-    throw new Error('Share già esistente per questo agente. Revoca la condivisione esistente prima di crearne una nuova.');
+  if (existing.length >= MAX_SHARES_PER_AGENT) {
+    throw new Error(`Limite di ${MAX_SHARES_PER_AGENT} link raggiunto. Elimina un link esistente per crearne uno nuovo.`);
   }
   
   // Generate unique slug
@@ -98,6 +100,7 @@ export async function createShare(params: {
       expireAt: expireAt || null,
       createdBy,
       isActive: true,
+      requiresLogin: requiresLogin || false,
     })
     .returning();
   
