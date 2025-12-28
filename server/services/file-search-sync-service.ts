@@ -455,40 +455,54 @@ export class FileSearchSyncService {
       if (isTabularFile && contentNeedsChunking) {
         console.log(`📦 [FileSync] Large tabular file detected - splitting into chunks: ${doc.title}`);
         
-        // Delete any existing content (base doc or chunks) before uploading new chunks
-        if (hasExistingContent) {
-          // Delete base document if exists
-          if (baseIndexInfo.exists && baseIndexInfo.documentId) {
-            await fileSearchService.deleteDocument(baseIndexInfo.documentId);
-          }
-          // Delete all existing chunks using LIKE pattern
-          const existingChunks = await db.query.fileSearchDocuments.findMany({
-            where: eq(fileSearchDocuments.sourceType, 'knowledge_base'),
-          });
-          for (const chunk of existingChunks) {
-            if (chunk.sourceId?.startsWith(`${documentId}_chunk_`)) {
-              await fileSearchService.deleteDocument(chunk.id);
-            }
-          }
+        // Delete base document if exists (switching from non-chunked to chunked)
+        if (baseIndexInfo.exists && baseIndexInfo.documentId) {
+          console.log(`🗑️ [FileSync] Removing old non-chunked version before uploading chunks`);
+          await fileSearchService.deleteDocument(baseIndexInfo.documentId);
         }
         
         const chunks = chunkTextContent(content, doc.title);
         console.log(`📦 [FileSync] Created ${chunks.length} chunks for: ${doc.title}`);
-        console.log(`🚀 [FileSync] Starting PARALLEL upload (max 5 concurrent) for ${chunks.length} chunks...`);
         
-        let uploadedChunks = 0;
+        // RESUME MODE: Check which chunks already exist and only upload missing ones
+        const existingChunkDocs = await db.query.fileSearchDocuments.findMany({
+          where: eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+        });
+        const existingChunkIndices = new Set<number>();
+        for (const chunkDoc of existingChunkDocs) {
+          if (chunkDoc.sourceId?.startsWith(`${documentId}_chunk_`)) {
+            const chunkIndexStr = chunkDoc.sourceId.replace(`${documentId}_chunk_`, '');
+            const chunkIndex = parseInt(chunkIndexStr, 10);
+            if (!isNaN(chunkIndex)) {
+              existingChunkIndices.add(chunkIndex);
+            }
+          }
+        }
+        
+        const missingChunks = chunks.filter(c => !existingChunkIndices.has(c.chunkIndex));
+        const alreadyUploaded = chunks.length - missingChunks.length;
+        
+        if (missingChunks.length === 0) {
+          console.log(`✅ [FileSync] All ${chunks.length} chunks already uploaded for: ${doc.title}`);
+          return { success: true, updated: false };
+        }
+        
+        console.log(`🔄 [FileSync] RESUME MODE: ${alreadyUploaded}/${chunks.length} already uploaded, ${missingChunks.length} missing`);
+        console.log(`🚀 [FileSync] Starting PARALLEL upload (max 10 concurrent) for ${missingChunks.length} missing chunks...`);
+        
+        let uploadedChunks = alreadyUploaded;
         let failedChunks = 0;
         let lastError: string | undefined;
         const PARALLEL_LIMIT = 10;
         const startTime = Date.now();
         
-        // Process chunks in parallel batches of 5
-        for (let i = 0; i < chunks.length; i += PARALLEL_LIMIT) {
-          const batch = chunks.slice(i, i + PARALLEL_LIMIT);
+        // Process missing chunks in parallel batches of 10
+        for (let i = 0; i < missingChunks.length; i += PARALLEL_LIMIT) {
+          const batch = missingChunks.slice(i, i + PARALLEL_LIMIT);
           const batchNumber = Math.floor(i / PARALLEL_LIMIT) + 1;
-          const totalBatches = Math.ceil(chunks.length / PARALLEL_LIMIT);
+          const totalBatches = Math.ceil(missingChunks.length / PARALLEL_LIMIT);
           
-          console.log(`📤 [FileSync] Uploading batch ${batchNumber}/${totalBatches} (chunks ${i + 1}-${Math.min(i + PARALLEL_LIMIT, chunks.length)})...`);
+          console.log(`📤 [FileSync] Uploading batch ${batchNumber}/${totalBatches} (${batch.length} chunks)...`);
           
           const batchPromises = batch.map(async (chunk) => {
             const chunkDisplayName = `[KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
@@ -3001,34 +3015,48 @@ export class FileSearchSyncService {
           await fileSearchService.deleteDocument(existingBaseDoc.id);
         }
         
-        // Delete all existing chunks to ensure fresh upload (handles staleness)
+        const chunks = chunkTextContent(content, doc.title);
+        console.log(`📦 [FileSync] Created ${chunks.length} chunks for: ${doc.title}`);
+        
+        // RESUME MODE: Check which chunks already exist and only upload missing ones
         const existingChunkDocs = await db.query.fileSearchDocuments.findMany({
           where: eq(fileSearchDocuments.sourceType, 'knowledge_base'),
         });
+        const existingChunkIndices = new Set<number>();
         for (const chunkDoc of existingChunkDocs) {
           if (chunkDoc.sourceId?.startsWith(`${documentId}_chunk_`)) {
-            console.log(`🗑️ [FileSync] Removing old chunk: ${chunkDoc.sourceId}`);
-            await fileSearchService.deleteDocument(chunkDoc.id);
+            const chunkIndexStr = chunkDoc.sourceId.replace(`${documentId}_chunk_`, '');
+            const chunkIndex = parseInt(chunkIndexStr, 10);
+            if (!isNaN(chunkIndex)) {
+              existingChunkIndices.add(chunkIndex);
+            }
           }
         }
         
-        const chunks = chunkTextContent(content, doc.title);
-        console.log(`📦 [FileSync] Created ${chunks.length} chunks for: ${doc.title}`);
-        console.log(`🚀 [FileSync] Starting PARALLEL upload (max 5 concurrent) for ${chunks.length} chunks...`);
+        const missingChunks = chunks.filter(c => !existingChunkIndices.has(c.chunkIndex));
+        const alreadyUploaded = chunks.length - missingChunks.length;
         
-        let uploadedChunks = 0;
+        if (missingChunks.length === 0) {
+          console.log(`✅ [FileSync] All ${chunks.length} chunks already uploaded for: ${doc.title}`);
+          return { success: true, chunksUploaded: chunks.length };
+        }
+        
+        console.log(`🔄 [FileSync] RESUME MODE: ${alreadyUploaded}/${chunks.length} already uploaded, ${missingChunks.length} missing`);
+        console.log(`🚀 [FileSync] Starting PARALLEL upload (max 10 concurrent) for ${missingChunks.length} missing chunks...`);
+        
+        let uploadedChunks = alreadyUploaded;
         let failedChunks = 0;
         let lastError: string | undefined;
         const PARALLEL_LIMIT = 10;
         const startTime = Date.now();
         
-        // Process chunks in parallel batches of 5
-        for (let i = 0; i < chunks.length; i += PARALLEL_LIMIT) {
-          const batch = chunks.slice(i, i + PARALLEL_LIMIT);
+        // Process missing chunks in parallel batches of 10
+        for (let i = 0; i < missingChunks.length; i += PARALLEL_LIMIT) {
+          const batch = missingChunks.slice(i, i + PARALLEL_LIMIT);
           const batchNumber = Math.floor(i / PARALLEL_LIMIT) + 1;
-          const totalBatches = Math.ceil(chunks.length / PARALLEL_LIMIT);
+          const totalBatches = Math.ceil(missingChunks.length / PARALLEL_LIMIT);
           
-          console.log(`📤 [FileSync] Uploading batch ${batchNumber}/${totalBatches} (chunks ${i + 1}-${Math.min(i + PARALLEL_LIMIT, chunks.length)})...`);
+          console.log(`📤 [FileSync] Uploading batch ${batchNumber}/${totalBatches} (${batch.length} chunks)...`);
           
           const batchPromises = batch.map(async (chunk) => {
             const chunkDisplayName = `[CLIENT KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
