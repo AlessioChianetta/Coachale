@@ -2,6 +2,7 @@ import { useState } from "react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import businessMenuImage from "@assets/image_1766958254935.png";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -336,6 +337,19 @@ export default function GuideInstagram() {
                   <ExternalLinkButton href="https://www.facebook.com/business/help/1710077379203657" variant="outline">
                     Guida collegamento completa
                   </ExternalLinkButton>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-cyan-200 dark:border-cyan-700">
+                  <p className="text-sm text-muted-foreground mb-3 text-center">
+                    Nel menu laterale di Business Manager, troverai <strong>"Account Instagram"</strong> sotto la sezione Account:
+                  </p>
+                  <div className="flex justify-center">
+                    <img 
+                      src={businessMenuImage} 
+                      alt="Menu Business Manager - Account Instagram" 
+                      className="rounded-lg border shadow-md max-w-[200px]"
+                    />
+                  </div>
                 </div>
               </div>
 
