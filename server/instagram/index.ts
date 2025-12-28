@@ -13,11 +13,16 @@
 // Types
 export * from "./types";
 
-// Core modules
+// Core modules (lazy imports to avoid circular dependencies)
 export { MetaClient, createMetaClient } from "./meta-client";
 export { handleInstagramWebhook, verifyInstagramWebhook } from "./webhook-handler";
-export { processInstagramMessage, scheduleInstagramMessageProcessing } from "./message-processor";
 export { WindowTracker, checkWindowStatus, updateWindowStatus } from "./window-tracker";
+
+// Message processor exports (imported separately to avoid circular deps)
+export async function getMessageProcessor() {
+  const { processInstagramMessage, scheduleInstagramMessageProcessing } = await import("./message-processor");
+  return { processInstagramMessage, scheduleInstagramMessageProcessing };
+}
 
 // Constants
 export const INSTAGRAM_API_VERSION = "v21.0";
