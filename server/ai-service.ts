@@ -1041,31 +1041,50 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     // Include both client-owned and consultant-owned KB docs that are indexed
     const indexedKnowledgeDocIds = new Set<string>();
     if (hasFileSearch && userContext.knowledgeBase) {
-      // Build owner conditions as an array, then combine with or()
-      const ownerConditions = [eq(fileSearchDocuments.clientId, clientId)];
-      if (consultantId && consultantId !== clientId) {
-        ownerConditions.push(eq(fileSearchDocuments.consultantId, consultantId));
-      }
-      
-      // Get all indexed KB doc IDs from fileSearchDocuments (both client and consultant stores)
-      const indexedKbDocs = await db.query.fileSearchDocuments.findMany({
-        where: and(
-          eq(fileSearchDocuments.sourceType, 'knowledge_base'),
-          ownerConditions.length > 1 ? or(...ownerConditions) : ownerConditions[0],
-          eq(fileSearchDocuments.status, 'indexed')
-        ),
-        columns: { sourceId: true }
-      });
-      for (const doc of indexedKbDocs) {
-        if (doc.sourceId) {
-          // Handle both regular docs and chunked docs (extract base ID from chunk_X suffix)
-          const baseId = doc.sourceId.includes('_chunk_') 
-            ? doc.sourceId.split('_chunk_')[0] 
-            : doc.sourceId;
-          indexedKnowledgeDocIds.add(baseId);
+      try {
+        // Use simple query with only clientId to avoid complex or() conditions
+        console.log(`🔍 [KB Fallback Debug] Querying indexed docs for clientId: ${clientId}, consultantId: ${consultantId}`);
+        
+        // Query for client-owned KB docs
+        const clientKbDocs = await db.query.fileSearchDocuments.findMany({
+          where: and(
+            eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+            eq(fileSearchDocuments.clientId, clientId),
+            eq(fileSearchDocuments.status, 'indexed')
+          ),
+          columns: { sourceId: true }
+        });
+        
+        // Query for consultant-owned KB docs if consultantId is different
+        let consultantKbDocs: { sourceId: string | null }[] = [];
+        if (consultantId && consultantId !== clientId) {
+          consultantKbDocs = await db.query.fileSearchDocuments.findMany({
+            where: and(
+              eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+              eq(fileSearchDocuments.consultantId, consultantId),
+              eq(fileSearchDocuments.status, 'indexed')
+            ),
+            columns: { sourceId: true }
+          });
         }
+        
+        // Combine results
+        const indexedKbDocs = [...clientKbDocs, ...consultantKbDocs];
+        
+        for (const doc of indexedKbDocs) {
+          if (doc.sourceId) {
+            // Handle both regular docs and chunked docs (extract base ID from chunk_X suffix)
+            const baseId = doc.sourceId.includes('_chunk_') 
+              ? doc.sourceId.split('_chunk_')[0] 
+              : doc.sourceId;
+            indexedKnowledgeDocIds.add(baseId);
+          }
+        }
+        console.log(`📚 [KB Fallback] ${indexedKnowledgeDocIds.size} KB docs indexed, ${userContext.knowledgeBase.documents.length - indexedKnowledgeDocIds.size} will be in prompt`);
+      } catch (kbError) {
+        console.error(`⚠️ [KB Fallback] Error querying indexed docs, skipping fallback:`, kbError);
+        // Continue without fallback - all KB docs will go to File Search
       }
-      console.log(`📚 [KB Fallback] ${indexedKnowledgeDocIds.size} KB docs indexed, ${userContext.knowledgeBase.documents.length - indexedKnowledgeDocIds.size} will be in prompt`);
     }
     
     // Build system prompt (with hasFileSearch flag to omit KB content when using RAG)
@@ -1853,31 +1872,50 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Include both client-owned and consultant-owned KB docs that are indexed
     const indexedKnowledgeDocIds = new Set<string>();
     if (hasFileSearch && userContext.knowledgeBase) {
-      // Build owner conditions as an array, then combine with or()
-      const ownerConditions = [eq(fileSearchDocuments.clientId, clientId)];
-      if (consultantId && consultantId !== clientId) {
-        ownerConditions.push(eq(fileSearchDocuments.consultantId, consultantId));
-      }
-      
-      // Get all indexed KB doc IDs from fileSearchDocuments (both client and consultant stores)
-      const indexedKbDocs = await db.query.fileSearchDocuments.findMany({
-        where: and(
-          eq(fileSearchDocuments.sourceType, 'knowledge_base'),
-          ownerConditions.length > 1 ? or(...ownerConditions) : ownerConditions[0],
-          eq(fileSearchDocuments.status, 'indexed')
-        ),
-        columns: { sourceId: true }
-      });
-      for (const doc of indexedKbDocs) {
-        if (doc.sourceId) {
-          // Handle both regular docs and chunked docs (extract base ID from chunk_X suffix)
-          const baseId = doc.sourceId.includes('_chunk_') 
-            ? doc.sourceId.split('_chunk_')[0] 
-            : doc.sourceId;
-          indexedKnowledgeDocIds.add(baseId);
+      try {
+        // Use simple query with only clientId to avoid complex or() conditions
+        console.log(`🔍 [KB Fallback Debug] Querying indexed docs for clientId: ${clientId}, consultantId: ${consultantId}`);
+        
+        // Query for client-owned KB docs
+        const clientKbDocs = await db.query.fileSearchDocuments.findMany({
+          where: and(
+            eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+            eq(fileSearchDocuments.clientId, clientId),
+            eq(fileSearchDocuments.status, 'indexed')
+          ),
+          columns: { sourceId: true }
+        });
+        
+        // Query for consultant-owned KB docs if consultantId is different
+        let consultantKbDocs: { sourceId: string | null }[] = [];
+        if (consultantId && consultantId !== clientId) {
+          consultantKbDocs = await db.query.fileSearchDocuments.findMany({
+            where: and(
+              eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+              eq(fileSearchDocuments.consultantId, consultantId),
+              eq(fileSearchDocuments.status, 'indexed')
+            ),
+            columns: { sourceId: true }
+          });
         }
+        
+        // Combine results
+        const indexedKbDocs = [...clientKbDocs, ...consultantKbDocs];
+        
+        for (const doc of indexedKbDocs) {
+          if (doc.sourceId) {
+            // Handle both regular docs and chunked docs (extract base ID from chunk_X suffix)
+            const baseId = doc.sourceId.includes('_chunk_') 
+              ? doc.sourceId.split('_chunk_')[0] 
+              : doc.sourceId;
+            indexedKnowledgeDocIds.add(baseId);
+          }
+        }
+        console.log(`📚 [KB Fallback] ${indexedKnowledgeDocIds.size} KB docs indexed, ${userContext.knowledgeBase.documents.length - indexedKnowledgeDocIds.size} will be in prompt`);
+      } catch (kbError) {
+        console.error(`⚠️ [KB Fallback] Error querying indexed docs, skipping fallback:`, kbError);
+        // Continue without fallback - all KB docs will go to File Search
       }
-      console.log(`📚 [KB Fallback] ${indexedKnowledgeDocIds.size} KB docs indexed, ${userContext.knowledgeBase.documents.length - indexedKnowledgeDocIds.size} will be in prompt`);
     }
     
     let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch, indexedKnowledgeDocIds });

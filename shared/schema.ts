@@ -5783,6 +5783,7 @@ export const fileSearchDocuments = pgTable("file_search_documents", {
   contentHash: text("content_hash"),
   contentSize: integer("content_size"),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "set null" }),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "set null" }),
   chunkingConfig: jsonb("chunking_config").$type<{ maxTokensPerChunk: number; maxOverlapTokens: number }>(),
   customMetadata: jsonb("custom_metadata").$type<{
     docType?: string;
