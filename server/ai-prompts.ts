@@ -535,9 +535,10 @@ export function buildSystemPrompt(
   consultantType: ConsultantType | null,
   userContext: UserContext,
   pageContext?: PageContext,
-  options?: { hasFileSearch?: boolean }
+  options?: { hasFileSearch?: boolean; indexedKnowledgeDocIds?: Set<string> }
 ): string {
   const hasFileSearch = options?.hasFileSearch ?? false;
+  const indexedKnowledgeDocIds = options?.indexedKnowledgeDocIds ?? new Set<string>();
   const relevantDocs = hasFileSearch ? [] : userContext.library.documents;
 
   const baseContext = `
@@ -1257,18 +1258,27 @@ ${userContext.calendar.upcomingEvents.slice(0, 5).map((e: any) => {
   }
 
   // Knowledge Base Section for CLIENT - Mirror of consultant implementation
+  // When File Search is active, only include documents that are NOT indexed (fallback)
   if (userContext.knowledgeBase && (userContext.knowledgeBase.documents.length > 0 || userContext.knowledgeBase.apiData.length > 0)) {
-    let knowledgeSection = `## 📚 BASE DI CONOSCENZA PERSONALE
+    // Filter documents: if File Search is active, only include non-indexed docs
+    const docsToInclude = hasFileSearch 
+      ? userContext.knowledgeBase.documents.filter((doc: any) => !indexedKnowledgeDocIds.has(doc.id))
+      : userContext.knowledgeBase.documents;
+    
+    // Skip entire section if File Search is active and all docs are indexed
+    if (!hasFileSearch || docsToInclude.length > 0 || userContext.knowledgeBase.apiData.length > 0) {
+      let knowledgeSection = `## 📚 BASE DI CONOSCENZA PERSONALE
 
 ⚠️ QUESTA SEZIONE CONTIENE DOCUMENTI E DATI CARICATI DALL'UTENTE.
 USA QUESTE INFORMAZIONI PER FORNIRE RISPOSTE ACCURATE E CONTESTUALI.
 
 `;
 
-    // Focused Document - Priority handling (only if File Search is NOT active)
-    if ((userContext as any).knowledgeBase?.focusedDocument && !hasFileSearch) {
-      const focusedDoc = (userContext as any).knowledgeBase.focusedDocument;
-      knowledgeSection += `🎯🎯🎯 DOCUMENTO FOCALIZZATO - ATTENZIONE MASSIMA RICHIESTA 🎯🎯🎯
+      // Focused Document - Priority handling (only if not indexed in File Search)
+      const focusedDoc = (userContext as any).knowledgeBase?.focusedDocument;
+      const focusedDocIndexed = focusedDoc && indexedKnowledgeDocIds.has(focusedDoc.id);
+      if (focusedDoc && !focusedDocIndexed) {
+        knowledgeSection += `🎯🎯🎯 DOCUMENTO FOCALIZZATO - ATTENZIONE MASSIMA RICHIESTA 🎯🎯🎯
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚠️ ISTRUZIONI CRITICHE:
@@ -1288,13 +1298,13 @@ ${focusedDoc.content}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
-    }
+      }
 
-    // Documents - Only include full content if File Search is NOT active
-    if (userContext.knowledgeBase.documents.length > 0 && !hasFileSearch) {
-      const focusedId = (userContext as any).knowledgeBase?.focusedDocument?.id;
-      knowledgeSection += `📄 DOCUMENTI CARICATI (${userContext.knowledgeBase.documents.length}):
-${userContext.knowledgeBase.documents.map((doc: any) => `
+      // Documents - Include non-indexed docs (fallback when not in File Search)
+      if (docsToInclude.length > 0) {
+        const focusedId = focusedDoc?.id;
+        knowledgeSection += `📄 DOCUMENTI ${hasFileSearch ? 'NON INDICIZZATI - FALLBACK' : 'CARICATI'} (${docsToInclude.length}):
+${docsToInclude.map((doc: any) => `
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ┃ 📄 ${doc.title}${doc.id === focusedId ? ' 🎯 [FOCALIZZATO]' : ''}
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1308,11 +1318,11 @@ ${doc.content || 'Contenuto non disponibile'}
 `).join('\n')}
 
 `;
-    }
+      }
 
-    // API Data - Only include if File Search is NOT active
-    if (userContext.knowledgeBase.apiData.length > 0 && !hasFileSearch) {
-      knowledgeSection += `🔗 DATI DA API ESTERNE (${userContext.knowledgeBase.apiData.length}):
+      // API Data - Only include if File Search is NOT active (API data not indexed)
+      if (userContext.knowledgeBase.apiData.length > 0 && !hasFileSearch) {
+        knowledgeSection += `🔗 DATI DA API ESTERNE (${userContext.knowledgeBase.apiData.length}):
 ${userContext.knowledgeBase.apiData.map((api: any) => `
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ┃ 🔗 ${api.apiName}
@@ -1327,11 +1337,12 @@ ${typeof api.data === 'string' ? api.data : JSON.stringify(api.data, null, 2)}
 `).join('\n')}
 
 `;
-    }
+      }
 
-    // Only add knowledge section if there's content (File Search NOT active)
-    if (knowledgeSection.trim().length > 100) {
-      contextSections.push(knowledgeSection.trim());
+      // Only add knowledge section if there's meaningful content
+      if (knowledgeSection.trim().length > 100) {
+        contextSections.push(knowledgeSection.trim());
+      }
     }
   }
 

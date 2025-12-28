@@ -5,9 +5,9 @@
 import { performance } from 'perf_hooks';
 import { GoogleGenAI } from "@google/genai";
 import { db } from "./db";
-import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig, consultantWhatsappConfig, aiAssistantPreferences } from "../shared/schema";
+import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig, consultantWhatsappConfig, aiAssistantPreferences, fileSearchDocuments } from "../shared/schema";
 import { decrypt } from "./encryption";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or } from "drizzle-orm";
 import { buildUserContext, UserContext } from "./ai-context-builder";
 import { buildSystemPrompt, AIMode, ConsultantType } from "./ai-prompts";
 import { buildConsultantContext, detectConsultantIntent, ConsultantContext, ConsultantIntent } from "./consultant-context-builder";
@@ -1037,8 +1037,36 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       }
     }
 
+    // Build set of indexed knowledge doc IDs for selective fallback
+    // Include both client-owned and consultant-owned KB docs that are indexed
+    const indexedKnowledgeDocIds = new Set<string>();
+    if (hasFileSearch && userContext.knowledgeBase) {
+      // Get all indexed KB doc IDs from fileSearchDocuments (both client and consultant stores)
+      const indexedKbDocs = await db.query.fileSearchDocuments.findMany({
+        where: and(
+          eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+          or(
+            eq(fileSearchDocuments.clientId, clientId),
+            eq(fileSearchDocuments.consultantId, consultantId)
+          ),
+          eq(fileSearchDocuments.status, 'indexed')
+        ),
+        columns: { sourceId: true }
+      });
+      for (const doc of indexedKbDocs) {
+        if (doc.sourceId) {
+          // Handle both regular docs and chunked docs (extract base ID from chunk_X suffix)
+          const baseId = doc.sourceId.includes('_chunk_') 
+            ? doc.sourceId.split('_chunk_')[0] 
+            : doc.sourceId;
+          indexedKnowledgeDocIds.add(baseId);
+        }
+      }
+      console.log(`📚 [KB Fallback] ${indexedKnowledgeDocIds.size} KB docs indexed, ${userContext.knowledgeBase.documents.length - indexedKnowledgeDocIds.size} will be in prompt`);
+    }
+    
     // Build system prompt (with hasFileSearch flag to omit KB content when using RAG)
-    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch });
+    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch, indexedKnowledgeDocIds });
 
     // Calculate detailed token breakdown by section
     const breakdown = calculateTokenBreakdown(userContext, intent);
@@ -1817,7 +1845,36 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
 
     // Build system prompt (with hasFileSearch flag to omit KB content when using RAG)
     timings.promptBuildStart = performance.now();
-    let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch });
+    
+    // Build set of indexed knowledge doc IDs for selective fallback
+    // Include both client-owned and consultant-owned KB docs that are indexed
+    const indexedKnowledgeDocIds = new Set<string>();
+    if (hasFileSearch && userContext.knowledgeBase) {
+      // Get all indexed KB doc IDs from fileSearchDocuments (both client and consultant stores)
+      const indexedKbDocs = await db.query.fileSearchDocuments.findMany({
+        where: and(
+          eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+          or(
+            eq(fileSearchDocuments.clientId, clientId),
+            eq(fileSearchDocuments.consultantId, consultantId)
+          ),
+          eq(fileSearchDocuments.status, 'indexed')
+        ),
+        columns: { sourceId: true }
+      });
+      for (const doc of indexedKbDocs) {
+        if (doc.sourceId) {
+          // Handle both regular docs and chunked docs (extract base ID from chunk_X suffix)
+          const baseId = doc.sourceId.includes('_chunk_') 
+            ? doc.sourceId.split('_chunk_')[0] 
+            : doc.sourceId;
+          indexedKnowledgeDocIds.add(baseId);
+        }
+      }
+      console.log(`📚 [KB Fallback] ${indexedKnowledgeDocIds.size} KB docs indexed, ${userContext.knowledgeBase.documents.length - indexedKnowledgeDocIds.size} will be in prompt`);
+    }
+    
+    let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch, indexedKnowledgeDocIds });
     
     // Append agent context if available
     if (agentContext) {
