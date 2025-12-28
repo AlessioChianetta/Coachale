@@ -1056,6 +1056,8 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
     const consultantId = req.user!.id;
     const { type, id, clientId } = req.body;
 
+    console.log(`🔄 [MANUAL SYNC] Triggered by consultant ${consultantId.substring(0, 8)} - type: ${type}, id: ${id.substring(0, 8)}${clientId ? `, clientId: ${clientId.substring(0, 8)}` : ''}`);
+
     if (!type || !id) {
       return res.status(400).json({ error: 'type and id are required' });
     }

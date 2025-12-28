@@ -474,36 +474,74 @@ export class FileSearchSyncService {
         
         const chunks = chunkTextContent(content, doc.title);
         console.log(`📦 [FileSync] Created ${chunks.length} chunks for: ${doc.title}`);
+        console.log(`🚀 [FileSync] Starting PARALLEL upload (max 5 concurrent) for ${chunks.length} chunks...`);
         
         let uploadedChunks = 0;
+        let failedChunks = 0;
         let lastError: string | undefined;
+        const PARALLEL_LIMIT = 5;
+        const startTime = Date.now();
         
-        for (const chunk of chunks) {
-          const chunkDisplayName = `[KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
-          const chunkSourceId = `${documentId}_chunk_${chunk.chunkIndex}`;
+        // Process chunks in parallel batches of 5
+        for (let i = 0; i < chunks.length; i += PARALLEL_LIMIT) {
+          const batch = chunks.slice(i, i + PARALLEL_LIMIT);
+          const batchNumber = Math.floor(i / PARALLEL_LIMIT) + 1;
+          const totalBatches = Math.ceil(chunks.length / PARALLEL_LIMIT);
           
-          const uploadResult = await fileSearchService.uploadDocumentFromContent({
-            content: chunk.content,
-            displayName: chunkDisplayName,
-            storeId: consultantStore.id,
-            sourceType: 'knowledge_base',
-            sourceId: chunkSourceId,
-            userId: consultantId,
+          console.log(`📤 [FileSync] Uploading batch ${batchNumber}/${totalBatches} (chunks ${i + 1}-${Math.min(i + PARALLEL_LIMIT, chunks.length)})...`);
+          
+          const batchPromises = batch.map(async (chunk) => {
+            const chunkDisplayName = `[KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
+            const chunkSourceId = `${documentId}_chunk_${chunk.chunkIndex}`;
+            const chunkStartTime = Date.now();
+            
+            try {
+              const uploadResult = await fileSearchService.uploadDocumentFromContent({
+                content: chunk.content,
+                displayName: chunkDisplayName,
+                storeId: consultantStore.id,
+                sourceType: 'knowledge_base',
+                sourceId: chunkSourceId,
+                userId: consultantId,
+              });
+              
+              const elapsed = ((Date.now() - chunkStartTime) / 1000).toFixed(1);
+              
+              if (uploadResult.success) {
+                console.log(`✅ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} uploaded in ${elapsed}s (~${chunk.estimatedTokens.toLocaleString()} tokens)`);
+                return { success: true, chunkIndex: chunk.chunkIndex };
+              } else {
+                console.error(`❌ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} failed after ${elapsed}s: ${uploadResult.error}`);
+                return { success: false, chunkIndex: chunk.chunkIndex, error: uploadResult.error };
+              }
+            } catch (err: any) {
+              const elapsed = ((Date.now() - chunkStartTime) / 1000).toFixed(1);
+              console.error(`❌ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} exception after ${elapsed}s: ${err.message}`);
+              return { success: false, chunkIndex: chunk.chunkIndex, error: err.message };
+            }
           });
           
-          if (uploadResult.success) {
-            uploadedChunks++;
-            console.log(`✅ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} uploaded for: ${doc.title}`);
-          } else {
-            lastError = uploadResult.error;
-            console.error(`❌ [FileSync] Failed to upload chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks}: ${uploadResult.error}`);
+          const batchResults = await Promise.all(batchPromises);
+          
+          for (const result of batchResults) {
+            if (result.success) {
+              uploadedChunks++;
+            } else {
+              failedChunks++;
+              lastError = result.error;
+            }
           }
+          
+          console.log(`📊 [FileSync] Batch ${batchNumber} complete: ${batchResults.filter(r => r.success).length}/${batch.length} succeeded`);
         }
         
+        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        
         if (uploadedChunks === chunks.length) {
-          console.log(`✅ [FileSync] All ${chunks.length} chunks uploaded for: ${doc.title}`);
+          console.log(`✅ [FileSync] All ${chunks.length} chunks uploaded in ${totalTime}s for: ${doc.title}`);
           return { success: true, updated: hasExistingContent };
         } else {
+          console.log(`⚠️ [FileSync] Partial upload: ${uploadedChunks}/${chunks.length} succeeded, ${failedChunks} failed in ${totalTime}s`);
           return { success: false, error: `Only ${uploadedChunks}/${chunks.length} chunks uploaded. Last error: ${lastError}` };
         }
       }
@@ -2976,37 +3014,75 @@ export class FileSearchSyncService {
         
         const chunks = chunkTextContent(content, doc.title);
         console.log(`📦 [FileSync] Created ${chunks.length} chunks for: ${doc.title}`);
+        console.log(`🚀 [FileSync] Starting PARALLEL upload (max 5 concurrent) for ${chunks.length} chunks...`);
         
         let uploadedChunks = 0;
+        let failedChunks = 0;
         let lastError: string | undefined;
+        const PARALLEL_LIMIT = 5;
+        const startTime = Date.now();
         
-        for (const chunk of chunks) {
-          const chunkDisplayName = `[CLIENT KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
-          const chunkSourceId = `${documentId}_chunk_${chunk.chunkIndex}`;
+        // Process chunks in parallel batches of 5
+        for (let i = 0; i < chunks.length; i += PARALLEL_LIMIT) {
+          const batch = chunks.slice(i, i + PARALLEL_LIMIT);
+          const batchNumber = Math.floor(i / PARALLEL_LIMIT) + 1;
+          const totalBatches = Math.ceil(chunks.length / PARALLEL_LIMIT);
           
-          const uploadResult = await fileSearchService.uploadDocumentFromContent({
-            content: chunk.content,
-            displayName: chunkDisplayName,
-            storeId: clientStore.storeId,
-            sourceType: 'knowledge_base',
-            sourceId: chunkSourceId,
-            clientId: clientId,
-            userId: clientId,
+          console.log(`📤 [FileSync] Uploading batch ${batchNumber}/${totalBatches} (chunks ${i + 1}-${Math.min(i + PARALLEL_LIMIT, chunks.length)})...`);
+          
+          const batchPromises = batch.map(async (chunk) => {
+            const chunkDisplayName = `[CLIENT KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
+            const chunkSourceId = `${documentId}_chunk_${chunk.chunkIndex}`;
+            const chunkStartTime = Date.now();
+            
+            try {
+              const uploadResult = await fileSearchService.uploadDocumentFromContent({
+                content: chunk.content,
+                displayName: chunkDisplayName,
+                storeId: clientStore.storeId,
+                sourceType: 'knowledge_base',
+                sourceId: chunkSourceId,
+                clientId: clientId,
+                userId: clientId,
+              });
+              
+              const elapsed = ((Date.now() - chunkStartTime) / 1000).toFixed(1);
+              
+              if (uploadResult.success) {
+                console.log(`✅ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} uploaded in ${elapsed}s (~${chunk.estimatedTokens.toLocaleString()} tokens)`);
+                return { success: true, chunkIndex: chunk.chunkIndex };
+              } else {
+                console.error(`❌ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} failed after ${elapsed}s: ${uploadResult.error}`);
+                return { success: false, chunkIndex: chunk.chunkIndex, error: uploadResult.error };
+              }
+            } catch (err: any) {
+              const elapsed = ((Date.now() - chunkStartTime) / 1000).toFixed(1);
+              console.error(`❌ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} exception after ${elapsed}s: ${err.message}`);
+              return { success: false, chunkIndex: chunk.chunkIndex, error: err.message };
+            }
           });
           
-          if (uploadResult.success) {
-            uploadedChunks++;
-            console.log(`✅ [FileSync] Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} uploaded for: ${doc.title}`);
-          } else {
-            lastError = uploadResult.error;
-            console.error(`❌ [FileSync] Failed to upload chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks}: ${uploadResult.error}`);
+          const batchResults = await Promise.all(batchPromises);
+          
+          for (const result of batchResults) {
+            if (result.success) {
+              uploadedChunks++;
+            } else {
+              failedChunks++;
+              lastError = result.error;
+            }
           }
+          
+          console.log(`📊 [FileSync] Batch ${batchNumber} complete: ${batchResults.filter(r => r.success).length}/${batch.length} succeeded`);
         }
         
+        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        
         if (uploadedChunks === chunks.length) {
-          console.log(`✅ [FileSync] All ${chunks.length} chunks uploaded for: ${doc.title} (client: ${clientId.substring(0, 8)})`);
+          console.log(`✅ [FileSync] All ${chunks.length} chunks uploaded in ${totalTime}s for: ${doc.title} (client: ${clientId.substring(0, 8)})`);
           return { success: true, chunksUploaded: uploadedChunks };
         } else {
+          console.log(`⚠️ [FileSync] Partial upload: ${uploadedChunks}/${chunks.length} succeeded, ${failedChunks} failed in ${totalTime}s`);
           return { success: false, error: `Only ${uploadedChunks}/${chunks.length} chunks uploaded. Last error: ${lastError}`, chunksUploaded: uploadedChunks };
         }
       }
