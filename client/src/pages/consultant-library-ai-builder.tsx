@@ -2663,10 +2663,10 @@ export default function ConsultantLibraryAIBuilder() {
                             <Input 
                               type="number" 
                               min={2} 
-                              max={10} 
+                              max={20} 
                               value={newModulesCount}
                               onChange={(e) => {
-                                const count = Math.min(10, Math.max(2, parseInt(e.target.value) || 2));
+                                const count = Math.min(20, Math.max(2, parseInt(e.target.value) || 2));
                                 setNewModulesCount(count);
                                 const names = Array.from({ length: count }, (_, i) => newModuleNames[i] || `Modulo ${i + 1}`);
                                 setNewModuleNames(names);
