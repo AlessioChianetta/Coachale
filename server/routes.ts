@@ -5431,14 +5431,33 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
       const providerResult = await getAIProvider(req.user!.id);
       
       if (!providerResult.client) {
-        const assignments = lessons.map((l: any) => ({
+        const moduleCount = modules.length;
+        const assignments = lessons.map((l: any, idx: number) => ({
           lessonId: l.id,
-          moduleId: modules[0].id,
+          moduleId: modules[idx % moduleCount].id,
           confidence: 0.5,
-          reason: "Assegnazione automatica (AI non disponibile)"
+          reason: "Distribuzione automatica"
         }));
         return res.json({ assignments, aiGenerated: false });
       }
+      
+      // Helper function to sanitize text for AI prompt (remove special chars that break JSON)
+      const sanitizeText = (text: string): string => {
+        if (!text) return '';
+        return text
+          .replace(/"/g, "'")
+          .replace(/\\/g, '')
+          .replace(/\n/g, ' ')
+          .replace(/\r/g, '')
+          .replace(/\t/g, ' ')
+          .substring(0, 80); // Limit length
+      };
+      
+      // Create module index map for simpler AI response
+      const moduleIndexMap = new Map<number, string>();
+      modules.forEach((m: any, idx: number) => {
+        moduleIndexMap.set(idx + 1, m.id);
+      });
       
       // BATCHING: Process lessons in batches of 20 to avoid timeout/parsing issues
       const BATCH_SIZE = 20;
@@ -5454,77 +5473,88 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         
         console.log(`📦 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}/${totalBatches}: lessons ${startIdx + 1}-${endIdx}`);
         
-        const prompt = `Sei un esperto nella creazione e organizzazione di corsi formativi.
+        // Create lesson index map for this batch
+        const lessonIndexMap = new Map<number, string>();
+        batchLessons.forEach((l: any, idx: number) => {
+          lessonIndexMap.set(idx + 1, l.id);
+        });
+        
+        // Use NUMBERS instead of IDs to avoid JSON parsing issues with special chars
+        const prompt = `Assegna queste lezioni ai moduli. Rispondi SOLO con numeri.
 
-LEZIONI DA ASSEGNARE (batch ${batchIndex + 1} di ${totalBatches}):
-${batchLessons.map((l: any, i: number) => `${startIdx + i + 1}. ID: "${l.id}"
-   Titolo: "${l.title}"
-   Sottotitolo: "${l.subtitle || 'N/A'}"
-   Tags: ${l.tags?.join(', ') || 'N/A'}`).join('\n\n')}
+LEZIONI (usa il numero, NON l'ID):
+${batchLessons.map((l: any, i: number) => `${i + 1}. ${sanitizeText(l.title)}`).join('\n')}
 
-MODULI DISPONIBILI:
-${modules.map((m: any, i: number) => `${i + 1}. ID: "${m.id}" - Nome: "${m.name}"`).join('\n')}
+MODULI (usa il numero, NON l'ID):
+${modules.map((m: any, i: number) => `${i + 1}. ${sanitizeText(m.name)}`).join('\n')}
 
-COMPITO:
-Analizza il contenuto di ogni lezione e assegnala al modulo più appropriato.
-Per ogni lezione, fornisci:
-1. L'ID della lezione
-2. L'ID del modulo più adatto
-3. Un punteggio di confidenza (0.0-1.0)
-4. Una breve spiegazione (max 15 parole)
+Rispondi con una lista semplice, una riga per lezione:
+LEZIONE_NUM:MODULO_NUM
 
-CRITERI DI ASSEGNAZIONE:
-- Affinità tematica tra titolo lezione e nome modulo
-- Coerenza con eventuali tags
-- Progressione logica del contenuto
-- Distribuisci le lezioni equamente tra i moduli disponibili
+Esempio:
+1:2
+2:1
+3:3
 
-Rispondi SOLO con un JSON array, senza altri testi:
-[
-  {
-    "lessonId": "id_lezione",
-    "moduleId": "id_modulo",
-    "confidence": 0.85,
-    "reason": "Spiegazione breve"
-  }
-]`;
+Distribuisci equamente tra i moduli basandoti sull'affinità tematica.`;
 
         try {
           const response = await providerResult.client.generateContent({
             model: 'gemini-2.5-flash',
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 4000,
+              temperature: 0.2,
+              maxOutputTokens: 2000,
             },
           });
           
           const text = response.response.text() || '';
-          const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          const batchAssignments = JSON.parse(cleanJson);
+          console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} raw response: ${text.substring(0, 200)}...`);
           
-          if (Array.isArray(batchAssignments) && batchAssignments.length > 0) {
-            const validAssignments = batchAssignments.map((a: any) => {
-              const lessonExists = batchLessons.some((l: any) => l.id === a.lessonId);
-              const moduleExists = modules.some((m: any) => m.id === a.moduleId);
-              if (!lessonExists || !moduleExists) {
-                const matchingLesson = batchLessons.find((l: any) => 
-                  l.id === a.lessonId || l.title?.includes(a.lessonId?.slice(0, 10))
-                );
-                return {
-                  lessonId: matchingLesson?.id || a.lessonId,
-                  moduleId: modules[0].id,
-                  confidence: 0.3,
-                  reason: "Assegnazione di fallback"
-                };
+          // Parse the simple format: "1:2\n2:1\n3:3"
+          const lines = text.split('\n').filter(line => line.trim());
+          let parsedCount = 0;
+          
+          for (const line of lines) {
+            const match = line.match(/(\d+)\s*[:\-]\s*(\d+)/);
+            if (match) {
+              const lessonNum = parseInt(match[1]);
+              const moduleNum = parseInt(match[2]);
+              
+              const lessonId = lessonIndexMap.get(lessonNum);
+              const moduleId = moduleIndexMap.get(moduleNum);
+              
+              if (lessonId && moduleId) {
+                allAssignments.push({
+                  lessonId,
+                  moduleId,
+                  confidence: 0.8,
+                  reason: "Assegnazione AI"
+                });
+                parsedCount++;
               }
-              return a;
-            });
-            allAssignments.push(...validAssignments);
-            console.log(`✅ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} completed: ${validAssignments.length} assignments`);
-          } else {
-            throw new Error('Invalid batch response format');
+            }
           }
+          
+          console.log(`✅ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} completed: ${parsedCount}/${batchLessons.length} parsed`);
+          
+          // Fill in any missing assignments from this batch
+          const assignedInBatch = new Set(allAssignments.filter(a => 
+            batchLessons.some((l: any) => l.id === a.lessonId)
+          ).map(a => a.lessonId));
+          
+          batchLessons.forEach((l: any, idx: number) => {
+            if (!assignedInBatch.has(l.id)) {
+              const moduleIndex = idx % modules.length;
+              allAssignments.push({
+                lessonId: l.id,
+                moduleId: modules[moduleIndex].id,
+                confidence: 0.5,
+                reason: "Assegnazione automatica"
+              });
+            }
+          });
+          
         } catch (batchError: any) {
           console.error(`❌ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} failed:`, batchError.message);
           // Fallback for failed batch: distribute evenly among modules
@@ -5535,18 +5565,18 @@ Rispondi SOLO con un JSON array, senza altri testi:
               lessonId: l.id,
               moduleId: modules[moduleIndex].id,
               confidence: 0.4,
-              reason: "Distribuzione automatica (errore batch)"
+              reason: "Distribuzione automatica"
             });
           });
         }
         
         // Small delay between batches to avoid rate limiting
         if (batchIndex < totalBatches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       }
       
-      // Ensure all lessons have an assignment
+      // Ensure all lessons have an assignment (final safety check)
       const assignedLessonIds = new Set(allAssignments.map(a => a.lessonId));
       const moduleCount = modules.length;
       lessons.forEach((l: any, idx: number) => {
@@ -5556,7 +5586,7 @@ Rispondi SOLO con un JSON array, senza altri testi:
             lessonId: l.id,
             moduleId: modules[moduleIndex].id,
             confidence: 0.3,
-            reason: "Assegnazione mancante recuperata"
+            reason: "Assegnazione recuperata"
           });
         }
       });
@@ -5573,7 +5603,7 @@ Rispondi SOLO con un JSON array, senza altri testi:
         lessonId: l.id,
         moduleId: modules?.[idx % moduleCount]?.id || modules?.[0]?.id || '',
         confidence: 0.4,
-        reason: "Distribuzione automatica (errore globale)"
+        reason: "Distribuzione automatica"
       })) || [];
       res.json({ assignments, aiGenerated: false });
     }
