@@ -550,13 +550,19 @@ router.post("/enhance-instructions", authenticateToken, async (req: AuthRequest,
 
 ${selectedMode}
 
-REGOLE IMPORTANTI:
-- Rispondi SOLO con le istruzioni migliorate, niente altro
-- NON aggiungere commenti, spiegazioni o meta-testo
-- Mantieni la stessa lingua delle istruzioni originali
-- Lunghezza massima: circa 2000 caratteri`;
+⚠️ REGOLE CRITICHE - DEVI RISPETTARLE:
+1. Rispondi ESCLUSIVAMENTE con le istruzioni migliorate
+2. NESSUN commento, NESSUNA spiegazione, NESSUN meta-testo
+3. NESSUNA opzione multipla - dammi UNA SOLA versione migliorata
+4. NON scrivere "Ecco le istruzioni migliorate:" o simili
+5. NON chiedere quale versione preferisco
+6. Inizia DIRETTAMENTE con il testo delle istruzioni
+7. Mantieni la stessa lingua delle istruzioni originali
+8. Lunghezza massima: circa 2000 caratteri
 
-    const userPrompt = `Ecco le istruzioni da migliorare:
+Il tuo output deve essere SOLO il testo delle istruzioni migliorate, pronto per essere usato così com'è.`;
+
+    const userPrompt = `Migliora queste istruzioni e restituisci SOLO il risultato finale (niente spiegazioni):
 
 ${instructions}`;
 
