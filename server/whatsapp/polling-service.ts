@@ -117,7 +117,6 @@ async function pollMessagesForConsultant(
   config: typeof consultantWhatsappConfig.$inferSelect
 ): Promise<void> {
   if (!config.twilioAccountSid || !config.twilioAuthToken || !config.twilioWhatsappNumber) {
-    console.log(`⚠️ [WHATSAPP POLLING] Skipping consultant ${config.consultantId} - incomplete config`);
     return;
   }
 
@@ -135,7 +134,6 @@ async function pollMessagesForConsultant(
     const watermark = await getOrCreateWatermark(config.id, config.consultantId);
     const lastProcessedTime = watermark.lastProcessedMessageDate;
 
-    console.log(`🔖 [WATERMARK] Agent ${config.agentName} (${config.id}) - last processed: ${lastProcessedTime.toISOString()}`);
 
     // Fetch messages from Twilio (inbound messages to this consultant's WhatsApp number)
     const messages = await client.messages.list({
@@ -151,7 +149,6 @@ async function pollMessagesForConsultant(
     });
 
     if (newMessages.length === 0) {
-      console.log(`✅ [WHATSAPP POLLING] No new messages for agent ${config.agentName}`);
       
       // CRITICAL FIX: Advance watermark even when no new messages
       // This prevents re-downloading old messages if conversations are deleted
@@ -167,9 +164,6 @@ async function pollMessagesForConsultant(
         if (mostRecentDate > lastProcessedTime) {
           advancedWatermark = mostRecentDate;
           advancedSid = mostRecentSeen.sid;
-          console.log(`📍 [WATERMARK] Advancing to latest seen on Twilio: ${advancedWatermark.toISOString()}`);
-        } else {
-          console.log(`📌 [WATERMARK] Latest on Twilio (${mostRecentDate.toISOString()}) is older than watermark - keeping current`);
         }
       }
       
@@ -329,7 +323,6 @@ async function pollMessagesForConsultant(
  */
 async function pollAllConsultants(): Promise<void> {
   try {
-    console.log(`🔄 [WHATSAPP POLLING] Starting poll cycle...`);
 
     // Get all active WhatsApp configs with retry logic for database connection
     let configs;
@@ -354,7 +347,6 @@ async function pollAllConsultants(): Promise<void> {
       return; // Silent return to avoid log spam if no users
     }
 
-    console.log(`📊 [WHATSAPP POLLING] Polling ${configs.length} consultant(s) sequentially...`);
 
     // FIX: Use sequential loop instead of Promise.all to prevent "Too many connections" errors
     // and to ensure one failing agent doesn't crash the entire scheduler.
@@ -374,7 +366,6 @@ async function pollAllConsultants(): Promise<void> {
       }
     }
 
-    console.log(`✅ [WHATSAPP POLLING] Poll cycle complete`);
   } catch (error) {
     // This catches unforeseen errors in the main loop logic itself
     console.error(`❌ [WHATSAPP POLLING] Fatal error in poll cycle:`, error);
