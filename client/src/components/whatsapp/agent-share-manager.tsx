@@ -586,7 +586,7 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                   <div className="space-y-6">
                     <div className="space-y-3">
                       <Label className="text-base font-medium">Modalità di Accesso</Label>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div
                           onClick={() => setShareMode('public')}
                           className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -778,12 +778,13 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                         <Input
                           value={share.publicUrl}
                           readOnly
-                          className="font-mono text-sm"
+                          className="font-mono text-xs sm:text-sm truncate"
                         />
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => copyToClipboard(share.publicUrl)}
+                          className="shrink-0"
                         >
                           {copiedUrl === share.publicUrl ? (
                             <Check className="w-4 h-4" />
@@ -800,30 +801,30 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1"
+                          className="flex-1 text-xs sm:text-sm"
                           onClick={() => {
                             setSelectedShare(share);
                             setIframeDialogOpen(true);
                           }}
                         >
-                          <Code className="w-4 h-4 mr-2" />
-                          Visualizza Codice
+                          <Code className="w-4 h-4 mr-1 sm:mr-2" />
+                          <span className="hidden sm:inline">Visualizza</span> Codice
                         </Button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-                      <div>
-                        <p className="text-2xl font-bold">{share.totalAccessCount}</p>
-                        <p className="text-xs text-muted-foreground">Visite Totali</p>
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-4 border-t">
+                      <div className="text-center sm:text-left">
+                        <p className="text-lg sm:text-2xl font-bold">{share.totalAccessCount}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">Visite</p>
                       </div>
-                      <div>
-                        <p className="text-2xl font-bold">{share.uniqueVisitorsCount}</p>
-                        <p className="text-xs text-muted-foreground">Visitatori Unici</p>
+                      <div className="text-center sm:text-left">
+                        <p className="text-lg sm:text-2xl font-bold">{share.uniqueVisitorsCount}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">Unici</p>
                       </div>
-                      <div>
-                        <p className="text-2xl font-bold">{share.totalMessagesCount}</p>
-                        <p className="text-xs text-muted-foreground">Messaggi</p>
+                      <div className="text-center sm:text-left">
+                        <p className="text-lg sm:text-2xl font-bold">{share.totalMessagesCount}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">Messaggi</p>
                       </div>
                     </div>
 
@@ -914,51 +915,51 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
         </TabsContent>
 
         <TabsContent value="managers" className="space-y-4 mt-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-teal-500 rounded-lg">
-                    <Users className="h-5 w-5 text-white" />
+              <CardContent className="p-2 sm:p-4">
+                <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 bg-teal-500 rounded-lg">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-teal-700">{managerStats.total}</p>
-                    <p className="text-xs text-teal-600">Manager Totali</p>
+                  <div className="text-center sm:text-left">
+                    <p className="text-lg sm:text-2xl font-bold text-teal-700">{managerStats.total}</p>
+                    <p className="text-[10px] sm:text-xs text-teal-600">Totali</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-cyan-500 rounded-lg">
-                    <Check className="h-5 w-5 text-white" />
+              <CardContent className="p-2 sm:p-4">
+                <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 bg-cyan-500 rounded-lg">
+                    <Check className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-cyan-700">{managerStats.active}</p>
-                    <p className="text-xs text-cyan-600">Attivi</p>
+                  <div className="text-center sm:text-left">
+                    <p className="text-lg sm:text-2xl font-bold text-cyan-700">{managerStats.active}</p>
+                    <p className="text-[10px] sm:text-xs text-cyan-600">Attivi</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-500 rounded-lg">
-                    <Mail className="h-5 w-5 text-white" />
+              <CardContent className="p-2 sm:p-4">
+                <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 bg-slate-500 rounded-lg">
+                    <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-slate-700">{managerStats.invited}</p>
-                    <p className="text-xs text-slate-600">Invitati</p>
+                  <div className="text-center sm:text-left">
+                    <p className="text-lg sm:text-2xl font-bold text-slate-700">{managerStats.invited}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-600">Invitati</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -970,7 +971,7 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
             </div>
             <Button
               onClick={() => setInviteDrawerOpen(true)}
-              className="bg-cyan-500 hover:bg-cyan-600"
+              className="bg-cyan-500 hover:bg-cyan-600 w-full sm:w-auto"
             >
               <UserPlus className="w-4 h-4 mr-2" />
               Invita Manager

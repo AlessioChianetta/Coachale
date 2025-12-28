@@ -1086,7 +1086,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
       </ScrollArea>
 
       <Dialog open={showShareManager} onOpenChange={setShowShareManager}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Condividi Agente</DialogTitle>
           </DialogHeader>
