@@ -108,9 +108,7 @@ export function AIPreferencesSheet() {
   const handleSave = () => {
     const preferencesToSave = {
       ...localPreferences,
-      customInstructions: localPreferences.writingStyle === 'custom' 
-        ? localPreferences.customInstructions 
-        : null,
+      customInstructions: localPreferences.customInstructions || null,
     };
     savePreferencesMutation.mutate(preferencesToSave);
   };
@@ -241,29 +239,25 @@ export function AIPreferencesSheet() {
               </RadioGroup>
             </div>
 
-            {localPreferences.writingStyle === "custom" && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-pink-600" />
-                    <Label className="text-base font-semibold">Istruzioni Personalizzate</Label>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Scrivi istruzioni specifiche su come vuoi che l'AI risponda. Ad esempio: "Rispondi sempre in modo empatico" o "Includi esempi pratici".
-                  </p>
-                  <Textarea
-                    value={localPreferences.customInstructions || ""}
-                    onChange={(e) => handleCustomInstructionsChange(e.target.value)}
-                    placeholder="Es: Rispondi in modo empatico, usa esempi pratici, evita termini tecnici..."
-                    className="min-h-[120px] resize-none"
-                  />
-                  <p className="text-xs text-muted-foreground text-right">
-                    {(localPreferences.customInstructions || "").length}/500 caratteri
-                  </p>
-                </div>
-              </>
-            )}
+            <Separator />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-pink-600" />
+                <Label className="text-base font-semibold">Istruzioni Personalizzate</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Scrivi istruzioni specifiche su come vuoi che l'AI risponda. Queste istruzioni verranno sempre applicate indipendentemente dallo stile scelto.
+              </p>
+              <Textarea
+                value={localPreferences.customInstructions || ""}
+                onChange={(e) => handleCustomInstructionsChange(e.target.value)}
+                placeholder="Es: Rispondi in modo empatico, usa esempi pratici, evita termini tecnici, parlami come se fossi un amico..."
+                className="min-h-[120px] resize-none"
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {(localPreferences.customInstructions || "").length}/500 caratteri
+              </p>
+            </div>
           </div>
         )}
 

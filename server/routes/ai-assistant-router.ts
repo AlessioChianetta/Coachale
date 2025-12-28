@@ -297,4 +297,154 @@ router.get("/consultant/clients", authenticateToken, requireRole("consultant"), 
   }
 });
 
+// Get AI preferences for a specific client (consultant only)
+router.get("/consultant/client/:clientId/preferences", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientId } = req.params;
+
+    // Verify client belongs to this consultant
+    const [client] = await db.select()
+      .from(users)
+      .where(and(
+        eq(users.id, clientId),
+        eq(users.consultantId, consultantId),
+        eq(users.role, "client")
+      ))
+      .limit(1);
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found or not authorized" });
+    }
+
+    const [prefs] = await db.select()
+      .from(aiAssistantPreferences)
+      .where(eq(aiAssistantPreferences.userId, clientId))
+      .limit(1);
+
+    if (!prefs) {
+      return res.json({
+        writingStyle: "professional",
+        responseLength: "balanced",
+        customInstructions: null,
+      });
+    }
+
+    res.json({
+      writingStyle: prefs.writingStyle,
+      responseLength: prefs.responseLength,
+      customInstructions: prefs.customInstructions,
+    });
+  } catch (error) {
+    console.error("[AI Assistant] Error fetching client preferences:", error);
+    res.status(500).json({ error: "Failed to fetch client preferences" });
+  }
+});
+
+// Update AI preferences for a specific client (consultant only)
+router.put("/consultant/client/:clientId/preferences", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientId } = req.params;
+    const { writingStyle, responseLength, customInstructions } = req.body;
+
+    // Verify client belongs to this consultant
+    const [client] = await db.select()
+      .from(users)
+      .where(and(
+        eq(users.id, clientId),
+        eq(users.consultantId, consultantId),
+        eq(users.role, "client")
+      ))
+      .limit(1);
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found or not authorized" });
+    }
+
+    const [existing] = await db.select()
+      .from(aiAssistantPreferences)
+      .where(eq(aiAssistantPreferences.userId, clientId))
+      .limit(1);
+
+    if (existing) {
+      await db.update(aiAssistantPreferences)
+        .set({
+          writingStyle: writingStyle || "professional",
+          responseLength: responseLength || "balanced",
+          customInstructions: customInstructions || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(aiAssistantPreferences.userId, clientId));
+    } else {
+      await db.insert(aiAssistantPreferences).values({
+        userId: clientId,
+        writingStyle: writingStyle || "professional",
+        responseLength: responseLength || "balanced",
+        customInstructions: customInstructions || null,
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[AI Assistant] Error updating client preferences:", error);
+    res.status(500).json({ error: "Failed to update client preferences" });
+  }
+});
+
+// Get all clients with their AI preferences (consultant only)
+router.get("/consultant/clients-with-preferences", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    // Get all clients for this consultant
+    const clients = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+    })
+    .from(users)
+    .where(and(
+      eq(users.consultantId, consultantId),
+      eq(users.role, "client")
+    ));
+
+    // Get all preferences for these clients
+    const clientIds = clients.map(c => c.id);
+    const preferences = clientIds.length > 0 
+      ? await db.select()
+          .from(aiAssistantPreferences)
+          .where(inArray(aiAssistantPreferences.userId, clientIds))
+      : [];
+
+    // Create a map of userId -> preferences
+    const prefsMap = new Map(preferences.map(p => [p.userId, p]));
+
+    const result = clients.map(c => {
+      const prefs = prefsMap.get(c.id);
+      return {
+        id: c.id,
+        displayName: `${c.firstName} ${c.lastName}`.trim(),
+        email: c.email,
+        preferences: prefs ? {
+          writingStyle: prefs.writingStyle,
+          responseLength: prefs.responseLength,
+          customInstructions: prefs.customInstructions,
+        } : {
+          writingStyle: "professional",
+          responseLength: "balanced",
+          customInstructions: null,
+        },
+        hasCustomPreferences: !!prefs,
+      };
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("[AI Assistant] Error fetching clients with preferences:", error);
+    res.status(500).json({ error: "Failed to fetch clients with preferences" });
+  }
+});
+
 export default router;

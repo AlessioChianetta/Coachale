@@ -11,6 +11,7 @@ import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
 import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
+import { ClientAIPreferencesManager } from "@/components/ai-assistant/ClientAIPreferencesManager";
 import { WelcomeScreen } from "@/components/ai-assistant/WelcomeScreen";
 import { ConversationSidebar } from "@/components/ai-assistant/ConversationSidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -577,6 +578,7 @@ export default function ConsultantAIAssistant() {
                   )}
                 </div>
                 <AIPreferencesSheet />
+                <ClientAIPreferencesManager />
               </div>
             </div>
 
