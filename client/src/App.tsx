@@ -116,6 +116,8 @@ const ClientKnowledgeDocuments = lazy(() => import("./pages/client-knowledge-doc
 const ClientKnowledgeApis = lazy(() => import("./pages/client-knowledge-apis"));
 const ClientFileSearchDocuments = lazy(() => import("./pages/client-file-search-documents"));
 const TrainingMapPage = lazy(() => import("@/pages/training-map"));
+const ManagerLogin = lazy(() => import("@/pages/manager-login"));
+const ManagerChat = lazy(() => import("@/pages/manager-chat"));
 
 const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
 const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
@@ -160,6 +162,12 @@ function Router() {
 
           {/* Realtime test - WebSocket vs SSE */}
           <Route path="/realtime-test" component={RealtimeTest} />
+
+          {/* Manager Login - no auth required */}
+          <Route path="/agent/:slug/login" component={ManagerLogin} />
+
+          {/* Manager Chat - uses manager_token auth */}
+          <Route path="/agent/:slug/chat" component={ManagerChat} />
 
           <Route path="/consultant">
             <AuthGuard requiredRole="consultant">
