@@ -479,7 +479,7 @@ export class FileSearchSyncService {
         let uploadedChunks = 0;
         let failedChunks = 0;
         let lastError: string | undefined;
-        const PARALLEL_LIMIT = 5;
+        const PARALLEL_LIMIT = 10;
         const startTime = Date.now();
         
         // Process chunks in parallel batches of 5
@@ -3019,7 +3019,7 @@ export class FileSearchSyncService {
         let uploadedChunks = 0;
         let failedChunks = 0;
         let lastError: string | undefined;
-        const PARALLEL_LIMIT = 5;
+        const PARALLEL_LIMIT = 10;
         const startTime = Date.now();
         
         // Process chunks in parallel batches of 5

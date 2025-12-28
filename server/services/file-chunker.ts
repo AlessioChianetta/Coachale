@@ -32,7 +32,7 @@ export interface ChunkingResult {
   fileType: 'xlsx' | 'csv';
 }
 
-const MAX_TOKENS_PER_CHUNK = 100000;
+const MAX_TOKENS_PER_CHUNK = 10000;
 const CHARS_PER_TOKEN = 4;
 const MAX_CHARS_PER_CHUNK = MAX_TOKENS_PER_CHUNK * CHARS_PER_TOKEN;
 const SAFETY_MARGIN = 0.9;
