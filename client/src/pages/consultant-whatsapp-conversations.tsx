@@ -51,8 +51,13 @@ import {
   Beaker,
   Mic,
   X,
+  Instagram,
 } from "lucide-react";
 import WhatsAppLayout from "@/components/whatsapp/WhatsAppLayout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useInstagramConversations, useInstagramMessages } from "@/hooks/useInstagram";
+import { InstagramMessageBubble } from "@/components/instagram/InstagramMessageBubble";
+import { WindowStatusBadge } from "@/components/instagram/WindowStatusBadge";
 import { WhatsAppMessageBubble } from "@/components/whatsapp/WhatsAppMessageBubble";
 import { WhatsAppThreadHeader } from "@/components/whatsapp/WhatsAppThreadHeader";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -118,6 +123,8 @@ const POLLING_INTERVAL = 5000; // 5 seconds
 export default function ConsultantWhatsAppConversationsPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
+  const [activeChannel, setActiveChannel] = useState<"whatsapp" | "instagram">("whatsapp");
+  const [selectedInstagramConversationId, setSelectedInstagramConversationId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [simulateMessageText, setSimulateMessageText] = useState("");
@@ -203,6 +210,17 @@ export default function ConsultantWhatsAppConversationsPage() {
 
   const messages: Message[] = messagesData?.messages || [];
   const conversationInfo = messagesData?.conversation;
+
+  // Instagram queries
+  const { data: instagramConversationsData } = useInstagramConversations({ refetchInterval: 5000 });
+  const instagramConversations = instagramConversationsData?.conversations || [];
+
+  const { data: instagramMessagesData, isLoading: instagramMessagesLoading } = useInstagramMessages(
+    selectedInstagramConversationId,
+    { refetchInterval: 5000 }
+  );
+  const instagramMessages = instagramMessagesData?.messages || [];
+  const instagramConversationInfo = instagramMessagesData?.conversation;
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -668,16 +686,30 @@ export default function ConsultantWhatsAppConversationsPage() {
                   <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-2 lg:p-2.5 rounded-xl shadow-lg shadow-green-500/20">
                     <MessageSquare className="h-6 w-6 lg:h-8 lg:w-8 text-white" />
                   </div>
-                  Conversazioni WhatsApp
+                  Conversazioni
                 </h1>
                 <p className="mt-2 text-sm lg:text-base text-gray-600 dark:text-gray-400 ml-[52px] lg:ml-[60px]">
-                  Gestisci le conversazioni WhatsApp con i tuoi clienti e lead
+                  Gestisci le conversazioni con i tuoi clienti e lead
                 </p>
               </div>
             </div>
 
-            {/* Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 h-[calc(100vh-180px)] w-full overflow-hidden">
+            {/* Channel Tabs */}
+            <Tabs value={activeChannel} onValueChange={(v) => setActiveChannel(v as "whatsapp" | "instagram")} className="w-full">
+              <TabsList className="grid w-full max-w-md grid-cols-2 mb-4">
+                <TabsTrigger value="whatsapp" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  WhatsApp
+                </TabsTrigger>
+                <TabsTrigger value="instagram" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700">
+                  <Instagram className="h-4 w-4 mr-2" />
+                  Instagram
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="whatsapp" className="mt-0">
+                {/* WhatsApp Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 h-[calc(100vh-230px)] w-full overflow-hidden">
               {/* Conversations List - Hidden on mobile when chat is open */}
               {(!isMobile || !selectedConversationId) && (
               <Card className="lg:col-span-4 overflow-hidden border-2 border-gray-100 dark:border-gray-800 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-2xl">
@@ -1304,7 +1336,84 @@ export default function ConsultantWhatsAppConversationsPage() {
                 )}
               </Card>
               )}
-            </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="instagram" className="mt-0">
+                {/* Instagram Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-230px)]">
+                  {/* Lista conversazioni Instagram */}
+                  <Card className="lg:col-span-1 overflow-hidden border-cyan-200">
+                    <CardHeader className="py-3 bg-gradient-to-r from-cyan-50 to-teal-50 border-b">
+                      <CardTitle className="text-sm font-medium text-cyan-700">Conversazioni Instagram</CardTitle>
+                    </CardHeader>
+                    <ScrollArea className="h-[calc(100vh-300px)]">
+                      {instagramConversations.length === 0 ? (
+                        <div className="p-4 text-center text-slate-500">
+                          <Instagram className="h-12 w-12 mx-auto mb-2 text-slate-300" />
+                          <p className="text-sm">Nessuna conversazione Instagram</p>
+                        </div>
+                      ) : (
+                        instagramConversations.map((conv: any) => (
+                          <div
+                            key={conv.id}
+                            onClick={() => setSelectedInstagramConversationId(conv.id)}
+                            className={`p-3 border-b cursor-pointer hover:bg-cyan-50 transition-colors ${
+                              selectedInstagramConversationId === conv.id ? "bg-cyan-100" : ""
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
+                                <User className="h-5 w-5 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-sm truncate">{conv.instagramUsername || conv.instagramUserId}</span>
+                                  <WindowStatusBadge isWindowOpen={conv.isWindowOpen} windowExpiresAt={conv.windowExpiresAt} />
+                                </div>
+                                <p className="text-xs text-slate-500 truncate">{conv.lastMessageText || "Nessun messaggio"}</p>
+                              </div>
+                              {conv.unreadByConsultant > 0 && (
+                                <Badge className="bg-cyan-500">{conv.unreadByConsultant}</Badge>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </ScrollArea>
+                  </Card>
+
+                  {/* Dettaglio conversazione Instagram */}
+                  <Card className="lg:col-span-2 overflow-hidden border-cyan-200">
+                    <CardHeader className="py-3 bg-gradient-to-r from-cyan-50 to-teal-50 border-b">
+                      <CardTitle className="text-sm font-medium text-cyan-700">
+                        {instagramConversationInfo ? `@${instagramConversationInfo.instagramUsername || "Utente"}` : "Seleziona una conversazione"}
+                      </CardTitle>
+                    </CardHeader>
+                    <ScrollArea className="h-[calc(100vh-350px)] p-4">
+                      {!selectedInstagramConversationId ? (
+                        <div className="flex items-center justify-center h-full text-slate-400">
+                          <div className="text-center">
+                            <Instagram className="h-16 w-16 mx-auto mb-4 text-slate-300" />
+                            <p>Seleziona una conversazione per vedere i messaggi</p>
+                          </div>
+                        </div>
+                      ) : instagramMessagesLoading ? (
+                        <div className="flex items-center justify-center h-full">
+                          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {instagramMessages.map((msg: any) => (
+                            <InstagramMessageBubble key={msg.id} message={msg} />
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Reset Conversation Dialog */}
