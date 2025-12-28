@@ -5450,14 +5450,102 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
           .replace(/\n/g, ' ')
           .replace(/\r/g, '')
           .replace(/\t/g, ' ')
-          .substring(0, 80); // Limit length
+          .trim();
       };
       
-      // Create module index map for simpler AI response
-      const moduleIndexMap = new Map<number, string>();
-      modules.forEach((m: any, idx: number) => {
-        moduleIndexMap.set(idx + 1, m.id);
-      });
+      // NUCLEAR-PROOF JSON PARSER: Extract assignments even from malformed JSON
+      const parseAssignmentsFromText = (text: string, batchLessons: any[], modules: any[]): any[] => {
+        const assignments: any[] = [];
+        const lessonIds = new Set(batchLessons.map((l: any) => l.id));
+        const moduleIds = new Set(modules.map((m: any) => m.id));
+        
+        // Try standard JSON parse first
+        try {
+          const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const parsed = JSON.parse(cleanJson);
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              if (lessonIds.has(item.lessonId) && moduleIds.has(item.moduleId)) {
+                assignments.push({
+                  lessonId: item.lessonId,
+                  moduleId: item.moduleId,
+                  confidence: item.confidence || 0.8,
+                  reason: item.reason || "Assegnazione AI"
+                });
+              }
+            }
+            if (assignments.length > 0) {
+              console.log(`✅ [JSON-PARSER] Standard JSON parse succeeded: ${assignments.length} assignments`);
+              return assignments;
+            }
+          }
+        } catch (e) {
+          console.log(`⚠️ [JSON-PARSER] Standard JSON parse failed, trying regex extraction...`);
+        }
+        
+        // Fallback: Extract lessonId and moduleId using regex patterns
+        // Pattern 1: "lessonId": "uuid-here", "moduleId": "uuid-here"
+        const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+        const objectPattern = /"lessonId"\s*:\s*"([^"]+)"\s*,\s*"moduleId"\s*:\s*"([^"]+)"/g;
+        
+        let match;
+        while ((match = objectPattern.exec(text)) !== null) {
+          const [, lessonId, moduleId] = match;
+          if (lessonIds.has(lessonId) && moduleIds.has(moduleId)) {
+            assignments.push({
+              lessonId,
+              moduleId,
+              confidence: 0.75,
+              reason: "Assegnazione AI (regex)"
+            });
+          }
+        }
+        
+        if (assignments.length > 0) {
+          console.log(`✅ [JSON-PARSER] Regex extraction succeeded: ${assignments.length} assignments`);
+          return assignments;
+        }
+        
+        // Pattern 2: Try to find pairs of UUIDs in order (lessonId, moduleId alternating)
+        const allUuids = text.match(uuidPattern) || [];
+        const validLessonUuids = allUuids.filter(u => lessonIds.has(u));
+        const validModuleUuids = allUuids.filter(u => moduleIds.has(u));
+        
+        // If we have matching counts, pair them up
+        if (validLessonUuids.length > 0 && validModuleUuids.length > 0) {
+          // Find pairs by position in text
+          for (const lessonId of validLessonUuids) {
+            const lessonPos = text.indexOf(lessonId);
+            let closestModule = '';
+            let closestDist = Infinity;
+            
+            for (const moduleId of validModuleUuids) {
+              const modulePos = text.indexOf(moduleId, lessonPos);
+              if (modulePos > lessonPos && modulePos - lessonPos < closestDist) {
+                closestDist = modulePos - lessonPos;
+                closestModule = moduleId;
+              }
+            }
+            
+            if (closestModule && closestDist < 200) { // Within 200 chars = same object
+              assignments.push({
+                lessonId,
+                moduleId: closestModule,
+                confidence: 0.6,
+                reason: "Assegnazione AI (uuid-pair)"
+              });
+            }
+          }
+        }
+        
+        if (assignments.length > 0) {
+          console.log(`✅ [JSON-PARSER] UUID pairing succeeded: ${assignments.length} assignments`);
+        } else {
+          console.log(`⚠️ [JSON-PARSER] All extraction methods failed`);
+        }
+        
+        return assignments;
+      };
       
       // BATCHING: Process lessons in batches of 20 to avoid timeout/parsing issues
       const BATCH_SIZE = 20;
@@ -5473,76 +5561,64 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         
         console.log(`📦 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}/${totalBatches}: lessons ${startIdx + 1}-${endIdx}`);
         
-        // Create lesson index map for this batch
-        const lessonIndexMap = new Map<number, string>();
-        batchLessons.forEach((l: any, idx: number) => {
-          lessonIndexMap.set(idx + 1, l.id);
-        });
-        
-        // Use NUMBERS instead of IDs to avoid JSON parsing issues with special chars
-        const prompt = `Assegna queste lezioni ai moduli. Rispondi SOLO con numeri.
+        const prompt = `Sei un esperto nella creazione e organizzazione di corsi formativi.
 
-LEZIONI (usa il numero, NON l'ID):
-${batchLessons.map((l: any, i: number) => `${i + 1}. ${sanitizeText(l.title)}`).join('\n')}
+LEZIONI DA ASSEGNARE (batch ${batchIndex + 1} di ${totalBatches}):
+${batchLessons.map((l: any, i: number) => `${startIdx + i + 1}. ID: "${l.id}"
+   Titolo: "${sanitizeText(l.title)}"
+   Sottotitolo: "${sanitizeText(l.subtitle) || 'N/A'}"
+   Tags: ${l.tags?.join(', ') || 'N/A'}`).join('\n\n')}
 
-MODULI (usa il numero, NON l'ID):
-${modules.map((m: any, i: number) => `${i + 1}. ${sanitizeText(m.name)}`).join('\n')}
+MODULI DISPONIBILI:
+${modules.map((m: any, i: number) => `${i + 1}. ID: "${m.id}" - Nome: "${sanitizeText(m.name)}"`).join('\n')}
 
-Rispondi con una lista semplice, una riga per lezione:
-LEZIONE_NUM:MODULO_NUM
+COMPITO:
+Analizza il contenuto di ogni lezione e assegnala al modulo più appropriato.
+Per ogni lezione, fornisci:
+1. L'ID della lezione
+2. L'ID del modulo più adatto
+3. Un punteggio di confidenza (0.0-1.0)
+4. Una breve spiegazione (max 15 parole)
 
-Esempio:
-1:2
-2:1
-3:3
+CRITERI DI ASSEGNAZIONE:
+- Affinità tematica tra titolo lezione e nome modulo
+- Coerenza con eventuali tags
+- Progressione logica del contenuto
+- Distribuisci le lezioni equamente tra i moduli disponibili
 
-Distribuisci equamente tra i moduli basandoti sull'affinità tematica.`;
+Rispondi SOLO con un JSON array, senza altri testi:
+[
+  {
+    "lessonId": "id_lezione",
+    "moduleId": "id_modulo",
+    "confidence": 0.85,
+    "reason": "Spiegazione breve"
+  }
+]`;
 
         try {
           const response = await providerResult.client.generateContent({
             model: 'gemini-2.5-flash',
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 2000,
+              temperature: 0.3,
+              maxOutputTokens: 4000,
             },
           });
           
           const text = response.response.text() || '';
-          console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} raw response: ${text.substring(0, 200)}...`);
+          console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} response length: ${text.length} chars`);
           
-          // Parse the simple format: "1:2\n2:1\n3:3"
-          const lines = text.split('\n').filter(line => line.trim());
-          let parsedCount = 0;
+          // Use nuclear-proof parser
+          const batchAssignments = parseAssignmentsFromText(text, batchLessons, modules);
           
-          for (const line of lines) {
-            const match = line.match(/(\d+)\s*[:\-]\s*(\d+)/);
-            if (match) {
-              const lessonNum = parseInt(match[1]);
-              const moduleNum = parseInt(match[2]);
-              
-              const lessonId = lessonIndexMap.get(lessonNum);
-              const moduleId = moduleIndexMap.get(moduleNum);
-              
-              if (lessonId && moduleId) {
-                allAssignments.push({
-                  lessonId,
-                  moduleId,
-                  confidence: 0.8,
-                  reason: "Assegnazione AI"
-                });
-                parsedCount++;
-              }
-            }
+          if (batchAssignments.length > 0) {
+            allAssignments.push(...batchAssignments);
+            console.log(`✅ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} completed: ${batchAssignments.length}/${batchLessons.length} assignments`);
           }
           
-          console.log(`✅ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} completed: ${parsedCount}/${batchLessons.length} parsed`);
-          
           // Fill in any missing assignments from this batch
-          const assignedInBatch = new Set(allAssignments.filter(a => 
-            batchLessons.some((l: any) => l.id === a.lessonId)
-          ).map(a => a.lessonId));
-          
+          const assignedInBatch = new Set(batchAssignments.map(a => a.lessonId));
           batchLessons.forEach((l: any, idx: number) => {
             if (!assignedInBatch.has(l.id)) {
               const moduleIndex = idx % modules.length;
