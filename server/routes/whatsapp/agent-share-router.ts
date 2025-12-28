@@ -8,7 +8,7 @@ import { authenticateToken, requireRole, type AuthRequest } from '../../middlewa
 import * as shareService from '../../whatsapp/share-service';
 import { db } from '../../db';
 import * as schema from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 const router = express.Router();
 
@@ -95,27 +95,51 @@ router.get('/', async (req: AuthRequest, res) => {
       ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
       : req.protocol + '://' + req.get('host');
     
-    const sharesWithUrls = shares.map(({ share, agent }) => ({
-      id: share.id,
-      slug: share.slug,
-      agentName: share.agentName,
-      accessType: share.accessType,
-      isActive: share.isActive,
-      allowedDomains: share.allowedDomains,
-      expireAt: share.expireAt,
-      totalAccessCount: share.totalAccessCount,
-      uniqueVisitorsCount: share.uniqueVisitorsCount,
-      totalMessagesCount: share.totalMessagesCount,
-      createdAt: share.createdAt,
-      revokedAt: share.revokedAt,
-      requiresLogin: share.requiresLogin || false,
-      agent: {
-        id: share.agentConfigId, // Use agentConfigId as agent.id for filtering
-        agentName: agent?.agentName || share.agentName,
-        businessName: agent?.businessName,
-        agentType: agent?.agentType,
-      },
-      publicUrl: `${baseUrl}/share/${share.slug}`,
+    // Build shares with assigned managers
+    const sharesWithUrls = await Promise.all(shares.map(async ({ share, agent }) => {
+      // Get assigned managers for this share
+      const assignments = await db
+        .select({
+          managerId: schema.managerLinkAssignments.managerId,
+          manager: schema.managerUsers,
+        })
+        .from(schema.managerLinkAssignments)
+        .innerJoin(
+          schema.managerUsers,
+          eq(schema.managerLinkAssignments.managerId, schema.managerUsers.id)
+        )
+        .where(eq(schema.managerLinkAssignments.shareId, share.id));
+      
+      const assignedManagers = assignments.map(a => ({
+        id: a.manager.id,
+        name: a.manager.name,
+        email: a.manager.email,
+        status: a.manager.status,
+      }));
+      
+      return {
+        id: share.id,
+        slug: share.slug,
+        agentName: share.agentName,
+        accessType: share.accessType,
+        isActive: share.isActive,
+        allowedDomains: share.allowedDomains,
+        expireAt: share.expireAt,
+        totalAccessCount: share.totalAccessCount,
+        uniqueVisitorsCount: share.uniqueVisitorsCount,
+        totalMessagesCount: share.totalMessagesCount,
+        createdAt: share.createdAt,
+        revokedAt: share.revokedAt,
+        requiresLogin: share.requiresLogin || false,
+        assignedManagers,
+        agent: {
+          id: share.agentConfigId,
+          agentName: agent?.agentName || share.agentName,
+          businessName: agent?.businessName,
+          agentType: agent?.agentType,
+        },
+        publicUrl: `${baseUrl}/share/${share.slug}`,
+      };
     }));
     
     res.json({
