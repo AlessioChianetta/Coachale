@@ -3491,10 +3491,12 @@ export class FileSearchSyncService {
     }
     
     // Knowledge: missing and outdated
+    // Also check for chunked documents (sourceId_chunk_0 pattern)
     const knowledgeMissing: Array<{ id: string; title: string }> = [];
     const knowledgeOutdated: Array<{ id: string; title: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> = [];
     for (const doc of knowledgeDocs) {
-      const indexed = indexedKnowledgeMap.get(doc.id);
+      // Check both exact match and chunked format
+      const indexed = indexedKnowledgeMap.get(doc.id) || indexedKnowledgeMap.get(`${doc.id}_chunk_0`);
       if (!indexed) {
         knowledgeMissing.push({ id: doc.id, title: doc.title });
       } else if (doc.updatedAt && indexed.indexedAt && doc.updatedAt > indexed.indexedAt) {
@@ -3868,9 +3870,10 @@ export class FileSearchSyncService {
       const hasEmailJourneyIndexed = clientIndexed.some(d => d.sourceType === 'email_journey' && d.sourceId === client.id);
 
       // Calculate missing
+      // For knowledge docs, also check for chunked format (docId_chunk_0)
       const submissionsMissing = clientSubmissions.filter(s => !indexedSubmissionIds.has(s.id)).map(s => ({ id: s.id, exerciseTitle: 'Esercizio', submittedAt: s.submittedAt }));
       const consultationsMissing = consultationsWithContent.filter(c => !indexedConsultationIds.has(c.id)).map(c => ({ id: c.id, date: c.scheduledAt, summary: c.notes?.substring(0, 50) || '' }));
-      const clientKnowledgeMissing = clientKnowledge.filter(k => !indexedClientKnowledgeIds.has(k.id)).map(k => ({ id: k.id, title: k.title }));
+      const clientKnowledgeMissing = clientKnowledge.filter(k => !indexedClientKnowledgeIds.has(k.id) && !indexedClientKnowledgeIds.has(`${k.id}_chunk_0`)).map(k => ({ id: k.id, title: k.title }));
       
       const assignedExercisesMissing = assignedExercisesList.filter(e => !indexedExerciseTemplateIds.has(e.id)).map(e => ({ id: e.id, title: e.title }));
       const assignedLibraryMissing = assignedLibraryDocs.filter(d => !indexedLibraryCopyIds.has(d.id)).map(d => ({ 
