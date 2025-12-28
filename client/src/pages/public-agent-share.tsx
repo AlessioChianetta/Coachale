@@ -564,28 +564,33 @@ export default function PublicAgentShare() {
     }
   };
   
-  // Auto-scroll to bottom - sempre affidabile
+  // Auto-scroll to bottom - stessa logica del manager
   useEffect(() => {
-    const scrollToBottom = () => {
-      if (scrollAreaRef.current) {
-        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (viewport) {
-          viewport.scrollTo({ 
-            top: viewport.scrollHeight + 100, 
-            behavior: 'smooth' 
-          });
+    if (scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        // Controlla se l'utente è vicino al fondo (tolleranza 50px)
+        const isUserScrolledToBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 50;
+        
+        // Caso 1: L'utente ha appena inviato un messaggio
+        if (optimisticMessage) {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+          return;
+        }
+        
+        // Caso 2: L'AI sta streamando e l'utente è già in fondo
+        if (streamingMessage?.content && isUserScrolledToBottom) {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
+          return;
+        }
+        
+        // Caso 3: Nuovi messaggi arrivati e l'utente è in fondo
+        if (isUserScrolledToBottom) {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
         }
       }
-    };
-    
-    // Scroll sempre quando ci sono messaggi o attività
-    if (messages.length > 0 || optimisticMessage || streamingMessage?.content || isStreaming) {
-      // Delay per dare tempo al DOM di aggiornarsi
-      requestAnimationFrame(() => {
-        scrollToBottom();
-      });
     }
-  }, [messages, messages.length, streamingMessage?.content, optimisticMessage, isStreaming]);
+  }, [messages, streamingMessage?.content, optimisticMessage]);
   
   // Auto-trigger public access if no password required
   useEffect(() => {
