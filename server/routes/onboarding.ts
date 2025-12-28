@@ -22,6 +22,7 @@ import {
   superadminVertexConfig,
   consultantVertexAccess,
   marketingCampaigns,
+  consultantInstagramConfig,
 } from '@shared/schema';
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
@@ -173,6 +174,12 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     const campaignsCount = Number(campaignsResult[0]?.count || 0);
     const hasFirstCampaign = campaignsCount > 0;
     
+    // Check if Instagram is configured
+    const instagramConfig = await db.query.consultantInstagramConfig.findFirst({
+      where: eq(consultantInstagramConfig.consultantId, consultantId),
+    });
+    const hasInstagramConfigured = !!(instagramConfig?.instagramPageId && instagramConfig?.pageAccessToken);
+    
     // Update the status record with calculated values
     await db.update(consultantOnboardingStatus)
       .set({
@@ -219,6 +226,8 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       approvedTemplatesCount,
       hasFirstCampaign,
       campaignsCount,
+      hasInstagramConfigured,
+      instagramStatus: hasInstagramConfigured ? 'verified' : 'pending',
     };
     
     res.json({
@@ -980,6 +989,65 @@ router.post('/test/twilio-agent', authenticateToken, requireRole('consultant'), 
     res.status(500).json({
       success: false,
       message: 'Errore durante il test Twilio Agent',
+    });
+  }
+});
+
+router.post('/test/instagram', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const encryptionSalt = req.user!.encryptionSalt;
+    
+    const config = await db.query.consultantInstagramConfig.findFirst({
+      where: eq(consultantInstagramConfig.consultantId, consultantId),
+    });
+    
+    if (!config || !config.instagramPageId || !config.pageAccessToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Configurazione Instagram incompleta. Inserisci Page ID e Access Token nella tab Instagram delle API Keys.',
+      });
+    }
+    
+    // Decrypt token
+    let accessToken = config.pageAccessToken;
+    if (encryptionSalt) {
+      try {
+        accessToken = decryptForConsultant(config.pageAccessToken, encryptionSalt);
+      } catch (e) {
+        // Token might not be encrypted
+      }
+    }
+    
+    // Test API connection
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${config.instagramPageId}?fields=id,username,name&access_token=${accessToken}`
+    );
+    
+    if (!response.ok) {
+      const error = await response.json();
+      return res.status(400).json({
+        success: false,
+        message: `Errore API Instagram: ${error.error?.message || "Token non valido o scaduto"}`,
+      });
+    }
+    
+    const pageInfo = await response.json();
+    
+    res.json({
+      success: true,
+      message: `Connesso a Instagram come @${pageInfo.username || pageInfo.name}!`,
+      details: { 
+        pageId: pageInfo.id,
+        username: pageInfo.username,
+        name: pageInfo.name,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error testing Instagram:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Errore durante il test Instagram',
     });
   }
 });

@@ -49,6 +49,7 @@ import {
   ClipboardList,
   MailCheck,
   Phone,
+  Instagram,
 } from "lucide-react";
 
 type StepStatus = "pending" | "configured" | "verified" | "error" | "skipped";
@@ -126,6 +127,10 @@ interface OnboardingStatus {
   exercisesCount: number;
   hasFirstSummaryEmail: boolean;
   summaryEmailsCount: number;
+  instagramStatus: StepStatus;
+  instagramTestedAt?: string;
+  instagramErrorMessage?: string;
+  hasInstagramConfigured: boolean;
 }
 
 const statusConfig = {
@@ -673,8 +678,20 @@ export default function ConsultantSetupWizard() {
           testEndpoint: "/api/consultant/onboarding/test/twilio-agent",
         },
         {
-          id: "approved_template",
+          id: "instagram_dm",
           stepNumber: 5,
+          title: "Instagram Direct Messaging",
+          description: "Collega il tuo account Instagram Business per gestire i DM con AI",
+          icon: <Instagram className="h-4 w-4" />,
+          status: status?.hasInstagramConfigured ? "verified" : (status?.instagramStatus || "pending"),
+          testedAt: status?.instagramTestedAt,
+          errorMessage: status?.instagramErrorMessage,
+          configLink: "/consultant/api-keys-unified?tab=instagram",
+          testEndpoint: "/api/consultant/onboarding/test/instagram",
+        },
+        {
+          id: "approved_template",
+          stepNumber: 6,
           title: "Template WhatsApp Approvato",
           description: "Crea e fatti approvare almeno un template da Twilio per inviare messaggi proattivi",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -685,7 +702,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "first_campaign",
-          stepNumber: 6,
+          stepNumber: 7,
           title: "Crea la tua Prima Campagna",
           description: "Configura la tua prima campagna marketing per contattare i lead automaticamente",
           icon: <Rocket className="h-4 w-4" />,
@@ -702,7 +719,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "inbound_agent",
-          stepNumber: 7,
+          stepNumber: 8,
           title: "Agente Inbound",
           description: "Crea un agente per gestire le richieste in entrata dei clienti",
           icon: <ArrowDownToLine className="h-4 w-4" />,
@@ -711,7 +728,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "outbound_agent",
-          stepNumber: 8,
+          stepNumber: 9,
           title: "Agente Outbound",
           description: "Crea un agente per le campagne di contatto proattivo",
           icon: <ArrowUpFromLine className="h-4 w-4" />,
@@ -720,7 +737,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "consultative_agent",
-          stepNumber: 9,
+          stepNumber: 10,
           title: "Agente Consulenziale",
           description: "Crea un agente specializzato per consulenze e supporto avanzato",
           icon: <Briefcase className="h-4 w-4" />,
@@ -729,7 +746,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "public_agent_link",
-          stepNumber: 10,
+          stepNumber: 11,
           title: "Link Pubblico Agente",
           description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
           icon: <LinkIcon className="h-4 w-4" />,
@@ -740,7 +757,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "ai_ideas",
-          stepNumber: 11,
+          stepNumber: 12,
           title: "Idee AI Generate",
           description: "Genera idee creative per gli agenti usando l'intelligenza artificiale",
           icon: <Lightbulb className="h-4 w-4" />,
@@ -751,7 +768,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "whatsapp_template",
-          stepNumber: 12,
+          stepNumber: 13,
           title: "Altri Template WhatsApp",
           description: "Crea altri template WhatsApp per diversi tipi di messaggi automatici",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -768,7 +785,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_course",
-          stepNumber: 13,
+          stepNumber: 14,
           title: "Primo Corso",
           description: "Crea il tuo primo corso formativo per i clienti",
           icon: <BookOpen className="h-4 w-4" />,
@@ -779,7 +796,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "first_exercise",
-          stepNumber: 14,
+          stepNumber: 15,
           title: "Primo Esercizio",
           description: "Crea il tuo primo esercizio pratico per i clienti",
           icon: <ClipboardList className="h-4 w-4" />,
@@ -790,7 +807,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "knowledge_base",
-          stepNumber: 15,
+          stepNumber: 16,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -808,7 +825,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_summary_email",
-          stepNumber: 16,
+          stepNumber: 17,
           title: "Prima Email Riassuntiva",
           description: "Invia la tua prima email riassuntiva dopo una consulenza",
           icon: <MailCheck className="h-4 w-4" />,
@@ -819,7 +836,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "video_meeting",
-          stepNumber: 17,
+          stepNumber: 18,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -831,7 +848,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "lead_import",
-          stepNumber: 18,
+          stepNumber: 19,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,

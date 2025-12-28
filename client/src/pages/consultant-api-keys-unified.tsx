@@ -6418,6 +6418,76 @@ export default function ConsultantApiKeysUnified() {
                         </Button>
                       </div>
                     </div>
+
+                    <div className="border-t border-cyan-200 pt-6 mt-6">
+                      <h4 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-cyan-600" />
+                        Guida alla Configurazione Instagram DM
+                      </h4>
+                      
+                      <div className="space-y-4 text-sm text-slate-600">
+                        <div className="bg-white rounded-lg p-4 border border-slate-200">
+                          <h5 className="font-medium text-slate-700 mb-2">1. Prerequisiti</h5>
+                          <ul className="list-disc list-inside space-y-1 text-slate-600">
+                            <li>Account Instagram Business (non personale)</li>
+                            <li>Pagina Facebook collegata all'account Instagram</li>
+                            <li>Accesso a Meta Business Suite</li>
+                            <li>App Meta creata nella Meta Developer Console</li>
+                          </ul>
+                        </div>
+
+                        <div className="bg-white rounded-lg p-4 border border-slate-200">
+                          <h5 className="font-medium text-slate-700 mb-2">2. Trovare l'Instagram Page ID</h5>
+                          <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                            <li>Vai su <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="text-cyan-600 hover:underline">Meta Business Suite</a></li>
+                            <li>Seleziona "Impostazioni" → "Account collegati"</li>
+                            <li>Clicca sul tuo account Instagram</li>
+                            <li>L'ID si trova nella URL o nelle informazioni dell'account (es: 17841400000000000)</li>
+                          </ol>
+                        </div>
+
+                        <div className="bg-white rounded-lg p-4 border border-slate-200">
+                          <h5 className="font-medium text-slate-700 mb-2">3. Generare l'Access Token</h5>
+                          <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                            <li>Vai su <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-cyan-600 hover:underline">Meta Developer Console</a></li>
+                            <li>Seleziona la tua App → "Strumenti" → "Graph API Explorer"</li>
+                            <li>Scegli la tua App e la Pagina Facebook collegata a Instagram</li>
+                            <li>Aggiungi i permessi: <code className="bg-slate-100 px-1 rounded text-xs">instagram_basic</code>, <code className="bg-slate-100 px-1 rounded text-xs">instagram_manage_messages</code>, <code className="bg-slate-100 px-1 rounded text-xs">pages_messaging</code></li>
+                            <li>Clicca "Generate Access Token" e copia il token</li>
+                            <li>Per un token long-lived, usa lo strumento di debug del token</li>
+                          </ol>
+                        </div>
+
+                        <div className="bg-white rounded-lg p-4 border border-slate-200">
+                          <h5 className="font-medium text-slate-700 mb-2">4. Trovare l'App Secret</h5>
+                          <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                            <li>Nella Meta Developer Console, seleziona la tua App</li>
+                            <li>Vai su "Impostazioni" → "Base"</li>
+                            <li>Clicca "Mostra" accanto a "Chiave segreta dell'app"</li>
+                            <li>Copia il valore e incollalo qui</li>
+                          </ol>
+                        </div>
+
+                        <div className="bg-white rounded-lg p-4 border border-slate-200">
+                          <h5 className="font-medium text-slate-700 mb-2">5. Configurare il Webhook</h5>
+                          <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                            <li>Dopo aver salvato la configurazione qui, copia il Webhook URL mostrato sopra</li>
+                            <li>Nella Meta Developer Console → "Prodotti" → "Webhook"</li>
+                            <li>Clicca "Aggiungi iscrizione" per Instagram</li>
+                            <li>Incolla l'URL del webhook e il Verify Token generato</li>
+                            <li>Sottoscrivi gli eventi: <code className="bg-slate-100 px-1 rounded text-xs">messages</code>, <code className="bg-slate-100 px-1 rounded text-xs">messaging_postbacks</code></li>
+                          </ol>
+                        </div>
+
+                        <Alert className="bg-amber-50 border-amber-200">
+                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                          <AlertDescription className="text-amber-800">
+                            <strong>Finestra 24 ore:</strong> Meta permette di rispondere ai messaggi solo entro 24 ore dall'ultimo messaggio del cliente. 
+                            Il badge nella pagina conversazioni mostra lo stato della finestra in tempo reale.
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
