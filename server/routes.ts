@@ -5544,16 +5544,21 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
               } as any);
               
               const text = response.response.text() || '';
-              console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}/${totalBatches}: ${text}`);
+              console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}/${totalBatches}: ${JSON.stringify(text)}`);
               
               try {
                 const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
                 const mapping = JSON.parse(cleanJson);
+                console.log(`🔍 [AI-AUTO-ASSIGN] Parsed mapping:`, JSON.stringify(mapping));
                 
+                let aiAssignedCount = 0;
                 batchLessons.forEach((l: any, idx: number) => {
                   const lessonKey = String(idx + 1);
                   const moduleLetter = mapping[lessonKey];
                   const moduleId = moduleLetter ? moduleIndexMap.get(moduleLetter.toUpperCase()) : null;
+                  
+                  if (moduleId) aiAssignedCount++;
+                  else console.log(`⚠️ [AI-AUTO-ASSIGN] Lesson ${lessonKey}: letter=${moduleLetter}, not found in map. Available: ${Array.from(moduleIndexMap.keys()).join(',')}`);
                   
                   allAssignments.push({
                     lessonId: l.id,
@@ -5562,7 +5567,11 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
                     reason: moduleId ? "Assegnazione AI" : "Assegnazione automatica"
                   });
                 });
-              } catch {
+                console.log(`✅ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}: ${aiAssignedCount}/${batchLessons.length} AI assigned`);
+              } catch (parseErr: any) {
+                console.log(`❌ [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} JSON parse failed: ${parseErr.message}`);
+                console.log(`❌ [AI-AUTO-ASSIGN] Raw text was: ${JSON.stringify(text)}`);
+              
                 // Fallback
                 batchLessons.forEach((l: any, idx: number) => {
                   allAssignments.push({
