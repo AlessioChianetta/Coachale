@@ -22,7 +22,7 @@ function omitPasswordHash(manager: typeof managerUsers.$inferSelect) {
 router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { name, email, password, metadata } = req.body;
+    const { name, email, password, metadata, agentIds, sendEmail } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email and password are required" });
@@ -50,6 +50,37 @@ router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthR
       status: "active",
       metadata: metadata || {},
     }).returning();
+
+    // Auto-assign manager to agent shares if agentIds provided
+    if (agentIds && Array.isArray(agentIds) && agentIds.length > 0) {
+      // Get all shares for the specified agents that belong to this consultant
+      const agentShares = await db.select()
+        .from(whatsappAgentShares)
+        .where(eq(whatsappAgentShares.consultantId, consultantId));
+      
+      // Filter shares that match the provided agent IDs
+      const matchingShares = agentShares.filter(share => 
+        agentIds.includes((share as any).agentConfigId)
+      );
+
+      // Create assignments for each matching share
+      for (const share of matchingShares) {
+        try {
+          await db.insert(managerLinkAssignments).values({
+            managerId: created.id,
+            shareId: share.id,
+          });
+        } catch (assignError) {
+          console.log(`[MANAGER] Assignment already exists or failed for share ${share.id}`);
+        }
+      }
+      console.log(`[MANAGER] Created ${matchingShares.length} share assignments for manager ${created.id}`);
+    }
+
+    // TODO: Send email with credentials if sendEmail is true
+    if (sendEmail) {
+      console.log(`[MANAGER] Email sending requested for ${email} (not implemented yet)`);
+    }
 
     res.status(201).json(omitPasswordHash(created));
   } catch (error: any) {
@@ -82,7 +113,7 @@ router.get("/", authenticateToken, requireRole("consultant"), async (req: AuthRe
       };
     }));
 
-    res.json(managersWithCounts);
+    res.json({ managers: managersWithCounts });
   } catch (error: any) {
     console.error("[MANAGER] List error:", error);
     res.status(500).json({ message: error.message || "Failed to list managers" });
