@@ -171,6 +171,79 @@ router.get(
 );
 
 router.get(
+  "/:slug/manager/preferences",
+  loadShareAndAgent,
+  verifyManagerToken,
+  async (req: ManagerRequest, res: Response) => {
+    try {
+      const manager = req.manager!;
+      const share = req.share!;
+
+      if (manager.shareId !== share.id) {
+        return res.status(403).json({ message: "Access denied to this agent" });
+      }
+
+      const [managerData] = await db.select({
+        aiPreferences: managerUsers.aiPreferences,
+      })
+        .from(managerUsers)
+        .where(eq(managerUsers.id, manager.managerId))
+        .limit(1);
+
+      if (!managerData) {
+        return res.status(404).json({ message: "Manager not found" });
+      }
+
+      const defaultPreferences = {
+        writingStyle: "default",
+        responseLength: "balanced",
+        customInstructions: null,
+      };
+
+      res.json({ ...defaultPreferences, ...(managerData.aiPreferences || {}) });
+    } catch (error: any) {
+      console.error("[PUBLIC AGENT] Get manager preferences error:", error);
+      res.status(500).json({ message: "Failed to get manager preferences" });
+    }
+  }
+);
+
+router.put(
+  "/:slug/manager/preferences",
+  loadShareAndAgent,
+  verifyManagerToken,
+  async (req: ManagerRequest, res: Response) => {
+    try {
+      const manager = req.manager!;
+      const share = req.share!;
+      const { writingStyle, responseLength, customInstructions } = req.body;
+
+      if (manager.shareId !== share.id) {
+        return res.status(403).json({ message: "Access denied to this agent" });
+      }
+
+      const aiPreferences = {
+        writingStyle: writingStyle || "default",
+        responseLength: responseLength || "balanced",
+        customInstructions: customInstructions || null,
+      };
+
+      await db.update(managerUsers)
+        .set({ 
+          aiPreferences,
+          updatedAt: new Date(),
+        })
+        .where(eq(managerUsers.id, manager.managerId));
+
+      res.json(aiPreferences);
+    } catch (error: any) {
+      console.error("[PUBLIC AGENT] Update manager preferences error:", error);
+      res.status(500).json({ message: "Failed to update manager preferences" });
+    }
+  }
+);
+
+router.get(
   "/:slug/conversations",
   loadShareAndAgent,
   verifyManagerToken,

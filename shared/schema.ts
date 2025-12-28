@@ -6011,6 +6011,12 @@ export const managerUsers = pgTable("manager_users", {
     [key: string]: any;
   }>().default(sql`'{}'::jsonb`),
   
+  aiPreferences: jsonb("ai_preferences").$type<{
+    writingStyle?: "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom";
+    responseLength?: "short" | "balanced" | "comprehensive";
+    customInstructions?: string | null;
+  }>().default(sql`'{}'::jsonb`),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
