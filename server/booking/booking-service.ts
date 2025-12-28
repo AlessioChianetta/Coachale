@@ -684,8 +684,10 @@ export async function extractBookingDataFromConversation(
     );
   }
 
-  const { model, useThinking, thinkingLevel } = getModelWithThinking(providerName || 'Vertex AI');
-  console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+  // Use gemini-2.5-flash-lite for booking extraction - fast and efficient
+  const model = 'gemini-2.5-flash-lite';
+  const useThinking = false;
+  console.log(`   🧠 [AI] Using model: ${model}, thinking: disabled`);
 
   try {
     const response = await aiClient.generateContent({

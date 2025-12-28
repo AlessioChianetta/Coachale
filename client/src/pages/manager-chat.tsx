@@ -415,6 +415,7 @@ export default function ManagerChat() {
   const isAuthenticated = !!getManagerToken() && agentInfo?.requiresLogin === true;
 
   const { data: conversationData, isLoading: conversationsLoading, refetch: refetchConversation } = useQuery<{
+    conversations?: { id: string; createdAt: string; lastMessageAt?: string }[];
     conversation: Conversation | null;
     messages: Message[];
   }>({
@@ -425,7 +426,7 @@ export default function ManagerChat() {
       });
       if (!response.ok) throw new Error("Failed to fetch conversation");
       const data = await response.json();
-      if (data.conversation) {
+      if (data.conversation && !selectedConversationId) {
         setSelectedConversationId(data.conversation.id);
         setMessages(data.messages || []);
       }
@@ -434,14 +435,12 @@ export default function ManagerChat() {
     enabled: isAuthenticated,
   });
 
-  const conversations: Conversation[] = conversationData?.conversation 
-    ? [{
-        id: conversationData.conversation.id,
-        title: "Conversazione",
-        createdAt: conversationData.conversation.createdAt,
-        updatedAt: conversationData.conversation.createdAt,
-      }]
-    : [];
+  const conversations: Conversation[] = (conversationData?.conversations || []).map((c, idx) => ({
+    id: c.id,
+    title: `Chat ${(conversationData?.conversations?.length || 0) - idx}`,
+    createdAt: c.createdAt,
+    updatedAt: c.lastMessageAt || c.createdAt,
+  }));
 
   const { refetch: fetchConversationMessages } = useQuery({
     queryKey: ["manager-conversation-messages", slug, selectedConversationId],
@@ -450,7 +449,7 @@ export default function ManagerChat() {
       setLoadingConversationId(selectedConversationId);
       try {
         const response = await fetch(
-          `/public/whatsapp/shares/${slug}/conversation`,
+          `/public/whatsapp/shares/${slug}/conversation?conversationId=${selectedConversationId}`,
           { headers: getManagerAuthHeaders() }
         );
         if (!response.ok) throw new Error("Failed to fetch messages");
@@ -535,6 +534,7 @@ export default function ManagerChat() {
           body: JSON.stringify({
             message: message,
             preferences: currentPreferences,
+            newConversation: isNewConversation,
           }),
         }
       );
@@ -642,7 +642,7 @@ export default function ManagerChat() {
   const handleNewConversation = () => {
     setSelectedConversationId(null);
     setMessages([]);
-    setIsNewConversation(false);
+    setIsNewConversation(true);
     if (isMobile) {
       setChatSidebarOpen(false);
     }

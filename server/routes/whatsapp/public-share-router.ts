@@ -307,9 +307,113 @@ router.get(
   async (req: Request & { share?: schema.WhatsappAgentShare; managerId?: string }, res) => {
     try {
       const managerId = req.managerId;
-      const visitorId = managerId ? `manager_${managerId}` : (req.query.visitorId as string);
+      const visitorId = req.query.visitorId as string;
+      const conversationId = req.query.conversationId as string;
       const share = req.share!;
       
+      // For managers, get ALL their conversations (they can have multiple)
+      if (managerId) {
+        const managerVisitorPattern = `manager_${managerId}%`;
+        
+        // Get all conversations for this manager
+        const conversations = await db
+          .select()
+          .from(schema.whatsappAgentConsultantConversations)
+          .where(
+            and(
+              eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+              eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
+              sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+            )
+          )
+          .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+        
+        // If conversationId is specified, get messages for that conversation
+        if (conversationId) {
+          const [targetConversation] = conversations.filter(c => c.id === conversationId);
+          if (!targetConversation) {
+            return res.json({
+              success: true,
+              conversations: conversations.map(c => ({
+                id: c.id,
+                createdAt: c.createdAt,
+                lastMessageAt: c.lastMessageAt,
+              })),
+              conversation: null,
+              messages: [],
+            });
+          }
+          
+          const messages = await db
+            .select()
+            .from(schema.whatsappAgentConsultantMessages)
+            .where(eq(schema.whatsappAgentConsultantMessages.conversationId, conversationId))
+            .orderBy(schema.whatsappAgentConsultantMessages.createdAt);
+          
+          return res.json({
+            success: true,
+            conversations: conversations.map(c => ({
+              id: c.id,
+              createdAt: c.createdAt,
+              lastMessageAt: c.lastMessageAt,
+            })),
+            conversation: {
+              id: targetConversation.id,
+              createdAt: targetConversation.createdAt,
+            },
+            messages: messages.map(m => ({
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              createdAt: m.createdAt,
+              audioUrl: m.audioUrl,
+              audioDuration: m.audioDuration,
+              transcription: m.transcription,
+            })),
+          });
+        }
+        
+        // No specific conversation requested, return latest if exists
+        if (conversations.length === 0) {
+          return res.json({
+            success: true,
+            conversations: [],
+            conversation: null,
+            messages: [],
+          });
+        }
+        
+        const latestConversation = conversations[0];
+        const messages = await db
+          .select()
+          .from(schema.whatsappAgentConsultantMessages)
+          .where(eq(schema.whatsappAgentConsultantMessages.conversationId, latestConversation.id))
+          .orderBy(schema.whatsappAgentConsultantMessages.createdAt);
+        
+        return res.json({
+          success: true,
+          conversations: conversations.map(c => ({
+            id: c.id,
+            createdAt: c.createdAt,
+            lastMessageAt: c.lastMessageAt,
+          })),
+          conversation: {
+            id: latestConversation.id,
+            createdAt: latestConversation.createdAt,
+          },
+          messages: messages.map(m => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            createdAt: m.createdAt,
+            audioUrl: m.audioUrl,
+            audioDuration: m.audioDuration,
+            transcription: m.transcription,
+          })),
+        });
+      }
+      
+      // For regular visitors, use exact visitorId match
       if (!visitorId) {
         return res.status(400).json({ error: 'visitorId richiesto' });
       }
@@ -391,7 +495,8 @@ router.delete(
       
       console.log(`\n🗑️ [DELETE CONVERSATION] Manager ${managerId} deleting conversation ${conversationId}`);
       
-      const visitorId = `manager_${managerId}`;
+      // Match any visitorId that starts with manager_{managerId} (includes timestamp suffix for new chats)
+      const managerVisitorPattern = `manager_${managerId}%`;
       const [conversation] = await db
         .select()
         .from(schema.whatsappAgentConsultantConversations)
@@ -400,7 +505,7 @@ router.delete(
             eq(schema.whatsappAgentConsultantConversations.id, conversationId),
             eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
             eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
-            eq(schema.whatsappAgentConsultantConversations.externalVisitorId, visitorId)
+            sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
           )
         )
         .limit(1);
@@ -445,9 +550,14 @@ router.post(
   async (req: Request & { share?: schema.WhatsappAgentShare; managerId?: string }, res) => {
     // SECURITY: Get visitorId from query OR use managerId from JWT (for manager_login shares)
     const managerId = req.managerId;
-    const visitorId = managerId ? `manager_${managerId}` : (req.query.visitorId as string);
-    const { message, preferences } = req.body;
+    const baseVisitorId = managerId ? `manager_${managerId}` : (req.query.visitorId as string);
+    const { message, preferences, newConversation } = req.body;
     const share = req.share!;
+    
+    // For new conversations, generate unique visitorId to allow multiple conversations per manager
+    const visitorId = newConversation && managerId 
+      ? `manager_${managerId}_${Date.now()}` 
+      : baseVisitorId;
     
     // Extract manager preferences if provided
     const managerPreferences = preferences ? {
