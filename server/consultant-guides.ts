@@ -1879,12 +1879,22 @@ export const consultantGuides: ConsultantGuides = {
         description: "Configurazione dell'account Instagram Business e delle credenziali Meta. Senza questi passaggi l'integrazione NON funziona.",
         steps: [
           {
+            title: "Catena di Collegamenti Obbligatoria",
+            content: "Per usare le API Instagram, DEVI avere questa catena di account collegati (senza tutti e 3, l'integrazione NON funziona): 1) INSTAGRAM BUSINESS/CREATOR → collegato a → 2) FACEBOOK PAGE → gestita in → 3) FACEBOOK BUSINESS MANAGER (business.facebook.com). Questa è la struttura richiesta da Meta per autorizzare l'accesso API.",
+            warnings: ["Tutti e 3 i collegamenti sono OBBLIGATORI", "Se manca uno dei collegamenti, i webhook non funzioneranno"],
+            externalLinks: [
+              { text: "Apri Business Manager", url: "https://business.facebook.com/" },
+              { text: "Guida collegamento completa", url: "https://www.facebook.com/business/help/1710077379203657" }
+            ]
+          },
+          {
             title: "Requisiti Account",
-            content: "Prima di iniziare, assicurati di avere tutti i requisiti base: 1) Account Instagram Business o Creator (gli account personali NON supportano le API) - per convertire vai su Instagram → Impostazioni → Account → Passa a account professionale. 2) Facebook Page collegata all'account Instagram - devi essere admin o editor della pagina. 3) App Meta for Developers creata con prodotto 'Messenger' aggiunto.",
+            content: "Prima di iniziare, assicurati di avere tutti i requisiti base: 1) Account Instagram Business o Creator (gli account personali NON supportano le API) - per convertire vai su Instagram → Impostazioni → Account → Passa a account professionale. 2) Facebook Page collegata all'account Instagram - devi essere admin o editor della pagina. 3) La Facebook Page deve essere aggiunta al Business Manager (business.facebook.com). 4) App Meta for Developers creata con prodotto 'Messenger' aggiunto.",
             warnings: ["Account personali NON possono ricevere webhook DM", "Devi essere ADMIN della Facebook Page, non solo contributor"],
             externalLinks: [
               { text: "Come convertire a Business", url: "https://help.instagram.com/502981923235522" },
-              { text: "Collegare Instagram a Facebook", url: "https://www.facebook.com/help/1148909221857370" }
+              { text: "Collegare Instagram a Facebook", url: "https://www.facebook.com/help/1148909221857370" },
+              { text: "Aggiungere Page a Business Manager", url: "https://www.facebook.com/business/help/720478807965744" }
             ]
           },
           {

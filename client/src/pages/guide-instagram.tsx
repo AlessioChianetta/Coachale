@@ -302,6 +302,43 @@ export default function GuideInstagram() {
                 collegato a una Facebook Page. Gli account personali NON supportano le API Messaging.
               </WarningBox>
 
+              <div className="bg-gradient-to-r from-cyan-100 to-teal-100 dark:from-cyan-900/40 dark:to-teal-900/40 rounded-xl p-5 border border-cyan-300 dark:border-cyan-700">
+                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                  <Link2 className="h-5 w-5 text-cyan-600" />
+                  Catena di Collegamenti Obbligatoria
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Per usare le API Instagram, devi avere questa struttura di account collegati. Senza tutti e 3, l'integrazione NON funziona:
+                </p>
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 justify-center py-4">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border min-w-[140px]">
+                    <Instagram className="h-6 w-6 mx-auto mb-1 text-pink-500" />
+                    <p className="text-xs font-medium">Instagram</p>
+                    <p className="text-[10px] text-muted-foreground">Business/Creator</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-cyan-500 rotate-90 sm:rotate-0" />
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border min-w-[140px]">
+                    <div className="h-6 w-6 mx-auto mb-1 bg-blue-500 rounded text-white text-xs flex items-center justify-center font-bold">f</div>
+                    <p className="text-xs font-medium">Facebook Page</p>
+                    <p className="text-[10px] text-muted-foreground">Collegata a IG</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-cyan-500 rotate-90 sm:rotate-0" />
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border min-w-[140px]">
+                    <div className="h-6 w-6 mx-auto mb-1 bg-blue-600 rounded text-white text-xs flex items-center justify-center font-bold">B</div>
+                    <p className="text-xs font-medium">Business Manager</p>
+                    <p className="text-[10px] text-muted-foreground">business.facebook.com</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-center mt-2">
+                  <ExternalLinkButton href="https://business.facebook.com/">
+                    Apri Business Manager
+                  </ExternalLinkButton>
+                  <ExternalLinkButton href="https://www.facebook.com/business/help/1710077379203657" variant="outline">
+                    Guida collegamento completa
+                  </ExternalLinkButton>
+                </div>
+              </div>
+
               <StepCard
                 number={1}
                 title="Requisiti Account"
