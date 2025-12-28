@@ -5602,12 +5602,14 @@ Rispondi SOLO con un JSON array, senza altri testi:
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.3,
-              maxOutputTokens: 4000,
+              maxOutputTokens: 8000,
             },
           });
           
           const text = response.response.text() || '';
           console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} response length: ${text.length} chars`);
+          // Debug: log first 500 chars of response to see what AI is returning
+          console.log(`🔍 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1} raw preview: ${text.substring(0, 500)}...`);
           
           // Use nuclear-proof parser
           const batchAssignments = parseAssignmentsFromText(text, batchLessons, modules);
