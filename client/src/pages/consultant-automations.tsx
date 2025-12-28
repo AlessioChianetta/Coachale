@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAuthHeaders } from "@/lib/auth";
-import { useFollowupSettings, useUpdateFollowupSettings } from "@/hooks/useFollowupApi";
+import { useFollowupSettings, useUpdateFollowupSettings, useAiPreferences, useUpdateAiPreferences } from "@/hooks/useFollowupApi";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1054,6 +1055,52 @@ function TriggerEvaluationButton() {
   );
 }
 
+function AutomationToggle() {
+  const { toast } = useToast();
+  const { data: prefsData, isLoading } = useAiPreferences();
+  const updatePrefs = useUpdateAiPreferences();
+  
+  const isActive = prefsData?.preferences?.isActive ?? true;
+  
+  const handleToggle = async (checked: boolean) => {
+    try {
+      await updatePrefs.mutateAsync({ isActive: checked });
+      toast({
+        title: checked ? "Automazioni attivate" : "Automazioni disattivate",
+        description: checked 
+          ? "Il sistema invierà automaticamente i follow-up" 
+          : "Le automazioni sono in pausa, nessun messaggio verrà inviato automaticamente",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile aggiornare le impostazioni",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <Switch
+          id="automation-toggle"
+          checked={isActive}
+          onCheckedChange={handleToggle}
+          disabled={isLoading || updatePrefs.isPending}
+          className="data-[state=checked]:bg-green-600"
+        />
+        <Label 
+          htmlFor="automation-toggle" 
+          className={`text-sm font-medium cursor-pointer ${isActive ? 'text-green-600' : 'text-muted-foreground'}`}
+        >
+          {isActive ? "Attivo" : "Disattivato"}
+        </Label>
+      </div>
+    </div>
+  );
+}
+
 export default function ConsultantAutomationsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1091,7 +1138,10 @@ export default function ConsultantAutomationsPage() {
                   Gestisci le regole di follow-up automatico e monitora la pipeline lead
                 </p>
               </div>
-              <TriggerEvaluationButton />
+              <div className="flex items-center gap-4">
+                <AutomationToggle />
+                <TriggerEvaluationButton />
+              </div>
             </div>
 
             {/* Intervallo Follow-up */}

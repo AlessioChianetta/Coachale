@@ -18,6 +18,7 @@ import {
   whatsappTemplateAssignments,
   whatsappTemplateVersions,
   consultantWhatsappConfig,
+  consultantAiPreferences,
   users,
   proactiveLeads
 } from '../../shared/schema';
@@ -1024,7 +1025,18 @@ export async function findCandidateConversations(
   let consultantIds: string[] = [];
   
   if (consultantId) {
-    // Specific consultant requested
+    // Specific consultant requested - check if their automations are enabled
+    const [prefs] = await db
+      .select({ isActive: consultantAiPreferences.isActive })
+      .from(consultantAiPreferences)
+      .where(eq(consultantAiPreferences.consultantId, consultantId))
+      .limit(1);
+    
+    if (prefs && prefs.isActive === false) {
+      console.log(`⏸️ [FOLLOWUP-SCHEDULER] Consultant ${consultantId} has automations disabled, skipping`);
+      return [];
+    }
+    
     consultantIds = [consultantId];
     console.log(`🧑‍💼 [FOLLOWUP-SCHEDULER] Evaluating specific consultant: ${consultantId}`);
   } else {
@@ -1034,14 +1046,38 @@ export async function findCandidateConversations(
       .from(consultantWhatsappConfig)
       .where(eq(consultantWhatsappConfig.isActive, true));
     
-    consultantIds = consultantsWithWhatsapp.map(c => c.consultantId).filter((id): id is string => id !== null);
+    const allConsultantIds = consultantsWithWhatsapp.map(c => c.consultantId).filter((id): id is string => id !== null);
     
-    if (consultantIds.length === 0) {
+    if (allConsultantIds.length === 0) {
       console.log('⚠️ [FOLLOWUP-SCHEDULER] No consultants with active WhatsApp configuration');
       return [];
     }
     
-    console.log(`🧠 [FOLLOWUP-SCHEDULER] AI-ONLY mode: Found ${consultantIds.length} consultants with active WhatsApp configs`);
+    // Filter out consultants who have disabled automations in their AI preferences
+    const disabledPrefs = await db
+      .select({ consultantId: consultantAiPreferences.consultantId })
+      .from(consultantAiPreferences)
+      .where(
+        and(
+          inArray(consultantAiPreferences.consultantId, allConsultantIds),
+          eq(consultantAiPreferences.isActive, false)
+        )
+      );
+    
+    const disabledConsultantIds = new Set(disabledPrefs.map(p => p.consultantId));
+    consultantIds = allConsultantIds.filter(id => !disabledConsultantIds.has(id));
+    
+    const skippedCount = allConsultantIds.length - consultantIds.length;
+    if (skippedCount > 0) {
+      console.log(`⏸️ [FOLLOWUP-SCHEDULER] Skipping ${skippedCount} consultants with automations disabled`);
+    }
+    
+    if (consultantIds.length === 0) {
+      console.log('⚠️ [FOLLOWUP-SCHEDULER] No consultants with active automations');
+      return [];
+    }
+    
+    console.log(`🧠 [FOLLOWUP-SCHEDULER] AI-ONLY mode: Found ${consultantIds.length} consultants with active WhatsApp configs and automations enabled`);
   }
 
   // Build dynamic where conditions

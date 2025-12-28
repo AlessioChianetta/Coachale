@@ -442,3 +442,69 @@ export function usePendingQueue() {
     refetchInterval: 60000,
   });
 }
+
+export interface AiPreferences {
+  id?: string;
+  consultantId?: string;
+  maxFollowupsTotal: number;
+  minHoursBetweenFollowups: number;
+  workingHoursStart: number;
+  workingHoursEnd: number;
+  workingDays: number[];
+  toneStyle: "professionale" | "amichevole" | "diretto" | "formale";
+  messageLength: "breve" | "medio" | "dettagliato";
+  useEmojis: boolean;
+  aggressivenessLevel: number;
+  persistenceLevel: number;
+  firstFollowupDelayHours: number;
+  templateNoResponseDelayHours: number;
+  coldLeadReactivationDays: number;
+  customInstructions?: string;
+  businessContext?: string;
+  targetAudience?: string;
+  neverContactWeekends: boolean;
+  respectHolidays: boolean;
+  stopOnFirstNo: boolean;
+  requireLeadResponseForFreeform: boolean;
+  allowAiToSuggestTemplates: boolean;
+  allowAiToWriteFreeformMessages: boolean;
+  logAiReasoning: boolean;
+  isActive: boolean;
+}
+
+export function useAiPreferences() {
+  return useQuery<{ preferences: AiPreferences }>({
+    queryKey: ["ai-preferences"],
+    queryFn: async () => {
+      const res = await fetch("/api/followup/ai-preferences", {
+        credentials: "include",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch AI preferences");
+      return res.json();
+    },
+  });
+}
+
+export function useUpdateAiPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (updates: Partial<AiPreferences>) => {
+      const res = await fetch("/api/followup/ai-preferences", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        credentials: "include",
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update AI preferences");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ai-preferences"] });
+    },
+  });
+}
