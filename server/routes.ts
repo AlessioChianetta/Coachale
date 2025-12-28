@@ -103,6 +103,7 @@ import followupApiRouter from "./routes/followup-api";
 import fileSearchRouter from "./routes/file-search";
 import echoRouter from "./routes/echo";
 import aiAssistantRouter from "./routes/ai-assistant-router";
+import managerRouter from "./routes/manager-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -9623,6 +9624,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // AI Assistant Agent Integration routes (agent selection in AI assistant)
   app.use("/api/ai-assistant", aiAssistantRouter);
+
+  // Manager Users routes (authenticated public agent access)
+  app.use("/api/managers", managerRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
