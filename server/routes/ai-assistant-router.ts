@@ -561,45 +561,25 @@ REGOLE IMPORTANTI:
 ${instructions}`;
 
     // Get model configuration
-    const modelConfig = getModelWithThinking("low", providerResult.metadata.providerType);
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(providerResult.metadata.name);
 
-    // Call AI
-    let enhancedText = "";
-    
-    if (providerResult.metadata.providerType === "vertex") {
-      const { GoogleGenAI } = await import("@google/genai");
-      const vertexClient = providerResult.client as InstanceType<typeof GoogleGenAI>;
-      
-      const response = await vertexClient.models.generateContent({
-        model: modelConfig.modelId,
-        contents: userPrompt,
-        config: {
-          systemInstruction: systemPrompt,
-          temperature: 0.7,
-          maxOutputTokens: 2000,
+    // Call AI using the same pattern as other routes
+    const result = await providerResult.client.generateContent({
+      model,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: userPrompt }],
         },
-      });
-      
-      enhancedText = response.text || "";
-    } else {
-      const { GoogleGenAI } = await import("@google/genai");
-      const geminiClient = providerResult.client as InstanceType<typeof GoogleGenAI>;
-      
-      const response = await geminiClient.models.generateContent({
-        model: modelConfig.modelId,
-        contents: userPrompt,
-        config: {
-          systemInstruction: systemPrompt,
-          temperature: 0.7,
-          maxOutputTokens: 2000,
-        },
-      });
-      
-      enhancedText = response.text || "";
-    }
+      ],
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2000,
+      },
+    });
 
-    // Clean up the response
-    enhancedText = enhancedText.trim();
+    const enhancedText = result.response.text()?.trim() || "";
 
     console.log(`✅ [AI ENHANCEMENT] Enhanced from ${instructions.length} to ${enhancedText.length} chars`);
 
