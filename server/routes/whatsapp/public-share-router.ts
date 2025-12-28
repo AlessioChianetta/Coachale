@@ -186,6 +186,7 @@ router.get('/:slug/metadata', validateShareExists, async (req: Request & { share
         agentName: share.agentName,
         accessType: share.accessType,
         requiresPassword: share.accessType === 'password',
+        requiresLogin: share.requiresLogin || false,
         isActive: share.isActive,
         isExpired: share.expireAt ? new Date(share.expireAt) < new Date() : false,
         hasDomainsWhitelist: share.allowedDomains && share.allowedDomains.length > 0,

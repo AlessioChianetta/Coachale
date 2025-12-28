@@ -21,6 +21,7 @@ interface ShareMetadata {
   agentName: string;
   accessType: 'public' | 'password' | 'token';
   requiresPassword: boolean;
+  requiresLogin?: boolean;
   isActive: boolean;
   isExpired: boolean;
   hasDomainsWhitelist: boolean;
@@ -131,6 +132,13 @@ export default function PublicAgentShare() {
   });
   
   const metadata: ShareMetadata | null = metadataResponse?.metadata || null;
+  
+  // Redirect to manager login if this share requires manager authentication
+  useEffect(() => {
+    if (metadata?.requiresLogin && slug) {
+      navigate(`/agent/${slug}/login`);
+    }
+  }, [metadata, slug, navigate]);
   
   // Determine if we should show password gate
   useEffect(() => {
