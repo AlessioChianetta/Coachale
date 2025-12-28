@@ -5534,21 +5534,33 @@ Non aggiungere spiegazioni, solo il JSON.`;
 
             try {
               const response = await providerResult.client.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-2.0-flash',
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 generationConfig: {
                   temperature: 0.1,
-                  maxOutputTokens: 256,
+                  maxOutputTokens: 1024,
                   responseMimeType: 'application/json',
                 },
-                thinkingConfig: { thinkingBudget: 0 },
               } as any);
               
               const text = response.response.text() || '';
               console.log(`📝 [AI-AUTO-ASSIGN] Batch ${batchIndex + 1}/${totalBatches}: ${JSON.stringify(text)}`);
               
               try {
-                const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                // Defensive JSON extraction: find JSON object even if surrounded by text
+                let cleanJson = text;
+                
+                // Remove markdown code blocks
+                cleanJson = cleanJson.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                
+                // Try to extract JSON object if there's surrounding text
+                const jsonMatch = cleanJson.match(/\{[^{}]*\}/);
+                if (jsonMatch) {
+                  cleanJson = jsonMatch[0];
+                } else {
+                  cleanJson = cleanJson.trim();
+                }
+                
                 const mapping = JSON.parse(cleanJson);
                 console.log(`🔍 [AI-AUTO-ASSIGN] Parsed mapping:`, JSON.stringify(mapping));
                 
