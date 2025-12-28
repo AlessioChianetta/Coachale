@@ -1265,8 +1265,8 @@ USA QUESTE INFORMAZIONI PER FORNIRE RISPOSTE ACCURATE E CONTESTUALI.
 
 `;
 
-    // Focused Document - Priority handling
-    if ((userContext as any).knowledgeBase?.focusedDocument) {
+    // Focused Document - Priority handling (only if File Search is NOT active)
+    if ((userContext as any).knowledgeBase?.focusedDocument && !hasFileSearch) {
       const focusedDoc = (userContext as any).knowledgeBase.focusedDocument;
       knowledgeSection += `🎯🎯🎯 DOCUMENTO FOCALIZZATO - ATTENZIONE MASSIMA RICHIESTA 🎯🎯🎯
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1290,8 +1290,8 @@ ${focusedDoc.content}
 `;
     }
 
-    // Documents
-    if (userContext.knowledgeBase.documents.length > 0) {
+    // Documents - Only include full content if File Search is NOT active
+    if (userContext.knowledgeBase.documents.length > 0 && !hasFileSearch) {
       const focusedId = (userContext as any).knowledgeBase?.focusedDocument?.id;
       knowledgeSection += `📄 DOCUMENTI CARICATI (${userContext.knowledgeBase.documents.length}):
 ${userContext.knowledgeBase.documents.map((doc: any) => `
@@ -1310,8 +1310,8 @@ ${doc.content || 'Contenuto non disponibile'}
 `;
     }
 
-    // API Data
-    if (userContext.knowledgeBase.apiData.length > 0) {
+    // API Data - Only include if File Search is NOT active
+    if (userContext.knowledgeBase.apiData.length > 0 && !hasFileSearch) {
       knowledgeSection += `🔗 DATI DA API ESTERNE (${userContext.knowledgeBase.apiData.length}):
 ${userContext.knowledgeBase.apiData.map((api: any) => `
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1329,7 +1329,10 @@ ${typeof api.data === 'string' ? api.data : JSON.stringify(api.data, null, 2)}
 `;
     }
 
-    contextSections.push(knowledgeSection.trim());
+    // Only add knowledge section if there's content (File Search NOT active)
+    if (knowledgeSection.trim().length > 100) {
+      contextSections.push(knowledgeSection.trim());
+    }
   }
 
   const allContext = [baseContext, ...contextSections].join('\n');
