@@ -84,6 +84,7 @@ export default function PublicAgentShare() {
   const [uploadingAudioPreview, setUploadingAudioPreview] = useState<string | null>(null);
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -564,33 +565,14 @@ export default function PublicAgentShare() {
     }
   };
   
-  // Auto-scroll to bottom - stessa logica del manager
+  // Auto-scroll to bottom - usa scrollIntoView come il manager
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+  
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        // Controlla se l'utente è vicino al fondo (tolleranza 50px)
-        const isUserScrolledToBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 50;
-        
-        // Caso 1: L'utente ha appena inviato un messaggio
-        if (optimisticMessage) {
-          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-          return;
-        }
-        
-        // Caso 2: L'AI sta streamando e l'utente è già in fondo
-        if (streamingMessage?.content && isUserScrolledToBottom) {
-          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
-          return;
-        }
-        
-        // Caso 3: Nuovi messaggi arrivati e l'utente è in fondo
-        if (isUserScrolledToBottom) {
-          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
-        }
-      }
-    }
-  }, [messages, streamingMessage?.content, optimisticMessage]);
+    scrollToBottom();
+  }, [messages, streamingMessage?.content, optimisticMessage, isStreaming]);
   
   // Auto-trigger public access if no password required
   useEffect(() => {
@@ -949,6 +931,9 @@ export default function PublicAgentShare() {
                 </motion.div>
               )}
             </AnimatePresence>
+            
+            {/* Scroll anchor - same as manager */}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
         
