@@ -6119,3 +6119,318 @@ export const insertManagerMessageSchema = createInsertSchema(managerMessages).om
   id: true,
   createdAt: true,
 });
+
+// =====================================================
+// INSTAGRAM INTEGRATION TABLES
+// Parallel structure to WhatsApp integration
+// =====================================================
+
+// Instagram Agent Configuration (parallel to consultantWhatsappConfig)
+export const consultantInstagramConfig = pgTable("consultant_instagram_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Agent Identity
+  agentName: text("agent_name").notNull().default("Agente Instagram"),
+  agentType: text("agent_type").$type<"reactive_lead" | "proactive_setter" | "informative_advisor" | "customer_success">().default("reactive_lead").notNull(),
+  
+  // Meta/Instagram Credentials
+  instagramPageId: varchar("instagram_page_id", { length: 100 }),
+  facebookPageId: varchar("facebook_page_id", { length: 100 }),
+  pageAccessToken: text("page_access_token"), // Encrypted
+  tokenExpiresAt: timestamp("token_expires_at"),
+  appSecret: text("app_secret"), // For webhook signature validation
+  verifyToken: text("verify_token"), // Webhook verification token
+  
+  // Connection Status
+  isActive: boolean("is_active").notNull().default(true),
+  isConnected: boolean("is_connected").notNull().default(false),
+  connectedAt: timestamp("connected_at"),
+  instagramUsername: varchar("instagram_username", { length: 100 }),
+  
+  // AI Configuration
+  autoResponseEnabled: boolean("auto_response_enabled").notNull().default(true),
+  isDryRun: boolean("is_dry_run").notNull().default(true),
+  
+  // Working Hours
+  workingHoursEnabled: boolean("working_hours_enabled").notNull().default(false),
+  workingHoursStart: text("working_hours_start"),
+  workingHoursEnd: text("working_hours_end"),
+  workingDays: jsonb("working_days").$type<string[]>(),
+  afterHoursMessage: text("after_hours_message"),
+  
+  // Business Profile
+  businessName: text("business_name"),
+  consultantDisplayName: text("consultant_display_name"),
+  businessDescription: text("business_description"),
+  consultantBio: text("consultant_bio"),
+  salesScript: text("sales_script"),
+  
+  // AI Personality
+  aiPersonality: text("ai_personality").$type<"amico_fidato" | "coach_motivazionale" | "consulente_professionale" | "mentore_paziente" | "venditore_energico" | "consigliere_empatico" | "stratega_diretto" | "educatore_socratico" | "esperto_tecnico" | "compagno_entusiasta">().default("amico_fidato"),
+  
+  // Authority & Positioning
+  vision: text("vision"),
+  mission: text("mission"),
+  values: jsonb("values").$type<string[]>(),
+  usp: text("usp"),
+  
+  // Who We Help
+  whoWeHelp: text("who_we_help"),
+  whoWeDontHelp: text("who_we_dont_help"),
+  whatWeDo: text("what_we_do"),
+  howWeDoIt: text("how_we_do_it"),
+  
+  // Agent Instructions
+  agentInstructions: text("agent_instructions"),
+  agentInstructionsEnabled: boolean("agent_instructions_enabled").notNull().default(false),
+  
+  // Feature Blocks
+  bookingEnabled: boolean("booking_enabled").notNull().default(true),
+  objectionHandlingEnabled: boolean("objection_handling_enabled").notNull().default(true),
+  disqualificationEnabled: boolean("disqualification_enabled").notNull().default(true),
+  
+  // Comment-to-DM Configuration
+  commentToDmEnabled: boolean("comment_to_dm_enabled").notNull().default(false),
+  commentTriggerKeywords: jsonb("comment_trigger_keywords").$type<string[]>(),
+  commentAutoReplyMessage: text("comment_auto_reply_message"),
+  
+  // Story Reply Configuration
+  storyReplyEnabled: boolean("story_reply_enabled").notNull().default(false),
+  storyAutoReplyMessage: text("story_auto_reply_message"),
+  
+  // Ice Breakers (Menu iniziale)
+  iceBreakersEnabled: boolean("ice_breakers_enabled").notNull().default(false),
+  iceBreakers: jsonb("ice_breakers").$type<Array<{ text: string; payload: string }>>(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_instagram_config_consultant").on(table.consultantId),
+  pageIdIdx: index("idx_instagram_config_page_id").on(table.instagramPageId),
+}));
+
+export type ConsultantInstagramConfig = typeof consultantInstagramConfig.$inferSelect;
+export type InsertConsultantInstagramConfig = typeof consultantInstagramConfig.$inferInsert;
+
+// Instagram Conversations (with 24h window tracking)
+export const instagramConversations = pgTable("instagram_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  agentConfigId: varchar("agent_config_id").references(() => consultantInstagramConfig.id, { onDelete: "cascade" }),
+  
+  // Instagram User Info
+  instagramUserId: varchar("instagram_user_id", { length: 100 }).notNull(), // IGSID
+  instagramUsername: varchar("instagram_username", { length: 100 }),
+  profilePictureUrl: text("profile_picture_url"),
+  
+  // Conversation Status
+  aiEnabled: boolean("ai_enabled").notNull().default(true),
+  isActive: boolean("is_active").notNull().default(true),
+  isLead: boolean("is_lead").notNull().default(true),
+  leadConvertedAt: timestamp("lead_converted_at"),
+  
+  // 24h Window Tracking (CRITICAL for Instagram API)
+  lastUserMessageAt: timestamp("last_user_message_at"),
+  windowExpiresAt: timestamp("window_expires_at"),
+  isWindowOpen: boolean("is_window_open").notNull().default(false),
+  windowExtendedUntil: timestamp("window_extended_until"), // HUMAN_AGENT tag
+  
+  // Conversation Source
+  sourceType: text("source_type").$type<"dm" | "comment" | "story_reply" | "story_mention" | "ice_breaker">().default("dm"),
+  sourcePostId: varchar("source_post_id", { length: 100 }),
+  
+  // Conversation Phase
+  conversationPhase: text("conversation_phase").$type<"initial" | "qualification" | "interested" | "booking" | "booked" | "lost">().default("initial"),
+  
+  // Override
+  overriddenAt: timestamp("overridden_at"),
+  overriddenBy: varchar("overridden_by").references(() => users.id),
+  
+  // Stats
+  messageCount: integer("message_count").notNull().default(0),
+  unreadByConsultant: integer("unread_by_consultant").notNull().default(0),
+  lastMessageAt: timestamp("last_message_at").default(sql`now()`),
+  lastMessageFrom: text("last_message_from").$type<"client" | "consultant" | "ai">(),
+  
+  // Metadata
+  metadata: jsonb("metadata"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_instagram_conv_consultant").on(table.consultantId),
+  agentIdx: index("idx_instagram_conv_agent").on(table.agentConfigId),
+  userIdIdx: index("idx_instagram_conv_user_id").on(table.instagramUserId),
+  windowIdx: index("idx_instagram_conv_window").on(table.isWindowOpen, table.windowExpiresAt),
+}));
+
+export type InstagramConversation = typeof instagramConversations.$inferSelect;
+export type InsertInstagramConversation = typeof instagramConversations.$inferInsert;
+
+// Instagram Messages
+export const instagramMessages = pgTable("instagram_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => instagramConversations.id, { onDelete: "cascade" }).notNull(),
+  
+  // Message Content
+  messageText: text("message_text").notNull(),
+  direction: text("direction").$type<"inbound" | "outbound">().notNull(),
+  sender: text("sender").$type<"client" | "consultant" | "ai">().notNull(),
+  
+  // Media
+  mediaType: text("media_type").$type<"text" | "image" | "video" | "audio" | "sticker" | "story_reply" | "story_mention">().default("text"),
+  mediaUrl: text("media_url"),
+  mediaContentType: text("media_content_type"),
+  mediaSize: integer("media_size"),
+  localMediaPath: text("local_media_path"),
+  
+  // Instagram-specific
+  instagramMessageId: varchar("instagram_message_id", { length: 100 }),
+  replyToStoryId: varchar("reply_to_story_id", { length: 100 }),
+  replyToStoryUrl: text("reply_to_story_url"),
+  
+  // Delivery Status
+  metaStatus: text("meta_status").$type<"sent" | "delivered" | "read" | "failed">(),
+  metaErrorCode: text("meta_error_code"),
+  metaErrorMessage: text("meta_error_message"),
+  sentAt: timestamp("sent_at"),
+  deliveredAt: timestamp("delivered_at"),
+  readAt: timestamp("read_at"),
+  failedAt: timestamp("failed_at"),
+  
+  // AI Processing
+  isBatched: boolean("is_batched").notNull().default(false),
+  batchId: varchar("batch_id"),
+  
+  // Metadata
+  metadata: jsonb("metadata"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  processedAt: timestamp("processed_at"),
+}, (table) => ({
+  conversationIdx: index("idx_instagram_msg_conversation").on(table.conversationId),
+  createdIdx: index("idx_instagram_msg_created").on(table.createdAt),
+}));
+
+export type InstagramMessage = typeof instagramMessages.$inferSelect;
+export type InsertInstagramMessage = typeof instagramMessages.$inferInsert;
+
+// Instagram Pending Messages
+export const instagramPendingMessages = pgTable("instagram_pending_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => instagramConversations.id, { onDelete: "cascade" }).notNull(),
+  instagramUserId: varchar("instagram_user_id", { length: 100 }).notNull(),
+  
+  // Message Content
+  messageText: text("message_text").notNull(),
+  
+  // Media
+  mediaType: text("media_type"),
+  mediaUrl: text("media_url"),
+  mediaContentType: text("media_content_type"),
+  
+  // Meta IDs
+  instagramMessageId: varchar("instagram_message_id", { length: 100 }),
+  
+  // Processing
+  receivedAt: timestamp("received_at").notNull().default(sql`now()`),
+  processedAt: timestamp("processed_at"),
+  batchId: varchar("batch_id"),
+  
+  // Metadata
+  metadata: jsonb("metadata"),
+}, (table) => ({
+  conversationIdx: index("idx_instagram_pending_conv").on(table.conversationId),
+}));
+
+export type InstagramPendingMessage = typeof instagramPendingMessages.$inferSelect;
+export type InsertInstagramPendingMessage = typeof instagramPendingMessages.$inferInsert;
+
+// Instagram Comment Triggers (for Comment-to-DM)
+export const instagramCommentTriggers = pgTable("instagram_comment_triggers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentConfigId: varchar("agent_config_id").references(() => consultantInstagramConfig.id, { onDelete: "cascade" }).notNull(),
+  
+  // Post Info
+  instagramPostId: varchar("instagram_post_id", { length: 100 }).notNull(),
+  postType: text("post_type").$type<"post" | "reel" | "story">().default("post"),
+  postCaption: text("post_caption"),
+  
+  // Trigger Configuration
+  triggerKeywords: jsonb("trigger_keywords").$type<string[]>().notNull(),
+  autoDmMessage: text("auto_dm_message").notNull(),
+  
+  // Stats
+  triggerCount: integer("trigger_count").notNull().default(0),
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  expiresAt: timestamp("expires_at"),
+}, (table) => ({
+  agentIdx: index("idx_instagram_triggers_agent").on(table.agentConfigId),
+  postIdx: index("idx_instagram_triggers_post").on(table.instagramPostId),
+}));
+
+export type InstagramCommentTrigger = typeof instagramCommentTriggers.$inferSelect;
+export type InsertInstagramCommentTrigger = typeof instagramCommentTriggers.$inferInsert;
+
+// Instagram Daily Stats
+export const instagramDailyStats = pgTable("instagram_daily_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  agentConfigId: varchar("agent_config_id").references(() => consultantInstagramConfig.id, { onDelete: "set null" }),
+  date: date("date").notNull(),
+  
+  // Message Stats
+  totalMessages: integer("total_messages").notNull().default(0),
+  inboundMessages: integer("inbound_messages").notNull().default(0),
+  outboundMessages: integer("outbound_messages").notNull().default(0),
+  
+  // Conversation Stats
+  uniqueContacts: integer("unique_contacts").notNull().default(0),
+  newConversations: integer("new_conversations").notNull().default(0),
+  windowsOpened: integer("windows_opened").notNull().default(0),
+  windowsExpired: integer("windows_expired").notNull().default(0),
+  
+  // Source Stats
+  dmConversations: integer("dm_conversations").notNull().default(0),
+  commentConversations: integer("comment_conversations").notNull().default(0),
+  storyConversations: integer("story_conversations").notNull().default(0),
+  
+  // Booking Stats
+  bookingsCreated: integer("bookings_created").notNull().default(0),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  consultantDateIdx: index("idx_instagram_stats_consultant").on(table.consultantId, table.date),
+}));
+
+export type InstagramDailyStat = typeof instagramDailyStats.$inferSelect;
+export type InsertInstagramDailyStat = typeof instagramDailyStats.$inferInsert;
+
+// Insert schemas for Instagram tables
+export const insertConsultantInstagramConfigSchema = createInsertSchema(consultantInstagramConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInstagramConversationSchema = createInsertSchema(instagramConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInstagramMessageSchema = createInsertSchema(instagramMessages).omit({
+  id: true,
+  createdAt: true,
+});
