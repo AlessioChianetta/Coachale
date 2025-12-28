@@ -456,37 +456,43 @@ export default function GuideInstagram() {
               <StepCard
                 number={4}
                 title="Genera Access Token"
-                description="L'Access Token permette a Coachale di inviare messaggi per conto del tuo account. Esistono diversi tipi di token."
+                description="L'Access Token permette a Coachale di inviare messaggi per conto del tuo account."
                 icon={ExternalLink}
                 iconColor="bg-teal-600"
                 badge="OBBLIGATORIO"
                 badgeVariant="destructive"
               >
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mb-4">
-                  <p className="text-sm font-medium mb-3">Procedura nel Graph API Explorer:</p>
+                  <p className="text-sm font-medium mb-3">Procedura Rapida (Dashboard App):</p>
                   <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-                    <li>Apri il <strong>Graph API Explorer</strong> (link sotto)</li>
-                    <li>Nel menu a tendina <strong>"Meta App"</strong>, seleziona la tua app</li>
-                    <li>Clicca <strong>"Add a Permission"</strong></li>
-                    <li>Cerca e aggiungi: <code className="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">instagram_manage_messages</code></li>
-                    <li>Cerca e aggiungi: <code className="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">pages_messaging</code></li>
-                    <li>Cerca e aggiungi: <code className="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">pages_manage_metadata</code></li>
-                    <li>Clicca <strong>"Generate Access Token"</strong></li>
-                    <li>Copia il token generato</li>
+                    <li>Apri la <strong>dashboard della tua App</strong> su Meta for Developers</li>
+                    <li>Clicca su <strong>"Personalizza"</strong> (icona matita) nel riquadro <strong>"Gestisci i messaggi e i contenuti su Instagram"</strong></li>
+                    <li><strong>Permessi:</strong> Nel riquadro 1, clicca il pulsante blu <strong>"Add all required permissions"</strong> (aggiunge <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">instagram_manage_messages</code> automaticamente)</li>
+                    <li><strong>Genera Token:</strong> Nel riquadro 2 <strong>("Genera i token d'accesso")</strong>:
+                      <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                        <li>Clicca <strong>"Aggiungi account"</strong> e seleziona il tuo Instagram Business</li>
+                        <li>Una volta aggiunto, clicca su <strong>"Generate token"</strong> accanto al nome dell'account</li>
+                      </ul>
+                    </li>
+                    <li><strong>Copia</strong> il token generato</li>
                   </ol>
                 </div>
+                <div className="bg-green-50 dark:bg-green-950/40 rounded-lg p-3 border border-green-200 dark:border-green-800 mb-4">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <CheckCircle2 className="h-4 w-4 inline mr-1" />
+                    <strong>Vantaggio:</strong> Questo metodo e piu veloce del Graph API Explorer e aggiunge automaticamente tutti i permessi necessari con un solo click!
+                  </p>
+                </div>
                 <WarningBox>
-                  <strong>Tipi di Token:</strong><br />
-                  • <strong>Token temporaneo</strong>: scade dopo 1 ora (per test)<br />
-                  • <strong>Long-Lived Token</strong>: dura 60 giorni (per produzione)<br />
-                  • <strong>System User Token</strong>: non scade mai (consigliato)
+                  <strong>Nota sul Token:</strong> Il token generato dalla dashboard e un Long-Lived Token (60 giorni). 
+                  Per un token che non scade mai, considera l'uso di un System User nel Business Manager.
                 </WarningBox>
                 <div className="flex flex-wrap gap-2 mt-4">
-                  <ExternalLinkButton href="https://developers.facebook.com/tools/explorer/">
-                    Apri Graph API Explorer
+                  <ExternalLinkButton href="https://developers.facebook.com/apps/">
+                    Apri Meta for Developers
                   </ExternalLinkButton>
                   <ExternalLinkButton href="https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived" variant="outline">
-                    Come creare Long-Lived Token
+                    Documentazione Token
                   </ExternalLinkButton>
                 </div>
               </StepCard>
@@ -560,19 +566,26 @@ export default function GuideInstagram() {
 
               <StepCard
                 number={1}
-                title="Apri la Configurazione Webhook"
-                description="Naviga alla sezione webhook della tua app Meta per configurare l'endpoint."
+                title="Configura Webhook (Dalla stessa pagina)"
+                description="Non serve cambiare menu! Rimani nella pagina 'Personalizza caso d'uso' dove hai creato il token."
                 icon={ExternalLink}
                 iconColor="bg-teal-500"
               >
+                <div className="bg-green-50 dark:bg-green-950/40 rounded-lg p-3 border border-green-200 dark:border-green-800 mb-4">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <CheckCircle2 className="h-4 w-4 inline mr-1" />
+                    <strong>Stesso posto!</strong> Scorri in basso nella stessa pagina dove hai generato il token.
+                  </p>
+                </div>
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mb-4">
-                  <p className="text-sm font-medium mb-3">Navigazione:</p>
+                  <p className="text-sm font-medium mb-3">Procedura:</p>
                   <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-                    <li>Apri <strong>Meta for Developers</strong> (link sotto)</li>
-                    <li>Vai su <strong>"My Apps"</strong> → seleziona la tua app</li>
-                    <li>Nel menu a sinistra cerca <strong>"Instagram"</strong></li>
-                    <li>Sotto Instagram, clicca <strong>"Webhooks"</strong></li>
-                    <li>Se non vedi "Instagram", prima aggiungi il prodotto Messenger alla tua app</li>
+                    <li>Scorri in basso fino al riquadro <strong>"3. Configura i webhooks"</strong></li>
+                    <li>Inserisci il <strong>Callback URL</strong> (vedi passo 2 sotto)</li>
+                    <li>Inserisci il <strong>Verify Token</strong> (vedi passo 3 sotto)</li>
+                    <li>Clicca <strong>"Verifica e salva"</strong></li>
+                    <li>Una volta salvato, clicca su <strong>"Gestisci"</strong> (o Edit Subscription)</li>
+                    <li>Seleziona <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">messages</code> e <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">messaging_postbacks</code></li>
                   </ol>
                 </div>
                 <ExternalLinkButton href="https://developers.facebook.com/apps/">
