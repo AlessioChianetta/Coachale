@@ -1125,10 +1125,18 @@ export default function ConsultantLibraryAIBuilder() {
           setLessonOrder(lessons.map((l: any) => l.id));
           console.log(`[AI Builder] Bozza con ${lessons.length} lezioni già generate`);
           
+          // IMPORTANT: Reset generation state when loading completed draft
+          setIsGenerating(false);
+          setGenerationProgress(100); // Mark as complete so "Organizza Moduli" button shows
+          setGenerationLogs([]);
+          setGenerationErrors([]);
+          
           // Show resume option if there are remaining videos
           const generatedVideoCount = lessons.length;
           const totalVideos = draft.savedVideoIds?.length || 0;
           if (generatedVideoCount < totalVideos) {
+            // Partial progress - reset progress to allow resume
+            setGenerationProgress(Math.round((generatedVideoCount / totalVideos) * 100));
             toast({ 
               title: "Bozza con progresso parziale", 
               description: `${generatedVideoCount}/${totalVideos} lezioni generate. Puoi continuare dallo Step 4.` 
