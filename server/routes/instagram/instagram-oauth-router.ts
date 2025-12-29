@@ -204,9 +204,14 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
     const pagesRes = await fetch(`${FB_GRAPH_URL}/me/accounts?access_token=${accessToken}`);
     const pagesData = await pagesRes.json() as any;
 
+    console.log(`[INSTAGRAM OAUTH] Pages data:`, JSON.stringify(pagesData, null, 2));
+
     if (!pagesData.data || pagesData.data.length === 0) {
+      console.error(`[INSTAGRAM OAUTH] No Facebook Pages found for user`);
       return res.redirect("/consultant/api-keys?instagram_error=no_pages");
     }
+
+    console.log(`[INSTAGRAM OAUTH] Found ${pagesData.data.length} Facebook Pages`);
 
     // Get the first page with Instagram account linked
     let instagramAccountId: string | null = null;
@@ -215,8 +220,12 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
     let pageAccessToken: string | null = null;
 
     for (const page of pagesData.data) {
+      console.log(`[INSTAGRAM OAUTH] Checking page: ${page.name} (ID: ${page.id})`);
+      
       const igRes = await fetch(`${FB_GRAPH_URL}/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`);
       const igData = await igRes.json() as any;
+
+      console.log(`[INSTAGRAM OAUTH] Instagram data for page ${page.name}:`, JSON.stringify(igData, null, 2));
 
       if (igData.instagram_business_account) {
         instagramAccountId = igData.instagram_business_account.id;
@@ -228,11 +237,16 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
         const igProfileData = await igProfileRes.json() as any;
         instagramUsername = igProfileData.username || null;
 
+        console.log(`[INSTAGRAM OAUTH] Found Instagram account: @${instagramUsername} (ID: ${instagramAccountId})`);
         break;
+      } else {
+        console.log(`[INSTAGRAM OAUTH] Page ${page.name} has no Instagram Business account linked`);
       }
     }
 
     if (!instagramAccountId || !pageAccessToken) {
+      console.error(`[INSTAGRAM OAUTH] No Instagram Business account found on any of the ${pagesData.data.length} pages`);
+      console.error(`[INSTAGRAM OAUTH] Make sure Instagram account is Business/Creator AND linked to a Facebook Page`);
       return res.redirect("/consultant/api-keys?instagram_error=no_instagram");
     }
 
