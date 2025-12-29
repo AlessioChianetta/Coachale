@@ -29,7 +29,7 @@ import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient, getAgentCalendarClient } from '../google-calendar-service';
 import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 import nodemailer from 'nodemailer';
-import { decryptForConsultant } from '../encryption';
+import { decrypt, decryptForConsultant } from '../encryption';
 import { upload } from '../middleware/upload';
 import { extractTextFromFile } from '../services/document-processor';
 import fs from 'fs/promises';
@@ -1009,11 +1009,23 @@ router.post('/test/instagram', authenticateToken, requireRole('consultant'), asy
       });
     }
     
-    // Decrypt token
+    // Decrypt token - try per-consultant first, then legacy
     let accessToken = config.pageAccessToken;
     if (encryptionSalt) {
       try {
         accessToken = decryptForConsultant(config.pageAccessToken, encryptionSalt);
+      } catch (e) {
+        // Token might be encrypted with legacy method, try that
+        try {
+          accessToken = decrypt(config.pageAccessToken);
+        } catch (e2) {
+          // Token might not be encrypted at all
+        }
+      }
+    } else {
+      // No salt, try legacy decryption
+      try {
+        accessToken = decrypt(config.pageAccessToken);
       } catch (e) {
         // Token might not be encrypted
       }
