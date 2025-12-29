@@ -643,6 +643,22 @@ export const adminTurnConfig = pgTable("admin_turn_config", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// SuperAdmin Instagram Config - Centralized Meta App credentials for Instagram OAuth
+// Only one row allowed (singleton pattern) - All consultants use these credentials
+export const superadminInstagramConfig = pgTable("superadmin_instagram_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  metaAppId: varchar("meta_app_id", { length: 100 }).notNull(), // Meta App ID
+  metaAppSecretEncrypted: text("meta_app_secret_encrypted").notNull(), // Encrypted App Secret
+  verifyToken: varchar("verify_token", { length: 100 }).notNull(), // Webhook verification token
+  webhookUrl: text("webhook_url"), // Computed webhook URL for reference
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type SuperadminInstagramConfig = typeof superadminInstagramConfig.$inferSelect;
+export type InsertSuperadminInstagramConfig = typeof superadminInstagramConfig.$inferInsert;
+
 // Vertex AI Usage Tracking - Track all Vertex AI API calls with accurate cost breakdown
 // Supports Live API (audio/text) and standard API tracking
 export const vertexAiUsageTracking = pgTable("vertex_ai_usage_tracking", {
@@ -6137,13 +6153,12 @@ export const consultantInstagramConfig = pgTable("consultant_instagram_config", 
   agentName: text("agent_name").notNull().default("Agente Instagram"),
   agentType: text("agent_type").$type<"reactive_lead" | "proactive_setter" | "informative_advisor" | "customer_success">().default("reactive_lead").notNull(),
   
-  // Meta/Instagram Credentials
+  // Meta/Instagram Credentials (OAuth-populated)
   instagramPageId: varchar("instagram_page_id", { length: 100 }),
   facebookPageId: varchar("facebook_page_id", { length: 100 }),
-  pageAccessToken: text("page_access_token"), // Encrypted
+  pageAccessToken: text("page_access_token"), // Encrypted - populated via OAuth
   tokenExpiresAt: timestamp("token_expires_at"),
-  appSecret: text("app_secret"), // For webhook signature validation
-  verifyToken: text("verify_token"), // Webhook verification token
+  // NOTE: appSecret and verifyToken moved to superadminInstagramConfig (centralized)
   
   // Connection Status
   isActive: boolean("is_active").notNull().default(true),
