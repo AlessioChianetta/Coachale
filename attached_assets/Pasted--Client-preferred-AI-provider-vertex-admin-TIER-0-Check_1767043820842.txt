@@ -1,0 +1,88 @@
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+9:30:27 PM [express] POST /api/activity/session/heartbeat 200 in 436ms :: {"success":true,"lastActiv…
+❌ [INSTAGRAM] Error generating AI response: GaxiosError: Could not refresh access token: request to http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform failed, reason: connect ECONNREFUSED 169.254.169.254:80
+    at Gaxios._request (/home/runner/workspace/node_modules/gaxios/src/gaxios.ts:227:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async metadataAccessor (/home/runner/workspace/node_modules/gcp-metadata/src/index.ts:178:15)
+    at async Compute.refreshTokenNoCache (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/computeclient.js:57:20)
+    at async Compute.getRequestMetadataAsync (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/oauth2client.js:372:17)
+    at async Compute.getRequestHeaders (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/oauth2client.js:336:26)
+    at async NodeAuth.addGoogleAuthHeaders (/home/runner/workspace/node_modules/@google/genai/src/node/_node_auth.ts:78:25)
+    at async ApiClient.getHeadersInternal (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:669:5)
+    at async ApiClient.includeExtraHttpOptionsToRequestInit (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:479:27)
+    at async ApiClient.request (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:377:19)
+    at async Models.Models.generateContent (/home/runner/workspace/node_modules/@google/genai/src/models.ts:69:14)
+    at async generateAIResponse (/home/runner/workspace/server/instagram/message-processor.ts:392:22)
+    at async processInstagramConversation (/home/runner/workspace/server/instagram/message-processor.ts:188:24)
+    at async Timeout._onTimeout (/home/runner/workspace/server/instagram/message-processor.ts:54:5) {
+  config: {
+    url: URL {
+      href: 'http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform',
+      origin: 'http://169.254.169.254',
+      protocol: 'http:',
+      username: '',
+      password: '',
+      host: '169.254.169.254',
+      hostname: '169.254.169.254',
+      port: '',
+      pathname: '/computeMetadata/v1/instance/service-accounts/default/token',
+      search: '?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform',
+      searchParams: URLSearchParams { 'scopes' => 'https://www.googleapis.com/auth/cloud-platform' },
+      hash: ''
+    },
+    headers: Headers { 'metadata-flavor': 'Google' },
+    retryConfig: {
+      noResponseRetries: 3,
+      currentRetryAttempt: 3,
+      retry: 3,
+      httpMethodsToRetry: [Array],
+      retryDelayMultiplier: 2,
+      timeOfFirstRequest: 1767043825478,
+      totalTimeout: 9007199254740991,
+      maxRetryDelay: 9007199254740991,
+      statusCodesToRetry: [Array]
+    },
+    params: { scopes: 'https://www.googleapis.com/auth/cloud-platform' },
+    responseType: 'text',
+    timeout: 0,
+    validateStatus: [Function: validateStatus],
+    errorRedactor: [Function: defaultErrorRedactor]
+  },
+  response: undefined,
+  code: 'ECONNREFUSED',
+  status: undefined,
+  error: FetchError: request to http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform failed, reason: connect ECONNREFUSED 169.254.169.254:80
+      at ClientRequest.<anonymous> (file:///home/runner/workspace/node_modules/node-fetch/src/index.js:108:11)
+      at ClientRequest.emit (node:events:524:28)
+      at emitErrorEvent (node:_http_client:101:11)
+      at Socket.socketErrorListener (node:_http_client:504:5)
+      at Socket.emit (node:events:524:28)
+      at emitErrorNT (node:internal/streams/destroy:169:8)
+      at emitErrorCloseNT (node:internal/streams/destroy:128:3)
+      at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+    type: 'system',
+    errno: 'ECONNREFUSED',
+    code: 'ECONNREFUSED',
+    erroredSysCall: 'connect'
+  },
+  [Symbol(gaxios-gaxios-error)]: '7.1.3',
+  [cause]: FetchError: request to http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform failed, reason: connect ECONNREFUSED 169.254.169.254:80
+      at ClientRequest.<anonymous> (file:///home/runner/workspace/node_modules/node-fetch/src/index.js:108:11)
+      at ClientRequest.emit (node:events:524:28)
+      at emitErrorEvent (node:_http_client:101:11)
+      at Socket.socketErrorListener (node:_http_client:504:5)
+      at Socket.emit (node:events:524:28)
+      at emitErrorNT (node:internal/streams/destroy:169:8)
+      at emitErrorCloseNT (node:internal/streams/destroy:128:3)
+      at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+    type: 'system',
+    errno: 'ECONNREFUSED',
+    code: 'ECONNREFUSED',
+    erroredSysCall: 'connect'
+  }
+}
+⚠️ [INSTAGRAM] No AI response generated

@@ -24,8 +24,7 @@ import {
 import { eq, isNull, and, desc, asc, sql } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
-import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, getSuperAdminGeminiKeys, getAIProvider, GEMINI_3_MODEL } from "../ai/provider-factory";
+import { getAIProvider, GEMINI_3_MODEL } from "../ai/provider-factory";
 import { MetaClient, createMetaClient } from "./meta-client";
 import { WindowTracker, checkWindowStatus } from "./window-tracker";
 import { decryptForConsultant } from "../encryption";
@@ -361,52 +360,28 @@ ${triggerContext}
     // Get AI provider and generate response (use consultantId for both params like WhatsApp)
     const aiProvider = await getAIProvider(consultant.id, consultant.id);
     
+    console.log(`🤖 [INSTAGRAM] AI Provider: ${aiProvider.source} (${aiProvider.metadata.name})`);
+    
     let response: string | null = null;
 
-    if (aiProvider.type === "vertex" || aiProvider.type === "vertex_self") {
-      const vertexClient = await createVertexGeminiClient(aiProvider.config);
-      const chat = vertexClient.startChat({
-        history: messageHistory.map((m) => ({
+    // Use the unified client from getAIProvider (handles both Vertex AI and Google AI Studio)
+    const result = await aiProvider.client.generateContent({
+      model: GEMINI_3_MODEL,
+      systemInstruction: fullSystemPrompt,
+      contents: [
+        ...messageHistory.map((m) => ({
           role: m.role === "user" ? "user" : "model",
           parts: [{ text: m.content }],
         })),
-        systemInstruction: fullSystemPrompt,
-      });
+        { role: "user", parts: [{ text: userMessage }] },
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      },
+    });
 
-      const result = await chat.sendMessage(userMessage);
-      response = result.response?.text() || null;
-    } else {
-      // Google AI Studio or custom keys
-      const apiKeys = aiProvider.type === "custom" 
-        ? aiProvider.keys 
-        : await getSuperAdminGeminiKeys();
-
-      if (!apiKeys || apiKeys.length === 0) {
-        console.error("❌ [INSTAGRAM] No API keys available");
-        return null;
-      }
-
-      const genAI = new GoogleGenAI({ apiKey: apiKeys[0] });
-      const model = genAI.models.generateContent;
-
-      const result = await genAI.models.generateContent({
-        model: GEMINI_3_MODEL,
-        contents: [
-          ...messageHistory.map((m) => ({
-            role: m.role === "user" ? "user" : "model",
-            parts: [{ text: m.content }],
-          })),
-          { role: "user", parts: [{ text: userMessage }] },
-        ],
-        config: {
-          systemInstruction: fullSystemPrompt,
-          temperature: 0.7,
-          maxOutputTokens: 1024,
-        },
-      });
-
-      response = result.text || null;
-    }
+    response = result.text || null;
 
     // Clean up response (remove markdown, actions, etc.)
     if (response) {
