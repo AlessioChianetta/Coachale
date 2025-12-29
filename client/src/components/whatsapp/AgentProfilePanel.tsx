@@ -1523,6 +1523,31 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                         </p>
                       </div>
                     </div>
+                    
+                    <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                      <p className="font-medium text-red-700 mb-2 flex items-center gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        SE NON RISPONDE (Piano B)
+                      </p>
+                      <p className="text-xs text-slate-600 mb-2">
+                        Se il tuo Instagram personale non è collegato bene al Facebook Admin, Meta potrebbe trattarti come uno sconosciuto. Devi aggiungerti come <strong>Tester Instagram</strong>.
+                      </p>
+                      <ol className="space-y-1.5 text-slate-600 list-decimal list-inside">
+                        <li>Vai su <a href="https://developers.facebook.com" target="_blank" rel="noopener" className="text-red-600 underline">Meta for Developers</a> → Ruoli → Ruoli</li>
+                        <li>Scorri fino a "<strong>Tester Instagram</strong>" (NON "Tester"!)</li>
+                        <li>Clicca "Aggiungi tester Instagram"</li>
+                        <li>Scrivi il nome utente del profilo che userà per scrivere</li>
+                      </ol>
+                      <div className="mt-2 p-2 bg-red-100 rounded border border-red-300">
+                        <p className="text-xs font-medium text-red-800 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          ACCETTARE L'INVITO DA INSTAGRAM!
+                        </p>
+                        <p className="text-xs text-red-700 mt-1">
+                          Apri l'app Instagram → Impostazioni → App e siti web → <strong>Inviti tester</strong> → ACCETTA
+                        </p>
+                      </div>
+                    </div>
                   </CollapsibleContent>
                 </Collapsible>
               </div>
