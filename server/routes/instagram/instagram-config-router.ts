@@ -377,12 +377,14 @@ router.post("/config/test-connection", authenticateToken, async (req: AuthReques
     }
 
     // Test API connection
+    console.log("[INSTAGRAM TEST] Testing connection with pageId:", config.instagramPageId);
     const response = await fetch(
       `https://graph.facebook.com/v21.0/${config.instagramPageId}?fields=id,username,name&access_token=${accessToken}`
     );
 
     if (!response.ok) {
       const error = await response.json();
+      console.log("[INSTAGRAM TEST] API Error:", JSON.stringify(error, null, 2));
       return res.status(400).json({ 
         success: false, 
         error: `API Error: ${error.error?.message || "Unknown error"}` 
