@@ -179,24 +179,30 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
 
     // Process each entry
     for (const entry of event.entry) {
-      const instagramPageId = entry.id;
+      // IMPORTANT: entry.id is the Facebook Page ID, NOT the Instagram Account ID
+      const facebookPageId = entry.id;
 
-      // Find agent config for this page
+      // Find agent config by Facebook Page ID (this is what Meta sends in webhooks)
       const [config] = await db
         .select()
         .from(consultantInstagramConfig)
         .where(
           and(
-            eq(consultantInstagramConfig.instagramPageId, instagramPageId),
+            eq(consultantInstagramConfig.facebookPageId, facebookPageId),
             eq(consultantInstagramConfig.isActive, true)
           )
         )
         .limit(1);
 
       if (!config) {
-        console.log(`⚠️ [INSTAGRAM WEBHOOK] No active config for page ${instagramPageId}`);
+        console.log(`⚠️ [INSTAGRAM WEBHOOK] No active config for Facebook Page ${facebookPageId}`);
+        console.log(`   💡 Hint: Make sure facebookPageId is saved during OAuth and matches entry.id from webhook`);
         continue;
       }
+      
+      console.log(`✅ [INSTAGRAM WEBHOOK] Found config for Facebook Page ${facebookPageId} (Instagram: ${config.instagramPageId})`);
+      console.log(`   📱 Consultant: ${config.consultantId}, Agent active: ${config.isActive}`);
+      console.log(`   🤖 Auto-response: ${config.autoResponseEnabled}, Dry-run: ${config.isDryRun}`);
 
       // Handle messaging events
       if (entry.messaging) {

@@ -333,6 +333,31 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
 
     console.log(`[INSTAGRAM OAUTH] Successfully connected @${instagramUsername} for consultant ${consultantId}`);
 
+    // Subscribe the Facebook Page to receive Instagram messaging webhooks
+    // This is CRITICAL - without this, real messages won't be forwarded to our webhook
+    try {
+      const subscribeUrl = `${FB_GRAPH_URL}/${facebookPageId}/subscribed_apps`;
+      const subscribeRes = await fetch(subscribeUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          access_token: pageAccessToken,
+          subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads",
+        }).toString(),
+      });
+      const subscribeData = await subscribeRes.json() as any;
+      
+      if (subscribeData.success) {
+        console.log(`✅ [INSTAGRAM OAUTH] Successfully subscribed page ${facebookPageId} to messaging webhooks`);
+      } else {
+        console.error(`⚠️ [INSTAGRAM OAUTH] Failed to subscribe page to webhooks:`, subscribeData);
+        console.error(`   This may prevent real messages from being received. User may need to manually subscribe.`);
+      }
+    } catch (subscribeError) {
+      console.error(`⚠️ [INSTAGRAM OAUTH] Error subscribing page to webhooks:`, subscribeError);
+      // Don't fail the OAuth flow, just log the warning
+    }
+
     return res.redirect(`/consultant/api-keys?instagram_success=true&username=${encodeURIComponent(instagramUsername || "")}`);
   } catch (error) {
     console.error("[INSTAGRAM OAUTH] Callback error:", error);
