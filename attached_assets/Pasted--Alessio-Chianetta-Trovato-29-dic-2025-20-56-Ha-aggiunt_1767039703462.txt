@@ -1,0 +1,104 @@
+
+Alessio Chianetta Trovato
+29 dic 2025, 20:56
+Ha aggiunto un prodotto
+Webhooks
+
+Alessio Chianetta Trovato
+Ha aggiunto un prodotto
+Webhooks
+
+Alessio Chianetta Trovato
+Ha modificato URI di reindirizzamento OAuth validi da
+https://98f52cbe-9bd7-491a-a39c-fe77c3384c02-00-2sbsnk7sopt1b.picard.replit.dev/api/instagram/oauth/callback
+a
+https://32b51979-ac67-491d-af01-fbfbf1136334-00-21sv465ejd5ra.spock.replit.dev/api/instagram/oauth/callback
+
+Alessio Chianetta Trovato
+Ha modificato un dominio in Gestione dominio da
+https://98f52cbe-9bd7-491a-a39c-fe77c3384c02-00-2sbsnk7sopt1b.picard.replit.dev/
+Prefisso di corrispondenza, Nessuna prelettura
+a
+https://32b51979-ac67-491d-af01-fbfbf1136334-00-21sv465ejd5ra.spock.replit.dev/
+Prefisso di corrispondenza, Nessuna prelettura
+
+Alessio Chianetta Trovato
+Ha modificato Domini app da
+98f52cbe-9bd7-491a-a39c-fe77c3384c02-00-2sbsnk7sopt1b.picard.replit.dev
+a
+32b51979-ac67-491d-af01-fbfbf1136334-00-21sv465ejd5ra.spock.replit.dev
+
+Alessio Chianetta Trovato
+Ricevuto acceso standard a
+instagram_content_publish
+
+Alessio Chianetta Trovato
+Ha aggiornato un dominio in Gestione dominio in
+https://98f52cbe-9bd7-491a-a39c-fe77c3384c02-00-2sbsnk7sopt1b.picard.replit.dev/
+Prefisso di corrispondenza, Nessuna prelettura
+
+Alessio Chianetta Trovato
+Ha aggiornato Limitazioni in base all'età in
+Tutti (13+)
+28 DICEMBRE 2025
+
+Alessio Chianetta Trovato
+Ha aggiornato URI di reindirizzamento OAuth validi in
+https://98f52cbe-9bd7-491a-a39c-fe77c3384c02-00-2sbsnk7sopt1b.picard.replit.dev/api/instagram/oauth/callback
+
+Alessio Chianetta Trovato
+Ha aggiornato Domini app in
+98f52cbe-9bd7-491a-a39c-fe77c3384c02-00-2sbsnk7sopt1b.picard.replit.dev
+
+Alessio Chianetta Trovato
+Ricevuto acceso standard a
+pages_read_engagement
+
+Alessio Chianetta Trovato
+Ricevuto acceso standard a
+instagram_manage_messages
+
+Alessio Chianetta Trovato
+Ha aggiunto un amministratore
+
+Alessio Inst AI API
+
+Alessio Chianetta Trovato
+Ricevuto acceso standard a
+instagram_manage_comments
+
+Alessio Chianetta Trovato
+Ricevuto acceso standard a
+instagram_business_manage_messages
+
+Alessio Chianetta Trovato
+Ricevuto acceso standard a
+instagram_business_basic
+
+Alessio Chianetta Trovato
+Accesso avanzato ricevuto in
+openid
+
+Alessio Chianetta Trovato
+Ha aggiunto un prodotto
+Messenger
+
+Alessio Chianetta Trovato
+Ha aggiunto un prodotto
+Instagram
+
+Alessio Chianetta Trovato
+Ha aggiunto un prodotto
+WhatsApp
+
+Alessio Chianetta Trovato
+Ha aggiunto un prodotto
+Facebook Login for Business
+
+Alessio Chianetta Trovato
+Ha aggiornato Business Manager in
+Orbitale
+
+Alessio Chianetta Trovato
+Creato
+Ale Ai
