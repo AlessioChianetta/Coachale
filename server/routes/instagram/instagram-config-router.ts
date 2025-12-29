@@ -378,6 +378,7 @@ router.post("/config/test-connection", authenticateToken, async (req: AuthReques
 
     // Test API connection - first try as Instagram Business Account
     console.log("[INSTAGRAM TEST] Testing connection with pageId:", config.instagramPageId);
+    console.log("[INSTAGRAM TEST] Token preview:", accessToken.substring(0, 20) + "...", "Length:", accessToken.length);
     let response = await fetch(
       `https://graph.facebook.com/v21.0/${config.instagramPageId}?fields=id,username,name&access_token=${accessToken}`
     );
