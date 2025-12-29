@@ -42,7 +42,6 @@ router.get("/config", authenticateToken, async (req: AuthRequest, res: Response)
     const maskedConfig = {
       ...config,
       pageAccessToken: config.pageAccessToken ? "***ENCRYPTED***" : null,
-      appSecret: config.appSecret ? "***ENCRYPTED***" : null,
     };
 
     return res.json({ config: maskedConfig });
@@ -73,7 +72,6 @@ router.post("/config", authenticateToken, async (req: AuthRequest, res: Response
     const {
       instagramPageId,
       pageAccessToken,
-      appSecret,
       agentName,
       agentType,
       businessName,
@@ -114,7 +112,6 @@ router.post("/config", authenticateToken, async (req: AuthRequest, res: Response
 
     // Encrypt sensitive tokens if provided
     let encryptedPageAccessToken = existingConfig?.pageAccessToken;
-    let encryptedAppSecret = existingConfig?.appSecret;
 
     if (pageAccessToken && pageAccessToken !== "***ENCRYPTED***") {
       // Use per-consultant encryption if salt exists, otherwise use legacy encryption
@@ -125,23 +122,10 @@ router.post("/config", authenticateToken, async (req: AuthRequest, res: Response
       }
     }
 
-    if (appSecret && appSecret !== "***ENCRYPTED***") {
-      if (encryptionSalt) {
-        encryptedAppSecret = encryptForConsultant(appSecret, encryptionSalt);
-      } else {
-        encryptedAppSecret = encrypt(appSecret);
-      }
-    }
-
-    // Generate verify token if not exists
-    const verifyToken = existingConfig?.verifyToken || nanoid(32);
-
     const configData = {
       consultantId,
       instagramPageId,
       pageAccessToken: encryptedPageAccessToken,
-      appSecret: encryptedAppSecret,
-      verifyToken,
       agentName: agentName || "Instagram Agent",
       agentType: agentType || "sales",
       businessName,
@@ -196,14 +180,12 @@ router.post("/config", authenticateToken, async (req: AuthRequest, res: Response
     const maskedConfig = {
       ...savedConfig,
       pageAccessToken: savedConfig.pageAccessToken ? "***ENCRYPTED***" : null,
-      appSecret: savedConfig.appSecret ? "***ENCRYPTED***" : null,
     };
 
     return res.json({ 
       success: true, 
       config: maskedConfig,
       webhookUrl: `/api/instagram/webhook`,
-      verifyToken: savedConfig.verifyToken,
     });
   } catch (error) {
     console.error("Error saving Instagram config:", error);

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireSuperAdmin, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig } from "../../shared/schema";
+import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig, superadminInstagramConfig } from "../../shared/schema";
 import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { getAdminTurnConfig, saveAdminTurnConfig } from "../services/turn-config-service";
@@ -1348,6 +1348,165 @@ router.delete(
       });
     } catch (error: any) {
       console.error("Delete superadmin gemini config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SuperAdmin Instagram Configuration - Centralized Meta App credentials for OAuth
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get(
+  "/admin/superadmin/instagram-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [config] = await db
+        .select()
+        .from(superadminInstagramConfig)
+        .limit(1);
+
+      if (!config) {
+        return res.json({ success: true, config: null });
+      }
+
+      res.json({
+        success: true,
+        config: {
+          id: config.id,
+          metaAppId: config.metaAppId,
+          metaAppSecretMasked: config.metaAppSecretEncrypted ? "***ENCRYPTED***" : null,
+          verifyToken: config.verifyToken,
+          webhookUrl: config.webhookUrl,
+          enabled: config.enabled,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("Get superadmin instagram config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/superadmin/instagram-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { metaAppId, metaAppSecret, verifyToken, enabled } = req.body;
+
+      if (!metaAppId) {
+        return res.status(400).json({
+          success: false,
+          error: "Meta App ID is required",
+        });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(superadminInstagramConfig)
+        .limit(1);
+
+      let encryptedSecret = existing?.metaAppSecretEncrypted;
+      if (metaAppSecret && metaAppSecret !== "***ENCRYPTED***") {
+        encryptedSecret = encrypt(metaAppSecret);
+      }
+
+      const webhookUrl = `${process.env.REPLIT_DEV_DOMAIN || ""}/api/instagram/webhook`;
+      const finalVerifyToken = verifyToken || existing?.verifyToken || require("nanoid").nanoid(32);
+
+      if (existing) {
+        await db
+          .update(superadminInstagramConfig)
+          .set({
+            metaAppId,
+            metaAppSecretEncrypted: encryptedSecret!,
+            verifyToken: finalVerifyToken,
+            webhookUrl,
+            enabled: enabled ?? true,
+            updatedAt: new Date(),
+          })
+          .where(eq(superadminInstagramConfig.id, existing.id));
+      } else {
+        if (!metaAppSecret) {
+          return res.status(400).json({
+            success: false,
+            error: "Meta App Secret is required for initial configuration",
+          });
+        }
+        await db.insert(superadminInstagramConfig).values({
+          metaAppId,
+          metaAppSecretEncrypted: encryptedSecret!,
+          verifyToken: finalVerifyToken,
+          webhookUrl,
+          enabled: enabled ?? true,
+        });
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: existing ? "update_superadmin_instagram_config" : "create_superadmin_instagram_config",
+        targetType: "setting",
+        targetId: "superadmin_instagram_config",
+        details: { metaAppId, enabled: enabled ?? true },
+      });
+
+      console.log(`✅ SuperAdmin Instagram config saved with App ID: ${metaAppId}`);
+
+      res.json({
+        success: true,
+        message: "Instagram configuration saved successfully",
+        verifyToken: finalVerifyToken,
+        webhookUrl,
+      });
+    } catch (error: any) {
+      console.error("Save superadmin instagram config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.delete(
+  "/admin/superadmin/instagram-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [existingConfig] = await db
+        .select({ id: superadminInstagramConfig.id })
+        .from(superadminInstagramConfig)
+        .limit(1);
+
+      if (!existingConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "No Instagram config found",
+        });
+      }
+
+      await db.delete(superadminInstagramConfig).where(eq(superadminInstagramConfig.id, existingConfig.id));
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "delete_superadmin_instagram_config",
+        targetType: "setting",
+        targetId: existingConfig.id,
+        details: {},
+      });
+
+      console.log(`✅ Deleted SuperAdmin Instagram config`);
+
+      res.json({
+        success: true,
+        message: "Instagram configuration deleted successfully",
+      });
+    } catch (error: any) {
+      console.error("Delete superadmin instagram config error:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }

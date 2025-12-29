@@ -107,6 +107,7 @@ import managerRouter from "./routes/manager-router";
 import publicAgentRouter from "./routes/public-agent-router";
 import instagramWebhookRouter from "./routes/instagram/instagram-webhook-router";
 import instagramConfigRouter from "./routes/instagram/instagram-config-router";
+import instagramOAuthRouter from "./routes/instagram/instagram-oauth-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -9431,6 +9432,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // Instagram Integration routes
   app.use("/api/instagram", instagramWebhookRouter); // Public webhook endpoints
   app.use("/api/instagram", instagramConfigRouter); // Authenticated config endpoints
+  app.use("/api/instagram", instagramOAuthRouter); // OAuth flow endpoints
 
   // Live Prompts routes (requires authentication)
   // Scoped to /api/live-prompts to avoid intercepting other /api routes
