@@ -341,7 +341,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
 
 /**
  * POST /api/instagram/oauth/disconnect
- * Disconnect Instagram account
+ * Disconnect Instagram account - completely removes the configuration
  */
 router.post("/oauth/disconnect", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
@@ -357,24 +357,14 @@ router.post("/oauth/disconnect", authenticateToken, async (req: AuthRequest, res
       return res.status(404).json({ error: "No Instagram configuration found" });
     }
 
-    // Clear connection data but keep agent settings
+    // Completely delete the configuration to force fresh OAuth on reconnect
     await db
-      .update(consultantInstagramConfig)
-      .set({
-        instagramPageId: null,
-        facebookPageId: null,
-        pageAccessToken: null,
-        tokenExpiresAt: null,
-        isConnected: false,
-        connectedAt: null,
-        instagramUsername: null,
-        updatedAt: new Date(),
-      })
+      .delete(consultantInstagramConfig)
       .where(eq(consultantInstagramConfig.id, config.id));
 
-    console.log(`[INSTAGRAM OAUTH] Disconnected for consultant ${consultantId}`);
+    console.log(`[INSTAGRAM OAUTH] Completely disconnected and deleted config for consultant ${consultantId}`);
 
-    return res.json({ success: true, message: "Account Instagram scollegato" });
+    return res.json({ success: true, message: "Account Instagram scollegato completamente" });
   } catch (error) {
     console.error("[INSTAGRAM OAUTH] Disconnect error:", error);
     return res.status(500).json({ error: "Failed to disconnect account" });
