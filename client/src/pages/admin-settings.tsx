@@ -1720,7 +1720,7 @@ export default function AdminSettings() {
                         </div>
                         <p className="text-xs text-gray-500">
                           {instagramConfigData?.configured
-                            ? "Lascia vuoto per mantenere il secret esistente"
+                            ? `Lascia vuoto per mantenere il secret esistente ${instagramConfigData.config?.metaAppSecretPreview ? `(salvato: ${instagramConfigData.config.metaAppSecretPreview})` : ''}`
                             : "Obbligatorio per la prima configurazione"}
                         </p>
                       </div>
@@ -1756,10 +1756,10 @@ export default function AdminSettings() {
                       )}
 
                       <div className="space-y-2">
-                        <Label>Webhook URL</Label>
+                        <Label>Webhook URL (dinamico)</Label>
                         <div className="flex items-center gap-2">
                           <Input
-                            value={instagramConfigData?.config?.webhookUrl || instagramConfigData?.webhookUrl || `${baseUrl}/api/instagram/webhook`}
+                            value={`${window.location.origin}/api/instagram/webhook`}
                             readOnly
                             className="bg-gray-50 dark:bg-gray-800 font-mono text-xs"
                           />
@@ -1767,7 +1767,7 @@ export default function AdminSettings() {
                             type="button"
                             variant="outline"
                             size="icon"
-                            onClick={() => copyToClipboard(instagramConfigData?.config?.webhookUrl || instagramConfigData?.webhookUrl || `${baseUrl}/api/instagram/webhook`, 'instagramWebhookUrl')}
+                            onClick={() => copyToClipboard(`${window.location.origin}/api/instagram/webhook`, 'instagramWebhookUrl')}
                           >
                             {copiedUri === 'instagramWebhookUrl' ? (
                               <Check className="w-4 h-4 text-green-500" />

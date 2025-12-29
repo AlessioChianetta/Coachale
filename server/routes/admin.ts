@@ -1382,6 +1382,17 @@ router.get(
         });
       }
 
+      // Decrypt secret to show preview of last 8 characters for verification
+      let appSecretPreview = null;
+      if (config.metaAppSecretEncrypted) {
+        try {
+          const decrypted = decrypt(config.metaAppSecretEncrypted);
+          appSecretPreview = `...${decrypted.slice(-8)}`;
+        } catch (e) {
+          appSecretPreview = "***DECRYPT_ERROR***";
+        }
+      }
+      
       res.json({
         success: true,
         configured: true,
@@ -1389,8 +1400,9 @@ router.get(
           id: config.id,
           metaAppId: config.metaAppId,
           metaAppSecretMasked: config.metaAppSecretEncrypted ? "***ENCRYPTED***" : null,
+          metaAppSecretPreview: appSecretPreview,
           verifyToken: config.verifyToken,
-          webhookUrl: config.webhookUrl || `${baseUrl}/api/instagram/webhook`,
+          webhookUrl: `${baseUrl}/api/instagram/webhook`,
           enabled: config.enabled,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
@@ -1428,7 +1440,9 @@ router.post(
         encryptedSecret = encrypt(metaAppSecret);
       }
 
-      const webhookUrl = `${process.env.REPLIT_DEV_DOMAIN || ""}/api/instagram/webhook`;
+      const webhookUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/instagram/webhook`
+        : `${process.env.BASE_URL || ''}/api/instagram/webhook`;
       const finalVerifyToken = verifyToken || existing?.verifyToken || nanoid(32);
 
       if (existing) {
