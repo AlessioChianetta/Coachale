@@ -1691,8 +1691,8 @@ export default function AdminSettings() {
                       </div>
                     </div>
 
-                    {instagramConfigData?.configured && instagramConfigData.config && (
-                      <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {instagramConfigData?.configured && instagramConfigData.config?.verifyToken && (
                         <div className="space-y-2">
                           <Label>Verify Token (auto-generato)</Label>
                           <div className="flex items-center gap-2">
@@ -1718,34 +1718,34 @@ export default function AdminSettings() {
                             Usa questo token nella configurazione Webhook di Meta
                           </p>
                         </div>
+                      )}
 
-                        <div className="space-y-2">
-                          <Label>Webhook URL</Label>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={instagramConfigData.config.webhookUrl || `${baseUrl}/api/instagram/webhook`}
-                              readOnly
-                              className="bg-gray-50 dark:bg-gray-800 font-mono text-xs"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              onClick={() => copyToClipboard(instagramConfigData.config?.webhookUrl || `${baseUrl}/api/instagram/webhook`, 'instagramWebhookUrl')}
-                            >
-                              {copiedUri === 'instagramWebhookUrl' ? (
-                                <Check className="w-4 h-4 text-green-500" />
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </Button>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Configura questo URL come Webhook Callback nella console Meta
-                          </p>
+                      <div className="space-y-2">
+                        <Label>Webhook URL</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={instagramConfigData?.config?.webhookUrl || instagramConfigData?.webhookUrl || `${baseUrl}/api/instagram/webhook`}
+                            readOnly
+                            className="bg-gray-50 dark:bg-gray-800 font-mono text-xs"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => copyToClipboard(instagramConfigData?.config?.webhookUrl || instagramConfigData?.webhookUrl || `${baseUrl}/api/instagram/webhook`, 'instagramWebhookUrl')}
+                          >
+                            {copiedUri === 'instagramWebhookUrl' ? (
+                              <Check className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </Button>
                         </div>
+                        <p className="text-xs text-gray-500">
+                          Configura questo URL come Webhook Callback nella console Meta
+                        </p>
                       </div>
-                    )}
+                    </div>
 
                     <Alert className="bg-purple-50 border-purple-200 dark:bg-purple-900/30 dark:border-purple-800">
                       <AlertCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />

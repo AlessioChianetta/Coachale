@@ -1369,18 +1369,28 @@ router.get(
         .from(superadminInstagramConfig)
         .limit(1);
 
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : process.env.BASE_URL || '';
+      
       if (!config) {
-        return res.json({ success: true, config: null });
+        return res.json({ 
+          success: true, 
+          configured: false,
+          config: null,
+          webhookUrl: `${baseUrl}/api/instagram/webhook`
+        });
       }
 
       res.json({
         success: true,
+        configured: true,
         config: {
           id: config.id,
           metaAppId: config.metaAppId,
           metaAppSecretMasked: config.metaAppSecretEncrypted ? "***ENCRYPTED***" : null,
           verifyToken: config.verifyToken,
-          webhookUrl: config.webhookUrl,
+          webhookUrl: config.webhookUrl || `${baseUrl}/api/instagram/webhook`,
           enabled: config.enabled,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
