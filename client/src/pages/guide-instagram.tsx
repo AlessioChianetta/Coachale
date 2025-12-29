@@ -422,26 +422,46 @@ export default function GuideInstagram() {
               <StepCard
                 number={3}
                 title="Ottieni Page ID"
-                description="Il Page ID identifica la tua Facebook Page. E un numero lungo di circa 15 cifre."
+                description="Il Page ID identifica la tua Facebook Page collegata all'account Instagram. E un numero lungo di circa 15 cifre."
                 icon={Key}
                 iconColor="bg-cyan-600"
                 badge="OBBLIGATORIO"
                 badgeVariant="destructive"
               >
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mb-4">
-                  <p className="text-sm font-medium mb-3">Dove trovare il Page ID:</p>
+                  <p className="text-sm font-medium mb-3">Metodo Veloce - Dall'URL:</p>
                   <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
                     <li>Apri <strong>Facebook Business Suite</strong> (link sotto)</li>
+                    <li>Guarda l'URL nella barra degli indirizzi</li>
+                    <li>Cerca il parametro <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">asset_id=</code></li>
+                    <li>Il numero dopo <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">asset_id=</code> è il tuo Page ID</li>
+                  </ol>
+                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mt-3">
+                    <p className="text-xs font-mono break-all">
+                      https://business.facebook.com/latest/home?<span className="text-cyan-600 font-bold">asset_id=655018317702995</span>&business_id=...
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      In questo esempio, il Page ID è <span className="text-cyan-600 font-bold">655018317702995</span>
+                    </p>
+                  </div>
+                </div>
+                <WarningBox>
+                  <strong>Attenzione:</strong> NON usare il <code className="bg-amber-200 dark:bg-amber-800 px-1 rounded text-xs">business_id</code> dall'URL! 
+                  Quello è l'ID del Business Manager, non della Page. Usa solo il valore di <code className="bg-amber-200 dark:bg-amber-800 px-1 rounded text-xs">asset_id</code>.
+                </WarningBox>
+                <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mt-4 mb-4">
+                  <p className="text-sm font-medium mb-3">Metodo Alternativo - Dalle Impostazioni:</p>
+                  <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
                     <li>Nel menu a sinistra, seleziona la tua <strong>Page</strong></li>
                     <li>Vai su <strong>Impostazioni</strong> (icona ingranaggio)</li>
                     <li>Cerca <strong>"Informazioni sulla Pagina"</strong> o <strong>"About"</strong></li>
                     <li>Scorri fino a trovare <strong>"Page ID"</strong></li>
-                    <li>Copia il numero (es: 123456789012345)</li>
+                    <li>Copia il numero</li>
                   </ol>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-4">
                   <p className="text-sm font-mono">
-                    Esempio Page ID: <span className="text-cyan-600 font-bold">123456789012345</span>
+                    Esempio Page ID: <span className="text-cyan-600 font-bold">655018317702995</span>
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -468,7 +488,7 @@ export default function GuideInstagram() {
                   <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
                     <li>Apri la <strong>dashboard della tua App</strong> su Meta for Developers</li>
                     <li>Clicca su <strong>"Personalizza"</strong> (icona matita) nel riquadro <strong>"Gestisci i messaggi e i contenuti su Instagram"</strong></li>
-                    <li><strong>Permessi:</strong> Nel riquadro 1, clicca il pulsante blu <strong>"Add all required permissions"</strong> (aggiunge <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">instagram_manage_messages</code> automaticamente)</li>
+                    <li><strong>Permessi:</strong> Nel riquadro 1, clicca il pulsante blu <strong>"Add all required permissions"</strong> (aggiunge <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">instagram_manage_messages</code> automaticamente). Se il test fallisce, aggiungi manualmente anche <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">pages_read_engagement</code></li>
                     <li><strong>Genera Token:</strong> Nel riquadro 2 <strong>("Genera i token d'accesso")</strong>:
                       <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
                         <li>Clicca <strong>"Aggiungi account"</strong> e seleziona il tuo Instagram Business</li>
@@ -541,6 +561,7 @@ export default function GuideInstagram() {
                           <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">instagram_manage_messages</code>
                           <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">instagram_manage_comments</code>
                           <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">instagram_basic</code>
+                          <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">pages_read_engagement</code>
                           <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">pages_messaging</code>
                           <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">pages_show_list</code>
                         </div>
