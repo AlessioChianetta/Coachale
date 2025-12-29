@@ -50,10 +50,28 @@ function verifySignature(
 
   const providedSignature = signature.replace("sha256=", "");
   
-  return crypto.timingSafeEqual(
-    Buffer.from(expectedSignature),
-    Buffer.from(providedSignature)
-  );
+  // Debug logging
+  console.log(`🔐 [INSTAGRAM WEBHOOK] Signature check:`);
+  console.log(`   Provided: sha256=${providedSignature.substring(0, 20)}...`);
+  console.log(`   Expected: sha256=${expectedSignature.substring(0, 20)}...`);
+  console.log(`   App Secret length: ${appSecret.length}`);
+  console.log(`   Raw body length: ${rawBody.length}`);
+  
+  // Handle different signature lengths (Meta test might have different format)
+  if (providedSignature.length !== expectedSignature.length) {
+    console.log(`   ⚠️ Signature length mismatch: provided=${providedSignature.length}, expected=${expectedSignature.length}`);
+    return false;
+  }
+  
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(expectedSignature),
+      Buffer.from(providedSignature)
+    );
+  } catch (err) {
+    console.log(`   ❌ Signature comparison error:`, err);
+    return false;
+  }
 }
 
 /**
