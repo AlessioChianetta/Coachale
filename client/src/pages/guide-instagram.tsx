@@ -576,7 +576,7 @@ Nota importante: Assicurati che questo tuo profilo Facebook sia Amministratore d
                         </ol>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mb-4">
                         <ExternalLinkButton href="https://developers.facebook.com/requests">
                           Link da Inviare al Cliente
                         </ExternalLinkButton>
@@ -590,6 +590,66 @@ Nota importante: Assicurati che questo tuo profilo Facebook sia Amministratore d
                         >
                           Copia Link
                         </Button>
+                      </div>
+
+                      {/* Piano B - Tester Instagram */}
+                      <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30 rounded-lg border-2 border-red-300 dark:border-red-700 overflow-hidden">
+                        <div className="bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2">
+                          <p className="text-white font-semibold flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            SE NON RISPONDE (Piano B Sicuro al 100%)
+                          </p>
+                        </div>
+                        <div className="p-4 space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Se l'Instagram personale non è collegato bene al Facebook Admin, Meta potrebbe trattare l'utente come uno sconosciuto. 
+                            In questo caso, devi aggiungerlo come <strong>"Tester Instagram"</strong> (NON "Tester" normale!).
+                          </p>
+
+                          <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
+                            <p className="text-sm font-medium mb-2 text-red-700 dark:text-red-300">1. Aggiungi come Tester Instagram:</p>
+                            <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                              <li>Vai su <strong>Meta for Developers</strong> → <strong>Ruoli</strong> → <strong>Ruoli</strong></li>
+                              <li>Scorri fino a <strong>"Tester Instagram"</strong> (NON "Tester"!)</li>
+                              <li>Clicca <strong>"Aggiungi tester Instagram"</strong></li>
+                              <li>Scrivi il <strong>nome utente Instagram</strong> del profilo che userà per scrivere</li>
+                            </ol>
+                          </div>
+
+                          <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-950/40 rounded-lg p-3 border border-amber-300 dark:border-amber-700">
+                            <p className="text-sm font-medium mb-2 text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                              <Instagram className="h-4 w-4" />
+                              2. Accettare l'Invito da Instagram (FONDAMENTALE!)
+                            </p>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              Questo passaggio si fa dall'app Instagram o via browser. Ecco la <strong>soluzione sicura via Browser</strong>:
+                            </p>
+                            <ol className="text-sm text-amber-700 dark:text-amber-300 list-decimal list-inside space-y-1.5">
+                              <li>Apri il browser e vai su <strong>www.instagram.com</strong></li>
+                              <li>Loggati con l'account che deve diventare tester</li>
+                              <li>Vai a: <a href="https://www.instagram.com/accounts/manage_access/" target="_blank" rel="noopener" className="underline font-medium">instagram.com/accounts/manage_access/</a></li>
+                              <li>Oppure: Profilo → Impostazioni → <strong>App e siti web</strong></li>
+                              <li>Cerca la scheda <strong>"INVITI PER TESTER"</strong> (Tester Invites)</li>
+                              <li>Trova la richiesta di "Coachale" e clicca <strong>ACCETTA</strong></li>
+                            </ol>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <ExternalLinkButton href="https://www.instagram.com/accounts/manage_access/">
+                              Apri Gestione Accessi Instagram
+                            </ExternalLinkButton>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={() => {
+                                navigator.clipboard.writeText("https://www.instagram.com/accounts/manage_access/");
+                              }}
+                            >
+                              Copia Link
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
