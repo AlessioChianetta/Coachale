@@ -376,26 +376,78 @@ router.post("/config/test-connection", authenticateToken, async (req: AuthReques
       }
     }
 
-    // Test API connection
+    // Test API connection - first try as Instagram Business Account
     console.log("[INSTAGRAM TEST] Testing connection with pageId:", config.instagramPageId);
-    const response = await fetch(
+    let response = await fetch(
       `https://graph.facebook.com/v21.0/${config.instagramPageId}?fields=id,username,name&access_token=${accessToken}`
     );
 
-    if (!response.ok) {
-      const error = await response.json();
-      console.log("[INSTAGRAM TEST] API Error:", JSON.stringify(error, null, 2));
+    let pageInfo = await response.json();
+    
+    // If error indicates this is a Facebook Page (Business), try to get linked Instagram account
+    if (pageInfo.error?.message?.includes("node type (Business)")) {
+      console.log("[INSTAGRAM TEST] Detected Facebook Page, looking for linked Instagram Business Account...");
+      
+      const fbPageResponse = await fetch(
+        `https://graph.facebook.com/v21.0/${config.instagramPageId}?fields=instagram_business_account&access_token=${accessToken}`
+      );
+      
+      const fbPageData = await fbPageResponse.json();
+      console.log("[INSTAGRAM TEST] Facebook Page response:", JSON.stringify(fbPageData, null, 2));
+      
+      if (fbPageData.instagram_business_account?.id) {
+        const instagramId = fbPageData.instagram_business_account.id;
+        console.log("[INSTAGRAM TEST] Found linked Instagram ID:", instagramId);
+        
+        // Update the config with the correct Instagram ID
+        await db.update(consultantInstagramConfig)
+          .set({ instagramPageId: instagramId, updatedAt: new Date() })
+          .where(eq(consultantInstagramConfig.consultantId, consultantId));
+        
+        // Now test with the correct Instagram ID
+        response = await fetch(
+          `https://graph.facebook.com/v21.0/${instagramId}?fields=id,username,name&access_token=${accessToken}`
+        );
+        pageInfo = await response.json();
+        
+        if (pageInfo.error) {
+          console.log("[INSTAGRAM TEST] API Error with Instagram ID:", JSON.stringify(pageInfo, null, 2));
+          return res.status(400).json({ 
+            success: false, 
+            error: `API Error: ${pageInfo.error?.message || "Unknown error"}` 
+          });
+        }
+        
+        return res.json({
+          success: true,
+          message: `Connessione riuscita! ID Instagram aggiornato automaticamente da Facebook Page a ${instagramId}`,
+          pageInfo: {
+            id: pageInfo.id,
+            username: pageInfo.username,
+            name: pageInfo.name,
+          },
+          autoUpdated: true,
+          newInstagramId: instagramId,
+        });
+      } else {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Nessun account Instagram Business collegato a questa pagina Facebook. Vai su Meta Business Suite e collega un account Instagram alla tua pagina." 
+        });
+      }
+    }
+
+    if (!response.ok || pageInfo.error) {
+      console.log("[INSTAGRAM TEST] API Error:", JSON.stringify(pageInfo, null, 2));
       return res.status(400).json({ 
         success: false, 
-        error: `API Error: ${error.error?.message || "Unknown error"}` 
+        error: `API Error: ${pageInfo.error?.message || "Unknown error"}` 
       });
     }
 
-    const pageInfo = await response.json();
-
     return res.json({
       success: true,
-      message: "Connection successful!",
+      message: "Connessione riuscita!",
       pageInfo: {
         id: pageInfo.id,
         username: pageInfo.username,

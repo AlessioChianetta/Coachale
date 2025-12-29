@@ -1,0 +1,46 @@
+GET https://98f52cbe-9bd7-491a-a39c-fe77c3384c02-00-2sbsnk7sopt1b.picard.replit.dev/api/consultant/smtp-settings 404 (Not Found)
+apply @ injected.js:214
+queryFn @ consultant-api-keys-unified.tsx:520
+fetchFn @ @tanstack_react-query.js?v=74ebe40b:1101
+run @ @tanstack_react-query.js?v=74ebe40b:800
+start @ @tanstack_react-query.js?v=74ebe40b:843
+fetch @ @tanstack_react-query.js?v=74ebe40b:1148
+executeFetch_fn @ @tanstack_react-query.js?v=74ebe40b:1651
+onSubscribe @ @tanstack_react-query.js?v=74ebe40b:1344
+subscribe @ @tanstack_react-query.js?v=74ebe40b:24
+(anonymous) @ @tanstack_react-query.js?v=74ebe40b:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=74ebe40b:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=74ebe40b:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=74ebe40b:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=74ebe40b:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=74ebe40b:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=74ebe40b:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=74ebe40b:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=74ebe40b:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=74ebe40b:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=74ebe40b:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=74ebe40b:19432
+commitRoot @ chunk-RPCDYKBN.js?v=74ebe40b:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=74ebe40b:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=74ebe40b:18718
+workLoop @ chunk-RPCDYKBN.js?v=74ebe40b:197
+flushWork @ chunk-RPCDYKBN.js?v=74ebe40b:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=74ebe40b:384Understand this error
+injected.js:214  POST https://98f52cbe-9bd7-491a-a39c-fe77c3384c02-00-2sbsnk7sopt1b.picard.replit.dev/api/instagram/config/test-connection 400 (Bad Request)
+apply @ injected.js:214
+onClick @ consultant-api-keys-unified.tsx:6307
+callCallback2 @ chunk-RPCDYKBN.js?v=74ebe40b:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=74ebe40b:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=74ebe40b:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=74ebe40b:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=74ebe40b:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=74ebe40b:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=74ebe40b:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=74ebe40b:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=74ebe40b:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=74ebe40b:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=74ebe40b:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=74ebe40b:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=74ebe40b:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=74ebe40b:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=74ebe40b:5449Understand this error
