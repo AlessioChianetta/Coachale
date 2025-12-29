@@ -54,8 +54,13 @@ import {
   Instagram,
   X,
   Plus,
-  FlaskConical
+  FlaskConical,
+  ChevronDown,
+  HelpCircle,
+  Smartphone,
+  AlertTriangle
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { getAuthHeaders } from "@/lib/auth";
@@ -1357,6 +1362,72 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                       )}
                       Connetti Instagram
                     </Button>
+                    
+                    <Collapsible>
+                      <CollapsibleTrigger className="w-full flex items-center justify-between p-2 rounded bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs text-slate-600 transition-colors group">
+                        <div className="flex items-center gap-1.5">
+                          <HelpCircle className="h-3.5 w-3.5 text-pink-500" />
+                          <span>Guida Rapida per i Clienti</span>
+                        </div>
+                        <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-3 text-xs">
+                        <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
+                          <p className="font-medium text-pink-700 mb-2 flex items-center gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            Requisiti Obbligatori
+                          </p>
+                          <ul className="space-y-1.5 text-slate-600">
+                            <li className="flex items-start gap-1.5">
+                              <span className="text-pink-500 font-bold">1.</span>
+                              <span><strong>Account Business:</strong> Instagram deve essere "Business" o "Creator"</span>
+                            </li>
+                            <li className="flex items-start gap-1.5">
+                              <span className="text-pink-500 font-bold">2.</span>
+                              <span><strong>Pagina Facebook:</strong> Collegata all'account Instagram</span>
+                            </li>
+                            <li className="flex items-start gap-1.5">
+                              <span className="text-pink-500 font-bold">3.</span>
+                              <span><strong>Ruolo Admin:</strong> Essere ADMIN della Pagina Facebook</span>
+                            </li>
+                          </ul>
+                        </div>
+                        
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="font-medium text-blue-700 mb-2 flex items-center gap-1.5">
+                            <Smartphone className="h-3.5 w-3.5" />
+                            Controllo Veloce da Telefono
+                          </p>
+                          <ol className="space-y-1 text-slate-600 list-decimal list-inside">
+                            <li>Apri Instagram → Profilo → Modifica Profilo</li>
+                            <li>Scorri fino a "Pagina"</li>
+                            <li>Vedi il nome della tua azienda? Sei pronto!</li>
+                            <li>Vedi "Collega"? Clicca e collega la tua Pagina Facebook</li>
+                          </ol>
+                        </div>
+                        
+                        <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                          <p className="font-medium text-amber-700 mb-2 flex items-center gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Se l'AI Non Risponde
+                          </p>
+                          <ul className="space-y-1.5 text-slate-600">
+                            <li className="flex items-start gap-1.5">
+                              <span className="text-amber-600">•</span>
+                              <span><strong>Privacy:</strong> Impostazioni → Messaggi → "Consenti accesso ai messaggi" deve essere BLU</span>
+                            </li>
+                            <li className="flex items-start gap-1.5">
+                              <span className="text-amber-600">•</span>
+                              <span><strong>Finestra 24h:</strong> Il bot risponde solo dopo un messaggio dell'utente</span>
+                            </li>
+                            <li className="flex items-start gap-1.5">
+                              <span className="text-amber-600">•</span>
+                              <span><strong>Modalità Dev:</strong> Solo Admin/Tester funzionano finché l'app non è Live</span>
+                            </li>
+                          </ul>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
                 )}
               </div>
