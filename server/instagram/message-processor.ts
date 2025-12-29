@@ -191,7 +191,8 @@ async function processInstagramConversation(
       conversation,
       combinedMessage,
       formattedHistory,
-      linkedAgent || null
+      linkedAgent || null,
+      pendingMessages
     );
 
     if (!aiResponse) {
@@ -230,7 +231,8 @@ async function generateAIResponse(
   conversation: typeof instagramConversations.$inferSelect,
   userMessage: string,
   messageHistory: Array<{ role: "user" | "assistant"; content: string }>,
-  linkedAgent: typeof consultantWhatsappConfig.$inferSelect | null
+  linkedAgent: typeof consultantWhatsappConfig.$inferSelect | null,
+  pendingMessages?: Array<typeof instagramPendingMessages.$inferSelect>
 ): Promise<string | null> {
   try {
     // Use linked WhatsApp agent settings if available, otherwise fall back to Instagram config
@@ -277,14 +279,88 @@ async function generateAIResponse(
       channel: "instagram",
     });
 
+    // Fetch user profile for richer context
+    let userProfileInfo = "";
+    try {
+      let pageAccessToken = config.pageAccessToken;
+      if (pageAccessToken && consultant.encryptionSalt) {
+        try {
+          pageAccessToken = decryptForConsultant(pageAccessToken, consultant.encryptionSalt);
+        } catch (e) {
+          console.log("🔓 [INSTAGRAM] Token not encrypted, using as-is for profile fetch");
+        }
+      }
+      
+      if (pageAccessToken && config.instagramPageId) {
+        const metaClient = createMetaClient({
+          pageAccessToken,
+          instagramPageId: config.instagramPageId,
+          isDryRun: config.isDryRun,
+        });
+        const profile = await metaClient.getUserProfile(conversation.instagramUserId);
+        if (profile) {
+          userProfileInfo = `
+- Username Instagram: @${profile.username || conversation.instagramUsername || "sconosciuto"}
+- Nome: ${profile.name || "Non disponibile"}`;
+          console.log(`👤 [INSTAGRAM] Fetched profile for ${profile.username || conversation.instagramUserId}`);
+        }
+      }
+    } catch (e) {
+      console.log("⚠️ [INSTAGRAM] Could not fetch user profile:", e);
+      userProfileInfo = `
+- Username Instagram: @${conversation.instagramUsername || conversation.instagramUserId}`;
+    }
+
+    // Extract trigger context from pending messages metadata
+    let triggerContext = "";
+    const latestPendingWithMeta = pendingMessages?.find(m => m.metadata);
+    if (latestPendingWithMeta?.metadata) {
+      const meta = latestPendingWithMeta.metadata as any;
+      if (meta.commentTrigger) {
+        triggerContext = `
+- Questa conversazione è iniziata da un COMMENTO su un tuo post Instagram
+- L'utente ha scritto: "${latestPendingWithMeta.messageText?.replace('[Comment Trigger] User commented: ', '') || ''}"
+- L'utente è interessato al contenuto del post, rispondi contestualmente`;
+      } else if (meta.iceBreaker) {
+        triggerContext = `
+- L'utente ha usato un ICE BREAKER (domanda rapida predefinita)
+- Domanda selezionata: "${meta.payload || ''}"
+- Rispondi direttamente alla domanda in modo chiaro e conciso`;
+      }
+    }
+
+    // Build source context based on conversation source type
+    let sourceContext = "";
+    switch (conversation.sourceType) {
+      case "dm":
+        sourceContext = "L'utente ti ha scritto direttamente in DM";
+        break;
+      case "story_reply":
+        sourceContext = "L'utente ha RISPOSTO a una tua STORIA Instagram - menziona brevemente la storia se rilevante";
+        break;
+      case "story_mention":
+        sourceContext = "L'utente ti ha MENZIONATO in una sua STORIA - ringrazialo e coinvolgilo";
+        break;
+      case "comment":
+        sourceContext = "L'utente ha commentato un tuo post e tu lo stai contattando in DM";
+        break;
+      case "ice_breaker":
+        sourceContext = "L'utente ha usato una domanda rapida (Ice Breaker)";
+        break;
+      default:
+        sourceContext = "Messaggio diretto";
+    }
+
     // Add Instagram-specific context to system prompt
     const instagramContext = `
 
 ## Instagram-Specific Context
 - Canale: Instagram Direct Messages
-- Fonte conversazione: ${conversation.sourceType}
-- La finestra messaggi scade tra: ${conversation.windowExpiresAt ? Math.round((new Date(conversation.windowExpiresAt).getTime() - Date.now()) / 3600000) + "h" : "N/A"}
-- NON puoi inviare messaggi se l'utente non risponde entro 24h dalla sua ultima risposta
+${userProfileInfo}
+- Come è iniziata la conversazione: ${sourceContext}
+${triggerContext}
+- Finestra messaggi: ${conversation.windowExpiresAt ? `scade tra ${Math.round((new Date(conversation.windowExpiresAt).getTime() - Date.now()) / 3600000)}h` : "attiva"}
+- IMPORTANTE: Su Instagram hai solo 24h dalla risposta dell'utente per rispondere. Se non risponde, non puoi contattarlo.
 `;
 
     const fullSystemPrompt = systemPrompt + instagramContext;
@@ -376,6 +452,7 @@ function cleanAIResponse(text: string): string {
 
 /**
  * Send response via Meta Graph API
+ * In Dry Run mode: logs the message, saves to DB with isDryRun metadata, but doesn't actually send
  */
 async function sendInstagramResponse(
   config: typeof consultantInstagramConfig.$inferSelect,
@@ -384,6 +461,49 @@ async function sendInstagramResponse(
   responseText: string,
   canUseHumanAgentTag: boolean
 ): Promise<void> {
+  // Dry Run Mode - detailed logging without sending
+  if (config.isDryRun) {
+    console.log(`\n🧪 ======================= DRY RUN MODE =======================`);
+    console.log(`📍 [INSTAGRAM DRY RUN] Conversation: ${conversation.id}`);
+    console.log(`👤 [INSTAGRAM DRY RUN] To User: ${conversation.instagramUserId} (@${conversation.instagramUsername || 'unknown'})`);
+    console.log(`💬 [INSTAGRAM DRY RUN] Message that WOULD be sent:`);
+    console.log(`────────────────────────────────────────────────────────────────`);
+    console.log(responseText);
+    console.log(`────────────────────────────────────────────────────────────────`);
+    console.log(`🏷️ [INSTAGRAM DRY RUN] Would use HUMAN_AGENT tag: ${canUseHumanAgentTag && conversation.overriddenAt !== null}`);
+    console.log(`📊 [INSTAGRAM DRY RUN] Message length: ${responseText.length} chars`);
+    console.log(`🧪 ============================================================\n`);
+
+    // Save message to database with dry run indicator in metadata
+    await db.insert(instagramMessages).values({
+      conversationId: conversation.id,
+      messageText: responseText,
+      direction: "outbound",
+      sender: "ai",
+      mediaType: "text",
+      instagramMessageId: `dry_run_${Date.now()}`,
+      metaStatus: "dry_run",
+      metadata: { isDryRun: true, simulatedAt: new Date().toISOString() },
+      sentAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    // Update conversation stats (even in dry run for testing)
+    await db
+      .update(instagramConversations)
+      .set({
+        messageCount: sql`${instagramConversations.messageCount} + 1`,
+        lastMessageAt: new Date(),
+        lastMessageFrom: "ai",
+        updatedAt: new Date(),
+      })
+      .where(eq(instagramConversations.id, conversation.id));
+
+    console.log(`✅ [INSTAGRAM DRY RUN] Message saved to DB with isDryRun flag. No actual message sent.`);
+    return;
+  }
+
+  // Normal Mode - Actually send the message
   // Decrypt page access token
   let pageAccessToken = config.pageAccessToken;
   if (pageAccessToken && consultant.encryptionSalt) {
@@ -403,7 +523,7 @@ async function sendInstagramResponse(
   const client = createMetaClient({
     pageAccessToken,
     instagramPageId: config.instagramPageId,
-    isDryRun: config.isDryRun,
+    isDryRun: false,
   });
 
   // Send message

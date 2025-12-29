@@ -342,14 +342,18 @@ async function handleMessagingEvent(
   });
 
   // Schedule message processing (batching like WhatsApp)
-  if (config.autoResponseEnabled && !config.isDryRun) {
+  // Dry run mode now processes the full flow but doesn't actually send messages
+  if (config.autoResponseEnabled) {
+    if (config.isDryRun) {
+      console.log(`🧪 [INSTAGRAM WEBHOOK] DRY RUN MODE - Processing full flow without sending actual messages`);
+    }
     scheduleInstagramMessageProcessing(
       conversation.id,
       config.id,
       config.consultantId
     );
   } else {
-    console.log(`⏸️ [INSTAGRAM WEBHOOK] Auto-response disabled or dry run mode for config ${config.id}`);
+    console.log(`⏸️ [INSTAGRAM WEBHOOK] Auto-response disabled for config ${config.id}`);
   }
 }
 
@@ -435,8 +439,11 @@ async function handlePostback(
     metadata: { iceBreaker: true, payload: postback.payload },
   });
 
-  // Schedule processing
-  if (config.autoResponseEnabled && !config.isDryRun) {
+  // Schedule processing (dry run mode processes full flow without sending)
+  if (config.autoResponseEnabled) {
+    if (config.isDryRun) {
+      console.log(`🧪 [INSTAGRAM WEBHOOK] DRY RUN MODE - Processing ice breaker without sending actual messages`);
+    }
     scheduleInstagramMessageProcessing(
       conversation.id,
       config.id,
@@ -487,13 +494,18 @@ async function handleCommentEvent(
 ): Promise<void> {
   console.log(`💬 [INSTAGRAM WEBHOOK] Comment from ${comment.from.username}: "${comment.text}"`);
 
-  // Check if comment contains trigger keywords
+  // Check if comment contains trigger keywords (whole word match, case insensitive)
   const triggerKeywords = config.commentTriggerKeywords || [];
   const commentText = comment.text.toLowerCase();
   
-  const triggered = triggerKeywords.some((keyword: string) =>
-    commentText.includes(keyword.toLowerCase())
-  );
+  // Split comment into words, removing punctuation
+  const commentWords = commentText.replace(/[^\w\s]/g, ' ').split(/\s+/).filter(Boolean);
+  
+  const triggered = triggerKeywords.some((keyword: string) => {
+    const keywordLower = keyword.toLowerCase().trim();
+    // Check if keyword exists as a whole word in the comment
+    return commentWords.includes(keywordLower);
+  });
 
   if (!triggered) {
     console.log(`⏭️ [INSTAGRAM WEBHOOK] Comment doesn't contain trigger keywords`);
@@ -535,7 +547,11 @@ async function handleCommentEvent(
     metadata: { commentTrigger: true, postId: comment.media.id },
   });
 
-  if (config.autoResponseEnabled && !config.isDryRun) {
+  // Schedule processing (dry run mode processes full flow without sending)
+  if (config.autoResponseEnabled) {
+    if (config.isDryRun) {
+      console.log(`🧪 [INSTAGRAM WEBHOOK] DRY RUN MODE - Processing comment trigger without sending actual messages`);
+    }
     scheduleInstagramMessageProcessing(
       existingConversation.id,
       config.id,
