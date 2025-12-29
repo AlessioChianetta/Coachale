@@ -33,7 +33,14 @@ import {
   UserX,
   ShieldX,
   Smartphone,
-  Star
+  Star,
+  Users,
+  UserPlus,
+  Rocket,
+  Mail,
+  MousePointerClick,
+  PartyPopper,
+  FlaskConical
 } from "lucide-react";
 import { Link } from "wouter";
 import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
@@ -296,6 +303,288 @@ export default function GuideInstagram() {
             </div>
 
             <ComparisonBox />
+
+            {/* SEZIONE BETA TESTER - Flusso SaaS Self-Service */}
+            <Card className="bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 dark:from-violet-950/40 dark:via-purple-950/40 dark:to-fuchsia-950/40 border-2 border-violet-300 dark:border-violet-700 overflow-hidden">
+              <div className="bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-xl">
+                    <FlaskConical className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      Fase BETA - Flusso Self-Service
+                      <Badge className="bg-white/20 text-white border-white/30 text-xs">
+                        SENZA APP REVIEW
+                      </Badge>
+                    </h2>
+                    <p className="text-violet-100 text-sm mt-0.5">
+                      Configura i primi clienti come Tester prima della pubblicazione ufficiale
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <CardContent className="p-6 space-y-6">
+                {/* Intro Box */}
+                <div className="bg-white/70 dark:bg-gray-900/70 rounded-xl p-5 border border-violet-200 dark:border-violet-800">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50 rounded-xl">
+                      <Rocket className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg text-violet-900 dark:text-violet-100 mb-2">
+                        Modalita SaaS Self-Service
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        In questa modalita, <strong>tu configuri l'App Meta una sola volta</strong> (App Secret, ID, ecc.) nel backend. 
+                        I tuoi clienti vedranno solo un pulsante <strong>"Connetti con Instagram"</strong> - nessun dettaglio tecnico!
+                      </p>
+                      <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          <strong>Attenzione:</strong> Finche non passi l'App Review di Meta, solo gli account aggiunti come <strong>Tester</strong> possono usare l'integrazione.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Visual Flow */}
+                <div className="bg-gradient-to-r from-violet-100/50 to-fuchsia-100/50 dark:from-violet-900/20 dark:to-fuchsia-900/20 rounded-xl p-5 border border-violet-200 dark:border-violet-800">
+                  <h4 className="font-semibold text-violet-900 dark:text-violet-100 mb-4 flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Flusso Beta in 4 Passaggi
+                  </h4>
+                  <div className="grid md:grid-cols-4 gap-3">
+                    <div className="bg-white/80 dark:bg-gray-900/80 rounded-lg p-4 border text-center">
+                      <div className="w-10 h-10 bg-violet-500 text-white rounded-full flex items-center justify-center font-bold mx-auto mb-2">1</div>
+                      <p className="text-xs font-medium text-violet-700 dark:text-violet-300">Tu chiedi al cliente</p>
+                      <p className="text-xs text-muted-foreground mt-1">Email o ID Facebook</p>
+                    </div>
+                    <div className="bg-white/80 dark:bg-gray-900/80 rounded-lg p-4 border text-center">
+                      <div className="w-10 h-10 bg-purple-500 text-white rounded-full flex items-center justify-center font-bold mx-auto mb-2">2</div>
+                      <p className="text-xs font-medium text-purple-700 dark:text-purple-300">Tu aggiungi Tester</p>
+                      <p className="text-xs text-muted-foreground mt-1">Nella dashboard App</p>
+                    </div>
+                    <div className="bg-white/80 dark:bg-gray-900/80 rounded-lg p-4 border text-center">
+                      <div className="w-10 h-10 bg-fuchsia-500 text-white rounded-full flex items-center justify-center font-bold mx-auto mb-2">3</div>
+                      <p className="text-xs font-medium text-fuchsia-700 dark:text-fuchsia-300">Cliente accetta</p>
+                      <p className="text-xs text-muted-foreground mt-1">Conferma invito</p>
+                    </div>
+                    <div className="bg-white/80 dark:bg-gray-900/80 rounded-lg p-4 border text-center">
+                      <div className="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-bold mx-auto mb-2">4</div>
+                      <p className="text-xs font-medium text-green-700 dark:text-green-300">Connessione attiva</p>
+                      <p className="text-xs text-muted-foreground mt-1">Tutto funziona!</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 1 */}
+                <div className="bg-white/80 dark:bg-gray-900/80 rounded-xl border p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-violet-500 text-white rounded-xl w-12 h-12 flex items-center justify-center font-bold text-lg shrink-0">
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Mail className="h-5 w-5 text-violet-600" />
+                        <h4 className="font-semibold text-lg">Chiedi al Cliente i Dati Facebook</h4>
+                        <Badge variant="secondary" className="ml-auto">TU</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Non serve l'email Instagram! Ti serve l'<strong>ID Utente Facebook</strong> oppure l'<strong>Email associata al loro account Facebook</strong> 
+                        (quello personale che amministra la Pagina collegata a Instagram).
+                      </p>
+                      
+                      <div className="bg-blue-50 dark:bg-blue-950/40 rounded-lg p-4 border border-blue-200 dark:border-blue-800 mb-4">
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" />
+                          Perche Facebook e non Instagram?
+                        </p>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          Le API di Instagram Business passano <strong>sempre</strong> attraverso il login di Facebook. 
+                          Quindi il Tester deve essere l'account Facebook che gestisce la Pagina collegata a Instagram.
+                        </p>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                          <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Opzione consigliata</p>
+                          <p className="text-sm font-medium">ID Utente Facebook</p>
+                          <p className="text-xs text-muted-foreground">Piu sicuro, nessun errore di battitura</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 border">
+                          <p className="text-xs font-medium text-gray-500 mb-1">Alternativa</p>
+                          <p className="text-sm font-medium">Email Facebook</p>
+                          <p className="text-xs text-muted-foreground">Quella usata per il login</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="bg-white/80 dark:bg-gray-900/80 rounded-xl border p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-purple-500 text-white rounded-xl w-12 h-12 flex items-center justify-center font-bold text-lg shrink-0">
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <UserPlus className="h-5 w-5 text-purple-600" />
+                        <h4 className="font-semibold text-lg">Aggiungi il Cliente come Tester</h4>
+                        <Badge variant="secondary" className="ml-auto">TU</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Vai nella dashboard della tua App Meta e aggiungi il cliente come Tester.
+                      </p>
+                      
+                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mb-4">
+                        <p className="text-sm font-medium mb-3">Procedura passo-passo:</p>
+                        <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                          <li>Vai su <strong>developers.facebook.com</strong></li>
+                          <li>Clicca <strong>"My Apps"</strong> e seleziona la tua app</li>
+                          <li>Menu sinistra: <strong>Ruoli dell'app (App Roles)</strong> → <strong>Ruoli</strong></li>
+                          <li>Nel riquadro <strong>"Tester"</strong>, clicca <strong>"Aggiungi persone"</strong></li>
+                          <li>Inserisci l'<strong>ID Facebook</strong> o l'<strong>Email Facebook</strong> del cliente</li>
+                          <li>Clicca <strong>"Aggiungi"</strong></li>
+                        </ol>
+                      </div>
+
+                      <div className="bg-amber-50 dark:bg-amber-950/40 rounded-lg p-3 border border-amber-200 dark:border-amber-800 mb-4">
+                        <p className="text-xs text-amber-800 dark:text-amber-200">
+                          <strong>Nota:</strong> L'ID Facebook e preferibile perche evita errori di battitura nelle email.
+                        </p>
+                      </div>
+
+                      <ExternalLinkButton href="https://developers.facebook.com/apps/">
+                        Apri Meta for Developers
+                      </ExternalLinkButton>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="bg-white/80 dark:bg-gray-900/80 rounded-xl border p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-fuchsia-500 text-white rounded-xl w-12 h-12 flex items-center justify-center font-bold text-lg shrink-0">
+                      3
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MousePointerClick className="h-5 w-5 text-fuchsia-600" />
+                        <h4 className="font-semibold text-lg">Il Cliente Accetta l'Invito</h4>
+                        <Badge className="ml-auto bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900 dark:text-fuchsia-300 border-fuchsia-300">CLIENTE</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Il cliente deve accettare l'invito per diventare Tester della tua app.
+                      </p>
+                      
+                      <div className="bg-gradient-to-r from-fuchsia-50 to-pink-50 dark:from-fuchsia-950/30 dark:to-pink-950/30 rounded-lg p-4 border border-fuchsia-200 dark:border-fuchsia-800 mb-4">
+                        <p className="text-sm font-medium mb-3 text-fuchsia-800 dark:text-fuchsia-200">Istruzioni da dare al cliente:</p>
+                        <ol className="space-y-2 text-sm text-fuchsia-700 dark:text-fuchsia-300 list-decimal list-inside">
+                          <li>Apri <strong>developers.facebook.com/requests</strong> (loggato su Facebook)</li>
+                          <li>Troverai un invito da <strong>"[Nome della tua App]"</strong></li>
+                          <li>Clicca <strong>"Conferma"</strong> o <strong>"Accept"</strong></li>
+                        </ol>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <ExternalLinkButton href="https://developers.facebook.com/requests">
+                          Link da Inviare al Cliente
+                        </ExternalLinkButton>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-2"
+                          onClick={() => {
+                            navigator.clipboard.writeText("https://developers.facebook.com/requests");
+                          }}
+                        >
+                          Copia Link
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="bg-white/80 dark:bg-gray-900/80 rounded-xl border p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-green-500 text-white rounded-xl w-12 h-12 flex items-center justify-center font-bold text-lg shrink-0">
+                      4
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <PartyPopper className="h-5 w-5 text-green-600" />
+                        <h4 className="font-semibold text-lg">Il Cliente Usa il Software</h4>
+                        <Badge className="ml-auto bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300">CLIENTE</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        <strong>Solo DOPO</strong> aver accettato l'invito, il cliente puo connettere il suo Instagram.
+                      </p>
+                      
+                      <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 border border-green-200 dark:border-green-800 mb-4">
+                        <p className="text-sm font-medium mb-3 text-green-800 dark:text-green-200">Flusso del cliente:</p>
+                        <ol className="space-y-2 text-sm text-green-700 dark:text-green-300 list-decimal list-inside">
+                          <li>Entra in <strong>Coachale</strong> con il suo account</li>
+                          <li>Clicca il pulsante <strong>"Connetti Instagram"</strong></li>
+                          <li>Si apre il popup di Facebook → Autorizza</li>
+                          <li>Collegamento completato!</li>
+                        </ol>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg border border-green-300 dark:border-green-700">
+                        <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-green-800 dark:text-green-200">Tutto pronto!</p>
+                          <p className="text-xs text-green-700 dark:text-green-300">
+                            I messaggi Instagram del cliente attiveranno i webhook e l'AI rispondera automaticamente.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary Box */}
+                <div className="bg-gradient-to-r from-violet-100 to-fuchsia-100 dark:from-violet-900/30 dark:to-fuchsia-900/30 rounded-xl p-5 border border-violet-300 dark:border-violet-700">
+                  <h4 className="font-semibold text-violet-900 dark:text-violet-100 mb-3 flex items-center gap-2">
+                    <BookOpen className="h-5 w-5" />
+                    Riepilogo Rapido
+                  </h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-violet-700 dark:text-violet-300 mb-2">Cosa fai TU (una volta per cliente):</p>
+                      <ul className="space-y-1 text-sm text-muted-foreground">
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-violet-500 rounded-full"></div>
+                          Chiedi ID/Email Facebook del cliente
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-violet-500 rounded-full"></div>
+                          Aggiungilo come Tester nell'app Meta
+                        </li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-fuchsia-700 dark:text-fuchsia-300 mb-2">Cosa fa il CLIENTE:</p>
+                      <ul className="space-y-1 text-sm text-muted-foreground">
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-fuchsia-500 rounded-full"></div>
+                          Accetta l'invito Tester
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-fuchsia-500 rounded-full"></div>
+                          Clicca "Connetti Instagram" in Coachale
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <SectionCard
               sectionNumber={1}
