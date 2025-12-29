@@ -96,7 +96,10 @@ router.get("/oauth/start", authenticateToken, async (req: AuthRequest, res: Resp
     })).toString("base64url");
 
     // Build OAuth URL
-    const redirectUri = `${process.env.REPLIT_DEV_DOMAIN || req.protocol + "://" + req.get("host")}/api/instagram/oauth/callback`;
+    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+      : `${req.protocol}://${req.get("host")}`;
+    const redirectUri = `${baseUrl}/api/instagram/oauth/callback`;
     
     const authUrl = new URL(FB_AUTH_URL);
     authUrl.searchParams.set("client_id", superAdminConfig.metaAppId);
@@ -157,7 +160,10 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
     }
 
     const appSecret = decryptAppSecret(superAdminConfig.metaAppSecretEncrypted);
-    const redirectUri = `${process.env.REPLIT_DEV_DOMAIN || req.protocol + "://" + req.get("host")}/api/instagram/oauth/callback`;
+    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+      : `${req.protocol}://${req.get("host")}`;
+    const redirectUri = `${baseUrl}/api/instagram/oauth/callback`;
 
     // Exchange code for access token
     const tokenResponse = await fetch(FB_TOKEN_URL, {
