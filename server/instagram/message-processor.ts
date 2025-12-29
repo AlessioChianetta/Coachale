@@ -381,7 +381,11 @@ ${triggerContext}
       },
     });
 
-    response = result.text || null;
+    // Extract response text with fallback (matching other files' pattern)
+    response = result.response?.text?.() || 
+      result.response?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    
+    console.log(`✅ [INSTAGRAM] AI response generated: ${response ? response.substring(0, 50) + '...' : 'null'}`);
 
     // Clean up response (remove markdown, actions, etc.)
     if (response) {
