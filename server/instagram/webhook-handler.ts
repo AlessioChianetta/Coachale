@@ -182,28 +182,42 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
 
     // Process each entry
     for (const entry of event.entry) {
-      // IMPORTANT: entry.id is the Facebook Page ID, NOT the Instagram Account ID
-      const facebookPageId = entry.id;
+      // NOTE: entry.id can be either Instagram Account ID OR Facebook Page ID depending on webhook type
+      const entryId = entry.id;
 
-      // Find agent config by Facebook Page ID (this is what Meta sends in webhooks)
-      const [config] = await db
+      // Try to find config by Instagram Page ID first (most common for Instagram webhooks)
+      let [config] = await db
         .select()
         .from(consultantInstagramConfig)
         .where(
           and(
-            eq(consultantInstagramConfig.facebookPageId, facebookPageId),
+            eq(consultantInstagramConfig.instagramPageId, entryId),
             eq(consultantInstagramConfig.isActive, true)
           )
         )
         .limit(1);
 
+      // Fallback: try Facebook Page ID if not found
       if (!config) {
-        console.log(`⚠️ [INSTAGRAM WEBHOOK] No active config for Facebook Page ${facebookPageId}`);
-        console.log(`   💡 Hint: Make sure facebookPageId is saved during OAuth and matches entry.id from webhook`);
+        [config] = await db
+          .select()
+          .from(consultantInstagramConfig)
+          .where(
+            and(
+              eq(consultantInstagramConfig.facebookPageId, entryId),
+              eq(consultantInstagramConfig.isActive, true)
+            )
+          )
+          .limit(1);
+      }
+
+      if (!config) {
+        console.log(`⚠️ [INSTAGRAM WEBHOOK] No active config for entry.id ${entryId}`);
+        console.log(`   💡 Hint: Searched both instagramPageId and facebookPageId - no match found`);
         continue;
       }
       
-      console.log(`✅ [INSTAGRAM WEBHOOK] Found config for Facebook Page ${facebookPageId} (Instagram: ${config.instagramPageId})`);
+      console.log(`✅ [INSTAGRAM WEBHOOK] Found config for entry.id ${entryId} (Instagram: ${config.instagramPageId}, Facebook: ${config.facebookPageId})`);
       console.log(`   📱 Consultant: ${config.consultantId}, Agent active: ${config.isActive}`);
       console.log(`   🤖 Auto-response: ${config.autoResponseEnabled}, Dry-run: ${config.isDryRun}`);
 
