@@ -393,31 +393,117 @@ export default function GuideInstagram() {
                         <Badge variant="secondary" className="ml-auto">TU</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Non serve l'email Instagram! Ti serve l'<strong>ID Utente Facebook</strong> oppure l'<strong>Email associata al loro account Facebook</strong> 
-                        (quello personale che amministra la Pagina collegata a Instagram).
+                        Chiedi semplicemente: <strong>"Qual e l'email con cui fai login su Facebook?"</strong>
                       </p>
+
+                      {/* Warning Box - Email corretta */}
+                      <div className="bg-red-50 dark:bg-red-950/40 rounded-lg p-4 border border-red-200 dark:border-red-800 mb-4">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                              ATTENZIONE: Quale email chiedere?
+                            </p>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-start gap-2">
+                                <span className="text-red-600 font-bold">NO</span>
+                                <span className="text-red-700 dark:text-red-300">L'email pubblica della Pagina (es: info@ristorante.com)</span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <span className="text-green-600 font-bold">SI</span>
+                                <span className="text-green-700 dark:text-green-300">L'email del <strong>Profilo Personale Facebook</strong> che Amministra quella pagina</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                       
-                      <div className="bg-blue-50 dark:bg-blue-950/40 rounded-lg p-4 border border-blue-200 dark:border-blue-800 mb-4">
-                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4" />
-                          Perche Facebook e non Instagram?
+                      {/* La Catena di Comando */}
+                      <div className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/40 rounded-lg p-4 border border-violet-200 dark:border-violet-800 mb-4">
+                        <p className="text-sm font-medium text-violet-800 dark:text-violet-200 mb-3 flex items-center gap-2">
+                          <Link2 className="h-4 w-4" />
+                          La Catena di Comando (deve essere intatta!)
                         </p>
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
-                          Le API di Instagram Business passano <strong>sempre</strong> attraverso il login di Facebook. 
-                          Quindi il Tester deve essere l'account Facebook che gestisce la Pagina collegata a Instagram.
-                        </p>
+                        <div className="flex flex-col md:flex-row items-start md:items-center gap-2 text-sm">
+                          <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-2 rounded-lg border text-center">
+                            <p className="font-medium text-violet-700 dark:text-violet-300">Email cliente</p>
+                            <p className="text-xs text-muted-foreground">mario@gmail.com</p>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-violet-500 rotate-90 md:rotate-0 mx-auto md:mx-0" />
+                          <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-2 rounded-lg border text-center">
+                            <p className="font-medium text-violet-700 dark:text-violet-300">Profilo Facebook</p>
+                            <p className="text-xs text-muted-foreground">Mario Rossi</p>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-violet-500 rotate-90 md:rotate-0 mx-auto md:mx-0" />
+                          <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-2 rounded-lg border text-center">
+                            <p className="font-medium text-violet-700 dark:text-violet-300">Admin della Pagina</p>
+                            <p className="text-xs text-muted-foreground">Ristorante da Mario</p>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-violet-500 rotate-90 md:rotate-0 mx-auto md:mx-0" />
+                          <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-2 rounded-lg border text-center">
+                            <p className="font-medium text-violet-700 dark:text-violet-300">Instagram collegato</p>
+                            <p className="text-xs text-muted-foreground">@ristorantedamario</p>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-3">
-                        <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
-                          <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Opzione consigliata</p>
-                          <p className="text-sm font-medium">ID Utente Facebook</p>
-                          <p className="text-xs text-muted-foreground">Piu sicuro, nessun errore di battitura</p>
+                      {/* Errori Classici */}
+                      <div className="space-y-3 mb-4">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Errori classici da evitare:</p>
+                        
+                        <div className="bg-red-50/50 dark:bg-red-950/20 rounded-lg p-3 border border-red-100 dark:border-red-900">
+                          <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-1 flex items-center gap-2">
+                            <UserX className="h-4 w-4" />
+                            Errore 1: L'email "Ufficio"
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Il cliente da <code className="bg-red-100 dark:bg-red-900 px-1 rounded">info@pizzeria.it</code> ma accede a Facebook con <code className="bg-green-100 dark:bg-green-900 px-1 rounded">mario.rossi90@gmail.com</code>. 
+                            L'invito non arrivera mai!
+                          </p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 border">
-                          <p className="text-xs font-medium text-gray-500 mb-1">Alternativa</p>
-                          <p className="text-sm font-medium">Email Facebook</p>
-                          <p className="text-xs text-muted-foreground">Quella usata per il login</p>
+                        
+                        <div className="bg-red-50/50 dark:bg-red-950/20 rounded-lg p-3 border border-red-100 dark:border-red-900">
+                          <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-1 flex items-center gap-2">
+                            <ShieldX className="h-4 w-4" />
+                            Errore 2: Il Segretario
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            L'email e corretta, ma quella persona non e <strong>Admin</strong> della Pagina (magari e solo "Editor"). 
+                            Vedra una lista vuota o un errore quando prova a selezionare la pagina.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Messaggio Copy-Paste */}
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-lg border-2 border-green-300 dark:border-green-700 overflow-hidden">
+                        <div className="bg-green-500 px-4 py-2">
+                          <p className="text-white font-medium text-sm flex items-center gap-2">
+                            <MessageCircle className="h-4 w-4" />
+                            Messaggio da inviare al cliente (Copia-Incolla)
+                          </p>
+                        </div>
+                        <div className="p-4">
+                          <p className="text-sm text-gray-700 dark:text-gray-300 italic leading-relaxed">
+                            "Per attivarti il software, ho bisogno di inviarti un permesso speciale di Meta.<br/><br/>
+                            Mi serve l'indirizzo email che usi per fare il <strong>Login sul tuo profilo Facebook personale</strong> (non l'email del negozio, proprio quella con cui entri su Facebook).<br/><br/>
+                            <strong>Nota importante:</strong> Assicurati che questo tuo profilo Facebook sia <strong>Amministratore della Pagina</strong> collegata a Instagram, altrimenti non funzionera."
+                          </p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-3 gap-2 border-green-300 hover:bg-green-50 dark:border-green-700 dark:hover:bg-green-950"
+                            onClick={() => {
+                              const msg = `Per attivarti il software, ho bisogno di inviarti un permesso speciale di Meta.
+
+Mi serve l'indirizzo email che usi per fare il Login sul tuo profilo Facebook personale (non l'email del negozio, proprio quella con cui entri su Facebook).
+
+Nota importante: Assicurati che questo tuo profilo Facebook sia Amministratore della Pagina collegata a Instagram, altrimenti non funzionerà.`;
+                              navigator.clipboard.writeText(msg);
+                            }}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            Copia Messaggio
+                          </Button>
                         </div>
                       </div>
                     </div>
