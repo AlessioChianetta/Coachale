@@ -290,6 +290,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [selectedInstagramConfigId, setSelectedInstagramConfigId] = useState<string | null>(null);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
   const [isConnectingInstagram, setIsConnectingInstagram] = useState(false);
+  const [isDisconnectingInstagram, setIsDisconnectingInstagram] = useState(false);
   const [instagramError, setInstagramError] = useState<{ code: string; message: string } | null>(null);
 
   // Instagram automation state
@@ -461,6 +462,39 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
         description: error.message || "Errore durante la connessione a Instagram"
       });
       setIsConnectingInstagram(false);
+    }
+  };
+
+  const handleDisconnectInstagram = async () => {
+    if (!confirm("Sei sicuro di voler disconnettere completamente Instagram? Dovrai rifare il login OAuth.")) {
+      return;
+    }
+    setIsDisconnectingInstagram(true);
+    try {
+      const response = await fetch("/api/instagram/oauth/disconnect", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast({
+          title: "Instagram Disconnesso",
+          description: "Account scollegato con successo. Puoi ricollegarlo quando vuoi."
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instagram-configs"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/instagram/oauth/status"] });
+        setSelectedInstagramConfigId(null);
+      } else {
+        throw new Error(data.error || "Impossibile disconnettere");
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Errore durante la disconnessione"
+      });
+    } finally {
+      setIsDisconnectingInstagram(false);
     }
   };
 
@@ -1351,6 +1385,27 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                                   ⚠️ Modalità test attiva: le risposte vengono solo logggate, non inviate
                                 </p>
                               )}
+                              
+                              {/* Disconnect OAuth Button */}
+                              <div className="pt-3 mt-3 border-t border-red-200">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleDisconnectInstagram}
+                                  disabled={isDisconnectingInstagram}
+                                  className="w-full h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+                                >
+                                  {isDisconnectingInstagram ? (
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                  ) : (
+                                    <Unlink className="h-3 w-3 mr-1" />
+                                  )}
+                                  Disconnetti OAuth Completamente
+                                </Button>
+                                <p className="text-[10px] text-slate-500 mt-1 text-center">
+                                  Rimuove la connessione. Dovrai rifare il login.
+                                </p>
+                              </div>
                             </div>
                           );
                         })()}
