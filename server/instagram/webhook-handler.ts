@@ -91,6 +91,11 @@ export async function verifyInstagramWebhook(req: Request, res: Response): Promi
  * Handle incoming webhook events (POST request from Meta)
  */
 export async function handleInstagramWebhook(req: Request, res: Response): Promise<void> {
+  console.log(`\n${"━".repeat(60)}`);
+  console.log(`📥 [INSTAGRAM WEBHOOK] Incoming POST request at ${new Date().toISOString()}`);
+  console.log(`📦 [INSTAGRAM WEBHOOK] Raw body preview:`, JSON.stringify(req.body).slice(0, 500));
+  console.log(`${"━".repeat(60)}\n`);
+  
   try {
     const event: MetaWebhookEvent = req.body;
 
@@ -99,6 +104,9 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       res.status(200).send("EVENT_RECEIVED");
       return;
     }
+    
+    console.log(`✅ [INSTAGRAM WEBHOOK] Valid Instagram event received`);
+    console.log(`📊 [INSTAGRAM WEBHOOK] Entries count: ${event.entry?.length || 0}`);
 
     // Get signature from headers
     const signature = req.headers["x-hub-signature-256"] as string | undefined;
