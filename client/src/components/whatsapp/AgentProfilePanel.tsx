@@ -289,6 +289,10 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [newKeyword, setNewKeyword] = useState("");
   const [commentAutoReplyMessage, setCommentAutoReplyMessage] = useState("");
   const [storyAutoReplyMessage, setStoryAutoReplyMessage] = useState("");
+  
+  // Ice Breakers state
+  const [iceBreakers, setIceBreakers] = useState<Array<{ text: string; payload: string }>>([]);
+  const [newIceBreaker, setNewIceBreaker] = useState("");
 
   // Fetch Instagram configs
   const { data: instagramConfigs, isLoading: isLoadingInstagramConfigs } = useQuery<{
@@ -344,10 +348,12 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
       if (currentConfig) {
         setStoryAutoReplyMessage(currentConfig.storyAutoReplyMessage || '');
         setCommentAutoReplyMessage(currentConfig.commentAutoReplyMessage || '');
+        setIceBreakers(currentConfig.iceBreakers || []);
       }
     } else {
       setStoryAutoReplyMessage('');
       setCommentAutoReplyMessage('');
+      setIceBreakers([]);
     }
   }, [selectedInstagramConfigId, instagramConfigs?.configs]);
 
@@ -1168,17 +1174,91 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                               </div>
                               
                               {/* Ice Breakers */}
-                              <div className="flex items-center justify-between p-2 bg-white/60 rounded border border-pink-100">
-                                <div className="flex items-center gap-2">
-                                  <Sparkles className="h-3.5 w-3.5 text-pink-500" />
-                                  <span className="text-xs text-slate-700">Ice Breakers</span>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between p-2 bg-white/60 rounded border border-pink-100">
+                                  <div className="flex items-center gap-2">
+                                    <Sparkles className="h-3.5 w-3.5 text-pink-500" />
+                                    <span className="text-xs text-slate-700">Ice Breakers</span>
+                                    <span className="text-[10px] text-slate-400">(max 4)</span>
+                                  </div>
+                                  <Switch
+                                    checked={currentConfig.iceBreakersEnabled ?? false}
+                                    onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'iceBreakersEnabled', checked)}
+                                    disabled={updateInstagramSettings.isPending}
+                                    className="scale-75"
+                                  />
                                 </div>
-                                <Switch
-                                  checked={currentConfig.iceBreakersEnabled ?? false}
-                                  onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'iceBreakersEnabled', checked)}
-                                  disabled={updateInstagramSettings.isPending}
-                                  className="scale-75"
-                                />
+                                
+                                {currentConfig.iceBreakersEnabled && (
+                                  <div className="ml-4 space-y-2 p-2 bg-pink-50/50 rounded border border-pink-100">
+                                    <p className="text-xs text-slate-500">Domande rapide cliccabili al primo contatto:</p>
+                                    
+                                    {/* Ice Breakers List */}
+                                    {iceBreakers.length > 0 && (
+                                      <div className="space-y-1">
+                                        {iceBreakers.map((ib, index) => (
+                                          <div key={index} className="flex items-center gap-1.5 group">
+                                            <span className="text-xs bg-white px-2 py-1 rounded border border-pink-200 flex-1 truncate">
+                                              {ib.text}
+                                            </span>
+                                            <button
+                                              onClick={() => {
+                                                const updated = iceBreakers.filter((_, i) => i !== index);
+                                                setIceBreakers(updated);
+                                                handleInstagramSettingChange(currentConfig.id, 'iceBreakers', updated);
+                                              }}
+                                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-opacity"
+                                            >
+                                              <X className="h-3 w-3 text-red-500" />
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Add new Ice Breaker */}
+                                    {iceBreakers.length < 4 && (
+                                      <div className="flex gap-1">
+                                        <Input
+                                          value={newIceBreaker}
+                                          onChange={(e) => setNewIceBreaker(e.target.value)}
+                                          placeholder="es. Quanto costa?"
+                                          className="h-7 text-xs flex-1"
+                                          maxLength={80}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && newIceBreaker.trim()) {
+                                              e.preventDefault();
+                                              const updated = [...iceBreakers, { text: newIceBreaker.trim(), payload: `ice_breaker_${iceBreakers.length + 1}` }];
+                                              setIceBreakers(updated);
+                                              handleInstagramSettingChange(currentConfig.id, 'iceBreakers', updated);
+                                              setNewIceBreaker('');
+                                            }
+                                          }}
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            if (newIceBreaker.trim()) {
+                                              const updated = [...iceBreakers, { text: newIceBreaker.trim(), payload: `ice_breaker_${iceBreakers.length + 1}` }];
+                                              setIceBreakers(updated);
+                                              handleInstagramSettingChange(currentConfig.id, 'iceBreakers', updated);
+                                              setNewIceBreaker('');
+                                            }
+                                          }}
+                                          className="h-7 px-2"
+                                          disabled={!newIceBreaker.trim()}
+                                        >
+                                          <Plus className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                    
+                                    {iceBreakers.length >= 4 && (
+                                      <p className="text-[10px] text-amber-600">Limite raggiunto (max 4 Ice Breakers)</p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               
                               {/* Dry Run */}

@@ -311,9 +311,9 @@ async function generateAIResponse(
 - Username Instagram: @${conversation.instagramUsername || conversation.instagramUserId}`;
     }
 
-    // Extract trigger context from pending messages metadata
+    // Extract trigger context from pending messages metadata (use latest message with metadata)
     let triggerContext = "";
-    const latestPendingWithMeta = pendingMessages?.find(m => m.metadata);
+    const latestPendingWithMeta = pendingMessages?.slice().reverse().find(m => m.metadata);
     if (latestPendingWithMeta?.metadata) {
       const meta = latestPendingWithMeta.metadata as any;
       if (meta.commentTrigger) {
