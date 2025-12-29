@@ -50,12 +50,13 @@ function verifySignature(
 
   const providedSignature = signature.replace("sha256=", "");
   
-  // Debug logging
+  // Debug logging - VERBOSE for troubleshooting
   console.log(`🔐 [INSTAGRAM WEBHOOK] Signature check:`);
-  console.log(`   Provided: sha256=${providedSignature.substring(0, 20)}...`);
-  console.log(`   Expected: sha256=${expectedSignature.substring(0, 20)}...`);
-  console.log(`   App Secret length: ${appSecret.length}`);
+  console.log(`   Provided signature: sha256=${providedSignature}`);
+  console.log(`   Expected signature: sha256=${expectedSignature}`);
+  console.log(`   App Secret used: ${appSecret.substring(0, 8)}...${appSecret.slice(-8)} (length: ${appSecret.length})`);
   console.log(`   Raw body length: ${rawBody.length}`);
+  console.log(`   Raw body (first 200 chars): ${rawBody.toString().substring(0, 200)}`);
   
   // Handle different signature lengths (Meta test might have different format)
   if (providedSignature.length !== expectedSignature.length) {
@@ -148,7 +149,9 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
     if (superAdminConfig?.metaAppSecretEncrypted) {
       try {
         decryptedAppSecret = decrypt(superAdminConfig.metaAppSecretEncrypted);
-        console.log(`🔓 [INSTAGRAM WEBHOOK] Decrypted App Secret: ${decryptedAppSecret?.substring(0, 8)}...${decryptedAppSecret?.slice(-8)} (length: ${decryptedAppSecret?.length})`);
+        console.log(`🔓 [INSTAGRAM WEBHOOK] Decrypted App Secret from DB:`);
+        console.log(`   Full secret: ${decryptedAppSecret}`);
+        console.log(`   Preview: ${decryptedAppSecret?.substring(0, 8)}...${decryptedAppSecret?.slice(-8)} (length: ${decryptedAppSecret?.length})`);
       } catch (e) {
         console.log(`⚠️ [INSTAGRAM WEBHOOK] Failed to decrypt App Secret:`, e);
       }
