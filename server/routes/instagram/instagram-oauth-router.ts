@@ -13,7 +13,7 @@ import {
   superadminInstagramConfig,
   users,
 } from "../../../shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { encrypt, encryptForConsultant, decrypt } from "../../encryption";
 import crypto from "crypto";
 
@@ -57,15 +57,33 @@ function decryptAppSecret(encryptedSecret: string): string {
 
 /**
  * GET /api/instagram/oauth/status
- * Check if Instagram OAuth is configured at Super Admin level
+ * Check if Instagram OAuth is configured and if consultant has a connection
  */
 router.get("/oauth/status", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
+    const consultantId = req.user!.id;
+    
+    // Check Super Admin config
     const superAdminConfig = await getSuperAdminConfig();
+    
+    // Check if consultant has an active Instagram connection
+    const [consultantConfig] = await db
+      .select()
+      .from(consultantInstagramConfig)
+      .where(
+        and(
+          eq(consultantInstagramConfig.consultantId, consultantId),
+          eq(consultantInstagramConfig.isActive, true)
+        )
+      )
+      .limit(1);
     
     return res.json({
       configured: !!superAdminConfig,
       enabled: superAdminConfig?.enabled ?? false,
+      connected: !!consultantConfig,
+      username: consultantConfig?.instagramUsername || null,
+      connectedAt: consultantConfig?.createdAt || null,
     });
   } catch (error) {
     console.error("[INSTAGRAM OAUTH] Error checking status:", error);
