@@ -634,6 +634,22 @@ export default function GuideInstagram() {
                 link="/consultant/api-keys"
                 linkText="Vai alle API Keys"
               >
+                <div className="bg-red-50 dark:bg-red-950/40 rounded-lg p-4 border border-red-200 dark:border-red-800 mb-4">
+                  <p className="text-sm font-medium mb-2 text-red-700 dark:text-red-300 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    IMPORTANTE: Configura i Webhook PRIMA di testare!
+                  </p>
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    Il pulsante <strong>"Testa Connessione"</strong> in Coachale fallira se non hai ancora configurato i webhook 
+                    su Meta for Developers (Sezione 2 di questa guida). I webhook permettono a Meta di comunicare con Coachale.
+                  </p>
+                  <div className="mt-3 p-2 bg-red-100 dark:bg-red-900/40 rounded border border-red-300 dark:border-red-700">
+                    <p className="text-xs text-red-700 dark:text-red-300">
+                      <strong>Ordine corretto:</strong> Prima completa la Sezione 2 (Webhook) → Poi torna qui per testare
+                    </p>
+                  </div>
+                </div>
+
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mb-4">
                   <p className="text-sm font-medium mb-3">Campi da compilare:</p>
                   <ul className="space-y-2">
@@ -645,6 +661,13 @@ export default function GuideInstagram() {
                     <ChecklistItem>Clicca <strong>"Testa Connessione"</strong> per verificare</ChecklistItem>
                     <ChecklistItem>Se il test e verde, clicca <strong>"Salva"</strong></ChecklistItem>
                   </ul>
+                </div>
+
+                <div className="bg-green-50 dark:bg-green-950/40 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <CheckCircle2 className="h-4 w-4 inline mr-1" />
+                    <strong>Test verde?</strong> Ottimo! Ora passa alla Sezione 2 per configurare i webhook e completare l'integrazione.
+                  </p>
                 </div>
               </StepCard>
             </SectionCard>
@@ -664,21 +687,37 @@ export default function GuideInstagram() {
 
               <StepCard
                 number={1}
-                title="Configura Webhook (Dalla stessa pagina)"
-                description="Non serve cambiare menu! Rimani nella pagina 'Personalizza caso d'uso' dove hai creato il token."
+                title="Dove Configurare il Webhook"
+                description="Il webhook si configura nella stessa pagina dove hai generato il token, oppure puoi accederci direttamente."
                 icon={ExternalLink}
                 iconColor="bg-teal-500"
               >
+                <div className="bg-blue-50 dark:bg-blue-950/40 rounded-lg p-4 border border-blue-200 dark:border-blue-800 mb-4">
+                  <p className="text-sm font-medium mb-3 text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Sei uscito e rientrato? Ecco come tornare alla pagina giusta:
+                  </p>
+                  <ol className="space-y-2 text-sm text-blue-700 dark:text-blue-300 list-decimal list-inside">
+                    <li>Vai su <strong>developers.facebook.com</strong></li>
+                    <li>Clicca <strong>"My Apps"</strong> in alto a destra</li>
+                    <li>Seleziona la tua app (es: "Coachale Instagram Bot")</li>
+                    <li>Nel menu a sinistra, cerca <strong>"Casi d'uso"</strong> (Use Cases)</li>
+                    <li>Clicca su <strong>"Gestisci i messaggi e i contenuti su Instagram"</strong></li>
+                    <li>Clicca il pulsante <strong>"Personalizza"</strong> (icona matita)</li>
+                    <li>Scorri in basso fino al riquadro <strong>"3. Configura i webhooks"</strong></li>
+                  </ol>
+                </div>
+
                 <div className="bg-green-50 dark:bg-green-950/40 rounded-lg p-3 border border-green-200 dark:border-green-800 mb-4">
                   <p className="text-sm text-green-800 dark:text-green-200">
                     <CheckCircle2 className="h-4 w-4 inline mr-1" />
-                    <strong>Stesso posto!</strong> Scorri in basso nella stessa pagina dove hai generato il token.
+                    <strong>Se sei ancora nella pagina del token:</strong> Scorri semplicemente in basso, il riquadro webhook e subito sotto!
                   </p>
                 </div>
+
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mb-4">
-                  <p className="text-sm font-medium mb-3">Procedura:</p>
+                  <p className="text-sm font-medium mb-3">Procedura nel riquadro Webhook:</p>
                   <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-                    <li>Scorri in basso fino al riquadro <strong>"3. Configura i webhooks"</strong></li>
                     <li>Inserisci il <strong>Callback URL</strong> (vedi passo 2 sotto)</li>
                     <li>Inserisci il <strong>Verify Token</strong> (vedi passo 3 sotto)</li>
                     <li>Clicca <strong>"Verifica e salva"</strong></li>
@@ -700,13 +739,25 @@ export default function GuideInstagram() {
                 badge="IMPORTANTE"
               >
                 <div className="bg-gradient-to-r from-cyan-100 to-teal-100 dark:from-cyan-900/50 dark:to-teal-900/50 rounded-lg p-4 mb-4 border border-cyan-300 dark:border-cyan-700">
-                  <p className="text-sm font-medium mb-2">Il tuo Callback URL:</p>
-                  <code className="text-cyan-700 dark:text-cyan-300 font-mono text-sm break-all">
-                    https://tuodominio.coachale.com/api/instagram/webhook
-                  </code>
+                  <p className="text-sm font-medium mb-2">Il tuo Callback URL (copia e incolla):</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-cyan-700 dark:text-cyan-300 font-mono text-sm break-all flex-1 bg-white/50 dark:bg-gray-800/50 p-2 rounded border">
+                      {typeof window !== 'undefined' ? `https://${window.location.host}/api/instagram/webhook` : 'https://tuodominio/api/instagram/webhook'}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        const url = `https://${window.location.host}/api/instagram/webhook`;
+                        navigator.clipboard.writeText(url);
+                      }}
+                    >
+                      Copia
+                    </Button>
+                  </div>
                 </div>
                 <ul className="space-y-2 mb-4">
-                  <ChecklistItem>Sostituisci <strong>"tuodominio"</strong> con il tuo dominio Coachale</ChecklistItem>
                   <ChecklistItem>Il link deve essere <strong>HTTPS</strong> (SSL obbligatorio)</ChecklistItem>
                   <ChecklistItem>Assicurati che il server sia <strong>online</strong> quando configuri</ChecklistItem>
                 </ul>

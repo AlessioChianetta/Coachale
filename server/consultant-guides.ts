@@ -1942,7 +1942,8 @@ export const consultantGuides: ConsultantGuides = {
           },
           {
             title: "Configurare in Coachale",
-            content: "Ora hai tutte le credenziali. Inseriscile in Coachale: 1) Vai su API Keys → Tab 'Instagram'. 2) Inserisci il Page ID. 3) Inserisci l'Access Token. 4) Inserisci l'App Secret. 5) Seleziona l'Agente WhatsApp da collegare (l'agente Instagram usa le stesse impostazioni AI). 6) Clicca 'Testa Connessione' per verificare. 7) Se verde, clicca 'Salva'.",
+            content: "Ora hai tutte le credenziali. Inseriscile in Coachale: 1) Vai su API Keys → Tab 'Instagram'. 2) Inserisci il Page ID. 3) Inserisci l'Access Token. 4) Inserisci l'App Secret. 5) Seleziona l'Agente WhatsApp da collegare (l'agente Instagram usa le stesse impostazioni AI). 6) Clicca 'Testa Connessione' per verificare. 7) Se verde, clicca 'Salva'. IMPORTANTE: Il pulsante 'Testa Connessione' fallirà se non hai ancora configurato i webhook su Meta for Developers! I webhook permettono a Meta di comunicare con Coachale. ORDINE CORRETTO: Prima completa la sezione Webhook → Poi torna qui per testare.",
+            warnings: ["Il test connessione FALLISCE senza webhook configurati!", "Configura prima i webhook su Meta for Developers (sezione CONFIGURAZIONE WEBHOOK), poi torna qui per testare"],
             actionText: "Configura Instagram",
             actionHref: "/consultant/api-keys"
           }
@@ -1954,9 +1955,9 @@ export const consultantGuides: ConsultantGuides = {
         description: "Il webhook è come un 'campanello' che avvisa Coachale ogni volta che ricevi un messaggio su Instagram. Senza webhook, i messaggi non arriverebbero in tempo reale.",
         steps: [
           {
-            title: "Configurare Webhook (Dalla stessa pagina)",
-            content: "NON serve cambiare menu! Rimani nella stessa pagina 'Personalizza caso d'uso' dove hai generato il token. PROCEDURA: 1) Scorri in basso fino al riquadro '3. Configura i webhooks'. 2) Inserisci il Callback URL (vedi step successivo). 3) Inserisci il Verify Token. 4) Clicca 'Verifica e salva'. 5) Una volta salvato, clicca su 'Gestisci' (o Edit Subscription). 6) Seleziona 'messages' e 'messaging_postbacks'. VANTAGGIO: Token e Webhook si configurano dalla stessa pagina, senza navigare tra menu diversi!",
-            tips: ["Rimani nella stessa pagina dove hai generato il token - scorri solo in basso", "Token e Webhook si fanno nella stessa schermata 'Personalizza caso d'uso'"],
+            title: "Dove Configurare il Webhook",
+            content: "Il webhook si configura nella stessa pagina dove hai generato il token, oppure puoi accederci direttamente. SEI USCITO E RIENTRATO? Ecco come tornare alla pagina giusta: 1) Vai su developers.facebook.com. 2) Clicca 'My Apps' in alto a destra. 3) Seleziona la tua app (es: 'Coachale Instagram Bot'). 4) Nel menu a sinistra, cerca 'Casi d'uso' (Use Cases). 5) Clicca su 'Gestisci i messaggi e i contenuti su Instagram'. 6) Clicca il pulsante 'Personalizza' (icona matita). 7) Scorri in basso fino al riquadro '3. Configura i webhooks'. SE SEI ANCORA NELLA PAGINA DEL TOKEN: Scorri semplicemente in basso, il riquadro webhook è subito sotto! PROCEDURA NEL RIQUADRO WEBHOOK: 1) Inserisci il Callback URL. 2) Inserisci il Verify Token. 3) Clicca 'Verifica e salva'. 4) Una volta salvato, clicca su 'Gestisci' (o Edit Subscription). 5) Seleziona 'messages' e 'messaging_postbacks'.",
+            tips: ["Se sei uscito e rientrato, segui il percorso: My Apps → la tua app → Casi d'uso → Gestisci i messaggi Instagram → Personalizza", "Se sei ancora nella pagina del token, scorri solo in basso - il webhook è subito sotto"],
             externalLinks: [
               { text: "Apri Meta for Developers", url: "https://developers.facebook.com/apps/" }
             ]
