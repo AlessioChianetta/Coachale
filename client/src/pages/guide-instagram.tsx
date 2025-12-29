@@ -792,6 +792,52 @@ Nota importante: Assicurati che questo tuo profilo Facebook sia Amministratore d
                 <ExternalLinkButton href="https://developers.facebook.com/apps/">
                   Apri Meta for Developers
                 </ExternalLinkButton>
+
+                <div className="bg-gradient-to-r from-purple-50 to-fuchsia-50 dark:from-purple-950/40 dark:to-fuchsia-950/40 rounded-lg border border-purple-200 dark:border-purple-800 overflow-hidden mt-4">
+                  <div className="bg-gradient-to-r from-purple-500 to-fuchsia-500 px-4 py-2">
+                    <p className="text-white font-semibold flex items-center gap-2">
+                      <Link2 className="h-4 w-4" />
+                      Configura Domini e OAuth (IMPORTANTE)
+                    </p>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Per permettere il collegamento OAuth, devi configurare il dominio e il redirect URI nella tua app Meta.
+                    </p>
+                    
+                    <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
+                      <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">1. Configura Domini App</p>
+                      <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                        <li>Vai su <strong>Impostazioni → Base</strong></li>
+                        <li>Nel campo <strong>"Domini app"</strong> aggiungi il tuo dominio Replit</li>
+                        <li>Clicca <strong>"Salva modifiche"</strong></li>
+                      </ul>
+                      <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-2 mt-2">
+                        <p className="text-xs font-mono break-all text-purple-600">picard.replit.dev</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
+                      <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">2. Configura Redirect URI OAuth</p>
+                      <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                        <li>Vai su <strong>Prodotti → Instagram → API Setup with Instagram Login</strong></li>
+                        <li>Nel campo <strong>"Valid OAuth Redirect URIs"</strong> aggiungi:</li>
+                      </ul>
+                      <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-2 mt-2">
+                        <p className="text-xs font-mono break-all text-purple-600">
+                          https://TUO-DOMINIO-REPLIT.picard.replit.dev/api/instagram/oauth/callback
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Sostituisci "TUO-DOMINIO-REPLIT" con il tuo dominio effettivo (lo trovi nella barra degli indirizzi)
+                        </p>
+                      </div>
+                    </div>
+
+                    <WarningBox>
+                      <strong>Importante:</strong> Senza questa configurazione, vedrai l'errore "Il dominio di questo URL non è incluso nei domini dell'app" quando provi a collegare Instagram.
+                    </WarningBox>
+                  </div>
+                </div>
               </StepCard>
 
               <StepCard
