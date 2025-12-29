@@ -919,6 +919,74 @@ export default function GuideInstagram() {
                   </ExternalLinkButton>
                 </div>
               </StepCard>
+
+              <StepCard
+                number={6}
+                title="Development Mode vs Live Mode"
+                description="IMPORTANTE: Se l'app Meta non è pubblicata, i webhook funzionano SOLO per account Tester."
+                icon={AlertTriangle}
+                iconColor="bg-amber-500"
+                badge="FONDAMENTALE"
+                badgeVariant="destructive"
+              >
+                <WarningBox>
+                  <strong>ATTENZIONE:</strong> Se la tua app Meta è in "Development Mode" (non pubblicata), 
+                  i webhook funzioneranno SOLO per gli account aggiunti come Tester. Gli altri utenti non potranno 
+                  attivare le automazioni finché non pubblichi l'app.
+                </WarningBox>
+                
+                <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mt-4 mb-4">
+                  <p className="text-sm font-medium mb-3 text-amber-700 dark:text-amber-300">Opzione A: Aggiungi Tester (per testare subito)</p>
+                  <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                    <li>Vai su <strong>Meta for Developers</strong> → la tua app</li>
+                    <li>Menu sinistra: <strong>Ruoli dell'app → Ruoli</strong></li>
+                    <li>Clicca <strong>"Aggiungi persone"</strong></li>
+                    <li>Cerca l'account Facebook/Instagram che userà per inviare messaggi di test</li>
+                    <li>Assegna il ruolo <strong>"Tester"</strong></li>
+                    <li>L'utente deve <strong>accettare l'invito</strong> (riceverà una notifica)</li>
+                  </ol>
+                  <div className="bg-green-50 dark:bg-green-950/40 rounded p-2 mt-3 border border-green-200 dark:border-green-800">
+                    <p className="text-xs text-green-700 dark:text-green-300">
+                      <CheckCircle2 className="h-3 w-3 inline mr-1" />
+                      Dopo l'accettazione, i messaggi da quell'account attiveranno i webhook!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mb-4">
+                  <p className="text-sm font-medium mb-3 text-purple-700 dark:text-purple-300">Opzione B: Pubblica l'App (per produzione)</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Per far funzionare l'app con TUTTI gli utenti, devi completare l'App Review di Meta:
+                  </p>
+                  <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                    <li>Vai su <strong>App Review → Permissions and Features</strong></li>
+                    <li>Richiedi <strong>Advanced Access</strong> per <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">instagram_manage_messages</code></li>
+                    <li>Prepara una <strong>video-demo</strong> che mostra come usi l'integrazione</li>
+                    <li>Compila tutti i campi richiesti (Privacy Policy URL, ecc.)</li>
+                    <li>Invia la richiesta e <strong>attendi l'approvazione</strong> (può richiedere giorni)</li>
+                    <li>Una volta approvata, passa l'app in <strong>Live Mode</strong></li>
+                  </ol>
+                  <div className="bg-amber-50 dark:bg-amber-950/40 rounded p-2 mt-3 border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      <Clock className="h-3 w-3 inline mr-1" />
+                      L'App Review può richiedere da 1 a 5 giorni lavorativi. Usa i Tester nel frattempo!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/40 dark:to-cyan-950/40 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm font-medium mb-2 text-blue-700 dark:text-blue-300">Come verificare lo stato dell'app:</p>
+                  <ul className="space-y-1 text-sm text-muted-foreground list-disc list-inside">
+                    <li>Apri la dashboard della tua app su Meta for Developers</li>
+                    <li>In alto a destra, cerca l'indicatore <strong>"In Development"</strong> o <strong>"Live"</strong></li>
+                    <li>Se dice "In Development", sei ancora in Development Mode</li>
+                  </ul>
+                </div>
+                
+                <ExternalLinkButton href="https://developers.facebook.com/docs/development/release">
+                  Guida Pubblicazione App Meta
+                </ExternalLinkButton>
+              </StepCard>
             </SectionCard>
 
             <SectionCard
