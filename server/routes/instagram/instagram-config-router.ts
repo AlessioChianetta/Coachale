@@ -61,6 +61,15 @@ router.post("/config", authenticateToken, async (req: AuthRequest, res: Response
     const consultantId = req.user!.id;
     const encryptionSalt = req.user!.encryptionSalt;
 
+    console.log("[INSTAGRAM CONFIG] Received body:", {
+      instagramPageId: req.body.instagramPageId,
+      hasPageAccessToken: !!req.body.pageAccessToken,
+      pageAccessTokenLength: req.body.pageAccessToken?.length || 0,
+      hasAppSecret: !!req.body.appSecret,
+      appSecretLength: req.body.appSecret?.length || 0,
+      hasEncryptionSalt: !!encryptionSalt,
+    });
+
     const {
       instagramPageId,
       pageAccessToken,
