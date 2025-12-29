@@ -539,7 +539,7 @@ export function buildSystemPrompt(
 ): string {
   const hasFileSearch = options?.hasFileSearch ?? false;
   const indexedKnowledgeDocIds = options?.indexedKnowledgeDocIds ?? new Set<string>();
-  const relevantDocs = hasFileSearch ? [] : userContext.library.documents;
+  const relevantDocs = hasFileSearch ? [] : (userContext.library?.documents ?? []);
 
   const baseContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
