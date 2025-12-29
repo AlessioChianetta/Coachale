@@ -358,8 +358,8 @@ ${triggerContext}
 
     const fullSystemPrompt = systemPrompt + instagramContext;
 
-    // Get AI provider and generate response
-    const aiProvider = await getAIProvider(consultant);
+    // Get AI provider and generate response (use consultantId for both params like WhatsApp)
+    const aiProvider = await getAIProvider(consultant.id, consultant.id);
     
     let response: string | null = null;
 
