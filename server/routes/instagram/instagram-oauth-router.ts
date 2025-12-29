@@ -26,13 +26,14 @@ const FB_GRAPH_URL = "https://graph.facebook.com/v19.0";
 
 // Required permissions for Instagram Messaging
 const SCOPES = [
-  "instagram_basic",
-  "instagram_manage_messages", 
+  "public_profile",
   "pages_show_list",
   "pages_messaging",
-  "pages_manage_metadata",
   "pages_read_engagement",
-  "business_management",
+  "pages_manage_metadata",
+  "instagram_basic",
+  "instagram_manage_messages",
+  "instagram_manage_comments",
 ].join(",");
 
 /**
