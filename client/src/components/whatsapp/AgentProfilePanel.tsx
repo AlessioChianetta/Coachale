@@ -288,6 +288,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   // Instagram automation state
   const [newKeyword, setNewKeyword] = useState("");
   const [commentAutoReplyMessage, setCommentAutoReplyMessage] = useState("");
+  const [storyAutoReplyMessage, setStoryAutoReplyMessage] = useState("");
 
   // Fetch Instagram configs
   const { data: instagramConfigs, isLoading: isLoadingInstagramConfigs } = useQuery<{
@@ -1041,17 +1042,37 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                               </div>
                               
                               {/* Story Reply */}
-                              <div className="flex items-center justify-between p-2 bg-white/60 rounded border border-pink-100">
-                                <div className="flex items-center gap-2">
-                                  <BookOpen className="h-3.5 w-3.5 text-pink-500" />
-                                  <span className="text-xs text-slate-700">Story Reply</span>
+                              <div className="space-y-2 p-2 bg-white/60 rounded border border-pink-100">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <BookOpen className="h-3.5 w-3.5 text-pink-500" />
+                                    <span className="text-xs text-slate-700">Story Reply</span>
+                                  </div>
+                                  <Switch
+                                    checked={currentConfig.storyReplyEnabled ?? false}
+                                    onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'storyReplyEnabled', checked)}
+                                    disabled={updateInstagramSettings.isPending}
+                                    className="scale-75"
+                                  />
                                 </div>
-                                <Switch
-                                  checked={currentConfig.storyReplyEnabled ?? false}
-                                  onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'storyReplyEnabled', checked)}
-                                  disabled={updateInstagramSettings.isPending}
-                                  className="scale-75"
-                                />
+                                
+                                {currentConfig.storyReplyEnabled && (
+                                  <div className="pl-5 space-y-1.5 border-l-2 border-pink-200 ml-1">
+                                    <p className="text-xs text-slate-500">Messaggio risposta storia:</p>
+                                    <Textarea
+                                      value={storyAutoReplyMessage || currentConfig.storyAutoReplyMessage || ''}
+                                      onChange={(e) => setStoryAutoReplyMessage(e.target.value)}
+                                      onBlur={() => {
+                                        const newValue = storyAutoReplyMessage || '';
+                                        if (newValue !== (currentConfig.storyAutoReplyMessage || '')) {
+                                          handleInstagramSettingChange(currentConfig.id, 'storyAutoReplyMessage', newValue);
+                                        }
+                                      }}
+                                      placeholder="Grazie per aver risposto alla mia storia! Come posso aiutarti?"
+                                      className="text-xs min-h-[60px] resize-none"
+                                    />
+                                  </div>
+                                )}
                               </div>
                               
                               {/* Comment to DM */}
