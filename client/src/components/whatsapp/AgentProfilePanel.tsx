@@ -51,8 +51,13 @@ import {
   Sparkles,
   FileText,
   Share2,
-  Instagram
+  Instagram,
+  X,
+  Plus,
+  FlaskConical
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AgentShareManager } from "./agent-share-manager";
@@ -280,6 +285,10 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [selectedInstagramConfigId, setSelectedInstagramConfigId] = useState<string | null>(null);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
 
+  // Instagram automation state
+  const [newKeyword, setNewKeyword] = useState("");
+  const [commentAutoReplyMessage, setCommentAutoReplyMessage] = useState("");
+
   // Fetch Instagram configs
   const { data: instagramConfigs, isLoading: isLoadingInstagramConfigs } = useQuery<{
     configs: Array<{
@@ -287,6 +296,15 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
       instagramPageId: string;
       agentName: string | null;
       isActive: boolean;
+      autoResponseEnabled: boolean;
+      storyReplyEnabled: boolean;
+      commentToDmEnabled: boolean;
+      commentTriggerKeywords: string[];
+      commentAutoReplyMessage: string | null;
+      storyAutoReplyMessage: string | null;
+      iceBreakersEnabled: boolean;
+      iceBreakers: any[];
+      isDryRun: boolean;
       linkedAgent: { agentId: string; agentName: string } | null;
     }>;
   }>({
@@ -352,6 +370,55 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
     } finally {
       setIsSavingInstagram(false);
     }
+  };
+
+  // Mutation for updating Instagram settings
+  const updateInstagramSettings = useMutation({
+    mutationFn: async (data: { configId: string; settings: Record<string, any> }) => {
+      const res = await fetch(`/api/instagram/config/${data.configId}/settings`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(data.settings)
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to update settings');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instagram-configs"] });
+      toast({
+        title: "Impostazioni Salvate",
+        description: "Le impostazioni Instagram sono state aggiornate"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile salvare le impostazioni"
+      });
+    }
+  });
+
+  const handleInstagramSettingChange = (configId: string, key: string, value: any) => {
+    updateInstagramSettings.mutate({
+      configId,
+      settings: { [key]: value }
+    });
+  };
+
+  const handleAddKeyword = (configId: string, currentKeywords: string[]) => {
+    const keyword = newKeyword.trim();
+    if (keyword && !currentKeywords.includes(keyword)) {
+      handleInstagramSettingChange(configId, 'commentTriggerKeywords', [...currentKeywords, keyword]);
+      setNewKeyword("");
+    }
+  };
+
+  const handleRemoveKeyword = (configId: string, currentKeywords: string[], keywordToRemove: string) => {
+    handleInstagramSettingChange(configId, 'commentTriggerKeywords', currentKeywords.filter(k => k !== keywordToRemove));
   };
 
   const { data: consultantClients } = useQuery<ConsultantClient[]>({
@@ -933,18 +1000,174 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                 ) : instagramConfigs?.configs && instagramConfigs.configs.length > 0 ? (
                   <div className="space-y-2">
                     {selectedInstagramConfigId ? (
-                      <div className="flex items-center gap-2 p-2 rounded bg-pink-100/50 border border-pink-200">
-                        <Instagram className="h-4 w-4 text-pink-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-pink-700">Collegato</p>
-                          <p className="text-xs text-pink-600 truncate">
-                            {instagramConfigs.configs.find(c => c.id === selectedInstagramConfigId)?.instagramPageId || "Account Instagram"}
-                          </p>
+                      <>
+                        <div className="flex items-center gap-2 p-2 rounded bg-pink-100/50 border border-pink-200">
+                          <Instagram className="h-4 w-4 text-pink-600 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-pink-700">Collegato</p>
+                            <p className="text-xs text-pink-600 truncate">
+                              {instagramConfigs.configs.find(c => c.id === selectedInstagramConfigId)?.instagramPageId || "Account Instagram"}
+                            </p>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => handleLinkInstagram(null)} disabled={isSavingInstagram} className="h-7 px-2 text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-300">
+                            {isSavingInstagram ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlink className="h-3 w-3" />}
+                          </Button>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => handleLinkInstagram(null)} disabled={isSavingInstagram} className="h-7 px-2 text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-300">
-                          {isSavingInstagram ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlink className="h-3 w-3" />}
-                        </Button>
-                      </div>
+                        
+                        {/* Automation Settings */}
+                        {(() => {
+                          const currentConfig = instagramConfigs.configs.find(c => c.id === selectedInstagramConfigId);
+                          if (!currentConfig) return null;
+                          
+                          return (
+                            <div className="mt-3 pt-3 border-t border-pink-200/50 space-y-3">
+                              <div className="flex items-center gap-2 text-xs font-medium text-pink-700">
+                                <Zap className="h-3.5 w-3.5" />
+                                AUTOMAZIONI
+                              </div>
+                              
+                              {/* Auto Response DM */}
+                              <div className="flex items-center justify-between p-2 bg-white/60 rounded border border-pink-100">
+                                <div className="flex items-center gap-2">
+                                  <MessageSquare className="h-3.5 w-3.5 text-pink-500" />
+                                  <span className="text-xs text-slate-700">Risposta Auto DM</span>
+                                </div>
+                                <Switch
+                                  checked={currentConfig.autoResponseEnabled ?? false}
+                                  onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'autoResponseEnabled', checked)}
+                                  disabled={updateInstagramSettings.isPending}
+                                  className="scale-75"
+                                />
+                              </div>
+                              
+                              {/* Story Reply */}
+                              <div className="flex items-center justify-between p-2 bg-white/60 rounded border border-pink-100">
+                                <div className="flex items-center gap-2">
+                                  <BookOpen className="h-3.5 w-3.5 text-pink-500" />
+                                  <span className="text-xs text-slate-700">Story Reply</span>
+                                </div>
+                                <Switch
+                                  checked={currentConfig.storyReplyEnabled ?? false}
+                                  onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'storyReplyEnabled', checked)}
+                                  disabled={updateInstagramSettings.isPending}
+                                  className="scale-75"
+                                />
+                              </div>
+                              
+                              {/* Comment to DM */}
+                              <div className="space-y-2 p-2 bg-white/60 rounded border border-pink-100">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <MessageSquare className="h-3.5 w-3.5 text-pink-500" />
+                                    <span className="text-xs text-slate-700">Comment-to-DM</span>
+                                  </div>
+                                  <Switch
+                                    checked={currentConfig.commentToDmEnabled ?? false}
+                                    onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'commentToDmEnabled', checked)}
+                                    disabled={updateInstagramSettings.isPending}
+                                    className="scale-75"
+                                  />
+                                </div>
+                                
+                                {currentConfig.commentToDmEnabled && (
+                                  <div className="pl-5 space-y-2 border-l-2 border-pink-200 ml-1">
+                                    {/* Keywords */}
+                                    <div className="space-y-1.5">
+                                      <p className="text-xs text-slate-500">Parole chiave:</p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {(currentConfig.commentTriggerKeywords || []).map((keyword, idx) => (
+                                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-100 text-pink-700 rounded-full text-xs">
+                                            {keyword}
+                                            <button
+                                              onClick={() => handleRemoveKeyword(currentConfig.id, currentConfig.commentTriggerKeywords || [], keyword)}
+                                              className="hover:text-pink-900"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                      <div className="flex gap-1">
+                                        <Input
+                                          value={newKeyword}
+                                          onChange={(e) => setNewKeyword(e.target.value)}
+                                          placeholder="Nuova parola..."
+                                          className="h-7 text-xs flex-1"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.preventDefault();
+                                              handleAddKeyword(currentConfig.id, currentConfig.commentTriggerKeywords || []);
+                                            }
+                                          }}
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleAddKeyword(currentConfig.id, currentConfig.commentTriggerKeywords || [])}
+                                          className="h-7 px-2"
+                                          disabled={!newKeyword.trim()}
+                                        >
+                                          <Plus className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Auto Reply Message */}
+                                    <div className="space-y-1.5">
+                                      <p className="text-xs text-slate-500">Messaggio auto:</p>
+                                      <Textarea
+                                        value={currentConfig.commentAutoReplyMessage || ''}
+                                        onChange={(e) => setCommentAutoReplyMessage(e.target.value)}
+                                        onBlur={() => {
+                                          if (commentAutoReplyMessage !== currentConfig.commentAutoReplyMessage) {
+                                            handleInstagramSettingChange(currentConfig.id, 'commentAutoReplyMessage', commentAutoReplyMessage);
+                                          }
+                                        }}
+                                        placeholder="Messaggio da inviare..."
+                                        className="text-xs min-h-[60px] resize-none"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Ice Breakers */}
+                              <div className="flex items-center justify-between p-2 bg-white/60 rounded border border-pink-100">
+                                <div className="flex items-center gap-2">
+                                  <Sparkles className="h-3.5 w-3.5 text-pink-500" />
+                                  <span className="text-xs text-slate-700">Ice Breakers</span>
+                                </div>
+                                <Switch
+                                  checked={currentConfig.iceBreakersEnabled ?? false}
+                                  onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'iceBreakersEnabled', checked)}
+                                  disabled={updateInstagramSettings.isPending}
+                                  className="scale-75"
+                                />
+                              </div>
+                              
+                              {/* Dry Run */}
+                              <div className="flex items-center justify-between p-2 bg-amber-50/60 rounded border border-amber-200">
+                                <div className="flex items-center gap-2">
+                                  <FlaskConical className="h-3.5 w-3.5 text-amber-600" />
+                                  <span className="text-xs text-slate-700">Dry Run (test)</span>
+                                </div>
+                                <Switch
+                                  checked={currentConfig.isDryRun ?? true}
+                                  onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'isDryRun', checked)}
+                                  disabled={updateInstagramSettings.isPending}
+                                  className="scale-75"
+                                />
+                              </div>
+                              
+                              {currentConfig.isDryRun && (
+                                <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                                  ⚠️ Modalità test attiva: le risposte vengono solo logggate, non inviate
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </>
                     ) : (
                       <div className="space-y-1.5">
                         <p className="text-xs text-slate-500">Seleziona un account:</p>

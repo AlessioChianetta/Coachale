@@ -333,6 +333,87 @@ router.get("/conversations/:id/messages", authenticateToken, async (req: AuthReq
 });
 
 /**
+ * PATCH /api/instagram/config/:configId/settings
+ * Update Instagram automation settings
+ */
+router.patch("/config/:configId/settings", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { configId } = req.params;
+
+    // Verify the config belongs to the consultant
+    const [existingConfig] = await db
+      .select()
+      .from(consultantInstagramConfig)
+      .where(
+        and(
+          eq(consultantInstagramConfig.id, configId),
+          eq(consultantInstagramConfig.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!existingConfig) {
+      return res.status(404).json({ error: "Configuration not found" });
+    }
+
+    const {
+      autoResponseEnabled,
+      storyReplyEnabled,
+      commentToDmEnabled,
+      commentTriggerKeywords,
+      commentAutoReplyMessage,
+      storyAutoReplyMessage,
+      iceBreakersEnabled,
+      iceBreakers,
+      isDryRun,
+    } = req.body;
+
+    // Build update object only with provided fields
+    const updateData: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+
+    if (typeof autoResponseEnabled === 'boolean') updateData.autoResponseEnabled = autoResponseEnabled;
+    if (typeof storyReplyEnabled === 'boolean') updateData.storyReplyEnabled = storyReplyEnabled;
+    if (typeof commentToDmEnabled === 'boolean') updateData.commentToDmEnabled = commentToDmEnabled;
+    if (typeof iceBreakersEnabled === 'boolean') updateData.iceBreakersEnabled = iceBreakersEnabled;
+    if (typeof isDryRun === 'boolean') updateData.isDryRun = isDryRun;
+    if (Array.isArray(commentTriggerKeywords)) updateData.commentTriggerKeywords = commentTriggerKeywords;
+    if (typeof commentAutoReplyMessage === 'string') updateData.commentAutoReplyMessage = commentAutoReplyMessage;
+    if (typeof storyAutoReplyMessage === 'string') updateData.storyAutoReplyMessage = storyAutoReplyMessage;
+    if (Array.isArray(iceBreakers)) updateData.iceBreakers = iceBreakers;
+
+    const [updatedConfig] = await db
+      .update(consultantInstagramConfig)
+      .set(updateData)
+      .where(eq(consultantInstagramConfig.id, configId))
+      .returning();
+
+    console.log(`[INSTAGRAM CONFIG] Updated settings for config ${configId}:`, Object.keys(updateData).filter(k => k !== 'updatedAt'));
+
+    return res.json({
+      success: true,
+      config: {
+        id: updatedConfig.id,
+        autoResponseEnabled: updatedConfig.autoResponseEnabled,
+        storyReplyEnabled: updatedConfig.storyReplyEnabled,
+        commentToDmEnabled: updatedConfig.commentToDmEnabled,
+        commentTriggerKeywords: updatedConfig.commentTriggerKeywords,
+        commentAutoReplyMessage: updatedConfig.commentAutoReplyMessage,
+        storyAutoReplyMessage: updatedConfig.storyAutoReplyMessage,
+        iceBreakersEnabled: updatedConfig.iceBreakersEnabled,
+        iceBreakers: updatedConfig.iceBreakers,
+        isDryRun: updatedConfig.isDryRun,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating Instagram settings:", error);
+    return res.status(500).json({ error: "Failed to update settings" });
+  }
+});
+
+/**
  * POST /api/instagram/config/test-connection
  * Test Instagram API connection
  */

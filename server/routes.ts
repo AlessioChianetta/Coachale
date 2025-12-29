@@ -11663,6 +11663,15 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           instagramPageId: schema.consultantInstagramConfig.instagramPageId,
           agentName: schema.consultantInstagramConfig.agentName,
           isActive: schema.consultantInstagramConfig.isActive,
+          autoResponseEnabled: schema.consultantInstagramConfig.autoResponseEnabled,
+          storyReplyEnabled: schema.consultantInstagramConfig.storyReplyEnabled,
+          commentToDmEnabled: schema.consultantInstagramConfig.commentToDmEnabled,
+          commentTriggerKeywords: schema.consultantInstagramConfig.commentTriggerKeywords,
+          commentAutoReplyMessage: schema.consultantInstagramConfig.commentAutoReplyMessage,
+          storyAutoReplyMessage: schema.consultantInstagramConfig.storyAutoReplyMessage,
+          iceBreakersEnabled: schema.consultantInstagramConfig.iceBreakersEnabled,
+          iceBreakers: schema.consultantInstagramConfig.iceBreakers,
+          isDryRun: schema.consultantInstagramConfig.isDryRun,
         })
         .from(schema.consultantInstagramConfig)
         .where(eq(schema.consultantInstagramConfig.consultantId, consultantId));
