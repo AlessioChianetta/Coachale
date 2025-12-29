@@ -1495,31 +1495,6 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                             </li>
                           </ul>
                         </div>
-                        
-                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                          <p className="font-medium text-purple-700 mb-2 flex items-center gap-1.5">
-                            <Users className="h-3.5 w-3.5" />
-                            Aggiungere Tester (Modalità Dev)
-                          </p>
-                          <p className="text-xs text-slate-600 mb-2">
-                            In Modalità Sviluppo, solo gli utenti nella lista Tester possono usare il bot.
-                          </p>
-                          <ol className="space-y-1.5 text-slate-600 list-decimal list-inside">
-                            <li>Vai su <a href="https://developers.facebook.com" target="_blank" rel="noopener" className="text-purple-600 underline">developers.facebook.com</a></li>
-                            <li>My Apps → Seleziona la tua App</li>
-                            <li>Ruoli dell'app → Ruoli → Tester</li>
-                            <li>Clicca "Aggiungi persone" e inserisci il nome</li>
-                          </ol>
-                          <div className="mt-2 p-2 bg-purple-100 rounded border border-purple-300">
-                            <p className="text-xs font-medium text-purple-800 flex items-center gap-1">
-                              <AlertTriangle className="h-3 w-3" />
-                              IMPORTANTE: Accettare l'invito!
-                            </p>
-                            <p className="text-xs text-purple-700 mt-1">
-                              Il tester deve aprire <a href="https://developers.facebook.com/requests" target="_blank" rel="noopener" className="underline font-medium">developers.facebook.com/requests</a> e cliccare CONFERMA.
-                            </p>
-                          </div>
-                        </div>
                       </CollapsibleContent>
                     </Collapsible>
                   </div>
