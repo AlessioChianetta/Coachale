@@ -31,6 +31,7 @@ const SCOPES = [
   "pages_messaging",
   "pages_read_engagement",
   "pages_manage_metadata",
+  "business_management",
   "instagram_basic",
   "instagram_manage_messages",
   "instagram_manage_comments",
