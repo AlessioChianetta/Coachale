@@ -40,7 +40,11 @@ import {
   Mail,
   MousePointerClick,
   PartyPopper,
-  FlaskConical
+  FlaskConical,
+  Wrench,
+  Eye,
+  UserCheck,
+  Shield
 } from "lucide-react";
 import { Link } from "wouter";
 import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
@@ -303,6 +307,96 @@ export default function GuideInstagram() {
             </div>
 
             <ComparisonBox />
+
+            {/* GUIDA RAPIDA SBLOCCO */}
+            <Card className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/40 dark:via-orange-950/40 dark:to-yellow-950/40 border-2 border-amber-300 dark:border-amber-700">
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-xl">
+                    <Wrench className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">
+                      Guida Rapida: Sblocco Messaggi Instagram Bot
+                    </h2>
+                    <p className="text-amber-100 text-sm mt-0.5">
+                      Se il server funziona ma il bot non risponde, controlla questi 3 punti
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <CardContent className="p-6 space-y-4">
+                <div className="bg-white/80 dark:bg-gray-900/80 rounded-xl border p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-amber-500 text-white rounded-lg w-8 h-8 flex items-center justify-center font-bold shrink-0">1</div>
+                    <div>
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <Eye className="h-4 w-4 text-amber-600" />
+                        L'Interruttore Invisibile (Privacy Instagram)
+                      </h4>
+                      <p className="text-sm text-muted-foreground mt-1 mb-2">
+                        E il motivo principale per cui i messaggi non arrivano a Replit.
+                      </p>
+                      <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                        <li>Apri l'app Instagram sul telefono (profilo della Pagina/Azienda)</li>
+                        <li>Vai su <strong>Impostazioni e attivita</strong> → <strong>Messaggi e risposte alle storie</strong> → <strong>Strumenti per i messaggi</strong></li>
+                        <li>Attiva la levetta: <strong>"Consenti l'accesso ai messaggi"</strong></li>
+                      </ol>
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 italic">
+                        Senza questo, Instagram non inviera mai i dati al tuo server per motivi di privacy.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/80 dark:bg-gray-900/80 rounded-xl border p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-orange-500 text-white rounded-lg w-8 h-8 flex items-center justify-center font-bold shrink-0">2</div>
+                    <div>
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <UserCheck className="h-4 w-4 text-orange-600" />
+                        L'Accettazione del Tester (Solo per App in Sviluppo)
+                      </h4>
+                      <p className="text-sm text-muted-foreground mt-1 mb-2">
+                        Finche la tua App su Meta e in modalita "Sviluppo", solo i tester possono usarla.
+                      </p>
+                      <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                        <li>Entra su Instagram con l'account che deve fare il test</li>
+                        <li>Vai in <strong>Impostazioni</strong> → <strong>App e siti web</strong> → <strong>Inviti tester</strong></li>
+                        <li>Clicca su <strong>Accetta</strong> sull'invito della tua App</li>
+                      </ol>
+                      <p className="text-xs text-orange-700 dark:text-orange-300 mt-2 italic">
+                        Se non accetti qui, Meta ignora i tuoi messaggi anche se sei nell'elenco dei tester.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/80 dark:bg-gray-900/80 rounded-xl border p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-yellow-500 text-white rounded-lg w-8 h-8 flex items-center justify-center font-bold shrink-0">3</div>
+                    <div>
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-yellow-600" />
+                        Il "Vigile Urbano" (Handover Protocol)
+                      </h4>
+                      <p className="text-sm text-muted-foreground mt-1 mb-2">
+                        Serve a decidere chi deve gestire il messaggio: la posta di Facebook o il tuo Bot.
+                      </p>
+                      <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                        <li>Vai nelle <strong>Impostazioni della Pagina Facebook</strong> → <strong>Messaggi Avanzati</strong></li>
+                        <li>Sotto "Ricevitore principale per Messenger/Instagram", clicca su <strong>Configura</strong></li>
+                        <li>Seleziona la tua App come <strong>ricevitore principale</strong></li>
+                      </ol>
+                      <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2 italic">
+                        Questo dice a Meta: "Passa la palla al server di Replit, non tenerla nella posta di Facebook".
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* SEZIONE BETA TESTER - Flusso SaaS Self-Service */}
             <Card className="bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 dark:from-violet-950/40 dark:via-purple-950/40 dark:to-fuchsia-950/40 border-2 border-violet-300 dark:border-violet-700 overflow-hidden">
