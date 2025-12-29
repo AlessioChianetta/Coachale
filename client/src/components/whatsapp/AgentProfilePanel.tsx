@@ -284,6 +284,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   // Instagram integration state
   const [selectedInstagramConfigId, setSelectedInstagramConfigId] = useState<string | null>(null);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
+  const [isConnectingInstagram, setIsConnectingInstagram] = useState(false);
 
   // Instagram automation state
   const [newKeyword, setNewKeyword] = useState("");
@@ -390,6 +391,30 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
       });
     } finally {
       setIsSavingInstagram(false);
+    }
+  };
+
+  const handleConnectInstagram = async () => {
+    setIsConnectingInstagram(true);
+    try {
+      const response = await fetch("/api/instagram/oauth/start", {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (response.ok && data.authUrl) {
+        window.open(data.authUrl, "_blank", "width=600,height=700");
+      } else {
+        throw new Error(data.error || "Impossibile iniziare il collegamento");
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Errore durante la connessione a Instagram"
+      });
+    } finally {
+      setIsConnectingInstagram(false);
     }
   };
 
@@ -1312,12 +1337,26 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 p-2 rounded bg-slate-50 border border-slate-200">
-                    <Instagram className="h-4 w-4 text-slate-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-slate-600">Nessun account configurato</p>
-                      <p className="text-xs text-slate-400">Configura in API Keys</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 p-2 rounded bg-slate-50 border border-slate-200">
+                      <Instagram className="h-4 w-4 text-slate-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-slate-600">Nessun account collegato</p>
+                      </div>
                     </div>
+                    <Button
+                      size="sm"
+                      onClick={handleConnectInstagram}
+                      disabled={isConnectingInstagram}
+                      className="w-full h-8 text-xs bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
+                    >
+                      {isConnectingInstagram ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <Instagram className="h-3 w-3 mr-1" />
+                      )}
+                      Connetti Instagram
+                    </Button>
                   </div>
                 )}
               </div>
