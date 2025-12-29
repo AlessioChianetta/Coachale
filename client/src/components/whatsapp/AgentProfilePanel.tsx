@@ -290,6 +290,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [selectedInstagramConfigId, setSelectedInstagramConfigId] = useState<string | null>(null);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
   const [isConnectingInstagram, setIsConnectingInstagram] = useState(false);
+  const [instagramError, setInstagramError] = useState<{ code: string; message: string } | null>(null);
 
   // Instagram automation state
   const [newKeyword, setNewKeyword] = useState("");
@@ -363,6 +364,46 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
     }
   }, [selectedInstagramConfigId, instagramConfigs?.configs]);
 
+  // Handle Instagram OAuth errors from URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorCode = urlParams.get('instagram_error');
+    const successParam = urlParams.get('instagram_success');
+    
+    if (errorCode) {
+      const errorMessages: Record<string, string> = {
+        'no_instagram': 'Nessun account Instagram Business collegato alla tua pagina Facebook. Devi prima collegare il tuo account Instagram alla pagina Facebook.',
+        'no_pages': 'Nessuna pagina Facebook trovata. Assicurati di essere admin di almeno una pagina Facebook.',
+        'missing_params': 'Parametri mancanti durante l\'autorizzazione. Riprova.',
+        'invalid_state': 'Sessione di autorizzazione non valida. Riprova.',
+        'state_expired': 'Sessione di autorizzazione scaduta. Riprova.',
+        'config_missing': 'Configurazione Instagram non trovata. Contatta il supporto.',
+        'token_error': 'Errore durante lo scambio del token. Riprova.',
+        'callback_failed': 'Errore durante il callback. Riprova.',
+      };
+      
+      setInstagramError({
+        code: errorCode,
+        message: errorMessages[errorCode] || `Errore sconosciuto: ${errorCode}`
+      });
+      
+      // Clean URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    } else if (successParam) {
+      const username = urlParams.get('username');
+      toast({
+        title: "Instagram Collegato!",
+        description: username ? `Account @${username} collegato con successo` : "Account collegato con successo"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instagram-configs"] });
+      
+      // Clean URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [toast, queryClient]);
+
   const handleLinkInstagram = async (configId: string | null) => {
     if (!selectedAgent?.id) return;
     
@@ -401,6 +442,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
   const handleConnectInstagram = async () => {
     setIsConnectingInstagram(true);
+    setInstagramError(null);
     try {
       const response = await fetch("/api/instagram/oauth/start", {
         method: "GET",
@@ -408,7 +450,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
       });
       const data = await response.json();
       if (response.ok && data.authUrl) {
-        window.open(data.authUrl, "_blank", "width=600,height=700");
+        window.location.href = data.authUrl;
       } else {
         throw new Error(data.error || "Impossibile iniziare il collegamento");
       }
@@ -418,7 +460,6 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
         title: "Errore",
         description: error.message || "Errore durante la connessione a Instagram"
       });
-    } finally {
       setIsConnectingInstagram(false);
     }
   };
@@ -1343,6 +1384,34 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                   </div>
                 ) : (
                   <div className="space-y-2">
+                    {instagramError && (
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs font-medium text-red-700 mb-1">Connessione Fallita</p>
+                            <p className="text-xs text-red-600">{instagramError.message}</p>
+                            {instagramError.code === 'no_instagram' && (
+                              <div className="mt-2 pt-2 border-t border-red-200">
+                                <p className="text-xs font-medium text-red-700 mb-1">Come risolvere:</p>
+                                <ol className="text-xs text-red-600 list-decimal list-inside space-y-0.5">
+                                  <li>Apri Instagram sul telefono</li>
+                                  <li>Vai su Profilo → Modifica Profilo</li>
+                                  <li>Scorri fino a "Pagina" e collegala</li>
+                                  <li>Riprova la connessione</li>
+                                </ol>
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setInstagramError(null)}
+                            className="p-1 hover:bg-red-100 rounded transition-colors"
+                          >
+                            <X className="h-3 w-3 text-red-500" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 p-2 rounded bg-slate-50 border border-slate-200">
                       <Instagram className="h-4 w-4 text-slate-400" />
                       <div className="flex-1">
