@@ -428,18 +428,14 @@ export default function ConsultantApiKeysUnified() {
     whatsappNumber?: string;
   }>({});
 
-  // Instagram DM state
-  const [instagramFormData, setInstagramFormData] = useState({
-    pageId: "",
-    accessToken: "",
-    appSecret: "",
-    verifyToken: "",
-  });
-  const [showInstagramAccessToken, setShowInstagramAccessToken] = useState(false);
-  const [showInstagramAppSecret, setShowInstagramAppSecret] = useState(false);
-  const [isTestingInstagram, setIsTestingInstagram] = useState(false);
-  const [isSavingInstagram, setIsSavingInstagram] = useState(false);
+  // Instagram DM state (OAuth flow)
   const [instagramConnectionStatus, setInstagramConnectionStatus] = useState<"connected" | "not_configured" | "error">("not_configured");
+  const [isConnectingInstagram, setIsConnectingInstagram] = useState(false);
+  const [isDisconnectingInstagram, setIsDisconnectingInstagram] = useState(false);
+  const [instagramOAuthData, setInstagramOAuthData] = useState<{
+    username?: string;
+    connectedAt?: string;
+  } | null>(null);
 
   // Lead Import state
   const [showLeadApiKey, setShowLeadApiKey] = useState(false);
@@ -623,17 +619,17 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
-  // Instagram Configuration query
-  const { data: instagramConfigData, isLoading: isLoadingInstagramConfig } = useQuery({
-    queryKey: ["/api/instagram/config"],
+  // Instagram OAuth Status query
+  const { data: instagramOAuthStatus, isLoading: isLoadingInstagramOAuth } = useQuery({
+    queryKey: ["/api/instagram/oauth/status"],
     queryFn: async () => {
-      const response = await fetch("/api/instagram/config", {
+      const response = await fetch("/api/instagram/oauth/status", {
         headers: getAuthHeaders(),
       });
       if (!response.ok && response.status !== 404) {
-        throw new Error("Failed to fetch Instagram config");
+        throw new Error("Failed to fetch Instagram OAuth status");
       }
-      if (response.status === 404) return null;
+      if (response.status === 404) return { connected: false };
       return response.json();
     },
   });
@@ -1395,18 +1391,44 @@ export default function ConsultantApiKeysUnified() {
     }
   }, [twilioSettingsData]);
 
-  // Sync Instagram config
+  // Sync Instagram OAuth status
   useEffect(() => {
-    if (instagramConfigData?.config) {
-      setInstagramFormData({
-        pageId: instagramConfigData.config.instagramPageId || "",
-        accessToken: "", // Never sent back for security (masked as ***ENCRYPTED***)
-        appSecret: "", // Never sent back for security (masked as ***ENCRYPTED***)
-        verifyToken: instagramConfigData.config.verifyToken || "",
-      });
-      setInstagramConnectionStatus("connected");
+    if (instagramOAuthStatus) {
+      if (instagramOAuthStatus.connected) {
+        setInstagramConnectionStatus("connected");
+        setInstagramOAuthData({
+          username: instagramOAuthStatus.username,
+          connectedAt: instagramOAuthStatus.connectedAt,
+        });
+      } else {
+        setInstagramConnectionStatus("not_configured");
+        setInstagramOAuthData(null);
+      }
     }
-  }, [instagramConfigData]);
+  }, [instagramOAuthStatus]);
+
+  // Handle Instagram OAuth callback query params (success/error)
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    const instagramSuccess = params.get('instagram_success');
+    const instagramError = params.get('instagram_error');
+    
+    if (instagramSuccess) {
+      toast({
+        title: "Instagram Connesso!",
+        description: "Il tuo account Instagram è stato collegato con successo.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/instagram/oauth/status"] });
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (instagramError) {
+      toast({
+        title: "Errore Connessione",
+        description: decodeURIComponent(instagramError),
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [searchParams, toast, queryClient]);
 
   const [newWhatsAppApiKey, setNewWhatsAppApiKey] = useState("");
 
@@ -6133,7 +6155,7 @@ export default function ConsultantApiKeysUnified() {
                           <Instagram className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                          <CardTitle className="text-slate-700">Configurazione Instagram DM</CardTitle>
+                          <CardTitle className="text-slate-700">Instagram DM</CardTitle>
                           <CardDescription className="text-slate-600">
                             Collega il tuo account Instagram Business per gestire i messaggi diretti
                           </CardDescription>
@@ -6169,362 +6191,188 @@ export default function ConsultantApiKeysUnified() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <Alert className="bg-cyan-50 border-cyan-200">
-                      <Instagram className="h-4 w-4 text-cyan-600" />
-                      <AlertDescription className="text-sm text-cyan-800">
-                        <strong>Requisiti:</strong> È necessario un account Instagram Business collegato a una Pagina Facebook 
-                        e configurato tramite Meta Business Suite per utilizzare le API di messaggistica.
-                      </AlertDescription>
-                    </Alert>
-
-                    <div className="space-y-4 pt-4 border-t border-cyan-200">
-                      <div className="space-y-2">
-                        <Label htmlFor="instagramPageId" className="text-slate-700">Instagram Page ID *</Label>
-                        <Input
-                          id="instagramPageId"
-                          type="text"
-                          placeholder="Es: 17841400000000000"
-                          value={instagramFormData.pageId}
-                          onChange={(e) => setInstagramFormData(prev => ({ ...prev, pageId: e.target.value }))}
-                          className="border-slate-300 focus:border-cyan-500"
-                        />
-                        <p className="text-xs text-slate-500">
-                          Trovi l'ID nella sezione "Impostazioni" del tuo account Instagram Business
-                        </p>
+                    {isLoadingInstagramOAuth ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                       </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="instagramAccessToken" className="text-slate-700">Page Access Token *</Label>
-                        <div className="relative">
-                          <Input
-                            id="instagramAccessToken"
-                            type={showInstagramAccessToken ? "text" : "password"}
-                            placeholder={instagramConnectionStatus === "connected" && !instagramFormData.accessToken 
-                              ? "••••••••• (già configurato - lascia vuoto per mantenere)" 
-                              : "Il tuo Access Token dalla Meta Developer Console"}
-                            value={instagramFormData.accessToken}
-                            onChange={(e) => setInstagramFormData(prev => ({ ...prev, accessToken: e.target.value }))}
-                            className="border-slate-300 focus:border-cyan-500 pr-10"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-2 top-1/2 -translate-y-1/2"
-                            onClick={() => setShowInstagramAccessToken(!showInstagramAccessToken)}
-                          >
-                            {showInstagramAccessToken ? (
-                              <EyeOff className="h-4 w-4 text-slate-500" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-slate-500" />
-                            )}
-                          </Button>
+                    ) : instagramConnectionStatus === "connected" && instagramOAuthData ? (
+                      <div className="space-y-6">
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-green-100 rounded-full">
+                              <CheckCircle className="h-8 w-8 text-green-600" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold text-green-800">Account Connesso</h3>
+                              <p className="text-green-700 text-lg font-medium">
+                                @{instagramOAuthData.username || "instagram_user"}
+                              </p>
+                              {instagramOAuthData.connectedAt && (
+                                <p className="text-sm text-green-600 mt-1">
+                                  Connesso il {new Date(instagramOAuthData.connectedAt).toLocaleDateString("it-IT", {
+                                    day: "numeric",
+                                    month: "long",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                  })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-500">
-                          Genera il token da Meta Business Suite → Impostazioni → Token di accesso
-                        </p>
-                      </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="instagramAppSecret" className="text-slate-700">App Secret *</Label>
-                        <div className="relative">
-                          <Input
-                            id="instagramAppSecret"
-                            type={showInstagramAppSecret ? "text" : "password"}
-                            placeholder={instagramConnectionStatus === "connected" && !instagramFormData.appSecret 
-                              ? "••••••••• (già configurato - lascia vuoto per mantenere)" 
-                              : "Il segreto della tua App Meta"}
-                            value={instagramFormData.appSecret}
-                            onChange={(e) => setInstagramFormData(prev => ({ ...prev, appSecret: e.target.value }))}
-                            className="border-slate-300 focus:border-cyan-500 pr-10"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-2 top-1/2 -translate-y-1/2"
-                            onClick={() => setShowInstagramAppSecret(!showInstagramAppSecret)}
-                          >
-                            {showInstagramAppSecret ? (
-                              <EyeOff className="h-4 w-4 text-slate-500" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-slate-500" />
-                            )}
-                          </Button>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          Trovi l'App Secret nella Meta Developer Console → La tua App → Impostazioni → Base
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="instagramVerifyToken" className="text-slate-700">Verify Token (generato automaticamente)</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="instagramVerifyToken"
-                            type="text"
-                            value={instagramFormData.verifyToken || "Verrà generato al salvataggio"}
-                            readOnly
-                            className="border-slate-300 bg-slate-50 text-slate-600 flex-1"
-                          />
-                          {instagramFormData.verifyToken && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                navigator.clipboard.writeText(instagramFormData.verifyToken);
-                                toast({
-                                  title: "Copiato!",
-                                  description: "Verify Token copiato negli appunti",
-                                });
-                              }}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          Usa questo token per configurare il webhook nella Meta Developer Console
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-3 pt-4">
                         <Button
                           variant="outline"
                           onClick={async () => {
-                            const isAlreadyConfigured = instagramConnectionStatus === "connected";
-                            if (!isAlreadyConfigured && (!instagramFormData.pageId || !instagramFormData.accessToken)) {
-                              toast({
-                                title: "Campi mancanti",
-                                description: "Inserisci almeno Page ID e Access Token per testare la connessione",
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            setIsTestingInstagram(true);
+                            setIsDisconnectingInstagram(true);
                             try {
-                              const response = await fetch("/api/instagram/config/test-connection", {
+                              const response = await fetch("/api/instagram/oauth/disconnect", {
                                 method: "POST",
-                                headers: {
-                                  ...getAuthHeaders(),
-                                  "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({}),
-                              });
-                              const data = await response.json();
-                              if (response.ok && data.success) {
-                                setInstagramConnectionStatus("connected");
-                                toast({
-                                  title: "Connessione riuscita!",
-                                  description: data.message || "L'account Instagram è raggiungibile",
-                                });
-                              } else {
-                                setInstagramConnectionStatus("error");
-                                toast({
-                                  title: "Connessione fallita",
-                                  description: data.error || data.message || "Impossibile connettersi all'account Instagram",
-                                  variant: "destructive",
-                                });
-                              }
-                            } catch (error: any) {
-                              setInstagramConnectionStatus("error");
-                              toast({
-                                title: "Errore",
-                                description: error.message || "Errore durante il test della connessione",
-                                variant: "destructive",
-                              });
-                            } finally {
-                              setIsTestingInstagram(false);
-                            }
-                          }}
-                          disabled={isTestingInstagram || (instagramConnectionStatus !== "connected" && (!instagramFormData.pageId || !instagramFormData.accessToken))}
-                          className="w-full sm:w-auto border-cyan-300 text-cyan-700 hover:bg-cyan-50"
-                        >
-                          {isTestingInstagram ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Test in corso...
-                            </>
-                          ) : (
-                            <>
-                              <RefreshCw className="h-4 w-4 mr-2" />
-                              Test Connessione
-                            </>
-                          )}
-                        </Button>
-
-                        <Button
-                          onClick={async () => {
-                            const isAlreadyConfigured = instagramConnectionStatus === "connected";
-                            const needsAllFields = !isAlreadyConfigured;
-                            if (!instagramFormData.pageId) {
-                              toast({
-                                title: "Campo mancante",
-                                description: "Instagram Page ID è obbligatorio",
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            if (needsAllFields && (!instagramFormData.accessToken || !instagramFormData.appSecret)) {
-                              toast({
-                                title: "Campi mancanti",
-                                description: "Per la prima configurazione, tutti i campi sono obbligatori",
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            setIsSavingInstagram(true);
-                            try {
-                              const response = await fetch("/api/instagram/config", {
-                                method: "POST",
-                                headers: {
-                                  ...getAuthHeaders(),
-                                  "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({
-                                  instagramPageId: instagramFormData.pageId,
-                                  pageAccessToken: instagramFormData.accessToken || undefined,
-                                  appSecret: instagramFormData.appSecret || undefined,
-                                }),
+                                headers: getAuthHeaders(),
                               });
                               const data = await response.json();
                               if (response.ok) {
-                                setInstagramConnectionStatus("connected");
-                                if (data.verifyToken) {
-                                  setInstagramFormData(prev => ({ ...prev, verifyToken: data.verifyToken }));
-                                }
-                                queryClient.invalidateQueries({ queryKey: ["/api/instagram/config"] });
+                                setInstagramConnectionStatus("not_configured");
+                                setInstagramOAuthData(null);
+                                queryClient.invalidateQueries({ queryKey: ["/api/instagram/oauth/status"] });
                                 toast({
-                                  title: "Configurazione salvata!",
-                                  description: "La configurazione Instagram è stata salvata con successo",
+                                  title: "Account scollegato",
+                                  description: "Il tuo account Instagram è stato scollegato con successo.",
                                 });
                               } else {
                                 toast({
                                   title: "Errore",
-                                  description: data.message || "Impossibile salvare la configurazione",
+                                  description: data.message || "Impossibile scollegare l'account",
                                   variant: "destructive",
                                 });
                               }
                             } catch (error: any) {
                               toast({
                                 title: "Errore",
-                                description: error.message || "Errore durante il salvataggio",
+                                description: error.message || "Errore durante la disconnessione",
                                 variant: "destructive",
                               });
                             } finally {
-                              setIsSavingInstagram(false);
+                              setIsDisconnectingInstagram(false);
                             }
                           }}
-                          disabled={isSavingInstagram || !instagramFormData.pageId || (instagramConnectionStatus !== "connected" && (!instagramFormData.accessToken || !instagramFormData.appSecret))}
-                          className="w-full sm:flex-1 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700"
+                          disabled={isDisconnectingInstagram}
+                          className="w-full border-red-300 text-red-700 hover:bg-red-50"
                         >
-                          {isSavingInstagram ? (
+                          {isDisconnectingInstagram ? (
                             <>
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Salvataggio...
+                              Scollegamento in corso...
                             </>
                           ) : (
                             <>
-                              <Save className="h-4 w-4 mr-2" />
-                              Salva Configurazione
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Scollega Account
                             </>
                           )}
                         </Button>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-6">
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+                          <div className="p-4 bg-cyan-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                            <Instagram className="h-8 w-8 text-cyan-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-slate-700 mb-2">
+                            Collega il tuo Account Instagram Business
+                          </h3>
+                          <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                            Connetti il tuo account Instagram Business per gestire automaticamente i messaggi diretti 
+                            direttamente da questa piattaforma. La connessione avviene in modo sicuro tramite Meta.
+                          </p>
 
-                    <div className="bg-teal-50 rounded-lg p-4 mt-4">
-                      <p className="text-sm text-teal-800">
-                        <strong>Webhook URL:</strong> Dopo aver salvato, configura il webhook nella Meta Developer Console con questo URL:
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <code className="bg-white px-2 py-1 rounded border border-teal-200 text-teal-700 text-xs flex-1 break-all">
-                          {window.location.origin}/api/instagram/webhook
-                        </code>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2 flex-shrink-0 border-teal-300"
-                          onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/api/instagram/webhook`);
-                            toast({
-                              title: "URL copiato!",
-                              description: "Incollalo nella configurazione Meta Developer Console",
-                            });
-                          }}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
+                          <Button
+                            size="lg"
+                            onClick={async () => {
+                              setIsConnectingInstagram(true);
+                              try {
+                                const response = await fetch("/api/instagram/oauth/start", {
+                                  method: "GET",
+                                  headers: getAuthHeaders(),
+                                });
+                                const data = await response.json();
+                                if (response.ok && data.authUrl) {
+                                  window.location.href = data.authUrl;
+                                } else {
+                                  toast({
+                                    title: "Errore",
+                                    description: data.message || "Impossibile avviare la connessione OAuth",
+                                    variant: "destructive",
+                                  });
+                                  setIsConnectingInstagram(false);
+                                }
+                              } catch (error: any) {
+                                toast({
+                                  title: "Errore",
+                                  description: error.message || "Errore durante l'avvio della connessione",
+                                  variant: "destructive",
+                                });
+                                setIsConnectingInstagram(false);
+                              }
+                            }}
+                            disabled={isConnectingInstagram}
+                            className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white px-8 py-3 text-lg"
+                          >
+                            {isConnectingInstagram ? (
+                              <>
+                                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                                Connessione in corso...
+                              </>
+                            ) : (
+                              <>
+                                <Instagram className="h-5 w-5 mr-2" />
+                                Connetti Instagram
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
+                        <Alert className="bg-cyan-50 border-cyan-200">
+                          <Instagram className="h-4 w-4 text-cyan-600" />
+                          <AlertDescription className="text-sm text-cyan-800">
+                            <strong>Requisiti:</strong> È necessario un account Instagram Business collegato a una Pagina Facebook 
+                            e configurato tramite Meta Business Suite.
+                          </AlertDescription>
+                        </Alert>
                       </div>
-                    </div>
+                    )}
 
                     <div className="border-t border-cyan-200 pt-6 mt-6">
                       <h4 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
                         <BookOpen className="h-4 w-4 text-cyan-600" />
-                        Guida alla Configurazione Instagram DM
+                        Come Funziona
                       </h4>
                       
                       <div className="space-y-4 text-sm text-slate-600">
                         <div className="bg-white rounded-lg p-4 border border-slate-200">
-                          <h5 className="font-medium text-slate-700 mb-2">1. Prerequisiti</h5>
+                          <h5 className="font-medium text-slate-700 mb-2">Prerequisiti</h5>
                           <ul className="list-disc list-inside space-y-1 text-slate-600">
                             <li>Account Instagram Business (non personale)</li>
                             <li>Pagina Facebook collegata all'account Instagram</li>
                             <li>Accesso a Meta Business Suite</li>
-                            <li>App Meta creata nella Meta Developer Console</li>
                           </ul>
                         </div>
 
                         <div className="bg-white rounded-lg p-4 border border-slate-200">
-                          <h5 className="font-medium text-slate-700 mb-2">2. Trovare l'Instagram Page ID</h5>
+                          <h5 className="font-medium text-slate-700 mb-2">Processo di Connessione</h5>
                           <ol className="list-decimal list-inside space-y-1 text-slate-600">
-                            <li>Vai su <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="text-cyan-600 hover:underline">Meta Business Suite</a></li>
-                            <li>Seleziona "Impostazioni" → "Account collegati"</li>
-                            <li>Clicca sul tuo account Instagram</li>
-                            <li>L'ID si trova nella URL o nelle informazioni dell'account (es: 17841400000000000)</li>
-                          </ol>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-4 border border-slate-200">
-                          <h5 className="font-medium text-slate-700 mb-2">3. Generare l'Access Token</h5>
-                          <ol className="list-decimal list-inside space-y-1 text-slate-600">
-                            <li>Vai su <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-cyan-600 hover:underline">Meta Developer Console</a></li>
-                            <li>Seleziona la tua App → "Strumenti" → "Graph API Explorer"</li>
-                            <li>Scegli la tua App e la Pagina Facebook collegata a Instagram</li>
-                            <li>Aggiungi i permessi: <code className="bg-slate-100 px-1 rounded text-xs">instagram_basic</code>, <code className="bg-slate-100 px-1 rounded text-xs">instagram_manage_messages</code>, <code className="bg-slate-100 px-1 rounded text-xs">pages_messaging</code></li>
-                            <li>Clicca "Generate Access Token" e copia il token</li>
-                            <li>Per un token long-lived, usa lo strumento di debug del token</li>
-                          </ol>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-4 border border-slate-200">
-                          <h5 className="font-medium text-slate-700 mb-2">4. Trovare l'App Secret</h5>
-                          <ol className="list-decimal list-inside space-y-1 text-slate-600">
-                            <li>Nella Meta Developer Console, seleziona la tua App</li>
-                            <li>Vai su "Impostazioni" → "Base"</li>
-                            <li>Clicca "Mostra" accanto a "Chiave segreta dell'app"</li>
-                            <li>Copia il valore e incollalo qui</li>
-                          </ol>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-4 border border-slate-200">
-                          <h5 className="font-medium text-slate-700 mb-2">5. Configurare il Webhook</h5>
-                          <ol className="list-decimal list-inside space-y-1 text-slate-600">
-                            <li>Dopo aver salvato la configurazione qui, copia il Webhook URL mostrato sopra</li>
-                            <li>Nella Meta Developer Console → "Prodotti" → "Webhook"</li>
-                            <li>Clicca "Aggiungi iscrizione" per Instagram</li>
-                            <li>Incolla l'URL del webhook e il Verify Token generato</li>
-                            <li>Sottoscrivi gli eventi: <code className="bg-slate-100 px-1 rounded text-xs">messages</code>, <code className="bg-slate-100 px-1 rounded text-xs">messaging_postbacks</code></li>
+                            <li>Clicca su "Connetti Instagram"</li>
+                            <li>Accedi al tuo account Meta/Facebook</li>
+                            <li>Autorizza l'accesso ai messaggi Instagram</li>
+                            <li>Verrai reindirizzato automaticamente qui</li>
                           </ol>
                         </div>
 
                         <Alert className="bg-amber-50 border-amber-200">
                           <AlertCircle className="h-4 w-4 text-amber-600" />
                           <AlertDescription className="text-amber-800">
-                            <strong>Finestra 24 ore:</strong> Meta permette di rispondere ai messaggi solo entro 24 ore dall'ultimo messaggio del cliente. 
-                            Il badge nella pagina conversazioni mostra lo stato della finestra in tempo reale.
+                            <strong>Finestra 24 ore:</strong> Meta permette di rispondere ai messaggi solo entro 24 ore dall'ultimo messaggio del cliente.
                           </AlertDescription>
                         </Alert>
                       </div>

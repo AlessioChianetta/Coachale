@@ -13,10 +13,12 @@ import crypto from "crypto";
 import { db } from "../db";
 import {
   consultantInstagramConfig,
+  superadminInstagramConfig,
   instagramConversations,
   instagramMessages,
   instagramPendingMessages,
 } from "../../shared/schema";
+import { decrypt } from "../encryption";
 import { eq, and, sql } from "drizzle-orm";
 import {
   MetaWebhookEvent,
@@ -55,7 +57,20 @@ function verifySignature(
 }
 
 /**
+ * Get Super Admin Instagram config (centralized credentials)
+ */
+async function getSuperAdminConfig() {
+  const [config] = await db
+    .select()
+    .from(superadminInstagramConfig)
+    .where(eq(superadminInstagramConfig.enabled, true))
+    .limit(1);
+  return config;
+}
+
+/**
  * Handle webhook verification (GET request from Meta)
+ * Uses centralized Super Admin verify token
  */
 export async function verifyInstagramWebhook(req: Request, res: Response): Promise<void> {
   const mode = req.query["hub.mode"];
@@ -70,20 +85,16 @@ export async function verifyInstagramWebhook(req: Request, res: Response): Promi
     return;
   }
 
-  // Find config with matching verify token
-  const [config] = await db
-    .select()
-    .from(consultantInstagramConfig)
-    .where(eq(consultantInstagramConfig.verifyToken, token as string))
-    .limit(1);
+  // Get Super Admin config with centralized verify token
+  const superAdminConfig = await getSuperAdminConfig();
 
-  if (!config) {
-    console.log("❌ [INSTAGRAM WEBHOOK] Invalid verify token");
+  if (!superAdminConfig || superAdminConfig.verifyToken !== token) {
+    console.log("❌ [INSTAGRAM WEBHOOK] Invalid verify token (checked Super Admin config)");
     res.status(403).send("Forbidden");
     return;
   }
 
-  console.log(`✅ [INSTAGRAM WEBHOOK] Verification successful for page ${config.instagramPageId}`);
+  console.log(`✅ [INSTAGRAM WEBHOOK] Verification successful (Super Admin config)`);
   res.status(200).send(challenge);
 }
 
@@ -112,6 +123,31 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
     const signature = req.headers["x-hub-signature-256"] as string | undefined;
     const rawBody = req.rawBody;
 
+    // Get Super Admin config for centralized App Secret
+    const superAdminConfig = await getSuperAdminConfig();
+    let decryptedAppSecret: string | null = null;
+    
+    if (superAdminConfig?.metaAppSecretEncrypted) {
+      try {
+        decryptedAppSecret = decrypt(superAdminConfig.metaAppSecretEncrypted);
+      } catch (e) {
+        console.log(`⚠️ [INSTAGRAM WEBHOOK] Failed to decrypt App Secret`);
+      }
+    }
+
+    // Verify signature using centralized App Secret
+    if (decryptedAppSecret && rawBody && signature) {
+      const isValidSignature = verifySignature(rawBody, signature, decryptedAppSecret);
+      if (!isValidSignature) {
+        console.log(`❌ [INSTAGRAM WEBHOOK] Invalid signature (checked Super Admin App Secret)`);
+        res.status(200).send("EVENT_RECEIVED"); // Still respond 200 to prevent retries
+        return;
+      }
+      console.log(`✅ [INSTAGRAM WEBHOOK] Signature verified (Super Admin config)`);
+    } else if (!decryptedAppSecret) {
+      console.log(`⚠️ [INSTAGRAM WEBHOOK] No Super Admin App Secret configured - skipping signature verification`);
+    }
+
     // Process each entry
     for (const entry of event.entry) {
       const instagramPageId = entry.id;
@@ -131,18 +167,6 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       if (!config) {
         console.log(`⚠️ [INSTAGRAM WEBHOOK] No active config for page ${instagramPageId}`);
         continue;
-      }
-
-      // Verify signature if appSecret is configured and rawBody is available
-      if (config.appSecret && rawBody && signature) {
-        const isValidSignature = verifySignature(rawBody, signature, config.appSecret);
-        if (!isValidSignature) {
-          console.log(`❌ [INSTAGRAM WEBHOOK] Invalid signature for page ${instagramPageId}`);
-          continue;
-        }
-        console.log(`✅ [INSTAGRAM WEBHOOK] Signature verified for page ${instagramPageId}`);
-      } else if (config.appSecret && !rawBody) {
-        console.log(`⚠️ [INSTAGRAM WEBHOOK] AppSecret configured but rawBody not available - skipping verification`);
       }
 
       // Handle messaging events
