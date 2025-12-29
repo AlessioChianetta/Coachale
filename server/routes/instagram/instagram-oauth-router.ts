@@ -296,7 +296,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
       .limit(1);
 
     if (existingConfig) {
-      // Update existing config
+      // Update existing config - reactivate and reconnect
       await db
         .update(consultantInstagramConfig)
         .set({
@@ -305,6 +305,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
           pageAccessToken: encryptedToken,
           tokenExpiresAt,
           isConnected: true,
+          isActive: true,
           connectedAt: new Date(),
           instagramUsername,
           updatedAt: new Date(),
@@ -341,7 +342,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
 
 /**
  * POST /api/instagram/oauth/disconnect
- * Disconnect Instagram account - completely removes the configuration
+ * Disconnect Instagram account - clears OAuth credentials but preserves agent settings
  */
 router.post("/oauth/disconnect", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
@@ -357,14 +358,26 @@ router.post("/oauth/disconnect", authenticateToken, async (req: AuthRequest, res
       return res.status(404).json({ error: "No Instagram configuration found" });
     }
 
-    // Completely delete the configuration to force fresh OAuth on reconnect
+    // Clear OAuth connection data but keep agent settings (agentName, automations, ice breakers, etc.)
+    // Setting isActive to false ensures this config won't appear in the list until reconnected
     await db
-      .delete(consultantInstagramConfig)
+      .update(consultantInstagramConfig)
+      .set({
+        instagramPageId: null,
+        facebookPageId: null,
+        pageAccessToken: null,
+        tokenExpiresAt: null,
+        isConnected: false,
+        isActive: false,
+        connectedAt: null,
+        instagramUsername: null,
+        updatedAt: new Date(),
+      })
       .where(eq(consultantInstagramConfig.id, config.id));
 
-    console.log(`[INSTAGRAM OAUTH] Completely disconnected and deleted config for consultant ${consultantId}`);
+    console.log(`[INSTAGRAM OAUTH] Disconnected for consultant ${consultantId} (credentials cleared, settings preserved)`);
 
-    return res.json({ success: true, message: "Account Instagram scollegato completamente" });
+    return res.json({ success: true, message: "Account Instagram scollegato" });
   } catch (error) {
     console.error("[INSTAGRAM OAUTH] Disconnect error:", error);
     return res.status(500).json({ error: "Failed to disconnect account" });

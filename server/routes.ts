@@ -11676,7 +11676,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           isDryRun: schema.consultantInstagramConfig.isDryRun,
         })
         .from(schema.consultantInstagramConfig)
-        .where(eq(schema.consultantInstagramConfig.consultantId, consultantId));
+        .where(
+          and(
+            eq(schema.consultantInstagramConfig.consultantId, consultantId),
+            eq(schema.consultantInstagramConfig.isActive, true)
+          )
+        );
 
       // Get which agents are linked to each config
       const linkedAgents = await db
