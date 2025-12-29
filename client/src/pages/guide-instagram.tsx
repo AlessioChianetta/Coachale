@@ -557,8 +557,26 @@ export default function GuideInstagram() {
                         </ul>
                       </div>
 
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 rounded-lg p-3 border border-blue-300 dark:border-blue-700">
+                        <p className="text-sm font-medium mb-2 text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4" />
+                          4. Assegna la Pagina Facebook all'Utente - FONDAMENTALE
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Senza questo passaggio, il token non avrà accesso alla pagina e <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">me/accounts</code> restituirà un array vuoto!
+                        </p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>Sempre nella sezione del System User appena creato</li>
+                          <li>Clicca di nuovo <strong>Aggiungi risorse</strong> (Add Assets)</li>
+                          <li>Questa volta seleziona <strong>Pagine</strong> (Pages)</li>
+                          <li>Seleziona la tua <strong>Facebook Page</strong> (quella collegata a Instagram)</li>
+                          <li>Attiva <strong>"Gestisci Pagina"</strong> (Controllo completo)</li>
+                          <li>Clicca <strong>Salva modifiche</strong></li>
+                        </ul>
+                      </div>
+
                       <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
-                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">4. Genera il Token "Maestro" (System User)</p>
+                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">5. Genera il Token "Maestro" (System User)</p>
                         <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
                           <li>Clicca <strong>Genera nuovo token</strong></li>
                           <li>Seleziona la tua App dal menu</li>
@@ -603,15 +621,15 @@ export default function GuideInstagram() {
                       <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-lg p-3 border border-green-300 dark:border-green-700">
                         <p className="text-sm font-medium mb-2 text-green-700 dark:text-green-300 flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4" />
-                          5. Ottieni il Token Finale (Page Token) - FONDAMENTALE
+                          6. Ottieni il Token Finale (Page Token) - FONDAMENTALE
                         </p>
                         <p className="text-sm text-muted-foreground mb-3">
                           Il token sopra è un token "Utente". Per inviare messaggi serve trasformarlo in token "Pagina".
                         </p>
                         <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-2">
                           <li>Apri il <strong>Graph API Explorer</strong> (link sotto)</li>
-                          <li>Incolla il token del passaggio 4 nel campo <strong>Access Token</strong></li>
-                          <li>Scrivi nella barra indirizzo: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">me/accounts</code></li>
+                          <li>Incolla il token del passaggio 5 nel campo <strong>Access Token</strong></li>
+                          <li>Scrivi nella barra indirizzo: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">me/accounts?fields=name,access_token</code></li>
                           <li>Premi <strong>Submit</strong></li>
                           <li>Cerca il <strong>nome della tua pagina</strong> nei risultati</li>
                           <li>Copia l'<code className="bg-green-200 dark:bg-green-800 px-1 rounded text-xs">access_token</code> specifico che trovi sotto il nome della pagina</li>
