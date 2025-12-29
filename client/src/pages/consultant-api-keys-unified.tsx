@@ -623,6 +623,21 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
+  // Instagram Configuration query
+  const { data: instagramConfigData, isLoading: isLoadingInstagramConfig } = useQuery({
+    queryKey: ["/api/instagram/config"],
+    queryFn: async () => {
+      const response = await fetch("/api/instagram/config", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Failed to fetch Instagram config");
+      }
+      if (response.status === 404) return null;
+      return response.json();
+    },
+  });
+
   // Lead Import queries and mutations
   const { data: leadImportConfigs } = useExternalApiConfigs();
   const { data: campaignsData, isLoading: campaignsLoading } = useCampaigns();
@@ -1379,6 +1394,19 @@ export default function ConsultantApiKeysUnified() {
       });
     }
   }, [twilioSettingsData]);
+
+  // Sync Instagram config
+  useEffect(() => {
+    if (instagramConfigData?.config) {
+      setInstagramFormData({
+        pageId: instagramConfigData.config.instagramPageId || "",
+        accessToken: "", // Never sent back for security (masked as ***ENCRYPTED***)
+        appSecret: "", // Never sent back for security (masked as ***ENCRYPTED***)
+        verifyToken: instagramConfigData.config.verifyToken || "",
+      });
+      setInstagramConnectionStatus("connected");
+    }
+  }, [instagramConfigData]);
 
   const [newWhatsAppApiKey, setNewWhatsAppApiKey] = useState("");
 
@@ -6171,7 +6199,9 @@ export default function ConsultantApiKeysUnified() {
                           <Input
                             id="instagramAccessToken"
                             type={showInstagramAccessToken ? "text" : "password"}
-                            placeholder="Il tuo Access Token dalla Meta Developer Console"
+                            placeholder={instagramConnectionStatus === "connected" && !instagramFormData.accessToken 
+                              ? "••••••••• (già configurato - lascia vuoto per mantenere)" 
+                              : "Il tuo Access Token dalla Meta Developer Console"}
                             value={instagramFormData.accessToken}
                             onChange={(e) => setInstagramFormData(prev => ({ ...prev, accessToken: e.target.value }))}
                             className="border-slate-300 focus:border-cyan-500 pr-10"
@@ -6201,7 +6231,9 @@ export default function ConsultantApiKeysUnified() {
                           <Input
                             id="instagramAppSecret"
                             type={showInstagramAppSecret ? "text" : "password"}
-                            placeholder="Il segreto della tua App Meta"
+                            placeholder={instagramConnectionStatus === "connected" && !instagramFormData.appSecret 
+                              ? "••••••••• (già configurato - lascia vuoto per mantenere)" 
+                              : "Il segreto della tua App Meta"}
                             value={instagramFormData.appSecret}
                             onChange={(e) => setInstagramFormData(prev => ({ ...prev, appSecret: e.target.value }))}
                             className="border-slate-300 focus:border-cyan-500 pr-10"
@@ -6326,10 +6358,20 @@ export default function ConsultantApiKeysUnified() {
 
                         <Button
                           onClick={async () => {
-                            if (!instagramFormData.pageId || !instagramFormData.accessToken || !instagramFormData.appSecret) {
+                            const isAlreadyConfigured = instagramConnectionStatus === "connected";
+                            const needsAllFields = !isAlreadyConfigured;
+                            if (!instagramFormData.pageId) {
+                              toast({
+                                title: "Campo mancante",
+                                description: "Instagram Page ID è obbligatorio",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            if (needsAllFields && (!instagramFormData.accessToken || !instagramFormData.appSecret)) {
                               toast({
                                 title: "Campi mancanti",
-                                description: "Compila tutti i campi obbligatori",
+                                description: "Per la prima configurazione, tutti i campi sono obbligatori",
                                 variant: "destructive",
                               });
                               return;
@@ -6343,9 +6385,9 @@ export default function ConsultantApiKeysUnified() {
                                   "Content-Type": "application/json",
                                 },
                                 body: JSON.stringify({
-                                  pageId: instagramFormData.pageId,
-                                  accessToken: instagramFormData.accessToken,
-                                  appSecret: instagramFormData.appSecret,
+                                  instagramPageId: instagramFormData.pageId,
+                                  pageAccessToken: instagramFormData.accessToken || undefined,
+                                  appSecret: instagramFormData.appSecret || undefined,
                                 }),
                               });
                               const data = await response.json();
@@ -6354,6 +6396,7 @@ export default function ConsultantApiKeysUnified() {
                                 if (data.verifyToken) {
                                   setInstagramFormData(prev => ({ ...prev, verifyToken: data.verifyToken }));
                                 }
+                                queryClient.invalidateQueries({ queryKey: ["/api/instagram/config"] });
                                 toast({
                                   title: "Configurazione salvata!",
                                   description: "La configurazione Instagram è stata salvata con successo",
@@ -6375,7 +6418,7 @@ export default function ConsultantApiKeysUnified() {
                               setIsSavingInstagram(false);
                             }
                           }}
-                          disabled={isSavingInstagram || !instagramFormData.pageId || !instagramFormData.accessToken || !instagramFormData.appSecret}
+                          disabled={isSavingInstagram || !instagramFormData.pageId || (instagramConnectionStatus !== "connected" && (!instagramFormData.accessToken || !instagramFormData.appSecret))}
                           className="w-full sm:flex-1 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700"
                         >
                           {isSavingInstagram ? (
