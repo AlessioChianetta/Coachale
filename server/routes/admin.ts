@@ -6,6 +6,7 @@ import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { getAdminTurnConfig, saveAdminTurnConfig } from "../services/turn-config-service";
 import { encrypt, decrypt } from "../encryption";
+import { nanoid } from "nanoid";
 
 const router = Router();
 
@@ -1418,7 +1419,7 @@ router.post(
       }
 
       const webhookUrl = `${process.env.REPLIT_DEV_DOMAIN || ""}/api/instagram/webhook`;
-      const finalVerifyToken = verifyToken || existing?.verifyToken || require("nanoid").nanoid(32);
+      const finalVerifyToken = verifyToken || existing?.verifyToken || nanoid(32);
 
       if (existing) {
         await db
