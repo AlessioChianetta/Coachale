@@ -1,0 +1,51 @@
+[INSTAGRAM WEBHOOK] Valid Instagram event received
+📊 [INSTAGRAM WEBHOOK] Entries count: 1
+🔓 [INSTAGRAM WEBHOOK] Decrypted App Secret from DB:
+   Full secret: fe35beadce4f4eb31e49bcc4d5e12926
+   Preview: fe35bead...d5e12926 (length: 32)
+🔐 [INSTAGRAM WEBHOOK] Signature check:
+   Provided signature: sha256=3134180a0ef5038bd88fbe5b86a7086d96a63add884547ab209c83c9a2a689fc
+   Expected signature: sha256=3134180a0ef5038bd88fbe5b86a7086d96a63add884547ab209c83c9a2a689fc
+   App Secret used: fe35bead...d5e12926 (length: 32)
+   Raw body length: 395
+   Raw body (first 200 chars): {"object":"instagram","entry":[{"time":1767043194771,"id":"17841401835429922","messaging":[{"sender":{"id":"893319973257663"},"recipient":{"id":"17841401835429922"},"timestamp":1767043194004,"message"
+✅ [INSTAGRAM WEBHOOK] Signature verified (Super Admin config)
+✅ [INSTAGRAM WEBHOOK] Found config for entry.id 17841401835429922 (Instagram: 17841401835429922, Facebook: 655018317702995)
+   📱 Consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, Agent active: true
+   🤖 Auto-response: true, Dry-run: false
+📥 [INSTAGRAM WEBHOOK] Received message from 893319973257663
+🆕 [INSTAGRAM WEBHOOK] Created new conversation 58e6133a-d46a-4128-9180-0b95be9f5dac
+❌ [INSTAGRAM WEBHOOK] Error processing webhook: error: value too long for type character varying(100)
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async handleMessagingEvent (/home/runner/workspace/server/instagram/webhook-handler.ts:398:26)
+    at async handleInstagramWebhook (/home/runner/workspace/server/instagram/webhook-handler.ts:227:11)
+    at async <anonymous> (/home/runner/workspace/server/routes/instagram/instagram-webhook-router.ts:26:3) {
+  length: 99,
+  severity: 'ERROR',
+  code: '22001',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'varchar.c',
+  line: '637',
+  routine: 'varchar'
+}
+9:19:56 PM [express] POST /api/instagram/webhook 200 in 1747ms
+Getting active sessions for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+Found active sessions: 1
+Returning sessions with users: 1
+9:19:59 PM [express] GET /api/activity/sessions/active 304 in 1591ms :: [{"id":"debaefc9-f5d4-4222-9…
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-12-29T21:20:00.036Z
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHE

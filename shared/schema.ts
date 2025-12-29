@@ -6306,8 +6306,8 @@ export const instagramMessages = pgTable("instagram_messages", {
   localMediaPath: text("local_media_path"),
   
   // Instagram-specific
-  instagramMessageId: varchar("instagram_message_id", { length: 100 }),
-  replyToStoryId: varchar("reply_to_story_id", { length: 100 }),
+  instagramMessageId: varchar("instagram_message_id", { length: 255 }),
+  replyToStoryId: varchar("reply_to_story_id", { length: 255 }),
   replyToStoryUrl: text("reply_to_story_url"),
   
   // Delivery Status
@@ -6353,7 +6353,7 @@ export const instagramPendingMessages = pgTable("instagram_pending_messages", {
   mediaContentType: text("media_content_type"),
   
   // Meta IDs
-  instagramMessageId: varchar("instagram_message_id", { length: 100 }),
+  instagramMessageId: varchar("instagram_message_id", { length: 255 }),
   
   // Processing
   receivedAt: timestamp("received_at").notNull().default(sql`now()`),
