@@ -6293,7 +6293,8 @@ export default function ConsultantApiKeysUnified() {
                         <Button
                           variant="outline"
                           onClick={async () => {
-                            if (!instagramFormData.pageId || !instagramFormData.accessToken) {
+                            const isAlreadyConfigured = instagramConnectionStatus === "connected";
+                            if (!isAlreadyConfigured && (!instagramFormData.pageId || !instagramFormData.accessToken)) {
                               toast({
                                 title: "Campi mancanti",
                                 description: "Inserisci almeno Page ID e Access Token per testare la connessione",
@@ -6309,10 +6310,7 @@ export default function ConsultantApiKeysUnified() {
                                   ...getAuthHeaders(),
                                   "Content-Type": "application/json",
                                 },
-                                body: JSON.stringify({
-                                  pageId: instagramFormData.pageId,
-                                  accessToken: instagramFormData.accessToken,
-                                }),
+                                body: JSON.stringify({}),
                               });
                               const data = await response.json();
                               if (response.ok && data.success) {
@@ -6325,7 +6323,7 @@ export default function ConsultantApiKeysUnified() {
                                 setInstagramConnectionStatus("error");
                                 toast({
                                   title: "Connessione fallita",
-                                  description: data.message || "Impossibile connettersi all'account Instagram",
+                                  description: data.error || data.message || "Impossibile connettersi all'account Instagram",
                                   variant: "destructive",
                                 });
                               }
@@ -6340,7 +6338,7 @@ export default function ConsultantApiKeysUnified() {
                               setIsTestingInstagram(false);
                             }
                           }}
-                          disabled={isTestingInstagram || !instagramFormData.pageId || !instagramFormData.accessToken}
+                          disabled={isTestingInstagram || (instagramConnectionStatus !== "connected" && (!instagramFormData.pageId || !instagramFormData.accessToken))}
                           className="w-full sm:w-auto border-cyan-300 text-cyan-700 hover:bg-cyan-50"
                         >
                           {isTestingInstagram ? (
