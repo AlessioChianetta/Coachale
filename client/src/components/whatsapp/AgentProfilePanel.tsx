@@ -337,6 +337,20 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
     }
   }, [agentDetails?.config?.instagramConfigId, selectedAgent?.id]);
 
+  // Sync Instagram textarea states when config changes
+  useEffect(() => {
+    if (selectedInstagramConfigId && instagramConfigs?.configs) {
+      const currentConfig = instagramConfigs.configs.find(c => c.id === selectedInstagramConfigId);
+      if (currentConfig) {
+        setStoryAutoReplyMessage(currentConfig.storyAutoReplyMessage || '');
+        setCommentAutoReplyMessage(currentConfig.commentAutoReplyMessage || '');
+      }
+    } else {
+      setStoryAutoReplyMessage('');
+      setCommentAutoReplyMessage('');
+    }
+  }, [selectedInstagramConfigId, instagramConfigs?.configs]);
+
   const handleLinkInstagram = async (configId: string | null) => {
     if (!selectedAgent?.id) return;
     
@@ -1060,12 +1074,12 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                                   <div className="pl-5 space-y-1.5 border-l-2 border-pink-200 ml-1">
                                     <p className="text-xs text-slate-500">Messaggio risposta storia:</p>
                                     <Textarea
-                                      value={storyAutoReplyMessage || currentConfig.storyAutoReplyMessage || ''}
+                                      value={storyAutoReplyMessage}
                                       onChange={(e) => setStoryAutoReplyMessage(e.target.value)}
                                       onBlur={() => {
-                                        const newValue = storyAutoReplyMessage || '';
-                                        if (newValue !== (currentConfig.storyAutoReplyMessage || '')) {
-                                          handleInstagramSettingChange(currentConfig.id, 'storyAutoReplyMessage', newValue);
+                                        const originalValue = currentConfig.storyAutoReplyMessage || '';
+                                        if (storyAutoReplyMessage !== originalValue) {
+                                          handleInstagramSettingChange(currentConfig.id, 'storyAutoReplyMessage', storyAutoReplyMessage);
                                         }
                                       }}
                                       placeholder="Grazie per aver risposto alla mia storia! Come posso aiutarti?"
@@ -1137,10 +1151,11 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                                     <div className="space-y-1.5">
                                       <p className="text-xs text-slate-500">Messaggio auto:</p>
                                       <Textarea
-                                        value={currentConfig.commentAutoReplyMessage || ''}
+                                        value={commentAutoReplyMessage}
                                         onChange={(e) => setCommentAutoReplyMessage(e.target.value)}
                                         onBlur={() => {
-                                          if (commentAutoReplyMessage !== currentConfig.commentAutoReplyMessage) {
+                                          const originalValue = currentConfig.commentAutoReplyMessage || '';
+                                          if (commentAutoReplyMessage !== originalValue) {
                                             handleInstagramSettingChange(currentConfig.id, 'commentAutoReplyMessage', commentAutoReplyMessage);
                                           }
                                         }}

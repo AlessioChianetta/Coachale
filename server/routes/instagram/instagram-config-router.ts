@@ -357,32 +357,22 @@ router.patch("/config/:configId/settings", authenticateToken, async (req: AuthRe
       return res.status(404).json({ error: "Configuration not found" });
     }
 
-    const {
-      autoResponseEnabled,
-      storyReplyEnabled,
-      commentToDmEnabled,
-      commentTriggerKeywords,
-      commentAutoReplyMessage,
-      storyAutoReplyMessage,
-      iceBreakersEnabled,
-      iceBreakers,
-      isDryRun,
-    } = req.body;
+    const body = req.body;
 
-    // Build update object only with provided fields
+    // Build update object containing ONLY fields explicitly defined in the body
     const updateData: Record<string, any> = {
       updatedAt: new Date(),
     };
 
-    if (typeof autoResponseEnabled === 'boolean') updateData.autoResponseEnabled = autoResponseEnabled;
-    if (typeof storyReplyEnabled === 'boolean') updateData.storyReplyEnabled = storyReplyEnabled;
-    if (typeof commentToDmEnabled === 'boolean') updateData.commentToDmEnabled = commentToDmEnabled;
-    if (typeof iceBreakersEnabled === 'boolean') updateData.iceBreakersEnabled = iceBreakersEnabled;
-    if (typeof isDryRun === 'boolean') updateData.isDryRun = isDryRun;
-    if (Array.isArray(commentTriggerKeywords)) updateData.commentTriggerKeywords = commentTriggerKeywords;
-    if (typeof commentAutoReplyMessage === 'string') updateData.commentAutoReplyMessage = commentAutoReplyMessage;
-    if (typeof storyAutoReplyMessage === 'string') updateData.storyAutoReplyMessage = storyAutoReplyMessage;
-    if (Array.isArray(iceBreakers)) updateData.iceBreakers = iceBreakers;
+    if (body.autoResponseEnabled !== undefined) updateData.autoResponseEnabled = body.autoResponseEnabled;
+    if (body.storyReplyEnabled !== undefined) updateData.storyReplyEnabled = body.storyReplyEnabled;
+    if (body.commentToDmEnabled !== undefined) updateData.commentToDmEnabled = body.commentToDmEnabled;
+    if (body.iceBreakersEnabled !== undefined) updateData.iceBreakersEnabled = body.iceBreakersEnabled;
+    if (body.isDryRun !== undefined) updateData.isDryRun = body.isDryRun;
+    if (body.commentTriggerKeywords !== undefined) updateData.commentTriggerKeywords = body.commentTriggerKeywords;
+    if (body.commentAutoReplyMessage !== undefined) updateData.commentAutoReplyMessage = body.commentAutoReplyMessage;
+    if (body.storyAutoReplyMessage !== undefined) updateData.storyAutoReplyMessage = body.storyAutoReplyMessage;
+    if (body.iceBreakers !== undefined) updateData.iceBreakers = body.iceBreakers;
 
     const [updatedConfig] = await db
       .update(consultantInstagramConfig)
