@@ -15,7 +15,7 @@ import {
   instagramDailyStats,
 } from "../../../shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { encryptForConsultant, decryptForConsultant } from "../../encryption";
+import { encrypt, decrypt, encryptForConsultant, decryptForConsultant } from "../../encryption";
 import { nanoid } from "nanoid";
 
 const router = Router();
@@ -116,12 +116,21 @@ router.post("/config", authenticateToken, async (req: AuthRequest, res: Response
     let encryptedPageAccessToken = existingConfig?.pageAccessToken;
     let encryptedAppSecret = existingConfig?.appSecret;
 
-    if (pageAccessToken && pageAccessToken !== "***ENCRYPTED***" && encryptionSalt) {
-      encryptedPageAccessToken = encryptForConsultant(pageAccessToken, encryptionSalt);
+    if (pageAccessToken && pageAccessToken !== "***ENCRYPTED***") {
+      // Use per-consultant encryption if salt exists, otherwise use legacy encryption
+      if (encryptionSalt) {
+        encryptedPageAccessToken = encryptForConsultant(pageAccessToken, encryptionSalt);
+      } else {
+        encryptedPageAccessToken = encrypt(pageAccessToken);
+      }
     }
 
-    if (appSecret && appSecret !== "***ENCRYPTED***" && encryptionSalt) {
-      encryptedAppSecret = encryptForConsultant(appSecret, encryptionSalt);
+    if (appSecret && appSecret !== "***ENCRYPTED***") {
+      if (encryptionSalt) {
+        encryptedAppSecret = encryptForConsultant(appSecret, encryptionSalt);
+      } else {
+        encryptedAppSecret = encrypt(appSecret);
+      }
     }
 
     // Generate verify token if not exists
@@ -345,11 +354,23 @@ router.post("/config/test-connection", authenticateToken, async (req: AuthReques
       });
     }
 
-    // Decrypt token
+    // Decrypt token - try per-consultant first, then legacy
     let accessToken = config.pageAccessToken;
     if (encryptionSalt) {
       try {
         accessToken = decryptForConsultant(config.pageAccessToken, encryptionSalt);
+      } catch (e) {
+        // Token might be encrypted with legacy method, try that
+        try {
+          accessToken = decrypt(config.pageAccessToken);
+        } catch (e2) {
+          // Token might not be encrypted at all
+        }
+      }
+    } else {
+      // No salt, try legacy decryption
+      try {
+        accessToken = decrypt(config.pageAccessToken);
       } catch (e) {
         // Token might not be encrypted
       }
