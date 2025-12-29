@@ -483,8 +483,16 @@ export default function GuideInstagram() {
                 badge="OBBLIGATORIO"
                 badgeVariant="destructive"
               >
+                <div className="bg-red-50 dark:bg-red-950/40 rounded-lg p-3 border border-red-200 dark:border-red-800 mb-4">
+                  <p className="text-sm text-red-800 dark:text-red-200">
+                    <AlertCircle className="h-4 w-4 inline mr-1" />
+                    <strong>ATTENZIONE:</strong> Serve un <strong>Page Access Token</strong>, NON un User Token! 
+                    Se usi il Graph API Explorer, devi selezionare la tua <strong>Pagina Facebook</strong> dal menu "User or Page" (non lasciare "User Token"). 
+                    La procedura sotto genera automaticamente il token corretto.
+                  </p>
+                </div>
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border mb-4">
-                  <p className="text-sm font-medium mb-3">Procedura Rapida (Dashboard App):</p>
+                  <p className="text-sm font-medium mb-3">Procedura Rapida (Dashboard App) - CONSIGLIATA:</p>
                   <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
                     <li>Apri la <strong>dashboard della tua App</strong> su Meta for Developers</li>
                     <li>Clicca su <strong>"Personalizza"</strong> (icona matita) nel riquadro <strong>"Gestisci i messaggi e i contenuti su Instagram"</strong></li>
