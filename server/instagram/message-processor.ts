@@ -23,7 +23,7 @@ import {
 } from "../../shared/schema";
 import { eq, isNull, and, desc, asc, sql } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
-import { buildSystemPrompt } from "../ai-prompts";
+import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
 import { GoogleGenAI } from "@google/genai";
 import { createVertexGeminiClient, getSuperAdminGeminiKeys, getAIProvider, GEMINI_3_MODEL } from "../ai/provider-factory";
 import { MetaClient, createMetaClient } from "./meta-client";
@@ -269,15 +269,8 @@ async function generateAIResponse(
     
     console.log(`🤖 [INSTAGRAM] Using ${linkedAgent ? 'linked WhatsApp agent' : 'Instagram config'} settings for AI: ${agentConfigForAI.agentName}`);
 
-    // Build system prompt using shared logic
-    const systemPrompt = buildSystemPrompt({
-      agentConfig: agentConfigForAI,
-      consultant,
-      isLead: conversation.isLead,
-      isProactiveLead: false,
-      currentPhase: conversation.conversationPhase || "initial",
-      channel: "instagram",
-    });
+    // Build system prompt using shared WhatsApp agent logic
+    const systemPrompt = await buildWhatsAppAgentPrompt(agentConfigForAI);
 
     // Fetch user profile for richer context
     let userProfileInfo = "";
