@@ -328,7 +328,7 @@ export default function GuideInstagram() {
                   <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border min-w-[140px]">
                     <div className="h-6 w-6 mx-auto mb-1 bg-blue-500 rounded text-white text-xs flex items-center justify-center font-bold">f</div>
                     <p className="text-xs font-medium">Facebook Page</p>
-                    <p className="text-[10px] text-muted-foreground">Collegata a IG</p>
+                    <p className="text-[10px] text-muted-foreground">Nuova Esperienza Pagine</p>
                   </div>
                   <ArrowRight className="h-5 w-5 text-cyan-500 rotate-90 sm:rotate-0" />
                   <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border min-w-[140px]">
@@ -496,7 +496,7 @@ export default function GuideInstagram() {
                   <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
                     <li>Apri la <strong>dashboard della tua App</strong> su Meta for Developers</li>
                     <li>Clicca su <strong>"Personalizza"</strong> (icona matita) nel riquadro <strong>"Gestisci i messaggi e i contenuti su Instagram"</strong></li>
-                    <li><strong>Permessi:</strong> Nel riquadro 1, clicca il pulsante blu <strong>"Add all required permissions"</strong> (aggiunge <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">instagram_manage_messages</code> automaticamente). Se il test fallisce, aggiungi manualmente anche <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">pages_read_engagement</code></li>
+                    <li><strong>Permessi:</strong> Nel riquadro 1, clicca il pulsante blu <strong>"Add all required permissions"</strong> (aggiunge <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">instagram_manage_messages</code> automaticamente). Se vuoi supportare anche i commenti, aggiungi <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">instagram_manage_comments</code>. Se il test fallisce, aggiungi manualmente anche <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">pages_read_engagement</code></li>
                     <li><strong>Genera Token:</strong> Nel riquadro 2 <strong>("Genera i token d'accesso")</strong>:
                       <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
                         <li>Clicca <strong>"Aggiungi account"</strong> e seleziona il tuo Instagram Business</li>
@@ -558,7 +558,7 @@ export default function GuideInstagram() {
                       </div>
 
                       <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
-                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">4. Genera il Token</p>
+                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">4. Genera il Token "Maestro" (System User)</p>
                         <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
                           <li>Clicca <strong>Genera nuovo token</strong></li>
                           <li>Seleziona la tua App dal menu</li>
@@ -572,6 +572,14 @@ export default function GuideInstagram() {
                           <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">pages_read_engagement</code>
                           <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">pages_messaging</code>
                           <code className="bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded text-xs text-purple-700 dark:text-purple-300">pages_show_list</code>
+                        </div>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1 mt-2">
+                          <li>Clicca <strong>Genera token</strong> e copia la stringa</li>
+                        </ul>
+                        <div className="bg-amber-50 dark:bg-amber-950/40 rounded p-2 mt-2 border border-amber-200 dark:border-amber-800">
+                          <p className="text-xs text-amber-700 dark:text-amber-300">
+                            <strong>Nota:</strong> Questo è il tuo System User Token. Tienilo da parte, serve per il prossimo passaggio.
+                          </p>
                         </div>
                       </div>
 
@@ -592,15 +600,25 @@ export default function GuideInstagram() {
                         </ol>
                       </div>
 
-                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border">
-                        <p className="text-sm font-medium mb-2 text-purple-700 dark:text-purple-300">5. Copia e Salva</p>
-                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                          <li>Clicca <strong>Genera token</strong></li>
-                          <li>Copia la stringa lunga che appare</li>
-                        </ul>
-                        <div className="bg-amber-50 dark:bg-amber-950/40 rounded p-2 mt-2 border border-amber-200 dark:border-amber-800">
-                          <p className="text-xs text-amber-700 dark:text-amber-300">
-                            <strong>ATTENZIONE:</strong> Questa stringa verra mostrata una sola volta. Salvala subito in un posto sicuro!
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-lg p-3 border border-green-300 dark:border-green-700">
+                        <p className="text-sm font-medium mb-2 text-green-700 dark:text-green-300 flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" />
+                          5. Ottieni il Token Finale (Page Token) - FONDAMENTALE
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Il token sopra è un token "Utente". Per inviare messaggi serve trasformarlo in token "Pagina".
+                        </p>
+                        <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-2">
+                          <li>Apri il <strong>Graph API Explorer</strong> (link sotto)</li>
+                          <li>Incolla il token del passaggio 4 nel campo <strong>Access Token</strong></li>
+                          <li>Scrivi nella barra indirizzo: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">me/accounts</code></li>
+                          <li>Premi <strong>Submit</strong></li>
+                          <li>Cerca il <strong>nome della tua pagina</strong> nei risultati</li>
+                          <li>Copia l'<code className="bg-green-200 dark:bg-green-800 px-1 rounded text-xs">access_token</code> specifico che trovi sotto il nome della pagina</li>
+                        </ol>
+                        <div className="bg-green-100 dark:bg-green-900/50 rounded p-2 mt-3 border border-green-300 dark:border-green-700">
+                          <p className="text-sm text-green-800 dark:text-green-200 font-medium">
+                            ✅ QUELLO è il Token da usare in Coachale!
                           </p>
                         </div>
                       </div>
@@ -609,6 +627,9 @@ export default function GuideInstagram() {
                     <div className="flex flex-wrap gap-2 mt-4">
                       <ExternalLinkButton href="https://business.facebook.com/settings">
                         Apri Business Manager
+                      </ExternalLinkButton>
+                      <ExternalLinkButton href="https://developers.facebook.com/tools/explorer/" variant="outline">
+                        Apri Graph API Explorer
                       </ExternalLinkButton>
                     </div>
                   </div>
