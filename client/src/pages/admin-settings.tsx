@@ -164,6 +164,7 @@ export default function AdminSettings() {
   });
   const [showInstagramSecret, setShowInstagramSecret] = useState(false);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
+  const [isTestingInstagram, setIsTestingInstagram] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -687,6 +688,39 @@ export default function AdminSettings() {
       });
     } finally {
       setIsSavingInstagram(false);
+    }
+  };
+
+  const handleTestInstagramConfig = async () => {
+    setIsTestingInstagram(true);
+    try {
+      const response = await fetch("/api/admin/superadmin/instagram-config/test", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Connessione riuscita!",
+          description: `App verificata: ${data.app?.name || "OK"}`,
+        });
+      } else {
+        toast({
+          title: "Test fallito",
+          description: data.error || "Credenziali non valide",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingInstagram(false);
     }
   };
 
@@ -1641,7 +1675,8 @@ export default function AdminSettings() {
 
                     <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
                       <p className="text-sm text-purple-800 dark:text-purple-200">
-                        <strong>A cosa serve?</strong> Questa configurazione consente ai consulenti di ricevere e rispondere ai messaggi Instagram Direct tramite la piattaforma, utilizzando le API di Meta Business.
+                        <strong>A cosa serve?</strong> Questa configurazione imposta le credenziali della tua App Meta (condivise tra tutti i consulenti). 
+                        Ogni consulente collegherà poi il proprio account Instagram tramite OAuth nella sezione "Chiavi API" e otterrà il proprio <strong>Page Access Token</strong> automaticamente.
                       </p>
                     </div>
 
@@ -1760,7 +1795,7 @@ export default function AdminSettings() {
                       </AlertDescription>
                     </Alert>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t">
+                    <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
                       <Button
                         onClick={handleSaveInstagramConfig}
                         disabled={isSavingInstagram || !instagramFormData.metaAppId}
@@ -1773,6 +1808,20 @@ export default function AdminSettings() {
                         )}
                         Salva Configurazione
                       </Button>
+
+                      {instagramConfigData?.configured && (
+                        <Button
+                          variant="outline"
+                          onClick={handleTestInstagramConfig}
+                          disabled={isTestingInstagram}
+                        >
+                          {isTestingInstagram ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Test in corso...</>
+                          ) : (
+                            <><RefreshCw className="w-4 h-4 mr-2" /> Test Connessione</>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </>
                 )}

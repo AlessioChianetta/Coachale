@@ -1482,6 +1482,74 @@ router.post(
   }
 );
 
+// Test Instagram App credentials by getting app access token
+router.post(
+  "/admin/superadmin/instagram-config/test",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [config] = await db
+        .select()
+        .from(superadminInstagramConfig)
+        .limit(1);
+
+      if (!config) {
+        return res.status(404).json({
+          success: false,
+          error: "Instagram config not found. Please save configuration first.",
+        });
+      }
+
+      // Decrypt the app secret
+      const appSecret = decrypt(config.metaAppSecretEncrypted);
+      const appId = config.metaAppId;
+
+      // Try to get app access token using client_credentials
+      const tokenUrl = `https://graph.facebook.com/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&grant_type=client_credentials`;
+      
+      const tokenResponse = await fetch(tokenUrl);
+      const tokenData = await tokenResponse.json();
+
+      if (!tokenResponse.ok || tokenData.error) {
+        return res.json({
+          success: false,
+          error: tokenData.error?.message || "Invalid App ID or App Secret",
+          details: tokenData.error,
+        });
+      }
+
+      // Verify app access token by calling /app endpoint
+      const appUrl = `https://graph.facebook.com/app?access_token=${tokenData.access_token}`;
+      const appResponse = await fetch(appUrl);
+      const appData = await appResponse.json();
+
+      if (!appResponse.ok || appData.error) {
+        return res.json({
+          success: false,
+          error: "Could not verify app credentials",
+          details: appData.error,
+        });
+      }
+
+      console.log(`✅ Instagram App test successful: ${appData.name} (ID: ${appData.id})`);
+
+      res.json({
+        success: true,
+        message: "Credenziali valide!",
+        app: {
+          id: appData.id,
+          name: appData.name,
+          category: appData.category,
+        },
+      });
+    } catch (error: any) {
+      console.error("Test Instagram config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
 router.delete(
   "/admin/superadmin/instagram-config",
   authenticateToken,
