@@ -1415,6 +1415,16 @@ export default function ConsultantWhatsAppConversationsPage() {
                                   </span>
                                 )}
                               </div>
+                              {/* Agent Badge */}
+                              {conv.agentName && (
+                                <div className="flex items-center mt-0.5">
+                                  <Badge 
+                                    className="h-4 px-1.5 text-[9px] font-bold bg-gradient-to-r from-purple-600 to-pink-500 text-white border-none shadow-sm"
+                                  >
+                                    via {conv.agentName}
+                                  </Badge>
+                                </div>
+                              )}
                               <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
                                 {conv.lastMessageText || "Messaggio"}
                               </p>

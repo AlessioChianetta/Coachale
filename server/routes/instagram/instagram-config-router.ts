@@ -13,6 +13,8 @@ import {
   instagramConversations,
   instagramMessages,
   instagramDailyStats,
+  instagramAgentConfig,
+  consultantWhatsappConfig,
 } from "../../../shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { encrypt, decrypt, encryptForConsultant, decryptForConsultant } from "../../encryption";
@@ -248,13 +250,53 @@ router.get("/conversations", authenticateToken, async (req: AuthRequest, res: Re
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
     const offset = parseInt(req.query.offset as string) || 0;
 
-    const conversations = await db
-      .select()
+    const conversationsRaw = await db
+      .select({
+        id: instagramConversations.id,
+        consultantId: instagramConversations.consultantId,
+        agentConfigId: instagramConversations.agentConfigId,
+        instagramUserId: instagramConversations.instagramUserId,
+        instagramUsername: instagramConversations.instagramUsername,
+        profilePictureUrl: instagramConversations.profilePictureUrl,
+        aiEnabled: instagramConversations.aiEnabled,
+        isActive: instagramConversations.isActive,
+        isLead: instagramConversations.isLead,
+        leadConvertedAt: instagramConversations.leadConvertedAt,
+        lastUserMessageAt: instagramConversations.lastUserMessageAt,
+        windowExpiresAt: instagramConversations.windowExpiresAt,
+        isWindowOpen: instagramConversations.isWindowOpen,
+        windowExtendedUntil: instagramConversations.windowExtendedUntil,
+        sourceType: instagramConversations.sourceType,
+        sourcePostId: instagramConversations.sourcePostId,
+        conversationPhase: instagramConversations.conversationPhase,
+        overriddenAt: instagramConversations.overriddenAt,
+        overriddenBy: instagramConversations.overriddenBy,
+        messageCount: instagramConversations.messageCount,
+        unreadByConsultant: instagramConversations.unreadByConsultant,
+        lastMessageAt: instagramConversations.lastMessageAt,
+        lastMessageFrom: instagramConversations.lastMessageFrom,
+        metadata: instagramConversations.metadata,
+        createdAt: instagramConversations.createdAt,
+        updatedAt: instagramConversations.updatedAt,
+        agentName: consultantWhatsappConfig.agentName,
+        lastMessageText: sql<string>`(SELECT message_text FROM ${instagramMessages} WHERE conversation_id = ${instagramConversations.id} ORDER BY created_at DESC LIMIT 1)`,
+      })
       .from(instagramConversations)
+      .leftJoin(
+        instagramAgentConfig,
+        eq(instagramConversations.agentConfigId, instagramAgentConfig.id)
+      )
+      .leftJoin(
+        consultantWhatsappConfig,
+        eq(instagramAgentConfig.whatsappAgentId, consultantWhatsappConfig.id)
+      )
       .where(eq(instagramConversations.consultantId, consultantId))
       .orderBy(desc(instagramConversations.lastMessageAt))
       .limit(limit)
       .offset(offset);
+
+    // Map database fields to include agentName correctly
+    const conversations = conversationsRaw;
 
     return res.json({ conversations });
   } catch (error) {
