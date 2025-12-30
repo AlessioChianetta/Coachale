@@ -1,4 +1,4 @@
-puoi /**
+/**
  * Instagram OAuth Router
  * 
  * Handles Facebook Login OAuth flow for Instagram Business account connection.

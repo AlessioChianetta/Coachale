@@ -121,18 +121,34 @@ export async function verifyInstagramWebhook(req: Request, res: Response): Promi
  * Handle incoming webhook events (POST request from Meta)
  */
 export async function handleInstagramWebhook(req: Request, res: Response): Promise<void> {
+  // RESPOND 200 IMMEDIATELY to prevent Meta from timing out
+  // Process everything async after responding
+  res.status(200).send("EVENT_RECEIVED");
+  
   console.log(`\n${"━".repeat(60)}`);
-  console.log(`📥 [INSTAGRAM WEBHOOK] Incoming POST request at ${new Date().toISOString()}`);
-  console.log(`📦 [INSTAGRAM WEBHOOK] Raw body preview:`, JSON.stringify(req.body).slice(0, 500));
+  console.log(`🔥 [INSTAGRAM WEBHOOK] RAW INCOMING at ${new Date().toISOString()}`);
+  console.log(`📦 [INSTAGRAM WEBHOOK] FULL BODY:`, JSON.stringify(req.body, null, 2));
   console.log(`${"━".repeat(60)}\n`);
   
   try {
     const event: MetaWebhookEvent = req.body;
+    
+    // Log what type of events we received
+    for (const entry of event.entry || []) {
+      console.log(`📋 [INSTAGRAM WEBHOOK] Entry ID: ${entry.id}`);
+      console.log(`   - Has messaging: ${!!entry.messaging} (${entry.messaging?.length || 0} events)`);
+      console.log(`   - Has changes: ${!!entry.changes} (${entry.changes?.length || 0} events)`);
+      if (entry.changes) {
+        for (const change of entry.changes) {
+          console.log(`   - Change field: ${change.field}`);
+          console.log(`   - Change value:`, JSON.stringify(change.value).slice(0, 300));
+        }
+      }
+    }
 
     if (event.object !== "instagram") {
       console.log(`⚠️ [INSTAGRAM WEBHOOK] Ignoring non-Instagram event: ${event.object}`);
-      res.status(200).send("EVENT_RECEIVED");
-      return;
+      return; // Already responded 200 at start
     }
     
     console.log(`✅ [INSTAGRAM WEBHOOK] Valid Instagram event received`);
@@ -170,8 +186,7 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
           // Continue processing for test messages
         } else {
           console.log(`❌ [INSTAGRAM WEBHOOK] Invalid signature (checked Super Admin App Secret)`);
-          res.status(200).send("EVENT_RECEIVED"); // Still respond 200 to prevent retries
-          return;
+          return; // Already responded 200 at start
         }
       } else {
         console.log(`✅ [INSTAGRAM WEBHOOK] Signature verified (Super Admin config)`);
@@ -236,14 +251,10 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       }
     }
 
-    // Respond 200 to Meta (they expect this within 20 seconds)
-    res.status(200).send("EVENT_RECEIVED");
+    // Already responded 200 at start
   } catch (error) {
     console.error("❌ [INSTAGRAM WEBHOOK] Error processing webhook:", error);
-    // Still respond 200 to prevent Meta from retrying
-    if (!res.headersSent) {
-      res.status(200).send("EVENT_RECEIVED");
-    }
+    // Already responded 200 at start, just log the error
   }
 }
 
