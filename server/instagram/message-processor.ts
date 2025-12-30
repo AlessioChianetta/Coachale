@@ -441,25 +441,32 @@ ${triggerContext}
           console.log(`ℹ️ [INSTAGRAM] No existing booking found for this user`);
         }
         
-        // Get available slots from internal API
+        // Get available slots from calendar API (same endpoint as WhatsApp)
         let availableSlots: any[] = [];
         try {
-          const slotsResponse = await fetch(`http://localhost:5000/api/whatsapp/agents/${linkedAgent.id}/slots?days=7`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
-          });
+          // Calculate date range (next 7 days)
+          const startDate = new Date();
+          const endDate = new Date();
+          endDate.setDate(endDate.getDate() + 7);
+          
+          const slotsResponse = await fetch(
+            `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
+            `consultantId=${config.consultantId}&` +
+            `startDate=${startDate.toISOString()}&` +
+            `endDate=${endDate.toISOString()}` +
+            `&agentConfigId=${linkedAgent.id}`,
+            {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+            }
+          );
           
           if (slotsResponse.ok) {
-            const contentType = slotsResponse.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-              const slotsData = await slotsResponse.json();
-              availableSlots = slotsData.slots || [];
-              console.log(`📅 [INSTAGRAM] Found ${availableSlots.length} available slots`);
-            } else {
-              console.log(`⚠️ [INSTAGRAM] Slots API returned non-JSON content-type: ${contentType}`);
-            }
+            const slotsData = await slotsResponse.json();
+            availableSlots = slotsData.slots || [];
+            console.log(`📅 [INSTAGRAM] Found ${availableSlots.length} available slots from calendar API`);
           } else {
-            console.log(`⚠️ [INSTAGRAM] Slots API returned ${slotsResponse.status}`);
+            console.log(`⚠️ [INSTAGRAM] Calendar slots API returned ${slotsResponse.status}`);
           }
         } catch (e: any) {
           console.log(`⚠️ [INSTAGRAM] Could not load calendar slots: ${e.message || e}`);
