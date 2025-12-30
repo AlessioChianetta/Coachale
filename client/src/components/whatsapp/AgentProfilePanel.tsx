@@ -1441,33 +1441,6 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                                 )}
                               </div>
                               
-                              {/* Attiva Webhook Commenti - Only show if comment_to_dm is enabled */}
-                              {currentConfig.commentToDmEnabled && (
-                                <div className="p-2 bg-blue-50/60 rounded border border-blue-200">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
-                                      <span className="text-xs text-slate-700">Attiva Webhook Commenti</span>
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => subscribeWebhook.mutate()}
-                                      disabled={subscribeWebhook.isPending}
-                                      className="h-6 px-2 text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
-                                    >
-                                      {subscribeWebhook.isPending ? (
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                      ) : (
-                                        "Attiva"
-                                      )}
-                                    </Button>
-                                  </div>
-                                  <p className="text-[10px] text-slate-500 mt-1">
-                                    Necessario per ricevere i commenti sui post
-                                  </p>
-                                </div>
-                              )}
                               
                               {/* Dry Run */}
                               <div className="flex items-center justify-between p-2 bg-amber-50/60 rounded border border-amber-200">

@@ -464,7 +464,7 @@ router.post("/config/:configId/sync-ice-breakers", authenticateToken, async (req
       });
     }
 
-    // Sync ice breakers to Meta
+    // Sync ice breakers to Meta with retry logic for transient errors
     console.log(`[INSTAGRAM] Syncing ${iceBreakers.length} Ice Breakers for config ${configId}`);
     
     const metaIceBreakers = iceBreakers.map((ib: { text: string; payload: string }) => ({
@@ -472,36 +472,57 @@ router.post("/config/:configId/sync-ice-breakers", authenticateToken, async (req
       payload: ib.payload,
     }));
 
-    const syncRes = await fetch(
-      `https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${accessToken}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform: "instagram",
-          ice_breakers: metaIceBreakers,
-        }),
-      }
-    );
-    const syncData = await syncRes.json() as any;
+    const MAX_RETRIES = 3;
+    let lastError: any = null;
     
-    console.log(`[INSTAGRAM] Sync Ice Breakers response:`, syncData);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const syncRes = await fetch(
+        `https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${accessToken}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            platform: "instagram",
+            ice_breakers: metaIceBreakers,
+          }),
+        }
+      );
+      const syncData = await syncRes.json() as any;
+      
+      console.log(`[INSTAGRAM] Sync Ice Breakers response (attempt ${attempt}/${MAX_RETRIES}):`, syncData);
 
-    if (syncData.result === "success" || syncData.success) {
-      return res.json({
-        success: true,
-        message: `${iceBreakers.length} Ice Breakers sincronizzati con Instagram`,
-        action: "synced",
-        iceBreakers: metaIceBreakers
-      });
-    } else {
-      console.error(`[INSTAGRAM] Failed to sync Ice Breakers:`, syncData);
-      return res.status(400).json({
-        success: false,
-        error: syncData.error?.message || "Sync fallito. Verifica i permessi dell'app.",
-        details: syncData,
-      });
+      if (syncData.result === "success" || syncData.success) {
+        return res.json({
+          success: true,
+          message: `${iceBreakers.length} Ice Breakers sincronizzati con Instagram`,
+          action: "synced",
+          iceBreakers: metaIceBreakers
+        });
+      }
+      
+      // Check if error is transient and we should retry
+      if (syncData.error?.is_transient && attempt < MAX_RETRIES) {
+        console.log(`[INSTAGRAM] Transient error, retrying in ${attempt * 2} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+        lastError = syncData;
+        continue;
+      }
+      
+      // Non-transient error or max retries reached
+      lastError = syncData;
+      break;
     }
+    
+    console.error(`[INSTAGRAM] Failed to sync Ice Breakers after ${MAX_RETRIES} attempts:`, lastError);
+    const isTransient = lastError?.error?.is_transient;
+    return res.status(400).json({
+      success: false,
+      error: isTransient 
+        ? "Servizio Meta temporaneamente non disponibile. Riprova tra qualche minuto."
+        : (lastError?.error?.message || "Sync fallito. Verifica i permessi dell'app."),
+      isTransient,
+      details: lastError,
+    });
   } catch (error) {
     console.error("Error syncing Ice Breakers:", error);
     return res.status(500).json({ 
