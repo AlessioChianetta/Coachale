@@ -781,12 +781,153 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               }
             }
           } else if (modResult.intent === 'NONE') {
-            console.log('💬 [INSTAGRAM APPOINTMENT MANAGEMENT] No modification/cancellation/add attendees intent detected - continuing normal conversation');
+            console.log('💬 [INSTAGRAM APPOINTMENT MANAGEMENT] No modification/cancellation/add attendees intent detected');
+            console.log('🔄 [INSTAGRAM NEW BOOKING CHECK] User has existing booking but intent is NONE - checking for NEW appointment request...');
+            
+            // Re-extract without existing booking to check for NEW appointment request
+            const newBookingExtracted = await extractBookingDataFromConversation(
+              conversationMessages,
+              undefined, // No existing booking - extract as NEW
+              bookingAiProvider.client,
+              'Europe/Rome',
+              undefined,
+              {
+                publicConversationId: conversation.id,
+                consultantId: config.consultantId,
+              }
+            );
+            
+            if (newBookingExtracted && 'isConfirming' in newBookingExtracted) {
+              const newExtracted = newBookingExtracted as BookingExtractionResult;
+              console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('📊 [INSTAGRAM NEW BOOKING CHECK] Extraction Results (with existing booking)');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log(`🎯 Confirming: ${newExtracted.isConfirming ? '✅ YES' : '❌ NO'}`);
+              console.log(`📅 Date:     ${newExtracted.date ? `✅ ${newExtracted.date}` : '❌ MISSING'}`);
+              console.log(`🕐 Time:     ${newExtracted.time ? `✅ ${newExtracted.time}` : '❌ MISSING'}`);
+              console.log(`📞 Phone:    ${newExtracted.phone ? `✅ ${newExtracted.phone}` : '❌ MISSING'}`);
+              console.log(`📧 Email:    ${newExtracted.email ? `✅ ${newExtracted.email}` : '❌ MISSING'}`);
+              console.log(`👤 Name:     ${newExtracted.name ? `✅ ${newExtracted.name}` : '❌ MISSING'}`);
+              console.log(`💯 Confidence: ${newExtracted.confidence?.toUpperCase() || 'N/A'}`);
+              console.log(`✔️ Complete: ${newExtracted.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              
+              // If user is confirming a NEW booking (different from existing)
+              if (newExtracted.isConfirming && newExtracted.date && newExtracted.time && newExtracted.email && newExtracted.phone) {
+                // Check if this is actually different from existing booking
+                const isDifferentBooking = 
+                  newExtracted.date !== existingBookingForModification.appointmentDate ||
+                  newExtracted.time !== existingBookingForModification.appointmentTime;
+                
+                if (isDifferentBooking) {
+                  console.log('\n🎉 [INSTAGRAM NEW BOOKING] User wants ADDITIONAL appointment! Creating...');
+                  console.log(`   Existing: ${existingBookingForModification.appointmentDate} ${existingBookingForModification.appointmentTime}`);
+                  console.log(`   New:      ${newExtracted.date} ${newExtracted.time}`);
+                  
+                  const validation = await validateBookingData(
+                    newExtracted as BookingExtractionResult,
+                    config.consultantId,
+                    'Europe/Rome',
+                    'instagram'
+                  );
+                  
+                  if (!validation.valid) {
+                    console.log(`❌ [INSTAGRAM NEW BOOKING] Validation failed: ${validation.reason}`);
+                  } else {
+                    const clientName = newExtracted.name || 
+                      conversation.instagramName || 
+                      (conversation.instagramUsername ? `@${conversation.instagramUsername}` : 'Instagram User');
+                    
+                    const newBooking = await createBookingRecord(
+                      config.consultantId,
+                      null,
+                      {
+                        date: newExtracted.date,
+                        time: newExtracted.time,
+                        email: newExtracted.email,
+                        phone: newExtracted.phone || null,
+                        name: clientName,
+                      },
+                      'instagram',
+                      null,
+                      {
+                        instagramUserId: conversation.instagramUserId,
+                        instagramConversationId: conversation.id,
+                        agentConfigId: linkedAgent.id,
+                      }
+                    );
+                    
+                    if (newBooking) {
+                      console.log(`✅ [INSTAGRAM NEW BOOKING] Created: ${newBooking.id}`);
+                      
+                      let googleMeetLink: string | null = null;
+                      let googleEventId: string | null = null;
+                      
+                      try {
+                        const calendarResult = await createGoogleCalendarBooking(
+                          config.consultantId,
+                          newBooking,
+                          newExtracted.email,
+                          linkedAgent.id
+                        );
+                        if (calendarResult.googleEventId) {
+                          googleEventId = calendarResult.googleEventId;
+                          googleMeetLink = calendarResult.googleMeetLink || null;
+                          console.log(`   📅 Google Calendar event: ${googleEventId}`);
+                        }
+                      } catch (calError) {
+                        console.log(`   ⚠️ Google Calendar error: ${calError}`);
+                      }
+                      
+                      // Send confirmation
+                      let pageAccessToken = config.pageAccessToken;
+                      if (pageAccessToken && consultant.encryptionSalt) {
+                        try {
+                          pageAccessToken = decryptForConsultant(pageAccessToken, consultant.encryptionSalt);
+                        } catch (e) {}
+                      }
+                      
+                      if (pageAccessToken && config.facebookPageId) {
+                        const confirmationMessage = `✅ NUOVO APPUNTAMENTO CONFERMATO!
+
+📅 Data: ${newExtracted.date.split('-').reverse().join('/')}
+🕐 Orario: ${newExtracted.time}
+📧 Email: ${newExtracted.email}
+${googleMeetLink ? `🎥 Link: ${googleMeetLink}` : ''}
+
+Ti ho inviato un invito calendario! 📬`;
+                        
+                        await db.insert(instagramMessages).values({
+                          conversationId: conversation.id,
+                          instagramMessageId: `ig_newbook_${Date.now()}`,
+                          messageText: confirmationMessage,
+                          direction: 'outbound',
+                          sender: 'ai',
+                        });
+                        
+                        const metaClient = createMetaClient({
+                          pageAccessToken,
+                          instagramPageId: config.facebookPageId,
+                          isDryRun: config.isDryRun,
+                        });
+                        
+                        await metaClient.sendMessage(conversation.instagramUserId, confirmationMessage);
+                        console.log('✅ [INSTAGRAM NEW BOOKING] Confirmation sent!');
+                      }
+                    }
+                  }
+                } else {
+                  console.log('ℹ️ [INSTAGRAM NEW BOOKING CHECK] Same date/time as existing - no new booking needed');
+                }
+              }
+            } else {
+              console.log('ℹ️ [INSTAGRAM NEW BOOKING CHECK] No new booking data found - continuing conversation');
+            }
           }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════════
-        // HANDLE NEW BOOKING RESULTS (existing logic)
+        // HANDLE NEW BOOKING RESULTS (existing logic - no existing booking)
         // ═══════════════════════════════════════════════════════════════════════════════
         else if (extracted && 'isConfirming' in extracted) {
           console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
