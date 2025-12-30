@@ -6146,17 +6146,17 @@ export default function ConsultantApiKeysUnified() {
                                           )}
                                         </Label>
                                         <Select
-                                          value={currentValue}
+                                          value={currentValue || "__none__"}
                                           onValueChange={(value) => setGoogleSheetsFormData({
                                             ...googleSheetsFormData,
-                                            columnMappings: { ...googleSheetsFormData.columnMappings, [field.key]: value }
+                                            columnMappings: { ...googleSheetsFormData.columnMappings, [field.key]: value === "__none__" ? "" : value }
                                           })}
                                         >
                                           <SelectTrigger className={`h-8 text-xs ${field.required ? 'border-emerald-300 focus:border-emerald-500' : ''}`}>
                                             <SelectValue placeholder="Seleziona" />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            <SelectItem value="">Non mappato</SelectItem>
+                                            <SelectItem value="__none__">Non mappato</SelectItem>
                                             {googleSheetsPreview.columns.map((col) => (
                                               <SelectItem key={col} value={col}>{col}</SelectItem>
                                             ))}
