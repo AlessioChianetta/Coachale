@@ -44,7 +44,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **AI Exercise Generator**: Generates exercises from course lessons with multi-language support, adjustable writing styles, automatic or fixed question count, and SSE streaming for progress updates.
 - **AI Assistant Agent Integration**: WhatsApp agents can be enabled for use in the AI Assistant interface with per-agent toggles, agent context injection, client sharing, File Search category selection, and ChatGPT-style `aiAssistantPreferences`. Features a hierarchical AI instruction system with consultant defaults and client overrides.
 - **Multi-Agent Instagram Architecture**: Each WhatsApp agent can have its own independent Instagram account with per-agent configuration, webhook routing, and integration into the agent wizard and conversations page.
-- **Lead Import System (Close CRM style)**: Bulk import leads from Excel, CSV, or Google Sheets with auto-mapping, SHA256 hash deduplication, incremental imports, and phone number normalization.
+- **Lead Import System (Close CRM style)**: Bulk import leads from Excel, CSV, or Google Sheets with auto-mapping, SHA256 hash deduplication, incremental imports, and phone number normalization. Features comprehensive Google Sheets integration with automatic polling/sync at configurable intervals (15/30/60 min), full 18-field CRM mapping (firstName, lastName, phone, email, company, obiettivi, desideri, uncino, fonte, address, city, state, postalCode, country, tags, dateOfBirth, website), intelligent column synonym detection, and centralized management in the API Keys page with toggle on/off and delete functionality for configured sheets.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
