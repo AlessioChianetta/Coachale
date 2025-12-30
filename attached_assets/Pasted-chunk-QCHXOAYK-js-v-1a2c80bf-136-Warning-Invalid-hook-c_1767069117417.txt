@@ -1,0 +1,40 @@
+chunk-QCHXOAYK.js?v=1a2c80bf:136 Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+
+chunk-QCHXOAYK.js?v=1a2c80bf:1066 Uncaught TypeError: Cannot read properties of null (reading 'useState')
+    at useIsMobile (use-mobile.tsx:6:41)
+    at ConsultantDashboard (consultant-dashboard.tsx:77:20)
+2
+chunk-QCHXOAYK.js?v=1a2c80bf:136 Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+chunk-QCHXOAYK.js?v=1a2c80bf:1066 Uncaught TypeError: Cannot read properties of null (reading 'useState')
+    at useIsMobile (use-mobile.tsx:6:41)
+    at ConsultantDashboard (consultant-dashboard.tsx:77:20)
+chunk-RPCDYKBN.js?v=0fc458aa:14032 The above error occurred in the <ConsultantDashboard> component:
+
+    at ConsultantDashboard (https://conorbitale.it/src/pages/consultant-dashboard.tsx:64:20)
+    at AuthGuard (https://conorbitale.it/src/components/auth-guard.tsx:20:37)
+    at Route (https://conorbitale.it/@fs/var/www/Coachale/node_modules/.vite/deps/wouter.js?v=02d788b8:226:16)
+    at Switch (https://conorbitale.it/@fs/var/www/Coachale/node_modules/.vite/deps/wouter.js?v=02d788b8:283:17)
+    at Suspense
+    at Router (https://conorbitale.it/src/App.tsx?v=pVVrZET0FhZiHphWxUiOZ:250:35)
+    at Provider (https://conorbitale.it/@fs/var/www/Coachale/node_modules/.vite/deps/chunk-66JOO7XH.js?v=0fc458aa:44:15)
+    at TooltipProvider (https://conorbitale.it/@fs/var/www/Coachale/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=0495ec37:158:5)
+    at TourProvider (https://conorbitale.it/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://conorbitale.it/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://conorbitale.it/@fs/var/www/Coachale/node_modules/.vite/deps/@tanstack_react-query.js?v=02d788b8:3096:3)
+    at V (https://conorbitale.it/@fs/var/www/Coachale/node_modules/.vite/deps/next-themes.js?v=368fce4d:44:25)
+    at J (https://conorbitale.it/@fs/var/www/Coachale/node_modules/.vite/deps/next-themes.js?v=368fce4d:42:18)
+    at App (https://conorbitale.it/src/App.tsx?v=pVVrZET0FhZiHphWxUiOZ:1619:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=0fc458aa:19413 Uncaught TypeError: Cannot read properties of null (reading 'useState')
+    at useIsMobile (use-mobile.tsx:6:41)
+    at ConsultantDashboard (consultant-dashboard.tsx:77:20)
