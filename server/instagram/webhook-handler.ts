@@ -236,15 +236,18 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       console.log(`   📱 Consultant: ${config.consultantId}, Agent active: ${config.isActive}`);
       console.log(`   🤖 Auto-response: ${config.autoResponseEnabled}, Dry-run: ${config.isDryRun}`);
 
-      // Handle messaging events
-      if (entry.messaging) {
+      // Handle messaging events (DMs, story replies, etc.)
+      if (entry.messaging && entry.messaging.length > 0) {
+        console.log(`💬 [IG DM EVENTS] Processing ${entry.messaging.length} messaging event(s)...`);
         for (const messagingEvent of entry.messaging) {
+          console.log(`💬 [IG DM EVENT]`, JSON.stringify(messagingEvent, null, 2));
           await handleMessagingEvent(config, messagingEvent);
         }
       }
 
-      // Handle changes events (comments, mentions)
-      if (entry.changes) {
+      // Handle changes events (comments, mentions, etc.)
+      if (entry.changes && entry.changes.length > 0) {
+        console.log(`🗨️ [IG CHANGE EVENTS] Processing ${entry.changes.length} change event(s)...`);
         for (const change of entry.changes) {
           await handleChangeEvent(config, change);
         }
@@ -574,9 +577,23 @@ async function handleChangeEvent(
   config: typeof consultantInstagramConfig.$inferSelect,
   change: MetaChange
 ): Promise<void> {
-  if (change.field === "comments" && config.commentToDmEnabled) {
-    const commentValue = change.value as MetaCommentValue;
+  const field = change.field;
+  const value = change.value;
+  
+  if (field === "comments" || field === "live_comments") {
+    console.log(`🗨️ [IG COMMENT EVENT] Field: ${field}`);
+    console.log(`🗨️ [IG COMMENT EVENT] Value:`, JSON.stringify(value, null, 2));
+    
+    if (!config.commentToDmEnabled) {
+      console.log(`⚠️ [IG COMMENT EVENT] commentToDmEnabled is FALSE for config ${config.id} - skipping comment processing`);
+      console.log(`   💡 Enable "Comment to DM" in agent settings to process comments`);
+      return;
+    }
+    
+    const commentValue = value as MetaCommentValue;
     await handleCommentEvent(config, commentValue);
+  } else {
+    console.log(`🧩 [IG CHANGE EVENT] Field: ${field}, Value:`, JSON.stringify(value, null, 2).slice(0, 500));
   }
 }
 
