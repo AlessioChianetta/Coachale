@@ -488,6 +488,10 @@ ${triggerContext}
         
         // Build booking block only if we have slots or existing appointment
         if (availableSlots.length > 0 || existingBooking[0]) {
+          console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`📅 [INSTAGRAM BOOKING] Building booking context block`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          
           bookingBlock = getMandatoryBookingBlock({
             existingAppointment: existingBooking[0] ? {
               id: existingBooking[0].id,
@@ -502,31 +506,57 @@ ${triggerContext}
           });
           
           if (existingBooking[0]) {
-            console.log(`✅ [INSTAGRAM] Found existing booking: ${existingBooking[0].appointmentDate} ${existingBooking[0].appointmentTime}`);
+            console.log(`   ✅ Existing booking: ${existingBooking[0].appointmentDate} at ${existingBooking[0].appointmentTime}`);
+            console.log(`   📧 Lead email: ${existingBooking[0].leadEmail || 'N/A'}`);
+            console.log(`   📱 Lead phone: ${existingBooking[0].leadPhone || 'N/A'}`);
+          } else {
+            console.log(`   📆 Available slots to propose: ${availableSlots.length}`);
+            if (availableSlots.length > 0) {
+              const slotPreview = availableSlots.slice(0, 3).map((s: any) => 
+                `${s.date || s.start?.split('T')[0]} ${s.time || s.start?.split('T')[1]?.substring(0,5)}`
+              ).join(', ');
+              console.log(`   🕐 First slots: ${slotPreview}${availableSlots.length > 3 ? '...' : ''}`);
+            }
           }
+          console.log(`   📝 Booking block size: ${bookingBlock.length} chars`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        } else {
+          console.log(`ℹ️ [INSTAGRAM BOOKING] No booking context (no slots and no existing booking)`);
         }
       } catch (e) {
         console.log(`⚠️ [INSTAGRAM] Error loading booking context:`, e);
       }
+    } else {
+      console.log(`ℹ️ [INSTAGRAM] Booking disabled or no linked agent - skipping booking context`);
     }
 
     // Add mandatory instruction blocks (like WhatsApp)
+    console.log(`\n🔧 [INSTAGRAM] Adding instruction blocks:`);
+    console.log(`   ✅ CORE_CONVERSATION_RULES`);
     let instructionBlocks = CORE_CONVERSATION_RULES_BLOCK;
     
     if (agentConfigForAI.objectionHandlingEnabled) {
       instructionBlocks += '\n' + OBJECTION_HANDLING_BLOCK;
+      console.log(`   ✅ OBJECTION_HANDLING`);
     }
     
     if (agentConfigForAI.disqualificationEnabled) {
       instructionBlocks += '\n' + DISQUALIFICATION_BLOCK;
+      console.log(`   ✅ DISQUALIFICATION`);
     }
     
     if (agentConfigForAI.bookingEnabled) {
       instructionBlocks += '\n' + BOOKING_CONVERSATION_PHASES_BLOCK;
+      console.log(`   ✅ BOOKING_CONVERSATION_PHASES`);
     }
 
     let fullSystemPrompt = systemPrompt + instructionBlocks + instagramContext + bookingBlock;
-    console.log(`📝 [INSTAGRAM] Full system prompt: ${fullSystemPrompt.length} chars`);
+    console.log(`\n📝 [INSTAGRAM] Full system prompt breakdown:`);
+    console.log(`   📄 Base prompt: ${systemPrompt.length} chars`);
+    console.log(`   📋 Instruction blocks: ${instructionBlocks.length} chars`);
+    console.log(`   📱 Instagram context: ${instagramContext.length} chars`);
+    console.log(`   📅 Booking block: ${bookingBlock.length} chars`);
+    console.log(`   📊 TOTAL: ${fullSystemPrompt.length} chars`);
 
     // Setup File Search if available (like WhatsApp)
     // Check both agent-specific and consultant-wide stores
