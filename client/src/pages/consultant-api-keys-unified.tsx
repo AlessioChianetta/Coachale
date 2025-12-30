@@ -5851,6 +5851,71 @@ export default function ConsultantApiKeysUnified() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-6">
+                        {/* Visual Stepper */}
+                        {(() => {
+                          const hasUrl = googleSheetsFormData.sheetUrl.trim().length > 0;
+                          const hasAgent = !!googleSheetsFormData.agentConfigId;
+                          const hasPreview = !!googleSheetsPreview;
+                          const hasPhoneMapping = !!(googleSheetsFormData.columnMappings.phoneNumber || googleSheetsPreview?.suggestedMappings?.phoneNumber);
+                          
+                          let currentStep = 1;
+                          if (hasUrl && hasAgent) currentStep = 2;
+                          if (hasPreview) currentStep = 3;
+                          // Step 4 is only for the final import action - step 3 stays active during mapping
+                          
+                          const steps = [
+                            { num: 1, label: "Inserisci URL", icon: FileSpreadsheet },
+                            { num: 2, label: "Test Connessione", icon: RefreshCw },
+                            { num: 3, label: "Mappa Colonne", icon: Settings },
+                            { num: 4, label: "Importa", icon: Send },
+                          ];
+                          
+                          return (
+                            <div className="mb-6">
+                              <div className="flex items-center justify-between">
+                                {steps.map((step, idx) => {
+                                  const isCompleted = step.num < currentStep;
+                                  const isCurrent = step.num === currentStep;
+                                  const isFuture = step.num > currentStep;
+                                  const StepIcon = step.icon;
+                                  
+                                  return (
+                                    <div key={step.num} className="flex items-center flex-1">
+                                      <div className="flex flex-col items-center">
+                                        <div className={`
+                                          w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                                          ${isCompleted ? "bg-emerald-500 border-emerald-500 text-white" : ""}
+                                          ${isCurrent ? "bg-emerald-100 border-emerald-500 text-emerald-700 ring-4 ring-emerald-100" : ""}
+                                          ${isFuture ? "bg-gray-100 border-gray-300 text-gray-400" : ""}
+                                        `}>
+                                          {isCompleted ? (
+                                            <Check className="h-5 w-5" />
+                                          ) : (
+                                            <StepIcon className="h-4 w-4" />
+                                          )}
+                                        </div>
+                                        <span className={`
+                                          mt-2 text-xs font-medium text-center max-w-[80px]
+                                          ${isCompleted ? "text-emerald-600" : ""}
+                                          ${isCurrent ? "text-emerald-700 font-semibold" : ""}
+                                          ${isFuture ? "text-gray-400" : ""}
+                                        `}>
+                                          {step.label}
+                                        </span>
+                                      </div>
+                                      {idx < steps.length - 1 && (
+                                        <div className={`
+                                          flex-1 h-0.5 mx-2 mt-[-24px] transition-all duration-300
+                                          ${step.num < currentStep ? "bg-emerald-500" : "bg-gray-200"}
+                                        `} />
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="googleSheetsUrl">URL Google Sheets *</Label>
@@ -5864,6 +5929,16 @@ export default function ConsultantApiKeysUnified() {
                             <p className="text-xs text-gray-500">
                               Il foglio deve essere condiviso pubblicamente o con chiunque abbia il link
                             </p>
+                            
+                            {/* Call-to-action message */}
+                            {googleSheetsFormData.sheetUrl.trim() && googleSheetsFormData.agentConfigId && !googleSheetsPreview && (
+                              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                                <RefreshCw className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-amber-800">
+                                  <strong>Prossimo passo:</strong> Clicca <span className="font-semibold">"Test Connessione"</span> per vedere l'anteprima del foglio e mappare le colonne
+                                </p>
+                              </div>
+                            )}
                           </div>
 
                           <div className="space-y-2">
@@ -5967,7 +6042,18 @@ export default function ConsultantApiKeysUnified() {
                         </div>
 
                         {googleSheetsPreview && (
-                          <div className="space-y-4 p-4 bg-white rounded-lg border border-emerald-200">
+                          <div className="space-y-4 p-4 bg-white rounded-lg border-2 border-emerald-300 shadow-sm">
+                            {/* Step 3 Header */}
+                            <div className="flex items-center gap-2 pb-3 border-b border-emerald-200">
+                              <div className="p-2 bg-emerald-100 rounded-full">
+                                <Settings className="h-4 w-4 text-emerald-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-emerald-800">Step 3: Mappa le Colonne</h4>
+                                <p className="text-xs text-gray-500">Collega le colonne del foglio ai campi dei lead</p>
+                              </div>
+                            </div>
+                            
                             <div className="flex items-center justify-between">
                               <h4 className="font-medium text-gray-900 flex items-center gap-2">
                                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
@@ -6053,71 +6139,82 @@ export default function ConsultantApiKeysUnified() {
                         )}
 
                         <div className="flex flex-wrap gap-3">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={async () => {
-                              if (!googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId) {
-                                toast({
-                                  title: "Errore",
-                                  description: "Inserisci l'URL del foglio e seleziona un agente",
-                                  variant: "destructive",
-                                });
-                                return;
-                              }
-                              setIsTestingGoogleSheets(true);
-                              try {
-                                const response = await fetch(`/api/consultant/agents/${googleSheetsFormData.agentConfigId}/leads/preview-sheet`, {
-                                  method: "POST",
-                                  headers: {
-                                    ...getAuthHeaders(),
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify({ sheetUrl: googleSheetsFormData.sheetUrl }),
-                                });
-                                const result = await response.json();
-                                if (result.success) {
-                                  setGoogleSheetsPreview(result.data);
-                                  setGoogleSheetsFormData(prev => ({
-                                    ...prev,
-                                    columnMappings: result.data.suggestedMappings,
-                                  }));
-                                  toast({
-                                    title: "Connessione riuscita!",
-                                    description: `Trovate ${result.data.totalRows} righe nel foglio`,
-                                  });
-                                } else {
-                                  toast({
-                                    title: "Errore",
-                                    description: result.error || "Impossibile accedere al foglio",
-                                    variant: "destructive",
-                                  });
+                          {/* Test Connessione button - More prominent when it's the next step */}
+                          {(() => {
+                            const isNextStep = googleSheetsFormData.sheetUrl.trim() && googleSheetsFormData.agentConfigId && !googleSheetsPreview;
+                            
+                            return (
+                              <Button
+                                type="button"
+                                variant={isNextStep ? "default" : "outline"}
+                                size={isNextStep ? "lg" : "default"}
+                                onClick={async () => {
+                                  if (!googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId) {
+                                    toast({
+                                      title: "Errore",
+                                      description: "Inserisci l'URL del foglio e seleziona un agente",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+                                  setIsTestingGoogleSheets(true);
+                                  try {
+                                    const response = await fetch(`/api/consultant/agents/${googleSheetsFormData.agentConfigId}/leads/preview-sheet`, {
+                                      method: "POST",
+                                      headers: {
+                                        ...getAuthHeaders(),
+                                        "Content-Type": "application/json",
+                                      },
+                                      body: JSON.stringify({ sheetUrl: googleSheetsFormData.sheetUrl }),
+                                    });
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      setGoogleSheetsPreview(result.data);
+                                      setGoogleSheetsFormData(prev => ({
+                                        ...prev,
+                                        columnMappings: result.data.suggestedMappings,
+                                      }));
+                                      toast({
+                                        title: "Connessione riuscita!",
+                                        description: `Trovate ${result.data.totalRows} righe nel foglio`,
+                                      });
+                                    } else {
+                                      toast({
+                                        title: "Errore",
+                                        description: result.error || "Impossibile accedere al foglio",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  } catch (error) {
+                                    toast({
+                                      title: "Errore",
+                                      description: "Errore durante il test della connessione",
+                                      variant: "destructive",
+                                    });
+                                  } finally {
+                                    setIsTestingGoogleSheets(false);
+                                  }
+                                }}
+                                disabled={isTestingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
+                                className={isNextStep 
+                                  ? "bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-lg animate-pulse"
+                                  : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                                 }
-                              } catch (error) {
-                                toast({
-                                  title: "Errore",
-                                  description: "Errore durante il test della connessione",
-                                  variant: "destructive",
-                                });
-                              } finally {
-                                setIsTestingGoogleSheets(false);
-                              }
-                            }}
-                            disabled={isTestingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
-                            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                          >
-                            {isTestingGoogleSheets ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Test in corso...
-                              </>
-                            ) : (
-                              <>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Test Connessione
-                              </>
-                            )}
-                          </Button>
+                              >
+                                {isTestingGoogleSheets ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Test in corso...
+                                  </>
+                                ) : (
+                                  <>
+                                    <RefreshCw className={`mr-2 ${isNextStep ? "h-5 w-5" : "h-4 w-4"}`} />
+                                    Test Connessione
+                                  </>
+                                )}
+                              </Button>
+                            );
+                          })()}
 
                           <Button
                             onClick={async () => {
