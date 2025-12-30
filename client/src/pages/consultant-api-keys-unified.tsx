@@ -16,7 +16,7 @@ import {
   AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
   RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
   BookOpen, ChevronDown, ChevronUp, Shield, Database, Plug, Copy, Check, Filter,
-  MapPin, Tag, Settings, Send, User, Zap, Instagram, FileSpreadsheet
+  MapPin, Tag, Settings, Send, User, Zap, Instagram, FileSpreadsheet, ArrowRight, X
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
@@ -6098,173 +6098,222 @@ export default function ConsultantApiKeysUnified() {
                             
                             <div className="p-5 space-y-5">
                               {(() => {
-                                const fields = [
-                                  { key: 'firstName', label: 'Nome', required: false },
-                                  { key: 'lastName', label: 'Cognome', required: false },
-                                  { key: 'phoneNumber', label: 'Telefono', required: true },
-                                  { key: 'email', label: 'Email', required: false },
-                                  { key: 'company', label: 'Azienda', required: false },
-                                  { key: 'notes', label: 'Note', required: false },
-                                  { key: 'obiettivi', label: 'Obiettivi', required: false },
-                                  { key: 'desideri', label: 'Desideri', required: false },
-                                  { key: 'uncino', label: 'Uncino/Hook', required: false },
-                                  { key: 'fonte', label: 'Fonte', required: false },
-                                  { key: 'website', label: 'Sito Web', required: false },
-                                  { key: 'address', label: 'Indirizzo', required: false },
-                                  { key: 'city', label: 'Città', required: false },
-                                  { key: 'state', label: 'Provincia', required: false },
-                                  { key: 'postalCode', label: 'CAP', required: false },
-                                  { key: 'country', label: 'Paese', required: false },
-                                  { key: 'tags', label: 'Tags', required: false },
-                                  { key: 'dateOfBirth', label: 'Data Nascita', required: false },
-                                  { key: 'dateCreated', label: 'Data Inserimento', required: false },
+                                const crmFields = [
+                                  { key: 'firstName', label: 'Nome' },
+                                  { key: 'lastName', label: 'Cognome' },
+                                  { key: 'phoneNumber', label: 'Telefono *', required: true },
+                                  { key: 'email', label: 'Email' },
+                                  { key: 'company', label: 'Azienda' },
+                                  { key: 'notes', label: 'Note' },
+                                  { key: 'obiettivi', label: 'Obiettivi' },
+                                  { key: 'desideri', label: 'Desideri' },
+                                  { key: 'uncino', label: 'Uncino/Hook' },
+                                  { key: 'fonte', label: 'Fonte' },
+                                  { key: 'website', label: 'Sito Web' },
+                                  { key: 'address', label: 'Indirizzo' },
+                                  { key: 'city', label: 'Città' },
+                                  { key: 'state', label: 'Provincia' },
+                                  { key: 'postalCode', label: 'CAP' },
+                                  { key: 'country', label: 'Paese' },
+                                  { key: 'tags', label: 'Tags' },
+                                  { key: 'dateOfBirth', label: 'Data Nascita' },
+                                  { key: 'dateCreated', label: 'Data Inserimento' },
                                 ];
+                                
+                                const sheetColumns = googleSheetsPreview.columns.filter(col => col && col.trim());
+                                
+                                const getReverseMappings = () => {
+                                  const reverse: Record<string, string> = {};
+                                  for (const field of crmFields) {
+                                    const col = googleSheetsFormData.columnMappings[field.key] || googleSheetsPreview.suggestedMappings[field.key];
+                                    if (col && col !== "__none__") {
+                                      reverse[col] = field.key;
+                                    }
+                                  }
+                                  return reverse;
+                                };
+                                
+                                const reverseMappings = getReverseMappings();
+                                const mappedCount = Object.keys(reverseMappings).length;
+                                const hasPhoneMapping = reverseMappings[Object.keys(reverseMappings).find(col => reverseMappings[col] === 'phoneNumber') || ''] === 'phoneNumber';
                                 
                                 return (
                                   <>
-                                    <div className="space-y-4">
-                                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                                        <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                                          <MapPin className="h-4 w-4 text-emerald-600" />
-                                          Mappatura Campi CRM
-                                        </h4>
-                                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                                          {fields.filter(f => {
-                                            const col = googleSheetsFormData.columnMappings[f.key] || googleSheetsPreview.suggestedMappings[f.key];
-                                            return col && col !== "__none__";
-                                          }).length} campi mappati
+                                    <div className="flex items-center justify-between mb-4">
+                                      <div className="flex items-center gap-3">
+                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                                          {mappedCount}/{sheetColumns.length} colonne mappate
                                         </Badge>
-                                      </div>
-                                      
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {fields.map((field) => {
-                                          const selectedColumn = googleSheetsFormData.columnMappings[field.key] || googleSheetsPreview.suggestedMappings[field.key] || "";
-                                          const isAutoMapped = !googleSheetsFormData.columnMappings[field.key] && googleSheetsPreview.suggestedMappings[field.key];
-                                          const sampleValues = selectedColumn && selectedColumn !== "__none__"
-                                            ? googleSheetsPreview.previewRows.slice(0, 3).map(row => row[selectedColumn]).filter(v => v)
-                                            : [];
-                                          
-                                          return (
-                                            <div 
-                                              key={field.key} 
-                                              className={`p-3 rounded-lg border transition-all ${
-                                                field.required 
-                                                  ? 'bg-emerald-50/50 border-emerald-200 hover:border-emerald-300' 
-                                                  : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'
-                                              }`}
-                                            >
-                                              <div className="flex items-center justify-between mb-2">
-                                                <Label className={`text-sm font-medium flex items-center gap-1.5 ${field.required ? 'text-emerald-700' : 'text-gray-700'}`}>
-                                                  {field.label}
-                                                  {field.required && <span className="text-emerald-500">*</span>}
-                                                  {isAutoMapped && (
-                                                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-blue-50 text-blue-600 border-blue-200">
-                                                      auto
-                                                    </Badge>
-                                                  )}
-                                                </Label>
-                                                <Select
-                                                  value={selectedColumn || "__none__"}
-                                                  onValueChange={(value) => setGoogleSheetsFormData({
-                                                    ...googleSheetsFormData,
-                                                    columnMappings: { ...googleSheetsFormData.columnMappings, [field.key]: value === "__none__" ? "" : value }
-                                                  })}
-                                                >
-                                                  <SelectTrigger className={`w-[180px] h-8 text-xs ${field.required ? 'border-emerald-300 focus:border-emerald-500' : ''}`}>
-                                                    <SelectValue placeholder="Seleziona colonna" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                    <SelectItem value="__none__">Non mappato</SelectItem>
-                                                    {googleSheetsPreview.columns.filter(col => col && col.trim()).map((col) => (
-                                                      <SelectItem key={col} value={col}>{col}</SelectItem>
-                                                    ))}
-                                                  </SelectContent>
-                                                </Select>
-                                              </div>
-                                              {sampleValues.length > 0 ? (
-                                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                                  {sampleValues.map((val, i) => (
-                                                    <span 
-                                                      key={i} 
-                                                      className="px-2 py-0.5 bg-white rounded text-xs text-slate-600 border border-slate-200 truncate max-w-[140px]"
-                                                      title={String(val)}
-                                                    >
-                                                      {val}
-                                                    </span>
-                                                  ))}
-                                                </div>
-                                              ) : (
-                                                <p className="text-xs text-slate-400 italic mt-2">Nessun dato di esempio</p>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
+                                        {!hasPhoneMapping && (
+                                          <Badge variant="destructive" className="animate-pulse">
+                                            ⚠️ Telefono obbligatorio
+                                          </Badge>
+                                        )}
                                       </div>
                                     </div>
 
-                                    {googleSheetsPreview.previewRows.length > 0 && (
-                                      <div className="mt-6">
-                                        <h4 className="font-medium mb-3 flex items-center gap-2 text-gray-900">
-                                          <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                                          Dati del Foglio ({googleSheetsPreview.totalRows} righe totali)
-                                        </h4>
-                                        <div className="overflow-x-auto border rounded-lg max-h-[300px]">
-                                          <Table>
-                                            <TableHeader className="sticky top-0">
-                                              <TableRow className="bg-slate-50">
-                                                {googleSheetsPreview.columns.filter(col => col && col.trim()).map((col) => (
-                                                  <TableHead key={col} className="text-xs font-semibold text-slate-600 whitespace-nowrap min-w-[120px]">
-                                                    {col}
-                                                  </TableHead>
-                                                ))}
+                                    <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                            <TableHead className="font-semibold text-slate-700 w-[200px]">
+                                              <div className="flex items-center gap-2">
+                                                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                                                Colonna Foglio
+                                              </div>
+                                            </TableHead>
+                                            <TableHead className="font-semibold text-slate-700">
+                                              <div className="flex items-center gap-2">
+                                                <Eye className="h-4 w-4 text-blue-600" />
+                                                Dati di Esempio
+                                              </div>
+                                            </TableHead>
+                                            <TableHead className="font-semibold text-slate-700 w-[200px]">
+                                              <div className="flex items-center gap-2">
+                                                <ArrowRight className="h-4 w-4 text-teal-600" />
+                                                Mappa a Campo CRM
+                                              </div>
+                                            </TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {sheetColumns.map((col, idx) => {
+                                            const sampleValues = googleSheetsPreview.previewRows
+                                              .slice(0, 3)
+                                              .map(row => row[col])
+                                              .filter(v => v);
+                                            
+                                            const mappedField = reverseMappings[col];
+                                            const mappedCrmLabel = crmFields.find(f => f.key === mappedField)?.label || '';
+                                            const isPhoneField = mappedField === 'phoneNumber';
+                                            
+                                            return (
+                                              <TableRow 
+                                                key={col} 
+                                                className={`hover:bg-slate-50/80 transition-colors ${
+                                                  isPhoneField ? 'bg-emerald-50/50' : 
+                                                  mappedField ? 'bg-blue-50/30' : ''
+                                                }`}
+                                              >
+                                                <TableCell className="font-medium">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-slate-400 w-5">{idx + 1}</span>
+                                                    <code className="px-2 py-1 bg-slate-100 rounded text-sm font-mono text-slate-700">
+                                                      {col}
+                                                    </code>
+                                                  </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                  <div className="flex flex-wrap gap-1.5">
+                                                    {sampleValues.length > 0 ? sampleValues.map((val, i) => (
+                                                      <span 
+                                                        key={i}
+                                                        className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-slate-100 text-slate-600 border border-slate-200 max-w-[180px] truncate"
+                                                        title={String(val)}
+                                                      >
+                                                        {String(val).length > 25 ? String(val).slice(0, 25) + '...' : val}
+                                                      </span>
+                                                    )) : (
+                                                      <span className="text-xs text-slate-400 italic">Nessun dato</span>
+                                                    )}
+                                                  </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                  <Select
+                                                    value={mappedField || "__skip__"}
+                                                    onValueChange={(value) => {
+                                                      const newMappings = { ...googleSheetsFormData.columnMappings };
+                                                      
+                                                      if (mappedField) {
+                                                        newMappings[mappedField] = "";
+                                                      }
+                                                      
+                                                      if (value !== "__skip__") {
+                                                        for (const key of Object.keys(newMappings)) {
+                                                          if (newMappings[key] === col) {
+                                                            newMappings[key] = "";
+                                                          }
+                                                        }
+                                                        newMappings[value] = col;
+                                                      }
+                                                      
+                                                      setGoogleSheetsFormData({
+                                                        ...googleSheetsFormData,
+                                                        columnMappings: newMappings
+                                                      });
+                                                    }}
+                                                  >
+                                                    <SelectTrigger className={`h-9 ${
+                                                      isPhoneField 
+                                                        ? 'border-emerald-400 bg-emerald-50 text-emerald-700 font-medium' 
+                                                        : mappedField 
+                                                          ? 'border-blue-300 bg-blue-50 text-blue-700' 
+                                                          : 'border-slate-200'
+                                                    }`}>
+                                                      <SelectValue>
+                                                        {mappedField ? (
+                                                          <span className="flex items-center gap-1.5">
+                                                            <CheckCircle className="h-3.5 w-3.5" />
+                                                            {mappedCrmLabel}
+                                                          </span>
+                                                        ) : (
+                                                          <span className="text-slate-400">Non importare</span>
+                                                        )}
+                                                      </SelectValue>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      <SelectItem value="__skip__">
+                                                        <span className="flex items-center gap-2 text-slate-500">
+                                                          <X className="h-3.5 w-3.5" />
+                                                          Non importare
+                                                        </span>
+                                                      </SelectItem>
+                                                      {crmFields.map((field) => {
+                                                        const isAlreadyMapped = reverseMappings[Object.keys(reverseMappings).find(c => reverseMappings[c] === field.key) || ''] === field.key && reverseMappings[col] !== field.key;
+                                                        return (
+                                                          <SelectItem 
+                                                            key={field.key} 
+                                                            value={field.key}
+                                                            disabled={isAlreadyMapped}
+                                                          >
+                                                            <span className={`flex items-center gap-2 ${field.required ? 'font-medium text-emerald-700' : ''}`}>
+                                                              {field.label}
+                                                              {isAlreadyMapped && <span className="text-xs text-slate-400">(già usato)</span>}
+                                                            </span>
+                                                          </SelectItem>
+                                                        );
+                                                      })}
+                                                    </SelectContent>
+                                                  </Select>
+                                                </TableCell>
                                               </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                              {googleSheetsPreview.previewRows.slice(0, 5).map((row, idx) => (
-                                                <TableRow key={idx} className="hover:bg-slate-50/50">
-                                                  {googleSheetsPreview.columns.filter(col => col && col.trim()).map((col) => (
-                                                    <TableCell key={col} className="text-xs text-slate-600 whitespace-nowrap">
-                                                      {row[col] || '-'}
-                                                    </TableCell>
-                                                  ))}
-                                                </TableRow>
-                                              ))}
-                                            </TableBody>
-                                          </Table>
-                                        </div>
-                                        <p className="text-xs text-slate-500 mt-2">
-                                          Scorri orizzontalmente per vedere tutte le {googleSheetsPreview.columns.filter(c => c && c.trim()).length} colonne
-                                        </p>
-                                      </div>
-                                    )}
+                                            );
+                                          })}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
 
-                                    {googleSheetsPreview.previewRows.length > 0 && (
-                                      <div className="mt-6 p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+                                    {mappedCount > 0 && googleSheetsPreview.previewRows.length > 0 && (
+                                      <div className="mt-6 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-200">
                                         <h4 className="font-semibold text-emerald-800 mb-3 flex items-center gap-2">
                                           <User className="h-4 w-4" />
-                                          Anteprima Lead Importato (riga 1)
+                                          Anteprima: come apparirà il primo lead importato
                                         </h4>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                          {fields.filter(f => {
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                          {crmFields.filter(f => {
                                             const col = googleSheetsFormData.columnMappings[f.key] || googleSheetsPreview.suggestedMappings[f.key];
-                                            return col && col !== "__none__" && googleSheetsPreview.previewRows[0]?.[col];
+                                            return col && col !== "__none__" && col !== "__skip__" && googleSheetsPreview.previewRows[0]?.[col];
                                           }).map(f => {
                                             const col = googleSheetsFormData.columnMappings[f.key] || googleSheetsPreview.suggestedMappings[f.key];
                                             const value = googleSheetsPreview.previewRows[0]?.[col];
                                             return (
-                                              <div key={f.key} className="bg-white/60 rounded-lg p-2">
-                                                <span className="text-emerald-600 text-xs font-medium">{f.label}</span>
-                                                <p className="font-medium text-gray-900 truncate" title={String(value)}>{value}</p>
+                                              <div key={f.key} className="bg-white rounded-lg p-3 shadow-sm border border-emerald-100">
+                                                <span className="text-emerald-600 text-xs font-medium uppercase tracking-wide">{f.label}</span>
+                                                <p className="font-semibold text-gray-900 mt-1 truncate" title={String(value)}>{value}</p>
                                               </div>
                                             );
                                           })}
                                         </div>
-                                        {fields.filter(f => {
-                                          const col = googleSheetsFormData.columnMappings[f.key] || googleSheetsPreview.suggestedMappings[f.key];
-                                          return col && col !== "__none__" && googleSheetsPreview.previewRows[0]?.[col];
-                                        }).length === 0 && (
-                                          <p className="text-sm text-emerald-600 italic">Nessun campo mappato con dati nella prima riga</p>
-                                        )}
                                       </div>
                                     )}
                                   </>
