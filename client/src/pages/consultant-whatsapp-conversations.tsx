@@ -1465,22 +1465,24 @@ export default function ConsultantWhatsAppConversationsPage() {
                         </div>
 
                         {/* Area messaggi */}
-                        <ScrollArea className="flex-1 p-4 bg-white dark:bg-zinc-900">
-                          {instagramMessagesLoading ? (
-                            <div className="flex items-center justify-center h-full">
-                              <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
-                            </div>
-                          ) : instagramMessages.length === 0 ? (
-                            <div className="flex items-center justify-center h-full text-zinc-400">
-                              <p className="text-sm">Nessun messaggio in questa conversazione</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {instagramMessages.map((msg: any) => (
-                                <InstagramMessageBubble key={msg.id} message={msg} />
-                              ))}
-                            </div>
-                          )}
+                        <ScrollArea className="h-[calc(100vh-350px)] bg-white dark:bg-zinc-900">
+                          <div className="p-4">
+                            {instagramMessagesLoading ? (
+                              <div className="flex items-center justify-center h-40">
+                                <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+                              </div>
+                            ) : instagramMessages.length === 0 ? (
+                              <div className="flex items-center justify-center h-40 text-zinc-400">
+                                <p className="text-sm">Nessun messaggio in questa conversazione</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {instagramMessages.map((msg: any) => (
+                                  <InstagramMessageBubble key={msg.id} message={msg} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </ScrollArea>
                       </>
                     )}
