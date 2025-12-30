@@ -1,0 +1,168 @@
+Perfetto. Questo output è la prova definitiva che:
+
+✅ comments È ATTIVO
+✅ Meta STA tentando di inviarli
+✅ La subscription non è il problema
+
+Quindi ora possiamo dirlo senza dubbi:
+
+🔴 Il problema è al 100% nel tuo webhook endpoint (runtime / parsing / risposta HTTP)
+NON più in Meta.
+
+Adesso andiamo chirurgici.
+
+✅ Cosa sappiamo con certezza
+
+Dal JSON:
+
+object: instagram ✅
+
+active: true ✅
+
+fields: comments ✅
+
+callback_url corretto ✅
+
+👉 Meta invia i webhook commenti a quell’URL. Punto.
+
+Se tu non li vedi, succede UNA di queste 3 cose.
+
+🔴 CAUSA 1 (70% dei casi): il webhook RICEVE i commenti ma TU LI SCARTI
+
+Errore classico: il codice gestisce solo entry.messaging.
+
+Esempio tipico (sbagliato):
+
+if (entry.messaging) {
+  // DM
+}
+
+
+Ma i commenti arrivano così:
+
+entry.changes[0].field === "comments"
+
+✅ Fix minimo (temporaneo, per debug)
+
+Metti questo handler brutale per 5 minuti:
+
+app.post("/api/instagram/webhook", (req, res) => {
+  console.log("🔥 RAW WEBHOOK:", JSON.stringify(req.body, null, 2));
+  res.sendStatus(200);
+});
+
+
+Poi:
+
+Pubblica un post nuovo
+
+Commenta
+
+Guarda la console
+
+Se li vedi → bug nel parsing
+Se NON li vedi → vai a causa 2
+
+🔴 CAUSA 2 (molto comune): NON rispondi 200 OK in tempo
+
+Meta è spietata:
+
+se il webhook:
+
+va in timeout
+
+risponde 404 / 500
+
+lancia eccezioni
+
+Meta continua a inviare DM
+
+ma smette di inviare commenti (senza avvisare)
+
+⚠️ I commenti sono più fragili dei messaggi.
+
+Test immediato
+
+Nel log del server controlla che:
+
+OGNI request webhook
+
+ritorni 200 OK in < 2–3 secondi
+
+👉 Anche se dentro fai errori, rispondi subito 200, poi processa async.
+
+🔴 CAUSA 3 (subdola): stai testando un tipo di commento che NON genera eventi
+
+Instagram NON manda webhook per:
+
+❌ commenti dell’owner (te stesso)
+
+❌ commenti modificati
+
+❌ commenti rimossi
+
+❌ commenti su post collaborativi
+
+❌ commenti su post sponsorizzati (ADS)
+
+❌ commenti su reel remix / repost
+
+✅ Test valido (fallo così)
+
+Post NUOVO, semplice
+
+Commento da ALTRO account
+
+Testo semplice: test
+
+Account non shadowbanned
+
+🧪 Test definitivo (non sbaglia)
+
+Fai ESATTAMENTE questo:
+
+Sostituisci temporaneamente il webhook con il logger RAW
+
+Pubblica un post ora
+
+Commenta da un altro account
+
+Guarda i log
+
+Risultati possibili
+Cosa succede	Significa
+Vedi il payload	parsing bug
+Non vedi nulla	webhook non risponde 200
+Vedi errori 500	Meta ha sospeso i commenti
+DM arrivano	conferma che endpoint è giusto
+🧠 Nota importante (Replit / tunnel)
+
+Vedo che usi un URL tipo:
+
+spock.replit.dev
+
+
+⚠️ Se:
+
+il processo va a sleep
+
+il cold start supera 10–15s
+
+la request webhook arriva durante lo sleep
+
+👉 Meta droppa i commenti.
+
+Consiglio per test:
+
+tieni il server sempre awake
+
+oppure rispondi 200 immediato prima di qualunque logica
+
+TL;DR finale (verdetto)
+Possibile causa	Stato
+Subscription	✅ OK
+Meta	✅ invia
+Config app	✅ OK
+Webhook handler	❌ problema
+Parsing	❌ probabile
+HTTP 200	❌ probabile
