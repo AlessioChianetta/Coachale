@@ -343,7 +343,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           access_token: pageAccessToken,
-          subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads",
+          subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads,comments",
         }).toString(),
       });
       const subscribeData = await subscribeRes.json() as any;
