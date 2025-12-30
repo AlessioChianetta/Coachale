@@ -591,6 +591,24 @@ LEAD: grazie per l'appuntamento, a presto!
 → {"intent": "NONE", "newDate": null, "newTime": null, "attendees": [], "confirmedTimes": 0, "confidence": "high"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 9 - RESET CONVERSAZIONE (ricominciamo):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Quando il lead dice "ricominciamo", "iniziamo da capo", "proviamo di nuovo" o simili,
+tutti i messaggi PRECEDENTI a questo punto NON sono più rilevanti per l'intent detection.
+Considera solo i messaggi DOPO il reset.
+
+LEAD: Ok alle 10:00
+AI: Perfetto! Confermo per le 10:00?
+LEAD: Ricominciamo
+AI: Certo! Ricominciamo da capo. Cosa ti ha spinto a scriverci?
+LEAD: Volevo capire cosa fate
+
+→ {"intent": "NONE", "newDate": null, "newTime": null, "attendees": [], "confirmedTimes": 0, "confidence": "high"}
+
+⚠️ NOTA: Anche se ci sono date/orari nei messaggi PRIMA del "ricominciamo", 
+NON sono rilevanti. Il lead ha resettato la conversazione.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🗓️ DATA CORRENTE: ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
 
@@ -613,6 +631,7 @@ LEAD: grazie per l'appuntamento, a presto!
 16. Per ADD_ATTENDEES: confirmedTimes = 0 (nessuna conferma necessaria)
 17. Se non ha ancora confermato esplicitamente: confirmedTimes = 0
 18. IMPORTANTE: Le richieste dirette ("mettilo alle 10", "spostalo alle 14") NON contano come conferma - confirmedTimes=0 finché il lead non conferma esplicitamente
+19. RESET: Se il lead dice "ricominciamo", "iniziamo da capo", "proviamo di nuovo", i messaggi PRECEDENTI sono irrilevanti - intent="NONE"
 `;
 }
 
