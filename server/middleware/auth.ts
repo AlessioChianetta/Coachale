@@ -11,6 +11,7 @@ export interface AuthRequest extends Request {
     role: "consultant" | "client" | "super_admin";
     consultantId?: string;
     profileId?: string; // Email Condivisa feature: active profile ID
+    encryptionSalt?: string; // Per-consultant encryption salt
   };
 }
 
@@ -50,6 +51,7 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
       role: role,
       consultantId: consultantId,
       profileId: profileId,
+      encryptionSalt: user.encryptionSalt || undefined,
     };
     
     next();
