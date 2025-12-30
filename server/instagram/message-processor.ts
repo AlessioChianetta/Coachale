@@ -602,15 +602,15 @@ Ci vediamo alla nuova data! 🚀`;
           }
           
           // ═══════════════════════════════════════════════════════════════════════════════
-          // CANCEL APPOINTMENT - Requires 1 confirmation (aligned with current WhatsApp behavior)
+          // CANCEL APPOINTMENT - Requires 2 confirmations (aligned with WhatsApp behavior)
           // ═══════════════════════════════════════════════════════════════════════════════
           else if (modResult.intent === 'CANCEL') {
             console.log('\n🗑️ [INSTAGRAM CANCEL APPOINTMENT] Starting cancellation process...');
             
             if (isActionAlreadyCompleted(lastCompletedAction, 'CANCEL')) {
               console.log(`   ⏭️ [INSTAGRAM CANCEL] Skipping - action already completed recently`);
-            } else if (!modResult.confirmedTimes || modResult.confirmedTimes < 1) {
-              console.log(`⚠️ [INSTAGRAM CANCEL] Insufficient confirmations (${modResult.confirmedTimes || 0}/1)`);
+            } else if (!modResult.confirmedTimes || modResult.confirmedTimes < 2) {
+              console.log(`⚠️ [INSTAGRAM CANCEL] Insufficient confirmations (${modResult.confirmedTimes || 0}/2)`);
               console.log('   AI should continue asking for confirmation via prompt - skipping cancellation');
             } else {
               console.log(`✅ [INSTAGRAM CANCEL] Confirmed ${modResult.confirmedTimes} times - proceeding with cancellation`);
