@@ -8,29 +8,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
   Instagram,
-  Key,
-  Eye,
-  EyeOff,
   CheckCircle2,
   XCircle,
   Loader2,
-  MessageCircle,
-  AtSign,
-  Heart,
-  Send,
+  MessageSquare,
   AlertCircle,
   Sparkles,
   ChevronDown,
   Unlink,
-  TestTube,
-  Link2,
+  Link,
+  Zap,
+  BookOpen,
+  FlaskConical,
+  Plus,
+  X,
+  RefreshCw,
+  HelpCircle,
+  Smartphone,
+  AlertTriangle,
+  Users,
+  CheckCircle,
 } from "lucide-react";
 
 interface AgentInstagramProps {
@@ -43,207 +46,335 @@ interface AgentInstagramProps {
 export default function AgentInstagram({ agentId, formData, onChange, errors }: AgentInstagramProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [showToken, setShowToken] = useState(false);
-  const [isOverrideOpen, setIsOverrideOpen] = useState(false);
-  const [localConfig, setLocalConfig] = useState({
-    instagramPageId: "",
-    facebookPageId: "",
-    pageAccessToken: "",
-    instagramUsername: "",
-    isConnected: false,
-    isDryRun: true,
-    autoResponseEnabled: true,
-    commentToDmEnabled: false,
-    commentTriggerKeywords: "",
-    commentAutoReplyMessage: "",
-    storyReplyEnabled: false,
-    storyAutoReplyMessage: "",
-    aiPersonality: "",
-    agentInstructions: "",
-    agentInstructionsEnabled: false,
-    businessName: "",
+  
+  const [selectedInstagramConfigId, setSelectedInstagramConfigId] = useState<string | null>(null);
+  const [isSavingInstagram, setIsSavingInstagram] = useState(false);
+  const [isConnectingInstagram, setIsConnectingInstagram] = useState(false);
+  const [isDisconnectingInstagram, setIsDisconnectingInstagram] = useState(false);
+  const [instagramError, setInstagramError] = useState<{ code: string; message: string } | null>(null);
+
+  const [newKeyword, setNewKeyword] = useState("");
+  const [commentAutoReplyMessage, setCommentAutoReplyMessage] = useState("");
+  const [storyAutoReplyMessage, setStoryAutoReplyMessage] = useState("");
+  
+  const [iceBreakers, setIceBreakers] = useState<Array<{ text: string; payload: string }>>([]);
+  const [newIceBreaker, setNewIceBreaker] = useState("");
+
+  const { data: instagramConfigs, isLoading: isLoadingInstagramConfigs } = useQuery<{
+    configs: Array<{
+      id: string;
+      instagramPageId: string;
+      agentName: string | null;
+      isActive: boolean;
+      autoResponseEnabled: boolean;
+      storyReplyEnabled: boolean;
+      commentToDmEnabled: boolean;
+      commentTriggerKeywords: string[];
+      commentAutoReplyMessage: string | null;
+      storyAutoReplyMessage: string | null;
+      iceBreakersEnabled: boolean;
+      iceBreakers: any[];
+      isDryRun: boolean;
+      linkedAgent: { agentId: string; agentName: string } | null;
+    }>;
+  }>({
+    queryKey: ["/api/whatsapp/instagram-configs"],
+    queryFn: async () => {
+      const res = await fetch("/api/whatsapp/instagram-configs", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch Instagram configs");
+      return res.json();
+    },
+    staleTime: 30000,
   });
 
-  const { data: instagramConfig, isLoading, refetch } = useQuery({
-    queryKey: [`/api/consultant/agents/${agentId}/instagram`],
+  const { data: agentDetails } = useQuery<{ config: { instagramConfigId?: string } }>({
+    queryKey: ["/api/whatsapp/config", agentId],
     queryFn: async () => {
-      if (!agentId) return null;
-      const response = await fetch(`/api/consultant/agents/${agentId}/instagram`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) return null;
-      const result = await response.json();
-      return result.config;
+      const res = await fetch(`/api/whatsapp/config/${agentId}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch agent details");
+      return res.json();
     },
     enabled: !!agentId,
   });
 
-  const { data: inheritedSettings } = useQuery({
-    queryKey: [`/api/consultant/agents/${agentId}/instagram/inherit`],
-    queryFn: async () => {
-      if (!agentId) return null;
-      const response = await fetch(`/api/consultant/agents/${agentId}/instagram/inherit`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) return null;
-      return response.json();
-    },
-    enabled: !!agentId && !instagramConfig,
-  });
+  useEffect(() => {
+    if (agentDetails?.config?.instagramConfigId) {
+      setSelectedInstagramConfigId(agentDetails.config.instagramConfigId);
+    } else {
+      setSelectedInstagramConfigId(null);
+    }
+  }, [agentDetails?.config?.instagramConfigId, agentId]);
 
   useEffect(() => {
-    if (instagramConfig) {
-      setLocalConfig({
-        instagramPageId: instagramConfig.instagramPageId || "",
-        facebookPageId: instagramConfig.facebookPageId || "",
-        pageAccessToken: instagramConfig.pageAccessToken === "***ENCRYPTED***" ? "" : "",
-        instagramUsername: instagramConfig.instagramUsername || "",
-        isConnected: instagramConfig.isConnected || false,
-        isDryRun: instagramConfig.isDryRun ?? true,
-        autoResponseEnabled: instagramConfig.autoResponseEnabled ?? true,
-        commentToDmEnabled: instagramConfig.commentToDmEnabled || false,
-        commentTriggerKeywords: Array.isArray(instagramConfig.commentTriggerKeywords)
-          ? instagramConfig.commentTriggerKeywords.join(", ")
-          : instagramConfig.commentTriggerKeywords || "",
-        commentAutoReplyMessage: instagramConfig.commentAutoReplyMessage || "",
-        storyReplyEnabled: instagramConfig.storyReplyEnabled || false,
-        storyAutoReplyMessage: instagramConfig.storyAutoReplyMessage || "",
-        aiPersonality: instagramConfig.aiPersonality || "",
-        agentInstructions: instagramConfig.agentInstructions || "",
-        agentInstructionsEnabled: instagramConfig.agentInstructionsEnabled || false,
-        businessName: instagramConfig.businessName || "",
-      });
-    } else if (inheritedSettings) {
-      setLocalConfig((prev) => ({
-        ...prev,
-        aiPersonality: inheritedSettings.aiPersonality || "",
-        businessName: inheritedSettings.businessName || "",
-      }));
-    }
-  }, [instagramConfig, inheritedSettings]);
-
-  const saveMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch(`/api/consultant/agents/${agentId}/instagram`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to save Instagram configuration");
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "✅ Configurazione salvata",
-        description: "Le impostazioni Instagram sono state aggiornate",
-      });
-      refetch();
-      queryClient.invalidateQueries({ queryKey: [`/api/consultant/agents/${agentId}/instagram`] });
-    },
-    onError: () => {
-      toast({
-        title: "❌ Errore",
-        description: "Impossibile salvare la configurazione Instagram",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const testMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/consultant/agents/${agentId}/instagram/test`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to test connection");
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        toast({
-          title: "✅ Connessione riuscita!",
-          description: `Account Instagram: @${data.username}`,
-        });
-        refetch();
-      } else {
-        toast({
-          title: "❌ Connessione fallita",
-          description: data.error || "Verifica le credenziali e riprova",
-          variant: "destructive",
-        });
+    if (selectedInstagramConfigId && instagramConfigs?.configs) {
+      const currentConfig = instagramConfigs.configs.find(c => c.id === selectedInstagramConfigId);
+      if (currentConfig) {
+        setStoryAutoReplyMessage(currentConfig.storyAutoReplyMessage || '');
+        setCommentAutoReplyMessage(currentConfig.commentAutoReplyMessage || '');
+        setIceBreakers(currentConfig.iceBreakers || []);
       }
-    },
-    onError: () => {
-      toast({
-        title: "❌ Errore",
-        description: "Impossibile testare la connessione",
-        variant: "destructive",
-      });
-    },
-  });
+    } else {
+      setStoryAutoReplyMessage('');
+      setCommentAutoReplyMessage('');
+      setIceBreakers([]);
+    }
+  }, [selectedInstagramConfigId, instagramConfigs?.configs]);
 
-  const disconnectMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/consultant/agents/${agentId}/instagram`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorCode = urlParams.get('instagram_error');
+    const successParam = urlParams.get('instagram_success');
+    
+    if (errorCode) {
+      const errorMessages: Record<string, string> = {
+        'no_instagram': 'Nessun account Instagram Business collegato alla tua pagina Facebook. Devi prima collegare il tuo account Instagram alla pagina Facebook.',
+        'no_pages': 'Nessuna pagina Facebook trovata. Assicurati di essere admin di almeno una pagina Facebook.',
+        'missing_params': 'Parametri mancanti durante l\'autorizzazione. Riprova.',
+        'invalid_state': 'Sessione di autorizzazione non valida. Riprova.',
+        'state_expired': 'Sessione di autorizzazione scaduta. Riprova.',
+        'config_missing': 'Configurazione Instagram non trovata. Contatta il supporto.',
+        'token_error': 'Errore durante lo scambio del token. Riprova.',
+        'callback_failed': 'Errore durante il callback. Riprova.',
+      };
+      
+      setInstagramError({
+        code: errorCode,
+        message: errorMessages[errorCode] || `Errore sconosciuto: ${errorCode}`
       });
-      if (!response.ok) throw new Error("Failed to disconnect Instagram");
-      return response.json();
-    },
-    onSuccess: () => {
+      
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    } else if (successParam) {
+      const username = urlParams.get('username');
       toast({
-        title: "✅ Instagram scollegato",
-        description: "L'account Instagram è stato scollegato da questo agente",
+        title: "Instagram Collegato!",
+        description: username ? `Account @${username} collegato con successo` : "Account collegato con successo"
       });
-      setLocalConfig({
-        instagramPageId: "",
-        facebookPageId: "",
-        pageAccessToken: "",
-        instagramUsername: "",
-        isConnected: false,
-        isDryRun: true,
-        autoResponseEnabled: true,
-        commentToDmEnabled: false,
-        commentTriggerKeywords: "",
-        commentAutoReplyMessage: "",
-        storyReplyEnabled: false,
-        storyAutoReplyMessage: "",
-        aiPersonality: "",
-        agentInstructions: "",
-        agentInstructionsEnabled: false,
-        businessName: "",
-      });
-      refetch();
-      queryClient.invalidateQueries({ queryKey: [`/api/consultant/agents/${agentId}/instagram`] });
-    },
-    onError: () => {
-      toast({
-        title: "❌ Errore",
-        description: "Impossibile scollegare l'account Instagram",
-        variant: "destructive",
-      });
-    },
-  });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instagram-configs"] });
+      
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [toast, queryClient]);
 
-  const handleLocalChange = (field: string, value: any) => {
-    setLocalConfig((prev) => ({ ...prev, [field]: value }));
+  const handleLinkInstagram = async (configId: string | null) => {
+    if (!agentId) return;
+    
+    setIsSavingInstagram(true);
+    try {
+      const response = await fetch(`/api/whatsapp/config/${agentId}/instagram`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instagramConfigId: configId })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Errore durante il collegamento');
+      }
+      
+      setSelectedInstagramConfigId(configId);
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instagram-configs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/config", agentId] });
+      
+      toast({
+        title: configId ? "Instagram Collegato" : "Instagram Scollegato",
+        description: data.message
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile collegare Instagram"
+      });
+    } finally {
+      setIsSavingInstagram(false);
+    }
   };
 
-  const handleSave = () => {
-    const keywords = localConfig.commentTriggerKeywords
-      .split(",")
-      .map((k) => k.trim())
-      .filter(Boolean);
+  const handleConnectInstagram = async () => {
+    setIsConnectingInstagram(true);
+    setInstagramError(null);
+    try {
+      const response = await fetch("/api/instagram/oauth/start", {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (response.ok && data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error(data.error || "Impossibile iniziare il collegamento");
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Errore durante la connessione a Instagram"
+      });
+      setIsConnectingInstagram(false);
+    }
+  };
 
-    saveMutation.mutate({
-      ...localConfig,
-      commentTriggerKeywords: keywords,
-      pageAccessToken: localConfig.pageAccessToken || undefined,
+  const handleDisconnectInstagram = async () => {
+    if (!confirm("Sei sicuro di voler disconnettere completamente Instagram? Dovrai rifare il login OAuth.")) {
+      return;
+    }
+    setIsDisconnectingInstagram(true);
+    try {
+      if (selectedInstagramConfigId) {
+        await handleLinkInstagram(null);
+      }
+      const response = await fetch("/api/instagram/oauth/disconnect", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast({
+          title: "Instagram Disconnesso",
+          description: "Account scollegato con successo. Puoi ricollegarlo quando vuoi."
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instagram-configs"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/instagram/oauth/status"] });
+        setSelectedInstagramConfigId(null);
+      } else {
+        throw new Error(data.error || "Impossibile disconnettere");
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Errore durante la disconnessione"
+      });
+    } finally {
+      setIsDisconnectingInstagram(false);
+    }
+  };
+
+  const updateInstagramSettings = useMutation({
+    mutationFn: async (data: { configId: string; settings: Record<string, any> }) => {
+      const res = await fetch(`/api/instagram/config/${data.configId}/settings`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(data.settings)
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to update settings');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instagram-configs"] });
+      toast({
+        title: "Impostazioni Salvate",
+        description: "Le impostazioni Instagram sono state aggiornate"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile salvare le impostazioni"
+      });
+    }
+  });
+
+  const handleInstagramSettingChange = (configId: string, key: string, value: any) => {
+    updateInstagramSettings.mutate({
+      configId,
+      settings: { [key]: value }
     });
+  };
+
+  const syncIceBreakers = useMutation({
+    mutationFn: async (configId: string) => {
+      const res = await fetch(`/api/instagram/config/${configId}/sync-ice-breakers`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to sync Ice Breakers');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Ice Breakers Sincronizzati",
+        description: data.message || "Gli Ice Breakers sono stati sincronizzati con Instagram"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Errore Sincronizzazione",
+        description: error.message || "Impossibile sincronizzare gli Ice Breakers"
+      });
+    }
+  });
+
+  const { data: webhookStatus, refetch: refetchWebhookStatus, isLoading: isLoadingWebhookStatus } = useQuery<{ 
+    success: boolean; 
+    isSubscribed: boolean; 
+    subscriptions: any[];
+    configId?: string;
+  }>({
+    queryKey: ["/api/instagram/config", selectedInstagramConfigId, "webhook-status"],
+    queryFn: async () => {
+      if (!selectedInstagramConfigId) {
+        return { success: false, isSubscribed: false, subscriptions: [] };
+      }
+      const res = await fetch(`/api/instagram/config/${selectedInstagramConfigId}/webhook-status`, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        return { success: false, isSubscribed: false, subscriptions: [] };
+      }
+      return res.json();
+    },
+    staleTime: 30000,
+    enabled: !!selectedInstagramConfigId,
+  });
+
+  const subscribeWebhook = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/instagram/config/subscribe-webhook`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to subscribe webhook');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Webhook Aggiornato",
+        description: data.message || "Webhook sottoscritto con successo"
+      });
+      refetchWebhookStatus();
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Errore Webhook",
+        description: error.message || "Impossibile aggiornare il webhook"
+      });
+    }
+  });
+
+  const handleAddKeyword = (configId: string, currentKeywords: string[]) => {
+    const keyword = newKeyword.trim();
+    if (keyword && !currentKeywords.includes(keyword)) {
+      handleInstagramSettingChange(configId, 'commentTriggerKeywords', [...currentKeywords, keyword]);
+      setNewKeyword("");
+    }
+  };
+
+  const handleRemoveKeyword = (configId: string, currentKeywords: string[], keywordToRemove: string) => {
+    handleInstagramSettingChange(configId, 'commentTriggerKeywords', currentKeywords.filter(k => k !== keywordToRemove));
   };
 
   if (!agentId) {
@@ -251,7 +382,9 @@ export default function AgentInstagram({ agentId, formData, onChange, errors }: 
       <div className="space-y-6">
         <div className="space-y-2">
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Instagram className="h-6 w-6 text-pink-500" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500">
+              <Instagram className="h-6 w-6 text-white" />
+            </div>
             Integrazione Instagram
           </h2>
           <p className="text-muted-foreground">
@@ -269,13 +402,17 @@ export default function AgentInstagram({ agentId, formData, onChange, errors }: 
     );
   }
 
-  if (isLoading) {
+  if (isLoadingInstagramConfigs) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
         <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
       </div>
     );
   }
+
+  const currentConfig = selectedInstagramConfigId 
+    ? instagramConfigs?.configs?.find(c => c.id === selectedInstagramConfigId) 
+    : null;
 
   return (
     <div className="space-y-6">
@@ -298,15 +435,15 @@ export default function AgentInstagram({ agentId, formData, onChange, errors }: 
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Link2 className="h-5 w-5 text-pink-500" />
+                <Instagram className="h-5 w-5 text-pink-500" />
                 Stato Connessione
               </CardTitle>
               <CardDescription>Stato della connessione con l'account Instagram</CardDescription>
             </div>
-            {localConfig.isConnected ? (
+            {selectedInstagramConfigId && currentConfig ? (
               <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white gap-1">
                 <CheckCircle2 className="h-3 w-3" />
-                Connesso
+                Collegato
               </Badge>
             ) : (
               <Badge variant="outline" className="gap-1 border-gray-400">
@@ -317,358 +454,557 @@ export default function AgentInstagram({ agentId, formData, onChange, errors }: 
           </div>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
-          {localConfig.isConnected && localConfig.instagramUsername && (
-            <Alert className="border-pink-500/50 bg-gradient-to-r from-purple-50 via-pink-50 to-orange-50 dark:from-purple-950/20 dark:via-pink-950/20 dark:to-orange-950/20">
-              <AtSign className="h-4 w-4 text-pink-500" />
-              <AlertDescription className="flex items-center gap-2">
-                <span className="font-semibold text-pink-600 dark:text-pink-400">
-                  @{localConfig.instagramUsername}
-                </span>
-                <span className="text-muted-foreground">Account collegato</span>
-              </AlertDescription>
-            </Alert>
+          {instagramError && (
+            <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-700 mb-1">Connessione Fallita</p>
+                  <p className="text-sm text-red-600">{instagramError.message}</p>
+                  {instagramError.code === 'no_instagram' && (
+                    <div className="mt-3 pt-3 border-t border-red-200">
+                      <p className="text-sm font-medium text-red-700 mb-2">Come risolvere:</p>
+                      <ol className="text-sm text-red-600 list-decimal list-inside space-y-1">
+                        <li>Apri Instagram sul telefono</li>
+                        <li>Vai su Profilo → Modifica Profilo</li>
+                        <li>Scorri fino a "Pagina" e collegala</li>
+                        <li>Riprova la connessione</li>
+                      </ol>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setInstagramError(null)}
+                  className="p-1 hover:bg-red-100 rounded transition-colors"
+                >
+                  <X className="h-4 w-4 text-red-500" />
+                </button>
+              </div>
+            </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="facebookPageId">
-                Facebook Page ID <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="facebookPageId"
-                value={localConfig.facebookPageId}
-                onChange={(e) => handleLocalChange("facebookPageId", e.target.value)}
-                placeholder="123456789012345"
-                className="mt-2 font-mono text-sm"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                ID della pagina Facebook collegata all'account Instagram Business
-              </p>
+          {instagramConfigs?.configs && instagramConfigs.configs.length > 0 ? (
+            <div className="space-y-4">
+              {selectedInstagramConfigId && currentConfig ? (
+                <>
+                  <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200">
+                    <Instagram className="h-5 w-5 text-pink-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-pink-700">Account Collegato</p>
+                      <p className="text-sm text-pink-600 truncate">
+                        {currentConfig.instagramPageId || "Account Instagram"}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleLinkInstagram(null)} 
+                      disabled={isSavingInstagram} 
+                      className="text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-300 gap-2"
+                    >
+                      {isSavingInstagram ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
+                      Scollega
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <Label className="text-sm text-slate-600">Seleziona un account Instagram da collegare:</Label>
+                  <div className="space-y-2">
+                    {instagramConfigs.configs.map((config) => {
+                      const isLinkedToOther = config.linkedAgent && config.linkedAgent.agentId !== agentId;
+                      return (
+                        <button
+                          key={config.id}
+                          onClick={() => !isLinkedToOther && handleLinkInstagram(config.id)}
+                          disabled={isSavingInstagram || isLinkedToOther}
+                          className={cn(
+                            "w-full flex items-center gap-3 p-4 rounded-lg border transition-colors text-left",
+                            isLinkedToOther 
+                              ? "bg-slate-50 border-slate-200 cursor-not-allowed opacity-60" 
+                              : "bg-white border-slate-200 hover:bg-pink-50 hover:border-pink-300"
+                          )}
+                        >
+                          <Instagram className={cn("h-5 w-5", isLinkedToOther ? "text-slate-400" : "text-pink-500")} />
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("text-sm font-medium truncate", isLinkedToOther ? "text-slate-500" : "text-slate-700")}>
+                              {config.instagramPageId}
+                            </p>
+                            {isLinkedToOther && (
+                              <p className="text-xs text-slate-400">Collegato a: {config.linkedAgent?.agentName}</p>
+                            )}
+                          </div>
+                          {!isLinkedToOther && <Link className="h-4 w-4 text-pink-500" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
-
-            <div>
-              <Label htmlFor="instagramPageId">
-                Instagram Page ID
-              </Label>
-              <Input
-                id="instagramPageId"
-                value={localConfig.instagramPageId}
-                onChange={(e) => handleLocalChange("instagramPageId", e.target.value)}
-                placeholder="17841400000000000"
-                className="mt-2 font-mono text-sm"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                (Opzionale) ID dell'account Instagram Business
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="pageAccessToken">
-              Page Access Token <span className="text-destructive">*</span>
-            </Label>
-            <div className="relative mt-2">
-              <Input
-                id="pageAccessToken"
-                type={showToken ? "text" : "password"}
-                value={localConfig.pageAccessToken}
-                onChange={(e) => handleLocalChange("pageAccessToken", e.target.value)}
-                placeholder={instagramConfig?.pageAccessToken === "***ENCRYPTED***" ? "••••••••••••••••" : "EAAGm0PX4ZCps..."}
-                className="font-mono text-sm pr-10"
-              />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
+                <Instagram className="h-5 w-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-600">Nessun account Instagram collegato</p>
+                  <p className="text-xs text-slate-500">Connetti il tuo account Instagram Business per iniziare</p>
+                </div>
+              </div>
               <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7"
-                onClick={() => setShowToken(!showToken)}
+                onClick={handleConnectInstagram}
+                disabled={isConnectingInstagram}
+                className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white gap-2"
               >
-                {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {isConnectingInstagram ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Instagram className="h-4 w-4" />
+                )}
+                Connetti Instagram
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Token di accesso della pagina Facebook con permessi messaging
-            </p>
-          </div>
+          )}
+        </CardContent>
+      </Card>
 
-          <div className="flex gap-3 pt-2">
-            <Button
-              onClick={handleSave}
-              disabled={saveMutation.isPending || !localConfig.facebookPageId}
-              className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white gap-2"
-            >
-              {saveMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
+      {selectedInstagramConfigId && currentConfig && (
+        <Card className="border-2 border-pink-500/20 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-pink-500/5 to-purple-500/10">
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-pink-500" />
+              AUTOMAZIONI
+            </CardTitle>
+            <CardDescription>Configura il comportamento automatico dell'agente su Instagram</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-white/60 hover:bg-accent/5 transition-colors">
+              <div className="flex items-center gap-3 flex-1">
+                <MessageSquare className="h-4 w-4 text-pink-500" />
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-semibold cursor-pointer">Risposta Auto DM</Label>
+                  <p className="text-xs text-muted-foreground">Rispondi automaticamente ai messaggi diretti</p>
+                </div>
+              </div>
+              <Switch
+                checked={currentConfig.autoResponseEnabled ?? false}
+                onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'autoResponseEnabled', checked)}
+                disabled={updateInstagramSettings.isPending}
+                className="scale-75"
+              />
+            </div>
+
+            <div className="space-y-3 p-4 rounded-lg border bg-white/60">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="h-4 w-4 text-pink-500" />
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-semibold">Story Reply</Label>
+                    <p className="text-xs text-muted-foreground">Rispondi alle reazioni/risposte alle storie</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={currentConfig.storyReplyEnabled ?? false}
+                  onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'storyReplyEnabled', checked)}
+                  disabled={updateInstagramSettings.isPending}
+                  className="scale-75"
+                />
+              </div>
+              
+              {currentConfig.storyReplyEnabled && (
+                <div className="pl-7 space-y-2 border-l-2 border-pink-200 ml-2">
+                  <p className="text-xs text-slate-500">Messaggio risposta storia:</p>
+                  <Textarea
+                    value={storyAutoReplyMessage}
+                    onChange={(e) => setStoryAutoReplyMessage(e.target.value)}
+                    onBlur={() => {
+                      const originalValue = currentConfig.storyAutoReplyMessage || '';
+                      if (storyAutoReplyMessage !== originalValue) {
+                        handleInstagramSettingChange(currentConfig.id, 'storyAutoReplyMessage', storyAutoReplyMessage);
+                      }
+                    }}
+                    placeholder="Grazie per aver risposto alla mia storia! Come posso aiutarti?"
+                    className="text-sm min-h-[80px] resize-none"
+                  />
+                </div>
               )}
-              Salva Credenziali
-            </Button>
+            </div>
 
-            <Button
-              variant="outline"
-              onClick={() => testMutation.mutate()}
-              disabled={testMutation.isPending || !instagramConfig?.pageAccessToken}
-              className="gap-2"
-            >
-              {testMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <TestTube className="h-4 w-4" />
+            <div className="space-y-3 p-4 rounded-lg border bg-white/60">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="h-4 w-4 text-pink-500" />
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-semibold">Comment-to-DM</Label>
+                    <p className="text-xs text-muted-foreground">Invia DM quando qualcuno commenta con parole chiave</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={currentConfig.commentToDmEnabled ?? false}
+                  onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'commentToDmEnabled', checked)}
+                  disabled={updateInstagramSettings.isPending}
+                  className="scale-75"
+                />
+              </div>
+              
+              {currentConfig.commentToDmEnabled && (
+                <div className="pl-7 space-y-4 border-l-2 border-pink-200 ml-2">
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-500">Parole chiave trigger:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(currentConfig.commentTriggerKeywords || []).map((keyword, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm">
+                          {keyword}
+                          <button
+                            onClick={() => handleRemoveKeyword(currentConfig.id, currentConfig.commentTriggerKeywords || [], keyword)}
+                            className="hover:text-pink-900"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newKeyword}
+                        onChange={(e) => setNewKeyword(e.target.value)}
+                        placeholder="Nuova parola chiave..."
+                        className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddKeyword(currentConfig.id, currentConfig.commentTriggerKeywords || []);
+                          }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => handleAddKeyword(currentConfig.id, currentConfig.commentTriggerKeywords || [])}
+                        disabled={!newKeyword.trim()}
+                        className="px-3"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-500">Messaggio auto DM:</p>
+                    <Textarea
+                      value={commentAutoReplyMessage}
+                      onChange={(e) => setCommentAutoReplyMessage(e.target.value)}
+                      onBlur={() => {
+                        const originalValue = currentConfig.commentAutoReplyMessage || '';
+                        if (commentAutoReplyMessage !== originalValue) {
+                          handleInstagramSettingChange(currentConfig.id, 'commentAutoReplyMessage', commentAutoReplyMessage);
+                        }
+                      }}
+                      placeholder="Ciao! Ho visto il tuo commento, ti scrivo in DM per darti tutte le info!"
+                      className="text-sm min-h-[80px] resize-none"
+                    />
+                  </div>
+                  
+                  <div className={cn(
+                    "p-3 rounded-lg border mt-3",
+                    isLoadingWebhookStatus 
+                      ? "bg-slate-50/60 border-slate-200"
+                      : webhookStatus?.isSubscribed 
+                        ? "bg-green-50/60 border-green-200" 
+                        : "bg-amber-50/60 border-amber-200"
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {isLoadingWebhookStatus ? (
+                          <div className="flex items-center gap-1.5">
+                            <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                            <span className="text-sm text-slate-500">Verifica webhook...</span>
+                          </div>
+                        ) : webhookStatus?.isSubscribed ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            <span className="text-sm font-medium text-green-700">Webhook Attivo</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                            <span className="text-sm font-medium text-amber-700">Webhook Non Attivo</span>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => subscribeWebhook.mutate()}
+                        disabled={subscribeWebhook.isPending || isLoadingWebhookStatus}
+                        className={cn(
+                          "h-8 px-3 text-sm",
+                          webhookStatus?.isSubscribed 
+                            ? "text-green-600 hover:text-green-700 hover:bg-green-100"
+                            : "text-amber-600 hover:text-amber-700 hover:bg-amber-100"
+                        )}
+                        title={webhookStatus?.isSubscribed ? "Ri-sincronizza webhook" : "Attiva webhook"}
+                      >
+                        {subscribeWebhook.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      {webhookStatus?.isSubscribed 
+                        ? "I messaggi Instagram vengono ricevuti automaticamente"
+                        : "Clicca per attivare la ricezione dei messaggi"}
+                    </p>
+                  </div>
+                </div>
               )}
-              Testa Connessione
-            </Button>
+            </div>
 
-            {localConfig.isConnected && (
+            <div className="space-y-3 p-4 rounded-lg border bg-white/60">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-4 w-4 text-pink-500" />
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-semibold">Ice Breakers</Label>
+                    <p className="text-xs text-muted-foreground">Domande rapide cliccabili (max 4)</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={currentConfig.iceBreakersEnabled ?? false}
+                  onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'iceBreakersEnabled', checked)}
+                  disabled={updateInstagramSettings.isPending}
+                  className="scale-75"
+                />
+              </div>
+              
+              {currentConfig.iceBreakersEnabled && (
+                <div className="pl-7 space-y-3 border-l-2 border-pink-200 ml-2">
+                  <p className="text-xs text-slate-500">Domande rapide mostrate al primo contatto:</p>
+                  
+                  {iceBreakers.length > 0 && (
+                    <div className="space-y-2">
+                      {iceBreakers.map((ib, index) => (
+                        <div key={index} className="flex items-center gap-2 group">
+                          <span className="text-sm bg-white px-3 py-2 rounded-lg border border-pink-200 flex-1 truncate">
+                            {ib.text}
+                          </span>
+                          <button
+                            onClick={() => {
+                              const updated = iceBreakers.filter((_, i) => i !== index);
+                              setIceBreakers(updated);
+                              handleInstagramSettingChange(currentConfig.id, 'iceBreakers', updated);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 rounded transition-opacity"
+                          >
+                            <X className="h-4 w-4 text-red-500" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {iceBreakers.length < 4 && (
+                    <div className="flex gap-2">
+                      <Input
+                        value={newIceBreaker}
+                        onChange={(e) => setNewIceBreaker(e.target.value)}
+                        placeholder="es. Quanto costa?"
+                        className="flex-1"
+                        maxLength={80}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newIceBreaker.trim()) {
+                            e.preventDefault();
+                            const updated = [...iceBreakers, { text: newIceBreaker.trim(), payload: `ice_breaker_${iceBreakers.length + 1}` }];
+                            setIceBreakers(updated);
+                            handleInstagramSettingChange(currentConfig.id, 'iceBreakers', updated);
+                            setNewIceBreaker('');
+                          }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          if (newIceBreaker.trim()) {
+                            const updated = [...iceBreakers, { text: newIceBreaker.trim(), payload: `ice_breaker_${iceBreakers.length + 1}` }];
+                            setIceBreakers(updated);
+                            handleInstagramSettingChange(currentConfig.id, 'iceBreakers', updated);
+                            setNewIceBreaker('');
+                          }
+                        }}
+                        disabled={!newIceBreaker.trim()}
+                        className="px-3"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {iceBreakers.length >= 4 && (
+                    <p className="text-xs text-amber-600">Limite raggiunto (max 4 Ice Breakers)</p>
+                  )}
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => syncIceBreakers.mutate(currentConfig.id)}
+                    disabled={syncIceBreakers.isPending || iceBreakers.length === 0}
+                    className="w-full border-pink-300 text-pink-600 hover:bg-pink-50 gap-2"
+                  >
+                    {syncIceBreakers.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Sincronizza con Instagram
+                  </Button>
+                  <p className="text-xs text-slate-500 text-center">
+                    Pubblica gli Ice Breakers su Instagram
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-amber-50/60 border-amber-200">
+              <div className="flex items-center gap-3">
+                <FlaskConical className="h-4 w-4 text-amber-600" />
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-semibold">Dry Run (Modalità Test)</Label>
+                  <p className="text-xs text-muted-foreground">Le risposte vengono solo loggate, non inviate</p>
+                </div>
+              </div>
+              <Switch
+                checked={currentConfig.isDryRun ?? true}
+                onCheckedChange={(checked) => handleInstagramSettingChange(currentConfig.id, 'isDryRun', checked)}
+                disabled={updateInstagramSettings.isPending}
+                className="scale-75"
+              />
+            </div>
+            
+            {currentConfig.isDryRun && (
+              <Alert className="border-amber-300 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700">
+                  Modalità test attiva: le risposte vengono solo loggate, non inviate su Instagram
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="pt-4 mt-4 border-t border-red-200">
               <Button
-                variant="destructive"
-                onClick={() => disconnectMutation.mutate()}
-                disabled={disconnectMutation.isPending}
-                className="gap-2"
+                variant="outline"
+                onClick={handleDisconnectInstagram}
+                disabled={isDisconnectingInstagram}
+                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300 gap-2"
               >
-                {disconnectMutation.isPending ? (
+                {isDisconnectingInstagram ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Unlink className="h-4 w-4" />
                 )}
-                Scollega
+                Disconnetti OAuth Completamente
               </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-2 border-pink-500/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-pink-500/5 to-orange-500/10">
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-pink-500" />
-            Opzioni Instagram
-          </CardTitle>
-          <CardDescription>Configura il comportamento dell'agente su Instagram</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-6">
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-            <div className="space-y-0.5 flex-1">
-              <Label htmlFor="autoResponseEnabled" className="text-base font-semibold cursor-pointer">
-                Risposte Automatiche DM
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Rispondi automaticamente ai messaggi diretti
+              <p className="text-xs text-slate-500 mt-2 text-center">
+                Rimuove la connessione OAuth. Dovrai rifare il login con Facebook.
               </p>
             </div>
-            <Switch
-              id="autoResponseEnabled"
-              checked={localConfig.autoResponseEnabled}
-              onCheckedChange={(checked) => handleLocalChange("autoResponseEnabled", checked)}
-            />
-          </div>
+          </CardContent>
+        </Card>
+      )}
 
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-            <div className="space-y-0.5 flex-1">
-              <Label htmlFor="isDryRun" className="text-base font-semibold cursor-pointer">
-                Modalità Test (Dry Run)
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                L'agente non invierà messaggi reali su Instagram
-              </p>
-            </div>
-            <Switch
-              id="isDryRun"
-              checked={localConfig.isDryRun}
-              onCheckedChange={(checked) => handleLocalChange("isDryRun", checked)}
-            />
-          </div>
-
-          <Separator />
-
-          <div className={cn(
-            "p-4 rounded-lg border transition-all",
-            localConfig.commentToDmEnabled ? "bg-pink-50/50 dark:bg-pink-950/10 border-pink-500/30" : "bg-card"
-          )}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="space-y-0.5 flex-1">
-                <Label htmlFor="commentToDmEnabled" className="text-base font-semibold cursor-pointer flex items-center gap-2">
-                  <MessageCircle className="h-4 w-4 text-pink-500" />
-                  Commenti → DM
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Rispondi ai commenti con un messaggio diretto
-                </p>
-              </div>
-              <Switch
-                id="commentToDmEnabled"
-                checked={localConfig.commentToDmEnabled}
-                onCheckedChange={(checked) => handleLocalChange("commentToDmEnabled", checked)}
-              />
-            </div>
-
-            {localConfig.commentToDmEnabled && (
-              <div className="space-y-4 pt-2">
-                <div>
-                  <Label htmlFor="commentTriggerKeywords">Parole Chiave Trigger</Label>
-                  <Input
-                    id="commentTriggerKeywords"
-                    value={localConfig.commentTriggerKeywords}
-                    onChange={(e) => handleLocalChange("commentTriggerKeywords", e.target.value)}
-                    placeholder="info, prezzo, dettagli, interessato"
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Separa le parole chiave con virgole. Lascia vuoto per rispondere a tutti i commenti.
-                  </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="commentAutoReplyMessage">Messaggio Automatico Commenti</Label>
-                  <Textarea
-                    id="commentAutoReplyMessage"
-                    value={localConfig.commentAutoReplyMessage}
-                    onChange={(e) => handleLocalChange("commentAutoReplyMessage", e.target.value)}
-                    placeholder="Ciao! Ho visto il tuo commento, ti scrivo in DM per darti tutte le info! 💬"
-                    rows={2}
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className={cn(
-            "p-4 rounded-lg border transition-all",
-            localConfig.storyReplyEnabled ? "bg-orange-50/50 dark:bg-orange-950/10 border-orange-500/30" : "bg-card"
-          )}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="space-y-0.5 flex-1">
-                <Label htmlFor="storyReplyEnabled" className="text-base font-semibold cursor-pointer flex items-center gap-2">
-                  <Heart className="h-4 w-4 text-orange-500" />
-                  Risposte alle Storie
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Rispondi automaticamente alle reazioni/risposte alle tue storie
-                </p>
-              </div>
-              <Switch
-                id="storyReplyEnabled"
-                checked={localConfig.storyReplyEnabled}
-                onCheckedChange={(checked) => handleLocalChange("storyReplyEnabled", checked)}
-              />
-            </div>
-
-            {localConfig.storyReplyEnabled && (
-              <div className="pt-2">
-                <Label htmlFor="storyAutoReplyMessage">Messaggio Automatico Storie</Label>
-                <Textarea
-                  id="storyAutoReplyMessage"
-                  value={localConfig.storyAutoReplyMessage}
-                  onChange={(e) => handleLocalChange("storyAutoReplyMessage", e.target.value)}
-                  placeholder="Grazie per la reazione alla mia storia! 🙏 Come posso aiutarti?"
-                  rows={2}
-                  className="mt-2"
-                />
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Collapsible open={isOverrideOpen} onOpenChange={setIsOverrideOpen}>
-        <Card className="border-2 border-purple-500/20 shadow-lg">
-          <CollapsibleTrigger asChild>
-            <CardHeader className="bg-gradient-to-r from-purple-500/5 to-purple-500/10 cursor-pointer hover:bg-purple-500/10 transition-colors">
+      <Collapsible>
+        <Card className="border-2 border-slate-200">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="cursor-pointer hover:bg-slate-50 transition-colors">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-purple-500" />
-                    Override Impostazioni AI (Opzionale)
-                  </CardTitle>
-                  <CardDescription>
-                    Personalizza le impostazioni AI solo per Instagram (ereditate da WhatsApp per default)
-                  </CardDescription>
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-5 w-5 text-pink-500" />
+                  <CardTitle className="text-base">Guida Instagram DM</CardTitle>
                 </div>
-                <ChevronDown className={cn(
-                  "h-5 w-5 text-muted-foreground transition-transform",
-                  isOverrideOpen && "rotate-180"
-                )} />
+                <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </div>
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <CardContent className="pt-6 space-y-4">
-              <Alert className="border-purple-500/30 bg-purple-50/50 dark:bg-purple-950/10">
-                <AlertCircle className="h-4 w-4 text-purple-600" />
-                <AlertDescription className="text-purple-800 dark:text-purple-200">
-                  Se lasci questi campi vuoti, verranno usate le impostazioni dell'agente WhatsApp.
-                </AlertDescription>
-              </Alert>
-
-              <div>
-                <Label htmlFor="businessName">Nome Business (Override)</Label>
-                <Input
-                  id="businessName"
-                  value={localConfig.businessName}
-                  onChange={(e) => handleLocalChange("businessName", e.target.value)}
-                  placeholder={inheritedSettings?.businessName || "Lascia vuoto per usare quello WhatsApp"}
-                  className="mt-2"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="aiPersonality">Personalità AI (Override)</Label>
-                <Input
-                  id="aiPersonality"
-                  value={localConfig.aiPersonality}
-                  onChange={(e) => handleLocalChange("aiPersonality", e.target.value)}
-                  placeholder={inheritedSettings?.aiPersonality || "amico_fidato"}
-                  className="mt-2"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Es: amico_fidato, consulente_professionale, consigliere_empatico
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-pink-50 rounded-lg border border-pink-200">
+                <p className="font-medium text-pink-700 mb-3 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Requisiti Obbligatori
                 </p>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-pink-500 font-bold">1.</span>
+                    <span><strong>Account Business:</strong> Instagram deve essere "Business" o "Creator"</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-pink-500 font-bold">2.</span>
+                    <span><strong>Pagina Facebook:</strong> Collegata all'account Instagram</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-pink-500 font-bold">3.</span>
+                    <span><strong>Ruolo Admin:</strong> Essere ADMIN della Pagina Facebook</span>
+                  </li>
+                </ul>
               </div>
-
-              <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                <div className="space-y-0.5 flex-1">
-                  <Label htmlFor="agentInstructionsEnabled" className="text-base font-semibold cursor-pointer">
-                    Usa Istruzioni AI Custom per Instagram
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Abilita istruzioni AI specifiche per Instagram
+              
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="font-medium text-blue-700 mb-3 flex items-center gap-2">
+                  <Smartphone className="h-4 w-4" />
+                  Controllo Veloce da Telefono
+                </p>
+                <ol className="space-y-1.5 text-sm text-slate-600 list-decimal list-inside">
+                  <li>Apri Instagram → Profilo → Modifica Profilo</li>
+                  <li>Scorri fino a "Pagina"</li>
+                  <li>Vedi il nome della tua azienda? Sei pronto!</li>
+                  <li>Vedi "Collega"? Clicca e collega la tua Pagina Facebook</li>
+                </ol>
+              </div>
+              
+              <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <p className="font-medium text-amber-700 mb-3 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Se l'AI Non Risponde
+                </p>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-amber-600">•</span>
+                    <span><strong>Privacy:</strong> Impostazioni → Messaggi → "Consenti accesso ai messaggi" deve essere BLU</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-amber-600">•</span>
+                    <span><strong>Finestra 24h:</strong> Il bot risponde solo dopo un messaggio dell'utente</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-amber-600">•</span>
+                    <span><strong>Modalità Dev:</strong> Solo Admin/Tester funzionano finché l'app non è Live</span>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <p className="font-medium text-purple-700 mb-3 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Aggiungere Tester (Modalità Dev)
+                </p>
+                <p className="text-sm text-slate-600 mb-2">
+                  In Modalità Sviluppo, solo gli utenti nella lista Tester possono usare il bot.
+                </p>
+                <ol className="space-y-1.5 text-sm text-slate-600 list-decimal list-inside">
+                  <li>Vai su <a href="https://developers.facebook.com" target="_blank" rel="noopener" className="text-purple-600 underline">developers.facebook.com</a></li>
+                  <li>My Apps → Seleziona la tua App</li>
+                  <li>Ruoli dell'app → Ruoli → Tester</li>
+                  <li>Clicca "Aggiungi persone" e inserisci il nome</li>
+                </ol>
+                <div className="mt-3 p-3 bg-purple-100 rounded border border-purple-300">
+                  <p className="text-sm font-medium text-purple-800 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    IMPORTANTE: Accettare l'invito!
+                  </p>
+                  <p className="text-sm text-purple-700 mt-1">
+                    Il tester deve aprire <a href="https://developers.facebook.com/requests" target="_blank" rel="noopener" className="underline font-medium">developers.facebook.com/requests</a> e cliccare CONFERMA.
                   </p>
                 </div>
-                <Switch
-                  id="agentInstructionsEnabled"
-                  checked={localConfig.agentInstructionsEnabled}
-                  onCheckedChange={(checked) => handleLocalChange("agentInstructionsEnabled", checked)}
-                />
               </div>
-
-              {localConfig.agentInstructionsEnabled && (
-                <div>
-                  <Label htmlFor="agentInstructions">Istruzioni AI Custom per Instagram</Label>
-                  <Textarea
-                    id="agentInstructions"
-                    value={localConfig.agentInstructions}
-                    onChange={(e) => handleLocalChange("agentInstructions", e.target.value)}
-                    placeholder="Istruzioni specifiche per l'agente Instagram..."
-                    rows={6}
-                    className="mt-2 font-mono text-sm"
-                  />
-                </div>
-              )}
-
-              <Button
-                onClick={handleSave}
-                disabled={saveMutation.isPending}
-                variant="outline"
-                className="gap-2"
-              >
-                {saveMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                Salva Impostazioni Instagram
-              </Button>
             </CardContent>
           </CollapsibleContent>
         </Card>
