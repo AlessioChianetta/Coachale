@@ -450,6 +450,7 @@ export default function ConsultantApiKeysUnified() {
     targetCampaignId: "",
     pollingIntervalMinutes: 15,
     pollingEnabled: false,
+    startFromDate: "",
     columnMappings: {} as Record<string, string>,
   });
   const [isTestingGoogleSheets, setIsTestingGoogleSheets] = useState(false);
@@ -6036,6 +6037,20 @@ export default function ConsultantApiKeysUnified() {
                               </SelectContent>
                             </Select>
                           </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="googleSheetsStartDate" className="text-sm font-medium text-gray-600">Importa da Data (opzionale)</Label>
+                            <Input
+                              id="googleSheetsStartDate"
+                              type="date"
+                              value={googleSheetsFormData.startFromDate || ""}
+                              onChange={(e) => setGoogleSheetsFormData({ ...googleSheetsFormData, startFromDate: e.target.value })}
+                              className="bg-white/80 border-slate-200 focus:border-emerald-500"
+                            />
+                            <p className="text-xs text-slate-500">
+                              Se impostata, verranno importati solo i lead con data di inserimento successiva a questa data
+                            </p>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between p-5 bg-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-700/50 shadow-lg">
@@ -6114,6 +6129,7 @@ export default function ConsultantApiKeysUnified() {
                                     { key: 'country', label: 'Paese', required: false },
                                     { key: 'tags', label: 'Tags', required: false },
                                     { key: 'dateOfBirth', label: 'Data Nascita', required: false },
+                                    { key: 'dateCreated', label: 'Data Inserimento', required: false },
                                   ].map((field) => {
                                     const currentValue = googleSheetsFormData.columnMappings[field.key] || googleSheetsPreview.suggestedMappings[field.key] || "";
                                     const isAutoMapped = !googleSheetsFormData.columnMappings[field.key] && googleSheetsPreview.suggestedMappings[field.key];
@@ -6298,6 +6314,7 @@ export default function ConsultantApiKeysUnified() {
                                       campaignId: googleSheetsFormData.targetCampaignId || null,
                                       pollingEnabled: googleSheetsFormData.pollingEnabled,
                                       pollingIntervalMinutes: googleSheetsFormData.pollingIntervalMinutes,
+                                      startFromDate: googleSheetsFormData.startFromDate || null,
                                     },
                                   }),
                                 });
@@ -6314,6 +6331,7 @@ export default function ConsultantApiKeysUnified() {
                                     targetCampaignId: "",
                                     pollingIntervalMinutes: 15,
                                     pollingEnabled: false,
+                                    startFromDate: "",
                                     columnMappings: {},
                                   });
                                   setGoogleSheetsPreview(null);

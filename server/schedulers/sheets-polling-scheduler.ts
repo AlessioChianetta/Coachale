@@ -82,7 +82,41 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
     }
     
     const csvContent = await response.text();
-    const { rows } = parseCsvData(csvContent);
+    let { rows } = parseCsvData(csvContent);
+    
+    const columnMappings = job.columnMappings || {};
+    const settings = job.settings || {};
+    
+    // Apply date filtering if startFromDate and dateCreated column mapping are configured
+    const startFromDate = settings.startFromDate;
+    const dateCreatedColumn = columnMappings.dateCreated;
+    
+    if (startFromDate && dateCreatedColumn) {
+      const filterDate = new Date(startFromDate);
+      if (!isNaN(filterDate.getTime())) {
+        const originalCount = rows.length;
+        rows = rows.filter((row) => {
+          const rowDateStr = row[dateCreatedColumn];
+          if (!rowDateStr) return false;
+          
+          // Parse date with various formats
+          const rowDate = new Date(rowDateStr);
+          if (isNaN(rowDate.getTime())) {
+            // Try parsing common Italian date formats (dd/mm/yyyy)
+            const parts = rowDateStr.split(/[\/\-\.]/);
+            if (parts.length === 3) {
+              const parsed = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+              if (!isNaN(parsed.getTime())) {
+                return parsed >= filterDate;
+              }
+            }
+            return false;
+          }
+          return rowDate >= filterDate;
+        });
+        console.log(`[SHEETS POLLING] Date filter applied: ${originalCount} -> ${rows.length} rows (from ${startFromDate})`);
+      }
+    }
     
     result.newRowCount = rows.length;
     
@@ -99,8 +133,6 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
     const newRows = rows.slice(job.lastRowCount || 0);
     console.log(`[SHEETS POLLING] Found ${newRows.length} new rows for job ${job.id}`);
     
-    const columnMappings = job.columnMappings || {};
-    const settings = job.settings || {};
     const skipDuplicates = settings.skipDuplicates !== false;
     const defaultContactFrequency = settings.defaultContactFrequency || 7;
     const campaignId = settings.campaignId || null;

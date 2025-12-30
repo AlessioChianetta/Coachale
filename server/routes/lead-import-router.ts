@@ -397,6 +397,37 @@ router.post(
         });
       }
       
+      // Apply date filtering if startFromDate and dateCreated column mapping are configured
+      const startFromDate = settings.startFromDate;
+      const dateCreatedColumn = columnMappings.dateCreated;
+      
+      if (startFromDate && dateCreatedColumn) {
+        const filterDate = new Date(startFromDate);
+        if (!isNaN(filterDate.getTime())) {
+          const originalCount = rows.length;
+          rows = rows.filter((row) => {
+            const rowDateStr = row[dateCreatedColumn];
+            if (!rowDateStr) return false;
+            
+            // Parse date with various formats
+            const rowDate = new Date(rowDateStr);
+            if (isNaN(rowDate.getTime())) {
+              // Try parsing common Italian date formats (dd/mm/yyyy)
+              const parts = String(rowDateStr).split(/[\/\-\.]/);
+              if (parts.length === 3) {
+                const parsed = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                if (!isNaN(parsed.getTime())) {
+                  return parsed >= filterDate;
+                }
+              }
+              return false;
+            }
+            return rowDate >= filterDate;
+          });
+          console.log(`📅 [LEAD IMPORT] Date filter applied: ${originalCount} -> ${rows.length} rows (from ${startFromDate})`);
+        }
+      }
+      
       console.log(`📥 [LEAD IMPORT] Processing ${rows.length} rows from ${uploadedFilePath ? 'file' : 'Google Sheets'}`)
       
       const pollingEnabled = settings.pollingEnabled === true;
