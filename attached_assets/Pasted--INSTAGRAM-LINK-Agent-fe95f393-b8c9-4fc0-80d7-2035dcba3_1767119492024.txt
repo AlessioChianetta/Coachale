@@ -1,0 +1,51 @@
+✅ [INSTAGRAM LINK] Agent fe95f393-b8c9-4fc0-80d7-2035dcba305a linked to Instagram config 7716fc1b-94d4-4435-910f-73e84830beec
+6:30:59 PM [express] PATCH /api/whatsapp/config/fe95f393-b8c9-4fc0-80d7-2035dcba305a/instagram 200 i…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+6:31:00 PM [express] GET /api/whatsapp/config/fe95f393-b8c9-4fc0-80d7-2035dcba305a 200 in 599ms :: {…
+6:31:00 PM [express] GET /api/whatsapp/instagram-configs 304 in 603ms :: {"success":true,"configs":[…
+[INSTAGRAM] Decrypting token for sync-ice-breakers, encryptionSalt available: true
+[INSTAGRAM] Decrypted with per-consultant key, token starts with: EAAUY2LQoP...
+[INSTAGRAM] Syncing 2 Ice Breakers for config 7716fc1b-94d4-4435-910f-73e84830beec
+[INSTAGRAM] Sync Ice Breakers response (attempt 1/3): {
+  error: {
+    message: '(#2) Service temporarily unavailable',
+    type: 'OAuthException',
+    is_transient: true,
+    code: 2,
+    fbtrace_id: 'AGGjwQL2hcJZkc_goum4k3H'
+  }
+}
+[INSTAGRAM] Transient error, retrying in 2 seconds...
+[INSTAGRAM] Sync Ice Breakers response (attempt 2/3): {
+  error: {
+    message: '(#2) Service temporarily unavailable',
+    type: 'OAuthException',
+    is_transient: true,
+    code: 2,
+    fbtrace_id: 'ANpN7ePkQr_HeWFFL1QgoIe'
+  }
+}
+[INSTAGRAM] Transient error, retrying in 4 seconds...
+6:31:19 PM [express] GET /api/whatsapp/agents/activity-feed 304 in 1045ms :: [{"id":"297baa9d-9274-4…
+[INSTAGRAM] Sync Ice Breakers response (attempt 3/3): {
+  error: {
+    message: '(#2) Service temporarily unavailable',
+    type: 'OAuthException',
+    is_transient: true,
+    code: 2,
+    fbtrace_id: 'AnAy28Db93mUY8E13IqrOON'
+  }
+}
+[INSTAGRAM] Failed to sync Ice Breakers after 3 attempts: {
+  error: {
+    message: '(#2) Service temporarily unavailable',
+    type: 'OAuthException',
+    is_transient: true,
+    code: 2,
+    fbtrace_id: 'AnAy28Db93mUY8E13IqrOON'
+  }
+}
+6:31:20 PM [express] POST /api/instagram/config/7716fc1b-94d4-4435-910f-73e84830beec
