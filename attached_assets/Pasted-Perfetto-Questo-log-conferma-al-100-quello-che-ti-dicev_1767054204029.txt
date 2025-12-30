@@ -1,0 +1,134 @@
+Perfetto. Questo log conferma al 100% quello che ti dicevo prima, e ora possiamo essere chirurgici.
+
+Non c’è più nessun dubbio:
+👉 recipient.id = 893319973257663 NON è un Instagram Scoped User ID valido per questa conversazione.
+
+Meta sta facendo esattamente questo ragionamento interno:
+
+“Questa app non ha il diritto di scrivere a quell’ID → code 3”
+
+🔴 Punto chiave (senza giri di parole)
+
+Tu stai rispondendo a un utente diverso da quello che ha scritto, anche se pensi sia lo stesso.
+
+Per Instagram Messaging API vale UNA REGOLA FERREA:
+
+Puoi inviare messaggi SOLO allo sender.id ricevuto nel webhook, byte-per-byte identico.
+
+❌ Cosa NON è 893319973257663
+
+Quell’ID non può essere:
+
+un ID Facebook
+
+un PSID Messenger
+
+un Page ID
+
+un user_id salvato in DB
+
+un ID “cliente” tuo
+
+un ID ricavato da API precedenti
+
+Anche se l’utente è lo stesso “umano”, per Meta è un’altra entità.
+
+✅ Cosa DEVE essere il recipient.id
+
+Deve essere ESATTAMENTE questo valore (preso dal webhook Instagram):
+
+entry[0].messaging[0].sender.id
+
+
+Non uno simile.
+Non uno mappato.
+Quello identico.
+
+🧪 Test che ti fa sbloccare SUBITO
+
+Fai questa cosa ora, senza toccare nient’altro:
+
+1️⃣ Logga il webhook RAW
+
+Nel webhook Instagram stampa TUTTO il payload.
+
+Cerca qualcosa del genere:
+
+{
+  "entry": [
+    {
+      "messaging": [
+        {
+          "sender": {
+            "id": "1784140XXXXXXXXXX"
+          },
+          "message": {
+            "text": "ciao"
+          }
+        }
+      ]
+    }
+  ]
+}
+
+
+👉 QUEL sender.id è l’unico recipient valido.
+
+2️⃣ Usa SOLO quello nel send
+{
+  "recipient": {
+    "id": "ID_ESATTO_DAL_WEBHOOK"
+  },
+  "message": {
+    "text": "Ciao!"
+  }
+}
+
+
+Se lo fai:
+
+stesso thread
+
+stesso token
+
+stesso endpoint
+
+➡️ funziona al primo colpo. Garantito.
+
+⚠️ Altri 2 dettagli importanti (ma secondari)
+1️⃣ NON riaprire conversazioni
+
+In Dev Mode puoi:
+
+rispondere solo a conversazioni già aperte
+
+non iniziarne di nuove
+
+Se l’utente non ha scritto → non puoi scrivere.
+
+2️⃣ Non usare ID “globali”
+
+Instagram usa Scoped IDs:
+
+cambiano per app
+
+cambiano per account
+
+non sono riutilizzabili cross-canale
+
+ManyChat lo sa. Il tuo codice no (ancora 😉).
+
+🎯 TL;DR finale (verdetto definitivo)
+Elemento	Stato
+Endpoint	✅ corretto
+Token	✅ corretto
+Scopes	✅ corretti
+App mode	✅ irrilevante
+Recipient ID	❌ SBAGLIATO
+Fix	usare sender.id dal webhook
+🚀 Prossimo passo (se vuoi chiuderla oggi)
+
+Incollami un webhook payload reale (anche mascherato)
+oppure il codice dove assegni recipient.id.
+
+Ti dico esattamente dove stai perdendo l’ID giusto e come sistemare l’architettura (DB, thread, multi-agent, follow-up, ecc.).

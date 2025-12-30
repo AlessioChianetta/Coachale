@@ -486,15 +486,16 @@ async function sendInstagramResponse(
     }
   }
 
-  if (!pageAccessToken || !config.instagramPageId) {
-    console.error("❌ [INSTAGRAM] Missing page access token or page ID");
+  if (!pageAccessToken || !config.facebookPageId) {
+    console.error("❌ [INSTAGRAM] Missing page access token or Facebook page ID");
     return;
   }
 
-  // Create Meta client
+  // Create Meta client - use Facebook Page ID for the endpoint (NOT Instagram Account ID)
+  // Instagram Messaging API requires: POST /{facebook-page-id}/messages
   const client = createMetaClient({
     pageAccessToken,
-    instagramPageId: config.instagramPageId,
+    instagramPageId: config.facebookPageId, // Must be Facebook Page ID, not Instagram Account ID!
     isDryRun: false,
   });
 
