@@ -48,7 +48,7 @@ import {
   BookingModificationResult,
   ExistingBooking
 } from "../booking/booking-service";
-import { updateGoogleCalendarEvent, deleteGoogleCalendarEvent, addAttendeesToGoogleCalendarEvent } from "../google-calendar-service";
+import { updateGoogleCalendarEvent, deleteGoogleCalendarEvent, addAttendeesToGoogleCalendarEvent, checkGoogleCalendarEventExists } from "../google-calendar-service";
 import { isActionAlreadyCompleted, LastCompletedAction, ActionDetails } from "../booking/booking-intent-detector";
 
 // Debounce and queue system (mirrors WhatsApp implementation)
@@ -435,6 +435,45 @@ async function processInstagramConversation(
           }
         }
         
+        if (existingBooking) {
+          // ═══════════════════════════════════════════════════════════════════════════════
+          // REAL-TIME SYNC: Verify Google Calendar event still exists before treating as modification
+          // This handles cases where user manually deleted the event from Google Calendar
+          // ═══════════════════════════════════════════════════════════════════════════════
+          if (existingBooking.googleEventId) {
+            console.log(`🔍 [INSTAGRAM REALTIME SYNC] Verifying Google Calendar event exists...`);
+            console.log(`   📅 Event ID: ${existingBooking.googleEventId}`);
+            
+            const eventExists = await checkGoogleCalendarEventExists(
+              config.consultantId,
+              existingBooking.googleEventId
+            );
+            
+            if (!eventExists) {
+              console.log(`🗑️ [INSTAGRAM REALTIME SYNC] Event was deleted from Google Calendar!`);
+              console.log(`   → Marking booking as cancelled and proceeding as NEW BOOKING`);
+              
+              // Update the booking status to cancelled
+              await db
+                .update(appointmentBookings)
+                .set({
+                  status: 'cancelled',
+                  cancelledAt: new Date(),
+                  cancellationReason: 'Evento rimosso dal calendario Google',
+                  googleEventId: null,
+                })
+                .where(eq(appointmentBookings.id, existingBooking.id));
+              
+              // Clear existingBooking so we treat this as a new booking
+              existingBooking = null;
+              console.log(`✅ [INSTAGRAM REALTIME SYNC] Booking marked as cancelled - proceeding as NEW BOOKING`);
+            } else {
+              console.log(`✅ [INSTAGRAM REALTIME SYNC] Google Calendar event verified - exists`);
+            }
+          }
+        }
+        
+        // Now set existingBookingForModification only if booking still exists after sync check
         if (existingBooking) {
           existingBookingForModification = {
             id: existingBooking.id,

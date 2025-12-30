@@ -1341,6 +1341,50 @@ export async function deleteGoogleCalendarEvent(
 }
 
 /**
+ * Check if a Google Calendar event exists
+ * Used for real-time sync verification before treating a booking as modification
+ */
+export async function checkGoogleCalendarEventExists(
+  consultantId: string,
+  googleEventId: string
+): Promise<boolean> {
+  try {
+    const calendar = await getCalendarClient(consultantId);
+    const calendarId = await getPrimaryCalendarId(consultantId);
+    
+    if (!calendarId) {
+      console.log(`⚠️ [GCAL CHECK] No calendar ID found for consultant ${consultantId}`);
+      return false;
+    }
+
+    const response = await calendar.events.get({
+      calendarId,
+      eventId: googleEventId
+    });
+
+    // Event exists if we get a successful response
+    const exists = !!response.data && response.data.status !== 'cancelled';
+    console.log(`🔍 [GCAL CHECK] Event ${googleEventId} exists: ${exists}`);
+    return exists;
+  } catch (error: any) {
+    // 404 (Not Found) or 410 (Gone) means event was deleted
+    const statusCode = error.code || error.response?.status;
+    if (statusCode === 404 || statusCode === 410) {
+      console.log(`🗑️ [GCAL CHECK] Event ${googleEventId} not found (deleted from calendar) - HTTP ${statusCode}`);
+      return false;
+    }
+    // Log unexpected errors for monitoring
+    console.error(`⚠️ [GCAL CHECK] Unexpected error checking event ${googleEventId}:`, {
+      message: error.message,
+      code: statusCode,
+      name: error.name
+    });
+    // Conservative: assume exists on unexpected error to avoid false deletions
+    return true;
+  }
+}
+
+/**
  * Fetch events from Google Calendar (for sync)
  */
 export async function fetchGoogleCalendarEvents(
