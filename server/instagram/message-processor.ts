@@ -505,6 +505,40 @@ async function processInstagramConversation(
           console.log(`💯 Confidence: ${modResult.confidence?.toUpperCase() || 'N/A'}`);
           console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
           
+          // ═══════════════════════════════════════════════════════════════════════════════
+          // ALWAYS EXTRACT NEW BOOKING DATA (for visibility into extracted fields)
+          // ═══════════════════════════════════════════════════════════════════════════════
+          console.log('🔄 [INSTAGRAM DATA EXTRACTION] Always extracting NEW BOOKING data for visibility...');
+          const newBookingExtracted = await extractBookingDataFromConversation(
+            conversationMessages,
+            undefined, // No existing booking - extract as NEW to see all fields
+            bookingAiProvider.client,
+            'Europe/Rome',
+            undefined,
+            {
+              publicConversationId: conversation.id,
+              consultantId: config.consultantId,
+            }
+          );
+          
+          if (newBookingExtracted && 'isConfirming' in newBookingExtracted) {
+            const newExtracted = newBookingExtracted as BookingExtractionResult;
+            console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('📊 [INSTAGRAM DATA EXTRACTION] Full Booking Data Results');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log(`🎯 Confirming: ${newExtracted.isConfirming ? '✅ YES' : '❌ NO'}`);
+            console.log(`📅 Date:     ${newExtracted.date ? `✅ ${newExtracted.date}` : '❌ MISSING'}`);
+            console.log(`🕐 Time:     ${newExtracted.time ? `✅ ${newExtracted.time}` : '❌ MISSING'}`);
+            console.log(`📞 Phone:    ${newExtracted.phone ? `✅ ${newExtracted.phone}` : '❌ MISSING'}`);
+            console.log(`📧 Email:    ${newExtracted.email ? `✅ ${newExtracted.email}` : '❌ MISSING'}`);
+            console.log(`👤 Name:     ${newExtracted.name ? `✅ ${newExtracted.name}` : '❌ MISSING'}`);
+            console.log(`💯 Confidence: ${newExtracted.confidence?.toUpperCase() || 'N/A'}`);
+            console.log(`✔️ Complete: ${newExtracted.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          } else {
+            console.log('ℹ️ [INSTAGRAM DATA EXTRACTION] No booking data found in conversation');
+          }
+          
           // Helper to send Instagram message
           const sendInstagramConfirmation = async (messageText: string) => {
             let pageAccessToken = config.pageAccessToken;
@@ -782,35 +816,10 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             }
           } else if (modResult.intent === 'NONE') {
             console.log('💬 [INSTAGRAM APPOINTMENT MANAGEMENT] No modification/cancellation/add attendees intent detected');
-            console.log('🔄 [INSTAGRAM NEW BOOKING CHECK] User has existing booking but intent is NONE - checking for NEW appointment request...');
             
-            // Re-extract without existing booking to check for NEW appointment request
-            const newBookingExtracted = await extractBookingDataFromConversation(
-              conversationMessages,
-              undefined, // No existing booking - extract as NEW
-              bookingAiProvider.client,
-              'Europe/Rome',
-              undefined,
-              {
-                publicConversationId: conversation.id,
-                consultantId: config.consultantId,
-              }
-            );
-            
+            // Use newBookingExtracted already extracted above for creating additional appointments
             if (newBookingExtracted && 'isConfirming' in newBookingExtracted) {
               const newExtracted = newBookingExtracted as BookingExtractionResult;
-              console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('📊 [INSTAGRAM NEW BOOKING CHECK] Extraction Results (with existing booking)');
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log(`🎯 Confirming: ${newExtracted.isConfirming ? '✅ YES' : '❌ NO'}`);
-              console.log(`📅 Date:     ${newExtracted.date ? `✅ ${newExtracted.date}` : '❌ MISSING'}`);
-              console.log(`🕐 Time:     ${newExtracted.time ? `✅ ${newExtracted.time}` : '❌ MISSING'}`);
-              console.log(`📞 Phone:    ${newExtracted.phone ? `✅ ${newExtracted.phone}` : '❌ MISSING'}`);
-              console.log(`📧 Email:    ${newExtracted.email ? `✅ ${newExtracted.email}` : '❌ MISSING'}`);
-              console.log(`👤 Name:     ${newExtracted.name ? `✅ ${newExtracted.name}` : '❌ MISSING'}`);
-              console.log(`💯 Confidence: ${newExtracted.confidence?.toUpperCase() || 'N/A'}`);
-              console.log(`✔️ Complete: ${newExtracted.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
               
               // If user is confirming a NEW booking (different from existing)
               if (newExtracted.isConfirming && newExtracted.date && newExtracted.time && newExtracted.email && newExtracted.phone) {
@@ -917,11 +926,9 @@ Ti ho inviato un invito calendario! 📬`;
                     }
                   }
                 } else {
-                  console.log('ℹ️ [INSTAGRAM NEW BOOKING CHECK] Same date/time as existing - no new booking needed');
+                  console.log('ℹ️ [INSTAGRAM NEW BOOKING] Same date/time as existing - no new booking needed');
                 }
               }
-            } else {
-              console.log('ℹ️ [INSTAGRAM NEW BOOKING CHECK] No new booking data found - continuing conversation');
             }
           }
         }
