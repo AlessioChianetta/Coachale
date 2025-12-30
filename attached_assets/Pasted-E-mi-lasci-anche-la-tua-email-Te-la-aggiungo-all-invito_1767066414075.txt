@@ -1,0 +1,49 @@
+E mi lasci anche la tua email? Te la aggiungo all'invito del calendario così riceverai l'evento Google Calendar con il link per la call. 😊
+LEAD: Chianettaalessio@gmail.com
+AI: Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 [ACCUMULATOR] Loading existing extraction state...
+   📦 [ACCUMULATOR] No existing state found
+   🧠 [AI] Using model: gemini-2.5-flash-lite, thinking: disabled
+   AI Response length: 972 chars
+   AI Response preview: ```json
+{
+  "isConfirming": true,
+  "date": "2026-01-01",
+  "time": "10:00",
+  "phone": "3890566422",
+  "email": "chianettaalessio@gmail.com",
+  "name": null,
+  "confidence": "high",
+  "hasAllData": true,
+  "reasoning": {
+    "isConfirming": "Il lead conferma l'appuntamento rispondendo 'Ok' alla pro
+   Parsed extraction result (raw): hasAllData=true, date=2026-01-01, time=10:00
+
+🧠 [AI REASONING] Spiegazione decisioni AI:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 CONFIRMING: Il lead conferma l'appuntamento rispondendo 'Ok' alla proposta di consulenza e fornendo tutti i dati richiesti per la prenotazione.
+   📅 DATE:  La data '1 gennaio' è proposta dall'AI e confermata implicitamente dal lead selezionando lo slot desiderato. L'AI poi la formalizza in 'giovedì 1 gennaio'.
+   🕐 TIME:  Il lead seleziona '10' tra gli orari proposti dall'AI ('Giovedì 1 gennaio alle 10:00', 'Giovedì 1 gennaio alle 11:00'). L'AI conferma poi 'alle 10:00'.
+   📞 PHONE: Il lead fornisce esplicitamente il suo numero di telefono '3890566422' in risposta alla richiesta dell'AI.
+   📧 EMAIL: Il lead fornisce esplicitamente la sua email 'Chianettaalessio@gmail.com' in risposta alla richiesta dell'AI.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   💾 [ACCUMULATOR] Updated state: date=2026-01-01, time=10:00
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [INSTAGRAM DATA EXTRACTION] Full Booking Data Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 Confirming: ✅ YES
+📅 Date:     ✅ 2026-01-01
+🕐 Time:     ✅ 10:00
+📞 Phone:    ✅ 3890566422
+📧 Email:    ✅ chianettaalessio@gmail.com
+👤 Name:     ❌ MISSING
+💯 Confidence: HIGH
+✔️ Complete: ✅ YES - Ready to book!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [INSTAGRAM MODIFY APPOINTMENT] Starting modification process...
+⚠️ [INSTAGRAM MODIFY] Insufficient confirmations (0/1)
+   AI should ask for confirmation via prompt - skipping modification
+✅ [INSTAGRAM] Processed conversation 9571
