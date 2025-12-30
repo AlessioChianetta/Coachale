@@ -290,13 +290,28 @@ router.get("/conversations/:id/messages", authenticateToken, async (req: AuthReq
       return res.status(404).json({ error: "Conversation not found" });
     }
 
-    const messages = await db
+    const messagesRaw = await db
       .select()
       .from(instagramMessages)
       .where(eq(instagramMessages.conversationId, conversationId))
       .orderBy(desc(instagramMessages.createdAt))
       .limit(limit)
       .offset(offset);
+
+    // Map database fields to frontend format
+    const messages = messagesRaw.map((msg) => ({
+      id: msg.id,
+      conversationId: msg.conversationId,
+      instagramMessageId: msg.instagramMessageId,
+      text: msg.messageText, // Map messageText -> text for frontend
+      direction: msg.direction,
+      sender: msg.sender === "client" ? "user" : msg.sender, // Map client -> user for frontend
+      messageType: msg.mediaType || "text",
+      mediaUrl: msg.mediaUrl,
+      storyUrl: msg.replyToStoryUrl,
+      status: msg.metaStatus || "sent",
+      createdAt: msg.createdAt,
+    }));
 
     // Mark as read
     await db

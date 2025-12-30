@@ -1349,17 +1349,22 @@ export default function ConsultantWhatsAppConversationsPage() {
               </TabsContent>
 
               <TabsContent value="instagram" className="mt-0">
-                {/* Instagram Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-230px)]">
-                  {/* Lista conversazioni Instagram */}
-                  <Card className="lg:col-span-1 overflow-hidden border-cyan-200">
-                    <CardHeader className="py-3 bg-gradient-to-r from-cyan-50 to-teal-50 border-b">
-                      <CardTitle className="text-sm font-medium text-cyan-700">Conversazioni Instagram</CardTitle>
-                    </CardHeader>
-                    <ScrollArea className="h-[calc(100vh-300px)]">
+                {/* Instagram-style Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[calc(100vh-230px)] bg-white dark:bg-zinc-900 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                  {/* Lista conversazioni Instagram - Sidebar style */}
+                  <div className="lg:col-span-1 border-r border-zinc-200 dark:border-zinc-800 flex flex-col">
+                    {/* Header con logo Instagram */}
+                    <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center">
+                        <Instagram className="h-5 w-5 text-white" />
+                      </div>
+                      <span className="font-semibold text-zinc-900 dark:text-white">Messaggi</span>
+                    </div>
+                    
+                    <ScrollArea className="flex-1">
                       {instagramConversationsLoading ? (
                         <div className="flex items-center justify-center p-8">
-                          <Loader2 className="h-6 w-6 animate-spin text-cyan-500" />
+                          <Loader2 className="h-6 w-6 animate-spin text-pink-500" />
                         </div>
                       ) : instagramConversationsError ? (
                         <div className="p-4 text-center text-red-500">
@@ -1367,68 +1372,119 @@ export default function ConsultantWhatsAppConversationsPage() {
                           <p className="text-sm">Errore nel caricamento</p>
                         </div>
                       ) : instagramConversations.length === 0 ? (
-                        <div className="p-4 text-center text-slate-500">
-                          <Instagram className="h-12 w-12 mx-auto mb-2 text-slate-300" />
-                          <p className="text-sm">Nessuna conversazione Instagram</p>
+                        <div className="p-8 text-center">
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center mx-auto mb-4">
+                            <Instagram className="h-8 w-8 text-white" />
+                          </div>
+                          <p className="text-zinc-500 dark:text-zinc-400 text-sm">Nessun messaggio</p>
+                          <p className="text-zinc-400 dark:text-zinc-500 text-xs mt-1">I nuovi messaggi appariranno qui</p>
                         </div>
                       ) : (
                         instagramConversations.map((conv) => (
                           <div
                             key={conv.id}
                             onClick={() => setSelectedInstagramConversationId(conv.id)}
-                            className={`p-3 border-b cursor-pointer hover:bg-cyan-50 transition-colors ${
-                              selectedInstagramConversationId === conv.id ? "bg-cyan-100" : ""
+                            className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-3 ${
+                              selectedInstagramConversationId === conv.id 
+                                ? "bg-zinc-100 dark:bg-zinc-800" 
+                                : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                             }`}
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
-                                <User className="h-5 w-5 text-white" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-sm truncate">{conv.instagramUsername || conv.instagramUserId}</span>
-                                  <WindowStatusBadge isWindowOpen={conv.isWindowOpen} windowExpiresAt={conv.windowExpiresAt} />
+                            {/* Avatar con bordo gradient Instagram */}
+                            <div className="relative">
+                              <div className="w-14 h-14 rounded-full p-[2px] bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400">
+                                <div className="w-full h-full rounded-full bg-white dark:bg-zinc-900 p-[2px]">
+                                  <div className="w-full h-full rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
+                                    <User className="h-6 w-6 text-zinc-500 dark:text-zinc-400" />
+                                  </div>
                                 </div>
-                                <p className="text-xs text-slate-500 truncate">{conv.lastMessageText || "Nessun messaggio"}</p>
                               </div>
-                              {conv.unreadByConsultant > 0 && (
-                                <Badge className="bg-cyan-500">{conv.unreadByConsultant}</Badge>
+                              {conv.isWindowOpen && (
+                                <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-zinc-900" />
                               )}
                             </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-sm text-zinc-900 dark:text-white truncate">
+                                  {conv.instagramUsername ? `@${conv.instagramUsername}` : conv.instagramUserId}
+                                </span>
+                                {conv.lastMessageAt && (
+                                  <span className="text-xs text-zinc-400">
+                                    {formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: false, locale: it }).replace("circa ", "")}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                                {conv.lastMessageText || "Messaggio"}
+                              </p>
+                            </div>
+                            
+                            {conv.unreadByConsultant > 0 && (
+                              <div className="w-5 h-5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 flex items-center justify-center">
+                                <span className="text-[10px] font-bold text-white">{conv.unreadByConsultant}</span>
+                              </div>
+                            )}
                           </div>
                         ))
                       )}
                     </ScrollArea>
-                  </Card>
+                  </div>
 
-                  {/* Dettaglio conversazione Instagram */}
-                  <Card className="lg:col-span-2 overflow-hidden border-cyan-200">
-                    <CardHeader className="py-3 bg-gradient-to-r from-cyan-50 to-teal-50 border-b">
-                      <CardTitle className="text-sm font-medium text-cyan-700">
-                        {instagramConversationInfo ? `@${instagramConversationInfo.instagramUsername || "Utente"}` : "Seleziona una conversazione"}
-                      </CardTitle>
-                    </CardHeader>
-                    <ScrollArea className="h-[calc(100vh-350px)] p-4">
-                      {!selectedInstagramConversationId ? (
-                        <div className="flex items-center justify-center h-full text-slate-400">
-                          <div className="text-center">
-                            <Instagram className="h-16 w-16 mx-auto mb-4 text-slate-300" />
-                            <p>Seleziona una conversazione per vedere i messaggi</p>
+                  {/* Area messaggi Instagram */}
+                  <div className="lg:col-span-2 flex flex-col bg-white dark:bg-zinc-900">
+                    {!selectedInstagramConversationId ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                        <div className="w-24 h-24 rounded-full border-2 border-zinc-900 dark:border-white flex items-center justify-center mb-4">
+                          <svg className="w-12 h-12 text-zinc-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-xl font-medium text-zinc-900 dark:text-white mb-1">I tuoi messaggi</h3>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-sm">Seleziona una conversazione per iniziare</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Header conversazione */}
+                        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400">
+                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-900 p-[2px]">
+                              <div className="w-full h-full rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
+                                <User className="h-5 w-5 text-zinc-500 dark:text-zinc-400" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <span className="font-semibold text-zinc-900 dark:text-white">
+                              {instagramConversationInfo?.instagramUsername ? `@${instagramConversationInfo.instagramUsername}` : "Utente"}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <WindowStatusBadge isWindowOpen={instagramConversationInfo?.isWindowOpen || false} windowExpiresAt={instagramConversationInfo?.windowExpiresAt || null} />
+                            </div>
                           </div>
                         </div>
-                      ) : instagramMessagesLoading ? (
-                        <div className="flex items-center justify-center h-full">
-                          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {instagramMessages.map((msg: any) => (
-                            <InstagramMessageBubble key={msg.id} message={msg} />
-                          ))}
-                        </div>
-                      )}
-                    </ScrollArea>
-                  </Card>
+
+                        {/* Area messaggi */}
+                        <ScrollArea className="flex-1 p-4 bg-white dark:bg-zinc-900">
+                          {instagramMessagesLoading ? (
+                            <div className="flex items-center justify-center h-full">
+                              <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+                            </div>
+                          ) : instagramMessages.length === 0 ? (
+                            <div className="flex items-center justify-center h-full text-zinc-400">
+                              <p className="text-sm">Nessun messaggio in questa conversazione</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {instagramMessages.map((msg: any) => (
+                                <InstagramMessageBubble key={msg.id} message={msg} />
+                              ))}
+                            </div>
+                          )}
+                        </ScrollArea>
+                      </>
+                    )}
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
