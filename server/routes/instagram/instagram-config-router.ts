@@ -386,6 +386,193 @@ router.patch("/config/:configId/settings", authenticateToken, async (req: AuthRe
 });
 
 /**
+ * POST /api/instagram/config/:configId/sync-ice-breakers
+ * Sync Ice Breakers with Meta API
+ */
+router.post("/config/:configId/sync-ice-breakers", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const encryptionSalt = req.user!.encryptionSalt;
+    const { configId } = req.params;
+
+    const [config] = await db
+      .select()
+      .from(consultantInstagramConfig)
+      .where(
+        and(
+          eq(consultantInstagramConfig.id, configId),
+          eq(consultantInstagramConfig.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!config || !config.pageAccessToken || !config.facebookPageId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Configurazione incompleta. Assicurati di aver completato il collegamento OAuth." 
+      });
+    }
+
+    // Decrypt token
+    let accessToken = config.pageAccessToken;
+    if (encryptionSalt) {
+      try {
+        accessToken = decryptForConsultant(config.pageAccessToken, encryptionSalt);
+      } catch (e) {
+        try {
+          accessToken = decrypt(config.pageAccessToken);
+        } catch (e2) {}
+      }
+    } else {
+      try {
+        accessToken = decrypt(config.pageAccessToken);
+      } catch (e) {}
+    }
+
+    const iceBreakers = config.iceBreakers || [];
+    
+    if (!config.iceBreakersEnabled || iceBreakers.length === 0) {
+      // Delete ice breakers from Meta if disabled or empty
+      console.log(`[INSTAGRAM] Deleting Ice Breakers for config ${configId}`);
+      const deleteRes = await fetch(
+        `https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${accessToken}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            platform: "instagram",
+            fields: ["ice_breakers"]
+          }),
+        }
+      );
+      const deleteData = await deleteRes.json() as any;
+      console.log(`[INSTAGRAM] Delete Ice Breakers response:`, deleteData);
+      
+      return res.json({
+        success: true,
+        message: "Ice Breakers rimossi da Instagram",
+        action: "deleted"
+      });
+    }
+
+    // Sync ice breakers to Meta
+    console.log(`[INSTAGRAM] Syncing ${iceBreakers.length} Ice Breakers for config ${configId}`);
+    
+    const metaIceBreakers = iceBreakers.map((ib: { text: string; payload: string }) => ({
+      question: ib.text,
+      payload: ib.payload,
+    }));
+
+    const syncRes = await fetch(
+      `https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${accessToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: "instagram",
+          ice_breakers: metaIceBreakers,
+        }),
+      }
+    );
+    const syncData = await syncRes.json() as any;
+    
+    console.log(`[INSTAGRAM] Sync Ice Breakers response:`, syncData);
+
+    if (syncData.result === "success" || syncData.success) {
+      return res.json({
+        success: true,
+        message: `${iceBreakers.length} Ice Breakers sincronizzati con Instagram`,
+        action: "synced",
+        iceBreakers: metaIceBreakers
+      });
+    } else {
+      console.error(`[INSTAGRAM] Failed to sync Ice Breakers:`, syncData);
+      return res.status(400).json({
+        success: false,
+        error: syncData.error?.message || "Sync fallito. Verifica i permessi dell'app.",
+        details: syncData,
+      });
+    }
+  } catch (error) {
+    console.error("Error syncing Ice Breakers:", error);
+    return res.status(500).json({ 
+      success: false, 
+      error: "Errore durante la sincronizzazione degli Ice Breakers" 
+    });
+  }
+});
+
+/**
+ * GET /api/instagram/config/:configId/ice-breakers-status
+ * Get Ice Breakers status from Meta API
+ */
+router.get("/config/:configId/ice-breakers-status", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const encryptionSalt = req.user!.encryptionSalt;
+    const { configId } = req.params;
+
+    const [config] = await db
+      .select()
+      .from(consultantInstagramConfig)
+      .where(
+        and(
+          eq(consultantInstagramConfig.id, configId),
+          eq(consultantInstagramConfig.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!config || !config.pageAccessToken || !config.facebookPageId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Configurazione incompleta." 
+      });
+    }
+
+    // Decrypt token
+    let accessToken = config.pageAccessToken;
+    if (encryptionSalt) {
+      try {
+        accessToken = decryptForConsultant(config.pageAccessToken, encryptionSalt);
+      } catch (e) {
+        try {
+          accessToken = decrypt(config.pageAccessToken);
+        } catch (e2) {}
+      }
+    } else {
+      try {
+        accessToken = decrypt(config.pageAccessToken);
+      } catch (e) {}
+    }
+
+    // Get current ice breakers from Meta
+    const statusRes = await fetch(
+      `https://graph.facebook.com/v21.0/me/messenger_profile?fields=ice_breakers&platform=instagram&access_token=${accessToken}`
+    );
+    const statusData = await statusRes.json() as any;
+
+    return res.json({
+      success: true,
+      metaIceBreakers: statusData.data?.[0]?.ice_breakers || [],
+      localIceBreakers: config.iceBreakers || [],
+      inSync: JSON.stringify(statusData.data?.[0]?.ice_breakers || []) === JSON.stringify(
+        (config.iceBreakers || []).map((ib: { text: string; payload: string }) => ({
+          question: ib.text,
+          payload: ib.payload
+        }))
+      )
+    });
+  } catch (error) {
+    console.error("Error getting Ice Breakers status:", error);
+    return res.status(500).json({ 
+      success: false, 
+      error: "Errore nel recupero dello stato Ice Breakers" 
+    });
+  }
+});
+
+/**
  * POST /api/instagram/config/test-connection
  * Test Instagram API connection
  */
@@ -567,7 +754,7 @@ router.post("/config/subscribe-webhooks", authenticateToken, async (req: AuthReq
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         access_token: accessToken,
-        subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads",
+        subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads,comments",
       }).toString(),
     });
     const subscribeData = await subscribeRes.json() as any;

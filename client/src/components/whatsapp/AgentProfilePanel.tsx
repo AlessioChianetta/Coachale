@@ -535,6 +535,62 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
     });
   };
 
+  // Mutation for syncing Ice Breakers with Meta API
+  const syncIceBreakers = useMutation({
+    mutationFn: async (configId: string) => {
+      const res = await fetch(`/api/instagram/config/${configId}/sync-ice-breakers`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to sync Ice Breakers');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Ice Breakers Sincronizzati",
+        description: data.message || "Gli Ice Breakers sono stati sincronizzati con Instagram"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Errore Sincronizzazione",
+        description: error.message || "Impossibile sincronizzare gli Ice Breakers"
+      });
+    }
+  });
+
+  // Mutation for subscribing to webhook with comments field
+  const subscribeWebhook = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/instagram/config/subscribe-webhook`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to subscribe webhook');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Webhook Aggiornato",
+        description: data.message || "Webhook sottoscritto con successo (inclusi commenti)"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Errore Webhook",
+        description: error.message || "Impossibile aggiornare il webhook"
+      });
+    }
+  });
+
   const handleAddKeyword = (configId: string, currentKeywords: string[]) => {
     const keyword = newKeyword.trim();
     if (keyword && !currentKeywords.includes(keyword)) {
@@ -1362,9 +1418,56 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                                     {iceBreakers.length >= 4 && (
                                       <p className="text-[10px] text-amber-600">Limite raggiunto (max 4 Ice Breakers)</p>
                                     )}
+                                    
+                                    {/* Sync with Meta Button */}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => syncIceBreakers.mutate(currentConfig.id)}
+                                      disabled={syncIceBreakers.isPending || iceBreakers.length === 0}
+                                      className="w-full h-7 text-xs mt-2 border-pink-300 text-pink-600 hover:bg-pink-50"
+                                    >
+                                      {syncIceBreakers.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      ) : (
+                                        <RefreshCw className="h-3 w-3 mr-1" />
+                                      )}
+                                      Sincronizza con Instagram
+                                    </Button>
+                                    <p className="text-[10px] text-slate-500 text-center">
+                                      Pubblica gli Ice Breakers su Instagram
+                                    </p>
                                   </div>
                                 )}
                               </div>
+                              
+                              {/* Attiva Webhook Commenti - Only show if comment_to_dm is enabled */}
+                              {currentConfig.commentToDmEnabled && (
+                                <div className="p-2 bg-blue-50/60 rounded border border-blue-200">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
+                                      <span className="text-xs text-slate-700">Attiva Webhook Commenti</span>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => subscribeWebhook.mutate()}
+                                      disabled={subscribeWebhook.isPending}
+                                      className="h-6 px-2 text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
+                                    >
+                                      {subscribeWebhook.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        "Attiva"
+                                      )}
+                                    </Button>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 mt-1">
+                                    Necessario per ricevere i commenti sui post
+                                  </p>
+                                </div>
+                              )}
                               
                               {/* Dry Run */}
                               <div className="flex items-center justify-between p-2 bg-amber-50/60 rounded border border-amber-200">
