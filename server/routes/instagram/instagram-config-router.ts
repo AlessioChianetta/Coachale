@@ -770,7 +770,7 @@ async function subscribeWebhookHandler(req: AuthRequest, res: Response) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         access_token: accessToken,
-        subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads,comments",
+        subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads",
       }).toString(),
     });
     

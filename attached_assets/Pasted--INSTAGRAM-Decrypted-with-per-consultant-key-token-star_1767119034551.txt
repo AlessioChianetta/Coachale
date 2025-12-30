@@ -1,0 +1,38 @@
+[INSTAGRAM] Decrypted with per-consultant key, token starts with: EAAUY2LQoP...
+[INSTAGRAM] Syncing 2 Ice Breakers for config 7716fc1b-94d4-4435-910f-73e84830beec
+[INSTAGRAM] Sync Ice Breakers response: {
+  error: {
+    message: '(#2) Service temporarily unavailable',
+    type: 'OAuthException',
+    is_transient: true,
+    code: 2,
+    fbtrace_id: 'A5IE-InMmII1yyGSkIvEbal'
+  }
+}
+[INSTAGRAM] Failed to sync Ice Breakers: {
+  error: {
+    message: '(#2) Service temporarily unavailable',
+    type: 'OAuthException',
+    is_transient: true,
+    code: 2,
+    fbtrace_id: 'A5IE-InMmII1yyGSkIvEbal'
+  }
+}
+6:23:54 PM [express] POST /api/instagram/config/7716fc1b-94d4-4435-910f-73e84830beec/sync-ice-breake…
+[INSTAGRAM] Decrypting token for subscribe-webhook, encryptionSalt: true
+[INSTAGRAM] Decrypted with per-consultant key
+[INSTAGRAM] Subscribing to webhooks: https://graph.facebook.com/v21.0/655018317702995/subscribed_apps
+[INSTAGRAM] Subscribe webhook response: {"error":{"message":"(#100) Param subscribed_fields[4] must be one of {feed, mention, name, picture, category, description, conversations, feature_access_list, inbox_labels, standby, message_mention, messages, message_reactions, messaging_account_linking, messaging_checkout_updates, messaging_customer_information, message_echoes, message_edits, message_deliveries, message_context, messaging_game_plays, messaging_optins, messaging_optouts, messaging_payments, messaging_postbacks, messaging_pre_checkouts, message_reads, messaging_referrals, messaging_handovers, messaging_policy_enforcement, marketing_message_delivery_failed, marketing_message_echoes, marketing_message_deliveries, marketing_message_clicks, marketing_message_reads, messaging_appointments, messaging_direct_sends, messaging_fblogin_account_linking, user_action, messaging_feedback, send_cart, group_feed, calls, call_permission_reply, call_settings_update, response_feedback, messaging_integrity, business_integrity, messaging_in_thread_lead_form_submit, message_template_status_update, founded, company_overview, mission, products, general_info, leadgen, leadgen_fat, location, hours, parking, public_transit, page_about_story, mcom_invoice_change, invoice_access_invoice_change, invoice_access_invoice_draft_change, invoice_access_onboarding_status_active, invoice_access_bank_slip_events, local_delivery, phone, email, website, ratings, attire, payment_options, culinary_team, general_manager, price_range, awards, hometown, current_location, bio, affiliation, birthday, personal_info, personal_interests, members, checkins, page_upcoming_change, page_change_proposal, merchant_review, product_review, videos, live_videos, video_text_question_responses, registration, payment_request_update, publisher_subscriptions, invalid_topic_placeholder, marketing_messages_subscriber_upload_status, follow, story_share, comment_poll_response, story_poll_response} - got \"comments\".","type":"OAuthException","code":100,"fbtrace_id":"AchRK5HEPyMS1abE5fMRrjc"}}
+[INSTAGRAM] Webhook subscription failed: {
+  error: {
+    message: '(#100) Param subscribed_fields[4] must be one of {feed, mention, name, picture, category, description, conversations, feature_access_list, inbox_labels, standby, message_mention, messages, message_reactions, messaging_account_linking, messaging_checkout_updates, messaging_customer_information, message_echoes, message_edits, message_deliveries, message_context, messaging_game_plays, messaging_optins, messaging_optouts, messaging_payments, messaging_postbacks, messaging_pre_checkouts, message_reads, messaging_referrals, messaging_handovers, messaging_policy_enforcement, marketing_message_delivery_failed, marketing_message_echoes, marketing_message_deliveries, marketing_message_clicks, marketing_message_reads, messaging_appointments, messaging_direct_sends, messaging_fblogin_account_linking, user_action, messaging_feedback, send_cart, group_feed, calls, call_permission_reply, call_settings_update, response_feedback, messaging_integrity, business_integrity, messaging_in_thread_lead_form_submit, message_template_status_update, founded, company_overview, mission, products, general_info, leadgen, leadgen_fat, location, hours, parking, public_transit, page_about_story, mcom_invoice_change, invoice_access_invoice_change, invoice_access_invoice_draft_change, invoice_access_onboarding_status_active, invoice_access_bank_slip_events, local_delivery, phone, email, website, ratings, attire, payment_options, culinary_team, general_manager, price_range, awards, hometown, current_location, bio, affiliation, birthday, personal_info, personal_interests, members, checkins, page_upcoming_change, page_change_proposal, merchant_review, product_review, videos, live_videos, video_text_question_responses, registration, payment_request_update, publisher_subscriptions, invalid_topic_placeholder, marketing_messages_subscriber_upload_status, follow, story_share, comment_poll_response, story_poll_response} - got "comments".',
+    type: 'OAuthException',
+    code: 100,
+    fbtrace_id: 'AchRK5HEPyMS1abE5fMRrjc'
+  }
+}
+6:23:57 PM [express] POST /api/instagram/config/subscribe-webhook 400 in 651ms :: {"success":false,"…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
