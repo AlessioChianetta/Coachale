@@ -560,6 +560,20 @@ LEAD: sì confermo
 → {"intent": "CANCEL", "newDate": null, "newTime": null, "attendees": [], "confirmedTimes": 2, "confidence": "high"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 4b - CANCELLAZIONE (SOLO 1 conferma - AI sta ancora chiedendo):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAD: voglio cancellare
+AI: [persuasione] Confermi che vuoi cancellare?
+LEAD: sì
+AI: Ok, capisco. Solo per essere sicuri: confermi che vuoi procedere con la cancellazione?
+
+→ {"intent": "CANCEL", "newDate": null, "newTime": null, "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+
+⚠️ ATTENZIONE: L'ultimo messaggio è dell'AI che CHIEDE la seconda conferma!
+Il lead NON ha ancora risposto, quindi confirmedTimes = 1 (solo la prima conferma è stata data).
+La seconda conferma arriverà SOLO quando il lead risponderà "sì" a questa domanda.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Esempio 5 - AGGIUNTA INVITATI (1 email):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 LEAD: Mi aggiungi mario.rossi@example.com agli invitati?
@@ -632,6 +646,7 @@ NON sono rilevanti. Il lead ha resettato la conversazione.
 17. Se non ha ancora confermato esplicitamente: confirmedTimes = 0
 18. IMPORTANTE: Le richieste dirette ("mettilo alle 10", "spostalo alle 14") NON contano come conferma - confirmedTimes=0 finché il lead non conferma esplicitamente
 19. RESET: Se il lead dice "ricominciamo", "iniziamo da capo", "proviamo di nuovo", i messaggi PRECEDENTI sono irrilevanti - intent="NONE"
+20. 🚨 REGOLA CRITICA: Se l'ULTIMO messaggio della conversazione è dell'AI che CHIEDE conferma (es: "confermi?", "sei sicuro?", "procediamo?"), allora quella conferma NON è stata ancora data! Devi contare SOLO le risposte effettive del LEAD, non le domande dell'AI.
 `;
 }
 
