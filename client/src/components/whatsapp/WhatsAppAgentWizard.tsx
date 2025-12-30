@@ -5,11 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Stepper, Step } from "@/components/ui/stepper";
 import { useToast } from "@/hooks/use-toast";
 import { validateStep } from "@/lib/validation/whatsapp-config-schema";
-import { ArrowLeft, ArrowRight, Save, Loader2, CheckCircle2, Info, Sparkles, Clock, Target, Heart, Shield, Briefcase, Users, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Loader2, CheckCircle2, Info, Sparkles, Clock, Target, Heart, Shield, Briefcase, Users, Zap, Instagram } from "lucide-react";
 import AgentBasicSetup from "./wizard-steps/AgentBasicSetup";
 import AgentAvailability from "./wizard-steps/AgentAvailability";
 import AgentBrandVoice from "./wizard-steps/AgentBrandVoice";
 import AgentInstructions from "./wizard-steps/AgentInstructions";
+import AgentInstagram from "./wizard-steps/AgentInstagram";
 import { INFORMATIVE_ADVISOR_TEMPLATE } from "./AgentInstructionsPanel";
 import {
   Dialog,
@@ -29,7 +30,7 @@ interface WhatsAppAgentWizardProps {
   onCancel?: () => void;
 }
 
-const steps: Step[] = [
+const baseSteps: Step[] = [
   {
     id: "basic",
     label: "Configurazione Base",
@@ -51,6 +52,12 @@ const steps: Step[] = [
     description: "Template e personalità",
   },
 ];
+
+const instagramStep: Step = {
+  id: "instagram",
+  label: "Instagram",
+  description: "Collega account IG",
+};
 
 const emptyFormData = {
   agentName: "",
@@ -132,6 +139,9 @@ export default function WhatsAppAgentWizard({
   const [instructionsSaved, setInstructionsSaved] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
+
+  const steps = mode === "edit" ? [...baseSteps, instagramStep] : baseSteps;
+  const lastMainStep = 3;
 
   useEffect(() => {
     if (initialData) {
@@ -356,6 +366,14 @@ export default function WhatsAppAgentWizard({
                   onInstructionsSaved={handleInstructionsSaved}
                 />
               )}
+              {currentStep === 4 && mode === "edit" && (
+                <AgentInstagram
+                  agentId={initialData?.id || null}
+                  formData={formData}
+                  onChange={handleFieldChange}
+                  errors={validationErrors}
+                />
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -382,15 +400,42 @@ export default function WhatsAppAgentWizard({
             </Button>
           )}
 
-          {currentStep < steps.length - 1 ? (
+          {currentStep < lastMainStep ? (
             <Button onClick={handleNext} className="gap-2">
               Avanti
               <ArrowRight className="h-4 w-4" />
             </Button>
+          ) : currentStep === lastMainStep ? (
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSave}
+                disabled={isSaving || (mode === "edit" && !instructionsSaved)}
+                className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Salvataggio...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    {mode === "edit" && !instructionsSaved ? "Salva prima le istruzioni" : "Salva Agente"}
+                  </>
+                )}
+              </Button>
+              {mode === "edit" && (
+                <Button onClick={handleNext} variant="outline" className="gap-2">
+                  <Instagram className="h-4 w-4" />
+                  Instagram
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           ) : (
             <Button
               onClick={handleSave}
-              disabled={isSaving || (mode === "edit" && !instructionsSaved)}
+              disabled={isSaving}
               className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
             >
               {isSaving ? (
@@ -401,7 +446,7 @@ export default function WhatsAppAgentWizard({
               ) : (
                 <>
                   <Save className="h-4 w-4" />
-                  {mode === "edit" && !instructionsSaved ? "Salva prima le istruzioni" : "Salva Agente"}
+                  Salva Agente
                 </>
               )}
             </Button>
