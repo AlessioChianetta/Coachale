@@ -374,9 +374,8 @@ async function processInstagramConversation(
         let existingBookingForModification: ExistingBooking | null = null;
         let lastCompletedAction: LastCompletedAction | null = null;
         
-        // Search by Instagram conversation ID first, then fallback to instagramUserId
+        // STEP 1: Search for ACTIVE booking by instagramConversationId
         // Include both 'confirmed' and 'proposed' status (like WhatsApp)
-        // No date filter - allow modification/cancellation of any booking including same-day
         let existingBooking = await db
           .select()
           .from(appointmentBookings)
@@ -390,8 +389,33 @@ async function processInstagramConversation(
           .limit(1)
           .then(r => r[0] || null);
         
-        // Fallback: Search by Instagram user ID if no match by conversation ID
+        // STEP 2: If no active booking, check if there's a CANCELLED booking in this conversation
+        // If yes, we're in NEW BOOKING mode - DO NOT use instagramUserId fallback
+        // This prevents modifying other bookings after user cancelled one in this conversation
+        let skipFallbackDueToCancellation = false;
+        
         if (!existingBooking && conversation.instagramUserId) {
+          const cancelledInThisConversation = await db
+            .select({ id: appointmentBookings.id })
+            .from(appointmentBookings)
+            .where(
+              and(
+                eq(appointmentBookings.instagramConversationId, conversation.id),
+                eq(appointmentBookings.status, 'cancelled')
+              )
+            )
+            .limit(1)
+            .then(r => r[0] || null);
+          
+          if (cancelledInThisConversation) {
+            console.log(`⛔ [INSTAGRAM] Cancelled booking exists in this conversation - skipping instagramUserId fallback`);
+            console.log(`   → User cancelled here, treating as NEW BOOKING mode`);
+            skipFallbackDueToCancellation = true;
+          }
+        }
+        
+        // STEP 3: Fallback to instagramUserId ONLY if no cancelled booking in this conversation
+        if (!existingBooking && conversation.instagramUserId && !skipFallbackDueToCancellation) {
           existingBooking = await db
             .select()
             .from(appointmentBookings)
@@ -436,19 +460,6 @@ async function processInstagramConversation(
           .where(eq(instagramMessages.conversationId, conversationId))
           .orderBy(desc(instagramMessages.createdAt))
           .limit(15);
-        
-        // Check if there's a recent cancellation confirmation in the conversation
-        // This prevents re-cancelling when finding another booking via instagramUserId fallback
-        const hasRecentCancellationConfirmation = recentMessages.some(m => 
-          m.direction === 'outbound' && 
-          m.sender === 'ai' && 
-          m.messageText?.includes('APPUNTAMENTO CANCELLATO')
-        );
-        
-        if (hasRecentCancellationConfirmation && existingBookingForModification) {
-          console.log(`⚠️ [INSTAGRAM] Recent cancellation confirmation found in conversation - skipping modification intent detection`);
-          existingBookingForModification = null;
-        }
         
         // Convert to ConversationMessage format (oldest first)
         const conversationMessages = recentMessages
