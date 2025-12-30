@@ -17,6 +17,8 @@ import {
   instagramConversations,
   instagramMessages,
   instagramPendingMessages,
+  instagramAgentConfig,
+  consultantWhatsappConfig,
 } from "../../shared/schema";
 import { decrypt } from "../encryption";
 import { eq, and, sql } from "drizzle-orm";
@@ -200,48 +202,131 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       // NOTE: entry.id can be either Instagram Account ID OR Facebook Page ID depending on webhook type
       const entryId = entry.id;
 
-      // Try to find config by Instagram Page ID first (most common for Instagram webhooks)
-      let [config] = await db
+      // MULTI-AGENT ROUTING: First check per-agent Instagram configs
+      let agentConfig: typeof instagramAgentConfig.$inferSelect | null = null;
+      let whatsappAgent: typeof consultantWhatsappConfig.$inferSelect | null = null;
+      
+      // Try to find per-agent config by Instagram Page ID
+      const [foundAgentConfig] = await db
         .select()
-        .from(consultantInstagramConfig)
+        .from(instagramAgentConfig)
         .where(
           and(
-            eq(consultantInstagramConfig.instagramPageId, entryId),
-            eq(consultantInstagramConfig.isActive, true)
+            eq(instagramAgentConfig.instagramPageId, entryId),
+            eq(instagramAgentConfig.isActive, true)
           )
         )
         .limit(1);
 
-      // Fallback: try Facebook Page ID if not found
-      if (!config) {
-        [config] = await db
+      if (foundAgentConfig) {
+        agentConfig = foundAgentConfig;
+        // Get the associated WhatsApp agent
+        const [agent] = await db
+          .select()
+          .from(consultantWhatsappConfig)
+          .where(eq(consultantWhatsappConfig.id, foundAgentConfig.whatsappAgentId))
+          .limit(1);
+        whatsappAgent = agent || null;
+        
+        console.log(`🎯 [INSTAGRAM WEBHOOK] MULTI-AGENT: Found per-agent config for Page ID ${entryId}`);
+        console.log(`   📱 WhatsApp Agent: ${whatsappAgent?.agentName} (ID: ${whatsappAgent?.id})`);
+        console.log(`   🎭 AI Personality: ${agentConfig.aiPersonality}`);
+      }
+
+      // Fallback: try Facebook Page ID in per-agent configs
+      if (!agentConfig) {
+        const [foundAgentConfigFB] = await db
+          .select()
+          .from(instagramAgentConfig)
+          .where(
+            and(
+              eq(instagramAgentConfig.facebookPageId, entryId),
+              eq(instagramAgentConfig.isActive, true)
+            )
+          )
+          .limit(1);
+
+        if (foundAgentConfigFB) {
+          agentConfig = foundAgentConfigFB;
+          const [agent] = await db
+            .select()
+            .from(consultantWhatsappConfig)
+            .where(eq(consultantWhatsappConfig.id, foundAgentConfigFB.whatsappAgentId))
+            .limit(1);
+          whatsappAgent = agent || null;
+          
+          console.log(`🎯 [INSTAGRAM WEBHOOK] MULTI-AGENT: Found per-agent config via Facebook Page ID ${entryId}`);
+        }
+      }
+
+      // FALLBACK: Try consultant-level Instagram config (legacy/default)
+      let config: typeof consultantInstagramConfig.$inferSelect | null = null;
+      
+      if (!agentConfig) {
+        // Try to find config by Instagram Page ID first (most common for Instagram webhooks)
+        const [foundConfig] = await db
           .select()
           .from(consultantInstagramConfig)
           .where(
             and(
-              eq(consultantInstagramConfig.facebookPageId, entryId),
+              eq(consultantInstagramConfig.instagramPageId, entryId),
               eq(consultantInstagramConfig.isActive, true)
             )
           )
           .limit(1);
+        
+        config = foundConfig || null;
+
+        // Fallback: try Facebook Page ID if not found
+        if (!config) {
+          const [foundConfigFB] = await db
+            .select()
+            .from(consultantInstagramConfig)
+            .where(
+              and(
+                eq(consultantInstagramConfig.facebookPageId, entryId),
+                eq(consultantInstagramConfig.isActive, true)
+              )
+            )
+            .limit(1);
+          config = foundConfigFB || null;
+        }
       }
 
-      if (!config) {
+      // Check if we have any config
+      if (!agentConfig && !config) {
         console.log(`⚠️ [INSTAGRAM WEBHOOK] No active config for entry.id ${entryId}`);
-        console.log(`   💡 Hint: Searched both instagramPageId and facebookPageId - no match found`);
+        console.log(`   💡 Hint: Searched both per-agent and consultant configs - no match found`);
         continue;
       }
       
-      console.log(`✅ [INSTAGRAM WEBHOOK] Found config for entry.id ${entryId} (Instagram: ${config.instagramPageId}, Facebook: ${config.facebookPageId})`);
-      console.log(`   📱 Consultant: ${config.consultantId}, Agent active: ${config.isActive}`);
-      console.log(`   🤖 Auto-response: ${config.autoResponseEnabled}, Dry-run: ${config.isDryRun}`);
+      // Log which config we're using
+      if (agentConfig && whatsappAgent) {
+        console.log(`✅ [INSTAGRAM WEBHOOK] Using PER-AGENT config:`);
+        console.log(`   📱 Agent: ${whatsappAgent.agentName} (WhatsApp ID: ${whatsappAgent.id})`);
+        console.log(`   📸 Instagram: @${agentConfig.instagramUsername || 'unknown'}`);
+        console.log(`   🤖 Auto-response: ${agentConfig.autoResponseEnabled}, Dry-run: ${agentConfig.isDryRun}`);
+      } else if (config) {
+        console.log(`✅ [INSTAGRAM WEBHOOK] Using CONSULTANT config (legacy):`);
+        console.log(`   📱 Consultant: ${config.consultantId}`);
+        console.log(`   📸 Instagram: @${config.instagramUsername || 'unknown'}`);
+        console.log(`   🤖 Auto-response: ${config.autoResponseEnabled}, Dry-run: ${config.isDryRun}`);
+      }
+
+      // Use the effective config (prefer agent config over consultant config)
+      const effectiveConfig = agentConfig || config!;
 
       // Handle messaging events (DMs, story replies, etc.)
       if (entry.messaging && entry.messaging.length > 0) {
         console.log(`💬 [IG DM EVENTS] Processing ${entry.messaging.length} messaging event(s)...`);
         for (const messagingEvent of entry.messaging) {
           console.log(`💬 [IG DM EVENT]`, JSON.stringify(messagingEvent, null, 2));
-          await handleMessagingEvent(config, messagingEvent);
+          // Pass config with agent context for multi-agent support
+          await handleMessagingEvent(
+            effectiveConfig as typeof consultantInstagramConfig.$inferSelect, 
+            messagingEvent,
+            whatsappAgent
+          );
         }
       }
 
@@ -249,7 +334,11 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       if (entry.changes && entry.changes.length > 0) {
         console.log(`🗨️ [IG CHANGE EVENTS] Processing ${entry.changes.length} change event(s)...`);
         for (const change of entry.changes) {
-          await handleChangeEvent(config, change);
+          await handleChangeEvent(
+            effectiveConfig as typeof consultantInstagramConfig.$inferSelect, 
+            change,
+            whatsappAgent
+          );
         }
       }
     }
@@ -266,7 +355,8 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
  */
 async function handleMessagingEvent(
   config: typeof consultantInstagramConfig.$inferSelect,
-  event: MetaMessagingEvent
+  event: MetaMessagingEvent,
+  whatsappAgent?: typeof consultantWhatsappConfig.$inferSelect | null
 ): Promise<void> {
   const senderId = event.sender.id;
   const recipientId = event.recipient.id;
@@ -575,7 +665,8 @@ async function handleReadReceipt(
  */
 async function handleChangeEvent(
   config: typeof consultantInstagramConfig.$inferSelect,
-  change: MetaChange
+  change: MetaChange,
+  whatsappAgent?: typeof consultantWhatsappConfig.$inferSelect | null
 ): Promise<void> {
   const field = change.field;
   const value = change.value;
@@ -583,6 +674,9 @@ async function handleChangeEvent(
   if (field === "comments" || field === "live_comments") {
     console.log(`🗨️ [IG COMMENT EVENT] Field: ${field}`);
     console.log(`🗨️ [IG COMMENT EVENT] Value:`, JSON.stringify(value, null, 2));
+    if (whatsappAgent) {
+      console.log(`🎯 [IG COMMENT EVENT] Via WhatsApp Agent: ${whatsappAgent.agentName}`);
+    }
     
     if (!config.commentToDmEnabled) {
       console.log(`⚠️ [IG COMMENT EVENT] commentToDmEnabled is FALSE for config ${config.id} - skipping comment processing`);
@@ -591,7 +685,7 @@ async function handleChangeEvent(
     }
     
     const commentValue = value as MetaCommentValue;
-    await handleCommentEvent(config, commentValue);
+    await handleCommentEvent(config, commentValue, whatsappAgent);
   } else {
     console.log(`🧩 [IG CHANGE EVENT] Field: ${field}, Value:`, JSON.stringify(value, null, 2).slice(0, 500));
   }
@@ -602,7 +696,8 @@ async function handleChangeEvent(
  */
 async function handleCommentEvent(
   config: typeof consultantInstagramConfig.$inferSelect,
-  comment: MetaCommentValue
+  comment: MetaCommentValue,
+  whatsappAgent?: typeof consultantWhatsappConfig.$inferSelect | null
 ): Promise<void> {
   console.log(`💬 [INSTAGRAM WEBHOOK] Comment from ${comment.from.username}: "${comment.text}"`);
 
