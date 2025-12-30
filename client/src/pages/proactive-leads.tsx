@@ -83,7 +83,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import it from "date-fns/locale/it";
 import { useCampaigns } from "@/hooks/useCampaigns";
-import { LeadImportWizard } from "@/components/leads/LeadImportWizard";
 
 interface LeadInfo {
   obiettivi?: string;
@@ -266,7 +265,6 @@ export default function ProactiveLeadsPage() {
   const [activityLogsDialogOpen, setActivityLogsDialogOpen] = useState(false);
   const [selectedLeadForLogs, setSelectedLeadForLogs] = useState<ProactiveLead | null>(null);
   const [triggeringLeadId, setTriggeringLeadId] = useState<string | null>(null);
-  const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
 
   // Fetch all leads
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
@@ -1232,14 +1230,6 @@ export default function ProactiveLeadsPage() {
                     <Play className="h-4 w-4 mr-2" />
                   )}
                   Importa Ora
-                </Button>
-                <Button
-                  onClick={() => setIsImportWizardOpen(true)}
-                  className="bg-emerald-600 hover:bg-emerald-700 flex-1 sm:flex-none"
-                  disabled={agents.length === 0}
-                >
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Importa Lead
                 </Button>
                 <Button
                   onClick={() => setIsBulkImportDialogOpen(true)}
@@ -2794,13 +2784,6 @@ export default function ProactiveLeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Lead Import Wizard */}
-      <LeadImportWizard
-        open={isImportWizardOpen}
-        onOpenChange={setIsImportWizardOpen}
-        agents={agents}
-        selectedAgentId={agents[0]?.id}
-      />
     </div>
   );
 }

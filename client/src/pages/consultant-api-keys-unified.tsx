@@ -700,6 +700,38 @@ export default function ConsultantApiKeysUnified() {
   });
   
   const proactiveAgents = proactiveAgentsData?.configs || [];
+
+  // Query for Google Sheets import jobs
+  const { data: googleSheetsJobsData, refetch: refetchGoogleSheetsJobs } = useQuery({
+    queryKey: ["/api/consultant/lead-import/sheets"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/lead-import/sheets", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        if (response.status === 404) return { data: [] };
+        return { data: [] };
+      }
+      return response.json();
+    },
+  });
+
+  // Update googleSheetsConfigs when data is loaded
+  useEffect(() => {
+    if (googleSheetsJobsData?.data) {
+      setGoogleSheetsConfigs(googleSheetsJobsData.data);
+    }
+  }, [googleSheetsJobsData]);
+
+  // Auto-select first proactive agent for Google Sheets form
+  useEffect(() => {
+    if (proactiveAgents.length > 0 && !googleSheetsFormData.agentConfigId) {
+      setGoogleSheetsFormData(prev => ({
+        ...prev,
+        agentConfigId: proactiveAgents[0].id,
+      }));
+    }
+  }, [proactiveAgents, googleSheetsFormData.agentConfigId]);
   
   // Helper function to get agent name by ID
   const getAgentName = (agentId: string) => {
@@ -5949,20 +5981,35 @@ export default function ConsultantApiKeysUnified() {
                             <div className="space-y-3">
                               <Label className="text-sm font-medium">Mappatura Colonne (auto-rilevata)</Label>
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {['firstName', 'lastName', 'phoneNumber', 'email', 'company', 'notes'].map((field) => (
-                                  <div key={field} className="space-y-1">
-                                    <Label className="text-xs text-gray-500 capitalize">
-                                      {field === 'firstName' ? 'Nome' : 
-                                       field === 'lastName' ? 'Cognome' :
-                                       field === 'phoneNumber' ? 'Telefono *' :
-                                       field === 'email' ? 'Email' :
-                                       field === 'company' ? 'Azienda' : 'Note'}
+                                {[
+                                  { key: 'firstName', label: 'Nome' },
+                                  { key: 'lastName', label: 'Cognome' },
+                                  { key: 'phoneNumber', label: 'Telefono *' },
+                                  { key: 'email', label: 'Email' },
+                                  { key: 'company', label: 'Azienda' },
+                                  { key: 'notes', label: 'Note' },
+                                  { key: 'obiettivi', label: 'Obiettivi' },
+                                  { key: 'desideri', label: 'Desideri' },
+                                  { key: 'uncino', label: 'Uncino/Hook' },
+                                  { key: 'fonte', label: 'Fonte' },
+                                  { key: 'website', label: 'Sito Web' },
+                                  { key: 'address', label: 'Indirizzo' },
+                                  { key: 'city', label: 'Città' },
+                                  { key: 'state', label: 'Provincia' },
+                                  { key: 'postalCode', label: 'CAP' },
+                                  { key: 'country', label: 'Paese' },
+                                  { key: 'tags', label: 'Tags' },
+                                  { key: 'dateOfBirth', label: 'Data Nascita' },
+                                ].map((field) => (
+                                  <div key={field.key} className="space-y-1">
+                                    <Label className="text-xs text-gray-500">
+                                      {field.label}
                                     </Label>
                                     <Select
-                                      value={googleSheetsFormData.columnMappings[field] || googleSheetsPreview.suggestedMappings[field] || ""}
+                                      value={googleSheetsFormData.columnMappings[field.key] || googleSheetsPreview.suggestedMappings[field.key] || ""}
                                       onValueChange={(value) => setGoogleSheetsFormData({
                                         ...googleSheetsFormData,
-                                        columnMappings: { ...googleSheetsFormData.columnMappings, [field]: value }
+                                        columnMappings: { ...googleSheetsFormData.columnMappings, [field.key]: value }
                                       })}
                                     >
                                       <SelectTrigger className="h-8 text-xs">
@@ -6112,6 +6159,8 @@ export default function ConsultantApiKeysUnified() {
                                     settings: {
                                       skipDuplicates: true,
                                       campaignId: googleSheetsFormData.targetCampaignId || null,
+                                      pollingEnabled: googleSheetsFormData.pollingEnabled,
+                                      pollingIntervalMinutes: googleSheetsFormData.pollingIntervalMinutes,
                                     },
                                   }),
                                 });
@@ -6124,13 +6173,14 @@ export default function ConsultantApiKeysUnified() {
                                   setGoogleSheetsFormData({
                                     configName: "",
                                     sheetUrl: "",
-                                    agentConfigId: "",
+                                    agentConfigId: proactiveAgents[0]?.id || "",
                                     targetCampaignId: "",
                                     pollingIntervalMinutes: 15,
                                     pollingEnabled: false,
                                     columnMappings: {},
                                   });
                                   setGoogleSheetsPreview(null);
+                                  refetchGoogleSheetsJobs();
                                 } else {
                                   toast({
                                     title: "Errore",
@@ -6179,6 +6229,132 @@ export default function ConsultantApiKeysUnified() {
                         </ol>
                       </AlertDescription>
                     </Alert>
+
+                    {googleSheetsConfigs.length > 0 && (
+                      <Card className="mt-6 border-2 border-emerald-200 shadow-lg">
+                        <CardHeader>
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-100 rounded-lg">
+                              <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">Fogli Google Configurati</CardTitle>
+                              <CardDescription>
+                                {googleSheetsConfigs.length} {googleSheetsConfigs.length === 1 ? 'foglio collegato' : 'fogli collegati'}
+                              </CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {googleSheetsConfigs.map((config: any) => (
+                              <div
+                                key={config.id}
+                                className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-emerald-300 transition-colors"
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-medium text-gray-900">
+                                      {config.jobName || "Foglio Google"}
+                                    </h4>
+                                    <Badge 
+                                      variant={config.pollingEnabled ? "default" : "secondary"}
+                                      className={config.pollingEnabled ? "bg-emerald-500" : ""}
+                                    >
+                                      {config.pollingEnabled ? "Sync Attivo" : "Sync Disattivo"}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-gray-500 mt-1 truncate max-w-md">
+                                    {config.googleSheetUrl}
+                                  </p>
+                                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      Ogni {config.pollingIntervalMinutes || 30} min
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Users className="h-3 w-3" />
+                                      {config.totalRowsImported || 0} lead importati
+                                    </span>
+                                    {config.lastImportAt && (
+                                      <span>
+                                        Ultimo sync: {new Date(config.lastImportAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Switch
+                                    checked={config.pollingEnabled}
+                                    onCheckedChange={async (checked) => {
+                                      try {
+                                        const response = await fetch(`/api/consultant/lead-import/sheets/${config.id}/toggle-polling`, {
+                                          method: "POST",
+                                          headers: {
+                                            ...getAuthHeaders(),
+                                            "Content-Type": "application/json",
+                                          },
+                                          body: JSON.stringify({ pollingEnabled: checked }),
+                                        });
+                                        if (response.ok) {
+                                          toast({
+                                            title: checked ? "Sync attivato" : "Sync disattivato",
+                                            description: checked 
+                                              ? "Il foglio verrà controllato automaticamente" 
+                                              : "Il sync automatico è stato fermato",
+                                          });
+                                          refetchGoogleSheetsJobs();
+                                        } else {
+                                          toast({
+                                            title: "Errore",
+                                            description: "Impossibile aggiornare lo stato",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      } catch (error) {
+                                        toast({
+                                          title: "Errore",
+                                          description: "Errore di connessione",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        const response = await fetch(`/api/consultant/lead-import/sheets/${config.id}`, {
+                                          method: "DELETE",
+                                          headers: getAuthHeaders(),
+                                        });
+                                        if (response.ok) {
+                                          toast({
+                                            title: "Configurazione eliminata",
+                                            description: "Il foglio è stato scollegato",
+                                          });
+                                          refetchGoogleSheetsJobs();
+                                        }
+                                      } catch (error) {
+                                        toast({
+                                          title: "Errore",
+                                          description: "Impossibile eliminare la configurazione",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }}
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                   </>
                 )}
               </TabsContent>

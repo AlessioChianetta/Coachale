@@ -130,6 +130,20 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
         const company = columnMappings.company ? row[columnMappings.company] || null : null;
         const notes = columnMappings.notes ? row[columnMappings.notes] || null : null;
         
+        // Extract all CRM fields from column mappings
+        const obiettivi = columnMappings.obiettivi ? row[columnMappings.obiettivi] || null : null;
+        const desideri = columnMappings.desideri ? row[columnMappings.desideri] || null : null;
+        const uncino = columnMappings.uncino ? row[columnMappings.uncino] || null : null;
+        const fonte = columnMappings.fonte ? row[columnMappings.fonte] || null : null;
+        const website = columnMappings.website ? row[columnMappings.website] || null : null;
+        const address = columnMappings.address ? row[columnMappings.address] || null : null;
+        const city = columnMappings.city ? row[columnMappings.city] || null : null;
+        const state = columnMappings.state ? row[columnMappings.state] || null : null;
+        const postalCode = columnMappings.postalCode ? row[columnMappings.postalCode] || null : null;
+        const country = columnMappings.country ? row[columnMappings.country] || null : null;
+        const tagsRaw = columnMappings.tags ? row[columnMappings.tags] || null : null;
+        const dateOfBirth = columnMappings.dateOfBirth ? row[columnMappings.dateOfBirth] || null : null;
+        
         if (!rawPhone) {
           result.skipped++;
           errorDetails.push({ row: absoluteRowNumber, field: 'phoneNumber', message: 'Numero di telefono mancante' });
@@ -154,9 +168,25 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
           }
         }
         
+        // Build leadInfo with all CRM fields (matching webhook.ts and lead-import-router.ts structure)
         const leadInfo: any = {};
-        if (notes) {
-          leadInfo.note = notes;
+        if (notes) leadInfo.note = notes;
+        if (obiettivi) leadInfo.obiettivi = obiettivi;
+        if (desideri) leadInfo.desideri = desideri;
+        if (uncino) leadInfo.uncino = uncino;
+        if (fonte) leadInfo.fonte = fonte;
+        if (email) leadInfo.email = email;
+        if (company) leadInfo.companyName = company;
+        if (website) leadInfo.website = website;
+        if (address) leadInfo.address = address;
+        if (city) leadInfo.city = city;
+        if (state) leadInfo.state = state;
+        if (postalCode) leadInfo.postalCode = postalCode;
+        if (country) leadInfo.country = country;
+        if (dateOfBirth) leadInfo.dateOfBirth = dateOfBirth;
+        if (tagsRaw) {
+          const tagsArray = tagsRaw.split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
+          if (tagsArray.length > 0) leadInfo.tags = tagsArray;
         }
         
         const leadData: any = {
@@ -179,13 +209,6 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
         
         if (Object.keys(leadInfo).length > 0) {
           leadData.leadInfo = leadInfo;
-        }
-        
-        if (email || company) {
-          leadData.metadata = {
-            ...(email && { email }),
-            ...(company && { company }),
-          };
         }
         
         await storage.createProactiveLead(leadData);
