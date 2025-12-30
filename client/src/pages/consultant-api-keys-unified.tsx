@@ -5851,7 +5851,7 @@ export default function ConsultantApiKeysUnified() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-6">
-                        {/* Visual Stepper */}
+                        {/* Visual Stepper - Modern Glassmorphism Design */}
                         {(() => {
                           const hasUrl = googleSheetsFormData.sheetUrl.trim().length > 0;
                           const hasAgent = !!googleSheetsFormData.agentConfigId;
@@ -5861,7 +5861,6 @@ export default function ConsultantApiKeysUnified() {
                           let currentStep = 1;
                           if (hasUrl && hasAgent) currentStep = 2;
                           if (hasPreview) currentStep = 3;
-                          // Step 4 is only for the final import action - step 3 stays active during mapping
                           
                           const steps = [
                             { num: 1, label: "Inserisci URL", icon: FileSpreadsheet },
@@ -5871,7 +5870,7 @@ export default function ConsultantApiKeysUnified() {
                           ];
                           
                           return (
-                            <div className="mb-6">
+                            <div className="mb-8 bg-slate-900/90 backdrop-blur-xl rounded-2xl p-6 shadow-2xl">
                               <div className="flex items-center justify-between">
                                 {steps.map((step, idx) => {
                                   const isCompleted = step.num < currentStep;
@@ -5883,31 +5882,35 @@ export default function ConsultantApiKeysUnified() {
                                     <div key={step.num} className="flex items-center flex-1">
                                       <div className="flex flex-col items-center">
                                         <div className={`
-                                          w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
-                                          ${isCompleted ? "bg-emerald-500 border-emerald-500 text-white" : ""}
-                                          ${isCurrent ? "bg-emerald-100 border-emerald-500 text-emerald-700 ring-4 ring-emerald-100" : ""}
-                                          ${isFuture ? "bg-gray-100 border-gray-300 text-gray-400" : ""}
+                                          w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 relative
+                                          ${isCompleted ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30" : ""}
+                                          ${isCurrent ? "bg-gradient-to-br from-slate-700 to-slate-800 text-emerald-400 ring-4 ring-emerald-400/30 shadow-lg shadow-emerald-500/20 border-2 border-emerald-400/50" : ""}
+                                          ${isFuture ? "bg-slate-800/60 border border-slate-600/50 text-slate-500" : ""}
                                         `}>
                                           {isCompleted ? (
                                             <Check className="h-5 w-5" />
                                           ) : (
-                                            <StepIcon className="h-4 w-4" />
+                                            <span className="font-bold text-sm">{step.num}</span>
                                           )}
                                         </div>
                                         <span className={`
-                                          mt-2 text-xs font-medium text-center max-w-[80px]
-                                          ${isCompleted ? "text-emerald-600" : ""}
-                                          ${isCurrent ? "text-emerald-700 font-semibold" : ""}
-                                          ${isFuture ? "text-gray-400" : ""}
+                                          mt-3 text-xs font-medium text-center max-w-[80px] transition-all duration-300
+                                          ${isCompleted ? "text-emerald-400" : ""}
+                                          ${isCurrent ? "text-white font-semibold" : ""}
+                                          ${isFuture ? "text-slate-500" : ""}
                                         `}>
                                           {step.label}
                                         </span>
                                       </div>
                                       {idx < steps.length - 1 && (
-                                        <div className={`
-                                          flex-1 h-0.5 mx-2 mt-[-24px] transition-all duration-300
-                                          ${step.num < currentStep ? "bg-emerald-500" : "bg-gray-200"}
-                                        `} />
+                                        <div className="flex-1 mx-3 mt-[-24px]">
+                                          <div className={`
+                                            h-1 rounded-full transition-all duration-500
+                                            ${step.num < currentStep 
+                                              ? "bg-gradient-to-r from-emerald-500 to-emerald-400" 
+                                              : "bg-slate-700/60"}
+                                          `} />
+                                        </div>
                                       )}
                                     </div>
                                   );
@@ -5916,48 +5919,59 @@ export default function ConsultantApiKeysUnified() {
                             </div>
                           );
                         })()}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                           <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="googleSheetsUrl">URL Google Sheets *</Label>
+                            <Label htmlFor="googleSheetsUrl" className="text-sm font-semibold text-gray-700">URL Google Sheets *</Label>
                             <Input
                               id="googleSheetsUrl"
                               value={googleSheetsFormData.sheetUrl}
                               onChange={(e) => setGoogleSheetsFormData({ ...googleSheetsFormData, sheetUrl: e.target.value })}
                               placeholder="https://docs.google.com/spreadsheets/d/1ABC.../edit"
-                              className="font-mono text-sm"
+                              className="font-mono text-sm bg-white/80 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all"
                             />
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-slate-500">
                               Il foglio deve essere condiviso pubblicamente o con chiunque abbia il link
                             </p>
                             
-                            {/* Call-to-action message */}
+                            {/* Call-to-action message - Modern glass card */}
                             {googleSheetsFormData.sheetUrl.trim() && googleSheetsFormData.agentConfigId && !googleSheetsPreview && (
-                              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-                                <RefreshCw className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                                <p className="text-sm text-amber-800">
-                                  <strong>Prossimo passo:</strong> Clicca <span className="font-semibold">"Test Connessione"</span> per vedere l'anteprima del foglio e mappare le colonne
-                                </p>
+                              <div className="mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 rounded-xl flex items-center gap-3 shadow-sm">
+                                <div className="p-2 bg-emerald-100 rounded-lg">
+                                  <Zap className="h-4 w-4 text-emerald-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm text-emerald-800 font-medium">
+                                    Prossimo passo
+                                  </p>
+                                  <p className="text-xs text-emerald-700/80">
+                                    Clicca <span className="font-semibold">Test Connessione</span> per vedere l'anteprima e mappare le colonne
+                                  </p>
+                                </div>
+                                <ChevronDown className="h-5 w-5 text-emerald-500 animate-bounce" />
                               </div>
                             )}
                           </div>
 
+                          <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent md:col-span-2" />
+
                           <div className="space-y-2">
-                            <Label htmlFor="googleSheetsConfigName">Nome Configurazione</Label>
+                            <Label htmlFor="googleSheetsConfigName" className="text-sm font-medium text-gray-600">Nome Configurazione</Label>
                             <Input
                               id="googleSheetsConfigName"
                               value={googleSheetsFormData.configName}
                               onChange={(e) => setGoogleSheetsFormData({ ...googleSheetsFormData, configName: e.target.value })}
                               placeholder="es. Lead da Landing Page"
+                              className="bg-white/80 border-slate-200 focus:border-emerald-500 transition-all"
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="googleSheetsAgent">Agente WhatsApp Proattivo *</Label>
+                            <Label htmlFor="googleSheetsAgent" className="text-sm font-medium text-gray-600">Agente WhatsApp Proattivo *</Label>
                             <Select
                               value={googleSheetsFormData.agentConfigId}
                               onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, agentConfigId: value })}
                             >
-                              <SelectTrigger id="googleSheetsAgent">
+                              <SelectTrigger id="googleSheetsAgent" className="bg-white/80 border-slate-200 focus:border-emerald-500">
                                 <SelectValue placeholder="Seleziona un agente proattivo" />
                               </SelectTrigger>
                               <SelectContent>
@@ -5978,12 +5992,12 @@ export default function ConsultantApiKeysUnified() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="googleSheetsCampaign">Campagna di destinazione</Label>
+                            <Label htmlFor="googleSheetsCampaign" className="text-sm font-medium text-gray-600">Campagna di destinazione</Label>
                             <Select
                               value={googleSheetsFormData.targetCampaignId}
                               onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, targetCampaignId: value })}
                             >
-                              <SelectTrigger id="googleSheetsCampaign">
+                              <SelectTrigger id="googleSheetsCampaign" className="bg-white/80 border-slate-200 focus:border-emerald-500">
                                 <SelectValue placeholder="Seleziona una campagna" />
                               </SelectTrigger>
                               <SelectContent>
@@ -6005,12 +6019,12 @@ export default function ConsultantApiKeysUnified() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="googleSheetsPollingInterval">Intervallo Polling (minuti)</Label>
+                            <Label htmlFor="googleSheetsPollingInterval" className="text-sm font-medium text-gray-600">Intervallo Polling (minuti)</Label>
                             <Select
                               value={String(googleSheetsFormData.pollingIntervalMinutes)}
                               onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, pollingIntervalMinutes: parseInt(value) })}
                             >
-                              <SelectTrigger id="googleSheetsPollingInterval">
+                              <SelectTrigger id="googleSheetsPollingInterval" className="bg-white/80 border-slate-200 focus:border-emerald-500">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -6024,121 +6038,147 @@ export default function ConsultantApiKeysUnified() {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between p-5 bg-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-700/50 shadow-lg">
+                          <div className="flex items-center gap-4">
                             <Switch
                               id="googleSheetsPollingEnabled"
                               checked={googleSheetsFormData.pollingEnabled}
                               onCheckedChange={(checked) => setGoogleSheetsFormData({ ...googleSheetsFormData, pollingEnabled: checked })}
+                              className="data-[state=checked]:bg-emerald-500"
                             />
                             <Label htmlFor="googleSheetsPollingEnabled" className="cursor-pointer">
-                              <span className="font-medium">Polling Automatico</span>
-                              <p className="text-xs text-gray-500">Controlla automaticamente nuovi lead ogni {googleSheetsFormData.pollingIntervalMinutes} minuti</p>
+                              <span className="font-medium text-white">Polling Automatico</span>
+                              <p className="text-xs text-slate-400">Controlla automaticamente nuovi lead ogni {googleSheetsFormData.pollingIntervalMinutes} minuti</p>
                             </Label>
                           </div>
-                          <Badge variant={googleSheetsFormData.pollingEnabled ? "default" : "secondary"} className={googleSheetsFormData.pollingEnabled ? "bg-emerald-500" : ""}>
+                          <Badge 
+                            variant={googleSheetsFormData.pollingEnabled ? "default" : "secondary"} 
+                            className={googleSheetsFormData.pollingEnabled 
+                              ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-lg shadow-emerald-500/20" 
+                              : "bg-slate-700 text-slate-300 border-slate-600"}
+                          >
                             {googleSheetsFormData.pollingEnabled ? "Attivo" : "Disattivo"}
                           </Badge>
                         </div>
 
                         {googleSheetsPreview && (
-                          <div className="space-y-4 p-4 bg-white rounded-lg border-2 border-emerald-300 shadow-sm">
-                            {/* Step 3 Header */}
-                            <div className="flex items-center gap-2 pb-3 border-b border-emerald-200">
-                              <div className="p-2 bg-emerald-100 rounded-full">
-                                <Settings className="h-4 w-4 text-emerald-600" />
-                              </div>
-                              <div>
-                                <h4 className="font-semibold text-emerald-800">Step 3: Mappa le Colonne</h4>
-                                <p className="text-xs text-gray-500">Collega le colonne del foglio ai campi dei lead</p>
+                          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                            {/* Gradient Header Bar */}
+                            <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-white/20 backdrop-blur rounded-lg">
+                                    <Settings className="h-5 w-5 text-white" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-bold text-white">Step 3: Mappa le Colonne</h4>
+                                    <p className="text-xs text-white/80">Collega le colonne del foglio ai campi dei lead</p>
+                                  </div>
+                                </div>
+                                <Badge className="bg-white/20 text-white border-0 backdrop-blur">
+                                  {googleSheetsPreview.columns.length} colonne rilevate
+                                </Badge>
                               </div>
                             </div>
                             
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium text-gray-900 flex items-center gap-2">
-                                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                                Preview Foglio ({googleSheetsPreview.totalRows} righe)
-                              </h4>
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
-                                {googleSheetsPreview.columns.length} colonne
-                              </Badge>
-                            </div>
-
-                            <div className="space-y-3">
-                              <Label className="text-sm font-medium">Mappatura Colonne (auto-rilevata)</Label>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {[
-                                  { key: 'firstName', label: 'Nome' },
-                                  { key: 'lastName', label: 'Cognome' },
-                                  { key: 'phoneNumber', label: 'Telefono *' },
-                                  { key: 'email', label: 'Email' },
-                                  { key: 'company', label: 'Azienda' },
-                                  { key: 'notes', label: 'Note' },
-                                  { key: 'obiettivi', label: 'Obiettivi' },
-                                  { key: 'desideri', label: 'Desideri' },
-                                  { key: 'uncino', label: 'Uncino/Hook' },
-                                  { key: 'fonte', label: 'Fonte' },
-                                  { key: 'website', label: 'Sito Web' },
-                                  { key: 'address', label: 'Indirizzo' },
-                                  { key: 'city', label: 'Città' },
-                                  { key: 'state', label: 'Provincia' },
-                                  { key: 'postalCode', label: 'CAP' },
-                                  { key: 'country', label: 'Paese' },
-                                  { key: 'tags', label: 'Tags' },
-                                  { key: 'dateOfBirth', label: 'Data Nascita' },
-                                ].map((field) => (
-                                  <div key={field.key} className="space-y-1">
-                                    <Label className="text-xs text-gray-500">
-                                      {field.label}
-                                    </Label>
-                                    <Select
-                                      value={googleSheetsFormData.columnMappings[field.key] || googleSheetsPreview.suggestedMappings[field.key] || ""}
-                                      onValueChange={(value) => setGoogleSheetsFormData({
-                                        ...googleSheetsFormData,
-                                        columnMappings: { ...googleSheetsFormData.columnMappings, [field.key]: value }
-                                      })}
-                                    >
-                                      <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="Seleziona colonna" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="">Non mappato</SelectItem>
-                                        {googleSheetsPreview.columns.map((col) => (
-                                          <SelectItem key={col} value={col}>{col}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                ))}
+                            <div className="p-5 space-y-5">
+                              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                                  Preview Foglio
+                                </h4>
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                  {googleSheetsPreview.totalRows} righe trovate
+                                </Badge>
                               </div>
-                            </div>
 
-                            {googleSheetsPreview.previewRows.length > 0 && (
-                              <div className="overflow-x-auto">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      {googleSheetsPreview.columns.slice(0, 5).map((col) => (
-                                        <TableHead key={col} className="text-xs">{col}</TableHead>
-                                      ))}
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {googleSheetsPreview.previewRows.slice(0, 3).map((row, idx) => (
-                                      <TableRow key={idx}>
+                              <div className="space-y-3">
+                                <Label className="text-sm font-semibold text-gray-700">Mappatura Colonne</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                  {[
+                                    { key: 'firstName', label: 'Nome', required: false },
+                                    { key: 'lastName', label: 'Cognome', required: false },
+                                    { key: 'phoneNumber', label: 'Telefono', required: true },
+                                    { key: 'email', label: 'Email', required: false },
+                                    { key: 'company', label: 'Azienda', required: false },
+                                    { key: 'notes', label: 'Note', required: false },
+                                    { key: 'obiettivi', label: 'Obiettivi', required: false },
+                                    { key: 'desideri', label: 'Desideri', required: false },
+                                    { key: 'uncino', label: 'Uncino/Hook', required: false },
+                                    { key: 'fonte', label: 'Fonte', required: false },
+                                    { key: 'website', label: 'Sito Web', required: false },
+                                    { key: 'address', label: 'Indirizzo', required: false },
+                                    { key: 'city', label: 'Città', required: false },
+                                    { key: 'state', label: 'Provincia', required: false },
+                                    { key: 'postalCode', label: 'CAP', required: false },
+                                    { key: 'country', label: 'Paese', required: false },
+                                    { key: 'tags', label: 'Tags', required: false },
+                                    { key: 'dateOfBirth', label: 'Data Nascita', required: false },
+                                  ].map((field) => {
+                                    const currentValue = googleSheetsFormData.columnMappings[field.key] || googleSheetsPreview.suggestedMappings[field.key] || "";
+                                    const isAutoMapped = !googleSheetsFormData.columnMappings[field.key] && googleSheetsPreview.suggestedMappings[field.key];
+                                    
+                                    return (
+                                      <div key={field.key} className={`space-y-1.5 p-2.5 rounded-lg transition-colors ${field.required ? 'bg-emerald-50/50 border border-emerald-200' : 'hover:bg-slate-50'}`}>
+                                        <Label className={`text-xs font-medium flex items-center gap-1 ${field.required ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                          {field.label}
+                                          {field.required && <span className="text-emerald-500">*</span>}
+                                          {isAutoMapped && (
+                                            <Badge variant="outline" className="ml-1 text-[10px] py-0 px-1 bg-blue-50 text-blue-600 border-blue-200">
+                                              auto
+                                            </Badge>
+                                          )}
+                                        </Label>
+                                        <Select
+                                          value={currentValue}
+                                          onValueChange={(value) => setGoogleSheetsFormData({
+                                            ...googleSheetsFormData,
+                                            columnMappings: { ...googleSheetsFormData.columnMappings, [field.key]: value }
+                                          })}
+                                        >
+                                          <SelectTrigger className={`h-8 text-xs ${field.required ? 'border-emerald-300 focus:border-emerald-500' : ''}`}>
+                                            <SelectValue placeholder="Seleziona" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="">Non mappato</SelectItem>
+                                            {googleSheetsPreview.columns.map((col) => (
+                                              <SelectItem key={col} value={col}>{col}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {googleSheetsPreview.previewRows.length > 0 && (
+                                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="bg-slate-50">
                                         {googleSheetsPreview.columns.slice(0, 5).map((col) => (
-                                          <TableCell key={col} className="text-xs">{row[col] || '-'}</TableCell>
+                                          <TableHead key={col} className="text-xs font-semibold text-slate-600">{col}</TableHead>
                                         ))}
                                       </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            )}
+                                    </TableHeader>
+                                    <TableBody>
+                                      {googleSheetsPreview.previewRows.slice(0, 3).map((row, idx) => (
+                                        <TableRow key={idx} className="hover:bg-slate-50/50">
+                                          {googleSheetsPreview.columns.slice(0, 5).map((col) => (
+                                            <TableCell key={col} className="text-xs text-slate-600">{row[col] || '-'}</TableCell>
+                                          ))}
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
 
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-4 pt-2">
                           {/* Test Connessione button - More prominent when it's the next step */}
                           {(() => {
                             const isNextStep = googleSheetsFormData.sheetUrl.trim() && googleSheetsFormData.agentConfigId && !googleSheetsPreview;
@@ -6197,8 +6237,8 @@ export default function ConsultantApiKeysUnified() {
                                 }}
                                 disabled={isTestingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
                                 className={isNextStep 
-                                  ? "bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-lg animate-pulse"
-                                  : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                  ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all duration-200"
+                                  : "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all"
                                 }
                               >
                                 {isTestingGoogleSheets ? (
@@ -6296,7 +6336,7 @@ export default function ConsultantApiKeysUnified() {
                               }
                             }}
                             disabled={isSavingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
-                            className="bg-emerald-600 hover:bg-emerald-700"
+                            className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
                           >
                             {isSavingGoogleSheets ? (
                               <>
@@ -6305,7 +6345,7 @@ export default function ConsultantApiKeysUnified() {
                               </>
                             ) : (
                               <>
-                                <Save className="h-4 w-4 mr-2" />
+                                <Send className="h-4 w-4 mr-2" />
                                 Importa Lead
                               </>
                             )}
