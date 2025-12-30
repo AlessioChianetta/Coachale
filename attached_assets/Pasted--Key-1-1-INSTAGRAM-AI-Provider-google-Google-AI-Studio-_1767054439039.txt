@@ -1,0 +1,35 @@
+   🔑 Key: 1/1
+🤖 [INSTAGRAM] AI Provider: google (Google AI Studio)
+✅ [INSTAGRAM] AI response generated: Posso fare tantissime cose! Dato che me lo hai chi...
+📤 [INSTAGRAM API] Sending message:
+   Endpoint: https://graph.facebook.com/v21.0/655018317702995/messages
+   Recipient ID: 893319973257663
+   Body: {
+  "recipient": {
+    "id": "893319973257663"
+  },
+  "message": {
+    "text": "Posso fare tantissime cose! Dato che me lo hai chiesto due volte, ecco un elenco di ciò che posso fare per te:\n\n1.  Scrivere testi: Posso scrivere email, saggi, racconti, poesie, articoli per blog o persino post per i social media.\n2.  Rispondere a domande: Puoi chiedermi curiosità sulla storia, la scienza, la geografia, la cultura generale o fatti d'attualità.\n3.  Tradurre: Conosco moltissime lingue e posso tradurre testi complessi mantenendo il senso corretto.\n4.  Riassumere: Se hai un testo molto lungo o un articolo e non hai tempo di leggerlo, posso farti un riassunto dei punti principali.\n5.  Programmare: Posso scrivere codice in vari linguaggi (Python, JavaScript, C++, HTML/CSS, ecc.) e aiutarti a trovare errori (debug) nei tuoi programmi.\n6.  Risolvere problemi: Posso aiutarti con calcoli matematici, problemi di logica o darti consigli su come affrontare una situazione.\n7.  Brainstorming: Hai bisogno di idee per un regalo? Un nome per una nuova attività? Un menu per una cena? Sono qui per darti suggerimenti creativi.\n8.  Imparare: Posso spiegarti concetti difficili come se avessi 5 anni o approfondire argomenti accademici.\n\nCosa ti piacerebbe provare a fare per primo? 😊"
+  }
+}
+❌ [INSTAGRAM] Send message failed: {
+  error: {
+    message: '(#100) La lunghezza del messaggio inviato è superiore a 1000 caratteri',
+    type: 'OAuthException',
+    code: 100,
+    error_subcode: 2534038,
+    fbtrace_id: 'A0dThAH7a7cPfMgHs7xcmy9'
+  }
+}
+❌ [INSTAGRAM] Error sending message: Error: Meta API Error: (#100) La lunghezza del messaggio inviato è superiore a 1000 caratteri (code: 100)
+    at MetaClient.sendMessageInternal (/home/runner/workspace/server/instagram/meta-client.ts:152:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async sendInstagramResponse (/home/runner/workspace/server/instagram/message-processor.ts:503:18)
+    at async processInstagramConversation (/home/runner/workspace/server/instagram/message-processor.ts:204:5)
+    at async Timeout._onTimeout (/home/runner/workspace/server/instagram/message-processor.ts:53:5)
+❌ [INSTAGRAM] Error processing conversation 9571c128-aae5-424a-987d-69692aa2cecc: Error: Meta API Error: (#100) La lunghezza del messaggio inviato è superiore a 1000 caratteri (code: 100)
+    at MetaClient.sendMessageInternal (/home/runner/workspace/server/instagram/meta-client.ts:152:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async sendInstagramResponse (/home/runner/workspace/server/instagram/message-processor.ts:503:18)
+    at async processInstagramConversation (/home/runner/workspace/server/instagram/message-processor.ts:204:5)
+    at async Timeout._onTimeout (/home/runner/workspace/server/instagram/message-processor.ts:53:5)

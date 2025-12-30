@@ -267,9 +267,12 @@ async function generateAIResponse(
     };
     
     console.log(`🤖 [INSTAGRAM] Using ${linkedAgent ? 'linked WhatsApp agent' : 'Instagram config'} settings for AI: ${agentConfigForAI.agentName}`);
+    console.log(`📋 [INSTAGRAM] Agent instructions enabled: ${agentConfigForAI.agentInstructionsEnabled}, length: ${agentConfigForAI.agentInstructions?.length || 0}`);
+    console.log(`📋 [INSTAGRAM] Booking enabled: ${agentConfigForAI.bookingEnabled}, Objection: ${agentConfigForAI.objectionHandlingEnabled}`);
 
     // Build system prompt using shared WhatsApp agent logic
     const systemPrompt = await buildWhatsAppAgentPrompt(agentConfigForAI);
+    console.log(`📝 [INSTAGRAM] System prompt length: ${systemPrompt.length} chars`);
 
     // Fetch user profile for richer context
     let userProfileInfo = "";
@@ -352,7 +355,13 @@ ${userProfileInfo}
 - Come è iniziata la conversazione: ${sourceContext}
 ${triggerContext}
 - Finestra messaggi: ${conversation.windowExpiresAt ? `scade tra ${Math.round((new Date(conversation.windowExpiresAt).getTime() - Date.now()) / 3600000)}h` : "attiva"}
-- IMPORTANTE: Su Instagram hai solo 24h dalla risposta dell'utente per rispondere. Se non risponde, non puoi contattarlo.
+
+⚠️ REGOLE FONDAMENTALI PER INSTAGRAM DM:
+1. LIMITE 1000 CARATTERI: I messaggi Instagram hanno un limite MASSIMO di 1000 caratteri. Le tue risposte DEVONO essere SEMPRE sotto i 900 caratteri.
+2. RISPOSTE BREVI: Su Instagram le persone si aspettano messaggi brevi e diretti, come una chat tra amici. NON scrivere paragrafi lunghi o elenchi puntati estesi.
+3. STILE CONVERSAZIONALE: Scrivi come se stessi chattando, non come se scrivessi un'email formale.
+4. UNA DOMANDA ALLA VOLTA: Fai UNA sola domanda per messaggio, non bombardare l'utente.
+5. Hai solo 24h dalla risposta dell'utente per rispondere. Se non risponde, non puoi contattarlo.
 `;
 
     const fullSystemPrompt = systemPrompt + instagramContext;
@@ -420,6 +429,59 @@ function cleanAIResponse(text: string): string {
   cleaned = cleaned.trim();
 
   return cleaned;
+}
+
+/**
+ * Split message into chunks respecting Instagram's 1000 char limit
+ * Tries to split at sentence boundaries for natural reading
+ */
+function splitMessageForInstagram(text: string, maxLength: number = 950): string[] {
+  if (text.length <= maxLength) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLength) {
+      chunks.push(remaining.trim());
+      break;
+    }
+
+    // Try to find a good breaking point (sentence end, paragraph, or word boundary)
+    let breakPoint = maxLength;
+    
+    // Try to break at paragraph first
+    const paragraphBreak = remaining.lastIndexOf('\n\n', maxLength);
+    if (paragraphBreak > maxLength * 0.5) {
+      breakPoint = paragraphBreak;
+    } else {
+      // Try to break at sentence end
+      const sentenceEnders = ['. ', '! ', '? ', '.\n', '!\n', '?\n'];
+      let bestBreak = -1;
+      for (const ender of sentenceEnders) {
+        const pos = remaining.lastIndexOf(ender, maxLength);
+        if (pos > bestBreak && pos > maxLength * 0.3) {
+          bestBreak = pos + ender.length - 1;
+        }
+      }
+      if (bestBreak > 0) {
+        breakPoint = bestBreak;
+      } else {
+        // Fall back to word boundary
+        const spaceBreak = remaining.lastIndexOf(' ', maxLength);
+        if (spaceBreak > maxLength * 0.5) {
+          breakPoint = spaceBreak;
+        }
+      }
+    }
+
+    chunks.push(remaining.substring(0, breakPoint).trim());
+    remaining = remaining.substring(breakPoint).trim();
+  }
+
+  return chunks;
 }
 
 /**
@@ -499,32 +561,57 @@ async function sendInstagramResponse(
     isDryRun: false,
   });
 
-  // Send message
-  const result = await client.sendMessage(
-    conversation.instagramUserId,
-    responseText,
-    { useHumanAgentTag: canUseHumanAgentTag && conversation.overriddenAt !== null }
-  );
+  // Split message if too long (Instagram limit: 1000 chars)
+  const messageChunks = splitMessageForInstagram(responseText, 950);
+  console.log(`📨 [INSTAGRAM] Sending ${messageChunks.length} message chunk(s) (total: ${responseText.length} chars)`);
 
-  if (!result) {
-    console.error("❌ [INSTAGRAM] Failed to send message");
+  let lastMessageId: string | null = null;
+  const useHumanTag = canUseHumanAgentTag && conversation.overriddenAt !== null;
+
+  // Send each chunk
+  for (let i = 0; i < messageChunks.length; i++) {
+    const chunk = messageChunks[i];
+    
+    // Small delay between messages to avoid rate limiting
+    if (i > 0) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    const result = await client.sendMessage(
+      conversation.instagramUserId,
+      chunk,
+      { useHumanAgentTag: useHumanTag }
+    );
+
+    if (!result) {
+      console.error(`❌ [INSTAGRAM] Failed to send message chunk ${i + 1}/${messageChunks.length}`);
+      continue;
+    }
+
+    lastMessageId = result.message_id;
+
+    // Save each chunk to database
+    await db.insert(instagramMessages).values({
+      conversationId: conversation.id,
+      messageText: chunk,
+      direction: "outbound",
+      sender: "ai",
+      mediaType: "text",
+      instagramMessageId: result.message_id,
+      metaStatus: "sent",
+      sentAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    console.log(`✅ [INSTAGRAM] Sent chunk ${i + 1}/${messageChunks.length}: ${result.message_id}`);
+  }
+
+  if (!lastMessageId) {
+    console.error("❌ [INSTAGRAM] All message chunks failed to send");
     return;
   }
 
-  // Save outbound message to database
-  await db.insert(instagramMessages).values({
-    conversationId: conversation.id,
-    messageText: responseText,
-    direction: "outbound",
-    sender: "ai",
-    mediaType: "text",
-    instagramMessageId: result.message_id,
-    metaStatus: "sent",
-    sentAt: new Date(),
-    createdAt: new Date(),
-  });
-
-  // Update conversation stats
+  // Update conversation stats (count as 1 response even if multiple chunks)
   await db
     .update(instagramConversations)
     .set({
@@ -535,7 +622,7 @@ async function sendInstagramResponse(
     })
     .where(eq(instagramConversations.id, conversation.id));
 
-  console.log(`📤 [INSTAGRAM] Sent response to ${conversation.instagramUserId}: ${result.message_id}`);
+  console.log(`📤 [INSTAGRAM] Sent response to ${conversation.instagramUserId}: ${lastMessageId}`);
 }
 
 /**
