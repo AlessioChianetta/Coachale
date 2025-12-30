@@ -639,4 +639,364 @@ router.get(
   }
 );
 
+router.get(
+  "/consultant/lead-import/sheets",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const sheets = await db.select()
+        .from(schema.leadImportJobs)
+        .where(
+          and(
+            eq(schema.leadImportJobs.consultantId, consultantId),
+            eq(schema.leadImportJobs.sourceType, 'google_sheets')
+          )
+        )
+        .orderBy(desc(schema.leadImportJobs.createdAt));
+      
+      res.json({
+        success: true,
+        data: sheets
+      });
+    } catch (error: any) {
+      console.error("❌ [LEAD IMPORT] Error fetching Google Sheets configs:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante il recupero delle configurazioni"
+      });
+    }
+  }
+);
+
+router.post(
+  "/consultant/lead-import/sheets",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const {
+        sheetUrl,
+        agentConfigId,
+        campaignId,
+        columnMappings,
+        pollingIntervalMinutes = 30,
+        pollingEnabled = false,
+        configName,
+      } = req.body;
+      
+      if (!sheetUrl) {
+        return res.status(400).json({
+          success: false,
+          error: "URL Google Sheets richiesto"
+        });
+      }
+      
+      if (!agentConfigId) {
+        return res.status(400).json({
+          success: false,
+          error: "Agent config ID richiesto"
+        });
+      }
+      
+      const agentConfig = await storage.getConsultantWhatsappConfig(consultantId, agentConfigId);
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Agente non trovato o accesso negato"
+        });
+      }
+      
+      const sheetIdMatch = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (!sheetIdMatch) {
+        return res.status(400).json({
+          success: false,
+          error: "URL Google Sheets non valido"
+        });
+      }
+      
+      const csvExportUrl = `https://docs.google.com/spreadsheets/d/${sheetIdMatch[1]}/export?format=csv`;
+      const response = await fetch(csvExportUrl);
+      
+      if (!response.ok) {
+        return res.status(400).json({
+          success: false,
+          error: "Impossibile accedere al foglio. Verifica che sia condiviso pubblicamente."
+        });
+      }
+      
+      const csvContent = await response.text();
+      const { rows } = parseCsvData(csvContent);
+      const initialRowCount = rows.length;
+      
+      const settings: any = {};
+      if (campaignId) {
+        settings.campaignId = campaignId;
+      }
+      
+      const [newJob] = await db.insert(schema.leadImportJobs).values({
+        consultantId,
+        agentConfigId,
+        jobName: configName || `Google Sheet - ${new Date().toLocaleDateString('it-IT')}`,
+        sourceType: 'google_sheets',
+        googleSheetUrl: sheetUrl,
+        columnMappings: columnMappings || {},
+        settings,
+        pollingEnabled,
+        pollingIntervalMinutes,
+        lastRowCount: initialRowCount,
+      }).returning();
+      
+      console.log(`✅ [SHEETS POLLING] Created new Google Sheets config: ${newJob.id} with ${initialRowCount} initial rows`);
+      
+      res.json({
+        success: true,
+        data: newJob
+      });
+    } catch (error: any) {
+      console.error("❌ [LEAD IMPORT] Error creating Google Sheets config:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante la creazione della configurazione"
+      });
+    }
+  }
+);
+
+router.put(
+  "/consultant/lead-import/sheets/:jobId",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { jobId } = req.params;
+      const {
+        sheetUrl,
+        columnMappings,
+        pollingIntervalMinutes,
+        pollingEnabled,
+        configName,
+        campaignId,
+        status,
+      } = req.body;
+      
+      const [existingJob] = await db.select()
+        .from(schema.leadImportJobs)
+        .where(
+          and(
+            eq(schema.leadImportJobs.id, jobId),
+            eq(schema.leadImportJobs.consultantId, consultantId),
+            eq(schema.leadImportJobs.sourceType, 'google_sheets')
+          )
+        );
+      
+      if (!existingJob) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione non trovata"
+        });
+      }
+      
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
+      
+      if (sheetUrl !== undefined) {
+        const sheetIdMatch = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (!sheetIdMatch) {
+          return res.status(400).json({
+            success: false,
+            error: "URL Google Sheets non valido"
+          });
+        }
+        updateData.googleSheetUrl = sheetUrl;
+      }
+      
+      if (columnMappings !== undefined) updateData.columnMappings = columnMappings;
+      if (pollingIntervalMinutes !== undefined) updateData.pollingIntervalMinutes = pollingIntervalMinutes;
+      if (pollingEnabled !== undefined) updateData.pollingEnabled = pollingEnabled;
+      if (configName !== undefined) updateData.jobName = configName;
+      if (status !== undefined) updateData.status = status;
+      
+      if (campaignId !== undefined) {
+        updateData.settings = {
+          ...existingJob.settings,
+          campaignId,
+        };
+      }
+      
+      const [updatedJob] = await db.update(schema.leadImportJobs)
+        .set(updateData)
+        .where(eq(schema.leadImportJobs.id, jobId))
+        .returning();
+      
+      console.log(`✅ [SHEETS POLLING] Updated Google Sheets config: ${jobId}`);
+      
+      res.json({
+        success: true,
+        data: updatedJob
+      });
+    } catch (error: any) {
+      console.error("❌ [LEAD IMPORT] Error updating Google Sheets config:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante l'aggiornamento della configurazione"
+      });
+    }
+  }
+);
+
+router.delete(
+  "/consultant/lead-import/sheets/:jobId",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { jobId } = req.params;
+      
+      const [existingJob] = await db.select()
+        .from(schema.leadImportJobs)
+        .where(
+          and(
+            eq(schema.leadImportJobs.id, jobId),
+            eq(schema.leadImportJobs.consultantId, consultantId),
+            eq(schema.leadImportJobs.sourceType, 'google_sheets')
+          )
+        );
+      
+      if (!existingJob) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione non trovata"
+        });
+      }
+      
+      await db.delete(schema.leadImportJobs)
+        .where(eq(schema.leadImportJobs.id, jobId));
+      
+      console.log(`✅ [SHEETS POLLING] Deleted Google Sheets config: ${jobId}`);
+      
+      res.json({
+        success: true,
+        message: "Configurazione eliminata con successo"
+      });
+    } catch (error: any) {
+      console.error("❌ [LEAD IMPORT] Error deleting Google Sheets config:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante l'eliminazione della configurazione"
+      });
+    }
+  }
+);
+
+router.post(
+  "/consultant/lead-import/sheets/:jobId/toggle-polling",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { jobId } = req.params;
+      
+      const [existingJob] = await db.select()
+        .from(schema.leadImportJobs)
+        .where(
+          and(
+            eq(schema.leadImportJobs.id, jobId),
+            eq(schema.leadImportJobs.consultantId, consultantId),
+            eq(schema.leadImportJobs.sourceType, 'google_sheets')
+          )
+        );
+      
+      if (!existingJob) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione non trovata"
+        });
+      }
+      
+      const newPollingEnabled = !existingJob.pollingEnabled;
+      
+      const [updatedJob] = await db.update(schema.leadImportJobs)
+        .set({
+          pollingEnabled: newPollingEnabled,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.leadImportJobs.id, jobId))
+        .returning();
+      
+      console.log(`✅ [SHEETS POLLING] ${newPollingEnabled ? 'Enabled' : 'Disabled'} polling for job: ${jobId}`);
+      
+      res.json({
+        success: true,
+        data: updatedJob,
+        message: newPollingEnabled ? "Polling attivato" : "Polling disattivato"
+      });
+    } catch (error: any) {
+      console.error("❌ [LEAD IMPORT] Error toggling polling:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante il toggle del polling"
+      });
+    }
+  }
+);
+
+router.post(
+  "/consultant/lead-import/sheets/:jobId/import-now",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { jobId } = req.params;
+      
+      const [existingJob] = await db.select()
+        .from(schema.leadImportJobs)
+        .where(
+          and(
+            eq(schema.leadImportJobs.id, jobId),
+            eq(schema.leadImportJobs.consultantId, consultantId),
+            eq(schema.leadImportJobs.sourceType, 'google_sheets')
+          )
+        );
+      
+      if (!existingJob) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione non trovata"
+        });
+      }
+      
+      if (!existingJob.googleSheetUrl) {
+        return res.status(400).json({
+          success: false,
+          error: "URL Google Sheets non configurato"
+        });
+      }
+      
+      const { importNewRowsFromSheet } = await import('../schedulers/sheets-polling-scheduler');
+      const result = await importNewRowsFromSheet(existingJob);
+      
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error: any) {
+      console.error("❌ [LEAD IMPORT] Error running manual import:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante l'importazione manuale"
+      });
+    }
+  }
+);
+
+export { parseCsvData, generateRowHash, normalizePhoneNumber };
 export default router;

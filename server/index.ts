@@ -10,6 +10,7 @@ import { startGhostConversationCleanup } from "./whatsapp/cleanup-ghost-conversa
 import { startCalendarSync } from "./services/calendar-sync-service";
 import { startProactiveOutreachScheduler } from "./whatsapp/proactive-outreach";
 import { pollingScheduler } from "./services/lead-polling-scheduler";
+import { startSheetsPollingScheduler } from "./schedulers/sheets-polling-scheduler";
 import { startTrainingAggregator } from "./jobs/training-summary-aggregator";
 import { verifyEncryptionConfig } from "./encryption";
 import { setupWebSocketTest } from "./test-websocket";
@@ -314,6 +315,17 @@ app.use((req, res, next) => {
     }
   } else {
     log("📥 Lead polling scheduler is disabled (set LEAD_POLLING_ENABLED=true to enable)");
+  }
+
+  // Setup Google Sheets Polling Scheduler
+  const sheetsPollingEnabled = process.env.SHEETS_POLLING_ENABLED !== "false";
+  
+  if (sheetsPollingEnabled) {
+    log("📊 Google Sheets polling scheduler enabled - starting...");
+    startSheetsPollingScheduler();
+    log("✅ Google Sheets polling scheduler started");
+  } else {
+    log("📊 Google Sheets polling scheduler is disabled (set SHEETS_POLLING_ENABLED=true to enable)");
   }
 
   // Setup Training Summary Aggregator (Daily at 3 AM)

@@ -16,7 +16,7 @@ import {
   AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
   RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
   BookOpen, ChevronDown, ChevronUp, Shield, Database, Plug, Copy, Check, Filter,
-  MapPin, Tag, Settings, Send, User, Zap, Instagram
+  MapPin, Tag, Settings, Send, User, Zap, Instagram, FileSpreadsheet
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
@@ -441,7 +441,25 @@ export default function ConsultantApiKeysUnified() {
   const [showLeadApiKey, setShowLeadApiKey] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [leadImportConfigId, setLeadImportConfigId] = useState<string | null>(null);
-  const [selectedIntegration, setSelectedIntegration] = useState<"crmale" | "hubdigital" | "activecampaign">("crmale");
+  const [selectedIntegration, setSelectedIntegration] = useState<"crmale" | "hubdigital" | "activecampaign" | "googlesheets">("crmale");
+  const [googleSheetsConfigs, setGoogleSheetsConfigs] = useState<any[]>([]);
+  const [googleSheetsFormData, setGoogleSheetsFormData] = useState({
+    configName: "",
+    sheetUrl: "",
+    agentConfigId: "",
+    targetCampaignId: "",
+    pollingIntervalMinutes: 15,
+    pollingEnabled: false,
+    columnMappings: {} as Record<string, string>,
+  });
+  const [isTestingGoogleSheets, setIsTestingGoogleSheets] = useState(false);
+  const [isSavingGoogleSheets, setIsSavingGoogleSheets] = useState(false);
+  const [googleSheetsPreview, setGoogleSheetsPreview] = useState<{
+    columns: string[];
+    previewRows: any[];
+    totalRows: number;
+    suggestedMappings: Record<string, string>;
+  } | null>(null);
   const [leadImportFormData, setLeadImportFormData] = useState({
     configName: "Importazione Lead",
     apiKey: "",
@@ -3269,7 +3287,7 @@ export default function ConsultantApiKeysUnified() {
               {/* Lead Import Tab Content */}
               <TabsContent value="lead-import">
                 {/* Integration Selector Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   {/* CrmAle Card */}
                   <Card 
                     className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
@@ -3377,6 +3395,43 @@ export default function ConsultantApiKeysUnified() {
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                         <Sparkles className="h-3 w-3" />
                         <span>Push istantaneo</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Google Sheets Card */}
+                  <Card 
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                      selectedIntegration === "googlesheets" 
+                        ? "border-2 border-emerald-500 bg-emerald-50/50 shadow-md" 
+                        : "border border-gray-200 bg-white hover:border-emerald-300"
+                    }`}
+                    onClick={() => setSelectedIntegration("googlesheets")}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${selectedIntegration === "googlesheets" ? "bg-emerald-100" : "bg-emerald-50"}`}>
+                            <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">Google Sheets</h3>
+                            <p className="text-sm text-gray-500">Sync automatico da foglio</p>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={googleSheetsConfigs.length > 0 
+                            ? "bg-green-50 text-green-700 border-green-300" 
+                            : "bg-gray-50 text-gray-500 border-gray-300"
+                          }
+                        >
+                          {googleSheetsConfigs.length > 0 ? `${googleSheetsConfigs.length} Config.` : "Da configurare"}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                        <Clock className="h-3 w-3" />
+                        <span>Polling ogni {googleSheetsFormData.pollingIntervalMinutes} minuti</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -5736,6 +5791,394 @@ export default function ConsultantApiKeysUnified() {
                         </CardContent>
                       </Card>
                     )}
+                  </>
+                )}
+
+                {/* Google Sheets Configuration */}
+                {selectedIntegration === "googlesheets" && (
+                  <>
+                    <Alert className="mb-4 bg-emerald-50 border-emerald-200">
+                      <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+                      <AlertDescription className="text-sm text-emerald-800">
+                        <strong>Sync Automatico da Google Sheets</strong> - Importa lead automaticamente da un foglio Google Sheets pubblico o condiviso. Il sistema controlla periodicamente il foglio e importa i nuovi lead.
+                      </AlertDescription>
+                    </Alert>
+
+                    <Card className="border-2 border-emerald-300 shadow-xl bg-gradient-to-br from-emerald-50 to-green-50">
+                      <CardHeader>
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-gradient-to-br from-emerald-100 to-green-100 rounded-xl">
+                            <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+                          </div>
+                          <div>
+                            <CardTitle>Configura Importazione da Google Sheets</CardTitle>
+                            <CardDescription>
+                              Connetti un foglio Google per sincronizzare automaticamente i lead
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="googleSheetsUrl">URL Google Sheets *</Label>
+                            <Input
+                              id="googleSheetsUrl"
+                              value={googleSheetsFormData.sheetUrl}
+                              onChange={(e) => setGoogleSheetsFormData({ ...googleSheetsFormData, sheetUrl: e.target.value })}
+                              placeholder="https://docs.google.com/spreadsheets/d/1ABC.../edit"
+                              className="font-mono text-sm"
+                            />
+                            <p className="text-xs text-gray-500">
+                              Il foglio deve essere condiviso pubblicamente o con chiunque abbia il link
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="googleSheetsConfigName">Nome Configurazione</Label>
+                            <Input
+                              id="googleSheetsConfigName"
+                              value={googleSheetsFormData.configName}
+                              onChange={(e) => setGoogleSheetsFormData({ ...googleSheetsFormData, configName: e.target.value })}
+                              placeholder="es. Lead da Landing Page"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="googleSheetsAgent">Agente WhatsApp Proattivo *</Label>
+                            <Select
+                              value={googleSheetsFormData.agentConfigId}
+                              onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, agentConfigId: value })}
+                            >
+                              <SelectTrigger id="googleSheetsAgent">
+                                <SelectValue placeholder="Seleziona un agente proattivo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {!proactiveAgents || proactiveAgents.length === 0 ? (
+                                  <div className="p-3 text-sm text-muted-foreground space-y-1">
+                                    <p className="font-medium">Nessun agente proattivo configurato</p>
+                                    <p className="text-xs">Per usare questa funzione, crea un agente WhatsApp e abilita la modalità proattiva nelle sue impostazioni.</p>
+                                  </div>
+                                ) : (
+                                  proactiveAgents.map((agent: any) => (
+                                    <SelectItem key={agent.id} value={agent.id}>
+                                      {agent.agentName || agent.whatsappNumber}
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="googleSheetsCampaign">Campagna di destinazione</Label>
+                            <Select
+                              value={googleSheetsFormData.targetCampaignId}
+                              onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, targetCampaignId: value })}
+                            >
+                              <SelectTrigger id="googleSheetsCampaign">
+                                <SelectValue placeholder="Seleziona una campagna" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {campaignsLoading ? (
+                                  <div className="p-2 text-sm text-muted-foreground">Caricamento...</div>
+                                ) : campaigns.length === 0 ? (
+                                  <div className="p-2 text-sm text-muted-foreground">
+                                    Nessuna campagna disponibile
+                                  </div>
+                                ) : (
+                                  campaigns.map((campaign: any) => (
+                                    <SelectItem key={campaign.id} value={campaign.id}>
+                                      {campaign.campaignName}
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="googleSheetsPollingInterval">Intervallo Polling (minuti)</Label>
+                            <Select
+                              value={String(googleSheetsFormData.pollingIntervalMinutes)}
+                              onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, pollingIntervalMinutes: parseInt(value) })}
+                            >
+                              <SelectTrigger id="googleSheetsPollingInterval">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="5">Ogni 5 minuti</SelectItem>
+                                <SelectItem value="10">Ogni 10 minuti</SelectItem>
+                                <SelectItem value="15">Ogni 15 minuti</SelectItem>
+                                <SelectItem value="30">Ogni 30 minuti</SelectItem>
+                                <SelectItem value="60">Ogni ora</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              id="googleSheetsPollingEnabled"
+                              checked={googleSheetsFormData.pollingEnabled}
+                              onCheckedChange={(checked) => setGoogleSheetsFormData({ ...googleSheetsFormData, pollingEnabled: checked })}
+                            />
+                            <Label htmlFor="googleSheetsPollingEnabled" className="cursor-pointer">
+                              <span className="font-medium">Polling Automatico</span>
+                              <p className="text-xs text-gray-500">Controlla automaticamente nuovi lead ogni {googleSheetsFormData.pollingIntervalMinutes} minuti</p>
+                            </Label>
+                          </div>
+                          <Badge variant={googleSheetsFormData.pollingEnabled ? "default" : "secondary"} className={googleSheetsFormData.pollingEnabled ? "bg-emerald-500" : ""}>
+                            {googleSheetsFormData.pollingEnabled ? "Attivo" : "Disattivo"}
+                          </Badge>
+                        </div>
+
+                        {googleSheetsPreview && (
+                          <div className="space-y-4 p-4 bg-white rounded-lg border border-emerald-200">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                                Preview Foglio ({googleSheetsPreview.totalRows} righe)
+                              </h4>
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
+                                {googleSheetsPreview.columns.length} colonne
+                              </Badge>
+                            </div>
+
+                            <div className="space-y-3">
+                              <Label className="text-sm font-medium">Mappatura Colonne (auto-rilevata)</Label>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {['firstName', 'lastName', 'phoneNumber', 'email', 'company', 'notes'].map((field) => (
+                                  <div key={field} className="space-y-1">
+                                    <Label className="text-xs text-gray-500 capitalize">
+                                      {field === 'firstName' ? 'Nome' : 
+                                       field === 'lastName' ? 'Cognome' :
+                                       field === 'phoneNumber' ? 'Telefono *' :
+                                       field === 'email' ? 'Email' :
+                                       field === 'company' ? 'Azienda' : 'Note'}
+                                    </Label>
+                                    <Select
+                                      value={googleSheetsFormData.columnMappings[field] || googleSheetsPreview.suggestedMappings[field] || ""}
+                                      onValueChange={(value) => setGoogleSheetsFormData({
+                                        ...googleSheetsFormData,
+                                        columnMappings: { ...googleSheetsFormData.columnMappings, [field]: value }
+                                      })}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue placeholder="Seleziona colonna" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="">Non mappato</SelectItem>
+                                        {googleSheetsPreview.columns.map((col) => (
+                                          <SelectItem key={col} value={col}>{col}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {googleSheetsPreview.previewRows.length > 0 && (
+                              <div className="overflow-x-auto">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      {googleSheetsPreview.columns.slice(0, 5).map((col) => (
+                                        <TableHead key={col} className="text-xs">{col}</TableHead>
+                                      ))}
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {googleSheetsPreview.previewRows.slice(0, 3).map((row, idx) => (
+                                      <TableRow key={idx}>
+                                        {googleSheetsPreview.columns.slice(0, 5).map((col) => (
+                                          <TableCell key={col} className="text-xs">{row[col] || '-'}</TableCell>
+                                        ))}
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={async () => {
+                              if (!googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId) {
+                                toast({
+                                  title: "Errore",
+                                  description: "Inserisci l'URL del foglio e seleziona un agente",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              setIsTestingGoogleSheets(true);
+                              try {
+                                const response = await fetch(`/api/consultant/agents/${googleSheetsFormData.agentConfigId}/leads/preview-sheet`, {
+                                  method: "POST",
+                                  headers: {
+                                    ...getAuthHeaders(),
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({ sheetUrl: googleSheetsFormData.sheetUrl }),
+                                });
+                                const result = await response.json();
+                                if (result.success) {
+                                  setGoogleSheetsPreview(result.data);
+                                  setGoogleSheetsFormData(prev => ({
+                                    ...prev,
+                                    columnMappings: result.data.suggestedMappings,
+                                  }));
+                                  toast({
+                                    title: "Connessione riuscita!",
+                                    description: `Trovate ${result.data.totalRows} righe nel foglio`,
+                                  });
+                                } else {
+                                  toast({
+                                    title: "Errore",
+                                    description: result.error || "Impossibile accedere al foglio",
+                                    variant: "destructive",
+                                  });
+                                }
+                              } catch (error) {
+                                toast({
+                                  title: "Errore",
+                                  description: "Errore durante il test della connessione",
+                                  variant: "destructive",
+                                });
+                              } finally {
+                                setIsTestingGoogleSheets(false);
+                              }
+                            }}
+                            disabled={isTestingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
+                            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          >
+                            {isTestingGoogleSheets ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Test in corso...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                Test Connessione
+                              </>
+                            )}
+                          </Button>
+
+                          <Button
+                            onClick={async () => {
+                              if (!googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId) {
+                                toast({
+                                  title: "Errore",
+                                  description: "Compila tutti i campi obbligatori",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              
+                              const mappings = googleSheetsFormData.columnMappings.phoneNumber || googleSheetsPreview?.suggestedMappings.phoneNumber;
+                              if (!mappings) {
+                                toast({
+                                  title: "Errore",
+                                  description: "La mappatura della colonna telefono è obbligatoria",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+
+                              setIsSavingGoogleSheets(true);
+                              try {
+                                const response = await fetch(`/api/consultant/agents/${googleSheetsFormData.agentConfigId}/leads/import`, {
+                                  method: "POST",
+                                  headers: {
+                                    ...getAuthHeaders(),
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    jobName: googleSheetsFormData.configName || "Import Google Sheets",
+                                    sourceType: "google_sheets",
+                                    googleSheetUrl: googleSheetsFormData.sheetUrl,
+                                    columnMappings: {
+                                      ...googleSheetsPreview?.suggestedMappings,
+                                      ...googleSheetsFormData.columnMappings,
+                                    },
+                                    settings: {
+                                      skipDuplicates: true,
+                                      campaignId: googleSheetsFormData.targetCampaignId || null,
+                                    },
+                                  }),
+                                });
+                                const result = await response.json();
+                                if (result.success) {
+                                  toast({
+                                    title: "Importazione completata!",
+                                    description: `${result.data.stats.imported} lead importati, ${result.data.stats.duplicates} duplicati ignorati`,
+                                  });
+                                  setGoogleSheetsFormData({
+                                    configName: "",
+                                    sheetUrl: "",
+                                    agentConfigId: "",
+                                    targetCampaignId: "",
+                                    pollingIntervalMinutes: 15,
+                                    pollingEnabled: false,
+                                    columnMappings: {},
+                                  });
+                                  setGoogleSheetsPreview(null);
+                                } else {
+                                  toast({
+                                    title: "Errore",
+                                    description: result.error || "Errore durante l'importazione",
+                                    variant: "destructive",
+                                  });
+                                }
+                              } catch (error) {
+                                toast({
+                                  title: "Errore",
+                                  description: "Errore durante l'importazione",
+                                  variant: "destructive",
+                                });
+                              } finally {
+                                setIsSavingGoogleSheets(false);
+                              }
+                            }}
+                            disabled={isSavingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                          >
+                            {isSavingGoogleSheets ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Importazione...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4 mr-2" />
+                                Importa Lead
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Alert className="mt-4 bg-blue-50 border-blue-200">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        <strong>Come preparare il foglio Google:</strong>
+                        <ol className="list-decimal list-inside mt-2 space-y-1">
+                          <li>Crea un foglio Google con le colonne: Nome, Cognome, Telefono, Email (opzionale)</li>
+                          <li>Clicca su "Condividi" e seleziona "Chiunque abbia il link può visualizzare"</li>
+                          <li>Copia l'URL del foglio e incollalo qui sopra</li>
+                          <li>Il sistema rileverà automaticamente le colonne e mapperà i campi</li>
+                        </ol>
+                      </AlertDescription>
+                    </Alert>
                   </>
                 )}
               </TabsContent>

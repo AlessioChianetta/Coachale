@@ -3123,6 +3123,10 @@ export const leadImportJobs = pgTable("lead_import_jobs", {
   lastImportAt: timestamp("last_import_at"),
   status: varchar("status", { length: 50 }).$type<"active" | "paused" | "deleted">().default("active"),
   
+  pollingEnabled: boolean("polling_enabled").default(false),
+  pollingIntervalMinutes: integer("polling_interval_minutes").default(30),
+  lastRowCount: integer("last_row_count").default(0),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
