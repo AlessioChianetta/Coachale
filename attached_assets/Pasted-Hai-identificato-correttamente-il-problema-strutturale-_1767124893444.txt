@@ -1,0 +1,72 @@
+Hai identificato correttamente il problema strutturale: Meta gestisce i Messaggi (DM) e i Commenti attraverso due flussi di dati completamente diversi all'interno del Webhook.
+
+Ecco la soluzione tecnica completa divisa in 3 step (Codice + Configurazione Meta).
+
+1. Aggiornamento Scope OAuth (Codice)
+Il primo blocco è che l'App deve chiedere esplicitamente il permesso di gestire i commenti durante il login.
+
+Modifica il file server/routes/instagram/instagram-oauth-router.ts. Cerca la definizione dei permessi (scope) e aggiungi instagram_manage_comments.
+
+Snippet di codice
+
+// ... nel blocco try della route /start ...
+
+// Aggiungi 'instagram_manage_comments' alla lista degli scope
+const scope = [
+  'instagram_basic',
+  'instagram_manage_messages',
+  'pages_show_list',
+  'pages_read_engagement',
+  'pages_manage_metadata',
+  'instagram_manage_comments', // <--- FONDAMENTALE PER I COMMENTI
+  'public_profile'
+].join(',');
+
+const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${encodedState}&scope=${scope}&response_type=code`;
+Nota: Dopo questa modifica, dovrai scollegare e ricollegare l'account Instagram dalla tua dashboard per accettare il nuovo permesso.
+
+2. Gestione Payload "Changes" (Codice)
+I DM arrivano nell'array messaging, mentre i commenti arrivano nell'array changes. Il tuo handler attuale probabilmente guarda solo messaging.
+
+Modifica server/instagram/webhook-handler.ts per intercettare anche i commenti:
+
+Snippet di codice
+
+// ... dentro la funzione handleWebhook o processEvents ...
+
+for (const entry of body.entry) {
+  // 1. GESTIONE DM ESISTENTE (Messaging)
+  if (entry.messaging) {
+    for (const event of entry.messaging) {
+      // ... tua logica attuale per i messaggi ...
+    }
+  }
+
+  // 2. NUOVA GESTIONE COMMENTI (Changes)
+  if (entry.changes) {
+    for (const change of entry.changes) {
+      // Verifichiamo se è un commento
+      if (change.field === 'comments') {
+        const value = change.value;
+        
+        // Evita di processare i commenti fatti dall'account stesso (loop infinito)
+        // O controlla se è un nuovo commento (item: 'comment', verb: 'add')
+        if (value.item === 'comment' && value.verb === 'add') {
+          const commentText = value.text.toUpperCase();
+          const commentId = value.id;
+          const mediaId = value.media.id;
+          const senderId = value.from.id; // Chi ha commentato
+
+          console.log(`[COMMENTO RICEVUTO] Testo: ${commentText} da ${senderId}`);
+
+          // Logica Keyword
+          if (['INFO', 'PREZZO', 'COSTO'].some(keyword => commentText.includes(keyword))) {
+            // QUI SCATTA L'AUTOMAZIONE
+            // Esempio: invia DM di risposta o rispondi al commento
+            await handleCommentAutomation(senderId, commentId, commentText); 
+          }
+        }
+      }
+    }
+  }
+}

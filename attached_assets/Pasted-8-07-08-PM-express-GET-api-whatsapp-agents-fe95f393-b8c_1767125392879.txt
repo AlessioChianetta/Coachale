@@ -1,0 +1,82 @@
+8:07:08 PM [express] GET /api/whatsapp/agents/fe95f393-b8c9-4fc0-80d7-2035dcba305a/analytics 200 in …
+[INSTAGRAM OAUTH] Started for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+8:07:11 PM [express] GET /api/instagram/oauth/start 200 in 452ms :: {"authUrl":"https://www.facebook…
+[INSTAGRAM OAUTH] Pages data: {
+  "data": [
+    {
+      "access_token": "EAAUY2LQoPNcBQQDh71GqqnVawKDhvOZCxCoNQ8gixpIDKPLZBkoPJigfFxryG9GIobg5lTz9TwJnVEUeZCrFv1RboGbeHITCczbYCJVs6fzQk8iumHsLwCh5cZAGt2eMCBLQjb6LLBgH81WDhDIUf58RKZAZC7SmpDSi7qNquUxFSJJ0pYRgIZB5Ekg5E2ZBh9ZAJleFbc5Dp",
+      "category": "Servizio di Internet marketing",
+      "category_list": [
+        {
+          "id": "1706730532910578",
+          "name": "Servizio di Internet marketing"
+        }
+      ],
+      "name": "Orbitale",
+      "id": "655018317702995",
+      "tasks": [
+        "ADVERTISE",
+        "ANALYZE",
+        "CREATE_CONTENT",
+        "MESSAGING",
+        "MODERATE",
+        "MANAGE",
+        "MANAGE_LEADS",
+        "VIEW_MONETIZATION_INSIGHTS"
+      ]
+    }
+  ],
+  "paging": {
+    "cursors": {
+      "before": "QVFIU09JWV92YTFvVmwyZAGJXVHRoaEtsLWNRNUFQdGdvOV9leFlwYTQyMjNieDdHX1FIODIycXBLd1kzRUVGTVJadi0yVkE0WHV0WjdKRkM2d2JiWkJNVG1n",
+      "after": "QVFIU09JWV92YTFvVmwyZAGJXVHRoaEtsLWNRNUFQdGdvOV9leFlwYTQyMjNieDdHX1FIODIycXBLd1kzRUVGTVJadi0yVkE0WHV0WjdKRkM2d2JiWkJNVG1n"
+    }
+  }
+}
+[INSTAGRAM OAUTH] Found 1 Facebook Pages
+[INSTAGRAM OAUTH] Checking page: Orbitale (ID: 655018317702995)
+[INSTAGRAM OAUTH] Instagram data for page Orbitale: {
+  "instagram_business_account": {
+    "id": "17841401835429922"
+  },
+  "id": "655018317702995"
+}
+[INSTAGRAM OAUTH] Found Instagram account: @alessioh_01 (ID: 17841401835429922)
+[INSTAGRAM OAUTH] Successfully connected @alessioh_01 for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [INSTAGRAM OAUTH] Successfully subscribed page 655018317702995 to messaging webhooks
+8:07:19 PM [express] GET /api/instagram/oauth/callback 302 in 2530ms
+8:07:27 PM [express] POST /api/activity/session/heartbeat 200 in 453ms :: {"success":true,"lastActiv…
+8:07:31 PM [express] POST /api/activity/session/heartbeat 200 in 451ms :: {"success":true,"lastActiv…
+8:07:32 PM [express] POST /api/activity/session/heartbeat 200 in 1365ms :: {"success":true,"lastActi…
+8:07:38 PM [express] GET /api/whatsapp/conversations/stats 200 in 7ms
+8:07:38 PM [express] GET /api/auth/my-profiles 304 in 451ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+8:07:38 PM [express] GET /api/whatsapp/api-keys 304 in 450ms :: {"keys":[],"count":0,"maxKeys":50}
+8:07:39 PM [express] GET /api/consultant/onboarding/knowledge-documents 304 in 1346ms :: {"success":…
+8:07:39 PM [express] GET /api/consultant/onboarding/ai-ideas 304 in 1372ms :: {"success":true,"data"…
+8:07:40 PM [express] GET /api/whatsapp/config 304 in 1797ms :: {"configured":true,"configs":[{"id":"…
+8:07:41 PM [express] GET /api/ai-assistant/consultant/clients 304 in 446ms :: [{"id":"bc1dec4d-8a20-…
+8:07:41 PM [express] GET /api/whatsapp/instagram-configs 200 in 595ms :: {"success":true,"configs":[…
+8:07:41 PM [express] GET /api/whatsapp/agents/stats 304 in 1044ms :: {"totalAgents":4,"activeAgents"…
+8:07:41 PM [express] GET /api/whatsapp/agents/activity-feed 304 in 1044ms :: [{"id":"297baa9d-9274-4…
+8:07:42 PM [express] GET /api/whatsapp/agents/leaderboard 304 in 1938ms :: [{"id":"760bb513-098f-472…
+8:07:47 PM [express] GET /api/whatsapp/config/fe95f393-b8c9-4fc0-80d7-2035dcba305a 304 in 599ms :: {…
+8:07:47 PM [express] GET /api/ai-assistant/agent/fe95f393-b8c9-4fc0-80d7-2035dcba305a/client-assignm…
+8:07:47 PM [express] GET /api/whatsapp/agents/fe95f393-b8c9-4fc0-80d7-2035dcba305a/calendar/status 3…
+8:07:48 PM [express] GET /api/whatsapp/agents/fe95f393-b8c9-4fc0-80d7-2035dcba305a/analytics 304 in …
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+✅ [INSTAGRAM LINK] Agent fe95f393-b8c9-4fc0-80d7-2035dcba305a linked to Instagram config 7716fc1b-94d4-4435-910f-73e84830beec
+8:08:02 PM [express] PATCH /api/whatsapp/config/fe95f393-b8c9-4fc0-80d7-2035dcba305a/instagram 200 i…
+8:08:03 PM [express] GET /api/whatsapp/config/fe95f393-b8c9-4fc0-80d7-2035dcba305a 200 in 595ms :: {…
+8:08:03 PM [express] GET /api/whatsapp/instagram-configs 304 in 595ms :: {"success":true,"configs":[…
+8:08:03 PM [express] GET /api/instagram/config/7716fc1b-94d4-4435-910f-73e84830beec/webhook-status 2…
+8:08:05 PM [express] POST /api/activity/session/heartbeat 200 in 450ms :: {"success":true,"lastActiv…
+[INSTAGRAM CONFIG] Updated settings for config 7716fc1b-94d4-4435-910f-73e84830beec: [ 'commentTriggerKeywords' ]
+8:08:11 PM [express] PATCH /api/instagram/config/7716fc1b-94d4-4435-910f-73e84830beec/settings 200 i…
+8:08:11 PM [express] GET /api/whatsapp/instagram-configs 200 in 600ms :: {"success":true,"configs":[…
+8:08:12 PM [express] GET /api/whatsapp/agents/activity-feed 304 in 1038ms :: [{"id":"297baa9d-9274-4…
+8:08:19 PM [express] POST /api/activity/session/heartbeat 200 in 449ms :: {"success":true,"lastActiv…
+8:08:46 PM [express] GET /api/whatsapp/agents/stats 304 in 1343ms :: {"totalAgents":4,"activeAgents"…
+8:08:47 PM [express] GET /api/whatsapp/agents/activity-feed 304 in 1944ms :: [{"id":"297baa9d-9274-4…
