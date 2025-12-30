@@ -2390,6 +2390,9 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   // Instagram Integration - Link to Instagram agent config for unified management
   instagramConfigId: varchar("instagram_config_id").references(() => consultantInstagramConfig.id, { onDelete: "set null" }),
 
+  // Multi-Agent Instagram - Each agent can have its own Instagram config
+  ownInstagramConfigId: varchar("own_instagram_config_id"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -6233,6 +6236,83 @@ export const consultantInstagramConfig = pgTable("consultant_instagram_config", 
 
 export type ConsultantInstagramConfig = typeof consultantInstagramConfig.$inferSelect;
 export type InsertConsultantInstagramConfig = typeof consultantInstagramConfig.$inferInsert;
+
+// Instagram Agent Config - Per-agent Instagram configuration (linked to WhatsApp agents)
+export const instagramAgentConfig = pgTable("instagram_agent_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  whatsappAgentId: varchar("whatsapp_agent_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
+  
+  // Meta/Instagram Credentials
+  instagramPageId: varchar("instagram_page_id", { length: 100 }),
+  facebookPageId: varchar("facebook_page_id", { length: 100 }),
+  pageAccessToken: text("page_access_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  instagramUsername: varchar("instagram_username", { length: 100 }),
+  isConnected: boolean("is_connected").notNull().default(false),
+  connectedAt: timestamp("connected_at"),
+  
+  // General Settings
+  isActive: boolean("is_active").notNull().default(true),
+  autoResponseEnabled: boolean("auto_response_enabled").notNull().default(true),
+  isDryRun: boolean("is_dry_run").notNull().default(true),
+  
+  // Working Hours
+  workingHoursEnabled: boolean("working_hours_enabled").notNull().default(false),
+  workingHoursStart: text("working_hours_start"),
+  workingHoursEnd: text("working_hours_end"),
+  workingDays: jsonb("working_days").$type<string[]>(),
+  afterHoursMessage: text("after_hours_message"),
+  
+  // Business Info (overrides from WhatsApp agent if empty)
+  businessName: text("business_name"),
+  consultantDisplayName: text("consultant_display_name"),
+  businessDescription: text("business_description"),
+  consultantBio: text("consultant_bio"),
+  
+  // AI Settings (overrides from WhatsApp agent if empty)
+  aiPersonality: text("ai_personality").$type<"amico_fidato" | "coach_motivazionale" | "consulente_professionale" | "mentore_paziente" | "venditore_energico" | "consigliere_empatico" | "stratega_diretto" | "educatore_socratico" | "esperto_tecnico" | "compagno_entusiasta">().default("amico_fidato"),
+  agentInstructions: text("agent_instructions"),
+  agentInstructionsEnabled: boolean("agent_instructions_enabled").notNull().default(false),
+  salesScript: text("sales_script"),
+  
+  // Business Details
+  vision: text("vision"),
+  mission: text("mission"),
+  values: jsonb("values").$type<string[]>(),
+  usp: text("usp"),
+  whoWeHelp: text("who_we_help"),
+  whoWeDontHelp: text("who_we_dont_help"),
+  whatWeDo: text("what_we_do"),
+  howWeDoIt: text("how_we_do_it"),
+  
+  // Feature Toggles
+  bookingEnabled: boolean("booking_enabled").notNull().default(true),
+  objectionHandlingEnabled: boolean("objection_handling_enabled").notNull().default(true),
+  disqualificationEnabled: boolean("disqualification_enabled").notNull().default(true),
+  
+  // Comment Automation
+  commentToDmEnabled: boolean("comment_to_dm_enabled").notNull().default(false),
+  commentTriggerKeywords: jsonb("comment_trigger_keywords").$type<string[]>(),
+  commentAutoReplyMessage: text("comment_auto_reply_message"),
+  
+  // Story Automation
+  storyReplyEnabled: boolean("story_reply_enabled").notNull().default(false),
+  storyAutoReplyMessage: text("story_auto_reply_message"),
+  
+  // Ice Breakers
+  iceBreakersEnabled: boolean("ice_breakers_enabled").notNull().default(false),
+  iceBreakers: jsonb("ice_breakers").$type<Array<{ text: string; payload: string }>>(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  whatsappAgentIdx: index("idx_instagram_agent_config_whatsapp_agent").on(table.whatsappAgentId),
+  pageIdIdx: index("idx_instagram_agent_config_page_id").on(table.instagramPageId),
+}));
+
+export type InstagramAgentConfig = typeof instagramAgentConfig.$inferSelect;
+export type InsertInstagramAgentConfig = typeof instagramAgentConfig.$inferInsert;
 
 // Instagram Conversations (with 24h window tracking)
 export const instagramConversations = pgTable("instagram_conversations", {
