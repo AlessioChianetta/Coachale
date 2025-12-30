@@ -109,6 +109,7 @@ import instagramWebhookRouter from "./routes/instagram/instagram-webhook-router"
 import instagramConfigRouter from "./routes/instagram/instagram-config-router";
 import instagramOAuthRouter from "./routes/instagram/instagram-oauth-router";
 import agentInstagramRouter from "./routes/instagram/agent-instagram-router";
+import leadImportRouter from "./routes/lead-import-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -9435,6 +9436,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   app.use("/api/instagram", instagramConfigRouter); // Authenticated config endpoints
   app.use("/api/instagram", instagramOAuthRouter); // OAuth flow endpoints
   app.use("/api/consultant/agents", agentInstagramRouter); // Per-agent Instagram config
+
+  // Lead Import routes (Excel/CSV/Google Sheets import)
+  app.use("/api", leadImportRouter);
 
   // Live Prompts routes (requires authentication)
   // Scoped to /api/live-prompts to avoid intercepting other /api routes
