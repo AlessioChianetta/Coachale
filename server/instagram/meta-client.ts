@@ -168,9 +168,10 @@ export class MetaClient {
    */
   async getUserProfile(userId: string): Promise<MetaUserProfile | null> {
     try {
-      // Request biography field - will be returned if we have instagram_graph_user_profile permission
+      // Note: biography and follower_count are NOT available for IGBusinessScopedID (users who message us)
+      // They only work for the page's own account, not for conversation participants
       const response = await fetch(
-        `${MESSENGER_GRAPH_API_BASE}/${userId}?fields=id,username,name,profile_pic,biography,follower_count&access_token=${this.pageAccessToken}`
+        `${MESSENGER_GRAPH_API_BASE}/${userId}?fields=id,username,name,profile_pic&access_token=${this.pageAccessToken}`
       );
 
       if (!response.ok) {
