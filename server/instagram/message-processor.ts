@@ -20,19 +20,22 @@ import {
   consultantInstagramConfig,
   consultantWhatsappConfig,
   users,
-  whatsappBookings,
-  whatsappAgentAvailability,
+  appointmentBookings,
+  proposedAppointmentSlots,
+  whatsappAgentKnowledgeItems,
+  consultantKnowledgeDocuments,
 } from "../../shared/schema";
 import { eq, isNull, and, desc, asc, sql, gte } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
-import { getAIProvider, GEMINI_3_MODEL } from "../ai/provider-factory";
+import { getAIProvider, getModelWithThinking, getModelForProviderName } from "../ai/provider-factory";
 import { MetaClient, createMetaClient } from "./meta-client";
 import { WindowTracker, checkWindowStatus } from "./window-tracker";
 import { decryptForConsultant } from "../encryption";
 import { nanoid } from "nanoid";
-import { getMandatoryBookingBlock } from "../whatsapp/instruction-blocks";
-import { proposedAppointmentSlots } from "../../shared/schema";
+import { getMandatoryBookingBlock, CORE_CONVERSATION_RULES_BLOCK, OBJECTION_HANDLING_BLOCK, DISQUALIFICATION_BLOCK, BOOKING_CONVERSATION_PHASES_BLOCK } from "../whatsapp/instruction-blocks";
+import { fileSearchService } from "../ai/file-search-service";
+import { fileSearchSyncService } from "../services/file-search-sync-service";
 
 const processingQueue = new Map<string, NodeJS.Timeout>();
 const BATCH_DELAY_MS = 3000;
@@ -374,36 +377,78 @@ ${triggerContext}
       try {
         console.log(`📅 [INSTAGRAM] Loading booking context for agent ${linkedAgent.id}...`);
         
-        // Check for existing appointment for this Instagram user
-        const existingBooking = await db
-          .select()
-          .from(whatsappBookings)
-          .where(
-            and(
-              eq(whatsappBookings.agentId, linkedAgent.id),
-              eq(whatsappBookings.status, "confirmed"),
-              gte(whatsappBookings.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+        // Cross-channel booking detection with multiple fallbacks
+        // Priority: 1) instagramUserId match, 2) Instagram username in clientName
+        let existingBooking: any[] = [];
+        const futureDate = new Date();
+        futureDate.setHours(0, 0, 0, 0);
+        
+        // Primary: Search by Instagram user ID (most reliable)
+        if (conversation.instagramUserId) {
+          existingBooking = await db
+            .select()
+            .from(appointmentBookings)
+            .where(
+              and(
+                eq(appointmentBookings.consultantId, config.consultantId),
+                sql`(${appointmentBookings.status} = 'confirmed' OR ${appointmentBookings.status} = 'proposed')`,
+                sql`${appointmentBookings.appointmentDate} >= ${futureDate.toISOString().split('T')[0]}`,
+                sql`${appointmentBookings.instagramUserId} = ${conversation.instagramUserId}`
+              )
             )
-          )
-          .limit(1);
+            .limit(1);
+          
+          if (existingBooking.length > 0) {
+            console.log(`✅ [INSTAGRAM] Found booking by Instagram user ID`);
+          }
+        }
+        
+        // Fallback: Search by Instagram username in clientName (for legacy bookings)
+        if (existingBooking.length === 0 && conversation.instagramUsername) {
+          existingBooking = await db
+            .select()
+            .from(appointmentBookings)
+            .where(
+              and(
+                eq(appointmentBookings.consultantId, config.consultantId),
+                sql`(${appointmentBookings.status} = 'confirmed' OR ${appointmentBookings.status} = 'proposed')`,
+                sql`${appointmentBookings.appointmentDate} >= ${futureDate.toISOString().split('T')[0]}`,
+                sql`LOWER(${appointmentBookings.clientName}) LIKE LOWER(${'%' + conversation.instagramUsername + '%'})`
+              )
+            )
+            .limit(1);
+          
+          if (existingBooking.length > 0) {
+            console.log(`✅ [INSTAGRAM] Found booking by username fallback: @${conversation.instagramUsername}`);
+          }
+        }
+        
+        if (existingBooking.length === 0) {
+          console.log(`ℹ️ [INSTAGRAM] No existing booking found for this user`);
+        }
         
         // Get available slots from internal API
         let availableSlots: any[] = [];
         try {
           const slotsResponse = await fetch(`http://localhost:5000/api/whatsapp/agents/${linkedAgent.id}/slots?days=7`, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
           });
           
           if (slotsResponse.ok) {
-            const slotsData = await slotsResponse.json();
-            availableSlots = slotsData.slots || [];
-            console.log(`📅 [INSTAGRAM] Found ${availableSlots.length} available slots`);
+            const contentType = slotsResponse.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+              const slotsData = await slotsResponse.json();
+              availableSlots = slotsData.slots || [];
+              console.log(`📅 [INSTAGRAM] Found ${availableSlots.length} available slots`);
+            } else {
+              console.log(`⚠️ [INSTAGRAM] Slots API returned non-JSON content-type: ${contentType}`);
+            }
           } else {
             console.log(`⚠️ [INSTAGRAM] Slots API returned ${slotsResponse.status}`);
           }
-        } catch (e) {
-          console.log(`⚠️ [INSTAGRAM] Could not load calendar slots:`, e);
+        } catch (e: any) {
+          console.log(`⚠️ [INSTAGRAM] Could not load calendar slots: ${e.message || e}`);
         }
         
         // Format today's date
@@ -444,44 +489,169 @@ ${triggerContext}
       }
     }
 
-    const fullSystemPrompt = systemPrompt + instagramContext + bookingBlock;
-
-    // Get AI provider and generate response (use consultantId for both params like WhatsApp)
-    const aiProvider = await getAIProvider(consultant.id, consultant.id);
+    // Add mandatory instruction blocks (like WhatsApp)
+    let instructionBlocks = CORE_CONVERSATION_RULES_BLOCK;
     
-    console.log(`🤖 [INSTAGRAM] AI Provider: ${aiProvider.source} (${aiProvider.metadata.name})`);
+    if (agentConfigForAI.objectionHandlingEnabled) {
+      instructionBlocks += '\n' + OBJECTION_HANDLING_BLOCK;
+    }
     
-    let response: string | null = null;
-
-    // Use the unified client from getAIProvider (handles both Vertex AI and Google AI Studio)
-    const result = await aiProvider.client.generateContent({
-      model: GEMINI_3_MODEL,
-      systemInstruction: fullSystemPrompt,
-      contents: [
-        ...messageHistory.map((m) => ({
-          role: m.role === "user" ? "user" : "model",
-          parts: [{ text: m.content }],
-        })),
-        { role: "user", parts: [{ text: userMessage }] },
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024,
-      },
-    });
-
-    // Extract response text with fallback (matching other files' pattern)
-    response = result.response?.text?.() || 
-      result.response?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    if (agentConfigForAI.disqualificationEnabled) {
+      instructionBlocks += '\n' + DISQUALIFICATION_BLOCK;
+    }
     
-    console.log(`✅ [INSTAGRAM] AI response generated: ${response ? response.substring(0, 50) + '...' : 'null'}`);
-
-    // Clean up response (remove markdown, actions, etc.)
-    if (response) {
-      response = cleanAIResponse(response);
+    if (agentConfigForAI.bookingEnabled) {
+      instructionBlocks += '\n' + BOOKING_CONVERSATION_PHASES_BLOCK;
     }
 
-    return response;
+    let fullSystemPrompt = systemPrompt + instructionBlocks + instagramContext + bookingBlock;
+    console.log(`📝 [INSTAGRAM] Full system prompt: ${fullSystemPrompt.length} chars`);
+
+    // Setup File Search if available (like WhatsApp)
+    // Check both agent-specific and consultant-wide stores
+    let fileSearchTool: any = null;
+    try {
+      if (linkedAgent) {
+        // First try agent-specific store
+        const agentStore = await fileSearchSyncService.getWhatsappAgentStore(linkedAgent.id);
+        if (agentStore && agentStore.documentCount > 0) {
+          fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
+          console.log(`🔍 [INSTAGRAM] File Search enabled: ${agentStore.displayName} (${agentStore.documentCount} docs)`);
+        }
+      }
+      
+      // Fallback to consultant's store (works even without linked agent)
+      if (!fileSearchTool) {
+        const consultantStore = await fileSearchSyncService.getConsultantStore(config.consultantId);
+        if (consultantStore && consultantStore.documentCount > 0) {
+          fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
+          console.log(`🔍 [INSTAGRAM] Using consultant File Search: ${consultantStore.displayName}`);
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️ [INSTAGRAM] File Search not available:`, e);
+    }
+
+    // Load knowledge base items for linked agent (like WhatsApp)
+    // Also fallback to consultant knowledge documents if no agent is linked
+    let knowledgeItems: any[] = [];
+    try {
+      if (linkedAgent?.id) {
+        // First try agent-specific knowledge items
+        const agentKnowledgeResult = await db
+          .select()
+          .from(whatsappAgentKnowledgeItems)
+          .where(eq(whatsappAgentKnowledgeItems.agentConfigId, linkedAgent.id))
+          .orderBy(asc(whatsappAgentKnowledgeItems.order), asc(whatsappAgentKnowledgeItems.createdAt));
+        
+        knowledgeItems = agentKnowledgeResult || [];
+
+        if (knowledgeItems.length > 0) {
+          console.log(`📚 [INSTAGRAM] Loaded ${knowledgeItems.length} knowledge items for agent ${linkedAgent.id}`);
+          const knowledgeBlock = knowledgeItems
+            .filter(item => item && item.title && item.content)
+            .map(item => `[${item.title}]\n${item.content}`)
+            .join('\n\n');
+          if (knowledgeBlock) {
+            fullSystemPrompt += `\n\n[KNOWLEDGE BASE]\n${knowledgeBlock}`;
+          }
+        }
+      }
+      
+      // Fallback to consultant's general knowledge documents if no agent knowledge loaded
+      if (knowledgeItems.length === 0 && config?.consultantId) {
+        const consultantDocs = await db
+          .select({
+            title: consultantKnowledgeDocuments.title,
+            extractedText: consultantKnowledgeDocuments.extractedText,
+            category: consultantKnowledgeDocuments.category,
+          })
+          .from(consultantKnowledgeDocuments)
+          .where(eq(consultantKnowledgeDocuments.consultantId, config.consultantId))
+          .limit(10); // Limit to avoid token overflow
+        
+        if (consultantDocs && consultantDocs.length > 0) {
+          console.log(`📚 [INSTAGRAM] Using ${consultantDocs.length} consultant knowledge documents as fallback`);
+          const docsBlock = consultantDocs
+            .filter(doc => doc && doc.extractedText)
+            .map(doc => `[${doc.category?.toUpperCase() || 'DOC'}: ${doc.title}]\n${doc.extractedText?.substring(0, 2000)}...`)
+            .join('\n\n');
+          if (docsBlock) {
+            fullSystemPrompt += `\n\n[KNOWLEDGE BASE]\n${docsBlock}`;
+          }
+        }
+      }
+    } catch (error: any) {
+      console.log(`⚠️ [INSTAGRAM] Failed to load knowledge items: ${error?.message || 'Unknown error'}`);
+    }
+
+    // Get AI provider and generate response (uses pre-configured client)
+    const aiProvider = await getAIProvider(consultant.id, consultant.id);
+    
+    // Map source to canonical provider name for getModelWithThinking
+    // source "google" = Google AI Studio, "vertex"/"superadmin"/"client"/"admin" = Vertex AI
+    const canonicalProviderName = aiProvider.source === 'google' ? 'Google AI Studio' : 'Vertex AI';
+    console.log(`🤖 [INSTAGRAM] AI Provider: ${aiProvider.source} -> ${canonicalProviderName} (${aiProvider.metadata.name})`);
+    
+    // Get model and thinking config based on canonical provider name
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(canonicalProviderName);
+    console.log(`🧠 [INSTAGRAM] Model: ${model}, Thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
+    // Build contents array
+    const contents = [
+      ...messageHistory.map((m) => ({
+        role: m.role === "user" ? "user" : "model",
+        parts: [{ text: m.content }],
+      })),
+      { role: "user", parts: [{ text: userMessage }] },
+    ];
+
+    // Generate AI response using the unified client adapter
+    // The adapter normalizes the response format for both Vertex AI and Google AI Studio
+    // Note: Google AI Studio uses thinkingBudget (in tokens), Vertex AI uses thinkingLevel
+    const isGoogleStudio = aiProvider.source === 'google';
+    const thinkingBudgetMap: Record<string, number> = {
+      'minimal': 512,
+      'low': 1024, 
+      'medium': 8192,
+      'high': 24576
+    };
+    
+    const response = await aiProvider.client.generateContent({
+      model,
+      contents,
+      generationConfig: {
+        systemInstruction: fullSystemPrompt,
+        ...(useThinking && {
+          thinkingConfig: isGoogleStudio 
+            ? { thinkingBudget: thinkingBudgetMap[thinkingLevel] || 1024 }
+            : { thinkingLevel }
+        }),
+      },
+      ...(fileSearchTool && { tools: [fileSearchTool] }),
+    });
+    
+    // Extract response text (the adapter normalizes this)
+    let responseText: string | null = null;
+    try {
+      responseText = response.response?.text?.() || null;
+    } catch (e) {
+      // Fallback extraction methods
+      if (typeof response.response?.text === 'string') {
+        responseText = response.response.text;
+      } else if (response.text) {
+        responseText = response.text;
+      }
+    }
+    
+    console.log(`✅ [INSTAGRAM] AI response generated: ${responseText ? responseText.substring(0, 100) + '...' : 'null'}`);
+
+    // Clean up response (remove markdown, actions, thinking, etc.)
+    if (responseText) {
+      responseText = cleanAIResponse(responseText);
+    }
+
+    return responseText;
   } catch (error) {
     console.error("❌ [INSTAGRAM] Error generating AI response:", error);
     return null;
@@ -490,10 +660,15 @@ ${triggerContext}
 
 /**
  * Clean AI response for Instagram
+ * Removes thinking output, actions, markdown, and other artifacts
  */
 function cleanAIResponse(text: string): string {
   let cleaned = text;
 
+  // Remove thinking output (Gemini 3 thinking model)
+  cleaned = cleaned.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "");
+  cleaned = cleaned.replace(/\[THINKING\][\s\S]*?\[\/THINKING\]/gi, "");
+  
   // Remove [ACTIONS] sections
   cleaned = cleaned.replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/gi, "");
   cleaned = cleaned.replace(/\{"actions":\s*\[[\s\S]*?\]\}/gi, "");
@@ -504,6 +679,12 @@ function cleanAIResponse(text: string): string {
 
   // Convert list markers
   cleaned = cleaned.replace(/^\s*\*\s+/gm, "- ");
+
+  // Remove any remaining XML-like tags
+  cleaned = cleaned.replace(/<[^>]+>/g, "");
+
+  // Clean up multiple newlines
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
 
   // Clean up whitespace
   cleaned = cleaned.trim();
