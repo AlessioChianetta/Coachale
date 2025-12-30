@@ -437,6 +437,19 @@ async function processInstagramConversation(
           .orderBy(desc(instagramMessages.createdAt))
           .limit(15);
         
+        // Check if there's a recent cancellation confirmation in the conversation
+        // This prevents re-cancelling when finding another booking via instagramUserId fallback
+        const hasRecentCancellationConfirmation = recentMessages.some(m => 
+          m.direction === 'outbound' && 
+          m.sender === 'ai' && 
+          m.messageText?.includes('APPUNTAMENTO CANCELLATO')
+        );
+        
+        if (hasRecentCancellationConfirmation && existingBookingForModification) {
+          console.log(`⚠️ [INSTAGRAM] Recent cancellation confirmation found in conversation - skipping modification intent detection`);
+          existingBookingForModification = null;
+        }
+        
         // Convert to ConversationMessage format (oldest first)
         const conversationMessages = recentMessages
           .slice()
