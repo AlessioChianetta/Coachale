@@ -496,9 +496,9 @@ async function processInstagramConversation(
               await db.insert(instagramMessages).values({
                 conversationId: conversation.id,
                 instagramMessageId: `ig_manage_${Date.now()}`,
-                senderId: config.instagramAccountId || 'agent',
                 messageText,
                 direction: 'outbound',
+                sender: 'ai',
               });
               
               const metaClient = createMetaClient({
