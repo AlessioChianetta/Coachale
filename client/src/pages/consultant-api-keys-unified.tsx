@@ -6157,7 +6157,7 @@ export default function ConsultantApiKeysUnified() {
                                           </SelectTrigger>
                                           <SelectContent>
                                             <SelectItem value="__none__">Non mappato</SelectItem>
-                                            {googleSheetsPreview.columns.map((col) => (
+                                            {googleSheetsPreview.columns.filter(col => col && col.trim()).map((col) => (
                                               <SelectItem key={col} value={col}>{col}</SelectItem>
                                             ))}
                                           </SelectContent>
