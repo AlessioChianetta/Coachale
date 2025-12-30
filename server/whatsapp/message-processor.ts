@@ -2199,20 +2199,6 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
 
             console.log(`📊 [EXTRACTION] Retrieved ${recentMessages.length} messages for extraction${conversation.lastResetAt ? ' (after reset)' : ''}`);
 
-            // Check if there's a recent cancellation confirmation in the conversation
-            // This prevents re-cancelling when AI sees old confirmation messages
-            const hasRecentCancellationConfirmation = recentMessages.some(m => 
-              m.direction === 'outbound' && 
-              m.sender === 'ai' && 
-              m.messageText?.includes('APPUNTAMENTO CANCELLATO')
-            );
-            
-            if (hasRecentCancellationConfirmation && alreadyConfirmed) {
-              console.log(`⚠️ [WHATSAPP] Recent cancellation confirmation found in conversation - skipping modification intent detection`);
-              alreadyConfirmed = false;
-              existingBookingForModification = null;
-            }
-
             // Build conversation context for extraction
             // IMPORTANTE: Usa .slice().reverse() per NON mutare l'array originale
             const conversationContext = recentMessages
