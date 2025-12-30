@@ -542,6 +542,16 @@ async function processInstagramConversation(
           if (modResult.intent === 'MODIFY' && modResult.newDate && modResult.newTime) {
             console.log('\n🔄 [INSTAGRAM MODIFY APPOINTMENT] Starting modification process...');
             
+            // Check if date/time are identical to existing booking - no real modification needed
+            const isSameDateAndTime = 
+              existingBookingForModification.appointmentDate === modResult.newDate &&
+              existingBookingForModification.appointmentTime === modResult.newTime;
+            
+            if (isSameDateAndTime) {
+              console.log(`   ⏭️ [INSTAGRAM MODIFY] Skipping - new date/time identical to existing booking`);
+              console.log(`      Existing: ${existingBookingForModification.appointmentDate} ${existingBookingForModification.appointmentTime}`);
+              console.log(`      Requested: ${modResult.newDate} ${modResult.newTime}`);
+            } else {
             const modifyDetails: ActionDetails = {
               newDate: modResult.newDate,
               newTime: modResult.newTime
@@ -622,6 +632,7 @@ Ci vediamo alla nuova data! 🚀`;
               
               await sendInstagramConfirmation(modifyMessage);
               console.log('✅ [INSTAGRAM MODIFY] Modification complete and confirmation sent!');
+            }
             }
           }
           

@@ -886,8 +886,10 @@ export async function createBookingRecord(
     // Add Instagram-specific fields
     if (source === 'instagram' && instagramData) {
       bookingValues.instagramUserId = instagramData.instagramUserId || null;
+      bookingValues.instagramConversationId = instagramData.instagramConversationId || null;
       bookingValues.agentConfigId = instagramData.agentConfigId || null;
       console.log(`   Instagram User ID: ${instagramData.instagramUserId || 'N/A'}`);
+      console.log(`   Instagram Conversation ID: ${instagramData.instagramConversationId || 'N/A'}`);
     }
     
     const [booking] = await db
