@@ -1347,14 +1347,14 @@ export async function deleteGoogleCalendarEvent(
 export async function checkGoogleCalendarEventExists(
   consultantId: string,
   googleEventId: string
-): Promise<boolean> {
+): Promise<{ exists: boolean; skipCheck: boolean; error?: string }> {
   try {
     const calendar = await getCalendarClient(consultantId);
     const calendarId = await getPrimaryCalendarId(consultantId);
     
     if (!calendarId) {
       console.log(`⚠️ [GCAL CHECK] No calendar ID found for consultant ${consultantId}`);
-      return false;
+      return { exists: false, skipCheck: true, error: 'No calendar ID' };
     }
 
     const response = await calendar.events.get({
@@ -1365,13 +1365,27 @@ export async function checkGoogleCalendarEventExists(
     // Event exists if we get a successful response
     const exists = !!response.data && response.data.status !== 'cancelled';
     console.log(`🔍 [GCAL CHECK] Event ${googleEventId} exists: ${exists}`);
-    return exists;
+    return { exists, skipCheck: false };
   } catch (error: any) {
+    // Check for OAuth/connection errors - skip verification in these cases
+    const isOAuthError = error.message?.includes('non connesso') || 
+                         error.message?.includes('OAuth') ||
+                         error.message?.includes('token') ||
+                         error.message?.includes('authentication') ||
+                         error.message?.includes('401') ||
+                         error.code === 401;
+    
+    if (isOAuthError) {
+      console.log(`⚠️ [GCAL CHECK] Google Calendar not connected - skipping verification`);
+      console.log(`   Error: ${error.message}`);
+      return { exists: true, skipCheck: true, error: 'OAuth not connected' };
+    }
+    
     // 404 (Not Found) or 410 (Gone) means event was deleted
     const statusCode = error.code || error.response?.status;
     if (statusCode === 404 || statusCode === 410) {
       console.log(`🗑️ [GCAL CHECK] Event ${googleEventId} not found (deleted from calendar) - HTTP ${statusCode}`);
-      return false;
+      return { exists: false, skipCheck: false };
     }
     // Log unexpected errors for monitoring
     console.error(`⚠️ [GCAL CHECK] Unexpected error checking event ${googleEventId}:`, {
@@ -1380,7 +1394,7 @@ export async function checkGoogleCalendarEventExists(
       name: error.name
     });
     // Conservative: assume exists on unexpected error to avoid false deletions
-    return true;
+    return { exists: true, skipCheck: true, error: error.message };
   }
 }
 

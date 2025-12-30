@@ -444,12 +444,16 @@ async function processInstagramConversation(
             console.log(`🔍 [INSTAGRAM REALTIME SYNC] Verifying Google Calendar event exists...`);
             console.log(`   📅 Event ID: ${existingBooking.googleEventId}`);
             
-            const eventExists = await checkGoogleCalendarEventExists(
+            const checkResult = await checkGoogleCalendarEventExists(
               config.consultantId,
               existingBooking.googleEventId
             );
             
-            if (!eventExists) {
+            if (checkResult.skipCheck) {
+              // OAuth not connected or other issue - skip verification and proceed normally
+              console.log(`⚠️ [INSTAGRAM REALTIME SYNC] Skipping verification: ${checkResult.error}`);
+              console.log(`   → Proceeding with existing booking (cannot verify)`);
+            } else if (!checkResult.exists) {
               console.log(`🗑️ [INSTAGRAM REALTIME SYNC] Event was deleted from Google Calendar!`);
               console.log(`   → Marking booking as cancelled and proceeding as NEW BOOKING`);
               
