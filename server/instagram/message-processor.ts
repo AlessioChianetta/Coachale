@@ -1105,7 +1105,7 @@ Ci vediamo online! 🚀`;
                     await db.insert(instagramMessages).values({
                       conversationId: conversation.id,
                       instagramMessageId: `ig_confirm_${Date.now()}`,
-                      senderId: config.instagramAccountId || 'agent',
+                      sender: 'ai',
                       messageText: confirmationMessage,
                       direction: 'outbound',
                     });
