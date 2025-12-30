@@ -47,31 +47,139 @@ import {
   BookingExtractionResult
 } from "../booking/booking-service";
 
-const processingQueue = new Map<string, NodeJS.Timeout>();
-const BATCH_DELAY_MS = 3000;
+// Debounce and queue system (mirrors WhatsApp implementation)
+const DEBOUNCE_DELAY = 4000; // 4 seconds to match WhatsApp
+const MAX_RETRIES = 3;
+const INITIAL_BACKOFF = 1000;
+
+interface QueueTask {
+  conversationId: string;
+  agentConfigId: string;
+  consultantId: string;
+}
+
+const pendingTimers = new Map<string, NodeJS.Timeout>();
+const consultantQueues = new Map<string, QueueTask[]>();
+const processingConsultants = new Set<string>();
 
 /**
- * Schedule message processing with batching
- * Batches multiple messages from same user within BATCH_DELAY_MS
+ * Schedule message processing with debounce and consultant-level queuing
+ * Mirrors WhatsApp implementation to prevent double AI responses
  */
 export function scheduleInstagramMessageProcessing(
   conversationId: string,
   agentConfigId: string,
   consultantId: string
 ): void {
-  const key = `${conversationId}`;
+  const key = `${conversationId}_${consultantId}`;
 
-  if (processingQueue.has(key)) {
-    clearTimeout(processingQueue.get(key)!);
+  console.log(`🔍 [INSTAGRAM SCHEDULE] scheduleInstagramMessageProcessing called for ${key}`);
+
+  // Clear existing timer for this specific conversation
+  if (pendingTimers.has(key)) {
+    console.log(`⏲️  [INSTAGRAM SCHEDULE] Clearing existing timer for ${key}`);
+    clearTimeout(pendingTimers.get(key)!);
   }
 
-  const timeout = setTimeout(async () => {
-    processingQueue.delete(key);
-    await processInstagramConversation(conversationId, agentConfigId, consultantId);
-  }, BATCH_DELAY_MS);
+  // Schedule debounced processing
+  const timer = setTimeout(async () => {
+    console.log(`⚡ [INSTAGRAM SCHEDULE] Timer fired for ${key}, enqueueing...`);
+    pendingTimers.delete(key);
+    await enqueueInstagramProcessing(conversationId, agentConfigId, consultantId);
+  }, DEBOUNCE_DELAY);
 
-  processingQueue.set(key, timeout);
-  console.log(`⏰ [INSTAGRAM] Scheduled processing for conversation ${conversationId} in ${BATCH_DELAY_MS}ms`);
+  pendingTimers.set(key, timer);
+  console.log(`✅ [INSTAGRAM SCHEDULE] Timer set for ${key}, will fire in ${DEBOUNCE_DELAY}ms`);
+}
+
+async function enqueueInstagramProcessing(
+  conversationId: string,
+  agentConfigId: string,
+  consultantId: string
+): Promise<void> {
+  console.log(`📥 [INSTAGRAM ENQUEUE] Adding to queue: conversation ${conversationId} for consultant ${consultantId}`);
+
+  // Add to consultant's queue
+  if (!consultantQueues.has(consultantId)) {
+    console.log(`🆕 [INSTAGRAM ENQUEUE] Creating new queue for consultant ${consultantId}`);
+    consultantQueues.set(consultantId, []);
+  }
+
+  const queue = consultantQueues.get(consultantId)!;
+  queue.push({ conversationId, agentConfigId, consultantId });
+  console.log(`📊 [INSTAGRAM ENQUEUE] Queue size for consultant ${consultantId}: ${queue.length}`);
+
+  // Process queue if not already processing
+  if (!processingConsultants.has(consultantId)) {
+    console.log(`🚀 [INSTAGRAM ENQUEUE] Starting queue processing for consultant ${consultantId}`);
+    await processInstagramConsultantQueue(consultantId);
+  } else {
+    console.log(`⏳ [INSTAGRAM ENQUEUE] Queue already processing for consultant ${consultantId}, will pick up when done`);
+  }
+}
+
+async function processInstagramConsultantQueue(consultantId: string): Promise<void> {
+  if (processingConsultants.has(consultantId)) {
+    return; // Already processing this consultant
+  }
+
+  processingConsultants.add(consultantId);
+
+  try {
+    const queue = consultantQueues.get(consultantId);
+    if (!queue) {
+      return;
+    }
+
+    while (queue.length > 0) {
+      const task = queue.shift();
+      if (!task) break;
+
+      try {
+        await processInstagramConversationWithRetry(task.conversationId, task.agentConfigId, task.consultantId);
+      } catch (error: any) {
+        console.error(`❌ [INSTAGRAM] Failed to process messages for conversation ${task.conversationId} after retries`);
+        console.error(`   Error type: ${error?.name || 'Unknown'}`);
+        console.error(`   Error message: ${error?.message || error}`);
+        if (error?.stack) {
+          console.error(`   Stack trace:\n${error.stack}`);
+        }
+      }
+    }
+  } finally {
+    processingConsultants.delete(consultantId);
+  }
+}
+
+async function processInstagramConversationWithRetry(
+  conversationId: string,
+  agentConfigId: string,
+  consultantId: string,
+  retryCount = 0
+): Promise<void> {
+  try {
+    await processInstagramConversation(conversationId, agentConfigId, consultantId);
+  } catch (error: any) {
+    // Check if error is DB-related
+    const errorCode = typeof error?.code === 'string' ? error.code : String(error?.code || '');
+    const isDbError = error?.message?.includes("connection") ||
+      error?.message?.includes("timeout") ||
+      error?.message?.includes("pool") ||
+      errorCode.includes("ECONNREFUSED");
+
+    if (isDbError && retryCount < MAX_RETRIES) {
+      const backoffTime = INITIAL_BACKOFF * Math.pow(2, retryCount);
+      console.warn(
+        `⚠️ [INSTAGRAM] DB error, retrying in ${backoffTime}ms (attempt ${retryCount + 1}/${MAX_RETRIES}):`,
+        error.message
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, backoffTime));
+      return processInstagramConversationWithRetry(conversationId, agentConfigId, consultantId, retryCount + 1);
+    }
+
+    throw error;
+  }
 }
 
 /**
