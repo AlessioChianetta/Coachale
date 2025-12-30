@@ -636,6 +636,11 @@ function parseJsonResponse<T>(responseText: string): T | null {
       cleanText = objectMatch[0];
     }
     
+    // Sanitize only the specific invalid escape sequence that AI sometimes generates
+    // \' is not valid in JSON (should be just ' or for quotes use \")
+    // Note: We only fix \' to avoid corrupting valid escapes like \n, \t, etc.
+    cleanText = cleanText.replace(/\\'/g, "'");
+    
     return JSON.parse(cleanText) as T;
   } catch (error) {
     console.error('❌ [BOOKING SERVICE] Failed to parse JSON response:', error);

@@ -44,8 +44,12 @@ import {
   createBookingRecord,
   createGoogleCalendarBooking,
   ConversationMessage,
-  BookingExtractionResult
+  BookingExtractionResult,
+  BookingModificationResult,
+  ExistingBooking
 } from "../booking/booking-service";
+import { updateGoogleCalendarEvent, deleteGoogleCalendarEvent, addAttendeesToGoogleCalendarEvent } from "../google-calendar-service";
+import { isActionAlreadyCompleted, LastCompletedAction, ActionDetails } from "../booking/booking-intent-detector";
 
 // Debounce and queue system (mirrors WhatsApp implementation)
 const DEBOUNCE_DELAY = 4000; // 4 seconds to match WhatsApp
@@ -356,12 +360,74 @@ async function processInstagramConversation(
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // BOOKING EXTRACTION - Extract booking data from conversation (like WhatsApp)
+    // Supports: NEW BOOKING, MODIFY, CANCEL, ADD_ATTENDEES
     // ═══════════════════════════════════════════════════════════════════════════════
     if (linkedAgent && linkedAgent.bookingEnabled) {
       try {
         console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('🔍 [INSTAGRAM BOOKING EXTRACTION] Starting extraction...');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // STEP 1: Check for existing confirmed booking (like WhatsApp lines 2126-2147)
+        // ═══════════════════════════════════════════════════════════════════════════════
+        let existingBookingForModification: ExistingBooking | null = null;
+        let lastCompletedAction: LastCompletedAction | null = null;
+        
+        // Search by Instagram conversation ID first, then fallback to instagramUserId
+        // Include both 'confirmed' and 'proposed' status (like WhatsApp)
+        // No date filter - allow modification/cancellation of any booking including same-day
+        let existingBooking = await db
+          .select()
+          .from(appointmentBookings)
+          .where(
+            and(
+              eq(appointmentBookings.instagramConversationId, conversation.id),
+              sql`(${appointmentBookings.status} = 'confirmed' OR ${appointmentBookings.status} = 'proposed')`
+            )
+          )
+          .orderBy(desc(appointmentBookings.createdAt))
+          .limit(1)
+          .then(r => r[0] || null);
+        
+        // Fallback: Search by Instagram user ID if no match by conversation ID
+        if (!existingBooking && conversation.instagramUserId) {
+          existingBooking = await db
+            .select()
+            .from(appointmentBookings)
+            .where(
+              and(
+                eq(appointmentBookings.consultantId, config.consultantId),
+                eq(appointmentBookings.instagramUserId, conversation.instagramUserId),
+                sql`(${appointmentBookings.status} = 'confirmed' OR ${appointmentBookings.status} = 'proposed')`
+              )
+            )
+            .orderBy(desc(appointmentBookings.createdAt))
+            .limit(1)
+            .then(r => r[0] || null);
+          
+          if (existingBooking) {
+            console.log(`✅ [INSTAGRAM] Found booking via instagramUserId fallback`);
+          }
+        }
+        
+        if (existingBooking) {
+          existingBookingForModification = {
+            id: existingBooking.id,
+            appointmentDate: existingBooking.appointmentDate,
+            appointmentTime: existingBooking.appointmentTime,
+            clientEmail: existingBooking.leadEmail,
+            clientPhone: existingBooking.leadPhone,
+            googleEventId: existingBooking.googleEventId,
+          };
+          lastCompletedAction = existingBooking.lastCompletedAction as LastCompletedAction | null;
+          console.log(`✅ [INSTAGRAM APPOINTMENT MANAGEMENT] Existing booking found`);
+          console.log(`   🆔 Booking ID: ${existingBooking.id}`);
+          console.log(`   📅 Date: ${existingBooking.appointmentDate} ${existingBooking.appointmentTime}`);
+          console.log(`   🔍 Checking for MODIFICATION or CANCELLATION intent...`);
+        } else {
+          console.log(`📅 [INSTAGRAM NEW BOOKING] No existing booking - checking for new appointment`);
+        }
         
         // Get fresh message history including the AI response we just sent
         const recentMessages = await db
@@ -386,10 +452,10 @@ async function processInstagramConversation(
         const bookingAiProvider = await getAIProvider(config.consultantId, config.consultantId);
         
         // Extract booking data using centralized service with accumulator pattern
-        // Use publicConversationId for Instagram to leverage existing accumulator state system
+        // Pass existing booking if found to detect MODIFY/CANCEL/ADD_ATTENDEES intents
         const extracted = await extractBookingDataFromConversation(
           conversationMessages,
-          undefined, // No existing booking
+          existingBookingForModification || undefined,
           bookingAiProvider.client,
           'Europe/Rome',
           undefined, // providerName
@@ -399,7 +465,295 @@ async function processInstagramConversation(
           }
         );
         
-        if (extracted && 'isConfirming' in extracted) {
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // HANDLE MODIFICATION RESULTS (MODIFY/CANCEL/ADD_ATTENDEES)
+        // ═══════════════════════════════════════════════════════════════════════════════
+        if (extracted && 'intent' in extracted && existingBookingForModification) {
+          const modResult = extracted as BookingModificationResult;
+          console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('📊 [INSTAGRAM APPOINTMENT MANAGEMENT] Intent Detection Results');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log(`🎯 Intent: ${modResult.intent}`);
+          console.log(`📅 New Date: ${modResult.newDate || 'N/A'}`);
+          console.log(`🕐 New Time: ${modResult.newTime || 'N/A'}`);
+          console.log(`👥 Attendees: ${modResult.attendees?.length > 0 ? modResult.attendees.join(', ') : 'None'}`);
+          console.log(`✅ Confirmed Times: ${modResult.confirmedTimes}`);
+          console.log(`💯 Confidence: ${modResult.confidence?.toUpperCase() || 'N/A'}`);
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+          
+          // Helper to send Instagram message
+          const sendInstagramConfirmation = async (messageText: string) => {
+            let pageAccessToken = config.pageAccessToken;
+            if (pageAccessToken && consultant.encryptionSalt) {
+              try {
+                pageAccessToken = decryptForConsultant(pageAccessToken, consultant.encryptionSalt);
+              } catch (e) {
+                console.log("🔓 [INSTAGRAM] Token not encrypted, using as-is");
+              }
+            }
+            
+            if (pageAccessToken && config.facebookPageId) {
+              await db.insert(instagramMessages).values({
+                conversationId: conversation.id,
+                instagramMessageId: `ig_manage_${Date.now()}`,
+                senderId: config.instagramAccountId || 'agent',
+                messageText,
+                direction: 'outbound',
+              });
+              
+              const metaClient = createMetaClient({
+                pageAccessToken,
+                instagramPageId: config.facebookPageId,
+                isDryRun: config.isDryRun,
+              });
+              
+              await metaClient.sendMessage(conversation.instagramUserId, messageText);
+              console.log(`   📱 Instagram Message: ✅ Sent to ${conversation.instagramUserId}`);
+            }
+          };
+          
+          // ═══════════════════════════════════════════════════════════════════════════════
+          // MODIFY APPOINTMENT - Requires 1 confirmation (like WhatsApp lines 2476-2594)
+          // ═══════════════════════════════════════════════════════════════════════════════
+          if (modResult.intent === 'MODIFY' && modResult.newDate && modResult.newTime) {
+            console.log('\n🔄 [INSTAGRAM MODIFY APPOINTMENT] Starting modification process...');
+            
+            const modifyDetails: ActionDetails = {
+              newDate: modResult.newDate,
+              newTime: modResult.newTime
+            };
+            if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY', modifyDetails)) {
+              console.log(`   ⏭️ [INSTAGRAM MODIFY] Skipping - same modification already completed recently`);
+            } else if (!modResult.confirmedTimes || modResult.confirmedTimes < 1) {
+              console.log(`⚠️ [INSTAGRAM MODIFY] Insufficient confirmations (${modResult.confirmedTimes || 0}/1)`);
+              console.log('   AI should ask for confirmation via prompt - skipping modification');
+            } else {
+              console.log(`✅ [INSTAGRAM MODIFY] Confirmed ${modResult.confirmedTimes} time(s) - proceeding with modification`);
+              
+              const duration = linkedAgent?.appointmentDuration || 60;
+              const timezone = "Europe/Rome";
+              
+              // Update Google Calendar if exists
+              if (existingBookingForModification.googleEventId) {
+                try {
+                  const success = await updateGoogleCalendarEvent(
+                    config.consultantId,
+                    existingBookingForModification.googleEventId,
+                    {
+                      startDate: modResult.newDate,
+                      startTime: modResult.newTime,
+                      duration,
+                      timezone
+                    },
+                    linkedAgent.id
+                  );
+                  if (success) {
+                    console.log('✅ [INSTAGRAM MODIFY] Google Calendar event updated successfully');
+                  }
+                } catch (gcalError: any) {
+                  console.error('⚠️ [INSTAGRAM MODIFY] Failed to update Google Calendar:', gcalError.message);
+                }
+              }
+              
+              // Calculate new end time
+              const [startHour, startMinute] = modResult.newTime.split(':').map(Number);
+              const totalMinutes = startHour * 60 + startMinute + duration;
+              const endHour = Math.floor(totalMinutes / 60) % 24;
+              const endMinute = totalMinutes % 60;
+              const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+              
+              // Update database
+              await db
+                .update(appointmentBookings)
+                .set({
+                  appointmentDate: modResult.newDate,
+                  appointmentTime: modResult.newTime,
+                  appointmentEndTime: formattedEndTime,
+                  lastCompletedAction: {
+                    type: 'MODIFY' as const,
+                    completedAt: new Date().toISOString(),
+                    triggerMessageId: conversation.id,
+                    details: {
+                      oldDate: existingBookingForModification.appointmentDate,
+                      oldTime: existingBookingForModification.appointmentTime,
+                      newDate: modResult.newDate,
+                      newTime: modResult.newTime
+                    }
+                  }
+                })
+                .where(eq(appointmentBookings.id, existingBookingForModification.id));
+              
+              console.log('💾 [INSTAGRAM MODIFY] Database updated with lastCompletedAction');
+              
+              // Send confirmation message
+              const modifyMessage = `✅ APPUNTAMENTO MODIFICATO!
+
+📅 Nuovo appuntamento:
+🗓️ Data: ${modResult.newDate.split('-').reverse().join('/')}
+🕐 Orario: ${modResult.newTime}
+
+Ti ho aggiornato l'invito al calendario all'indirizzo ${existingBookingForModification.clientEmail}. Controlla la tua inbox! 📬
+
+Ci vediamo alla nuova data! 🚀`;
+              
+              await sendInstagramConfirmation(modifyMessage);
+              console.log('✅ [INSTAGRAM MODIFY] Modification complete and confirmation sent!');
+            }
+          }
+          
+          // ═══════════════════════════════════════════════════════════════════════════════
+          // CANCEL APPOINTMENT - Requires 1 confirmation (aligned with current WhatsApp behavior)
+          // ═══════════════════════════════════════════════════════════════════════════════
+          else if (modResult.intent === 'CANCEL') {
+            console.log('\n🗑️ [INSTAGRAM CANCEL APPOINTMENT] Starting cancellation process...');
+            
+            if (isActionAlreadyCompleted(lastCompletedAction, 'CANCEL')) {
+              console.log(`   ⏭️ [INSTAGRAM CANCEL] Skipping - action already completed recently`);
+            } else if (!modResult.confirmedTimes || modResult.confirmedTimes < 1) {
+              console.log(`⚠️ [INSTAGRAM CANCEL] Insufficient confirmations (${modResult.confirmedTimes || 0}/1)`);
+              console.log('   AI should continue asking for confirmation via prompt - skipping cancellation');
+            } else {
+              console.log(`✅ [INSTAGRAM CANCEL] Confirmed ${modResult.confirmedTimes} times - proceeding with cancellation`);
+              
+              // Delete from Google Calendar if exists
+              let calendarDeleteSuccess = true;
+              if (existingBookingForModification.googleEventId) {
+                try {
+                  const success = await deleteGoogleCalendarEvent(
+                    config.consultantId,
+                    existingBookingForModification.googleEventId,
+                    linkedAgent.id
+                  );
+                  if (success) {
+                    console.log('✅ [INSTAGRAM CANCEL] Google Calendar event deleted successfully');
+                  } else {
+                    console.log('⚠️ [INSTAGRAM CANCEL] Failed to delete from Google Calendar');
+                    calendarDeleteSuccess = false;
+                  }
+                } catch (gcalError: any) {
+                  console.error('⚠️ [INSTAGRAM CANCEL] Failed to delete from Google Calendar:', gcalError.message);
+                  calendarDeleteSuccess = false;
+                }
+              }
+              
+              // Update database status
+              await db
+                .update(appointmentBookings)
+                .set({
+                  status: 'cancelled',
+                  lastCompletedAction: {
+                    type: 'CANCEL' as const,
+                    completedAt: new Date().toISOString(),
+                    triggerMessageId: conversation.id,
+                    details: {
+                      oldDate: existingBookingForModification.appointmentDate,
+                      oldTime: existingBookingForModification.appointmentTime
+                    }
+                  }
+                })
+                .where(eq(appointmentBookings.id, existingBookingForModification.id));
+              
+              console.log('💾 [INSTAGRAM CANCEL] Database updated with lastCompletedAction');
+              
+              // Send confirmation message
+              const cancelMessage = calendarDeleteSuccess
+                ? `✅ APPUNTAMENTO CANCELLATO
+
+Ho cancellato il tuo appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime}.
+
+Se in futuro vorrai riprogrammare, sarò qui per aiutarti! 😊`
+                : `⚠️ APPUNTAMENTO CANCELLATO (verifica calendario)
+
+Ho cancellato il tuo appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime} dal sistema.
+
+⚠️ Nota: C'è stato un problema nell'aggiornamento del tuo Google Calendar. Per favore, verifica manualmente che l'evento sia stato rimosso dal tuo calendario.
+
+Se vuoi riprogrammare in futuro, scrivimi! 😊`;
+              
+              await sendInstagramConfirmation(cancelMessage);
+              console.log('✅ [INSTAGRAM CANCEL] Cancellation complete and confirmation sent!');
+            }
+          }
+          
+          // ═══════════════════════════════════════════════════════════════════════════════
+          // ADD ATTENDEES - No confirmation required (like WhatsApp lines 2693-2801)
+          // ═══════════════════════════════════════════════════════════════════════════════
+          else if (modResult.intent === 'ADD_ATTENDEES' && modResult.attendees && modResult.attendees.length > 0) {
+            console.log('\n👥 [INSTAGRAM ADD ATTENDEES] Starting add attendees process...');
+            
+            const addAttendeesDetails: ActionDetails = {
+              attendees: modResult.attendees
+            };
+            if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES', addAttendeesDetails)) {
+              console.log(`   ⏭️ [INSTAGRAM ADD ATTENDEES] Skipping - same attendees already added recently`);
+            } else {
+              console.log('   ✅ No confirmation required for adding attendees - proceeding directly');
+              console.log(`   📧 Attendees to add: ${modResult.attendees.join(', ')}`);
+              
+              if (existingBookingForModification.googleEventId) {
+                try {
+                  const result = await addAttendeesToGoogleCalendarEvent(
+                    config.consultantId,
+                    existingBookingForModification.googleEventId,
+                    modResult.attendees,
+                    linkedAgent.id
+                  );
+                  
+                  console.log(`✅ [INSTAGRAM ADD ATTENDEES] Google Calendar updated - ${result.added} added, ${result.skipped} already invited`);
+                  
+                  // Save lastCompletedAction
+                  await db
+                    .update(appointmentBookings)
+                    .set({
+                      lastCompletedAction: {
+                        type: 'ADD_ATTENDEES' as const,
+                        completedAt: new Date().toISOString(),
+                        triggerMessageId: conversation.id,
+                        details: {
+                          attendeesAdded: modResult.attendees
+                        }
+                      }
+                    })
+                    .where(eq(appointmentBookings.id, existingBookingForModification.id));
+                  
+                  // Send confirmation message
+                  const addAttendeesMessage = result.added > 0
+                    ? `✅ INVITATI AGGIUNTI!
+
+Ho aggiunto ${result.added} ${result.added === 1 ? 'invitato' : 'invitati'} all'appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime}.
+
+${result.skipped > 0 ? `ℹ️ ${result.skipped} ${result.skipped === 1 ? 'era già invitato' : 'erano già invitati'}.\n\n` : ''}📧 Gli inviti Google Calendar sono stati inviati automaticamente! 📬`
+                    : `ℹ️ Tutti gli invitati sono già stati aggiunti all'appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime}. 
+
+Nessuna modifica necessaria! ✅`;
+                  
+                  await sendInstagramConfirmation(addAttendeesMessage);
+                  console.log('✅ [INSTAGRAM ADD ATTENDEES] Confirmation message sent with lastCompletedAction saved!');
+                  
+                } catch (gcalError: any) {
+                  console.error('⚠️ [INSTAGRAM ADD ATTENDEES] Failed to add attendees to Google Calendar');
+                  console.error(`   Event ID: ${existingBookingForModification.googleEventId}`);
+                  console.error(`   Error: ${gcalError?.message || gcalError}`);
+                  
+                  const errorMessage = `⚠️ Mi dispiace, ho riscontrato un errore nell'aggiungere gli invitati al calendario.
+
+Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
+                  
+                  await sendInstagramConfirmation(errorMessage);
+                }
+              } else {
+                console.log('⚠️ [INSTAGRAM ADD ATTENDEES] No Google Event ID found - cannot add attendees');
+              }
+            }
+          } else if (modResult.intent === 'NONE') {
+            console.log('💬 [INSTAGRAM APPOINTMENT MANAGEMENT] No modification/cancellation/add attendees intent detected - continuing normal conversation');
+          }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // HANDLE NEW BOOKING RESULTS (existing logic)
+        // ═══════════════════════════════════════════════════════════════════════════════
+        else if (extracted && 'isConfirming' in extracted) {
           console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           console.log('📊 [INSTAGRAM BOOKING] Extraction Results');
           console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -460,6 +814,9 @@ async function processInstagramConversation(
                 console.log(`   👤 Client: ${newBooking.clientName}`);
                 console.log(`   📱 Instagram ID: ${conversation.instagramUserId}`);
                 
+                let googleMeetLink: string | null = null;
+                let googleEventId: string | null = null;
+                
                 // Try to create Google Calendar event if configured
                 try {
                   const calendarResult = await createGoogleCalendarBooking(
@@ -469,10 +826,77 @@ async function processInstagramConversation(
                     linkedAgent.id
                   );
                   if (calendarResult.googleEventId) {
-                    console.log(`   📅 Google Calendar event: ${calendarResult.googleEventId}`);
+                    googleEventId = calendarResult.googleEventId;
+                    googleMeetLink = calendarResult.googleMeetLink || null;
+                    console.log(`   📅 Google Calendar event: ${googleEventId}`);
+                    console.log(`   🎥 Meet Link: ${googleMeetLink ? '✅ Generated' : '❌ Not available'}`);
                   }
                 } catch (calError) {
                   console.log(`   ⚠️ Google Calendar not configured or error: ${calError}`);
+                }
+                
+                // Send confirmation message to user (like WhatsApp does)
+                try {
+                  // Get page access token for sending
+                  let pageAccessToken = config.pageAccessToken;
+                  if (pageAccessToken && consultant.encryptionSalt) {
+                    try {
+                      pageAccessToken = decryptForConsultant(pageAccessToken, consultant.encryptionSalt);
+                    } catch (e) {
+                      console.log("🔓 [INSTAGRAM] Token not encrypted, using as-is");
+                    }
+                  }
+                  
+                  if (pageAccessToken && config.facebookPageId) {
+                    // Format date in Italian
+                    const dateFormatter = new Intl.DateTimeFormat('it-IT', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      timeZone: 'Europe/Rome'
+                    });
+                    const appointmentDateObj = new Date(`${extracted.date}T${extracted.time}:00`);
+                    const formattedDate = dateFormatter.format(appointmentDateObj);
+                    
+                    // Get duration from agent settings
+                    const duration = linkedAgent?.appointmentDuration || 60;
+                    
+                    // Build confirmation message (same format as WhatsApp)
+                    const confirmationMessage = `✅ APPUNTAMENTO CONFERMATO!
+
+📅 Data: ${formattedDate}
+🕐 Orario: ${extracted.time}
+⏱️ Durata: ${duration} minuti
+📧 Email: ${extracted.email}
+
+📬 Ti ho inviato l'invito al calendario all'indirizzo ${extracted.email}. Controlla la tua inbox!
+${googleMeetLink ? `\n🎥 Link Google Meet: ${googleMeetLink}\n\n👉 Clicca sul link nell'invito o usa questo link per collegarti alla call.` : ''}
+
+Ci vediamo online! 🚀`;
+
+                    // Save to database
+                    await db.insert(instagramMessages).values({
+                      conversationId: conversation.id,
+                      instagramMessageId: `ig_confirm_${Date.now()}`,
+                      senderId: config.instagramAccountId || 'agent',
+                      messageText: confirmationMessage,
+                      direction: 'outbound',
+                    });
+                    
+                    // Send via Meta API
+                    const confirmClient = createMetaClient({
+                      pageAccessToken,
+                      instagramPageId: config.facebookPageId,
+                      isDryRun: config.isDryRun,
+                    });
+                    
+                    await confirmClient.sendMessage(conversation.instagramUserId, confirmationMessage);
+                    
+                    console.log(`   📱 Instagram Confirmation: ✅ Sent to ${conversation.instagramUserId}`);
+                  }
+                } catch (confirmError) {
+                  console.log(`   ⚠️ Failed to send Instagram confirmation: ${confirmError}`);
                 }
                 
                 // Mark extraction state as completed (null for WhatsApp conversationId, Instagram uses publicConversationId)
