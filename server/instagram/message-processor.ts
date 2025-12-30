@@ -36,6 +36,13 @@ import { nanoid } from "nanoid";
 import { getMandatoryBookingBlock, CORE_CONVERSATION_RULES_BLOCK, OBJECTION_HANDLING_BLOCK, DISQUALIFICATION_BLOCK, BOOKING_CONVERSATION_PHASES_BLOCK } from "../whatsapp/instruction-blocks";
 import { fileSearchService } from "../ai/file-search-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
+import { 
+  extractBookingDataFromConversation,
+  mergeWithAccumulatedState,
+  markExtractionStateCompleted,
+  ConversationMessage,
+  BookingExtractionResult
+} from "../booking/booking-service";
 
 const processingQueue = new Map<string, NodeJS.Timeout>();
 const BATCH_DELAY_MS = 3000;
@@ -215,6 +222,114 @@ async function processInstagramConversation(
       aiResponse,
       windowStatus.canUseHumanAgentTag
     );
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // BOOKING EXTRACTION - Extract booking data from conversation (like WhatsApp)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    if (linkedAgent && linkedAgent.bookingEnabled) {
+      try {
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔍 [INSTAGRAM BOOKING EXTRACTION] Starting extraction...');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        // Get fresh message history including the AI response we just sent
+        const recentMessages = await db
+          .select()
+          .from(instagramMessages)
+          .where(eq(instagramMessages.conversationId, conversationId))
+          .orderBy(desc(instagramMessages.createdAt))
+          .limit(15);
+        
+        // Convert to ConversationMessage format (oldest first)
+        const conversationMessages = recentMessages
+          .slice()
+          .reverse()
+          .map(m => ({
+            sender: m.sender === 'client' ? 'client' as const : 'ai' as const,
+            messageText: m.messageText || ''
+          }));
+        
+        console.log(`   📚 Analyzing ${conversationMessages.length} messages for booking data...`);
+        
+        // Get AI provider for booking extraction
+        const bookingAiProvider = await getAIProvider(config.consultantId, config.consultantId);
+        
+        // Extract booking data using centralized service with accumulator pattern
+        const extracted = await extractBookingDataFromConversation(
+          conversationMessages,
+          undefined, // No existing booking
+          bookingAiProvider.client,
+          'Europe/Rome',
+          undefined, // providerName
+          {
+            instagramConversationId: conversation.id,
+            consultantId: config.consultantId,
+          }
+        );
+        
+        if (extracted && 'isConfirming' in extracted) {
+          console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('📊 [INSTAGRAM BOOKING] Extraction Results');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log(`🎯 Confirming: ${extracted.isConfirming ? '✅ YES' : '❌ NO'}`);
+          console.log(`📅 Date:     ${extracted.date ? `✅ ${extracted.date}` : '❌ MISSING'}`);
+          console.log(`🕐 Time:     ${extracted.time ? `✅ ${extracted.time}` : '❌ MISSING'}`);
+          console.log(`📞 Phone:    ${extracted.phone ? `✅ ${extracted.phone}` : '❌ MISSING'}`);
+          console.log(`📧 Email:    ${extracted.email ? `✅ ${extracted.email}` : '❌ MISSING'}`);
+          console.log(`👤 Name:     ${extracted.name ? `✅ ${extracted.name}` : '❌ MISSING'}`);
+          console.log(`💯 Confidence: ${extracted.confidence?.toUpperCase() || 'N/A'}`);
+          console.log(`✔️ Complete: ${extracted.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          
+          // If we have all required data, create the booking
+          if (extracted.isConfirming && extracted.hasAllData && extracted.date && extracted.time) {
+            console.log('\n🎉 [INSTAGRAM BOOKING] All data collected! Creating booking...');
+            
+            // Build client name from Instagram profile or extracted name
+            const clientName = extracted.name || 
+              conversation.instagramName || 
+              (conversation.instagramUsername ? `@${conversation.instagramUsername}` : 'Instagram User');
+            
+            // Create booking record
+            const [newBooking] = await db
+              .insert(appointmentBookings)
+              .values({
+                id: nanoid(),
+                consultantId: config.consultantId,
+                agentConfigId: linkedAgent.id,
+                clientName: clientName,
+                leadEmail: extracted.email || null,
+                leadPhone: extracted.phone || null,
+                appointmentDate: extracted.date,
+                appointmentTime: extracted.time,
+                status: 'proposed',
+                source: 'instagram',
+                instagramUserId: conversation.instagramUserId,
+                notes: `Prenotato via Instagram DM da @${conversation.instagramUsername || 'unknown'}`,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .returning();
+            
+            console.log(`✅ [INSTAGRAM BOOKING] Created booking: ${newBooking.id}`);
+            console.log(`   📅 Date: ${newBooking.appointmentDate} at ${newBooking.appointmentTime}`);
+            console.log(`   👤 Client: ${newBooking.clientName}`);
+            console.log(`   📱 Instagram ID: ${newBooking.instagramUserId}`);
+            
+            // Mark extraction state as completed
+            await markExtractionStateCompleted(null, conversation.id);
+          } else if (extracted.isConfirming) {
+            console.log('⏳ [INSTAGRAM BOOKING] User is confirming but missing some data:');
+            if (!extracted.date) console.log('   ❌ Missing: date');
+            if (!extracted.time) console.log('   ❌ Missing: time');
+            if (!extracted.email) console.log('   ❌ Missing: email');
+            if (!extracted.phone) console.log('   ❌ Missing: phone');
+          }
+        }
+      } catch (bookingError) {
+        console.error('❌ [INSTAGRAM BOOKING] Extraction error:', bookingError);
+      }
+    }
 
     // Mark pending messages as processed
     await markPendingMessagesProcessed(conversationId);
