@@ -3079,11 +3079,92 @@ export const proactiveLeads = pgTable("proactive_leads", {
     conversationId?: string;
   }>().default(sql`'{}'::jsonb`),
 
+  // Import tracking
+  importJobId: varchar("import_job_id"),
+  sourceRowHash: varchar("source_row_hash", { length: 64 }),
+  importedAt: timestamp("imported_at"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
   uniquePhonePerConsultant: unique().on(table.consultantId, table.phoneNumber),
 }));
+
+// Lead Import Jobs - Configurazioni di importazione lead
+export const leadImportJobs = pgTable("lead_import_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
+  
+  jobName: varchar("job_name", { length: 255 }).notNull(),
+  sourceType: varchar("source_type", { length: 50 }).$type<"excel" | "csv" | "google_sheets">().notNull(),
+  googleSheetUrl: text("google_sheet_url"),
+  
+  columnMappings: jsonb("column_mappings").$type<{
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+    email?: string;
+    company?: string;
+    notes?: string;
+    tags?: string;
+    [key: string]: string | undefined;
+  }>().default(sql`'{}'::jsonb`).notNull(),
+  
+  settings: jsonb("settings").$type<{
+    skipDuplicates?: boolean;
+    defaultContactFrequency?: number;
+    defaultStatus?: string;
+    defaultLeadCategory?: string;
+    campaignId?: string;
+  }>().default(sql`'{}'::jsonb`),
+  
+  totalRowsImported: integer("total_rows_imported").default(0),
+  lastImportAt: timestamp("last_import_at"),
+  status: varchar("status", { length: 50 }).$type<"active" | "paused" | "deleted">().default("active"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Lead Import Runs - Cronologia esecuzioni import
+export const leadImportRuns = pgTable("lead_import_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").references(() => leadImportJobs.id, { onDelete: "cascade" }).notNull(),
+  
+  runStatus: varchar("run_status", { length: 50 }).$type<"pending" | "running" | "completed" | "failed">().default("pending"),
+  
+  rowsProcessed: integer("rows_processed").default(0),
+  rowsImported: integer("rows_imported").default(0),
+  rowsSkipped: integer("rows_skipped").default(0),
+  rowsDuplicates: integer("rows_duplicates").default(0),
+  rowsErrors: integer("rows_errors").default(0),
+  
+  errorDetails: jsonb("error_details").$type<Array<{
+    row: number;
+    field?: string;
+    message: string;
+  }>>().default(sql`'[]'::jsonb`),
+  
+  originalFilename: text("original_filename"),
+  
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+// Lead Import validation schemas
+export const insertLeadImportJobSchema = createInsertSchema(leadImportJobs).omit({
+  id: true,
+  totalRowsImported: true,
+  lastImportAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type LeadImportJob = typeof leadImportJobs.$inferSelect;
+export type InsertLeadImportJob = z.infer<typeof insertLeadImportJobSchema>;
+export type LeadImportRun = typeof leadImportRuns.$inferSelect;
 
 // Marketing Campaigns validation schemas
 export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({
