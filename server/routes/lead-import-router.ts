@@ -304,6 +304,50 @@ router.post(
   }
 );
 
+// AI-powered column mapping
+router.post(
+  "/consultant/agents/:agentId/leads/ai-map",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const agentId = req.params.agentId;
+      const { columns } = req.body;
+
+      // Verify agent access
+      const agentConfig = await storage.getConsultantWhatsappConfig(consultantId, agentId);
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Agente non trovato"
+        });
+      }
+
+      if (!columns || !Array.isArray(columns)) {
+        return res.status(400).json({
+          success: false,
+          error: "Dati colonne mancanti"
+        });
+      }
+
+      const { aiMapColumns } = await import("../services/lead-import-ai-mapper");
+      const suggestions = await aiMapColumns(columns);
+
+      res.json({
+        success: true,
+        data: { suggestions }
+      });
+    } catch (error: any) {
+      console.error("[AI Map] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante la mappatura AI"
+      });
+    }
+  }
+);
+
 router.post(
   "/consultant/agents/:agentId/leads/import",
   authenticateToken,
