@@ -788,9 +788,8 @@ export async function validateBookingData(
 ): Promise<ValidationResult> {
   console.log(`\n🔍 [BOOKING SERVICE] Validating booking data for consultant ${consultantId} (source: ${source})`);
 
-  // Per WhatsApp richiedi tutti i dati incluso phone
-  // Per public_link e instagram richiedi solo date, time, email
-  if (source === 'whatsapp' && !extracted.hasAllData) {
+  // Tutti i canali (WhatsApp, Instagram, public_link) richiedono gli stessi dati
+  if (!extracted.hasAllData) {
     return { valid: false, reason: "Dati incompleti. Mancano informazioni obbligatorie." };
   }
 
@@ -798,8 +797,8 @@ export async function validateBookingData(
     return { valid: false, reason: "Data e/o ora non specificati." };
   }
 
-  // Phone is required for WhatsApp but optional for public links and Instagram
-  if (source === 'whatsapp' && !extracted.phone) {
+  // Phone is required for all sources (WhatsApp, Instagram, public_link)
+  if (!extracted.phone) {
     return { valid: false, reason: "Numero di telefono non fornito." };
   }
 

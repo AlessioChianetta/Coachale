@@ -414,7 +414,8 @@ async function processInstagramConversation(
           console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           
           // If user is confirming, validate and create booking using centralized service
-          if (extracted.isConfirming && extracted.date && extracted.time && extracted.email) {
+          // Instagram requires same fields as WhatsApp: date, time, email, AND phone
+          if (extracted.isConfirming && extracted.date && extracted.time && extracted.email && extracted.phone) {
             console.log('\n🎉 [INSTAGRAM BOOKING] User is confirming! Validating data...');
             
             // Validate booking data using centralized service
@@ -482,7 +483,8 @@ async function processInstagramConversation(
             console.log('⏳ [INSTAGRAM BOOKING] User is confirming but missing required data:');
             if (!extracted.date) console.log('   ❌ Missing: date');
             if (!extracted.time) console.log('   ❌ Missing: time');
-            if (!extracted.email) console.log('   ❌ Missing: email (required for Instagram)');
+            if (!extracted.email) console.log('   ❌ Missing: email');
+            if (!extracted.phone) console.log('   ❌ Missing: phone');
           }
         }
       } catch (bookingError) {
