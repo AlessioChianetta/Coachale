@@ -25,7 +25,7 @@ import {
   whatsappAgentKnowledgeItems,
   consultantKnowledgeDocuments,
 } from "../../shared/schema";
-import { eq, isNull, and, desc, asc, sql, gte } from "drizzle-orm";
+import { eq, isNull, and, desc, asc, sql, gte, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
 import { getAIProvider, getModelWithThinking, getModelForProviderName } from "../ai/provider-factory";
@@ -49,8 +49,6 @@ import {
 
 // Debounce and queue system (mirrors WhatsApp implementation)
 const DEBOUNCE_DELAY = 4000; // 4 seconds to match WhatsApp
-const MAX_RETRIES = 3;
-const INITIAL_BACKOFF = 1000;
 
 interface QueueTask {
   conversationId: string;
@@ -61,6 +59,13 @@ interface QueueTask {
 const pendingTimers = new Map<string, NodeJS.Timeout>();
 const consultantQueues = new Map<string, QueueTask[]>();
 const processingConsultants = new Set<string>();
+const inFlightConversations = new Set<string>(); // Guard to prevent duplicate processing
+const pendingReschedule = new Map<string, QueueTask>(); // Track conversations needing reschedule (keyed by composite key)
+
+// Helper to create composite key for reschedule tracking
+function getRescheduleKey(conversationId: string, agentConfigId: string, consultantId: string): string {
+  return `${conversationId}:${agentConfigId}:${consultantId}`;
+}
 
 /**
  * Schedule message processing with debounce and consultant-level queuing
@@ -99,6 +104,22 @@ async function enqueueInstagramProcessing(
 ): Promise<void> {
   console.log(`📥 [INSTAGRAM ENQUEUE] Adding to queue: conversation ${conversationId} for consultant ${consultantId}`);
 
+  // Check if this conversation is already being processed
+  // If so, mark for reschedule after current run completes to pick up new messages
+  if (inFlightConversations.has(conversationId)) {
+    const rescheduleKey = getRescheduleKey(conversationId, agentConfigId, consultantId);
+    console.log(`⏭️ [INSTAGRAM ENQUEUE] Conversation ${conversationId} already in-flight, marking for reschedule`);
+    pendingReschedule.set(rescheduleKey, { conversationId, agentConfigId, consultantId });
+    return;
+  }
+
+  // Check if this conversation is already queued - skip if so
+  const existingQueue = consultantQueues.get(consultantId);
+  if (existingQueue && existingQueue.some(t => t.conversationId === conversationId)) {
+    console.log(`⏭️ [INSTAGRAM ENQUEUE] Conversation ${conversationId} already in queue, skipping`);
+    return;
+  }
+
   // Add to consultant's queue
   if (!consultantQueues.has(consultantId)) {
     console.log(`🆕 [INSTAGRAM ENQUEUE] Creating new queue for consultant ${consultantId}`);
@@ -135,14 +156,37 @@ async function processInstagramConsultantQueue(consultantId: string): Promise<vo
       const task = queue.shift();
       if (!task) break;
 
+      // Mark conversation as in-flight to prevent duplicate processing
+      inFlightConversations.add(task.conversationId);
+
       try {
-        await processInstagramConversationWithRetry(task.conversationId, task.agentConfigId, task.consultantId);
+        await processInstagramConversation(task.conversationId, task.agentConfigId, task.consultantId);
       } catch (error: any) {
-        console.error(`❌ [INSTAGRAM] Failed to process messages for conversation ${task.conversationId} after retries`);
+        console.error(`❌ [INSTAGRAM] Failed to process messages for conversation ${task.conversationId}`);
         console.error(`   Error type: ${error?.name || 'Unknown'}`);
         console.error(`   Error message: ${error?.message || error}`);
         if (error?.stack) {
           console.error(`   Stack trace:\n${error.stack}`);
+        }
+      } finally {
+        // Release conversation from in-flight guard
+        inFlightConversations.delete(task.conversationId);
+
+        // Check if there was a reschedule request during processing
+        const rescheduleKey = getRescheduleKey(task.conversationId, task.agentConfigId, task.consultantId);
+        const rescheduleTask = pendingReschedule.get(rescheduleKey);
+        if (rescheduleTask) {
+          console.log(`🔄 [INSTAGRAM QUEUE] Reschedule detected for ${task.conversationId}, re-enqueueing`);
+          pendingReschedule.delete(rescheduleKey);
+          // Re-enqueue via the normal path to ensure proper processing
+          // Use setImmediate to avoid blocking the current queue iteration
+          setImmediate(() => {
+            enqueueInstagramProcessing(
+              rescheduleTask.conversationId,
+              rescheduleTask.agentConfigId,
+              rescheduleTask.consultantId
+            );
+          });
         }
       }
     }
@@ -151,36 +195,6 @@ async function processInstagramConsultantQueue(consultantId: string): Promise<vo
   }
 }
 
-async function processInstagramConversationWithRetry(
-  conversationId: string,
-  agentConfigId: string,
-  consultantId: string,
-  retryCount = 0
-): Promise<void> {
-  try {
-    await processInstagramConversation(conversationId, agentConfigId, consultantId);
-  } catch (error: any) {
-    // Check if error is DB-related
-    const errorCode = typeof error?.code === 'string' ? error.code : String(error?.code || '');
-    const isDbError = error?.message?.includes("connection") ||
-      error?.message?.includes("timeout") ||
-      error?.message?.includes("pool") ||
-      errorCode.includes("ECONNREFUSED");
-
-    if (isDbError && retryCount < MAX_RETRIES) {
-      const backoffTime = INITIAL_BACKOFF * Math.pow(2, retryCount);
-      console.warn(
-        `⚠️ [INSTAGRAM] DB error, retrying in ${backoffTime}ms (attempt ${retryCount + 1}/${MAX_RETRIES}):`,
-        error.message
-      );
-
-      await new Promise((resolve) => setTimeout(resolve, backoffTime));
-      return processInstagramConversationWithRetry(conversationId, agentConfigId, consultantId, retryCount + 1);
-    }
-
-    throw error;
-  }
-}
 
 /**
  * Process a conversation - main entry point
@@ -192,6 +206,9 @@ async function processInstagramConversation(
 ): Promise<void> {
   const startTime = Date.now();
   console.log(`\n🔄 [INSTAGRAM] Processing conversation ${conversationId}`);
+
+  // Hoisted for catch block access
+  let batchMessageIds: string[] = [];
 
   try {
     // Check if window is still open
@@ -220,6 +237,9 @@ async function processInstagramConversation(
     }
 
     console.log(`📬 [INSTAGRAM] Found ${pendingMessages.length} pending message(s)`);
+
+    // Extract IDs for batch-scoped processing (critical for mid-run message handling)
+    batchMessageIds = pendingMessages.map(m => m.id);
 
     // Get conversation and config
     const [conversation] = await db
@@ -470,14 +490,20 @@ async function processInstagramConversation(
       }
     }
 
-    // Mark pending messages as processed
-    await markPendingMessagesProcessed(conversationId);
+    // Mark only the batch messages we actually processed (not any that arrived mid-run)
+    await markPendingMessagesProcessed(conversationId, batchMessageIds);
 
     const duration = Date.now() - startTime;
     console.log(`✅ [INSTAGRAM] Processed conversation ${conversationId} in ${duration}ms`);
   } catch (error) {
     console.error(`❌ [INSTAGRAM] Error processing conversation ${conversationId}:`, error);
-    await markPendingMessagesProcessed(conversationId);
+    // Leave messages pending - they will be retried on next message or reschedule
+    // The 24h Instagram window provides natural expiration for stuck messages
+    // Schedule a retry after a delay to give transient issues time to resolve
+    setTimeout(() => {
+      console.log(`🔄 [INSTAGRAM] Auto-retry for conversation ${conversationId} after error`);
+      scheduleInstagramMessageProcessing(conversationId, agentConfigId, consultantId);
+    }, 30000); // 30 second delay before retry
   }
 }
 
@@ -1193,17 +1219,30 @@ async function sendInstagramResponse(
 
 /**
  * Mark pending messages as processed
+ * @param conversationId - The conversation ID
+ * @param messageIds - Optional array of specific message IDs to mark. If not provided, marks all pending messages.
  */
-async function markPendingMessagesProcessed(conversationId: string): Promise<void> {
-  await db
-    .update(instagramPendingMessages)
-    .set({ processedAt: new Date() })
-    .where(
-      and(
-        eq(instagramPendingMessages.conversationId, conversationId),
-        isNull(instagramPendingMessages.processedAt)
-      )
-    );
+async function markPendingMessagesProcessed(conversationId: string, messageIds?: string[]): Promise<void> {
+  if (messageIds && messageIds.length > 0) {
+    // Mark only specific messages (batch-scoped) using Drizzle's inArray for proper SQL
+    await db
+      .update(instagramPendingMessages)
+      .set({ processedAt: new Date() })
+      .where(
+        inArray(instagramPendingMessages.id, messageIds)
+      );
+  } else {
+    // Mark all pending messages (fallback for window closed)
+    await db
+      .update(instagramPendingMessages)
+      .set({ processedAt: new Date() })
+      .where(
+        and(
+          eq(instagramPendingMessages.conversationId, conversationId),
+          isNull(instagramPendingMessages.processedAt)
+        )
+      );
+  }
 }
 
 /**
