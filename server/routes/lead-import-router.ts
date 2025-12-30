@@ -316,7 +316,6 @@ router.post(
         uploadedFilePath,
         columnMappings,
         settings = {},
-        rows,
       } = req.body;
       
       if (!columnMappings || !columnMappings.phoneNumber) {
@@ -326,12 +325,67 @@ router.post(
         });
       }
       
-      if (!rows || !Array.isArray(rows) || rows.length === 0) {
+      // Read rows from file source instead of expecting them in request body
+      let rows: Record<string, any>[] = [];
+      
+      if (uploadedFilePath) {
+        // Re-read the uploaded file
+        const fs = await import('fs');
+        if (!fs.existsSync(uploadedFilePath)) {
+          return res.status(400).json({
+            success: false,
+            error: "File caricato non trovato. Riprova il caricamento."
+          });
+        }
+        
+        const fileExt = path.extname(uploadedFilePath).toLowerCase();
+        if (fileExt === '.csv') {
+          const csvContent = fs.readFileSync(uploadedFilePath, 'utf-8');
+          const parsed = parseCsvData(csvContent);
+          rows = parsed.rows;
+        } else {
+          const parsed = parseExcelFile(uploadedFilePath);
+          rows = parsed.rows;
+        }
+      } else if (googleSheetUrl) {
+        // Re-fetch Google Sheets data
+        const sheetIdMatch = googleSheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (!sheetIdMatch) {
+          return res.status(400).json({
+            success: false,
+            error: "URL Google Sheets non valido"
+          });
+        }
+        
+        const sheetId = sheetIdMatch[1];
+        const csvExportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+        
+        const response = await fetch(csvExportUrl);
+        if (!response.ok) {
+          return res.status(400).json({
+            success: false,
+            error: "Impossibile accedere al foglio Google Sheets."
+          });
+        }
+        
+        const csvContent = await response.text();
+        const parsed = parseCsvData(csvContent);
+        rows = parsed.rows;
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: "Nessuna fonte dati specificata (file o Google Sheets)"
+        });
+      }
+      
+      if (rows.length === 0) {
         return res.status(400).json({
           success: false,
           error: "Nessuna riga da importare"
         });
       }
+      
+      console.log(`📥 [LEAD IMPORT] Processing ${rows.length} rows from ${uploadedFilePath ? 'file' : 'Google Sheets'}`)
       
       const [importJob] = await db.insert(schema.leadImportJobs).values({
         consultantId,

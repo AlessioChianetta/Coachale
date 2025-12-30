@@ -277,7 +277,6 @@ export function LeadImportWizard({
               campaignId: importSettings.campaignId || null,
               defaultContactFrequency: importSettings.defaultContactFrequency,
             },
-            rows: allRows.length > 0 ? allRows : previewData.previewRows,
           }),
         }
       );
