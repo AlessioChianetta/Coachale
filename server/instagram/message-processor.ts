@@ -40,6 +40,9 @@ import {
   extractBookingDataFromConversation,
   mergeWithAccumulatedState,
   markExtractionStateCompleted,
+  validateBookingData,
+  createBookingRecord,
+  createGoogleCalendarBooking,
   ConversationMessage,
   BookingExtractionResult
 } from "../booking/booking-service";
@@ -255,6 +258,7 @@ async function processInstagramConversation(
         const bookingAiProvider = await getAIProvider(config.consultantId, config.consultantId);
         
         // Extract booking data using centralized service with accumulator pattern
+        // Use publicConversationId for Instagram to leverage existing accumulator state system
         const extracted = await extractBookingDataFromConversation(
           conversationMessages,
           undefined, // No existing booking
@@ -262,7 +266,7 @@ async function processInstagramConversation(
           'Europe/Rome',
           undefined, // providerName
           {
-            instagramConversationId: conversation.id,
+            publicConversationId: conversation.id, // Use publicConversationId for Instagram accumulator
             consultantId: config.consultantId,
           }
         );
@@ -281,49 +285,76 @@ async function processInstagramConversation(
           console.log(`✔️ Complete: ${extracted.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
           console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           
-          // If we have all required data, create the booking
-          if (extracted.isConfirming && extracted.hasAllData && extracted.date && extracted.time) {
-            console.log('\n🎉 [INSTAGRAM BOOKING] All data collected! Creating booking...');
+          // If user is confirming, validate and create booking using centralized service
+          if (extracted.isConfirming && extracted.date && extracted.time && extracted.email) {
+            console.log('\n🎉 [INSTAGRAM BOOKING] User is confirming! Validating data...');
             
-            // Build client name from Instagram profile or extracted name
-            const clientName = extracted.name || 
-              conversation.instagramName || 
-              (conversation.instagramUsername ? `@${conversation.instagramUsername}` : 'Instagram User');
+            // Validate booking data using centralized service
+            const validation = await validateBookingData(
+              extracted as BookingExtractionResult,
+              config.consultantId,
+              'Europe/Rome',
+              'instagram'
+            );
             
-            // Create booking record
-            const [newBooking] = await db
-              .insert(appointmentBookings)
-              .values({
-                id: nanoid(),
-                consultantId: config.consultantId,
-                agentConfigId: linkedAgent.id,
-                clientName: clientName,
-                leadEmail: extracted.email || null,
-                leadPhone: extracted.phone || null,
-                appointmentDate: extracted.date,
-                appointmentTime: extracted.time,
-                status: 'proposed',
-                source: 'instagram',
-                instagramUserId: conversation.instagramUserId,
-                notes: `Prenotato via Instagram DM da @${conversation.instagramUsername || 'unknown'}`,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              })
-              .returning();
-            
-            console.log(`✅ [INSTAGRAM BOOKING] Created booking: ${newBooking.id}`);
-            console.log(`   📅 Date: ${newBooking.appointmentDate} at ${newBooking.appointmentTime}`);
-            console.log(`   👤 Client: ${newBooking.clientName}`);
-            console.log(`   📱 Instagram ID: ${newBooking.instagramUserId}`);
-            
-            // Mark extraction state as completed
-            await markExtractionStateCompleted(null, conversation.id);
+            if (!validation.valid) {
+              console.log(`❌ [INSTAGRAM BOOKING] Validation failed: ${validation.reason}`);
+            } else {
+              // Build client name from Instagram profile or extracted name
+              const clientName = extracted.name || 
+                conversation.instagramName || 
+                (conversation.instagramUsername ? `@${conversation.instagramUsername}` : 'Instagram User');
+              
+              // Create booking using centralized service
+              const newBooking = await createBookingRecord(
+                config.consultantId,
+                null, // No WhatsApp conversationId
+                {
+                  date: extracted.date,
+                  time: extracted.time,
+                  email: extracted.email,
+                  phone: extracted.phone || null,
+                  name: clientName,
+                },
+                'instagram',
+                null, // No publicConversationId
+                {
+                  instagramUserId: conversation.instagramUserId,
+                  instagramConversationId: conversation.id,
+                  agentConfigId: linkedAgent.id,
+                }
+              );
+              
+              if (newBooking) {
+                console.log(`✅ [INSTAGRAM BOOKING] Created booking: ${newBooking.id}`);
+                console.log(`   📅 Date: ${newBooking.appointmentDate} at ${newBooking.appointmentTime}`);
+                console.log(`   👤 Client: ${newBooking.clientName}`);
+                console.log(`   📱 Instagram ID: ${conversation.instagramUserId}`);
+                
+                // Try to create Google Calendar event if configured
+                try {
+                  const calendarResult = await createGoogleCalendarBooking(
+                    config.consultantId,
+                    newBooking,
+                    extracted.email,
+                    linkedAgent.id
+                  );
+                  if (calendarResult.googleEventId) {
+                    console.log(`   📅 Google Calendar event: ${calendarResult.googleEventId}`);
+                  }
+                } catch (calError) {
+                  console.log(`   ⚠️ Google Calendar not configured or error: ${calError}`);
+                }
+                
+                // Mark extraction state as completed (null for WhatsApp conversationId, Instagram uses publicConversationId)
+                await markExtractionStateCompleted(null, conversation.id);
+              }
+            }
           } else if (extracted.isConfirming) {
-            console.log('⏳ [INSTAGRAM BOOKING] User is confirming but missing some data:');
+            console.log('⏳ [INSTAGRAM BOOKING] User is confirming but missing required data:');
             if (!extracted.date) console.log('   ❌ Missing: date');
             if (!extracted.time) console.log('   ❌ Missing: time');
-            if (!extracted.email) console.log('   ❌ Missing: email');
-            if (!extracted.phone) console.log('   ❌ Missing: phone');
+            if (!extracted.email) console.log('   ❌ Missing: email (required for Instagram)');
           }
         }
       } catch (bookingError) {

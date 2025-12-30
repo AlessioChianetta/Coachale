@@ -784,12 +784,12 @@ export async function validateBookingData(
   extracted: BookingExtractionResult,
   consultantId: string,
   timezone: string = "Europe/Rome",
-  source: 'whatsapp' | 'public_link' = 'whatsapp'
+  source: 'whatsapp' | 'public_link' | 'instagram' = 'whatsapp'
 ): Promise<ValidationResult> {
   console.log(`\n🔍 [BOOKING SERVICE] Validating booking data for consultant ${consultantId} (source: ${source})`);
 
   // Per WhatsApp richiedi tutti i dati incluso phone
-  // Per public_link richiedi solo date, time, email
+  // Per public_link e instagram richiedi solo date, time, email
   if (source === 'whatsapp' && !extracted.hasAllData) {
     return { valid: false, reason: "Dati incompleti. Mancano informazioni obbligatorie." };
   }
@@ -798,7 +798,7 @@ export async function validateBookingData(
     return { valid: false, reason: "Data e/o ora non specificati." };
   }
 
-  // Phone is required for WhatsApp but optional for public links
+  // Phone is required for WhatsApp but optional for public links and Instagram
   if (source === 'whatsapp' && !extracted.phone) {
     return { valid: false, reason: "Numero di telefono non fornito." };
   }
@@ -828,8 +828,9 @@ export async function createBookingRecord(
   consultantId: string,
   conversationId: string | null,
   data: BookingData,
-  source: 'whatsapp' | 'public_link',
-  publicConversationId?: string | null
+  source: 'whatsapp' | 'public_link' | 'instagram',
+  publicConversationId?: string | null,
+  instagramData?: { instagramUserId?: string | null; instagramConversationId?: string | null; agentConfigId?: string | null }
 ): Promise<typeof appointmentBookings.$inferSelect | null> {
   console.log(`\n💾 [BOOKING SERVICE] Creating booking record`);
   console.log(`   Consultant: ${consultantId}`);
@@ -862,22 +863,32 @@ export async function createBookingRecord(
     // Normalize phone: empty string becomes null
     const normalizedPhone = data.phone && data.phone.trim() !== '' ? data.phone.trim() : null;
     
+    // Build values object based on source
+    const bookingValues: any = {
+      consultantId,
+      conversationId: source === 'whatsapp' ? conversationId : null,
+      publicConversationId: source === 'public_link' ? (publicConversationId || conversationId) : null,
+      source: source,
+      clientPhone: normalizedPhone,
+      clientEmail: data.email,
+      clientName: data.name || data.clientName || null,
+      appointmentDate: data.date,
+      appointmentTime: data.time,
+      appointmentEndTime: formattedEndTime,
+      status: 'confirmed',
+      confirmedAt: new Date(),
+    };
+    
+    // Add Instagram-specific fields
+    if (source === 'instagram' && instagramData) {
+      bookingValues.instagramUserId = instagramData.instagramUserId || null;
+      bookingValues.agentConfigId = instagramData.agentConfigId || null;
+      console.log(`   Instagram User ID: ${instagramData.instagramUserId || 'N/A'}`);
+    }
+    
     const [booking] = await db
       .insert(appointmentBookings)
-      .values({
-        consultantId,
-        conversationId: source === 'whatsapp' ? conversationId : null,
-        publicConversationId: source === 'public_link' ? (publicConversationId || conversationId) : null,
-        source: source,
-        clientPhone: normalizedPhone,
-        clientEmail: data.email,
-        clientName: data.name || data.clientName || null,
-        appointmentDate: data.date,
-        appointmentTime: data.time,
-        appointmentEndTime: formattedEndTime,
-        status: 'confirmed',
-        confirmedAt: new Date(),
-      })
+      .values(bookingValues)
       .returning();
 
     console.log(`   ✅ Booking created with ID: ${booking.id}`);
