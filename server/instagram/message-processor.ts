@@ -20,8 +20,10 @@ import {
   consultantInstagramConfig,
   consultantWhatsappConfig,
   users,
+  whatsappBookings,
+  whatsappAgentAvailability,
 } from "../../shared/schema";
-import { eq, isNull, and, desc, asc, sql } from "drizzle-orm";
+import { eq, isNull, and, desc, asc, sql, gte } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
 import { getAIProvider, GEMINI_3_MODEL } from "../ai/provider-factory";
@@ -29,6 +31,8 @@ import { MetaClient, createMetaClient } from "./meta-client";
 import { WindowTracker, checkWindowStatus } from "./window-tracker";
 import { decryptForConsultant } from "../encryption";
 import { nanoid } from "nanoid";
+import { getMandatoryBookingBlock } from "../whatsapp/instruction-blocks";
+import { proposedAppointmentSlots } from "../../shared/schema";
 
 const processingQueue = new Map<string, NodeJS.Timeout>();
 const BATCH_DELAY_MS = 3000;
@@ -364,7 +368,83 @@ ${triggerContext}
 5. Hai solo 24h dalla risposta dell'utente per rispondere. Se non risponde, non puoi contattarlo.
 `;
 
-    const fullSystemPrompt = systemPrompt + instagramContext;
+    // Build booking context if booking is enabled
+    let bookingBlock = "";
+    if (agentConfigForAI.bookingEnabled && linkedAgent) {
+      try {
+        console.log(`📅 [INSTAGRAM] Loading booking context for agent ${linkedAgent.id}...`);
+        
+        // Check for existing appointment for this Instagram user
+        const existingBooking = await db
+          .select()
+          .from(whatsappBookings)
+          .where(
+            and(
+              eq(whatsappBookings.agentId, linkedAgent.id),
+              eq(whatsappBookings.status, "confirmed"),
+              gte(whatsappBookings.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+            )
+          )
+          .limit(1);
+        
+        // Get available slots from internal API
+        let availableSlots: any[] = [];
+        try {
+          const slotsResponse = await fetch(`http://localhost:5000/api/whatsapp/agents/${linkedAgent.id}/slots?days=7`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (slotsResponse.ok) {
+            const slotsData = await slotsResponse.json();
+            availableSlots = slotsData.slots || [];
+            console.log(`📅 [INSTAGRAM] Found ${availableSlots.length} available slots`);
+          } else {
+            console.log(`⚠️ [INSTAGRAM] Slots API returned ${slotsResponse.status}`);
+          }
+        } catch (e) {
+          console.log(`⚠️ [INSTAGRAM] Could not load calendar slots:`, e);
+        }
+        
+        // Format today's date
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('it-IT', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Rome',
+          hour12: false
+        });
+        const formattedToday = formatter.format(now);
+        
+        // Build booking block only if we have slots or existing appointment
+        if (availableSlots.length > 0 || existingBooking[0]) {
+          bookingBlock = getMandatoryBookingBlock({
+            existingAppointment: existingBooking[0] ? {
+              id: existingBooking[0].id,
+              date: existingBooking[0].appointmentDate || "",
+              time: existingBooking[0].appointmentTime || "",
+              email: existingBooking[0].leadEmail || "",
+              phone: existingBooking[0].leadPhone || ""
+            } : undefined,
+            availableSlots: availableSlots.slice(0, 6),
+            timezone: 'Europe/Rome',
+            formattedToday
+          });
+          
+          if (existingBooking[0]) {
+            console.log(`✅ [INSTAGRAM] Found existing booking: ${existingBooking[0].appointmentDate} ${existingBooking[0].appointmentTime}`);
+          }
+        }
+      } catch (e) {
+        console.log(`⚠️ [INSTAGRAM] Error loading booking context:`, e);
+      }
+    }
+
+    const fullSystemPrompt = systemPrompt + instagramContext + bookingBlock;
 
     // Get AI provider and generate response (use consultantId for both params like WhatsApp)
     const aiProvider = await getAIProvider(consultant.id, consultant.id);
