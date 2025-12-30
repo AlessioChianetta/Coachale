@@ -114,29 +114,34 @@ export class MetaClient {
       };
     }
 
-    // Build request body
-    const requestBody: MetaSendMessageRequest = {
+    // Build request body - Instagram doesn't need messaging_type (unlike Messenger)
+    const requestBody: Record<string, any> = {
       recipient: { id: recipientId },
       message,
-      messaging_type: options?.useHumanAgentTag ? "MESSAGE_TAG" : "RESPONSE",
     };
 
+    // Only add HUMAN_AGENT tag if explicitly requested (for out-of-window messages)
     if (options?.useHumanAgentTag) {
+      requestBody.messaging_type = "MESSAGE_TAG";
       requestBody.tag = "HUMAN_AGENT";
     }
 
+    const endpoint = `${MESSENGER_GRAPH_API_BASE}/${this.instagramPageId}/messages`;
+    
+    console.log(`📤 [INSTAGRAM API] Sending message:`);
+    console.log(`   Endpoint: ${endpoint}`);
+    console.log(`   Recipient ID: ${recipientId}`);
+    console.log(`   Body: ${JSON.stringify(requestBody, null, 2)}`);
+
     try {
-      const response = await fetch(
-        `${MESSENGER_GRAPH_API_BASE}/${this.instagramPageId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.pageAccessToken}`,
-          },
-          body: JSON.stringify(requestBody),
-        }
-      );
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.pageAccessToken}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
 
       // Increment rate limit counter
       this.incrementRateLimit();

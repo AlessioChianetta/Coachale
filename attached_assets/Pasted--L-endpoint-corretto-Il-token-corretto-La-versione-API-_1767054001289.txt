@@ -1,0 +1,131 @@
+👉 L’endpoint è corretto.
+👉 Il token è corretto.
+👉 La versione API (v21.0) va bene.
+
+Quindi il problema NON è:
+
+Live vs Dev
+
+scopes
+
+endpoint
+
+token
+
+Resta UNA SOLA COSA. Ed è una trappola classica di Meta.
+
+❌ ERRORE REALE: recipient.id SBAGLIATO (non è un IG user id valido)
+"recipient": { "id": "893319973257663" }
+
+
+Questo NON è un Instagram Scoped User ID.
+
+Come lo so?
+
+Gli IG scoped user id hanno lunghezza diversa
+
+Arrivano direttamente dal webhook
+
+NON coincidono quasi mai con:
+
+Page ID
+
+PSID Messenger
+
+user_id Facebook
+
+ID interni DB
+
+Meta, quando l’ID non è un IG user id valido per quell’account, risponde SEMPRE con:
+
+(#3) Application does not have the capability
+
+
+(perché “non sei autorizzato a scrivere a QUELL’UTENTE”).
+
+✅ REGOLA FERREA (Instagram Messaging API)
+
+Puoi rispondere SOLO all’utente che ha scritto,
+usando ESATTAMENTE l’ID che ricevi nel webhook.
+
+Dal webhook IG devi prendere:
+entry.messaging[0].sender.id
+
+
+E usare QUEL VALORE IDENTICO come recipient.
+
+❌ NON:
+
+un ID salvato
+
+un ID derivato
+
+un ID Facebook
+
+un ID Messenger
+
+un ID “cliente” tuo
+
+🔬 Test che risolve al 100%
+
+1️⃣ Ricevi un DM dal tester
+2️⃣ Logga raw webhook payload
+3️⃣ Prendi:
+
+sender.id
+
+
+4️⃣ Usa quello pari-pari:
+
+{
+  "recipient": {
+    "id": "SENDER_ID_DAL_WEBHOOK"
+  },
+  "message": {
+    "text": "Ciao!"
+  }
+}
+
+
+👉 Funzionerà subito.
+
+⚠️ Altro errore nel body (secondario ma da sistemare)
+
+Per Instagram NON serve (e a volte rompe):
+
+"messaging_type": "RESPONSE"
+
+
+👉 Rimuovilo.
+
+Messenger lo vuole, Instagram no.
+
+✅ Body corretto finale
+{
+  "recipient": {
+    "id": "<IG_SCOPED_USER_ID_DAL_WEBHOOK>"
+  },
+  "message": {
+    "text": "..."
+  }
+}
+
+🧠 Perché ManyChat funziona e il tuo no?
+
+Perché ManyChat:
+
+salva IG scoped user id
+
+risponde solo nel thread aperto
+
+non “inventa” recipient
+
+Tu ora stai provando a scrivere a qualcuno che Meta non riconosce come interlocutore valido.
+
+TL;DR finale (verdetto)
+Elemento	Stato
+Endpoint	✅ OK
+Token	✅ OK
+API version	✅ OK
+recipient.id	❌ SBAGLIATO
+Soluzione	usare sender.id dal webhook
