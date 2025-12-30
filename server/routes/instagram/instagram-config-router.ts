@@ -415,18 +415,27 @@ router.post("/config/:configId/sync-ice-breakers", authenticateToken, async (req
 
     // Decrypt token
     let accessToken = config.pageAccessToken;
+    console.log(`[INSTAGRAM] Decrypting token for sync-ice-breakers, encryptionSalt available: ${!!encryptionSalt}`);
     if (encryptionSalt) {
       try {
         accessToken = decryptForConsultant(config.pageAccessToken, encryptionSalt);
+        console.log(`[INSTAGRAM] Decrypted with per-consultant key, token starts with: ${accessToken.substring(0, 10)}...`);
       } catch (e) {
+        console.log(`[INSTAGRAM] Per-consultant decryption failed, trying legacy...`, e);
         try {
           accessToken = decrypt(config.pageAccessToken);
-        } catch (e2) {}
+          console.log(`[INSTAGRAM] Decrypted with legacy key`);
+        } catch (e2) {
+          console.log(`[INSTAGRAM] Legacy decryption also failed`, e2);
+        }
       }
     } else {
       try {
         accessToken = decrypt(config.pageAccessToken);
-      } catch (e) {}
+        console.log(`[INSTAGRAM] Decrypted with legacy key (no salt)`);
+      } catch (e) {
+        console.log(`[INSTAGRAM] Legacy decryption failed (no salt)`, e);
+      }
     }
 
     const iceBreakers = config.iceBreakers || [];
@@ -705,11 +714,12 @@ router.post("/config/test-connection", authenticateToken, async (req: AuthReques
 });
 
 /**
+ * POST /api/instagram/config/subscribe-webhook (singular alias)
  * POST /api/instagram/config/subscribe-webhooks
  * Manually subscribe the Facebook Page to receive Instagram messaging webhooks
  * Use this if subscription failed during OAuth or needs to be re-activated
  */
-router.post("/config/subscribe-webhooks", authenticateToken, async (req: AuthRequest, res: Response) => {
+async function subscribeWebhookHandler(req: AuthRequest, res: Response) {
   try {
     const consultantId = req.user!.id;
     const encryptionSalt = req.user!.encryptionSalt;
@@ -729,26 +739,32 @@ router.post("/config/subscribe-webhooks", authenticateToken, async (req: AuthReq
 
     // Decrypt token
     let accessToken = config.pageAccessToken;
+    console.log(`[INSTAGRAM] Decrypting token for subscribe-webhook, encryptionSalt: ${!!encryptionSalt}`);
     if (encryptionSalt) {
       try {
         accessToken = decryptForConsultant(config.pageAccessToken, encryptionSalt);
+        console.log(`[INSTAGRAM] Decrypted with per-consultant key`);
       } catch (e) {
+        console.log(`[INSTAGRAM] Per-consultant decryption failed, trying legacy...`);
         try {
           accessToken = decrypt(config.pageAccessToken);
+          console.log(`[INSTAGRAM] Decrypted with legacy key`);
         } catch (e2) {
-          // Token might not be encrypted
+          console.log(`[INSTAGRAM] Legacy decryption also failed`);
         }
       }
     } else {
       try {
         accessToken = decrypt(config.pageAccessToken);
+        console.log(`[INSTAGRAM] Decrypted with legacy key (no salt)`);
       } catch (e) {
-        // Token might not be encrypted
+        console.log(`[INSTAGRAM] Legacy decryption failed (no salt)`);
       }
     }
 
     // Subscribe the Facebook Page to messaging webhooks
     const subscribeUrl = `https://graph.facebook.com/v21.0/${config.facebookPageId}/subscribed_apps`;
+    console.log(`[INSTAGRAM] Subscribing to webhooks: ${subscribeUrl}`);
     const subscribeRes = await fetch(subscribeUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -757,32 +773,45 @@ router.post("/config/subscribe-webhooks", authenticateToken, async (req: AuthReq
         subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads,comments",
       }).toString(),
     });
-    const subscribeData = await subscribeRes.json() as any;
+    
+    const responseText = await subscribeRes.text();
+    console.log(`[INSTAGRAM] Subscribe webhook response: ${responseText}`);
+    
+    let subscribeData: any;
+    try {
+      subscribeData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(`[INSTAGRAM] Failed to parse response as JSON:`, responseText);
+      return res.status(500).json({
+        success: false,
+        error: `Meta API returned invalid response: ${responseText.substring(0, 200)}`
+      });
+    }
 
     if (subscribeData.success) {
-      console.log(`✅ [INSTAGRAM] Manually subscribed page ${config.facebookPageId} to webhooks`);
       return res.json({
         success: true,
-        message: "Subscription attivata con successo! I messaggi reali verranno ora inoltrati al webhook.",
-        facebookPageId: config.facebookPageId,
-        instagramUsername: config.instagramUsername,
+        message: "Webhook sottoscritto con successo (inclusi commenti)",
+        fields: "messages,messaging_postbacks,message_reactions,message_reads,comments"
       });
     } else {
-      console.error(`❌ [INSTAGRAM] Failed to subscribe:`, subscribeData);
+      console.error(`[INSTAGRAM] Webhook subscription failed:`, subscribeData);
       return res.status(400).json({
         success: false,
-        error: subscribeData.error?.message || "Subscription fallita. Verifica i permessi dell'app.",
-        details: subscribeData,
+        error: subscribeData.error?.message || "Subscription failed"
       });
     }
   } catch (error) {
-    console.error("Error subscribing to webhooks:", error);
+    console.error("[INSTAGRAM] Error subscribing to webhooks:", error);
     return res.status(500).json({ 
       success: false, 
-      error: "Errore durante l'attivazione della subscription" 
+      error: "Failed to subscribe to webhooks" 
     });
   }
-});
+}
+
+router.post("/config/subscribe-webhook", authenticateToken, subscribeWebhookHandler);
+router.post("/config/subscribe-webhooks", authenticateToken, subscribeWebhookHandler);
 
 /**
  * GET /api/instagram/config/webhook-status
