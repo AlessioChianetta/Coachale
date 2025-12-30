@@ -563,6 +563,28 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
     }
   });
 
+  // Query for webhook status - scoped to specific config
+  const { data: webhookStatus, refetch: refetchWebhookStatus, isLoading: isLoadingWebhookStatus } = useQuery<{ 
+    success: boolean; 
+    isSubscribed: boolean; 
+    subscriptions: any[];
+    configId?: string;
+  }>({
+    queryKey: ["/api/instagram/config", selectedInstagramConfigId, "webhook-status"],
+    queryFn: async () => {
+      if (!selectedInstagramConfigId) {
+        return { success: false, isSubscribed: false, subscriptions: [] };
+      }
+      const res = await fetch(`/api/instagram/config/${selectedInstagramConfigId}/webhook-status`, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        return { success: false, isSubscribed: false, subscriptions: [] };
+      }
+      return res.json();
+    },
+    staleTime: 30000,
+    enabled: !!selectedInstagramConfigId,
+  });
+
   // Mutation for subscribing to webhook with comments field
   const subscribeWebhook = useMutation({
     mutationFn: async () => {
@@ -579,8 +601,9 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
     onSuccess: (data) => {
       toast({
         title: "Webhook Aggiornato",
-        description: data.message || "Webhook sottoscritto con successo (inclusi commenti)"
+        description: data.message || "Webhook sottoscritto con successo"
       });
+      refetchWebhookStatus();
     },
     onError: (error: any) => {
       toast({
@@ -1441,6 +1464,62 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                                 )}
                               </div>
                               
+                              {/* Webhook Status - Show when comment_to_dm is enabled */}
+                              {currentConfig.commentToDmEnabled && (
+                                <div className={cn(
+                                  "p-2 rounded border",
+                                  isLoadingWebhookStatus 
+                                    ? "bg-slate-50/60 border-slate-200"
+                                    : webhookStatus?.isSubscribed 
+                                      ? "bg-green-50/60 border-green-200" 
+                                      : "bg-amber-50/60 border-amber-200"
+                                )}>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      {isLoadingWebhookStatus ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <Loader2 className="h-3 w-3 animate-spin text-slate-500" />
+                                          <span className="text-xs text-slate-500">Verifica webhook...</span>
+                                        </div>
+                                      ) : webhookStatus?.isSubscribed ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                          <span className="text-xs font-medium text-green-700">Webhook Attivo</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1.5">
+                                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                          <span className="text-xs font-medium text-amber-700">Webhook Non Attivo</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => subscribeWebhook.mutate()}
+                                      disabled={subscribeWebhook.isPending || isLoadingWebhookStatus}
+                                      className={cn(
+                                        "h-6 px-2 text-xs",
+                                        webhookStatus?.isSubscribed 
+                                          ? "text-green-600 hover:text-green-700 hover:bg-green-100"
+                                          : "text-amber-600 hover:text-amber-700 hover:bg-amber-100"
+                                      )}
+                                      title={webhookStatus?.isSubscribed ? "Ri-sincronizza webhook" : "Attiva webhook"}
+                                    >
+                                      {subscribeWebhook.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <RefreshCw className="h-3 w-3" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 mt-1">
+                                    {webhookStatus?.isSubscribed 
+                                      ? "I messaggi Instagram vengono ricevuti automaticamente"
+                                      : "Clicca per attivare la ricezione dei messaggi"}
+                                  </p>
+                                </div>
+                              )}
                               
                               {/* Dry Run */}
                               <div className="flex items-center justify-between p-2 bg-amber-50/60 rounded border border-amber-200">

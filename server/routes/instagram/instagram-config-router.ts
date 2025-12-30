@@ -835,7 +835,74 @@ router.post("/config/subscribe-webhook", authenticateToken, subscribeWebhookHand
 router.post("/config/subscribe-webhooks", authenticateToken, subscribeWebhookHandler);
 
 /**
- * GET /api/instagram/config/webhook-status
+ * GET /api/instagram/config/:configId/webhook-status
+ * Check webhook subscription status for a specific Instagram configuration
+ */
+router.get("/config/:configId/webhook-status", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const encryptionSalt = req.user!.encryptionSalt;
+    const { configId } = req.params;
+
+    const [config] = await db
+      .select()
+      .from(consultantInstagramConfig)
+      .where(
+        and(
+          eq(consultantInstagramConfig.id, configId),
+          eq(consultantInstagramConfig.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!config || !config.pageAccessToken || !config.facebookPageId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Nessuna configurazione Instagram trovata." 
+      });
+    }
+
+    // Decrypt token
+    let accessToken = config.pageAccessToken;
+    if (encryptionSalt) {
+      try {
+        accessToken = decryptForConsultant(config.pageAccessToken, encryptionSalt);
+      } catch (e) {
+        try {
+          accessToken = decrypt(config.pageAccessToken);
+        } catch (e2) {}
+      }
+    } else {
+      try {
+        accessToken = decrypt(config.pageAccessToken);
+      } catch (e) {}
+    }
+
+    // Get current subscriptions
+    const statusUrl = `https://graph.facebook.com/v21.0/${config.facebookPageId}/subscribed_apps?access_token=${accessToken}`;
+    const statusRes = await fetch(statusUrl);
+    const statusData = await statusRes.json() as any;
+
+    return res.json({
+      success: true,
+      configId: config.id,
+      facebookPageId: config.facebookPageId,
+      instagramPageId: config.instagramPageId,
+      instagramUsername: config.instagramUsername,
+      subscriptions: statusData.data || [],
+      isSubscribed: statusData.data?.length > 0,
+    });
+  } catch (error) {
+    console.error("Error checking webhook status:", error);
+    return res.status(500).json({ 
+      success: false, 
+      error: "Errore durante il controllo dello stato" 
+    });
+  }
+});
+
+/**
+ * GET /api/instagram/config/webhook-status (legacy - gets first config)
  * Check webhook subscription status for the Facebook Page
  */
 router.get("/config/webhook-status", authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -879,6 +946,7 @@ router.get("/config/webhook-status", authenticateToken, async (req: AuthRequest,
 
     return res.json({
       success: true,
+      configId: config.id,
       facebookPageId: config.facebookPageId,
       instagramPageId: config.instagramPageId,
       instagramUsername: config.instagramUsername,
