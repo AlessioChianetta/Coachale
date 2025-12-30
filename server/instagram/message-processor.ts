@@ -299,12 +299,25 @@ async function generateAIResponse(
           instagramPageId: config.instagramPageId,
           isDryRun: config.isDryRun,
         });
-        const profile = await metaClient.getUserProfile(conversation.instagramUserId);
+        const profile = await metaClient.getUserProfile(conversation.instagramUserId) as any;
         if (profile) {
-          userProfileInfo = `
-- Username Instagram: @${profile.username || conversation.instagramUsername || "sconosciuto"}
-- Nome: ${profile.name || "Non disponibile"}`;
-          console.log(`👤 [INSTAGRAM] Fetched profile for ${profile.username || conversation.instagramUserId}`);
+          const profileParts = [
+            `- Username Instagram: @${profile.username || conversation.instagramUsername || "sconosciuto"}`,
+            `- Nome: ${profile.name || "Non disponibile"}`
+          ];
+          
+          // Add biography if available (requires instagram_graph_user_profile permission)
+          if (profile.biography) {
+            profileParts.push(`- Bio del profilo: "${profile.biography}"`);
+          }
+          
+          // Add follower count if available
+          if (profile.follower_count) {
+            profileParts.push(`- Follower: ${profile.follower_count.toLocaleString()}`);
+          }
+          
+          userProfileInfo = '\n' + profileParts.join('\n');
+          console.log(`👤 [INSTAGRAM] Fetched profile for ${profile.username || conversation.instagramUserId}${profile.biography ? ' (with bio)' : ''}`);
         }
       }
     } catch (e) {
@@ -369,6 +382,7 @@ ${triggerContext}
 3. STILE CONVERSAZIONALE: Scrivi come se stessi chattando, non come se scrivessi un'email formale.
 4. UNA DOMANDA ALLA VOLTA: Fai UNA sola domanda per messaggio, non bombardare l'utente.
 5. Hai solo 24h dalla risposta dell'utente per rispondere. Se non risponde, non puoi contattarlo.
+6. USA LE INFO DEL PROFILO: Quando l'utente chiede "sai chi sono?" o simili, USA le informazioni del profilo sopra (username, nome, bio se disponibile) per dimostrare che lo conosci. Es: "Certo @username, vedo dal tuo profilo che..."
 `;
 
     // Build booking context if booking is enabled
