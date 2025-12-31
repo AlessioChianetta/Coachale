@@ -184,24 +184,40 @@ export default function PrivacyPolicy() {
               </p>
               <div className="bg-indigo-50 rounded-lg p-4 space-y-3">
                 <div>
+                  <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">public_profile</code>
+                  <p className="text-slate-600 text-sm mt-1">Accesso alle informazioni di base del tuo profilo Facebook (nome, ID)</p>
+                </div>
+                <div>
                   <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">instagram_basic</code>
-                  <p className="text-slate-600 text-sm mt-1">Accesso alle informazioni di base del tuo account Instagram Business</p>
+                  <p className="text-slate-600 text-sm mt-1">Accesso alle informazioni di base del tuo account Instagram Business (nome utente, ID profilo)</p>
                 </div>
                 <div>
                   <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">instagram_manage_messages</code>
-                  <p className="text-slate-600 text-sm mt-1">Lettura e invio di messaggi diretti per gestire le conversazioni automatizzate</p>
+                  <p className="text-slate-600 text-sm mt-1">Lettura e invio di messaggi diretti, incluse risposte alle storie e menzioni nelle storie</p>
                 </div>
                 <div>
                   <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">instagram_manage_comments</code>
                   <p className="text-slate-600 text-sm mt-1">Gestione commenti e invio di risposte private quando un utente commenta con parole chiave specifiche</p>
                 </div>
                 <div>
+                  <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">pages_show_list</code>
+                  <p className="text-slate-600 text-sm mt-1">Visualizzazione lista delle tue Pagine Facebook per selezionare quella collegata a Instagram</p>
+                </div>
+                <div>
                   <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">pages_messaging</code>
                   <p className="text-slate-600 text-sm mt-1">Invio messaggi tramite la Pagina Facebook collegata al tuo account Instagram</p>
                 </div>
                 <div>
-                  <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">pages_show_list</code>
-                  <p className="text-slate-600 text-sm mt-1">Visualizzazione lista delle tue Pagine Facebook per selezionare quella collegata a Instagram</p>
+                  <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">pages_read_engagement</code>
+                  <p className="text-slate-600 text-sm mt-1">Lettura dei contenuti e engagement (like, commenti) pubblicati sulla tua Pagina</p>
+                </div>
+                <div>
+                  <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">pages_manage_metadata</code>
+                  <p className="text-slate-600 text-sm mt-1">Gestione delle impostazioni webhook per ricevere notifiche in tempo reale</p>
+                </div>
+                <div>
+                  <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">business_management</code>
+                  <p className="text-slate-600 text-sm mt-1">Accesso al Business Manager per gestire le risorse aziendali collegate</p>
                 </div>
               </div>
               <p className="text-slate-600 leading-relaxed mt-4">

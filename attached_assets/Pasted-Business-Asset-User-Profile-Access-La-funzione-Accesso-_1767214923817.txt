@@ -1,0 +1,169 @@
+Business Asset User Profile Access
+La funzione Accesso al profilo utente della risorsa business consente alla tua app di leggere i campi utente relativi agli utenti che interagiscono con le tue risorse business, come ID, ids_for_business, nome e immagine.
+…
+Descrizione completa
+Found in 2 use cases
+Requisiti
+Human Agent
+La funzione Human Agent consente alla tua app di avere un agente umano che risponde ai messaggi degli utenti con il tag human_agent entro 7 giorni dal messaggio dell'utente.
+…
+Descrizione completa
+Requisiti
+Instagram Public Content Access
+La funzione Accesso ai contenuti pubblici di Instagram consente alla tua app di accedere agli endpoint di ricerca degli hashtag dell'API Instagram Graph.
+…
+Descrizione completa
+Requisiti
+ads_management
+L'autorizzazione ads_management consente alla tua app di leggere e gestire gli account pubblicitari che amministra o per cui ha ottenuto l'accesso da parte del titolare dell'account pubblicitario.
+…
+Descrizione completa
+Found in 2 use cases
+Requisiti
+ads_read
+L'autorizzazione ads_read concede alla tua app l'accesso all' API Ads Insights per estrarre le informazioni dei report pubblicitari per gli account pubblicitari che possiedi o ai quali ti è stato concesso l'accesso dal proprietario o dai proprietari degli account pubblicitari tramite questa autorizzazione. Questa autorizzazione concede inoltre alla tua app l'accesso all' API Server-Side per consentire agli inserzionisti di inviare eventi web dai loro server direttamente a Facebook.
+…
+Descrizione completa
+Requisiti
+business_management
+L'autorizzazione business_management consente alla tua app di eseguire operazioni di lettura e scrittura con l'API Business Manager.
+…
+Descrizione completa
+Found in 3 use cases
+Requisiti
+26
+Pronta per il test
+catalog_management
+L'autorizzazione catalog_management consente alla tua app di creare, leggere, aggiornare ed eliminare cataloghi prodotti di proprietà dell'azienda di cui l'utente è un amministratore.
+…
+Descrizione completa
+Requisiti
+email
+L'autorizzazione email consente alla tua app di leggere l'indirizzo e-mail principale di un utente.
+…
+Descrizione completa
+Found in 3 use cases
+Requisiti
+instagram_basic
+L'autorizzazione instagram_basic consente alla tua app di leggere le informazioni e i contenuti multimediali dei profili degli account Instagram.
+…
+Descrizione completa
+Found in 2 use cases
+Requisiti
+30
+Pronta per il test
+instagram_branded_content_ads_brand
+L'autorizzazione instagram_branded_content_ads_brand consente a un'app di leggere i post di Instagram in cui l'account Instagram dell'utente dell'app è taggato come partner a pagamento, e all'utente dell'app di leggere, richiedere e revocare le autorizzazioni per pubblicare inserzioni in partnership.
+…
+Descrizione completa
+Requisiti
+instagram_branded_content_brand
+L'autorizzazione instagram_branded_content_brand consente alla tua app di aggiungere, rimuovere e visualizzare i creator dall'elenco dei creator approvati di un brand specifico.
+…
+Descrizione completa
+Requisiti
+instagram_branded_content_creator
+L'autorizzazione instagram_branded_content_creator consente alla tua app di leggere e modificare lo stato di messa in evidenza di un contenuto specifico di un creator.
+…
+Descrizione completa
+Requisiti
+instagram_business_basic
+instagram_business_basic consente alla tua app di leggere le informazioni e i contenuti multimediali del profilo di un account Instagram Business.
+…
+Descrizione completa
+Requisiti
+1
+Pronta per il test
+instagram_business_content_publish
+The instagram_business_content_publish permission allows an app to create organic feed photo and video posts on behalf of a business user.
+…
+Descrizione completa
+Requisiti
+instagram_business_manage_comments
+L'autorizzazione instagram_business_manage_comments consente a un'app di accedere ai commenti su un account Instagram per professionisti, nonché ai post pubblici e alle Instagram Stories in cui l'account è taggato o nei cui commenti è menzionato.
+…
+Descrizione completa
+Requisiti
+0
+Pronta per il test
+instagram_business_manage_insights
+L'autorizzazione instagram_business_manage_insights consente a un'app di ottenere insight dai metadati, i post, le foto e i video dell'account Instagram per professionisti dell'utente dell'app, nonché dai metadati e i contenuti multimediali del profilo pubblico di un account Instagram per professionisti.
+…
+Descrizione completa
+Requisiti
+instagram_business_manage_messages
+L'autorizzazione instagram_business_manage_messages consente a un'app di accedere ai messaggi su un account Instagram per professionisti.
+…
+Descrizione completa
+Requisiti
+0
+Pronta per il test
+instagram_content_publish
+L'autorizzazione instagram_content_publish consente alla tua app di creare post con foto e video organici nel feed per conto di un utente aziendale.
+…
+Descrizione completa
+Requisiti
+0
+Pronta per il test
+instagram_creator_marketplace_discovery
+L'autorizzazione instagram_creator_marketplace_discovery consente alla tua app di scoprire content creator nel Marketplace per creator di Instagram e di accedere a insight come la biografia del creator, il numero di follower e la copertura dell'account per le aziende su Instagram registrate alla piattaforma.
+…
+Descrizione completa
+Requisiti
+instagram_manage_comments
+L'autorizzazione instagram_manage_comments consente alla tua app di creare, eliminare e nascondere commenti per conto dell'account Instagram collegato a una Pagina. La tua app può anche leggere contenuti multimediali e commenti pubblici in cui un'azienda viene menzionata usando la @ e rispondere.
+…
+Descrizione completa
+Requisiti
+14
+Pronta per il test
+instagram_manage_contents
+L'autorizzazione instagram_manage_contents consente alla tua app di eliminare post per conto di un account Instagram collegato a una Pagina Facebook.
+…
+Descrizione completa
+Requisiti
+instagram_manage_insights
+L'autorizzazione instagram_manage_insights consente alla tua app di accedere a dati statistici dell'account Instagram collegato a una Pagina Facebook. La tua app può anche scoprire e leggere le informazioni del profilo e i contenuti multimediali di altri profili aziendali.
+…
+Descrizione completa
+Requisiti
+instagram_manage_messages
+L'autorizzazione instagram_manage_messages consente agli utenti aziendali di leggere i messaggi di Instagram Direct e rispondervi.
+…
+Descrizione completa
+Found in 2 use cases
+Requisiti
+134
+Pronta per il test
+instagram_manage_upcoming_events
+The instagram_manage_upcoming_events permission allows an app to read, create, and update upcoming events on behalf of Instagram accounts administered by people using the app.
+…
+Descrizione completa
+Requisiti
+instagram_shopping_tag_products
+L'autorizzazione instagram_shopping_tag_products consente a un'app di taggare il contenuto multimediale di Instagram con tag del prodotto e inviare un ricorso contro i rifiuti dei prodotti.
+…
+Descrizione completa
+Requisiti
+pages_read_engagement
+L'autorizzazione pages_read_engagement consente alla tua app di leggere contenuti (post, foto, video, eventi) pubblicati dalla Pagina, leggere i dati (compresi nome e PSID) e le immagini del profilo dei follower e leggere metadati e altri dati statistici sulla Pagina.
+…
+Descrizione completa
+Found in 2 use cases
+Requisiti
+216
+Pronta per il test
+pages_show_list
+L'autorizzazione pages_show_list consente alla tua app di accedere alla lista delle Pagine gestite da una persona.
+…
+Descrizione completa
+Found in 2 use cases
+Requisiti
+216
+Pronta per il test
+public_profile
+L'autorizzazione public_profile consente a un'app di leggere i Campi predefiniti del profilo pubblico sul nodo User . Questa autorizzazione viene concessa automaticamente a tutte le app.
+…
+Descrizione completa
+Found in 3 use cases
+Requisiti
