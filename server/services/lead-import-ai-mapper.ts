@@ -66,19 +66,41 @@ Se una colonna non corrisponde a nessun campo CRM (es. ID interni, codici tecnic
 Prioritizza la mappatura del campo phoneNumber che è obbligatorio.`;
 
   try {
+    console.log('[AI Mapper] Calling Gemini API with', columns.length, 'columns');
+    
     const response = await genAI.models.generateContent({
       model: GEMINI_3_MODEL,
-      contents: prompt,
+      contents: [{
+        role: 'user',
+        parts: [{ text: prompt }]
+      }],
+      config: {
+        temperature: 0.2,
+        maxOutputTokens: 8192,
+      }
     });
 
-    const text = response.text || '';
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    let text = '';
+    if (typeof (response as any).response?.text === 'function') {
+      text = (response as any).response.text();
+    } else if (typeof (response as any).response?.text === 'string') {
+      text = (response as any).response.text;
+    } else if ((response as any).response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      text = (response as any).response.candidates[0].content.parts[0].text;
+    } else if ((response as any).text) {
+      text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
+    }
+    
+    console.log('[AI Mapper] Got response, length:', text.length);
+    
+    const jsonMatch = text.match(/\[[\s\S]*?\]/);
     if (!jsonMatch) {
-      console.error('[AI Mapper] No JSON found in response:', text);
+      console.error('[AI Mapper] No JSON found in response:', text.substring(0, 500));
       throw new Error('AI response invalid');
     }
 
     const suggestions = JSON.parse(jsonMatch[0]) as AiMappingSuggestion[];
+    console.log('[AI Mapper] Parsed', suggestions.length, 'suggestions');
     return suggestions;
   } catch (error) {
     console.error('[AI Mapper] Error:', error);

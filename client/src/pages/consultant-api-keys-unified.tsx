@@ -461,6 +461,13 @@ export default function ConsultantApiKeysUnified() {
     totalRows: number;
     suggestedMappings: Record<string, string>;
   } | null>(null);
+  const [isLoadingAiMap, setIsLoadingAiMap] = useState(false);
+  const [aiMappingSuggestions, setAiMappingSuggestions] = useState<{
+    columnName: string;
+    suggestedField: string | null;
+    confidence: number;
+    rationale: string;
+  }[]>([]);
   const [leadImportFormData, setLeadImportFormData] = useState({
     configName: "Importazione Lead",
     apiKey: "",
@@ -6137,22 +6144,118 @@ export default function ConsultantApiKeysUnified() {
                                 const mappedCount = Object.keys(reverseMappings).length;
                                 const hasPhoneMapping = reverseMappings[Object.keys(reverseMappings).find(col => reverseMappings[col] === 'phoneNumber') || ''] === 'phoneNumber';
                                 
+                                const getAiSuggestion = (colName: string) => {
+                                  return aiMappingSuggestions.find(s => s.columnName === colName);
+                                };
+                                
+                                const handleAiMap = async () => {
+                                  if (!googleSheetsPreview) return;
+                                  
+                                  setIsLoadingAiMap(true);
+                                  try {
+                                    const columnsData = sheetColumns.map(col => ({
+                                      name: col,
+                                      sampleValues: googleSheetsPreview.previewRows
+                                        .slice(0, 5)
+                                        .map(row => String(row[col] || ''))
+                                        .filter(v => v)
+                                    }));
+                                    
+                                    const response = await fetch(`/api/consultant/agents/${googleSheetsFormData.agentConfigId}/leads/ai-map`, {
+                                      method: "POST",
+                                      headers: {
+                                        ...getAuthHeaders(),
+                                        "Content-Type": "application/json",
+                                      },
+                                      body: JSON.stringify({ columns: columnsData }),
+                                    });
+                                    
+                                    const result = await response.json();
+                                    if (result.success && result.data?.suggestions) {
+                                      setAiMappingSuggestions(result.data.suggestions);
+                                      toast({
+                                        title: "Analisi AI completata!",
+                                        description: `Suggerite ${result.data.suggestions.filter((s: any) => s.suggestedField).length} mappature`,
+                                      });
+                                    } else {
+                                      throw new Error(result.error || "Errore AI");
+                                    }
+                                  } catch (error: any) {
+                                    toast({
+                                      title: "Errore AI",
+                                      description: error.message || "Impossibile analizzare le colonne",
+                                      variant: "destructive",
+                                    });
+                                  } finally {
+                                    setIsLoadingAiMap(false);
+                                  }
+                                };
+                                
+                                const applyAllAiSuggestions = () => {
+                                  const newMappings: Record<string, string> = {};
+                                  for (const suggestion of aiMappingSuggestions) {
+                                    if (suggestion.suggestedField && suggestion.confidence >= 60) {
+                                      newMappings[suggestion.suggestedField] = suggestion.columnName;
+                                    }
+                                  }
+                                  setGoogleSheetsFormData({
+                                    ...googleSheetsFormData,
+                                    columnMappings: newMappings
+                                  });
+                                  toast({
+                                    title: "Mappature applicate!",
+                                    description: `${Object.keys(newMappings).length} campi mappati automaticamente`,
+                                  });
+                                };
+                                
                                 return (
                                   <>
-                                    <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center justify-between mb-5">
                                       <div className="flex items-center gap-3">
-                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 px-3 py-1.5 text-sm">
                                           {mappedCount}/{sheetColumns.length} colonne mappate
                                         </Badge>
                                         {!hasPhoneMapping && (
-                                          <Badge variant="destructive" className="animate-pulse">
-                                            ⚠️ Telefono obbligatorio
+                                          <Badge variant="destructive" className="animate-pulse px-3 py-1.5">
+                                            Telefono obbligatorio
                                           </Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={handleAiMap}
+                                          disabled={isLoadingAiMap || !googleSheetsFormData.agentConfigId}
+                                          className="bg-gradient-to-r from-violet-50 to-purple-50 border-violet-300 text-violet-700 hover:from-violet-100 hover:to-purple-100 hover:border-violet-400 shadow-sm"
+                                        >
+                                          {isLoadingAiMap ? (
+                                            <>
+                                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                              Analisi AI...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Sparkles className="h-4 w-4 mr-2" />
+                                              Mappa con AI
+                                            </>
+                                          )}
+                                        </Button>
+                                        {aiMappingSuggestions.length > 0 && (
+                                          <Button
+                                            variant="default"
+                                            size="sm"
+                                            onClick={applyAllAiSuggestions}
+                                            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-md"
+                                          >
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            Applica Tutti
+                                          </Button>
                                         )}
                                       </div>
                                     </div>
 
-                                    <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
+                                    <div className="border rounded-xl overflow-hidden bg-white shadow-lg border-slate-200">
                                       <Table>
                                         <TableHeader>
                                           <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100">
@@ -6186,105 +6289,145 @@ export default function ConsultantApiKeysUnified() {
                                             const mappedField = reverseMappings[col];
                                             const mappedCrmLabel = crmFields.find(f => f.key === mappedField)?.label || '';
                                             const isPhoneField = mappedField === 'phoneNumber';
+                                            const aiSuggestion = getAiSuggestion(col);
+                                            const hasAiSuggestion = aiSuggestion && aiSuggestion.suggestedField;
                                             
                                             return (
                                               <TableRow 
                                                 key={col} 
-                                                className={`hover:bg-slate-50/80 transition-colors ${
-                                                  isPhoneField ? 'bg-emerald-50/50' : 
-                                                  mappedField ? 'bg-blue-50/30' : ''
+                                                className={`hover:bg-slate-50/80 transition-all duration-200 ${
+                                                  isPhoneField ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-l-4 border-l-emerald-500' : 
+                                                  mappedField ? 'bg-gradient-to-r from-blue-50/50 to-indigo-50/30 border-l-4 border-l-blue-400' : 
+                                                  hasAiSuggestion ? 'bg-gradient-to-r from-violet-50/50 to-purple-50/30 border-l-4 border-l-violet-400' : ''
                                                 }`}
                                               >
-                                                <TableCell className="font-medium">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-slate-400 w-5">{idx + 1}</span>
-                                                    <code className="px-2 py-1 bg-slate-100 rounded text-sm font-mono text-slate-700">
+                                                <TableCell className="font-medium py-3">
+                                                  <div className="flex items-center gap-3">
+                                                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-xs text-slate-600 font-semibold">{idx + 1}</span>
+                                                    <code className="px-3 py-1.5 bg-white rounded-lg text-sm font-mono text-slate-700 border border-slate-200 shadow-sm">
                                                       {col}
                                                     </code>
                                                   </div>
                                                 </TableCell>
-                                                <TableCell>
-                                                  <div className="flex flex-wrap gap-1.5">
+                                                <TableCell className="py-3">
+                                                  <div className="flex flex-wrap gap-2">
                                                     {sampleValues.length > 0 ? sampleValues.map((val, i) => (
                                                       <span 
                                                         key={i}
-                                                        className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-slate-100 text-slate-600 border border-slate-200 max-w-[180px] truncate"
+                                                        className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs bg-white text-slate-600 border border-slate-200 shadow-sm max-w-[180px] truncate"
                                                         title={String(val)}
                                                       >
-                                                        {String(val).length > 25 ? String(val).slice(0, 25) + '...' : val}
+                                                        {String(val).length > 22 ? String(val).slice(0, 22) + '...' : val}
                                                       </span>
                                                     )) : (
-                                                      <span className="text-xs text-slate-400 italic">Nessun dato</span>
+                                                      <span className="text-xs text-slate-400 italic px-2">Nessun dato</span>
                                                     )}
                                                   </div>
                                                 </TableCell>
-                                                <TableCell>
-                                                  <Select
-                                                    value={mappedField || "__skip__"}
-                                                    onValueChange={(value) => {
-                                                      const newMappings = { ...googleSheetsFormData.columnMappings };
-                                                      
-                                                      if (mappedField) {
-                                                        newMappings[mappedField] = "";
-                                                      }
-                                                      
-                                                      if (value !== "__skip__") {
-                                                        for (const key of Object.keys(newMappings)) {
-                                                          if (newMappings[key] === col) {
-                                                            newMappings[key] = "";
-                                                          }
+                                                <TableCell className="py-3">
+                                                  <div className="flex items-center gap-2">
+                                                    <Select
+                                                      value={mappedField || "__skip__"}
+                                                      onValueChange={(value) => {
+                                                        const newMappings = { ...googleSheetsFormData.columnMappings };
+                                                        
+                                                        if (mappedField) {
+                                                          newMappings[mappedField] = "";
                                                         }
-                                                        newMappings[value] = col;
-                                                      }
-                                                      
-                                                      setGoogleSheetsFormData({
-                                                        ...googleSheetsFormData,
-                                                        columnMappings: newMappings
-                                                      });
-                                                    }}
-                                                  >
-                                                    <SelectTrigger className={`h-9 ${
-                                                      isPhoneField 
-                                                        ? 'border-emerald-400 bg-emerald-50 text-emerald-700 font-medium' 
-                                                        : mappedField 
-                                                          ? 'border-blue-300 bg-blue-50 text-blue-700' 
-                                                          : 'border-slate-200'
-                                                    }`}>
-                                                      <SelectValue>
-                                                        {mappedField ? (
-                                                          <span className="flex items-center gap-1.5">
-                                                            <CheckCircle className="h-3.5 w-3.5" />
-                                                            {mappedCrmLabel}
-                                                          </span>
-                                                        ) : (
-                                                          <span className="text-slate-400">Non importare</span>
-                                                        )}
-                                                      </SelectValue>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                      <SelectItem value="__skip__">
-                                                        <span className="flex items-center gap-2 text-slate-500">
-                                                          <X className="h-3.5 w-3.5" />
-                                                          Non importare
-                                                        </span>
-                                                      </SelectItem>
-                                                      {crmFields.map((field) => {
-                                                        const isAlreadyMapped = reverseMappings[Object.keys(reverseMappings).find(c => reverseMappings[c] === field.key) || ''] === field.key && reverseMappings[col] !== field.key;
-                                                        return (
-                                                          <SelectItem 
-                                                            key={field.key} 
-                                                            value={field.key}
-                                                            disabled={isAlreadyMapped}
-                                                          >
-                                                            <span className={`flex items-center gap-2 ${field.required ? 'font-medium text-emerald-700' : ''}`}>
-                                                              {field.label}
-                                                              {isAlreadyMapped && <span className="text-xs text-slate-400">(già usato)</span>}
+                                                        
+                                                        if (value !== "__skip__") {
+                                                          for (const key of Object.keys(newMappings)) {
+                                                            if (newMappings[key] === col) {
+                                                              newMappings[key] = "";
+                                                            }
+                                                          }
+                                                          newMappings[value] = col;
+                                                        }
+                                                        
+                                                        setGoogleSheetsFormData({
+                                                          ...googleSheetsFormData,
+                                                          columnMappings: newMappings
+                                                        });
+                                                      }}
+                                                    >
+                                                      <SelectTrigger className={`h-10 min-w-[160px] ${
+                                                        isPhoneField 
+                                                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700 font-semibold shadow-sm' 
+                                                          : mappedField 
+                                                            ? 'border-blue-300 bg-blue-50 text-blue-700 shadow-sm' 
+                                                            : 'border-slate-200 bg-white'
+                                                      }`}>
+                                                        <SelectValue>
+                                                          {mappedField ? (
+                                                            <span className="flex items-center gap-1.5">
+                                                              <CheckCircle className="h-4 w-4" />
+                                                              {mappedCrmLabel}
                                                             </span>
-                                                          </SelectItem>
-                                                        );
-                                                      })}
-                                                    </SelectContent>
-                                                  </Select>
+                                                          ) : (
+                                                            <span className="text-slate-400">Non importare</span>
+                                                          )}
+                                                        </SelectValue>
+                                                      </SelectTrigger>
+                                                      <SelectContent>
+                                                        <SelectItem value="__skip__">
+                                                          <span className="flex items-center gap-2 text-slate-500">
+                                                            <X className="h-3.5 w-3.5" />
+                                                            Non importare
+                                                          </span>
+                                                        </SelectItem>
+                                                        {crmFields.map((field) => {
+                                                          const isAlreadyMapped = reverseMappings[Object.keys(reverseMappings).find(c => reverseMappings[c] === field.key) || ''] === field.key && reverseMappings[col] !== field.key;
+                                                          const isAiSuggested = aiSuggestion?.suggestedField === field.key;
+                                                          return (
+                                                            <SelectItem 
+                                                              key={field.key} 
+                                                              value={field.key}
+                                                              disabled={isAlreadyMapped}
+                                                            >
+                                                              <span className={`flex items-center gap-2 ${field.required ? 'font-medium text-emerald-700' : ''}`}>
+                                                                {field.label}
+                                                                {isAiSuggested && <Sparkles className="h-3 w-3 text-violet-500" />}
+                                                                {isAlreadyMapped && <span className="text-xs text-slate-400">(già usato)</span>}
+                                                              </span>
+                                                            </SelectItem>
+                                                          );
+                                                        })}
+                                                      </SelectContent>
+                                                    </Select>
+                                                    {hasAiSuggestion && !mappedField && (
+                                                      <div 
+                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-violet-100 to-purple-100 border border-violet-200 cursor-pointer hover:from-violet-200 hover:to-purple-200 transition-colors"
+                                                        onClick={() => {
+                                                          if (aiSuggestion.suggestedField) {
+                                                            const newMappings = { ...googleSheetsFormData.columnMappings };
+                                                            for (const key of Object.keys(newMappings)) {
+                                                              if (newMappings[key] === col) {
+                                                                newMappings[key] = "";
+                                                              }
+                                                            }
+                                                            newMappings[aiSuggestion.suggestedField] = col;
+                                                            setGoogleSheetsFormData({
+                                                              ...googleSheetsFormData,
+                                                              columnMappings: newMappings
+                                                            });
+                                                          }
+                                                        }}
+                                                        title={aiSuggestion.rationale}
+                                                      >
+                                                        <Sparkles className="h-3.5 w-3.5 text-violet-600" />
+                                                        <span className="text-xs font-medium text-violet-700">
+                                                          {crmFields.find(f => f.key === aiSuggestion.suggestedField)?.label}
+                                                        </span>
+                                                        <Badge className={`text-[10px] px-1.5 py-0 h-4 ${
+                                                          aiSuggestion.confidence >= 90 ? 'bg-emerald-500' :
+                                                          aiSuggestion.confidence >= 70 ? 'bg-blue-500' :
+                                                          'bg-amber-500'
+                                                        }`}>
+                                                          {aiSuggestion.confidence}%
+                                                        </Badge>
+                                                      </div>
+                                                    )}
+                                                  </div>
                                                 </TableCell>
                                               </TableRow>
                                             );
