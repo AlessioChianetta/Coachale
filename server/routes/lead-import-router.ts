@@ -611,10 +611,19 @@ router.post(
       
       // Fetch campaign data if campaignId is set to populate lead with campaign goals
       let campaignData: { name?: string; obiettivi?: string; desideri?: string; uncino?: string; statoIdeale?: string } | null = null;
+      console.log(`📊 [LEAD IMPORT] campaignId from settings: ${campaignId}`);
       if (campaignId) {
         const [campaign] = await db.select()
           .from(schema.marketingCampaigns)
           .where(eq(schema.marketingCampaigns.id, campaignId));
+        console.log(`📊 [LEAD IMPORT] Campaign found:`, campaign ? JSON.stringify({
+          id: campaign.id,
+          name: campaign.name,
+          obiettivi: campaign.obiettivi,
+          desideri: campaign.desideri,
+          uncino: campaign.uncino,
+          statoIdeale: campaign.statoIdeale,
+        }, null, 2) : 'NOT FOUND');
         if (campaign) {
           campaignData = {
             name: campaign.name,
@@ -623,8 +632,10 @@ router.post(
             uncino: campaign.uncino || undefined,
             statoIdeale: campaign.statoIdeale || undefined,
           };
-          console.log(`[LEAD IMPORT] Using campaign "${campaign.name}" for import`);
+          console.log(`✅ [LEAD IMPORT] Using campaign "${campaign.name}" for import - campaignData:`, JSON.stringify(campaignData, null, 2));
         }
+      } else {
+        console.log(`⚠️ [LEAD IMPORT] No campaignId provided in settings`);
       }
       
       let baseContactTime: Date;
@@ -760,6 +771,9 @@ router.post(
                 uncino: campaignData.uncino,
                 statoIdeale: campaignData.statoIdeale,
               };
+              console.log(`📝 [LEAD IMPORT] Lead "${firstName} ${lastName}" - campaignSnapshot:`, JSON.stringify(leadData.campaignSnapshot, null, 2));
+            } else {
+              console.log(`⚠️ [LEAD IMPORT] Lead "${firstName} ${lastName}" - campaignId set but NO campaignData available!`);
             }
           }
           
@@ -767,8 +781,15 @@ router.post(
             leadData.leadInfo = leadInfo;
           }
           
+          console.log(`📝 [LEAD IMPORT] Creating lead "${firstName} ${lastName}" with data:`, JSON.stringify({
+            campaignId: leadData.campaignId,
+            campaignSnapshot: leadData.campaignSnapshot,
+            leadInfo: leadData.leadInfo,
+          }, null, 2));
+          
           await storage.createProactiveLead(leadData);
           stats.imported++;
+          console.log(`✅ [LEAD IMPORT] Lead "${firstName} ${lastName}" created successfully`);
           
         } catch (error: any) {
           stats.errors++;

@@ -240,10 +240,19 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
     
     // Fetch campaign data if campaignId is set to populate lead with campaign goals
     let campaignData: { name?: string; obiettivi?: string; desideri?: string; uncino?: string; statoIdeale?: string } | null = null;
+    console.log(`📊 [SHEETS POLLING] campaignId from settings: ${campaignId}`);
     if (campaignId) {
       const [campaign] = await db.select()
         .from(schema.marketingCampaigns)
         .where(eq(schema.marketingCampaigns.id, campaignId));
+      console.log(`📊 [SHEETS POLLING] Campaign found:`, campaign ? JSON.stringify({
+        id: campaign.id,
+        name: campaign.name,
+        obiettivi: campaign.obiettivi,
+        desideri: campaign.desideri,
+        uncino: campaign.uncino,
+        statoIdeale: campaign.statoIdeale,
+      }, null, 2) : 'NOT FOUND');
       if (campaign) {
         campaignData = {
           name: campaign.name,
@@ -252,8 +261,10 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
           uncino: campaign.uncino || undefined,
           statoIdeale: campaign.statoIdeale || undefined,
         };
-        console.log(`[SHEETS POLLING] Using campaign "${campaign.name}" for import`);
+        console.log(`✅ [SHEETS POLLING] Using campaign "${campaign.name}" - campaignData:`, JSON.stringify(campaignData, null, 2));
       }
+    } else {
+      console.log(`⚠️ [SHEETS POLLING] No campaignId provided in settings`);
     }
     
     let baseContactTime: Date;
@@ -398,6 +409,9 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
               uncino: campaignData.uncino,
               statoIdeale: campaignData.statoIdeale,
             };
+            console.log(`📝 [SHEETS POLLING] Lead "${firstName} ${lastName}" - campaignSnapshot:`, JSON.stringify(leadData.campaignSnapshot, null, 2));
+          } else {
+            console.log(`⚠️ [SHEETS POLLING] Lead "${firstName} ${lastName}" - campaignId set but NO campaignData available!`);
           }
         }
         
@@ -405,8 +419,15 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
           leadData.leadInfo = leadInfo;
         }
         
+        console.log(`📝 [SHEETS POLLING] Creating lead "${firstName} ${lastName}" with:`, JSON.stringify({
+          campaignId: leadData.campaignId,
+          campaignSnapshot: leadData.campaignSnapshot,
+          leadInfo: leadData.leadInfo,
+        }, null, 2));
+        
         await storage.createProactiveLead(leadData);
         result.imported++;
+        console.log(`✅ [SHEETS POLLING] Lead "${firstName} ${lastName}" created successfully`);
         
       } catch (error: any) {
         result.errors++;
