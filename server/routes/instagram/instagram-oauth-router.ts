@@ -25,7 +25,9 @@ const FB_AUTH_URL = "https://www.facebook.com/v19.0/dialog/oauth";
 const FB_TOKEN_URL = "https://graph.facebook.com/v19.0/oauth/access_token";
 const FB_GRAPH_URL = "https://graph.facebook.com/v19.0";
 
-// Required permissions for Instagram Messaging
+// Required permissions for Instagram Messaging (Page-based Messenger API flow)
+// Note: instagram_manage_* permissions are correct for Page-based flow
+// instagram_business_* would only be used with Business Login flow
 const SCOPES = [
   "public_profile",
   "pages_show_list",

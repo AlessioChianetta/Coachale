@@ -125,6 +125,7 @@ const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
 const AdminUsers = lazy(() => import("@/pages/admin-users"));
 const AdminSettings = lazy(() => import("@/pages/admin-settings"));
 const SasLanding = lazy(() => import("@/pages/sas-landing"));
+const PrivacyPolicy = lazy(() => import("@/pages/privacy-policy"));
 
 function Router() {
   const user = getAuthUser();
@@ -167,6 +168,10 @@ function Router() {
 
           {/* SaaS Landing Page - no auth required */}
           <Route path="/Sas" component={SasLanding} />
+
+          {/* Privacy Policy - no auth required (for Meta App Review) */}
+          <Route path="/privacy" component={PrivacyPolicy} />
+          <Route path="/privacy-policy" component={PrivacyPolicy} />
 
           {/* Manager Login - no auth required */}
           <Route path="/agent/:slug/login" component={ManagerLogin} />
