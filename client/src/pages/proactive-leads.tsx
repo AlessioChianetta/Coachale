@@ -718,10 +718,6 @@ export default function ProactiveLeadsPage() {
       errors.firstName = "Il nome è obbligatorio";
     }
 
-    if (!formData.lastName.trim()) {
-      errors.lastName = "Il cognome è obbligatorio";
-    }
-
     if (!formData.phoneNumber.trim()) {
       errors.phoneNumber = "Il numero di telefono è obbligatorio";
     } else if (!formData.phoneNumber.startsWith("+")) {
@@ -1752,21 +1748,14 @@ export default function ProactiveLeadsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="lastName" className="text-sm font-medium flex items-center gap-2">
                       <User className="h-4 w-4 text-gray-500" />
-                      Cognome <span className="text-red-500">*</span>
+                      Cognome
                     </Label>
                     <Input
                       id="lastName"
                       value={formData.lastName}
                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      placeholder="Rossi"
-                      className={formErrors.lastName ? "border-red-500" : ""}
+                      placeholder="Rossi (opzionale)"
                     />
-                    {formErrors.lastName && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        {formErrors.lastName}
-                      </p>
-                    )}
                   </div>
                 </div>
 
