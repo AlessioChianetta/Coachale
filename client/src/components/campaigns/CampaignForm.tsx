@@ -26,7 +26,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getAuthHeaders } from "@/lib/auth";
 import { 
   Loader2, Megaphone, Target, Users, Zap, HandshakeIcon, StoreIcon,
-  ChevronLeft, ChevronRight, Check, Sparkles, MessageSquare, Settings2
+  ChevronLeft, ChevronRight, Check, Sparkles, MessageSquare, Settings2, AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
