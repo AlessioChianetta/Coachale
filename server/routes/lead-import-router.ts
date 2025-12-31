@@ -763,6 +763,16 @@ router.post(
             }
           }
           
+          // Copy campaign data to leadInfo for template variable population
+          if (campaignData) {
+            if (!leadInfo.uncino && campaignData.uncino) {
+              leadInfo.uncino = campaignData.uncino;
+            }
+            if (!leadInfo.obiettivi && campaignData.obiettivi) {
+              leadInfo.obiettivi = campaignData.obiettivi;
+            }
+          }
+          
           if (Object.keys(leadInfo).length > 0) {
             leadData.leadInfo = leadInfo;
           }

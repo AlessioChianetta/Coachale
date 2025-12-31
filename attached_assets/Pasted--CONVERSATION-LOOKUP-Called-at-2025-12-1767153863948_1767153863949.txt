@@ -1,0 +1,54 @@
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [CONVERSATION LOOKUP] Called at 2025-12-31T04:04:01.900Z
+📞 Phone: +393297083912
+👤 Consultant: c2146759-f08a-430a-afdf-701bbc674300
+🤖 Agent: 514afe1d-8e43-47c7-90fc-17d05b0783ac
+🎯 Proactive Lead: true
+📍 Call originated from:
+    at processLead (/home/runner/workspace/server/whatsapp/proactive-outreach.ts:547:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async processProactiveOutreach (/home/runner/workspace/server/whatsapp/proactive-outreach.ts:1008:9)
+    at async <anonymous> (/home/runner/workspace/server/routes/proactive-leads.ts:978:20)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🆕🆕🆕 [CONVERSATION CREATE] Creating NEW conversation at 2025-12-31T04:04:02.240Z 🆕🆕🆕
+👤 [PARTICIPANT] Type: unknown, isLead: true, userId: none
+✅ [CONVERSATION CREATED] id=204beeb2-e475-443a-8b55-209a7f37802a for +393297083912 (Type: unknown, Lead - PROACTIVE) assigned to agent: 514afe1d-8e43-47c7-90fc-17d05b0783ac
+📊 [CONVERSATION STATE] Created initial state for conversation 204beeb2-e475-443a-8b55-209a7f37802a
+💾 [INSERT] Inserting message for lead c2d403e1-12b8-4c7f-a759-97be21fcbe1f (Lucia Mastacchini) to conversation 204beeb2-e475-443a-8b55-209a7f37802a
+   Message text preview: "🧪 DRY RUN - Anteprima Messaggio
+
+Ciao Lucia Mastacchini! 👋 
+Sono Assistente Viaggio Spaziale di Eu..."
+   Dry run: true, Template SID: HXc0c77f7dc4580618c0463be6d8f943ba
+✅ [INSERT] Message saved with ID: efa992d0-bb4e-47cd-9890-0ed5c8de4ad7
+🔒 [DRY RUN] Saved simulated message to database: efa992d0-bb4e-47cd-9890-0ed5c8de4ad7
+📊 [PROACTIVE OUTREACH] Updated conversation_states: followupCount=1 for 204beeb2-e475-443a-8b55-209a7f37802a
+✅ Using explicitly specified agent: Assistente Viaggio Spaziale (514afe1d-8e43-47c7-90fc-17d05b0783ac)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Assistente Viaggio Spaziale
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393534829735 (Agent: Assistente Viaggio Spaziale)
+📤 [DRY RUN] Would send WhatsApp message with template: HXc0c77f7dc4580618c0463be6d8f943ba
+📋 Template Details:
+   From: whatsapp:+393534829735
+   To: whatsapp:+393297083912
+   Template SID: HXc0c77f7dc4580618c0463be6d8f943ba
+   Variables: {
+  "1": "Lucia Mastacchini",
+  "2": "Assistente Viaggio Spaziale",
+  "3": "Eurospace Italia",
+  "4": "",
+  "5": ""
+}
+   Message Text (fallback): TEMPLATE:HXc0c77f7dc4580618c0463be6d8f943ba
+✅ [DRY RUN] Simulated template message: DRY_RUN_TEMPLATE_1767153843160_dh1wdr
+🔒 [DRY RUN] Simulated message to Lucia Mastacchini  - updating status to prevent duplicates
+🔒 [DRY RUN] Lead c2d403e1-12b8-4c7f-a759-97be21fcbe1f status updated to 'contacted' (prevents duplicate sends)
+📝 [ACTIVITY LOG] sent: Messaggio simulato (DRY RUN)
+
+✅ [PROACTIVE OUTREACH] Completed in 2383ms
+   📊 Results: 1 success, 0 e
