@@ -3030,6 +3030,10 @@ export const proactiveLeads = pgTable("proactive_leads", {
     desideri?: string;
     uncino?: string;
     fonte?: string;
+    question1?: string;
+    question2?: string;
+    question3?: string;
+    question4?: string;
     // Contact info
     email?: string;
     companyName?: string;
@@ -3089,6 +3093,20 @@ export const proactiveLeads = pgTable("proactive_leads", {
 }, (table) => ({
   uniquePhonePerConsultant: unique().on(table.consultantId, table.phoneNumber),
 }));
+
+// Custom Lead Fields - Campi personalizzati definiti dal consulente
+export const customLeadFields = pgTable("custom_lead_fields", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  fieldName: text("field_name").notNull(), // Nome visualizzato (es. "Budget")
+  fieldKey: text("field_key").notNull(), // Chiave tecnica (es. "budget")
+  fieldType: text("field_type").$type<"text" | "number" | "date" | "select">().notNull(),
+  options: jsonb("options").$type<string[]>().default(sql`'[]'::jsonb`), // Opzioni per il tipo 'select'
+  isRequired: boolean("is_required").default(false).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
 
 // Lead Import Jobs - Configurazioni di importazione lead
 export const leadImportJobs = pgTable("lead_import_jobs", {
@@ -3166,9 +3184,17 @@ export const insertLeadImportJobSchema = createInsertSchema(leadImportJobs).omit
   updatedAt: true,
 });
 
+export const insertCustomLeadFieldSchema = createInsertSchema(customLeadFields).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type LeadImportJob = typeof leadImportJobs.$inferSelect;
 export type InsertLeadImportJob = z.infer<typeof insertLeadImportJobSchema>;
 export type LeadImportRun = typeof leadImportRuns.$inferSelect;
+export type CustomLeadField = typeof customLeadFields.$inferSelect;
+export type InsertCustomLeadField = z.infer<typeof insertCustomLeadFieldSchema>;
 
 // Marketing Campaigns validation schemas
 export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({
