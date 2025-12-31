@@ -795,9 +795,9 @@ export default function ConsultantWhatsAppPage() {
                 <MessageSquare className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Gestione Agenti WhatsApp</h1>
+                <h1 className="text-2xl font-bold">Dipendenti AI</h1>
                 <p className="text-emerald-100 text-sm mt-1">
-                  Configura e monitora i tuoi agenti AI per conversazioni automatizzate
+                  Configura e monitora i tuoi dipendenti AI per conversazioni automatizzate
                 </p>
               </div>
             </div>

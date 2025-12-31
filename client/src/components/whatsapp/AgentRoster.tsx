@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { LevelBadge } from "./LevelBadge";
 
 interface Agent {
   id: string;
@@ -35,6 +36,7 @@ interface Agent {
   performanceScore: number;
   trend: "up" | "down" | "stable";
   conversationsToday: number;
+  level?: "1" | "2" | null;
 }
 
 interface AgentRosterProps {
@@ -118,6 +120,7 @@ function AgentCard({
           
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span>{agentTypeLabels[agent.agentType] || agent.agentType}</span>
+            {agent.level && <LevelBadge level={agent.level} size="sm" />}
           </div>
           
           <div className="flex items-center justify-between mt-2">

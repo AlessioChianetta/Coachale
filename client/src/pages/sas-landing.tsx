@@ -103,7 +103,7 @@ export default function SasLanding() {
     },
     {
       icon: Bot,
-      title: "Agenti WhatsApp 24/7",
+      title: "Dipendenti AI 24/7",
       description: "I tuoi dipendenti virtuali lavorano mentre dormi. Qualificano lead, prenotano appuntamenti, gestiscono obiezioni. Tu ricevi solo i contatti pronti a comprare.",
       color: "bg-emerald-100",
       iconColor: "text-emerald-600",

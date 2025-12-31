@@ -66,6 +66,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AgentShareManager } from "./agent-share-manager";
+import { LevelBadge } from "./LevelBadge";
 import {
   Dialog,
   DialogContent,
@@ -106,6 +107,9 @@ interface AgentAnalytics {
     isProactive?: boolean;
     enableInAIAssistant?: boolean;
     fileSearchCategories?: FileSearchCategories;
+    level?: "1" | "2" | null;
+    publicSlug?: string;
+    dailyMessageLimit?: number;
     features?: {
       bookingEnabled: boolean;
       objectionHandlingEnabled: boolean;
@@ -984,6 +988,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                 <Badge variant="outline" className={cn("text-xs", status.color)}>
                   {status.label}
                 </Badge>
+                {agentData?.level && <LevelBadge level={agentData.level} size="sm" />}
               </div>
               <p className="text-xs text-slate-500">
                 {agentTypeLabels[selectedAgent.agentType] || selectedAgent.agentType}

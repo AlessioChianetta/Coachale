@@ -210,13 +210,13 @@ const clientItems: SidebarItemWithChildren[] = [
   },
   
   { 
-    name: "Agenti AI", 
+    name: "Dipendenti AI", 
     href: "/client/sales-agents", 
     icon: Bot, 
     color: "text-cyan-600",
     children: [
-      { name: "I Miei Agenti AI", href: "/client/sales-agents", icon: Bot, color: "text-cyan-600" },
-      { name: "Nuovo Agente AI", href: "/client/sales-agents/new", icon: UserPlus, color: "text-emerald-600" },
+      { name: "I Miei Dipendenti AI", href: "/client/sales-agents", icon: Bot, color: "text-cyan-600" },
+      { name: "Nuovo Dipendente AI", href: "/client/sales-agents/new", icon: UserPlus, color: "text-emerald-600" },
       { name: "Script Manager", href: "/client/scripts", icon: FileText, color: "text-amber-600" },
       { name: "Live Consultation", href: "/live-consultation", icon: Video, color: "text-teal-600" },
       { name: "AI Analytics", href: "/client/analytics/vertex-ai", icon: BarChart3, color: "text-teal-500" },
