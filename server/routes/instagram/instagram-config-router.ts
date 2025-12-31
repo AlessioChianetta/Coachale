@@ -848,7 +848,7 @@ async function subscribeWebhookHandler(req: AuthRequest, res: Response) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         access_token: accessToken,
-        subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads",
+        subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads,comments",
       }).toString(),
     });
     
@@ -870,7 +870,7 @@ async function subscribeWebhookHandler(req: AuthRequest, res: Response) {
       return res.json({
         success: true,
         message: "Webhook sottoscritto con successo",
-        fields: "messages,messaging_postbacks,message_reactions,message_reads"
+        fields: "messages,messaging_postbacks,message_reactions,message_reads,comments"
       });
     } else {
       console.error(`[INSTAGRAM] Webhook subscription failed:`, subscribeData);
