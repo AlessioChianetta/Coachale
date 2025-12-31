@@ -197,7 +197,11 @@ export default function PrivacyPolicy() {
                 </div>
                 <div>
                   <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">pages_messaging</code>
-                  <p className="text-slate-600 text-sm mt-1">Gestione messaggi della Pagina Facebook collegata al tuo account Instagram</p>
+                  <p className="text-slate-600 text-sm mt-1">Invio messaggi tramite la Pagina Facebook collegata al tuo account Instagram</p>
+                </div>
+                <div>
+                  <code className="bg-indigo-100 px-2 py-1 rounded text-indigo-800 text-sm">pages_show_list</code>
+                  <p className="text-slate-600 text-sm mt-1">Visualizzazione lista delle tue Pagine Facebook per selezionare quella collegata a Instagram</p>
                 </div>
               </div>
               <p className="text-slate-600 leading-relaxed mt-4">
