@@ -11961,7 +11961,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         // File Search Categories
         fileSearchCategories,
         // AI Assistant Integration
-        enableInAIAssistant
+        enableInAIAssistant,
+        // Dipendente AI Level Configuration
+        level,
+        publicSlug,
+        dailyMessageLimit
       } = req.body;
 
       console.log("📝 [WHATSAPP CONFIG] POST request received:", {
@@ -12154,6 +12158,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           fileSearchCategories: fileSearchCategories || existingConfig.fileSearchCategories || null,
           // AI Assistant Integration
           enableInAIAssistant: enableInAIAssistant ?? existingConfig.enableInAIAssistant ?? false,
+          // Dipendente AI Level Configuration
+          level: level !== undefined ? level : existingConfig.level,
+          publicSlug: publicSlug !== undefined ? publicSlug : existingConfig.publicSlug,
+          dailyMessageLimit: dailyMessageLimit ?? existingConfig.dailyMessageLimit ?? 15,
         };
 
         // Only update twilioAuthToken if explicitly provided and not "KEEP_EXISTING"
@@ -12271,6 +12279,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
             fileSearchCategories: fileSearchCategories || null,
             // AI Assistant Integration
             enableInAIAssistant: enableInAIAssistant ?? false,
+            // Dipendente AI Level Configuration
+            level: level || null,
+            publicSlug: publicSlug || null,
+            dailyMessageLimit: dailyMessageLimit ?? 15,
           })
           .returning();
 
@@ -12322,6 +12334,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           defaultIdealState: config.defaultIdealState,
           isDryRun: config.isDryRun,
           whatsappTemplates: config.whatsappTemplates,
+          level: config.level,
+          publicSlug: config.publicSlug,
+          dailyMessageLimit: config.dailyMessageLimit,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         },

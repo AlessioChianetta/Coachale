@@ -65,7 +65,12 @@ export const whatsappConfigSchema = z.object({
   defaultUncino: z.string().optional(),
   defaultIdealState: z.string().optional(),
 
-  // Step 4: Agent Instructions - Handled by AgentInstructionsPanel
+  // Step 4: Agent Level - Dipendente AI configuration
+  level: z.enum(["1", "2"]).nullable().optional(),
+  publicSlug: z.string().optional(),
+  dailyMessageLimit: z.coerce.number().min(1).default(15),
+
+  // Step 5: Agent Instructions - Handled by AgentInstructionsPanel
   agentInstructions: z.string().nullable().optional(),
   agentInstructionsEnabled: z.boolean().default(false),
   selectedTemplate: z.enum(["receptionist", "marco_setter", "informative_advisor", "customer_success", "intake_coordinator", "custom"]).default("receptionist"),
@@ -127,7 +132,19 @@ export function validateStep(
     case 2: // Step 3: Brand Voice - All optional
       break;
 
-    case 3: // Step 4: AI Instructions
+    case 3: // Step 4: Agent Level
+      // Validate publicSlug if level is "1"
+      if ((data as any).level === "1") {
+        const publicSlug = (data as any).publicSlug;
+        if (!publicSlug?.trim()) {
+          errors.publicSlug = "Lo slug URL è obbligatorio per il Livello 1";
+        } else if (!/^[a-z0-9-]+$/.test(publicSlug)) {
+          errors.publicSlug = "Lo slug può contenere solo lettere minuscole, numeri e trattini";
+        }
+      }
+      break;
+
+    case 4: // Step 5: AI Instructions
       // For proactive agents, require the 4 default fields
       const isProactive = data.agentType === "proactive_setter" || data.isProactiveAgent === true;
       if (isProactive) {

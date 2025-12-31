@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowRight, Save, Loader2, CheckCircle2, Info, Sparkles, Clo
 import AgentBasicSetup from "./wizard-steps/AgentBasicSetup";
 import AgentAvailability from "./wizard-steps/AgentAvailability";
 import AgentBrandVoice from "./wizard-steps/AgentBrandVoice";
+import AgentLevel from "./wizard-steps/AgentLevel";
 import AgentInstructions from "./wizard-steps/AgentInstructions";
 import AgentInstagram from "./wizard-steps/AgentInstagram";
 import { INFORMATIVE_ADVISOR_TEMPLATE } from "./AgentInstructionsPanel";
@@ -45,6 +46,11 @@ const baseSteps: Step[] = [
     id: "brand",
     label: "Brand Voice",
     description: "Info e credibilità",
+  },
+  {
+    id: "level",
+    label: "Dipendente AI",
+    description: "Livello accesso",
   },
   {
     id: "instructions",
@@ -118,6 +124,9 @@ const emptyFormData = {
     library: false,
     university: false,
   },
+  level: null as "1" | "2" | null,
+  publicSlug: "",
+  dailyMessageLimit: 15,
 };
 
 export default function WhatsAppAgentWizard({
@@ -141,7 +150,7 @@ export default function WhatsAppAgentWizard({
   const { toast } = useToast();
 
   const steps = mode === "edit" ? [...baseSteps, instagramStep] : baseSteps;
-  const lastMainStep = 3;
+  const lastMainStep = 4;
 
   useEffect(() => {
     if (initialData) {
@@ -222,6 +231,8 @@ export default function WhatsAppAgentWizard({
     defaultDesideri: "Desideri Default",
     defaultUncino: "Uncino Default",
     defaultIdealState: "Stato Ideale Default",
+    publicSlug: "Slug URL Pubblico",
+    dailyMessageLimit: "Limite Messaggi Giornalieri",
   };
 
   const handleNext = () => {
@@ -254,7 +265,7 @@ export default function WhatsAppAgentWizard({
 
   const handleSave = async () => {
     // Valida tutti gli step prima di mostrare il dialog
-    for (let i = 0; i <= 3; i++) {
+    for (let i = 0; i <= 4; i++) {
       const { isValid, errors } = validateStep(i, formData, mode === "create");
       if (!isValid) {
         setValidationErrors(errors);
@@ -373,6 +384,13 @@ export default function WhatsAppAgentWizard({
                 />
               )}
               {currentStep === 3 && (
+                <AgentLevel
+                  formData={formData}
+                  onChange={handleFieldChange}
+                  errors={validationErrors}
+                />
+              )}
+              {currentStep === 4 && (
                 <AgentInstructions
                   formData={formData}
                   onChange={handleFieldChange}
@@ -382,7 +400,7 @@ export default function WhatsAppAgentWizard({
                   onInstructionsSaved={handleInstructionsSaved}
                 />
               )}
-              {currentStep === 4 && mode === "edit" && (
+              {currentStep === 5 && mode === "edit" && (
                 <AgentInstagram
                   agentId={initialData?.id || null}
                   formData={formData}
