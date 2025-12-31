@@ -144,12 +144,7 @@ router.post("/proactive-leads", authenticateToken, requireRole("consultant"), as
     }
     
     const now = new Date();
-    if (contactSchedule <= now) {
-      return res.status(400).json({
-        success: false,
-        error: "contactSchedule must be a future timestamp"
-      });
-    }
+    const shouldTriggerImmediately = contactSchedule <= now;
     
     // Validate status if provided
     if (req.body.status) {
@@ -231,10 +226,23 @@ router.post("/proactive-leads", authenticateToken, requireRole("consultant"), as
     
     const lead = await storage.createProactiveLead(validatedData);
     
+    let immediateOutreachResult = null;
+    
+    if (shouldTriggerImmediately) {
+      console.log(`⚡ [PROACTIVE LEADS] Lead ${lead.id} has past/present contactSchedule - triggering immediate outreach`);
+      const { processSingleLeadImmediately } = await import('../whatsapp/proactive-outreach');
+      immediateOutreachResult = await processSingleLeadImmediately(lead.id);
+    }
+    
     res.status(201).json({
       success: true,
       data: lead,
-      message: "Proactive lead created successfully"
+      message: shouldTriggerImmediately 
+        ? (immediateOutreachResult?.success 
+            ? "Lead creato e primo messaggio inviato immediatamente" 
+            : `Lead creato. Outreach immediato fallito: ${immediateOutreachResult?.message}`)
+        : "Proactive lead created successfully",
+      immediateOutreach: immediateOutreachResult
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {

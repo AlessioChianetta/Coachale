@@ -1046,6 +1046,98 @@ export async function processProactiveOutreach(): Promise<void> {
 }
 
 /**
+ * Process a single lead immediately (for instant outreach when lead is created/imported)
+ * This bypasses the 5-minute scheduler cycle for immediate first contact
+ * @param leadId - The lead ID to process
+ * @returns Result with success status and message
+ */
+export async function processSingleLeadImmediately(leadId: string): Promise<{ success: boolean; message: string }> {
+  console.log(`⚡ [IMMEDIATE OUTREACH] Processing lead ${leadId} immediately`);
+  
+  try {
+    const leadData = await db
+      .select({
+        lead: proactiveLeads,
+        consultant: users,
+        agentConfig: consultantWhatsappConfig
+      })
+      .from(proactiveLeads)
+      .innerJoin(users, eq(proactiveLeads.consultantId, users.id))
+      .innerJoin(consultantWhatsappConfig, eq(proactiveLeads.agentConfigId, consultantWhatsappConfig.id))
+      .where(eq(proactiveLeads.id, leadId))
+      .limit(1);
+    
+    if (leadData.length === 0) {
+      console.log(`⚠️ [IMMEDIATE OUTREACH] Lead ${leadId} not found or missing relationships`);
+      return { success: false, message: "Lead not found" };
+    }
+    
+    const { lead, consultant, agentConfig } = leadData[0];
+    
+    if (lead.status !== 'pending') {
+      console.log(`⚠️ [IMMEDIATE OUTREACH] Lead ${leadId} is not pending (status: ${lead.status})`);
+      return { success: false, message: `Lead status is ${lead.status}, not pending` };
+    }
+    
+    if (agentConfig.agentType !== 'proactive_setter') {
+      console.log(`⚠️ [IMMEDIATE OUTREACH] Agent ${agentConfig.agentName} is not proactive_setter`);
+      return { success: false, message: "Agent is not a proactive setter" };
+    }
+    
+    if (processingLeadIds.has(leadId)) {
+      console.log(`⚠️ [IMMEDIATE OUTREACH] Lead ${leadId} already being processed`);
+      return { success: false, message: "Lead already being processed" };
+    }
+    
+    processingLeadIds.add(leadId);
+    
+    const claimedLeads = await db
+      .update(proactiveLeads)
+      .set({ 
+        status: 'processing',
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(proactiveLeads.id, leadId),
+          eq(proactiveLeads.status, 'pending')
+        )
+      )
+      .returning({ id: proactiveLeads.id });
+    
+    if (claimedLeads.length === 0) {
+      processingLeadIds.delete(leadId);
+      console.log(`⚠️ [IMMEDIATE OUTREACH] Could not claim lead ${leadId}`);
+      return { success: false, message: "Lead already claimed by another process" };
+    }
+    
+    try {
+      await processLead(lead, consultant, agentConfig);
+      console.log(`✅ [IMMEDIATE OUTREACH] Successfully processed lead ${leadId}`);
+      return { success: true, message: "First message sent successfully" };
+    } catch (error: any) {
+      console.error(`❌ [IMMEDIATE OUTREACH] Failed to process lead ${leadId}:`, error.message);
+      return { success: false, message: error.message };
+    } finally {
+      processingLeadIds.delete(leadId);
+      
+      const [finalStatus] = await db
+        .select({ status: proactiveLeads.status })
+        .from(proactiveLeads)
+        .where(eq(proactiveLeads.id, leadId))
+        .limit(1);
+      
+      if (finalStatus?.status === 'processing') {
+        await db.update(proactiveLeads).set({ status: 'pending' }).where(eq(proactiveLeads.id, leadId));
+      }
+    }
+  } catch (error: any) {
+    console.error(`❌ [IMMEDIATE OUTREACH] Error:`, error.message);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
  * Start the proactive outreach scheduler
  * Runs every 5 minutes for faster response time
  */
