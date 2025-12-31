@@ -318,21 +318,13 @@ router.patch("/proactive-leads/:id", authenticateToken, requireRole("consultant"
       }
     }
     
-    // Validate contactSchedule is in the future if provided
+    // Validate contactSchedule format if provided
     if (req.body.contactSchedule) {
       const contactSchedule = new Date(req.body.contactSchedule);
       if (isNaN(contactSchedule.getTime())) {
         return res.status(400).json({
           success: false,
           error: "contactSchedule must be a valid date/time"
-        });
-      }
-      
-      const now = new Date();
-      if (contactSchedule <= now) {
-        return res.status(400).json({
-          success: false,
-          error: "contactSchedule must be a future timestamp"
         });
       }
     }
@@ -654,15 +646,6 @@ router.post("/proactive-leads/bulk", authenticateToken, requireRole("consultant"
             row: rowNumber,
             phone: leadData.phoneNumber,
             error: "Invalid contactSchedule date format"
-          });
-          continue;
-        }
-        
-        if (contactSchedule <= now) {
-          errors.push({
-            row: rowNumber,
-            phone: leadData.phoneNumber,
-            error: "contactSchedule must be a future timestamp"
           });
           continue;
         }
