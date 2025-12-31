@@ -270,6 +270,16 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     // Apply idealState from campaign or agent config
     const idealState = campaign?.idealStateDescription || agentConfig?.defaultIdealState || undefined;
 
+    // Build campaign snapshot for display in proactive-leads page
+    const campaignSnapshot = campaign ? {
+      name: campaign.name || campaign.campaignName,
+      goal: campaign.obiettivi || campaign.defaultObiettivi || campaign.name,
+      obiettivi: campaign.obiettivi || campaign.defaultObiettivi,
+      desideri: campaign.desideri || campaign.implicitDesires,
+      uncino: campaign.uncino || campaign.hookText,
+      statoIdeale: campaign.statoIdeale || campaign.idealStateDescription,
+    } : undefined;
+
     const leadData: schema.InsertProactiveLead = {
       consultantId: webhookConfig.consultantId,
       agentConfigId: agentConfigId,
@@ -281,6 +291,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       contactSchedule: new Date(),
       status: 'pending',
       campaignId: webhookConfig.targetCampaignId || undefined,
+      campaignSnapshot: campaignSnapshot,
     };
 
     console.log(`📝 [WEBHOOK] Creating proactive lead: ${firstName} ${lastName} (${phoneNumber})`);
@@ -507,6 +518,16 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
     // Apply idealState from campaign or agent config
     const idealState = campaign?.idealStateDescription || agentConfig?.defaultIdealState || undefined;
 
+    // Build campaign snapshot for display in proactive-leads page
+    const campaignSnapshot = campaign ? {
+      name: campaign.name || campaign.campaignName,
+      goal: campaign.obiettivi || campaign.defaultObiettivi || campaign.name,
+      obiettivi: campaign.obiettivi || campaign.defaultObiettivi,
+      desideri: campaign.desideri || campaign.implicitDesires,
+      uncino: campaign.uncino || campaign.hookText,
+      statoIdeale: campaign.statoIdeale || campaign.idealStateDescription,
+    } : undefined;
+
     const leadData: schema.InsertProactiveLead = {
       consultantId: webhookConfig.consultantId,
       agentConfigId: agentConfigId,
@@ -518,6 +539,7 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       contactSchedule: new Date(),
       status: 'pending',
       campaignId: webhookConfig.targetCampaignId || undefined,
+      campaignSnapshot: campaignSnapshot,
     };
 
     console.log(`📝 [AC-WEBHOOK] Creating proactive lead: ${firstName} ${lastName} (${phoneNumber})`);
