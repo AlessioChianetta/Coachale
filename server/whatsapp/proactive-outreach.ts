@@ -1139,7 +1139,7 @@ export async function processSingleLeadImmediately(leadId: string): Promise<{ su
 
 /**
  * Start the proactive outreach scheduler
- * Runs every 5 minutes for faster response time
+ * Runs every 1 minute for precise timing based on contactSchedule
  */
 export function startProactiveOutreachScheduler(): void {
   if (schedulerTask) {
@@ -1147,16 +1147,16 @@ export function startProactiveOutreachScheduler(): void {
     return;
   }
 
-  console.log(`🚀 Starting proactive outreach scheduler (every 5 minutes)`);
+  console.log(`🚀 Starting proactive outreach scheduler (every 1 minute)`);
 
-  // Schedule: Every 5 minutes (improved responsiveness from previous 30 min)
-  schedulerTask = cron.schedule('*/5 * * * *', async () => {
+  // Schedule: Every 1 minute for precise contactSchedule timing
+  schedulerTask = cron.schedule('* * * * *', async () => {
     await processProactiveOutreach();
   }, {
     timezone: 'Europe/Rome' // Use Italian timezone for consistency
   });
 
-  console.log(`✅ Proactive outreach scheduler started successfully (checking every 5 minutes)`);
+  console.log(`✅ Proactive outreach scheduler started successfully (checking every 1 minute)`);
 
   // Run immediately on startup (optional - comment out if not desired)
   // processProactiveOutreach().catch(error => {
