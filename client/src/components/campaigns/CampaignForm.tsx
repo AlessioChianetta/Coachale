@@ -41,6 +41,8 @@ const campaignFormSchema = z.object({
   defaultObiettivi: z.string().min(1, "Gli obiettivi predefiniti sono obbligatori"),
   preferredAgentConfigId: z.string().min(1, "Seleziona un agente WhatsApp"),
   openingTemplateId: z.string().optional(),
+  openingTwilioTemplateSid: z.string().optional(),
+  openingTemplateType: z.enum(["custom", "twilio"]).optional(),
   followupGentleTemplateId: z.string().optional(),
   followupValueTemplateId: z.string().optional(),
   followupFinalTemplateId: z.string().optional(),
@@ -106,9 +108,16 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     }
     
     const data = form.getValues();
+    const templateId = data.openingTemplateId;
+    const isTwilioTpl = templateId?.startsWith('HX');
+    
     const cleanedData = {
       ...data,
-      openingTemplateId: data.openingTemplateId || undefined,
+      // For Twilio templates: save in openingTwilioTemplateSid, clear openingTemplateId
+      // For custom templates: save in openingTemplateId, clear openingTwilioTemplateSid
+      openingTemplateId: isTwilioTpl ? undefined : (templateId || undefined),
+      openingTwilioTemplateSid: isTwilioTpl ? templateId : undefined,
+      openingTemplateType: isTwilioTpl ? 'twilio' : 'custom',
       followupGentleTemplateId: data.followupGentleTemplateId || undefined,
       followupValueTemplateId: data.followupValueTemplateId || undefined,
       followupFinalTemplateId: data.followupFinalTemplateId || undefined,
@@ -159,10 +168,10 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   });
 
   const allAssignedTemplates = assignmentsData?.assignments || [];
-  // Filter out Twilio templates (HX prefix) - only show custom templates for campaign selection
-  // Twilio templates can't be saved to marketing_campaigns.opening_template_id (FK constraint)
-  const assignedTemplates = allAssignedTemplates.filter((t: any) => !t.isTwilioTemplate && !t.templateId?.startsWith('HX'));
+  // Show both custom and Twilio templates - they are saved in different fields
+  const assignedTemplates = allAssignedTemplates;
   const selectedTemplate = assignedTemplates.find((t: any) => t.templateId === selectedTemplateId);
+  const isTwilioTemplate = selectedTemplate?.isTwilioTemplate || selectedTemplateId?.startsWith('HX');
 
   useEffect(() => {
     setSelectedTemplateId(null);

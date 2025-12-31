@@ -2974,6 +2974,10 @@ export const marketingCampaigns = pgTable("marketing_campaigns", {
   followupGentleTemplateId: varchar("followup_gentle_template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
   followupValueTemplateId: varchar("followup_value_template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
   followupFinalTemplateId: varchar("followup_final_template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
+  
+  // Twilio templates (alternative to custom templates - SIDs starting with HX)
+  openingTwilioTemplateSid: varchar("opening_twilio_template_sid"),
+  openingTemplateType: text("opening_template_type").$type<"custom" | "twilio">().default("custom"),
 
   // Metrics (calculated from leads)
   totalLeads: integer("total_leads").default(0).notNull(),
