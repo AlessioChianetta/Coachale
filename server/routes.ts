@@ -261,6 +261,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public endpoint for landing page lead capture (no auth required)
+  app.post("/api/leads/landing", async (req, res) => {
+    try {
+      const { firstName, lastName, email, phone, source, capturedAt } = req.body;
+      
+      if (!firstName || !lastName || !email || !phone) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "All fields are required" 
+        });
+      }
+
+      // Check for duplicate email
+      const existingLead = await db.select()
+        .from(schema.landingLeads)
+        .where(eq(schema.landingLeads.email, email))
+        .limit(1);
+      
+      if (existingLead.length > 0) {
+        console.log(`⚠️ [LANDING LEAD] Duplicate email: ${email}`);
+        return res.json({ 
+          success: true, 
+          message: "Lead already registered" 
+        });
+      }
+
+      // Store landing lead in database
+      const [newLead] = await db.insert(schema.landingLeads)
+        .values({
+          firstName,
+          lastName,
+          email,
+          phoneNumber: phone,
+          source: source || 'sas-landing',
+          status: 'pending',
+          capturedAt: capturedAt ? new Date(capturedAt) : new Date(),
+        })
+        .returning();
+
+      console.log(`📥 [LANDING LEAD] New lead captured:`, {
+        id: newLead.id,
+        name: `${firstName} ${lastName}`,
+        email,
+        phone,
+        source: source || 'sas-landing',
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Lead captured successfully",
+        leadId: newLead.id
+      });
+    } catch (error: any) {
+      console.error("❌ [LANDING LEAD] Error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || "Failed to capture lead" 
+      });
+    }
+  });
+
   app.post("/api/auth/login", async (req, res) => {
     try {
       const validatedData = loginSchema.parse(req.body);

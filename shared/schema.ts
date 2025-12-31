@@ -6662,3 +6662,29 @@ export const insertInstagramMessageSchema = createInsertSchema(instagramMessages
   id: true,
   createdAt: true,
 });
+
+// Landing Page Leads (public form submissions)
+export const landingLeads = pgTable("landing_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  source: text("source").default("sas-landing"),
+  status: text("status").$type<"pending" | "contacted" | "converted" | "rejected">().default("pending"),
+  notes: text("notes"),
+  capturedAt: timestamp("captured_at").default(sql`now()`),
+  contactedAt: timestamp("contacted_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  emailIdx: index("idx_landing_leads_email").on(table.email),
+  statusIdx: index("idx_landing_leads_status").on(table.status),
+}));
+
+export type LandingLead = typeof landingLeads.$inferSelect;
+export type InsertLandingLead = typeof landingLeads.$inferInsert;
+
+export const insertLandingLeadSchema = createInsertSchema(landingLeads).omit({
+  id: true,
+  createdAt: true,
+});

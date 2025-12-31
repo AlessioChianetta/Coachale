@@ -124,6 +124,7 @@ const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
 const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
 const AdminUsers = lazy(() => import("@/pages/admin-users"));
 const AdminSettings = lazy(() => import("@/pages/admin-settings"));
+const SasLanding = lazy(() => import("@/pages/sas-landing"));
 
 function Router() {
   const user = getAuthUser();
@@ -163,6 +164,9 @@ function Router() {
 
           {/* Realtime test - WebSocket vs SSE */}
           <Route path="/realtime-test" component={RealtimeTest} />
+
+          {/* SaaS Landing Page - no auth required */}
+          <Route path="/Sas" component={SasLanding} />
 
           {/* Manager Login - no auth required */}
           <Route path="/agent/:slug/login" component={ManagerLogin} />
