@@ -11122,6 +11122,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           isProactiveAgent: config.isProactiveAgent,
           isDryRun: config.isDryRun,
           integrationMode: config.integrationMode,
+          // Default values for campaigns
+          defaultObiettivi: config.defaultObiettivi,
+          defaultDesideri: config.defaultDesideri,
+          defaultUncino: config.defaultUncino,
+          defaultIdealState: config.defaultIdealState,
         })),
         count: configs.length,
       });

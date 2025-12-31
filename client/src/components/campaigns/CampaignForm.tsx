@@ -165,22 +165,32 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   const selectedTemplate = assignedTemplates.find((t: any) => t.templateId === selectedTemplateId);
 
   useEffect(() => {
-    console.log('[CampaignForm] Agent changed, resetting template:', { selectedAgentId });
     setSelectedTemplateId(null);
     form.setValue("openingTemplateId", "");
-  }, [selectedAgentId]);
+    
+    // Auto-populate Step 3 fields with agent defaults when agent is selected (if not editing existing campaign)
+    if (selectedAgentId && !initialData?.preferredAgentConfigId) {
+      const agent = agents.find((a: any) => a.id === selectedAgentId);
+      if (agent) {
+        // Only set if fields are empty (don't overwrite user input)
+        const currentHook = form.getValues("hookText");
+        const currentIdeal = form.getValues("idealStateDescription");
+        const currentDesires = form.getValues("implicitDesires");
+        const currentObiettivi = form.getValues("defaultObiettivi");
+        
+        if (!currentHook && agent.defaultUncino) form.setValue("hookText", agent.defaultUncino);
+        if (!currentIdeal && agent.defaultIdealState) form.setValue("idealStateDescription", agent.defaultIdealState);
+        if (!currentDesires && agent.defaultDesideri) form.setValue("implicitDesires", agent.defaultDesideri);
+        if (!currentObiettivi && agent.defaultObiettivi) form.setValue("defaultObiettivi", agent.defaultObiettivi);
+      }
+    }
+  }, [selectedAgentId, agents]);
 
   useEffect(() => {
-    console.log('[CampaignForm] selectedTemplateId changed:', selectedTemplateId);
     form.setValue("openingTemplateId", selectedTemplateId || "");
   }, [selectedTemplateId]);
 
   useEffect(() => {
-    console.log('[CampaignForm] Templates loaded:', { 
-      count: assignedTemplates?.length, 
-      templates: assignedTemplates?.map((t: any) => ({ id: t.templateId, name: t.templateName })),
-      initialOpeningTemplateId: initialData?.openingTemplateId 
-    });
     if (initialData?.openingTemplateId && assignedTemplates.length > 0) {
       const exists = assignedTemplates.some((t: any) => t.templateId === initialData.openingTemplateId);
       if (exists) {
@@ -281,13 +291,6 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   const previewTemplate = getPreviewTemplate();
 
   const canProceed = () => {
-    console.log('[CampaignForm] canProceed check:', {
-      currentStep,
-      preferredAgentConfigId: watchedValues.preferredAgentConfigId,
-      openingTemplateId: watchedValues.openingTemplateId,
-      selectedTemplateId,
-      assignedTemplatesCount: assignedTemplates?.length,
-    });
     switch (currentStep) {
       case 1:
         return watchedValues.campaignName?.length >= 3 && watchedValues.campaignType && watchedValues.leadCategory;
@@ -296,9 +299,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
         const hasAgent = !!watchedValues.preferredAgentConfigId;
         const hasTemplate = !!watchedValues.openingTemplateId;
         const noTemplatesAvailable = assignedTemplates.length === 0;
-        const step2Result = hasAgent && (hasTemplate || noTemplatesAvailable);
-        console.log('[CampaignForm] Step 2 result:', step2Result, '| agentOK:', hasAgent, '| templateOK:', hasTemplate, '| noTemplatesAvailable:', noTemplatesAvailable);
-        return step2Result;
+        return hasAgent && (hasTemplate || noTemplatesAvailable);
       case 3:
         return watchedValues.hookText && watchedValues.idealStateDescription && watchedValues.implicitDesires && watchedValues.defaultObiettivi;
       default:
@@ -545,26 +546,48 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                       )}
                     />
 
-                    {selectedAgentId && (selectedAgent?.defaultUncino || selectedAgent?.defaultIdealState) && (
-                      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500 text-white">
+                    {selectedAgentId && (selectedAgent?.defaultUncino || selectedAgent?.defaultIdealState || selectedAgent?.defaultObiettivi || selectedAgent?.defaultDesideri) && (
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
                             <Zap className="h-5 w-5" />
                           </div>
                           <div>
-                            <p className="font-medium text-blue-900 dark:text-blue-100">Valori predefiniti disponibili</p>
-                            <p className="text-sm text-blue-700 dark:text-blue-300">Questo agente ha valori configurati che puoi usare</p>
+                            <p className="font-medium text-blue-900 dark:text-blue-100">Valori predefiniti dell'agente</p>
+                            <p className="text-sm text-blue-700 dark:text-blue-300">Questi valori verranno usati per personalizzare i messaggi AI</p>
                           </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleInsertDefaults}
-                          className="w-full bg-white dark:bg-blue-900/50"
-                        >
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Usa Valori Predefiniti dell'Agente
-                        </Button>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {selectedAgent?.defaultObiettivi && (
+                            <div className="bg-white/80 dark:bg-gray-800/50 rounded-lg p-3 border border-blue-100 dark:border-blue-800">
+                              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide block mb-1">Obiettivi</span>
+                              <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{selectedAgent.defaultObiettivi}</p>
+                            </div>
+                          )}
+                          {selectedAgent?.defaultDesideri && (
+                            <div className="bg-white/80 dark:bg-gray-800/50 rounded-lg p-3 border border-blue-100 dark:border-blue-800">
+                              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide block mb-1">Desideri</span>
+                              <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{selectedAgent.defaultDesideri}</p>
+                            </div>
+                          )}
+                          {selectedAgent?.defaultUncino && (
+                            <div className="bg-white/80 dark:bg-gray-800/50 rounded-lg p-3 border border-blue-100 dark:border-blue-800">
+                              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide block mb-1">Uncino (Hook)</span>
+                              <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{selectedAgent.defaultUncino}</p>
+                            </div>
+                          )}
+                          {selectedAgent?.defaultIdealState && (
+                            <div className="bg-white/80 dark:bg-gray-800/50 rounded-lg p-3 border border-blue-100 dark:border-blue-800">
+                              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide block mb-1">Stato Ideale</span>
+                              <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{selectedAgent.defaultIdealState}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-blue-600 dark:text-blue-400 text-center">
+                          Questi valori sono stati auto-compilati nello Step 3. Potrai modificarli se necessario.
+                        </p>
                       </div>
                     )}
 
