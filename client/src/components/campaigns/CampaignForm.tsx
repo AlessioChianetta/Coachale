@@ -292,8 +292,12 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
       case 1:
         return watchedValues.campaignName?.length >= 3 && watchedValues.campaignType && watchedValues.leadCategory;
       case 2:
-        const step2Result = !!watchedValues.preferredAgentConfigId && !!watchedValues.openingTemplateId;
-        console.log('[CampaignForm] Step 2 result:', step2Result, '| agentOK:', !!watchedValues.preferredAgentConfigId, '| templateOK:', !!watchedValues.openingTemplateId);
+        // Template is optional if no custom templates are assigned to the agent
+        const hasAgent = !!watchedValues.preferredAgentConfigId;
+        const hasTemplate = !!watchedValues.openingTemplateId;
+        const noTemplatesAvailable = assignedTemplates.length === 0;
+        const step2Result = hasAgent && (hasTemplate || noTemplatesAvailable);
+        console.log('[CampaignForm] Step 2 result:', step2Result, '| agentOK:', hasAgent, '| templateOK:', hasTemplate, '| noTemplatesAvailable:', noTemplatesAvailable);
         return step2Result;
       case 3:
         return watchedValues.hookText && watchedValues.idealStateDescription && watchedValues.implicitDesires && watchedValues.defaultObiettivi;
@@ -565,6 +569,22 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                     )}
 
                     {/* Template Preview in Step 2 */}
+                    {selectedAgentId && assignedTemplates.length === 0 && (
+                      <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 shrink-0">
+                            <AlertCircle className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-amber-900 dark:text-amber-100 text-sm">Nessun template custom assegnato</p>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                              Questo agente non ha template custom assegnati. Puoi continuare senza selezionare un template, 
+                              oppure vai in "Template WhatsApp" per crearne e assegnarli all'agente.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {selectedAgentId && assignedTemplates.length > 0 && (
                       <div className="mt-4">
                         <p className="text-sm font-medium mb-3">Template Disponibili ({assignedTemplates.length})</p>
