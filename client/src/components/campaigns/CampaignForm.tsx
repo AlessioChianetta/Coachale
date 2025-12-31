@@ -169,22 +169,19 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
     form.setValue("openingTemplateId", "");
     
     // Auto-populate Step 3 fields with agent defaults when agent is selected (if not editing existing campaign)
-    if (selectedAgentId && !initialData?.preferredAgentConfigId) {
-      const agent = agents.find((a: any) => a.id === selectedAgentId);
-      if (agent) {
-        // Only set if fields are empty (don't overwrite user input)
-        const currentHook = form.getValues("hookText");
-        const currentIdeal = form.getValues("idealStateDescription");
-        const currentDesires = form.getValues("implicitDesires");
-        const currentObiettivi = form.getValues("defaultObiettivi");
-        
-        if (!currentHook && agent.defaultUncino) form.setValue("hookText", agent.defaultUncino);
-        if (!currentIdeal && agent.defaultIdealState) form.setValue("idealStateDescription", agent.defaultIdealState);
-        if (!currentDesires && agent.defaultDesideri) form.setValue("implicitDesires", agent.defaultDesideri);
-        if (!currentObiettivi && agent.defaultObiettivi) form.setValue("defaultObiettivi", agent.defaultObiettivi);
-      }
+    if (selectedAgentId && !initialData?.preferredAgentConfigId && selectedAgent) {
+      // Only set if fields are empty (don't overwrite user input)
+      const currentHook = form.getValues("hookText");
+      const currentIdeal = form.getValues("idealStateDescription");
+      const currentDesires = form.getValues("implicitDesires");
+      const currentObiettivi = form.getValues("defaultObiettivi");
+      
+      if (!currentHook && selectedAgent.defaultUncino) form.setValue("hookText", selectedAgent.defaultUncino);
+      if (!currentIdeal && selectedAgent.defaultIdealState) form.setValue("idealStateDescription", selectedAgent.defaultIdealState);
+      if (!currentDesires && selectedAgent.defaultDesideri) form.setValue("implicitDesires", selectedAgent.defaultDesideri);
+      if (!currentObiettivi && selectedAgent.defaultObiettivi) form.setValue("defaultObiettivi", selectedAgent.defaultObiettivi);
     }
-  }, [selectedAgentId, agents]);
+  }, [selectedAgentId]);
 
   useEffect(() => {
     form.setValue("openingTemplateId", selectedTemplateId || "");
