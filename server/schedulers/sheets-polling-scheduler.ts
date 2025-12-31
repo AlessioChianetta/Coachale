@@ -219,21 +219,18 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
     
     result.newRowCount = rows.length;
     
-    // Use result.previousRowCount which respects forceReimport flag (0 when force)
-    const effectiveLastRowCount = result.previousRowCount;
+    // Process ALL rows and check database for each lead existence
+    // This ensures deleted leads get re-imported automatically
+    const newRows = rows;
+    console.log(`[SHEETS POLLING] Processing ${newRows.length} rows for job ${job.id} (checking database for each)`);
     
-    if (rows.length <= effectiveLastRowCount && !forceReimport) {
-      console.log(`[SHEETS POLLING] No new rows for job ${job.id} (current: ${rows.length}, previous: ${effectiveLastRowCount})`);
-      
+    if (newRows.length === 0) {
+      console.log(`[SHEETS POLLING] No rows to process for job ${job.id}`);
       await db.update(schema.leadImportJobs)
         .set({ lastImportAt: new Date(), updatedAt: new Date() })
         .where(eq(schema.leadImportJobs.id, job.id));
-      
       return result;
     }
-    
-    const newRows = forceReimport ? rows : rows.slice(effectiveLastRowCount);
-    console.log(`[SHEETS POLLING] ${forceReimport ? 'Force reimport:' : 'Found'} ${newRows.length} rows for job ${job.id}`);
     
     const skipDuplicates = settings.skipDuplicates !== false;
     const defaultContactFrequency = settings.defaultContactFrequency || 7;
@@ -287,7 +284,7 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
     
     for (let i = 0; i < newRows.length; i++) {
       const row = newRows[i];
-      const absoluteRowNumber = effectiveLastRowCount + i + 1;
+      const absoluteRowNumber = i + 1; // Row number in the sheet (1-indexed)
       
       try {
         const firstName = row[columnMappings.firstName || ''] || '';
