@@ -1,0 +1,26 @@
+consultant-api-keys-unified.tsx:8004 Uncaught ReferenceError: DialogFooter is not defined
+    at ConsultantApiKeysUnified (consultant-api-keys-unified.tsx:8004:12)
+
+consultant-api-keys-unified.tsx:8004 Uncaught ReferenceError: DialogFooter is not defined
+    at ConsultantApiKeysUnified (consultant-api-keys-unified.tsx:8004:12)
+injected.js:37 The above error occurred in the <ConsultantApiKeysUnified> component:
+
+    at ConsultantApiKeysUnified (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit.dev/src/pages/consultant-api-keys-unified.tsx:595:20)
+    at AuthGuard (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=197c0a22:226:16)
+    at Switch (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=197c0a22:283:17)
+    at Suspense
+    at Router (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit.dev/src/App.tsx?v=9krYH_BHDSt6SaFhc2mte:250:35)
+    at Provider (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=197c0a22:44:15)
+    at TooltipProvider (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=197c0a22:158:5)
+    at TourProvider (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=197c0a22:3096:3)
+    at V (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=197c0a22:44:25)
+    at J (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=197c0a22:42:18)
+    at App (https://8d404cee-9ebd-4555-abd8-c4658f9c6f9c-00-2vuhf5kldw2h9.picard.replit.dev/src/App.tsx?v=9krYH_BHDSt6SaFhc2mte:1619:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=197c0a22:19413 Uncaught ReferenceError: DialogFooter is not defined
+    at ConsultantApiKeysUnified (consultant-api-keys-unified.tsx:8004:12)
