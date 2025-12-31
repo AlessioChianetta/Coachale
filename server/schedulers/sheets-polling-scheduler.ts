@@ -242,8 +242,8 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
     let campaignData: { name?: string; obiettivi?: string; desideri?: string; uncino?: string; statoIdeale?: string } | null = null;
     if (campaignId) {
       const [campaign] = await db.select()
-        .from(schema.campaigns)
-        .where(eq(schema.campaigns.id, campaignId));
+        .from(schema.marketingCampaigns)
+        .where(eq(schema.marketingCampaigns.id, campaignId));
       if (campaign) {
         campaignData = {
           name: campaign.name,
