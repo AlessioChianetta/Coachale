@@ -89,6 +89,12 @@ interface LeadInfo {
   desideri?: string;
   uncino?: string;
   fonte?: string;
+  note?: string;
+  // Facebook Lead Ads question fields
+  question1?: string;
+  question2?: string;
+  question3?: string;
+  question4?: string;
   // Extended fields from Hubdigital.io webhook
   email?: string;
   companyName?: string;
@@ -631,6 +637,12 @@ export default function ProactiveLeadsPage() {
       desideri: existingLeadInfo.desideri || (leadCampaign?.implicitDesires) || "",
       uncino: existingLeadInfo.uncino || (leadCampaign?.hookText) || "",
       fonte: existingLeadInfo.fonte || "",
+      note: existingLeadInfo.note,
+      // Facebook Lead Ads question fields
+      question1: existingLeadInfo.question1,
+      question2: existingLeadInfo.question2,
+      question3: existingLeadInfo.question3,
+      question4: existingLeadInfo.question4,
       // Preserve other fields from leadInfo (Hubdigital data)
       email: existingLeadInfo.email,
       companyName: existingLeadInfo.companyName,
@@ -2086,7 +2098,7 @@ export default function ProactiveLeadsPage() {
               </Collapsible>
 
               {/* Hubdigital.io Imported Data - Read Only Section */}
-              {selectedLead && (formData.leadInfo.email || formData.leadInfo.companyName || formData.leadInfo.address || formData.leadInfo.tags?.length) && (
+              {selectedLead && (formData.leadInfo.email || formData.leadInfo.companyName || formData.leadInfo.address || formData.leadInfo.tags?.length || formData.leadInfo.note || formData.leadInfo.question1 || formData.leadInfo.question2 || formData.leadInfo.question3 || formData.leadInfo.question4) && (
                 <Collapsible defaultOpen={true} className="border rounded-lg p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 border-orange-200 dark:border-orange-800">
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" className="w-full flex justify-between items-center p-0 h-auto hover:bg-transparent">
@@ -2164,6 +2176,47 @@ export default function ProactiveLeadsPage() {
                           {formData.leadInfo.tags.map((tag, idx) => (
                             <Badge key={idx} className="bg-orange-100 text-orange-800 border-orange-300">{tag}</Badge>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Note importate */}
+                    {formData.leadInfo.note && (
+                      <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-orange-100 dark:border-orange-900">
+                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Note Importate</span>
+                        <p className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{formData.leadInfo.note}</p>
+                      </div>
+                    )}
+
+                    {/* Facebook Lead Ads Questions */}
+                    {(formData.leadInfo.question1 || formData.leadInfo.question2 || formData.leadInfo.question3 || formData.leadInfo.question4) && (
+                      <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                        <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase block mb-3">Risposte Modulo Lead</span>
+                        <div className="space-y-3">
+                          {formData.leadInfo.question1 && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs font-medium text-gray-500">Domanda 1</span>
+                              <span className="text-sm text-gray-900 dark:text-gray-100">{formData.leadInfo.question1}</span>
+                            </div>
+                          )}
+                          {formData.leadInfo.question2 && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs font-medium text-gray-500">Domanda 2</span>
+                              <span className="text-sm text-gray-900 dark:text-gray-100">{formData.leadInfo.question2}</span>
+                            </div>
+                          )}
+                          {formData.leadInfo.question3 && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs font-medium text-gray-500">Domanda 3</span>
+                              <span className="text-sm text-gray-900 dark:text-gray-100">{formData.leadInfo.question3}</span>
+                            </div>
+                          )}
+                          {formData.leadInfo.question4 && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs font-medium text-gray-500">Domanda 4</span>
+                              <span className="text-sm text-gray-900 dark:text-gray-100">{formData.leadInfo.question4}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
