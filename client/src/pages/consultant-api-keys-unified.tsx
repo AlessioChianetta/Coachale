@@ -6190,27 +6190,42 @@ export default function ConsultantApiKeysUnified() {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between p-5 bg-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-700/50 shadow-lg">
-                          <div className="flex items-center gap-4">
-                            <Switch
-                              id="googleSheetsPollingEnabled"
-                              checked={googleSheetsFormData.pollingEnabled}
-                              onCheckedChange={(checked) => setGoogleSheetsFormData({ ...googleSheetsFormData, pollingEnabled: checked })}
-                              className="data-[state=checked]:bg-blue-600"
-                            />
-                            <Label htmlFor="googleSheetsPollingEnabled" className="cursor-pointer">
-                              <span className="font-medium text-white">Polling Automatico</span>
-                              <p className="text-xs text-slate-400">Controlla automaticamente nuovi lead ogni {googleSheetsFormData.pollingIntervalMinutes} minuti</p>
-                            </Label>
+                        <div className="p-5 bg-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-700/50 shadow-lg space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <Switch
+                                id="googleSheetsPollingEnabled"
+                                checked={googleSheetsFormData.pollingEnabled}
+                                onCheckedChange={(checked) => setGoogleSheetsFormData({ ...googleSheetsFormData, pollingEnabled: checked })}
+                                className="data-[state=checked]:bg-blue-600"
+                              />
+                              <Label htmlFor="googleSheetsPollingEnabled" className="cursor-pointer">
+                                <span className="font-medium text-white">Polling Automatico</span>
+                                <p className="text-xs text-slate-400">Controlla automaticamente nuovi lead ogni {googleSheetsFormData.pollingIntervalMinutes} minuti</p>
+                              </Label>
+                            </div>
+                            <Badge 
+                              variant={googleSheetsFormData.pollingEnabled ? "default" : "secondary"} 
+                              className={googleSheetsFormData.pollingEnabled 
+                                ? "bg-green-500 text-white border-0 shadow-lg shadow-green-500/20" 
+                                : "bg-slate-700 text-slate-300 border-slate-600"}
+                            >
+                              {googleSheetsFormData.pollingEnabled ? "Attivo" : "Disattivo"}
+                            </Badge>
                           </div>
-                          <Badge 
-                            variant={googleSheetsFormData.pollingEnabled ? "default" : "secondary"} 
-                            className={googleSheetsFormData.pollingEnabled 
-                              ? "bg-green-500 text-white border-0 shadow-lg shadow-green-500/20" 
-                              : "bg-slate-700 text-slate-300 border-slate-600"}
-                          >
-                            {googleSheetsFormData.pollingEnabled ? "Attivo" : "Disattivo"}
-                          </Badge>
+                          
+                          {googleSheetsFormData.pollingEnabled && (
+                            <div className="flex items-center gap-2 pl-12 text-xs text-slate-400">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>
+                                Quando importati: {
+                                  googleSheetsFormData.contactTiming === 'immediate' ? 'Contatto immediato' :
+                                  googleSheetsFormData.contactTiming === 'tomorrow' ? 'Contatto programmato per le 9:00 del giorno successivo' :
+                                  `Contatto dopo ${googleSheetsFormData.customContactDelay || 30} minuti`
+                                }
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {googleSheetsPreview && (
@@ -6679,6 +6694,14 @@ export default function ConsultantApiKeysUnified() {
                                     });
                                     return;
                                   }
+                                  if (!googleSheetsFormData.targetCampaignId) {
+                                    toast({
+                                      title: "Campagna Obbligatoria",
+                                      description: "Seleziona una campagna prima di testare la connessione",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
                                   setIsTestingGoogleSheets(true);
                                   try {
                                     const response = await fetch(`/api/consultant/agents/${googleSheetsFormData.agentConfigId}/leads/preview-sheet`, {
@@ -6717,7 +6740,7 @@ export default function ConsultantApiKeysUnified() {
                                     setIsTestingGoogleSheets(false);
                                   }
                                 }}
-                                disabled={isTestingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
+                                disabled={isTestingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId || !googleSheetsFormData.targetCampaignId}
                                 className={isNextStep 
                                   ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all duration-200"
                                   : "border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 transition-all"
