@@ -452,6 +452,9 @@ export default function ConsultantApiKeysUnified() {
   const [sheetHistory, setSheetHistory] = useState<any[]>([]);
   const [loadingSheetLeads, setLoadingSheetLeads] = useState(false);
   const [loadingSheetHistory, setLoadingSheetHistory] = useState(false);
+  const [editSheetDialogOpen, setEditSheetDialogOpen] = useState(false);
+  const [editingSheetConfig, setEditingSheetConfig] = useState<any>(null);
+  const [isSavingSheetEdit, setIsSavingSheetEdit] = useState(false);
   const [googleSheetsFormData, setGoogleSheetsFormData] = useState({
     configName: "",
     sheetUrl: "",
@@ -6992,6 +6995,22 @@ export default function ConsultantApiKeysUnified() {
                                   <Button
                                     variant="outline"
                                     size="sm"
+                                    onClick={() => {
+                                      setEditingSheetConfig({
+                                        ...config,
+                                        settings: config.settings || {},
+                                        columnMappings: config.columnMappings || {},
+                                      });
+                                      setEditSheetDialogOpen(true);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                  >
+                                    <Settings className="h-4 w-4 mr-1" />
+                                    Modifica
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={async () => {
                                       toast({ title: "Sync in corso...", description: "Controllo nuovi lead dal foglio" });
                                       try {
@@ -7794,6 +7813,247 @@ export default function ConsultantApiKeysUnified() {
 
       {/* AI Assistant */}
       <ConsultantAIAssistant />
+
+      {/* Edit Sheet Configuration Dialog */}
+      <Dialog open={editSheetDialogOpen} onOpenChange={setEditSheetDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-blue-600" />
+              Modifica Configurazione Google Sheets
+            </DialogTitle>
+            <DialogDescription>
+              Modifica le impostazioni del foglio "{editingSheetConfig?.jobName}"
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingSheetConfig && (
+            <div className="space-y-6 py-4">
+              {/* Nome configurazione */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-config-name" className="text-sm font-semibold">Nome Configurazione</Label>
+                <Input
+                  id="edit-config-name"
+                  value={editingSheetConfig.jobName || ""}
+                  onChange={(e) => setEditingSheetConfig({ ...editingSheetConfig, jobName: e.target.value })}
+                  placeholder="Es. Lead Facebook Ads"
+                />
+              </div>
+
+              {/* URL Google Sheets */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-sheet-url" className="text-sm font-semibold">URL Google Sheets</Label>
+                <Input
+                  id="edit-sheet-url"
+                  value={editingSheetConfig.googleSheetUrl || ""}
+                  onChange={(e) => setEditingSheetConfig({ ...editingSheetConfig, googleSheetUrl: e.target.value })}
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                />
+              </div>
+
+              {/* Agente */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-agent" className="text-sm font-semibold">Agente WhatsApp</Label>
+                <Select
+                  value={editingSheetConfig.agentConfigId || ""}
+                  onValueChange={(value) => setEditingSheetConfig({ ...editingSheetConfig, agentConfigId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona un agente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {proactiveAgents.map((agent: any) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.businessName || agent.phoneNumber}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Campagna */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-campaign" className="text-sm font-semibold">Campagna</Label>
+                <Select
+                  value={editingSheetConfig.settings?.campaignId || ""}
+                  onValueChange={(value) => setEditingSheetConfig({ 
+                    ...editingSheetConfig, 
+                    settings: { ...editingSheetConfig.settings, campaignId: value }
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona una campagna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {campaignsData?.data?.map((campaign: any) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>
+                        {campaign.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Tempistica contatto */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Tempistica Contatto</Label>
+                <Select
+                  value={editingSheetConfig.settings?.contactTiming || "immediate"}
+                  onValueChange={(value) => setEditingSheetConfig({ 
+                    ...editingSheetConfig, 
+                    settings: { ...editingSheetConfig.settings, contactTiming: value }
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="immediate">Immediato (entro 5 minuti)</SelectItem>
+                    <SelectItem value="tomorrow">Domani alle 9:00</SelectItem>
+                    <SelectItem value="custom">Personalizzato</SelectItem>
+                  </SelectContent>
+                </Select>
+                {editingSheetConfig.settings?.contactTiming === "custom" && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={1440}
+                      value={editingSheetConfig.settings?.customContactDelay || 60}
+                      onChange={(e) => setEditingSheetConfig({ 
+                        ...editingSheetConfig, 
+                        settings: { ...editingSheetConfig.settings, customContactDelay: parseInt(e.target.value) || 60 }
+                      })}
+                      className="w-24"
+                    />
+                    <span className="text-sm text-gray-500">minuti dopo l'import</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Data inizio importazione */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-start-date" className="text-sm font-semibold">Importa da Data</Label>
+                <Input
+                  id="edit-start-date"
+                  type="date"
+                  value={editingSheetConfig.settings?.startFromDate || ""}
+                  onChange={(e) => setEditingSheetConfig({ 
+                    ...editingSheetConfig, 
+                    settings: { ...editingSheetConfig.settings, startFromDate: e.target.value }
+                  })}
+                />
+                <p className="text-xs text-gray-500">Lascia vuoto per importare tutte le righe</p>
+              </div>
+
+              {/* Intervallo polling */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Intervallo Polling</Label>
+                <Select
+                  value={String(editingSheetConfig.pollingIntervalMinutes || 15)}
+                  onValueChange={(value) => setEditingSheetConfig({ 
+                    ...editingSheetConfig, 
+                    pollingIntervalMinutes: parseInt(value)
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Ogni minuto</SelectItem>
+                    <SelectItem value="5">Ogni 5 minuti</SelectItem>
+                    <SelectItem value="15">Ogni 15 minuti</SelectItem>
+                    <SelectItem value="30">Ogni 30 minuti</SelectItem>
+                    <SelectItem value="60">Ogni ora</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Polling attivo */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <Label className="text-sm font-semibold">Sync Automatico</Label>
+                  <p className="text-xs text-gray-500">Controlla automaticamente nuovi lead</p>
+                </div>
+                <Switch
+                  checked={editingSheetConfig.pollingEnabled || false}
+                  onCheckedChange={(checked) => setEditingSheetConfig({ 
+                    ...editingSheetConfig, 
+                    pollingEnabled: checked
+                  })}
+                />
+              </div>
+
+              {/* Salta duplicati */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <Label className="text-sm font-semibold">Salta Duplicati</Label>
+                  <p className="text-xs text-gray-500">Non importare lead con stesso numero</p>
+                </div>
+                <Switch
+                  checked={editingSheetConfig.settings?.skipDuplicates !== false}
+                  onCheckedChange={(checked) => setEditingSheetConfig({ 
+                    ...editingSheetConfig, 
+                    settings: { ...editingSheetConfig.settings, skipDuplicates: checked }
+                  })}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditSheetDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!editingSheetConfig) return;
+                setIsSavingSheetEdit(true);
+                try {
+                  const response = await fetch(`/api/consultant/lead-import/sheets/${editingSheetConfig.id}`, {
+                    method: "PUT",
+                    headers: {
+                      ...getAuthHeaders(),
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      jobName: editingSheetConfig.jobName,
+                      googleSheetUrl: editingSheetConfig.googleSheetUrl,
+                      agentConfigId: editingSheetConfig.agentConfigId,
+                      pollingIntervalMinutes: editingSheetConfig.pollingIntervalMinutes,
+                      pollingEnabled: editingSheetConfig.pollingEnabled,
+                      settings: editingSheetConfig.settings,
+                    }),
+                  });
+                  if (response.ok) {
+                    toast({ title: "Salvato", description: "Configurazione aggiornata con successo" });
+                    refetchGoogleSheetsJobs();
+                    setEditSheetDialogOpen(false);
+                  } else {
+                    const err = await response.json();
+                    toast({ title: "Errore", description: err.error || "Impossibile salvare", variant: "destructive" });
+                  }
+                } catch (error) {
+                  toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+                } finally {
+                  setIsSavingSheetEdit(false);
+                }
+              }}
+              disabled={isSavingSheetEdit}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              {isSavingSheetEdit ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Salvataggio...
+                </>
+              ) : (
+                "Salva Modifiche"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Sheet Leads Dialog */}
       <Dialog open={sheetLeadsDialogOpen} onOpenChange={setSheetLeadsDialogOpen}>

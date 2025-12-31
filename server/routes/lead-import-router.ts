@@ -1001,6 +1001,64 @@ router.put(
   }
 );
 
+router.put(
+  "/consultant/lead-import/sheets/:jobId",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { jobId } = req.params;
+      const { jobName, googleSheetUrl, agentConfigId, pollingIntervalMinutes, pollingEnabled, settings } = req.body;
+      
+      const [existingJob] = await db.select()
+        .from(schema.leadImportJobs)
+        .where(
+          and(
+            eq(schema.leadImportJobs.id, jobId),
+            eq(schema.leadImportJobs.consultantId, consultantId),
+            eq(schema.leadImportJobs.sourceType, 'google_sheets')
+          )
+        );
+      
+      if (!existingJob) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione non trovata"
+        });
+      }
+      
+      const updateData: any = { updatedAt: new Date() };
+      if (jobName !== undefined) updateData.jobName = jobName;
+      if (googleSheetUrl !== undefined) updateData.googleSheetUrl = googleSheetUrl;
+      if (agentConfigId !== undefined) updateData.agentConfigId = agentConfigId;
+      if (pollingIntervalMinutes !== undefined) updateData.pollingIntervalMinutes = pollingIntervalMinutes;
+      if (pollingEnabled !== undefined) updateData.pollingEnabled = pollingEnabled;
+      if (settings !== undefined) {
+        updateData.settings = { ...existingJob.settings, ...settings };
+      }
+      
+      const [updatedJob] = await db.update(schema.leadImportJobs)
+        .set(updateData)
+        .where(eq(schema.leadImportJobs.id, jobId))
+        .returning();
+      
+      console.log(`✅ [SHEETS POLLING] Updated Google Sheets config: ${jobId}`);
+      
+      res.json({
+        success: true,
+        data: updatedJob
+      });
+    } catch (error: any) {
+      console.error("❌ [LEAD IMPORT] Error updating Google Sheets config:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante l'aggiornamento della configurazione"
+      });
+    }
+  }
+);
+
 router.delete(
   "/consultant/lead-import/sheets/:jobId",
   authenticateToken,
