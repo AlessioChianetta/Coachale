@@ -99,12 +99,17 @@ export function validateStep(
       
       // Twilio credentials required only if integrationMode is "whatsapp_ai"
       const integrationMode = data.integrationMode || "whatsapp_ai";
+      const useCentralCredentials = (data as any).useCentralCredentials === true;
+      
       if (integrationMode === "whatsapp_ai") {
-        if (!data.twilioAccountSid?.trim()) errors.twilioAccountSid = "L'Account SID è obbligatorio";
-        if (!data.twilioWhatsappNumber?.trim()) errors.twilioWhatsappNumber = "Il numero WhatsApp è obbligatorio";
-        // Auth token required only in create mode
-        if (isCreateMode && !data.twilioAuthToken?.trim()) {
-          errors.twilioAuthToken = "L'Auth Token è obbligatorio per creare un nuovo agente";
+        // Skip validation if using central credentials (from /api/consultant/twilio-settings)
+        if (!useCentralCredentials) {
+          if (!data.twilioAccountSid?.trim()) errors.twilioAccountSid = "L'Account SID è obbligatorio";
+          if (!data.twilioWhatsappNumber?.trim()) errors.twilioWhatsappNumber = "Il numero WhatsApp è obbligatorio";
+          // Auth token required only in create mode
+          if (isCreateMode && !data.twilioAuthToken?.trim()) {
+            errors.twilioAuthToken = "L'Auth Token è obbligatorio per creare un nuovo agente";
+          }
         }
       }
       break;
