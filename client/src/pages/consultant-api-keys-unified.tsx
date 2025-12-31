@@ -7855,7 +7855,7 @@ export default function ConsultantApiKeysUnified() {
                     <SelectContent>
                       {proactiveAgents.map((agent: any) => (
                         <SelectItem key={agent.id} value={agent.id}>
-                          {agent.businessName || agent.phoneNumber}
+                          {agent.agentName || agent.businessName || agent.twilioWhatsappNumber || "Agente"}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -7893,7 +7893,7 @@ export default function ConsultantApiKeysUnified() {
                     <SelectContent>
                       {campaignsData?.campaigns?.map((campaign: any) => (
                         <SelectItem key={campaign.id} value={campaign.id}>
-                          {campaign.name}
+                          {campaign.campaignName || campaign.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
