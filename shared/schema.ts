@@ -51,6 +51,26 @@ export const users = pgTable("users", {
   // External Services Configuration
   siteUrl: text("site_url"), // Custom site URL for SiteAle external service (e.g., client's website)
 
+  // Stripe Configuration (consultant-level) - For selling Level 2/3 subscriptions to clients
+  stripeSecretKey: text("stripe_secret_key"),
+  stripePublishableKey: text("stripe_publishable_key"),
+  stripeWebhookSecret: text("stripe_webhook_secret"),
+  stripePriceIdLevel2: text("stripe_price_id_level2"), // Stripe Price ID for Level 2 subscription
+  stripePriceIdLevel3: text("stripe_price_id_level3"), // Stripe Price ID for Level 3 subscription
+
+  // Pricing Page Configuration (consultant-level)
+  pricingPageSlug: text("pricing_page_slug").unique(), // Slug for public pricing page (e.g., "marco" -> /c/marco/pricing)
+  pricingPageConfig: jsonb("pricing_page_config").$type<{
+    level2Name?: string;
+    level2Description?: string;
+    level2PriceCents?: number;
+    level3Name?: string;
+    level3Description?: string;
+    level3PriceCents?: number;
+    accentColor?: string;
+    logoUrl?: string;
+  }>().default(sql`'{}'::jsonb`),
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -658,6 +678,64 @@ export const superadminInstagramConfig = pgTable("superadmin_instagram_config", 
 
 export type SuperadminInstagramConfig = typeof superadminInstagramConfig.$inferSelect;
 export type InsertSuperadminInstagramConfig = typeof superadminInstagramConfig.$inferInsert;
+
+// SuperAdmin Stripe Config - Centralized Stripe configuration for platform-level payments
+// Used for selling license packs to consultants
+export const superadminStripeConfig = pgTable("superadmin_stripe_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stripeSecretKey: text("stripe_secret_key"),
+  stripePublishableKey: text("stripe_publishable_key"),
+  stripeWebhookSecret: text("stripe_webhook_secret"),
+  licensePackL2PriceCents: integer("license_pack_l2_price_cents").default(9900), // €99 for 10 L2 licenses
+  licensePackL2Quantity: integer("license_pack_l2_quantity").default(10),
+  licensePackL3PriceCents: integer("license_pack_l3_price_cents").default(14900), // €149 for 5 L3 licenses
+  licensePackL3Quantity: integer("license_pack_l3_quantity").default(5),
+  stripePriceIdL2Pack: text("stripe_price_id_l2_pack"),
+  stripePriceIdL3Pack: text("stripe_price_id_l3_pack"),
+  enabled: boolean("enabled").default(false).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type SuperadminStripeConfig = typeof superadminStripeConfig.$inferSelect;
+export type InsertSuperadminStripeConfig = typeof superadminStripeConfig.$inferInsert;
+
+// Consultant Licenses - Track license allocations for each consultant
+export const consultantLicenses = pgTable("consultant_licenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  level2Total: integer("level2_total").default(20).notNull(),
+  level2Used: integer("level2_used").default(0).notNull(),
+  level3Total: integer("level3_total").default(10).notNull(),
+  level3Used: integer("level3_used").default(0).notNull(),
+  stripeCustomerId: text("stripe_customer_id"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConsultantLicenses = typeof consultantLicenses.$inferSelect;
+export type InsertConsultantLicenses = typeof consultantLicenses.$inferInsert;
+
+// Client Level Subscriptions - Track client subscriptions to Level 2 or Level 3
+export const clientLevelSubscriptions = pgTable("client_level_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  level: text("level").$type<"2" | "3">().notNull(),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  status: text("status").$type<"pending" | "active" | "canceled" | "expired" | "past_due">().default("pending").notNull(),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  clientEmail: text("client_email").notNull(),
+  clientName: text("client_name"),
+  tempPassword: text("temp_password"), // Temporary password for auto-created accounts
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ClientLevelSubscription = typeof clientLevelSubscriptions.$inferSelect;
+export type InsertClientLevelSubscription = typeof clientLevelSubscriptions.$inferInsert;
 
 // Vertex AI Usage Tracking - Track all Vertex AI API calls with accurate cost breakdown
 // Supports Live API (audio/text) and standard API tracking
@@ -2392,6 +2470,11 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
 
   // Multi-Agent Instagram - Each agent can have its own Instagram config
   ownInstagramConfigId: varchar("own_instagram_config_id"),
+
+  // Dipendenti AI - Leveling System
+  level: text("level").$type<"1" | "2" | null>(), // 1 = pubblico, 2 = client con knowledge base, null = nessun livello
+  publicSlug: text("public_slug").unique(), // Slug per accesso pubblico Level 1 (es: "silvia" -> /ai/silvia)
+  dailyMessageLimit: integer("daily_message_limit").default(15), // Limite messaggi giornaliero per Level 1
 
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
