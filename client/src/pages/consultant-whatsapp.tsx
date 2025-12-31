@@ -72,7 +72,10 @@ import {
   BookOpen,
   Database,
   ArrowRight,
-  Settings
+  Settings,
+  ShoppingCart,
+  CreditCard,
+  AlertTriangle
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -87,6 +90,16 @@ import { AgentRoster } from "@/components/whatsapp/AgentRoster";
 import { AgentProfilePanel } from "@/components/whatsapp/AgentProfilePanel";
 import { AgentLeaderboard } from "@/components/whatsapp/AgentLeaderboard";
 import { ActivityFeed } from "@/components/whatsapp/ActivityFeed";
+import { LevelBadge } from "@/components/whatsapp/LevelBadge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface WhatsAppConfig {
   id?: string;
@@ -241,6 +254,53 @@ export default function ConsultantWhatsAppPage() {
   });
 
   const savedIdeas = savedIdeasQuery.data?.data || [];
+
+  // Query per caricare le licenze del consulente
+  const licensesQuery = useQuery({
+    queryKey: ["/api/consultant/licenses"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/licenses", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch licenses");
+      return res.json();
+    },
+  });
+
+  const licenses = licensesQuery.data?.data || {
+    level2Total: 20,
+    level2Used: 0,
+    level3Total: 10,
+    level3Used: 0,
+  };
+
+  // Query per caricare le sottoscrizioni dei clienti
+  const subscriptionsQuery = useQuery({
+    queryKey: ["/api/consultant/subscriptions"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/subscriptions", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch subscriptions");
+      return res.json();
+    },
+  });
+
+  const subscriptions = subscriptionsQuery.data?.data || [];
+
+  // Query per ottenere i dati del consulente (per pricing page)
+  const consultantDataQuery = useQuery({
+    queryKey: ["/api/consultant/profile"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/profile", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  const consultantData = consultantDataQuery.data;
 
   // Group saved ideas by date
   const groupedSavedIdeas = useMemo(() => {
@@ -825,7 +885,7 @@ export default function ConsultantWhatsAppPage() {
         {/* Category Tabs */}
         <Tabs defaultValue={initialTab} className="space-y-6">
           <div className="bg-white rounded-xl border shadow-sm p-1">
-            <TabsList className="grid w-full grid-cols-3 gap-1 bg-transparent h-auto p-0">
+            <TabsList className="grid w-full grid-cols-4 gap-1 bg-transparent h-auto p-0">
               <TabsTrigger 
                 value="custom" 
                 className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
@@ -846,6 +906,13 @@ export default function ConsultantWhatsAppPage() {
               >
                 <Lightbulb className="h-4 w-4 mr-2" />
                 Idee AI
+              </TabsTrigger>
+              <TabsTrigger 
+                value="licenses" 
+                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+              >
+                <Key className="h-4 w-4 mr-2" />
+                Licenze
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1971,6 +2038,323 @@ export default function ConsultantWhatsAppPage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="licenses" className="space-y-6">
+            <Alert className="bg-violet-50 border-violet-200 dark:bg-violet-950/20 dark:border-violet-800">
+              <Key className="h-5 w-5 text-violet-600" />
+              <AlertDescription>
+                <strong>Gestione Licenze</strong><br />
+                Monitora le tue licenze Level 2 (Bronze) e Level 3 (Silver), visualizza le sottoscrizioni attive dei tuoi clienti e gestisci il tuo piano.
+              </AlertDescription>
+            </Alert>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* License Dashboard Card */}
+              <Card className="border-2 border-violet-200 dark:border-violet-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Key className="h-5 w-5 text-violet-600" />
+                    Dashboard Licenze
+                  </CardTitle>
+                  <CardDescription>
+                    Visualizza l'utilizzo delle tue licenze
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {licensesQuery.isLoading ? (
+                    <div className="flex items-center justify-center p-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                    </div>
+                  ) : (
+                    <>
+                      {/* Level 2 (Bronze) Progress */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <LevelBadge level="2" size="md" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Licenze Bronze
+                            </span>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {licenses.level2Used}/{licenses.level2Total}
+                          </span>
+                        </div>
+                        <Progress 
+                          value={(licenses.level2Used / licenses.level2Total) * 100} 
+                          className={`h-3 ${
+                            licenses.level2Used / licenses.level2Total >= 0.9 
+                              ? "[&>div]:bg-red-500" 
+                              : licenses.level2Used / licenses.level2Total >= 0.7 
+                              ? "[&>div]:bg-amber-500" 
+                              : "[&>div]:bg-amber-600"
+                          }`}
+                        />
+                        {licenses.level2Used / licenses.level2Total >= 0.9 && (
+                          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="text-xs font-medium">Stai per raggiungere il limite!</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Level 3 (Silver) Progress */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <LevelBadge level="3" size="md" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Licenze Silver
+                            </span>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {licenses.level3Used}/{licenses.level3Total}
+                          </span>
+                        </div>
+                        <Progress 
+                          value={(licenses.level3Used / licenses.level3Total) * 100} 
+                          className={`h-3 ${
+                            licenses.level3Used / licenses.level3Total >= 0.9 
+                              ? "[&>div]:bg-red-500" 
+                              : licenses.level3Used / licenses.level3Total >= 0.7 
+                              ? "[&>div]:bg-amber-500" 
+                              : "[&>div]:bg-slate-500"
+                          }`}
+                        />
+                        {licenses.level3Used / licenses.level3Total >= 0.9 && (
+                          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="text-xs font-medium">Stai per raggiungere il limite!</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Summary */}
+                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="grid grid-cols-2 gap-4 text-center">
+                          <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+                            <p className="text-2xl font-bold text-amber-600">{licenses.level2Total - licenses.level2Used}</p>
+                            <p className="text-xs text-amber-700 dark:text-amber-400">Bronze disponibili</p>
+                          </div>
+                          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                            <p className="text-2xl font-bold text-slate-600">{licenses.level3Total - licenses.level3Used}</p>
+                            <p className="text-xs text-slate-700 dark:text-slate-400">Silver disponibili</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Buy More Licenses Card */}
+              <Card className="border-2 border-violet-200 dark:border-violet-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5 text-violet-600" />
+                    Acquista Licenze
+                  </CardTitle>
+                  <CardDescription>
+                    Espandi il tuo piano con licenze aggiuntive
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-violet-50 dark:bg-violet-950/20 rounded-lg p-4 space-y-3">
+                    <p className="text-sm text-violet-800 dark:text-violet-200">
+                      Hai bisogno di più licenze per i tuoi clienti? 
+                      Acquista pacchetti aggiuntivi per espandere il tuo business.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-amber-200">
+                        <p className="text-sm font-semibold text-amber-700">+10 Bronze</p>
+                        <p className="text-xs text-gray-500">Licenze Level 2</p>
+                      </div>
+                      <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-slate-200">
+                        <p className="text-sm font-semibold text-slate-700">+5 Silver</p>
+                        <p className="text-xs text-gray-500">Licenze Level 3</p>
+                      </div>
+                    </div>
+                  </div>
+                  <Button 
+                    className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                    disabled
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Acquista altre licenze
+                    <Badge variant="outline" className="ml-2 text-xs bg-white/20 border-white/30">
+                      Presto disponibile
+                    </Badge>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Active Subscriptions List */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-violet-600" />
+                  Sottoscrizioni Attive
+                </CardTitle>
+                <CardDescription>
+                  Clienti con sottoscrizioni Level 2 o Level 3 attive
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {subscriptionsQuery.isLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                  </div>
+                ) : subscriptions.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-2">
+                      Nessuna sottoscrizione attiva
+                    </p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 max-w-md mx-auto">
+                      Quando i tuoi clienti acquisteranno una licenza Level 2 o Level 3, 
+                      appariranno qui con tutti i dettagli della loro sottoscrizione.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Livello</TableHead>
+                          <TableHead>Stato</TableHead>
+                          <TableHead>Data Inizio</TableHead>
+                          <TableHead className="text-right">Azioni</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {subscriptions.map((sub: any) => (
+                          <TableRow key={sub.id}>
+                            <TableCell className="font-medium">
+                              {sub.clientName || "—"}
+                            </TableCell>
+                            <TableCell className="text-gray-500">
+                              {sub.clientEmail}
+                            </TableCell>
+                            <TableCell>
+                              <LevelBadge level={sub.level} size="sm" />
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={sub.status === "active" ? "default" : "outline"}
+                                className={
+                                  sub.status === "active" 
+                                    ? "bg-green-100 text-green-700 border-green-300" 
+                                    : sub.status === "pending"
+                                    ? "bg-yellow-100 text-yellow-700 border-yellow-300"
+                                    : sub.status === "canceled"
+                                    ? "bg-red-100 text-red-700 border-red-300"
+                                    : "bg-gray-100 text-gray-700 border-gray-300"
+                                }
+                              >
+                                {sub.status === "active" ? "Attivo" 
+                                  : sub.status === "pending" ? "In Attesa"
+                                  : sub.status === "canceled" ? "Annullato"
+                                  : sub.status === "expired" ? "Scaduto"
+                                  : sub.status === "past_due" ? "Scaduto"
+                                  : sub.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-gray-500">
+                              {sub.startDate 
+                                ? format(new Date(sub.startDate), "d MMM yyyy", { locale: it })
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Pricing Page Link Section */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link className="h-5 w-5 text-violet-600" />
+                  Pagina Prezzi Pubblica
+                </CardTitle>
+                <CardDescription>
+                  Condividi la tua pagina prezzi con i potenziali clienti
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {consultantData?.pricingPageSlug ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 p-3 bg-violet-50 dark:bg-violet-950/20 rounded-lg">
+                      <Input 
+                        readOnly 
+                        value={`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`}
+                        className="flex-1 bg-white dark:bg-gray-800"
+                      />
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`);
+                          toast({
+                            title: "✅ Link copiato!",
+                            description: "Il link alla pagina prezzi è stato copiato negli appunti.",
+                          });
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copia
+                      </Button>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => window.open(`/c/${consultantData.pricingPageSlug}/pricing`, "_blank")}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Visualizza Pagina
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => navigate("/consultant/settings")}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configura Prezzi
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Link className="h-10 w-10 text-gray-300 mx-auto mb-4" />
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                      Pagina prezzi non configurata
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+                      Configura la tua pagina prezzi pubblica per permettere ai clienti di acquistare sottoscrizioni.
+                    </p>
+                    <Button 
+                      variant="outline"
+                      onClick={() => navigate("/consultant/settings")}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configura Pagina Prezzi
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

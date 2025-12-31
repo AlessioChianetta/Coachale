@@ -9227,6 +9227,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         lastName: user.lastName,
         email: user.email,
         phoneNumber: user.phoneNumber || "",
+        pricingPageSlug: user.pricingPageSlug || null,
       });
     } catch (error: any) {
       console.error("Error fetching consultant profile:", error);
@@ -9283,6 +9284,80 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     } catch (error: any) {
       console.error("Error updating consultant profile:", error);
       res.status(500).json({ message: error.message || "Failed to update profile" });
+    }
+  });
+
+  // ========================================
+  // CONSULTANT LICENSES ROUTES
+  // ========================================
+
+  // Get consultant licenses
+  app.get("/api/consultant/licenses", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      // Try to find existing license record
+      let license = await db.query.consultantLicenses.findFirst({
+        where: eq(schema.consultantLicenses.consultantId, consultantId),
+      });
+
+      // If no license record exists, create one with defaults
+      if (!license) {
+        const [newLicense] = await db.insert(schema.consultantLicenses)
+          .values({
+            consultantId,
+            level2Total: 20,
+            level2Used: 0,
+            level3Total: 10,
+            level3Used: 0,
+          })
+          .returning();
+        license = newLicense;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          level2Total: license.level2Total,
+          level2Used: license.level2Used,
+          level3Total: license.level3Total,
+          level3Used: license.level3Used,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error fetching consultant licenses:", error);
+      res.status(500).json({ success: false, message: error.message || "Failed to fetch licenses" });
+    }
+  });
+
+  // Get consultant client subscriptions
+  app.get("/api/consultant/subscriptions", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const subscriptions = await db.query.clientLevelSubscriptions.findMany({
+        where: eq(schema.clientLevelSubscriptions.consultantId, consultantId),
+        orderBy: [desc(schema.clientLevelSubscriptions.createdAt)],
+      });
+
+      res.json({
+        success: true,
+        data: subscriptions.map(sub => ({
+          id: sub.id,
+          clientId: sub.clientId,
+          clientEmail: sub.clientEmail,
+          clientName: sub.clientName,
+          level: sub.level,
+          status: sub.status,
+          startDate: sub.startDate,
+          endDate: sub.endDate,
+          stripeSubscriptionId: sub.stripeSubscriptionId,
+          createdAt: sub.createdAt,
+        })),
+      });
+    } catch (error: any) {
+      console.error("Error fetching consultant subscriptions:", error);
+      res.status(500).json({ success: false, message: error.message || "Failed to fetch subscriptions" });
     }
   });
 

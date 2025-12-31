@@ -2,32 +2,32 @@ import { cn } from "@/lib/utils";
 import { Award, Shield, Star } from "lucide-react";
 
 interface LevelBadgeProps {
-  level: "1" | "2" | null;
+  level: "2" | "3" | null;
   size?: "sm" | "md" | "lg";
   showLabel?: boolean;
   className?: string;
 }
 
 const levelConfig = {
-  "1": {
-    label: "Livello 1",
-    shortLabel: "L1",
-    description: "Accesso Pubblico",
-    icon: Award,
-    colors: "bg-gradient-to-r from-amber-400 to-amber-600 text-white",
-    borderColor: "border-amber-500",
-    iconColor: "text-amber-200",
-    metalName: "Bronzo"
-  },
   "2": {
     label: "Livello 2",
     shortLabel: "L2",
     description: "Knowledge Base",
+    icon: Award,
+    colors: "bg-gradient-to-r from-amber-400 to-amber-600 text-white",
+    borderColor: "border-amber-500",
+    iconColor: "text-amber-200",
+    metalName: "Bronze"
+  },
+  "3": {
+    label: "Livello 3",
+    shortLabel: "L3",
+    description: "AI Assistant Completo",
     icon: Shield,
     colors: "bg-gradient-to-r from-slate-400 to-slate-500 text-white",
     borderColor: "border-slate-400",
     iconColor: "text-slate-200",
-    metalName: "Argento"
+    metalName: "Silver"
   }
 };
 
@@ -74,14 +74,14 @@ export function LevelSelector({
   onChange,
   disabled = false
 }: { 
-  value: "1" | "2" | null; 
-  onChange: (level: "1" | "2" | null) => void;
+  value: "2" | "3" | null; 
+  onChange: (level: "2" | "3" | null) => void;
   disabled?: boolean;
 }) {
   const options = [
     { value: null, label: "Nessun Livello", description: "Agente standard senza accesso pubblico" },
-    { value: "1" as const, label: "Livello 1 - Bronzo", description: "Accesso pubblico con limite messaggi giornaliero" },
-    { value: "2" as const, label: "Livello 2 - Argento", description: "Accesso clienti con knowledge base e prenotazioni" }
+    { value: "2" as const, label: "Livello 2 - Bronze", description: "Accesso clienti con knowledge base" },
+    { value: "3" as const, label: "Livello 3 - Silver", description: "AI Assistant completo con tutte le funzionalità" }
   ];
   
   return (
