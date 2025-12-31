@@ -1289,7 +1289,7 @@ router.post(
       }
       
       const { importNewRowsFromSheet } = await import('../schedulers/sheets-polling-scheduler');
-      const result = await importNewRowsFromSheet(existingJob);
+      const result = await importNewRowsFromSheet(existingJob, { forceReimport: true });
       
       res.json({
         success: true,

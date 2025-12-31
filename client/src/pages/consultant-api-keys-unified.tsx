@@ -7828,19 +7828,42 @@ export default function ConsultantApiKeysUnified() {
           </DialogHeader>
           
           {editingSheetConfig && (
-            <div className="space-y-6 py-4">
-              {/* Nome configurazione */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-config-name" className="text-sm font-semibold">Nome Configurazione</Label>
-                <Input
-                  id="edit-config-name"
-                  value={editingSheetConfig.jobName || ""}
-                  onChange={(e) => setEditingSheetConfig({ ...editingSheetConfig, jobName: e.target.value })}
-                  placeholder="Es. Lead Facebook Ads"
-                />
+            <div className="space-y-4 py-4">
+              {/* Grid responsive per campi principali */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Nome configurazione */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-config-name" className="text-sm font-semibold">Nome Configurazione</Label>
+                  <Input
+                    id="edit-config-name"
+                    value={editingSheetConfig.jobName || ""}
+                    onChange={(e) => setEditingSheetConfig({ ...editingSheetConfig, jobName: e.target.value })}
+                    placeholder="Es. Lead Facebook Ads"
+                  />
+                </div>
+
+                {/* Agente */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-agent" className="text-sm font-semibold">Agente WhatsApp</Label>
+                  <Select
+                    value={editingSheetConfig.agentConfigId || ""}
+                    onValueChange={(value) => setEditingSheetConfig({ ...editingSheetConfig, agentConfigId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona un agente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {proactiveAgents.map((agent: any) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.businessName || agent.phoneNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* URL Google Sheets */}
+              {/* URL Google Sheets - full width */}
               <div className="space-y-2">
                 <Label htmlFor="edit-sheet-url" className="text-sm font-semibold">URL Google Sheets</Label>
                 <Input
@@ -7848,155 +7871,147 @@ export default function ConsultantApiKeysUnified() {
                   value={editingSheetConfig.googleSheetUrl || ""}
                   onChange={(e) => setEditingSheetConfig({ ...editingSheetConfig, googleSheetUrl: e.target.value })}
                   placeholder="https://docs.google.com/spreadsheets/d/..."
+                  className="font-mono text-xs"
                 />
               </div>
 
-              {/* Agente */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-agent" className="text-sm font-semibold">Agente WhatsApp</Label>
-                <Select
-                  value={editingSheetConfig.agentConfigId || ""}
-                  onValueChange={(value) => setEditingSheetConfig({ ...editingSheetConfig, agentConfigId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona un agente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {proactiveAgents.map((agent: any) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        {agent.businessName || agent.phoneNumber}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Grid per Campagna e Tempistica */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Campagna */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-campaign" className="text-sm font-semibold">Campagna</Label>
+                  <Select
+                    value={editingSheetConfig.settings?.campaignId || ""}
+                    onValueChange={(value) => setEditingSheetConfig({ 
+                      ...editingSheetConfig, 
+                      settings: { ...editingSheetConfig.settings, campaignId: value }
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona una campagna" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaignsData?.data?.map((campaign: any) => (
+                        <SelectItem key={campaign.id} value={campaign.id}>
+                          {campaign.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Tempistica contatto */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Tempistica Contatto</Label>
+                  <Select
+                    value={editingSheetConfig.settings?.contactTiming || "immediate"}
+                    onValueChange={(value) => setEditingSheetConfig({ 
+                      ...editingSheetConfig, 
+                      settings: { ...editingSheetConfig.settings, contactTiming: value }
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="immediate">Immediato (entro 5 min)</SelectItem>
+                      <SelectItem value="tomorrow">Domani alle 9:00</SelectItem>
+                      <SelectItem value="custom">Personalizzato</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {editingSheetConfig.settings?.contactTiming === "custom" && (
+                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+                  <span className="text-sm text-blue-700">Contatta dopo</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={editingSheetConfig.settings?.customContactDelay || 60}
+                    onChange={(e) => setEditingSheetConfig({ 
+                      ...editingSheetConfig, 
+                      settings: { ...editingSheetConfig.settings, customContactDelay: parseInt(e.target.value) || 60 }
+                    })}
+                    className="w-20"
+                  />
+                  <span className="text-sm text-blue-700">minuti</span>
+                </div>
+              )}
+
+              {/* Grid per Data e Intervallo */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Data inizio importazione */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-start-date" className="text-sm font-semibold">Importa da Data</Label>
+                  <Input
+                    id="edit-start-date"
+                    type="date"
+                    value={editingSheetConfig.settings?.startFromDate || ""}
+                    onChange={(e) => setEditingSheetConfig({ 
+                      ...editingSheetConfig, 
+                      settings: { ...editingSheetConfig.settings, startFromDate: e.target.value }
+                    })}
+                  />
+                  <p className="text-xs text-gray-500">Vuoto = tutte le righe</p>
+                </div>
+
+                {/* Intervallo polling */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Intervallo Polling</Label>
+                  <Select
+                    value={String(editingSheetConfig.pollingIntervalMinutes || 15)}
+                    onValueChange={(value) => setEditingSheetConfig({ 
+                      ...editingSheetConfig, 
+                      pollingIntervalMinutes: parseInt(value)
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Ogni minuto</SelectItem>
+                      <SelectItem value="5">Ogni 5 minuti</SelectItem>
+                      <SelectItem value="15">Ogni 15 minuti</SelectItem>
+                      <SelectItem value="30">Ogni 30 minuti</SelectItem>
+                      <SelectItem value="60">Ogni ora</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* Campagna */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-campaign" className="text-sm font-semibold">Campagna</Label>
-                <Select
-                  value={editingSheetConfig.settings?.campaignId || ""}
-                  onValueChange={(value) => setEditingSheetConfig({ 
-                    ...editingSheetConfig, 
-                    settings: { ...editingSheetConfig.settings, campaignId: value }
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona una campagna" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {campaignsData?.data?.map((campaign: any) => (
-                      <SelectItem key={campaign.id} value={campaign.id}>
-                        {campaign.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Tempistica contatto */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Tempistica Contatto</Label>
-                <Select
-                  value={editingSheetConfig.settings?.contactTiming || "immediate"}
-                  onValueChange={(value) => setEditingSheetConfig({ 
-                    ...editingSheetConfig, 
-                    settings: { ...editingSheetConfig.settings, contactTiming: value }
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="immediate">Immediato (entro 5 minuti)</SelectItem>
-                    <SelectItem value="tomorrow">Domani alle 9:00</SelectItem>
-                    <SelectItem value="custom">Personalizzato</SelectItem>
-                  </SelectContent>
-                </Select>
-                {editingSheetConfig.settings?.contactTiming === "custom" && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={1440}
-                      value={editingSheetConfig.settings?.customContactDelay || 60}
-                      onChange={(e) => setEditingSheetConfig({ 
-                        ...editingSheetConfig, 
-                        settings: { ...editingSheetConfig.settings, customContactDelay: parseInt(e.target.value) || 60 }
-                      })}
-                      className="w-24"
-                    />
-                    <span className="text-sm text-gray-500">minuti dopo l'import</span>
+              {/* Toggle switches - responsive grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Polling attivo */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="min-w-0 flex-1">
+                    <Label className="text-sm font-semibold">Sync Automatico</Label>
+                    <p className="text-xs text-gray-500 truncate">Controlla nuovi lead</p>
                   </div>
-                )}
-              </div>
-
-              {/* Data inizio importazione */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-start-date" className="text-sm font-semibold">Importa da Data</Label>
-                <Input
-                  id="edit-start-date"
-                  type="date"
-                  value={editingSheetConfig.settings?.startFromDate || ""}
-                  onChange={(e) => setEditingSheetConfig({ 
-                    ...editingSheetConfig, 
-                    settings: { ...editingSheetConfig.settings, startFromDate: e.target.value }
-                  })}
-                />
-                <p className="text-xs text-gray-500">Lascia vuoto per importare tutte le righe</p>
-              </div>
-
-              {/* Intervallo polling */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Intervallo Polling</Label>
-                <Select
-                  value={String(editingSheetConfig.pollingIntervalMinutes || 15)}
-                  onValueChange={(value) => setEditingSheetConfig({ 
-                    ...editingSheetConfig, 
-                    pollingIntervalMinutes: parseInt(value)
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Ogni minuto</SelectItem>
-                    <SelectItem value="5">Ogni 5 minuti</SelectItem>
-                    <SelectItem value="15">Ogni 15 minuti</SelectItem>
-                    <SelectItem value="30">Ogni 30 minuti</SelectItem>
-                    <SelectItem value="60">Ogni ora</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Polling attivo */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <Label className="text-sm font-semibold">Sync Automatico</Label>
-                  <p className="text-xs text-gray-500">Controlla automaticamente nuovi lead</p>
+                  <Switch
+                    checked={editingSheetConfig.pollingEnabled || false}
+                    onCheckedChange={(checked) => setEditingSheetConfig({ 
+                      ...editingSheetConfig, 
+                      pollingEnabled: checked
+                    })}
+                  />
                 </div>
-                <Switch
-                  checked={editingSheetConfig.pollingEnabled || false}
-                  onCheckedChange={(checked) => setEditingSheetConfig({ 
-                    ...editingSheetConfig, 
-                    pollingEnabled: checked
-                  })}
-                />
-              </div>
 
-              {/* Salta duplicati */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <Label className="text-sm font-semibold">Salta Duplicati</Label>
-                  <p className="text-xs text-gray-500">Non importare lead con stesso numero</p>
+                {/* Salta duplicati */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="min-w-0 flex-1">
+                    <Label className="text-sm font-semibold">Salta Duplicati</Label>
+                    <p className="text-xs text-gray-500 truncate">No lead stesso numero</p>
+                  </div>
+                  <Switch
+                    checked={editingSheetConfig.settings?.skipDuplicates !== false}
+                    onCheckedChange={(checked) => setEditingSheetConfig({ 
+                      ...editingSheetConfig, 
+                      settings: { ...editingSheetConfig.settings, skipDuplicates: checked }
+                    })}
+                  />
                 </div>
-                <Switch
-                  checked={editingSheetConfig.settings?.skipDuplicates !== false}
-                  onCheckedChange={(checked) => setEditingSheetConfig({ 
-                    ...editingSheetConfig, 
-                    settings: { ...editingSheetConfig.settings, skipDuplicates: checked }
-                  })}
-                />
               </div>
             </div>
           )}
@@ -8151,37 +8166,69 @@ export default function ConsultantApiKeysUnified() {
                   <TableRow>
                     <TableHead>Data Esecuzione</TableHead>
                     <TableHead>Stato</TableHead>
-                    <TableHead>Righe Processate</TableHead>
+                    <TableHead>Righe</TableHead>
                     <TableHead>Importati</TableHead>
+                    <TableHead>Saltati</TableHead>
                     <TableHead>Duplicati</TableHead>
                     <TableHead>Errori</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sheetHistory.map((run: any) => (
-                    <TableRow key={run.id}>
-                      <TableCell className="text-sm">
-                        {run.startedAt ? new Date(run.startedAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={run.runStatus === 'completed' ? 'default' : run.runStatus === 'running' ? 'secondary' : 'destructive'}
-                          className={run.runStatus === 'completed' ? 'bg-green-500' : run.runStatus === 'running' ? 'bg-blue-500' : ''}
-                        >
-                          {run.runStatus === 'completed' ? 'Completato' : run.runStatus === 'running' ? 'In corso' : run.runStatus === 'failed' ? 'Fallito' : run.runStatus}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">{run.rowsProcessed || 0}</TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-green-600 font-medium">{run.rowsImported || 0}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-amber-600">{run.rowsDuplicates || 0}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={run.rowsErrors > 0 ? "text-red-600 font-medium" : "text-gray-500"}>{run.rowsErrors || 0}</span>
-                      </TableCell>
-                    </TableRow>
+                    <>
+                      <TableRow key={run.id}>
+                        <TableCell className="text-sm">
+                          {run.startedAt ? new Date(run.startedAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={run.runStatus === 'completed' ? 'default' : run.runStatus === 'running' ? 'secondary' : 'destructive'}
+                            className={run.runStatus === 'completed' ? 'bg-green-500' : run.runStatus === 'running' ? 'bg-blue-500' : ''}
+                          >
+                            {run.runStatus === 'completed' ? 'Completato' : run.runStatus === 'running' ? 'In corso' : run.runStatus === 'failed' ? 'Fallito' : run.runStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">{run.rowsProcessed || 0}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-green-600 font-medium">{run.rowsImported || 0}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-orange-600">{run.rowsSkipped || 0}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-amber-600">{run.rowsDuplicates || 0}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className={run.rowsErrors > 0 ? "text-red-600 font-medium" : "text-gray-500"}>
+                            {run.rowsErrors || 0}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                      {run.errorDetails && run.errorDetails.length > 0 && (
+                        <TableRow key={`${run.id}-errors`} className="bg-red-50">
+                          <TableCell colSpan={7} className="py-2">
+                            <div className="text-xs text-red-700">
+                              <div className="font-semibold mb-1 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Dettagli errori:
+                              </div>
+                              <div className="max-h-32 overflow-y-auto space-y-1">
+                                {run.errorDetails.slice(0, 10).map((err: any, idx: number) => (
+                                  <div key={idx} className="flex items-center gap-2 text-red-600">
+                                    <span className="font-mono bg-red-100 px-1 rounded">Riga {err.row}</span>
+                                    {err.field && <span className="text-red-500">[{err.field}]</span>}
+                                    <span>{err.message}</span>
+                                  </div>
+                                ))}
+                                {run.errorDetails.length > 10 && (
+                                  <div className="text-red-500 italic">...e altri {run.errorDetails.length - 10} errori</div>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   ))}
                 </TableBody>
               </Table>

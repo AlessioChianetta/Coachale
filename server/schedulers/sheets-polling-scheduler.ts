@@ -26,18 +26,115 @@ function generateRowHash(phoneNumber: string, firstName: string, lastName: strin
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
-function normalizePhoneNumber(phone: string): string {
-  if (!phone) return '';
-  
-  let phoneNumber = phone.trim().replace(/[\s\-\(\)]/g, '');
-  
-  if (phoneNumber.startsWith('39') && !phoneNumber.startsWith('+39')) {
-    phoneNumber = '+' + phoneNumber;
-  } else if (!phoneNumber.startsWith('+') && !phoneNumber.startsWith('39')) {
-    phoneNumber = '+39' + phoneNumber;
+// Prefissi sporchi comuni da rimuovere (p:, tel:, whatsapp:, etc.)
+const PHONE_DIRTY_PREFIXES = [
+  "tel", "telefono", "phone", "phones", "whatsapp", "wa", "wapp",
+  "cell", "cellulare", "mobile", "mob", "numero", "num", "contact",
+  "contatto", "call", "p", "ph", "fon", "fax"
+];
+
+function normalizePhoneNumber(rawPhone: string, defaultCountryCode = "39"): string {
+  if (!rawPhone) return "";
+
+  let value = String(rawPhone).trim();
+  if (!value) return "";
+
+  // Rimuove prefissi sporchi come "p:", "tel:", "whatsapp:", etc.
+  const prefixRegex = new RegExp(`^(?:\\s*(?:${PHONE_DIRTY_PREFIXES.join("|")})\\s*(?:[:=\\-\\.])?\\s*)+`, "i");
+  while (prefixRegex.test(value)) {
+    value = value.replace(prefixRegex, "");
   }
+
+  // Rimuove estensioni (ext, extension, interno, x123)
+  value = value.replace(/\b(?:ext|extension|interno|int)\b.*$/i, "");
+  value = value.replace(/[x×]\s*\d+$/i, "");
   
-  return phoneNumber;
+  // Prende solo il primo numero se ce ne sono multipli (separati da ; , /)
+  value = value.split(/[;,]/)[0];
+  const slashIdx = value.indexOf("/");
+  if (slashIdx > -1) value = value.slice(0, slashIdx);
+
+  // Controlla se c'è un prefisso internazionale esplicito
+  let explicitInternational = /^\s*(?:\+|00)/.test(value) || /^\s*(?:\+|00)/.test(rawPhone);
+
+  // Rimuove tutto tranne cifre e +
+  value = value.replace(/[^\d+]/g, "");
+  if (!value) return "";
+
+  // Gestisce doppi + (++39...)
+  if (/^\+{2,}/.test(value)) {
+    value = "+" + value.replace(/\+/g, "");
+    explicitInternational = true;
+  }
+
+  // Gestisce +00 (errato)
+  if (value.startsWith("+00")) {
+    value = "+" + value.slice(3);
+    explicitInternational = true;
+  } else if (value.startsWith("00")) {
+    // Formato internazionale alternativo (0039 -> +39)
+    value = "+" + value.slice(2);
+    explicitInternational = true;
+  }
+
+  // Rimuove + multipli nel mezzo
+  if (value.startsWith("+")) {
+    value = "+" + value.slice(1).replace(/\+/g, "");
+    explicitInternational = true;
+  } else {
+    value = value.replace(/\+/g, "");
+  }
+
+  // Estrae solo le cifre
+  let digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+
+  // Rimuove zeri iniziali se già internazionale
+  if (explicitInternational && digits.startsWith("00")) {
+    digits = digits.replace(/^0+/, "");
+  }
+
+  // Gestisce doppio prefisso paese (393939...)
+  if (defaultCountryCode) {
+    const pattern = new RegExp(`^(?:${defaultCountryCode})+`);
+    const match = digits.match(pattern);
+    if (match && match[0].length > defaultCountryCode.length) {
+      digits = defaultCountryCode + digits.slice(match[0].length);
+    }
+  }
+
+  if (!digits) return "";
+
+  // Riconosce numeri italiani
+  const looksItalianMobile = defaultCountryCode === "39" && /^3\d{7,10}$/.test(digits);
+  const looksItalianLandline = defaultCountryCode === "39" && /^0\d{5,10}$/.test(digits);
+
+  // Se è internazionale esplicito ma non italiano, restituisce così
+  if (explicitInternational && !digits.startsWith(defaultCountryCode)) {
+    const normalizedIntl = "+" + digits;
+    return /^\+\d{6,15}$/.test(normalizedIntl) ? normalizedIntl : "";
+  }
+
+  // Aggiunge prefisso paese se mancante
+  if (!digits.startsWith(defaultCountryCode)) {
+    if (defaultCountryCode === "39") {
+      if (looksItalianMobile || looksItalianLandline) {
+        digits = defaultCountryCode + digits;
+      } else if (!explicitInternational && digits.length >= 6) {
+        digits = defaultCountryCode + digits;
+      } else if (digits.length < 6) {
+        return "";
+      }
+    } else if (defaultCountryCode) {
+      if (digits.length < 6) return "";
+      digits = defaultCountryCode + digits;
+    }
+  }
+
+  const normalized = "+" + digits;
+  
+  // Validazione finale: E.164 format (6-15 cifre)
+  return /^\+\d{6,15}$/.test(normalized) ? normalized : "";
 }
 
 export interface ImportResult {
@@ -49,14 +146,16 @@ export interface ImportResult {
   previousRowCount: number;
 }
 
-export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise<ImportResult> {
+export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?: { forceReimport?: boolean }): Promise<ImportResult> {
+  const forceReimport = options?.forceReimport || false;
+  
   const result: ImportResult = {
     imported: 0,
     duplicates: 0,
     skipped: 0,
     errors: 0,
     newRowCount: 0,
-    previousRowCount: job.lastRowCount || 0,
+    previousRowCount: forceReimport ? 0 : (job.lastRowCount || 0),
   };
   
   if (!job.googleSheetUrl) {
@@ -120,8 +219,11 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
     
     result.newRowCount = rows.length;
     
-    if (rows.length <= (job.lastRowCount || 0)) {
-      console.log(`[SHEETS POLLING] No new rows for job ${job.id} (current: ${rows.length}, previous: ${job.lastRowCount})`);
+    // Use result.previousRowCount which respects forceReimport flag (0 when force)
+    const effectiveLastRowCount = result.previousRowCount;
+    
+    if (rows.length <= effectiveLastRowCount && !forceReimport) {
+      console.log(`[SHEETS POLLING] No new rows for job ${job.id} (current: ${rows.length}, previous: ${effectiveLastRowCount})`);
       
       await db.update(schema.leadImportJobs)
         .set({ lastImportAt: new Date(), updatedAt: new Date() })
@@ -130,14 +232,32 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
       return result;
     }
     
-    const newRows = rows.slice(job.lastRowCount || 0);
-    console.log(`[SHEETS POLLING] Found ${newRows.length} new rows for job ${job.id}`);
+    const newRows = forceReimport ? rows : rows.slice(effectiveLastRowCount);
+    console.log(`[SHEETS POLLING] ${forceReimport ? 'Force reimport:' : 'Found'} ${newRows.length} rows for job ${job.id}`);
     
     const skipDuplicates = settings.skipDuplicates !== false;
     const defaultContactFrequency = settings.defaultContactFrequency || 7;
     const campaignId = settings.campaignId || null;
     const contactTiming = settings.contactTiming || 'immediate';
     const customContactDelay = settings.customContactDelay || 60;
+    
+    // Fetch campaign data if campaignId is set to populate lead with campaign goals
+    let campaignData: { name?: string; obiettivi?: string; desideri?: string; uncino?: string; statoIdeale?: string } | null = null;
+    if (campaignId) {
+      const [campaign] = await db.select()
+        .from(schema.campaigns)
+        .where(eq(schema.campaigns.id, campaignId));
+      if (campaign) {
+        campaignData = {
+          name: campaign.name,
+          obiettivi: campaign.obiettivi || undefined,
+          desideri: campaign.desideri || undefined,
+          uncino: campaign.uncino || undefined,
+          statoIdeale: campaign.statoIdeale || undefined,
+        };
+        console.log(`[SHEETS POLLING] Using campaign "${campaign.name}" for import`);
+      }
+    }
     
     let baseContactTime: Date;
     if (contactTiming === 'immediate') {
@@ -167,7 +287,7 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
     
     for (let i = 0; i < newRows.length; i++) {
       const row = newRows[i];
-      const absoluteRowNumber = (job.lastRowCount || 0) + i + 1;
+      const absoluteRowNumber = effectiveLastRowCount + i + 1;
       
       try {
         const firstName = row[columnMappings.firstName || ''] || '';
@@ -271,6 +391,17 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
         
         if (campaignId) {
           leadData.campaignId = campaignId;
+          // Add campaign snapshot so obiettivo shows correctly in proactive-leads page
+          if (campaignData) {
+            leadData.campaignSnapshot = {
+              name: campaignData.name,
+              goal: campaignData.obiettivi || campaignData.name,
+              obiettivi: campaignData.obiettivi,
+              desideri: campaignData.desideri,
+              uncino: campaignData.uncino,
+              statoIdeale: campaignData.statoIdeale,
+            };
+          }
         }
         
         if (Object.keys(leadInfo).length > 0) {
