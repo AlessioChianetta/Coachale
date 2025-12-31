@@ -558,10 +558,10 @@ export default function ConsultantWhatsAppPage() {
     mutationFn: async (config: WhatsAppConfig) => {
       const duplicateData = {
         agentName: `${config.agentName} - Copia`,
-        // Credenziali Twilio - sempre vuote per sicurezza (utente deve reinserirle)
-        twilioAccountSid: "",
-        twilioAuthToken: "",
-        twilioWhatsappNumber: "",
+        // Credenziali Twilio - copiate dall'agente originale
+        twilioAccountSid: config.twilioAccountSid || "",
+        twilioAuthToken: config.twilioAuthToken || "",
+        twilioWhatsappNumber: config.twilioWhatsappNumber || "",
         integrationMode: config.integrationMode || "whatsapp_ai",
         autoResponseEnabled: config.autoResponseEnabled,
         agentType: config.agentType,
