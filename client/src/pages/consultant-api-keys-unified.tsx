@@ -6058,6 +6058,28 @@ export default function ConsultantApiKeysUnified() {
                             <p className="text-xs text-slate-500">
                               Se impostata, verranno importati solo i lead con data di inserimento successiva a questa data
                             </p>
+                            {googleSheetsFormData.startFromDate && googleSheetsPreview && (
+                              <div className={`mt-2 p-2 rounded-lg text-xs ${
+                                googleSheetsFormData.columnMappings.dateCreated || googleSheetsPreview.suggestedMappings?.dateCreated
+                                  ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                                  : 'bg-amber-50 border border-amber-200 text-amber-700'
+                              }`}>
+                                {googleSheetsFormData.columnMappings.dateCreated || googleSheetsPreview.suggestedMappings?.dateCreated ? (
+                                  <>
+                                    <span className="font-medium">Filtro attivo:</span> Importerà lead dal{' '}
+                                    <span className="font-semibold">{new Date(googleSheetsFormData.startFromDate).toLocaleDateString('it-IT')}</span>
+                                    {' '}usando la colonna{' '}
+                                    <span className="font-mono bg-blue-100 px-1 rounded">
+                                      {googleSheetsFormData.columnMappings.dateCreated || googleSheetsPreview.suggestedMappings?.dateCreated}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="font-medium">Attenzione:</span> Per usare il filtro data, mappa il campo "Data Inserimento" a una colonna del foglio
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -6113,6 +6135,10 @@ export default function ConsultantApiKeysUnified() {
                                   { key: 'email', label: 'Email' },
                                   { key: 'company', label: 'Azienda' },
                                   { key: 'notes', label: 'Note' },
+                                  { key: 'question1', label: 'Domanda 1' },
+                                  { key: 'question2', label: 'Domanda 2' },
+                                  { key: 'question3', label: 'Domanda 3' },
+                                  { key: 'question4', label: 'Domanda 4' },
                                   { key: 'obiettivi', label: 'Obiettivi' },
                                   { key: 'desideri', label: 'Desideri' },
                                   { key: 'uncino', label: 'Uncino/Hook' },

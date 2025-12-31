@@ -175,6 +175,10 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
         const country = columnMappings.country ? row[columnMappings.country] || null : null;
         const tagsRaw = columnMappings.tags ? row[columnMappings.tags] || null : null;
         const dateOfBirth = columnMappings.dateOfBirth ? row[columnMappings.dateOfBirth] || null : null;
+        const question1 = columnMappings.question1 ? row[columnMappings.question1] || null : null;
+        const question2 = columnMappings.question2 ? row[columnMappings.question2] || null : null;
+        const question3 = columnMappings.question3 ? row[columnMappings.question3] || null : null;
+        const question4 = columnMappings.question4 ? row[columnMappings.question4] || null : null;
         
         if (!rawPhone) {
           result.skipped++;
@@ -216,6 +220,10 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
         if (postalCode) leadInfo.postalCode = postalCode;
         if (country) leadInfo.country = country;
         if (dateOfBirth) leadInfo.dateOfBirth = dateOfBirth;
+        if (question1) leadInfo.question1 = question1;
+        if (question2) leadInfo.question2 = question2;
+        if (question3) leadInfo.question3 = question3;
+        if (question4) leadInfo.question4 = question4;
         if (tagsRaw) {
           const tagsArray = tagsRaw.split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
           if (tagsArray.length > 0) leadInfo.tags = tagsArray;
