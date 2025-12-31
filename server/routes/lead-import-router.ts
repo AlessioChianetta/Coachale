@@ -509,6 +509,21 @@ router.post(
       const skipDuplicates = settings.skipDuplicates !== false;
       const defaultContactFrequency = settings.defaultContactFrequency || 7;
       const campaignId = settings.campaignId || null;
+      const contactTiming = settings.contactTiming || 'immediate';
+      const customContactDelay = settings.customContactDelay || 60;
+      
+      let baseContactTime: Date;
+      if (contactTiming === 'immediate') {
+        baseContactTime = new Date();
+      } else if (contactTiming === 'tomorrow') {
+        baseContactTime = new Date();
+        baseContactTime.setDate(baseContactTime.getDate() + 1);
+        baseContactTime.setHours(9, 0, 0, 0);
+      } else if (contactTiming === 'custom') {
+        baseContactTime = new Date(Date.now() + customContactDelay * 60 * 1000);
+      } else {
+        baseContactTime = new Date();
+      }
       
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -608,7 +623,7 @@ router.post(
             firstName: firstName || 'Lead',
             lastName: lastName || '',
             phoneNumber,
-            contactSchedule: new Date(tomorrow.getTime() + (i * 5 * 60 * 1000)),
+            contactSchedule: contactTiming === 'immediate' ? baseContactTime : new Date(baseContactTime.getTime() + (i * 5 * 60 * 1000)),
             contactFrequency: defaultContactFrequency,
             status: 'pending',
             importJobId: importJob.id,
@@ -1128,6 +1143,94 @@ router.post(
       res.status(500).json({
         success: false,
         error: error.message || "Errore durante l'importazione manuale"
+      });
+    }
+  }
+);
+
+router.get(
+  "/consultant/lead-import/sheets/:jobId/leads",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { jobId } = req.params;
+      
+      const [existingJob] = await db.select()
+        .from(schema.leadImportJobs)
+        .where(
+          and(
+            eq(schema.leadImportJobs.id, jobId),
+            eq(schema.leadImportJobs.consultantId, consultantId)
+          )
+        );
+      
+      if (!existingJob) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione non trovata"
+        });
+      }
+      
+      const leads = await db.select()
+        .from(schema.proactiveLeads)
+        .where(eq(schema.proactiveLeads.importJobId, jobId))
+        .orderBy(desc(schema.proactiveLeads.importedAt));
+      
+      res.json({
+        success: true,
+        leads
+      });
+    } catch (error: any) {
+      console.error("❌ [LEAD IMPORT] Error fetching leads:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante il recupero dei lead"
+      });
+    }
+  }
+);
+
+router.get(
+  "/consultant/lead-import/sheets/:jobId/history",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { jobId } = req.params;
+      
+      const [existingJob] = await db.select()
+        .from(schema.leadImportJobs)
+        .where(
+          and(
+            eq(schema.leadImportJobs.id, jobId),
+            eq(schema.leadImportJobs.consultantId, consultantId)
+          )
+        );
+      
+      if (!existingJob) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione non trovata"
+        });
+      }
+      
+      const runs = await db.select()
+        .from(schema.leadImportRuns)
+        .where(eq(schema.leadImportRuns.jobId, jobId))
+        .orderBy(desc(schema.leadImportRuns.startedAt));
+      
+      res.json({
+        success: true,
+        runs
+      });
+    } catch (error: any) {
+      console.error("❌ [LEAD IMPORT] Error fetching history:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante il recupero dello storico"
       });
     }
   }

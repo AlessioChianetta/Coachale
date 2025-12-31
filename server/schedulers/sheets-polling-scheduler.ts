@@ -136,6 +136,21 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
     const skipDuplicates = settings.skipDuplicates !== false;
     const defaultContactFrequency = settings.defaultContactFrequency || 7;
     const campaignId = settings.campaignId || null;
+    const contactTiming = settings.contactTiming || 'immediate';
+    const customContactDelay = settings.customContactDelay || 60;
+    
+    let baseContactTime: Date;
+    if (contactTiming === 'immediate') {
+      baseContactTime = new Date();
+    } else if (contactTiming === 'tomorrow') {
+      baseContactTime = new Date();
+      baseContactTime.setDate(baseContactTime.getDate() + 1);
+      baseContactTime.setHours(9, 0, 0, 0);
+    } else if (contactTiming === 'custom') {
+      baseContactTime = new Date(Date.now() + customContactDelay * 60 * 1000);
+    } else {
+      baseContactTime = new Date();
+    }
     
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -246,7 +261,7 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
           firstName: firstName || 'Lead',
           lastName: lastName || '',
           phoneNumber,
-          contactSchedule: new Date(tomorrow.getTime() + (i * 5 * 60 * 1000)),
+          contactSchedule: contactTiming === 'immediate' ? baseContactTime : new Date(baseContactTime.getTime() + (i * 5 * 60 * 1000)),
           contactFrequency: defaultContactFrequency,
           status: 'pending',
           importJobId: job.id,

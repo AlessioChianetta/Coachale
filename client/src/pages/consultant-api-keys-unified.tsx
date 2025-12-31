@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,8 @@ import {
   AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
   RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
   BookOpen, ChevronDown, ChevronUp, Shield, Database, Plug, Copy, Check, Filter,
-  MapPin, Tag, Settings, Send, User, Zap, Instagram, FileSpreadsheet, ArrowRight, X
+  MapPin, Tag, Settings, Send, User, Zap, Instagram, FileSpreadsheet, ArrowRight, X,
+  History, Phone
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
@@ -443,6 +445,13 @@ export default function ConsultantApiKeysUnified() {
   const [leadImportConfigId, setLeadImportConfigId] = useState<string | null>(null);
   const [selectedIntegration, setSelectedIntegration] = useState<"crmale" | "hubdigital" | "activecampaign" | "googlesheets">("crmale");
   const [googleSheetsConfigs, setGoogleSheetsConfigs] = useState<any[]>([]);
+  const [selectedSheetConfig, setSelectedSheetConfig] = useState<any>(null);
+  const [sheetLeadsDialogOpen, setSheetLeadsDialogOpen] = useState(false);
+  const [sheetHistoryDialogOpen, setSheetHistoryDialogOpen] = useState(false);
+  const [sheetLeads, setSheetLeads] = useState<any[]>([]);
+  const [sheetHistory, setSheetHistory] = useState<any[]>([]);
+  const [loadingSheetLeads, setLoadingSheetLeads] = useState(false);
+  const [loadingSheetHistory, setLoadingSheetHistory] = useState(false);
   const [googleSheetsFormData, setGoogleSheetsFormData] = useState({
     configName: "",
     sheetUrl: "",
@@ -453,6 +462,8 @@ export default function ConsultantApiKeysUnified() {
     startFromDate: "",
     columnMappings: {} as Record<string, string>,
     notesColumns: [] as string[],
+    contactTiming: "immediate" as "immediate" | "tomorrow" | "custom",
+    customContactDelay: 60,
   });
   const [isTestingGoogleSheets, setIsTestingGoogleSheets] = useState(false);
   const [isSavingGoogleSheets, setIsSavingGoogleSheets] = useState(false);
@@ -6001,12 +6012,15 @@ export default function ConsultantApiKeysUnified() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="googleSheetsCampaign" className="text-sm font-medium text-gray-600">Campagna di destinazione</Label>
+                            <Label htmlFor="googleSheetsCampaign" className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                              Campagna di destinazione *
+                              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Obbligatorio</Badge>
+                            </Label>
                             <Select
                               value={googleSheetsFormData.targetCampaignId}
                               onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, targetCampaignId: value })}
                             >
-                              <SelectTrigger id="googleSheetsCampaign" className="bg-white/80 border-slate-200 focus:border-blue-500">
+                              <SelectTrigger id="googleSheetsCampaign" className={`bg-white/80 border-slate-200 focus:border-blue-500 ${!googleSheetsFormData.targetCampaignId ? 'border-red-300' : ''}`}>
                                 <SelectValue placeholder="Seleziona una campagna" />
                               </SelectTrigger>
                               <SelectContent>
@@ -6025,6 +6039,98 @@ export default function ConsultantApiKeysUnified() {
                                 )}
                               </SelectContent>
                             </Select>
+                            <p className="text-xs text-amber-600">
+                              La campagna definisce obiettivi e desideri che l'AI utilizzerà per personalizzare i messaggi
+                            </p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                              Tempistica Contatto
+                              <Badge className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0">Quando contattare i lead</Badge>
+                            </Label>
+                            <div className="grid grid-cols-1 gap-2">
+                              <div 
+                                className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                  googleSheetsFormData.contactTiming === 'immediate' 
+                                    ? 'border-blue-500 bg-blue-50' 
+                                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                                }`}
+                                onClick={() => setGoogleSheetsFormData({ ...googleSheetsFormData, contactTiming: 'immediate' })}
+                              >
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                  googleSheetsFormData.contactTiming === 'immediate' ? 'border-blue-500' : 'border-gray-400'
+                                }`}>
+                                  {googleSheetsFormData.contactTiming === 'immediate' && (
+                                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-gray-900">Contatta Subito</span>
+                                    <Badge className="bg-green-100 text-green-700 text-[10px]">Consigliato</Badge>
+                                  </div>
+                                  <p className="text-xs text-gray-500">I lead vengono contattati immediatamente all'importazione</p>
+                                </div>
+                              </div>
+                              
+                              <div 
+                                className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                  googleSheetsFormData.contactTiming === 'tomorrow' 
+                                    ? 'border-blue-500 bg-blue-50' 
+                                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                                }`}
+                                onClick={() => setGoogleSheetsFormData({ ...googleSheetsFormData, contactTiming: 'tomorrow' })}
+                              >
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                  googleSheetsFormData.contactTiming === 'tomorrow' ? 'border-blue-500' : 'border-gray-400'
+                                }`}>
+                                  {googleSheetsFormData.contactTiming === 'tomorrow' && (
+                                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <span className="font-medium text-gray-900">Programma per Domani</span>
+                                  <p className="text-xs text-gray-500">I lead vengono contattati il giorno successivo alle 9:00</p>
+                                </div>
+                              </div>
+                              
+                              <div 
+                                className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                  googleSheetsFormData.contactTiming === 'custom' 
+                                    ? 'border-blue-500 bg-blue-50' 
+                                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                                }`}
+                                onClick={() => setGoogleSheetsFormData({ ...googleSheetsFormData, contactTiming: 'custom' })}
+                              >
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                  googleSheetsFormData.contactTiming === 'custom' ? 'border-blue-500' : 'border-gray-400'
+                                }`}>
+                                  {googleSheetsFormData.contactTiming === 'custom' && (
+                                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <span className="font-medium text-gray-900">Intervallo Personalizzato</span>
+                                  <p className="text-xs text-gray-500">Specifica dopo quanti minuti contattare i lead</p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {googleSheetsFormData.contactTiming === 'custom' && (
+                              <div className="flex items-center gap-3 mt-2 pl-7">
+                                <Label className="text-sm text-gray-600 whitespace-nowrap">Contatta dopo:</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="10080"
+                                  value={googleSheetsFormData.customContactDelay}
+                                  onChange={(e) => setGoogleSheetsFormData({ ...googleSheetsFormData, customContactDelay: parseInt(e.target.value) || 60 })}
+                                  className="w-24 bg-white/80 border-slate-200 focus:border-blue-500"
+                                />
+                                <span className="text-sm text-gray-500">minuti</span>
+                              </div>
+                            )}
                           </div>
 
                           <div className="space-y-2">
@@ -6643,6 +6749,15 @@ export default function ConsultantApiKeysUnified() {
                                 return;
                               }
                               
+                              if (!googleSheetsFormData.targetCampaignId) {
+                                toast({
+                                  title: "Campagna Obbligatoria",
+                                  description: "Seleziona una campagna per definire obiettivi e desideri che l'AI utilizzerà per personalizzare i messaggi",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              
                               const mappings = googleSheetsFormData.columnMappings.phoneNumber || googleSheetsPreview?.suggestedMappings.phoneNumber;
                               if (!mappings) {
                                 toast({
@@ -6676,6 +6791,8 @@ export default function ConsultantApiKeysUnified() {
                                       pollingIntervalMinutes: googleSheetsFormData.pollingIntervalMinutes,
                                       startFromDate: googleSheetsFormData.startFromDate || null,
                                       notesColumns: googleSheetsFormData.notesColumns.length > 0 ? googleSheetsFormData.notesColumns : undefined,
+                                      contactTiming: googleSheetsFormData.contactTiming,
+                                      customContactDelay: googleSheetsFormData.contactTiming === 'custom' ? googleSheetsFormData.customContactDelay : undefined,
                                     },
                                   }),
                                 });
@@ -6695,6 +6812,8 @@ export default function ConsultantApiKeysUnified() {
                                     startFromDate: "",
                                     columnMappings: {},
                                     notesColumns: [],
+                                    contactTiming: "immediate",
+                                    customContactDelay: 60,
                                   });
                                   setGoogleSheetsPreview(null);
                                   refetchGoogleSheetsJobs();
@@ -6715,7 +6834,7 @@ export default function ConsultantApiKeysUnified() {
                                 setIsSavingGoogleSheets(false);
                               }
                             }}
-                            disabled={isSavingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
+                            disabled={isSavingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId || !googleSheetsFormData.targetCampaignId}
                             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
                           >
                             {isSavingGoogleSheets ? (
@@ -6800,7 +6919,59 @@ export default function ConsultantApiKeysUnified() {
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={async () => {
+                                      setSelectedSheetConfig(config);
+                                      setLoadingSheetLeads(true);
+                                      setSheetLeadsDialogOpen(true);
+                                      try {
+                                        const response = await fetch(`/api/consultant/lead-import/sheets/${config.id}/leads`, {
+                                          headers: getAuthHeaders(),
+                                        });
+                                        if (response.ok) {
+                                          const data = await response.json();
+                                          setSheetLeads(data.leads || []);
+                                        }
+                                      } catch (error) {
+                                        toast({ title: "Errore", description: "Impossibile caricare i lead", variant: "destructive" });
+                                      } finally {
+                                        setLoadingSheetLeads(false);
+                                      }
+                                    }}
+                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                  >
+                                    <Users className="h-4 w-4 mr-1" />
+                                    Lead
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={async () => {
+                                      setSelectedSheetConfig(config);
+                                      setLoadingSheetHistory(true);
+                                      setSheetHistoryDialogOpen(true);
+                                      try {
+                                        const response = await fetch(`/api/consultant/lead-import/sheets/${config.id}/history`, {
+                                          headers: getAuthHeaders(),
+                                        });
+                                        if (response.ok) {
+                                          const data = await response.json();
+                                          setSheetHistory(data.runs || []);
+                                        }
+                                      } catch (error) {
+                                        toast({ title: "Errore", description: "Impossibile caricare lo storico", variant: "destructive" });
+                                      } finally {
+                                        setLoadingSheetHistory(false);
+                                      }
+                                    }}
+                                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200"
+                                  >
+                                    <History className="h-4 w-4 mr-1" />
+                                    Storico
+                                  </Button>
                                   <Switch
                                     checked={config.pollingEnabled}
                                     onCheckedChange={async (checked) => {
@@ -7523,6 +7694,141 @@ export default function ConsultantApiKeysUnified() {
 
       {/* AI Assistant */}
       <ConsultantAIAssistant />
+
+      {/* Sheet Leads Dialog */}
+      <Dialog open={sheetLeadsDialogOpen} onOpenChange={setSheetLeadsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-blue-600" />
+              Lead Importati - {selectedSheetConfig?.jobName || "Foglio Google"}
+            </DialogTitle>
+            <DialogDescription>
+              {sheetLeads.length} lead importati da questa configurazione
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[60vh]">
+            {loadingSheetLeads ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+            ) : sheetLeads.length === 0 ? (
+              <div className="text-center py-10 text-gray-500">
+                <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>Nessun lead importato</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Telefono</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead>Data Importazione</TableHead>
+                    <TableHead>Contatto Programmato</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sheetLeads.map((lead: any) => (
+                    <TableRow key={lead.id}>
+                      <TableCell className="font-medium">
+                        {lead.firstName} {lead.lastName}
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1 text-sm">
+                          <Phone className="h-3 w-3" />
+                          {lead.phoneNumber}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={lead.status === 'pending' ? 'secondary' : lead.status === 'contacted' ? 'default' : 'outline'}
+                          className={lead.status === 'contacted' ? 'bg-green-500' : ''}
+                        >
+                          {lead.status === 'pending' ? 'In attesa' : lead.status === 'contacted' ? 'Contattato' : lead.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {lead.importedAt ? new Date(lead.importedAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {lead.contactSchedule ? new Date(lead.contactSchedule).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sheet History Dialog */}
+      <Dialog open={sheetHistoryDialogOpen} onOpenChange={setSheetHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-purple-600" />
+              Storico Importazioni - {selectedSheetConfig?.jobName || "Foglio Google"}
+            </DialogTitle>
+            <DialogDescription>
+              Storico di tutte le esecuzioni di importazione
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[60vh]">
+            {loadingSheetHistory ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+              </div>
+            ) : sheetHistory.length === 0 ? (
+              <div className="text-center py-10 text-gray-500">
+                <History className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>Nessuna importazione eseguita</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data Esecuzione</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead>Righe Processate</TableHead>
+                    <TableHead>Importati</TableHead>
+                    <TableHead>Duplicati</TableHead>
+                    <TableHead>Errori</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sheetHistory.map((run: any) => (
+                    <TableRow key={run.id}>
+                      <TableCell className="text-sm">
+                        {run.startedAt ? new Date(run.startedAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={run.runStatus === 'completed' ? 'default' : run.runStatus === 'running' ? 'secondary' : 'destructive'}
+                          className={run.runStatus === 'completed' ? 'bg-green-500' : run.runStatus === 'running' ? 'bg-blue-500' : ''}
+                        >
+                          {run.runStatus === 'completed' ? 'Completato' : run.runStatus === 'running' ? 'In corso' : run.runStatus === 'failed' ? 'Fallito' : run.runStatus}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">{run.rowsProcessed || 0}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-green-600 font-medium">{run.rowsImported || 0}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-amber-600">{run.rowsDuplicates || 0}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={run.rowsErrors > 0 ? "text-red-600 font-medium" : "text-gray-500"}>{run.rowsErrors || 0}</span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
