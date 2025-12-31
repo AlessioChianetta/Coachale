@@ -746,7 +746,7 @@ function Router() {
           </Route>
 
           <Route path="/">
-            <AuthGuard fallback={<Home />}>
+            <AuthGuard fallback={<SasLanding />}>
               <RoleBasedRedirect />
             </AuthGuard>
           </Route>
