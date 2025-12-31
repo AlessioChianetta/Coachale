@@ -60,12 +60,17 @@ export default function AgentInstagram({ agentId, formData, onChange, errors }: 
   const [iceBreakers, setIceBreakers] = useState<Array<{ text: string; payload: string }>>([]);
   const [newIceBreaker, setNewIceBreaker] = useState("");
 
+  const [deletingConfigId, setDeletingConfigId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+
   const { data: instagramConfigs, isLoading: isLoadingInstagramConfigs } = useQuery<{
     configs: Array<{
       id: string;
       instagramPageId: string;
+      instagramUsername: string | null;
       agentName: string | null;
       isActive: boolean;
+      isConnected: boolean;
       autoResponseEnabled: boolean;
       storyReplyEnabled: boolean;
       commentToDmEnabled: boolean;
@@ -75,6 +80,7 @@ export default function AgentInstagram({ agentId, formData, onChange, errors }: 
       iceBreakersEnabled: boolean;
       iceBreakers: any[];
       isDryRun: boolean;
+      connectedAt: string | null;
       linkedAgent: { agentId: string; agentName: string } | null;
     }>;
   }>({
@@ -250,6 +256,39 @@ export default function AgentInstagram({ agentId, formData, onChange, errors }: 
       });
     } finally {
       setIsDisconnectingInstagram(false);
+    }
+  };
+
+  const handleDeleteInstagramConfig = async (configId: string) => {
+    setDeletingConfigId(configId);
+    try {
+      const response = await fetch(`/api/instagram/oauth/config/${configId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast({
+          title: "Account Eliminato",
+          description: data.message || "Account Instagram rimosso"
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instagram-configs"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/config", agentId] });
+        if (selectedInstagramConfigId === configId) {
+          setSelectedInstagramConfigId(null);
+        }
+        setShowDeleteConfirm(null);
+      } else {
+        throw new Error(data.error || "Impossibile eliminare");
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Errore durante l'eliminazione"
+      });
+    } finally {
+      setDeletingConfigId(null);
     }
   };
 
@@ -483,88 +522,167 @@ export default function AgentInstagram({ agentId, formData, onChange, errors }: 
             </div>
           )}
 
-          {instagramConfigs?.configs && instagramConfigs.configs.length > 0 ? (
-            <div className="space-y-4">
-              {selectedInstagramConfigId && currentConfig ? (
-                <>
-                  <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200">
-                    <Instagram className="h-5 w-5 text-pink-600 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-pink-700">Account Collegato</p>
-                      <p className="text-sm text-pink-600 truncate">
-                        {currentConfig.instagramPageId || "Account Instagram"}
-                      </p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleLinkInstagram(null)} 
-                      disabled={isSavingInstagram} 
-                      className="text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-300 gap-2"
-                    >
-                      {isSavingInstagram ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
-                      Scollega
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-3">
-                  <Label className="text-sm text-slate-600">Seleziona un account Instagram da collegare:</Label>
-                  <div className="space-y-2">
-                    {instagramConfigs.configs.map((config) => {
-                      const isLinkedToOther = config.linkedAgent && config.linkedAgent.agentId !== agentId;
-                      return (
-                        <button
-                          key={config.id}
-                          onClick={() => !isLinkedToOther && handleLinkInstagram(config.id)}
-                          disabled={isSavingInstagram || isLinkedToOther}
-                          className={cn(
-                            "w-full flex items-center gap-3 p-4 rounded-lg border transition-colors text-left",
-                            isLinkedToOther 
-                              ? "bg-slate-50 border-slate-200 cursor-not-allowed opacity-60" 
-                              : "bg-white border-slate-200 hover:bg-pink-50 hover:border-pink-300"
-                          )}
-                        >
-                          <Instagram className={cn("h-5 w-5", isLinkedToOther ? "text-slate-400" : "text-pink-500")} />
-                          <div className="flex-1 min-w-0">
-                            <p className={cn("text-sm font-medium truncate", isLinkedToOther ? "text-slate-500" : "text-slate-700")}>
-                              {config.instagramPageId}
-                            </p>
-                            {isLinkedToOther && (
-                              <p className="text-xs text-slate-400">Collegato a: {config.linkedAgent?.agentName}</p>
-                            )}
-                          </div>
-                          {!isLinkedToOther && <Link className="h-4 w-4 text-pink-500" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                <Instagram className="h-5 w-5 text-slate-400" />
-                <div className="flex-1">
-                  <p className="text-sm text-slate-600">Nessun account Instagram collegato</p>
-                  <p className="text-xs text-slate-500">Connetti il tuo account Instagram Business per iniziare</p>
-                </div>
+          {/* MULTI-ACCOUNT: Show current linked account if any */}
+          {selectedInstagramConfigId && currentConfig ? (
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200">
+              <Instagram className="h-5 w-5 text-pink-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-pink-700">Account Collegato a questo Agente</p>
+                <p className="text-sm text-pink-600 truncate font-medium">
+                  @{currentConfig.instagramUsername || currentConfig.instagramPageId}
+                </p>
               </div>
-              <Button
-                onClick={handleConnectInstagram}
-                disabled={isConnectingInstagram}
-                className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white gap-2"
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleLinkInstagram(null)} 
+                disabled={isSavingInstagram} 
+                className="text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-300 gap-2"
               >
-                {isConnectingInstagram ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Instagram className="h-4 w-4" />
-                )}
-                Connetti Instagram
+                {isSavingInstagram ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
+                Scollega
               </Button>
             </div>
+          ) : (
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+              <p className="text-sm text-slate-600">Nessun account Instagram collegato a questo agente</p>
+              <p className="text-xs text-slate-500">Seleziona o aggiungi un account Instagram per questo agente</p>
+            </div>
           )}
+
+          {/* MULTI-ACCOUNT: Lista di tutti gli account disponibili */}
+          {instagramConfigs?.configs && instagramConfigs.configs.length > 0 && (
+            <div className="space-y-3">
+              <Label className="text-sm text-slate-600 font-medium">Account Instagram disponibili:</Label>
+              <div className="space-y-2">
+                {instagramConfigs.configs.map((config) => {
+                  const isLinkedToOther = config.linkedAgent && config.linkedAgent.agentId !== agentId;
+                  const isCurrentlyLinked = config.id === selectedInstagramConfigId;
+                  const displayName = config.instagramUsername ? `@${config.instagramUsername}` : config.instagramPageId;
+                  
+                  return (
+                    <div
+                      key={config.id}
+                      className={cn(
+                        "flex items-center gap-3 p-4 rounded-lg border transition-colors",
+                        isCurrentlyLinked 
+                          ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-300"
+                          : isLinkedToOther 
+                            ? "bg-slate-50 border-slate-200 opacity-60" 
+                            : "bg-white border-slate-200 hover:bg-pink-50/50"
+                      )}
+                    >
+                      <Instagram className={cn(
+                        "h-5 w-5 flex-shrink-0",
+                        isCurrentlyLinked ? "text-green-600" : isLinkedToOther ? "text-slate-400" : "text-pink-500"
+                      )} />
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-sm font-medium truncate",
+                          isCurrentlyLinked ? "text-green-700" : isLinkedToOther ? "text-slate-500" : "text-slate-700"
+                        )}>
+                          {displayName}
+                        </p>
+                        {isLinkedToOther && (
+                          <p className="text-xs text-slate-400">Collegato a: {config.linkedAgent?.agentName}</p>
+                        )}
+                        {isCurrentlyLinked && (
+                          <p className="text-xs text-green-600 flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Collegato a questo agente
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {/* Link/Unlink button */}
+                        {!isLinkedToOther && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleLinkInstagram(isCurrentlyLinked ? null : config.id)}
+                            disabled={isSavingInstagram}
+                            className={cn(
+                              "gap-1",
+                              isCurrentlyLinked 
+                                ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-300"
+                                : "text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-300"
+                            )}
+                          >
+                            {isSavingInstagram ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : isCurrentlyLinked ? (
+                              <Unlink className="h-3 w-3" />
+                            ) : (
+                              <Link className="h-3 w-3" />
+                            )}
+                            {isCurrentlyLinked ? "Scollega" : "Collega"}
+                          </Button>
+                        )}
+                        
+                        {/* Delete button with confirmation */}
+                        {showDeleteConfirm === config.id ? (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteInstagramConfig(config.id)}
+                              disabled={deletingConfigId === config.id}
+                              className="gap-1 h-8 px-2"
+                            >
+                              {deletingConfigId === config.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                "Conferma"
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowDeleteConfirm(null)}
+                              className="h-8 px-2"
+                            >
+                              Annulla
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowDeleteConfirm(config.id)}
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8 p-0"
+                            title="Elimina account"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* MULTI-ACCOUNT: Always show "Add New Account" button */}
+          <div className="pt-2 border-t border-slate-200">
+            <Button
+              onClick={handleConnectInstagram}
+              disabled={isConnectingInstagram}
+              variant="outline"
+              className="w-full border-2 border-dashed border-pink-300 text-pink-600 hover:bg-pink-50 hover:border-pink-400 gap-2"
+            >
+              {isConnectingInstagram ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              Aggiungi Nuovo Account Instagram
+            </Button>
+            <p className="text-xs text-slate-500 text-center mt-2">
+              Puoi collegare più account Instagram (uno per agente)
+            </p>
+          </div>
         </CardContent>
       </Card>
 
