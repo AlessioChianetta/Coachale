@@ -452,6 +452,7 @@ export default function ConsultantApiKeysUnified() {
     pollingEnabled: false,
     startFromDate: "",
     columnMappings: {} as Record<string, string>,
+    notesColumns: [] as string[],
   });
   const [isTestingGoogleSheets, setIsTestingGoogleSheets] = useState(false);
   const [isSavingGoogleSheets, setIsSavingGoogleSheets] = useState(false);
@@ -6237,6 +6238,66 @@ export default function ConsultantApiKeysUnified() {
                                 
                                 return (
                                   <>
+                                    {/* Multi-column Notes Section */}
+                                    <div className="mb-5 p-4 bg-gradient-to-r from-indigo-50/80 to-blue-50/80 rounded-xl border border-indigo-200/60 shadow-sm">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                          <FileText className="h-5 w-5 text-indigo-600" />
+                                          <span className="font-semibold text-indigo-800">Note Multi-Variabile</span>
+                                          <Badge variant="outline" className="text-xs bg-white border-indigo-300 text-indigo-600">
+                                            Opzionale
+                                          </Badge>
+                                        </div>
+                                        {googleSheetsFormData.notesColumns.length > 0 && (
+                                          <Badge className="bg-indigo-500 text-white">
+                                            {googleSheetsFormData.notesColumns.length} colonne
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-indigo-600/80 mb-3">
+                                        Seleziona più colonne da concatenare in un unico campo note. Verranno unite con " | ".
+                                      </p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {sheetColumns.map((col) => {
+                                          const isSelected = googleSheetsFormData.notesColumns.includes(col);
+                                          return (
+                                            <button
+                                              key={col}
+                                              type="button"
+                                              onClick={() => {
+                                                const newNotesColumns = isSelected
+                                                  ? googleSheetsFormData.notesColumns.filter(c => c !== col)
+                                                  : [...googleSheetsFormData.notesColumns, col];
+                                                setGoogleSheetsFormData({
+                                                  ...googleSheetsFormData,
+                                                  notesColumns: newNotesColumns,
+                                                });
+                                              }}
+                                              className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+                                                isSelected
+                                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                                                  : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-400 hover:bg-indigo-50'
+                                              }`}
+                                            >
+                                              {isSelected && <CheckCircle className="h-3 w-3 inline mr-1" />}
+                                              {col}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                      {googleSheetsFormData.notesColumns.length > 0 && (
+                                        <div className="mt-3 p-2 bg-white rounded-lg border border-indigo-200 text-xs text-indigo-700">
+                                          <span className="font-medium">Anteprima:</span>{' '}
+                                          {googleSheetsFormData.notesColumns.map((col, i) => (
+                                            <span key={col}>
+                                              <code className="bg-indigo-100 px-1 rounded">{col}</code>
+                                              {i < googleSheetsFormData.notesColumns.length - 1 && ' | '}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+
                                     <div className="flex items-center justify-between mb-5">
                                       <div className="flex items-center gap-3">
                                         <Badge className="bg-blue-100 text-blue-700 border-blue-200 px-3 py-1.5 text-sm">
@@ -6614,6 +6675,7 @@ export default function ConsultantApiKeysUnified() {
                                       pollingEnabled: googleSheetsFormData.pollingEnabled,
                                       pollingIntervalMinutes: googleSheetsFormData.pollingIntervalMinutes,
                                       startFromDate: googleSheetsFormData.startFromDate || null,
+                                      notesColumns: googleSheetsFormData.notesColumns.length > 0 ? googleSheetsFormData.notesColumns : undefined,
                                     },
                                   }),
                                 });
@@ -6632,6 +6694,7 @@ export default function ConsultantApiKeysUnified() {
                                     pollingEnabled: false,
                                     startFromDate: "",
                                     columnMappings: {},
+                                    notesColumns: [],
                                   });
                                   setGoogleSheetsPreview(null);
                                   refetchGoogleSheetsJobs();

@@ -160,7 +160,18 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob): Promise
         const rawPhone = row[columnMappings.phoneNumber || ''] || '';
         const email = columnMappings.email ? row[columnMappings.email] || null : null;
         const company = columnMappings.company ? row[columnMappings.company] || null : null;
-        const notes = columnMappings.notes ? row[columnMappings.notes] || null : null;
+        
+        // Multi-column notes concatenation
+        let notes: string | null = null;
+        const notesColumns = settings.notesColumns as string[] | undefined;
+        if (notesColumns && notesColumns.length > 0) {
+          const noteParts = notesColumns
+            .map(col => row[col] ? String(row[col]).trim() : '')
+            .filter(Boolean);
+          notes = noteParts.length > 0 ? noteParts.join(' | ') : null;
+        } else if (columnMappings.notes) {
+          notes = row[columnMappings.notes] || null;
+        }
         
         // Extract all CRM fields from column mappings
         const obiettivi = columnMappings.obiettivi ? row[columnMappings.obiettivi] || null : null;

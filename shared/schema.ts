@@ -3135,6 +3135,8 @@ export const leadImportJobs = pgTable("lead_import_jobs", {
     defaultStatus?: string;
     defaultLeadCategory?: string;
     campaignId?: string;
+    notesColumns?: string[];
+    startFromDate?: string;
   }>().default(sql`'{}'::jsonb`),
   
   totalRowsImported: integer("total_rows_imported").default(0),
