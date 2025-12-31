@@ -6036,6 +6036,7 @@ export default function ConsultantApiKeysUnified() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="1">Ogni minuto</SelectItem>
                                 <SelectItem value="5">Ogni 5 minuti</SelectItem>
                                 <SelectItem value="10">Ogni 10 minuti</SelectItem>
                                 <SelectItem value="15">Ogni 15 minuti</SelectItem>
