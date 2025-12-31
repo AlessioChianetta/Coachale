@@ -553,6 +553,7 @@ router.post(
           }
           
           if (!rawPhone) {
+            console.log(`[LEAD IMPORT] Row ${rowNumber}: No phone number in column "${columnMappings.phoneNumber}"`);
             stats.skipped++;
             errorDetails.push({ row: rowNumber, field: 'phoneNumber', message: 'Numero di telefono mancante' });
             continue;
@@ -561,8 +562,9 @@ router.post(
           const phoneNumber = normalizePhoneNumber(rawPhone);
           
           if (!/^\+\d{1,15}$/.test(phoneNumber)) {
+            console.log(`[LEAD IMPORT] Row ${rowNumber}: Invalid phone format. Raw: "${rawPhone}" -> Normalized: "${phoneNumber}"`);
             stats.skipped++;
-            errorDetails.push({ row: rowNumber, field: 'phoneNumber', message: 'Formato telefono non valido' });
+            errorDetails.push({ row: rowNumber, field: 'phoneNumber', message: `Formato telefono non valido: ${rawPhone}` });
             continue;
           }
           
