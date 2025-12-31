@@ -618,21 +618,21 @@ router.post(
           .where(eq(schema.marketingCampaigns.id, campaignId));
         console.log(`📊 [LEAD IMPORT] Campaign found:`, campaign ? JSON.stringify({
           id: campaign.id,
-          name: campaign.name,
-          obiettivi: campaign.obiettivi,
-          desideri: campaign.desideri,
-          uncino: campaign.uncino,
-          statoIdeale: campaign.statoIdeale,
+          campaignName: campaign.campaignName,
+          defaultObiettivi: campaign.defaultObiettivi,
+          implicitDesires: campaign.implicitDesires,
+          hookText: campaign.hookText,
+          idealStateDescription: campaign.idealStateDescription,
         }, null, 2) : 'NOT FOUND');
         if (campaign) {
           campaignData = {
-            name: campaign.name,
-            obiettivi: campaign.obiettivi || undefined,
-            desideri: campaign.desideri || undefined,
-            uncino: campaign.uncino || undefined,
-            statoIdeale: campaign.statoIdeale || undefined,
+            name: campaign.campaignName,
+            obiettivi: campaign.defaultObiettivi || undefined,
+            desideri: campaign.implicitDesires || undefined,
+            uncino: campaign.hookText || undefined,
+            statoIdeale: campaign.idealStateDescription || undefined,
           };
-          console.log(`✅ [LEAD IMPORT] Using campaign "${campaign.name}" for import - campaignData:`, JSON.stringify(campaignData, null, 2));
+          console.log(`✅ [LEAD IMPORT] Using campaign "${campaign.campaignName}" for import - campaignData:`, JSON.stringify(campaignData, null, 2));
         }
       } else {
         console.log(`⚠️ [LEAD IMPORT] No campaignId provided in settings`);
