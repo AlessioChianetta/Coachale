@@ -144,6 +144,14 @@ interface ProactiveLead {
     notes?: string;
     conversationId?: string;
   };
+  campaignSnapshot?: {
+    name?: string;
+    goal?: string;
+    obiettivi?: string;
+    desideri?: string;
+    uncino?: string;
+    statoIdeale?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -1546,7 +1554,7 @@ export default function ProactiveLeadsPage() {
                                 </div>
                               </TableCell>
                               <TableCell className="max-w-xs truncate">
-                                {lead.leadInfo?.obiettivi || lead.idealState || "N/A"}
+                                {lead.leadInfo?.obiettivi || lead.campaignSnapshot?.obiettivi || lead.campaignSnapshot?.goal || lead.idealState || "N/A"}
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">

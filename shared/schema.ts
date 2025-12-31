@@ -3023,6 +3023,16 @@ export const proactiveLeads = pgTable("proactive_leads", {
   // Campaign Association (NEW)
   campaignId: varchar("campaign_id").references(() => marketingCampaigns.id, { onDelete: "set null" }),
   leadCategory: text("lead_category").$type<"freddo" | "tiepido" | "caldo" | "recupero" | "referral">(),
+  
+  // Campaign Snapshot - Stores campaign data at import time for obiettivo display
+  campaignSnapshot: jsonb("campaign_snapshot").$type<{
+    name?: string;
+    goal?: string;
+    obiettivi?: string;
+    desideri?: string;
+    uncino?: string;
+    statoIdeale?: string;
+  }>(),
 
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
