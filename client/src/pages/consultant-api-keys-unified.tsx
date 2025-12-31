@@ -7891,7 +7891,7 @@ export default function ConsultantApiKeysUnified() {
                       <SelectValue placeholder="Seleziona una campagna" />
                     </SelectTrigger>
                     <SelectContent>
-                      {campaignsData?.data?.map((campaign: any) => (
+                      {campaignsData?.campaigns?.map((campaign: any) => (
                         <SelectItem key={campaign.id} value={campaign.id}>
                           {campaign.name}
                         </SelectItem>
