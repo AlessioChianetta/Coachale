@@ -6993,6 +6993,37 @@ export default function ConsultantApiKeysUnified() {
                                     variant="outline"
                                     size="sm"
                                     onClick={async () => {
+                                      toast({ title: "Sync in corso...", description: "Controllo nuovi lead dal foglio" });
+                                      try {
+                                        const response = await fetch(`/api/consultant/lead-import/sheets/${config.id}/import-now`, {
+                                          method: "POST",
+                                          headers: getAuthHeaders(),
+                                        });
+                                        if (response.ok) {
+                                          const result = await response.json();
+                                          const stats = result.data || {};
+                                          toast({
+                                            title: "Sync completato",
+                                            description: `${stats.imported || 0} importati, ${stats.skipped || 0} saltati, ${stats.duplicates || 0} duplicati`,
+                                          });
+                                          refetchGoogleSheetsJobs();
+                                        } else {
+                                          const err = await response.json();
+                                          toast({ title: "Errore", description: err.error || "Errore durante il sync", variant: "destructive" });
+                                        }
+                                      } catch (error) {
+                                        toast({ title: "Errore", description: "Impossibile eseguire il sync", variant: "destructive" });
+                                      }
+                                    }}
+                                    className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                                  >
+                                    <RefreshCw className="h-4 w-4 mr-1" />
+                                    Esegui
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={async () => {
                                       setSelectedSheetConfig(config);
                                       setLoadingSheetLeads(true);
                                       setSheetLeadsDialogOpen(true);
