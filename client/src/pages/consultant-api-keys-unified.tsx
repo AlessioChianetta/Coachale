@@ -18,7 +18,7 @@ import {
   RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
   BookOpen, ChevronDown, ChevronUp, Shield, Database, Plug, Copy, Check, Filter,
   MapPin, Tag, Settings, Send, User, Zap, Instagram, FileSpreadsheet, ArrowRight, X,
-  History, Phone
+  History, Phone, Target
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
