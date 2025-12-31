@@ -297,6 +297,25 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       if (!agentConfig && !config) {
         console.log(`⚠️ [INSTAGRAM WEBHOOK] No active config for entry.id ${entryId}`);
         console.log(`   💡 Hint: Searched both per-agent and consultant configs - no match found`);
+        
+        // Debug: List all active configs to help troubleshoot
+        const allConfigs = await db
+          .select({
+            id: consultantInstagramConfig.id,
+            instagramPageId: consultantInstagramConfig.instagramPageId,
+            facebookPageId: consultantInstagramConfig.facebookPageId,
+            instagramUsername: consultantInstagramConfig.instagramUsername,
+            isActive: consultantInstagramConfig.isActive
+          })
+          .from(consultantInstagramConfig)
+          .where(eq(consultantInstagramConfig.isActive, true));
+        
+        console.log(`   📋 DEBUG: Active consultant configs in DB:`);
+        for (const c of allConfigs) {
+          console.log(`      - @${c.instagramUsername}: instagramPageId=${c.instagramPageId}, facebookPageId=${c.facebookPageId}`);
+        }
+        console.log(`   🔍 Looking for entry.id: ${entryId}`);
+        
         continue;
       }
       
