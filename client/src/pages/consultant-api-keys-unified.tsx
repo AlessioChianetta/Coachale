@@ -6042,6 +6042,52 @@ export default function ConsultantApiKeysUnified() {
                             <p className="text-xs text-amber-600">
                               La campagna definisce obiettivi e desideri che l'AI utilizzerà per personalizzare i messaggi
                             </p>
+                            
+                            {/* Campaign Details Preview */}
+                            {googleSheetsFormData.targetCampaignId && (() => {
+                              const selectedCampaign = campaigns.find((c: any) => c.id === googleSheetsFormData.targetCampaignId);
+                              if (!selectedCampaign) return null;
+                              return (
+                                <div className="mt-3 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border border-indigo-200 space-y-3">
+                                  <div className="flex items-center gap-2 text-indigo-700 font-medium text-sm">
+                                    <Target className="h-4 w-4" />
+                                    Dettagli Campagna: {selectedCampaign.campaignName}
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                    {selectedCampaign.defaultObiettivi && (
+                                      <div className="bg-white/80 rounded-lg p-3 border border-indigo-100">
+                                        <span className="text-indigo-600 font-medium text-xs uppercase tracking-wide block mb-1">Obiettivi</span>
+                                        <p className="text-gray-800">{selectedCampaign.defaultObiettivi}</p>
+                                      </div>
+                                    )}
+                                    {selectedCampaign.implicitDesires && (
+                                      <div className="bg-white/80 rounded-lg p-3 border border-indigo-100">
+                                        <span className="text-indigo-600 font-medium text-xs uppercase tracking-wide block mb-1">Desideri</span>
+                                        <p className="text-gray-800">{selectedCampaign.implicitDesires}</p>
+                                      </div>
+                                    )}
+                                    {selectedCampaign.hookText && (
+                                      <div className="bg-white/80 rounded-lg p-3 border border-indigo-100">
+                                        <span className="text-indigo-600 font-medium text-xs uppercase tracking-wide block mb-1">Uncino/Hook</span>
+                                        <p className="text-gray-800">{selectedCampaign.hookText}</p>
+                                      </div>
+                                    )}
+                                    {selectedCampaign.idealStateDescription && (
+                                      <div className="bg-white/80 rounded-lg p-3 border border-indigo-100">
+                                        <span className="text-indigo-600 font-medium text-xs uppercase tracking-wide block mb-1">Stato Ideale</span>
+                                        <p className="text-gray-800">{selectedCampaign.idealStateDescription}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {!selectedCampaign.defaultObiettivi && !selectedCampaign.implicitDesires && !selectedCampaign.hookText && !selectedCampaign.idealStateDescription && (
+                                    <div className="text-amber-600 text-sm flex items-center gap-2">
+                                      <AlertCircle className="h-4 w-4" />
+                                      Questa campagna non ha obiettivi/desideri configurati. L'AI potrebbe non personalizzare correttamente i messaggi.
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           <div className="space-y-3">
