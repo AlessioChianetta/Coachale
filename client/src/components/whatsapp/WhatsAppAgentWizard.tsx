@@ -210,14 +210,29 @@ export default function WhatsAppAgentWizard({
     setInstructionsSaved(true);
   };
 
+  const fieldLabels: Record<string, string> = {
+    agentName: "Nome Agente",
+    twilioAccountSid: "Account SID Twilio",
+    twilioAuthToken: "Auth Token Twilio",
+    twilioWhatsappNumber: "Numero WhatsApp",
+    workingHoursStart: "Orario Inizio",
+    workingHoursEnd: "Orario Fine",
+    workingDays: "Giorni Lavorativi",
+    defaultObiettivi: "Obiettivi Default",
+    defaultDesideri: "Desideri Default",
+    defaultUncino: "Uncino Default",
+    defaultIdealState: "Stato Ideale Default",
+  };
+
   const handleNext = () => {
     const { isValid, errors } = validateStep(currentStep, formData, mode === "create");
 
     if (!isValid) {
       setValidationErrors(errors);
+      const missingFields = Object.keys(errors).map(key => fieldLabels[key] || key).join(", ");
       toast({
         title: "⚠️ Campi obbligatori mancanti",
-        description: `Completa i campi richiesti prima di continuare`,
+        description: `Compila: ${missingFields}`,
         variant: "destructive",
       });
       return;
@@ -244,9 +259,10 @@ export default function WhatsAppAgentWizard({
       if (!isValid) {
         setValidationErrors(errors);
         setCurrentStep(i);
+        const missingFields = Object.keys(errors).map(key => fieldLabels[key] || key).join(", ");
         toast({
           title: "⚠️ Errori di validazione",
-          description: `Correggi gli errori nello step ${i + 1}`,
+          description: `Compila: ${missingFields}`,
           variant: "destructive",
         });
         return;
