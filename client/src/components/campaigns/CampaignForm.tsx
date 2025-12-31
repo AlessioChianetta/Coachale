@@ -165,15 +165,22 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   const selectedTemplate = assignedTemplates.find((t: any) => t.templateId === selectedTemplateId);
 
   useEffect(() => {
+    console.log('[CampaignForm] Agent changed, resetting template:', { selectedAgentId });
     setSelectedTemplateId(null);
     form.setValue("openingTemplateId", "");
   }, [selectedAgentId]);
 
   useEffect(() => {
+    console.log('[CampaignForm] selectedTemplateId changed:', selectedTemplateId);
     form.setValue("openingTemplateId", selectedTemplateId || "");
   }, [selectedTemplateId]);
 
   useEffect(() => {
+    console.log('[CampaignForm] Templates loaded:', { 
+      count: assignedTemplates?.length, 
+      templates: assignedTemplates?.map((t: any) => ({ id: t.templateId, name: t.templateName })),
+      initialOpeningTemplateId: initialData?.openingTemplateId 
+    });
     if (initialData?.openingTemplateId && assignedTemplates.length > 0) {
       const exists = assignedTemplates.some((t: any) => t.templateId === initialData.openingTemplateId);
       if (exists) {
@@ -274,11 +281,20 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   const previewTemplate = getPreviewTemplate();
 
   const canProceed = () => {
+    console.log('[CampaignForm] canProceed check:', {
+      currentStep,
+      preferredAgentConfigId: watchedValues.preferredAgentConfigId,
+      openingTemplateId: watchedValues.openingTemplateId,
+      selectedTemplateId,
+      assignedTemplatesCount: assignedTemplates?.length,
+    });
     switch (currentStep) {
       case 1:
         return watchedValues.campaignName?.length >= 3 && watchedValues.campaignType && watchedValues.leadCategory;
       case 2:
-        return !!watchedValues.preferredAgentConfigId && !!watchedValues.openingTemplateId;
+        const step2Result = !!watchedValues.preferredAgentConfigId && !!watchedValues.openingTemplateId;
+        console.log('[CampaignForm] Step 2 result:', step2Result, '| agentOK:', !!watchedValues.preferredAgentConfigId, '| templateOK:', !!watchedValues.openingTemplateId);
+        return step2Result;
       case 3:
         return watchedValues.hookText && watchedValues.idealStateDescription && watchedValues.implicitDesires && watchedValues.defaultObiettivi;
       default:
