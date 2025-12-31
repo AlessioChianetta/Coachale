@@ -1049,81 +1049,143 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
             {/* Performance Tab */}
             <TabsContent value="performance" className="space-y-4 mt-4">
-              {/* AGENT IDENTITY: Chi è, Cosa fa, A cosa serve */}
-              <div className="p-4 bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-xl border border-slate-200">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                    <Bot className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-800">
-                        {agentTypeLabels[agentData?.agentType || "reactive_lead"] || "Agente AI"}
-                      </h3>
-                      <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-                        <Sparkles className="h-3 w-3" />
-                        {personalityLabels[agentData?.personality || "consulente_professionale"] || "Professionale"}
-                      </p>
+              {/* QUICK ACTIONS - Most Prominent at Top */}
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200/60">
+                <h3 className="text-xs font-bold text-blue-900 mb-3 uppercase tracking-wide">
+                  Cosa vuoi fare?
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto py-3 px-3 bg-white hover:bg-blue-50 border-blue-200 hover:border-blue-400 justify-start gap-3 group"
+                    onClick={() => navigate(`/consultant/whatsapp/agent/${selectedAgent.id}`)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center flex-shrink-0 transition-colors">
+                      <Settings className="h-4 w-4 text-blue-600" />
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      {agentTypeDescriptions[agentData?.agentType || "reactive_lead"] || "Gestisce le conversazioni con i lead."}
-                    </p>
-                  </div>
+                    <div className="text-left">
+                      <p className="text-xs font-semibold text-slate-800">Modifica Agente</p>
+                      <p className="text-[10px] text-slate-500">Cambia istruzioni e comportamento</p>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto py-3 px-3 bg-white hover:bg-indigo-50 border-blue-200 hover:border-indigo-400 justify-start gap-3 group"
+                    onClick={() => navigate(`/consultant/whatsapp-agents-chat?agentId=${selectedAgent.id}`)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 group-hover:bg-indigo-200 flex items-center justify-center flex-shrink-0 transition-colors">
+                      <MessageSquare className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-semibold text-slate-800">Vedi Conversazioni</p>
+                      <p className="text-[10px] text-slate-500">Leggi le chat con i clienti</p>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto py-3 px-3 bg-white hover:bg-emerald-50 border-blue-200 hover:border-emerald-400 justify-start gap-3 group"
+                    onClick={() => setShowShareManager(true)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center flex-shrink-0 transition-colors">
+                      <Share2 className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-semibold text-slate-800">Condividi Agente</p>
+                      <p className="text-[10px] text-slate-500">Dai accesso ai tuoi clienti</p>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto py-3 px-3 bg-white hover:bg-purple-50 border-blue-200 hover:border-purple-400 justify-start gap-3 group"
+                    onClick={() => onDuplicateAgent?.(selectedAgent.id)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-purple-100 group-hover:bg-purple-200 flex items-center justify-center flex-shrink-0 transition-colors">
+                      <Copy className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-semibold text-slate-800">Duplica Agente</p>
+                      <p className="text-[10px] text-slate-500">Crea una copia modificabile</p>
+                    </div>
+                  </Button>
+                </div>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => onDeleteAgent?.(selectedAgent.id)}
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Elimina agente
+                  </Button>
                 </div>
               </div>
 
-              {/* QUICK ACTIONS - Prominent Position */}
-              <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-200/50">
-                <h3 className="text-xs font-semibold text-amber-800 mb-2.5 flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-amber-500" />
-                  AZIONI RAPIDE
-                </h3>
-                <div className="grid grid-cols-5 gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300"
-                    onClick={() => navigate(`/consultant/whatsapp/agent/${selectedAgent.id}`)}
-                  >
-                    <Settings className="h-4 w-4 text-slate-600" />
-                    <span className="text-[10px] font-medium">Configura</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300"
-                    onClick={() => navigate(`/consultant/whatsapp-agents-chat?agentId=${selectedAgent.id}`)}
-                  >
-                    <MessageSquare className="h-4 w-4 text-slate-600" />
-                    <span className="text-[10px] font-medium">Chat</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-emerald-50 border-slate-200 hover:border-emerald-300 text-emerald-600"
-                    onClick={() => setShowShareManager(true)}
-                  >
-                    <Share2 className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">Condividi</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-blue-600"
-                    onClick={() => onDuplicateAgent?.(selectedAgent.id)}
-                  >
-                    <Copy className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">Duplica</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-red-50 border-slate-200 hover:border-red-300 text-red-600"
-                    onClick={() => onDeleteAgent?.(selectedAgent.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">Elimina</span>
-                  </Button>
+              {/* AGENT IDENTITY: Chi è, Cosa fa, Chi aiuta */}
+              <div className="space-y-3">
+                {/* Business Info */}
+                {(agentData?.businessName || agentData?.businessDescription) && (
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                      <Bot className="h-3 w-3" />
+                      Di cosa si occupa
+                    </h4>
+                    {agentData?.businessName && (
+                      <p className="text-sm font-semibold text-slate-800">{agentData.businessName}</p>
+                    )}
+                    {agentData?.businessDescription && (
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">{agentData.businessDescription}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* What We Do */}
+                {agentData?.whatWeDo && (
+                  <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                    <h4 className="text-[10px] font-bold text-blue-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                      <Target className="h-3 w-3" />
+                      Cosa fa questo agente
+                    </h4>
+                    <p className="text-xs text-slate-700 leading-relaxed">{agentData.whatWeDo}</p>
+                  </div>
+                )}
+
+                {/* Who We Help / Don't Help */}
+                <div className="grid grid-cols-2 gap-2">
+                  {agentData?.whoWeHelp && (
+                    <div className="p-3 bg-green-50/50 rounded-lg border border-green-100">
+                      <h4 className="text-[10px] font-bold text-green-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                        <CheckCircle className="h-3 w-3" />
+                        Chi aiuta
+                      </h4>
+                      <p className="text-xs text-slate-700 leading-relaxed line-clamp-4">{agentData.whoWeHelp}</p>
+                    </div>
+                  )}
+                  {agentData?.whoWeDontHelp && (
+                    <div className="p-3 bg-red-50/50 rounded-lg border border-red-100">
+                      <h4 className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                        <UserX className="h-3 w-3" />
+                        Chi non aiuta
+                      </h4>
+                      <p className="text-xs text-slate-700 leading-relaxed line-clamp-4">{agentData.whoWeDontHelp}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Agent Type & Personality Badge */}
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-xs bg-indigo-50 border-indigo-200 text-indigo-700">
+                    <Bot className="h-3 w-3 mr-1" />
+                    {agentTypeLabels[agentData?.agentType || "reactive_lead"] || "Lead Reattivo"}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-700">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    {personalityLabels[agentData?.personality || "consulente_professionale"] || "Professionale"}
+                  </Badge>
                 </div>
               </div>
 
