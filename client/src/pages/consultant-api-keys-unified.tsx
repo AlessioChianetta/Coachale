@@ -3443,16 +3443,16 @@ export default function ConsultantApiKeysUnified() {
                   <Card 
                     className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
                       selectedIntegration === "googlesheets" 
-                        ? "border-2 border-emerald-500 bg-emerald-50/50 shadow-md" 
-                        : "border border-gray-200 bg-white hover:border-emerald-300"
+                        ? "border-2 border-blue-500 bg-blue-50/50 shadow-md" 
+                        : "border border-gray-200 bg-white hover:border-blue-300"
                     }`}
                     onClick={() => setSelectedIntegration("googlesheets")}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${selectedIntegration === "googlesheets" ? "bg-emerald-100" : "bg-emerald-50"}`}>
-                            <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+                          <div className={`p-2 rounded-lg ${selectedIntegration === "googlesheets" ? "bg-blue-100" : "bg-blue-50"}`}>
+                            <FileSpreadsheet className="h-6 w-6 text-blue-600" />
                           </div>
                           <div>
                             <h3 className="font-semibold text-gray-900">Google Sheets</h3>
@@ -5837,18 +5837,18 @@ export default function ConsultantApiKeysUnified() {
                 {/* Google Sheets Configuration */}
                 {selectedIntegration === "googlesheets" && (
                   <>
-                    <Alert className="mb-4 bg-emerald-50 border-emerald-200">
-                      <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
-                      <AlertDescription className="text-sm text-emerald-800">
+                    <Alert className="mb-4 bg-blue-50 border-blue-200">
+                      <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
                         <strong>Sync Automatico da Google Sheets</strong> - Importa lead automaticamente da un foglio Google Sheets pubblico o condiviso. Il sistema controlla periodicamente il foglio e importa i nuovi lead.
                       </AlertDescription>
                     </Alert>
 
-                    <Card className="border-2 border-emerald-300 shadow-xl bg-gradient-to-br from-emerald-50 to-green-50">
+                    <Card className="border border-gray-200 shadow-lg bg-white">
                       <CardHeader>
                         <div className="flex items-center gap-3">
-                          <div className="p-3 bg-gradient-to-br from-emerald-100 to-green-100 rounded-xl">
-                            <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+                          <div className="p-3 bg-blue-50 rounded-xl">
+                            <FileSpreadsheet className="h-6 w-6 text-blue-600" />
                           </div>
                           <div>
                             <CardTitle>Configura Importazione da Google Sheets</CardTitle>
@@ -5891,8 +5891,8 @@ export default function ConsultantApiKeysUnified() {
                                       <div className="flex flex-col items-center">
                                         <div className={`
                                           w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 relative
-                                          ${isCompleted ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30" : ""}
-                                          ${isCurrent ? "bg-gradient-to-br from-slate-700 to-slate-800 text-emerald-400 ring-4 ring-emerald-400/30 shadow-lg shadow-emerald-500/20 border-2 border-emerald-400/50" : ""}
+                                          ${isCompleted ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30" : ""}
+                                          ${isCurrent ? "bg-white text-blue-600 ring-4 ring-blue-400/30 shadow-lg shadow-blue-500/20 border-2 border-blue-500" : ""}
                                           ${isFuture ? "bg-slate-800/60 border border-slate-600/50 text-slate-500" : ""}
                                         `}>
                                           {isCompleted ? (
@@ -5903,7 +5903,7 @@ export default function ConsultantApiKeysUnified() {
                                         </div>
                                         <span className={`
                                           mt-3 text-xs font-medium text-center max-w-[80px] transition-all duration-300
-                                          ${isCompleted ? "text-emerald-400" : ""}
+                                          ${isCompleted ? "text-blue-400" : ""}
                                           ${isCurrent ? "text-white font-semibold" : ""}
                                           ${isFuture ? "text-slate-500" : ""}
                                         `}>
@@ -5915,7 +5915,7 @@ export default function ConsultantApiKeysUnified() {
                                           <div className={`
                                             h-1 rounded-full transition-all duration-500
                                             ${step.num < currentStep 
-                                              ? "bg-gradient-to-r from-emerald-500 to-emerald-400" 
+                                              ? "bg-gradient-to-r from-blue-500 to-indigo-500" 
                                               : "bg-slate-700/60"}
                                           `} />
                                         </div>
@@ -5935,7 +5935,7 @@ export default function ConsultantApiKeysUnified() {
                               value={googleSheetsFormData.sheetUrl}
                               onChange={(e) => setGoogleSheetsFormData({ ...googleSheetsFormData, sheetUrl: e.target.value })}
                               placeholder="https://docs.google.com/spreadsheets/d/1ABC.../edit"
-                              className="font-mono text-sm bg-white/80 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all"
+                              className="font-mono text-sm bg-white/80 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all"
                             />
                             <p className="text-xs text-slate-500">
                               Il foglio deve essere condiviso pubblicamente o con chiunque abbia il link
@@ -5969,7 +5969,7 @@ export default function ConsultantApiKeysUnified() {
                               value={googleSheetsFormData.configName}
                               onChange={(e) => setGoogleSheetsFormData({ ...googleSheetsFormData, configName: e.target.value })}
                               placeholder="es. Lead da Landing Page"
-                              className="bg-white/80 border-slate-200 focus:border-emerald-500 transition-all"
+                              className="bg-white/80 border-slate-200 focus:border-blue-500 transition-all"
                             />
                           </div>
 
@@ -5979,7 +5979,7 @@ export default function ConsultantApiKeysUnified() {
                               value={googleSheetsFormData.agentConfigId}
                               onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, agentConfigId: value })}
                             >
-                              <SelectTrigger id="googleSheetsAgent" className="bg-white/80 border-slate-200 focus:border-emerald-500">
+                              <SelectTrigger id="googleSheetsAgent" className="bg-white/80 border-slate-200 focus:border-blue-500">
                                 <SelectValue placeholder="Seleziona un agente proattivo" />
                               </SelectTrigger>
                               <SelectContent>
@@ -6005,7 +6005,7 @@ export default function ConsultantApiKeysUnified() {
                               value={googleSheetsFormData.targetCampaignId}
                               onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, targetCampaignId: value })}
                             >
-                              <SelectTrigger id="googleSheetsCampaign" className="bg-white/80 border-slate-200 focus:border-emerald-500">
+                              <SelectTrigger id="googleSheetsCampaign" className="bg-white/80 border-slate-200 focus:border-blue-500">
                                 <SelectValue placeholder="Seleziona una campagna" />
                               </SelectTrigger>
                               <SelectContent>
@@ -6032,7 +6032,7 @@ export default function ConsultantApiKeysUnified() {
                               value={String(googleSheetsFormData.pollingIntervalMinutes)}
                               onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, pollingIntervalMinutes: parseInt(value) })}
                             >
-                              <SelectTrigger id="googleSheetsPollingInterval" className="bg-white/80 border-slate-200 focus:border-emerald-500">
+                              <SelectTrigger id="googleSheetsPollingInterval" className="bg-white/80 border-slate-200 focus:border-blue-500">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -6053,7 +6053,7 @@ export default function ConsultantApiKeysUnified() {
                               type="date"
                               value={googleSheetsFormData.startFromDate || ""}
                               onChange={(e) => setGoogleSheetsFormData({ ...googleSheetsFormData, startFromDate: e.target.value })}
-                              className="bg-white/80 border-slate-200 focus:border-emerald-500"
+                              className="bg-white/80 border-slate-200 focus:border-blue-500"
                             />
                             <p className="text-xs text-slate-500">
                               Se impostata, verranno importati solo i lead con data di inserimento successiva a questa data
@@ -6067,7 +6067,7 @@ export default function ConsultantApiKeysUnified() {
                               id="googleSheetsPollingEnabled"
                               checked={googleSheetsFormData.pollingEnabled}
                               onCheckedChange={(checked) => setGoogleSheetsFormData({ ...googleSheetsFormData, pollingEnabled: checked })}
-                              className="data-[state=checked]:bg-emerald-500"
+                              className="data-[state=checked]:bg-blue-600"
                             />
                             <Label htmlFor="googleSheetsPollingEnabled" className="cursor-pointer">
                               <span className="font-medium text-white">Polling Automatico</span>
@@ -6077,7 +6077,7 @@ export default function ConsultantApiKeysUnified() {
                           <Badge 
                             variant={googleSheetsFormData.pollingEnabled ? "default" : "secondary"} 
                             className={googleSheetsFormData.pollingEnabled 
-                              ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-lg shadow-emerald-500/20" 
+                              ? "bg-green-500 text-white border-0 shadow-lg shadow-green-500/20" 
                               : "bg-slate-700 text-slate-300 border-slate-600"}
                           >
                             {googleSheetsFormData.pollingEnabled ? "Attivo" : "Disattivo"}
@@ -6087,18 +6087,18 @@ export default function ConsultantApiKeysUnified() {
                         {googleSheetsPreview && (
                           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
                             {/* Gradient Header Bar */}
-                            <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-4">
+                            <div className="bg-white border-l-4 border-blue-600 p-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                  <div className="p-2 bg-white/20 backdrop-blur rounded-lg">
-                                    <Settings className="h-5 w-5 text-white" />
+                                  <div className="p-2 bg-blue-50 rounded-lg">
+                                    <Settings className="h-5 w-5 text-blue-600" />
                                   </div>
                                   <div>
-                                    <h4 className="font-bold text-white">Step 3: Mappa le Colonne</h4>
-                                    <p className="text-xs text-white/80">Collega le colonne del foglio ai campi dei lead</p>
+                                    <h4 className="font-bold text-gray-900">Step 3: Mappa le Colonne</h4>
+                                    <p className="text-xs text-gray-500">Collega le colonne del foglio ai campi dei lead</p>
                                   </div>
                                 </div>
-                                <Badge className="bg-white/20 text-white border-0 backdrop-blur">
+                                <Badge className="bg-blue-100 text-blue-700 border-0">
                                   {googleSheetsPreview.columns.length} colonne rilevate
                                 </Badge>
                               </div>
@@ -6213,7 +6213,7 @@ export default function ConsultantApiKeysUnified() {
                                   <>
                                     <div className="flex items-center justify-between mb-5">
                                       <div className="flex items-center gap-3">
-                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 px-3 py-1.5 text-sm">
+                                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 px-3 py-1.5 text-sm">
                                           {mappedCount}/{sheetColumns.length} colonne mappate
                                         </Badge>
                                         {!hasPhoneMapping && (
@@ -6262,7 +6262,7 @@ export default function ConsultantApiKeysUnified() {
                                           <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100">
                                             <TableHead className="font-semibold text-slate-700 w-[200px]">
                                               <div className="flex items-center gap-2">
-                                                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                                                <FileSpreadsheet className="h-4 w-4 text-blue-600" />
                                                 Colonna Foglio
                                               </div>
                                             </TableHead>
@@ -6274,7 +6274,7 @@ export default function ConsultantApiKeysUnified() {
                                             </TableHead>
                                             <TableHead className="font-semibold text-slate-700 w-[200px]">
                                               <div className="flex items-center gap-2">
-                                                <ArrowRight className="h-4 w-4 text-teal-600" />
+                                                <ArrowRight className="h-4 w-4 text-blue-600" />
                                                 Mappa a Campo CRM
                                               </div>
                                             </TableHead>
@@ -6297,7 +6297,7 @@ export default function ConsultantApiKeysUnified() {
                                               <TableRow 
                                                 key={col} 
                                                 className={`hover:bg-slate-50/80 transition-all duration-200 ${
-                                                  isPhoneField ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-l-4 border-l-emerald-500' : 
+                                                  isPhoneField ? 'bg-blue-50 border-l-4 border-l-blue-500' : 
                                                   mappedField ? 'bg-gradient-to-r from-blue-50/50 to-indigo-50/30 border-l-4 border-l-blue-400' : 
                                                   hasAiSuggestion ? 'bg-gradient-to-r from-violet-50/50 to-purple-50/30 border-l-4 border-l-violet-400' : ''
                                                 }`}
@@ -6353,7 +6353,7 @@ export default function ConsultantApiKeysUnified() {
                                                     >
                                                       <SelectTrigger className={`h-10 min-w-[160px] ${
                                                         isPhoneField 
-                                                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700 font-semibold shadow-sm' 
+                                                          ? 'border-blue-400 bg-blue-50 text-blue-700 font-semibold shadow-sm' 
                                                           : mappedField 
                                                             ? 'border-blue-300 bg-blue-50 text-blue-700 shadow-sm' 
                                                             : 'border-slate-200 bg-white'
@@ -6385,7 +6385,7 @@ export default function ConsultantApiKeysUnified() {
                                                               value={field.key}
                                                               disabled={isAlreadyMapped}
                                                             >
-                                                              <span className={`flex items-center gap-2 ${field.required ? 'font-medium text-emerald-700' : ''}`}>
+                                                              <span className={`flex items-center gap-2 ${field.required ? 'font-medium text-blue-700' : ''}`}>
                                                                 {field.label}
                                                                 {isAiSuggested && <Sparkles className="h-3 w-3 text-violet-500" />}
                                                                 {isAlreadyMapped && <span className="text-xs text-slate-400">(già usato)</span>}
@@ -6420,7 +6420,7 @@ export default function ConsultantApiKeysUnified() {
                                                           {crmFields.find(f => f.key === aiSuggestion.suggestedField)?.label}
                                                         </span>
                                                         <Badge className={`text-[10px] px-1.5 py-0 h-4 ${
-                                                          aiSuggestion.confidence >= 90 ? 'bg-emerald-500' :
+                                                          aiSuggestion.confidence >= 90 ? 'bg-green-500' :
                                                           aiSuggestion.confidence >= 70 ? 'bg-blue-500' :
                                                           'bg-amber-500'
                                                         }`}>
@@ -6438,8 +6438,8 @@ export default function ConsultantApiKeysUnified() {
                                     </div>
 
                                     {mappedCount > 0 && googleSheetsPreview.previewRows.length > 0 && (
-                                      <div className="mt-6 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-200">
-                                        <h4 className="font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+                                      <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                        <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
                                           <User className="h-4 w-4" />
                                           Anteprima: come apparirà il primo lead importato
                                         </h4>
@@ -6451,8 +6451,8 @@ export default function ConsultantApiKeysUnified() {
                                             const col = googleSheetsFormData.columnMappings[f.key] || googleSheetsPreview.suggestedMappings[f.key];
                                             const value = googleSheetsPreview.previewRows[0]?.[col];
                                             return (
-                                              <div key={f.key} className="bg-white rounded-lg p-3 shadow-sm border border-emerald-100">
-                                                <span className="text-emerald-600 text-xs font-medium uppercase tracking-wide">{f.label}</span>
+                                              <div key={f.key} className="bg-white rounded-lg p-3 shadow-sm border border-blue-100">
+                                                <span className="text-blue-600 text-xs font-medium uppercase tracking-wide">{f.label}</span>
                                                 <p className="font-semibold text-gray-900 mt-1 truncate" title={String(value)}>{value}</p>
                                               </div>
                                             );
@@ -6526,8 +6526,8 @@ export default function ConsultantApiKeysUnified() {
                                 }}
                                 disabled={isTestingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
                                 className={isNextStep 
-                                  ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all duration-200"
-                                  : "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all"
+                                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all duration-200"
+                                  : "border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 transition-all"
                                 }
                               >
                                 {isTestingGoogleSheets ? (
@@ -6627,7 +6627,7 @@ export default function ConsultantApiKeysUnified() {
                               }
                             }}
                             disabled={isSavingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
-                            className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
                           >
                             {isSavingGoogleSheets ? (
                               <>
@@ -6659,11 +6659,11 @@ export default function ConsultantApiKeysUnified() {
                     </Alert>
 
                     {googleSheetsConfigs.length > 0 && (
-                      <Card className="mt-6 border-2 border-emerald-200 shadow-lg">
+                      <Card className="mt-6 border border-gray-200 shadow-lg">
                         <CardHeader>
                           <div className="flex items-center gap-3">
-                            <div className="p-2 bg-emerald-100 rounded-lg">
-                              <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                              <FileSpreadsheet className="h-5 w-5 text-blue-600" />
                             </div>
                             <div>
                               <CardTitle className="text-lg">Fogli Google Configurati</CardTitle>
@@ -6678,7 +6678,7 @@ export default function ConsultantApiKeysUnified() {
                             {googleSheetsConfigs.map((config: any) => (
                               <div
                                 key={config.id}
-                                className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-emerald-300 transition-colors"
+                                className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
                               >
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
@@ -6687,7 +6687,7 @@ export default function ConsultantApiKeysUnified() {
                                     </h4>
                                     <Badge 
                                       variant={config.pollingEnabled ? "default" : "secondary"}
-                                      className={config.pollingEnabled ? "bg-emerald-500" : ""}
+                                      className={config.pollingEnabled ? "bg-green-500" : ""}
                                     >
                                       {config.pollingEnabled ? "Sync Attivo" : "Sync Disattivo"}
                                     </Badge>
