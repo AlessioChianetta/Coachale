@@ -301,11 +301,9 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
       case 1:
         return watchedValues.campaignName?.length >= 3 && watchedValues.campaignType && watchedValues.leadCategory;
       case 2:
-        // Template is optional if no custom templates are assigned to the agent
+        // Template is always optional - agent selection is required
         const hasAgent = !!watchedValues.preferredAgentConfigId;
-        const hasTemplate = !!watchedValues.openingTemplateId;
-        const noTemplatesAvailable = assignedTemplates.length === 0;
-        return hasAgent && (hasTemplate || noTemplatesAvailable);
+        return hasAgent;
       case 3:
         return watchedValues.hookText && watchedValues.idealStateDescription && watchedValues.implicitDesires && watchedValues.defaultObiettivi;
       default:
