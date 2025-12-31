@@ -3,23 +3,31 @@
 // Usa require() perché questo file è CommonJS
 
 const dotenv = require('dotenv');
+const fs = require('fs');
+const path = require('path');
 
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 console.log('🔧 [loadEnv.cjs] Caricamento variabili da .env...');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+const envPath = path.resolve(process.cwd(), '.env');
+const envExists = fs.existsSync(envPath);
 
-// IMPORTANTE: override: true forza le variabili del .env a sovrascrivere
-// quelle già presenti nell'ambiente (es. DATABASE_URL di Replit)
-const result = dotenv.config({ override: true });
+let result = { parsed: {} };
 
-if (result.error) {
-  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.error('❌ [loadEnv.cjs] ERRORE CRITICO: Impossibile caricare .env');
-  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.error('Errore:', result.error.message);
-  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  process.exit(1);
+if (envExists) {
+  result = dotenv.config({ override: true });
+  
+  if (result.error) {
+    console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.warn('⚠️  [loadEnv.cjs] Avviso: Impossibile caricare .env');
+    console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.warn('Errore:', result.error.message);
+    console.warn('Usando variabili di ambiente esistenti...');
+    console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
+} else {
+  console.log('ℹ️  [loadEnv.cjs] File .env non trovato, usando variabili di ambiente esistenti (Replit secrets)');
 }
 
 const parsed = result.parsed || {};
