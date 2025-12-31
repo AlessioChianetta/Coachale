@@ -730,12 +730,6 @@ export default function ProactiveLeadsPage() {
 
     if (!formData.contactSchedule) {
       errors.contactSchedule = "La data di contatto è obbligatoria";
-    } else {
-      const contactDate = new Date(formData.contactSchedule);
-      const now = new Date();
-      if (contactDate <= now) {
-        errors.contactSchedule = "La data deve essere futura";
-      }
     }
 
     setFormErrors(errors);
@@ -767,22 +761,6 @@ export default function ProactiveLeadsPage() {
         variant: "destructive",
       });
       return;
-    }
-    
-    // CRITICAL: Check if future AFTER conversion to UTC
-    const now = new Date();
-    const timeDiff = scheduledDate.getTime() - now.getTime();
-    
-    // If too close to now or in the past, add safety margin
-    if (timeDiff < 60000) { // Less than 1 minute
-      scheduledDate.setTime(now.getTime() + 60000); // Add 1 minute
-      console.warn("⚠️ contactSchedule was too close to now - adjusted to +1 minute");
-      
-      toast({
-        title: "⏰ Data aggiustata",
-        description: "La data era troppo vicina al presente, è stata aggiustata di 1 minuto.",
-        variant: "default",
-      });
     }
     
     // Convert to UTC ISO string (this is what backend expects)
@@ -1917,7 +1895,6 @@ export default function ProactiveLeadsPage() {
                     type="datetime-local"
                     value={formData.contactSchedule}
                     onChange={(e) => setFormData({ ...formData, contactSchedule: e.target.value })}
-                    min={getMinDateTime()}
                     className={formErrors.contactSchedule ? "border-red-500" : ""}
                   />
                   {formErrors.contactSchedule && (
