@@ -20,7 +20,7 @@ import {
   instagramAgentConfig,
   consultantWhatsappConfig,
 } from "../../shared/schema";
-import { decrypt } from "../encryption";
+import { decrypt, decryptForConsultant } from "../encryption";
 import { eq, and, sql } from "drizzle-orm";
 import {
   MetaWebhookEvent,
@@ -31,6 +31,8 @@ import {
 import { scheduleInstagramMessageProcessing } from "./message-processor";
 import { WindowTracker } from "./window-tracker";
 import { MESSAGING_WINDOW_MS } from "./index";
+import { MetaClient } from "./meta-client";
+import { users } from "../../shared/schema";
 
 /**
  * Verify webhook signature from Meta
@@ -711,14 +713,21 @@ async function handleChangeEvent(
 }
 
 /**
- * Handle comment-to-DM automation
+ * Handle comment-to-DM automation using Private Replies
+ * 
+ * Private Replies allow sending 1 DM per comment, within 7 days.
+ * No existing conversation or open window required!
+ * 
+ * @see https://developers.facebook.com/docs/messenger-platform/instagram/features/private-replies
  */
 async function handleCommentEvent(
   config: typeof consultantInstagramConfig.$inferSelect,
   comment: MetaCommentValue,
   whatsappAgent?: typeof consultantWhatsappConfig.$inferSelect | null
 ): Promise<void> {
-  console.log(`💬 [INSTAGRAM WEBHOOK] Comment from ${comment.from.username}: "${comment.text}"`);
+  console.log(`💬 [INSTAGRAM COMMENT] From @${comment.from.username}: "${comment.text}"`);
+  console.log(`   Comment ID: ${comment.id}`);
+  console.log(`   Post ID: ${comment.media?.id || 'unknown'}`);
 
   // Check if comment contains trigger keywords (whole word match, case insensitive)
   const triggerKeywords = config.commentTriggerKeywords || [];
@@ -727,61 +736,158 @@ async function handleCommentEvent(
   // Split comment into words, removing punctuation
   const commentWords = commentText.replace(/[^\w\s]/g, ' ').split(/\s+/).filter(Boolean);
   
-  const triggered = triggerKeywords.some((keyword: string) => {
+  let triggered = false;
+  let matchedKeyword = '';
+  
+  // If no keywords configured, require at least one to avoid accidental replies to ALL comments
+  if (triggerKeywords.length === 0) {
+    console.log(`⚠️ [INSTAGRAM COMMENT] No trigger keywords configured - skipping`);
+    console.log(`   💡 Configure keywords in agent settings (e.g., "INFO", "LINK", "DM")`);
+    return;
+  }
+  
+  for (const keyword of triggerKeywords) {
     const keywordLower = keyword.toLowerCase().trim();
-    // Check if keyword exists as a whole word in the comment
-    return commentWords.includes(keywordLower);
-  });
+    if (commentWords.includes(keywordLower)) {
+      triggered = true;
+      matchedKeyword = keyword;
+      break;
+    }
+  }
 
   if (!triggered) {
-    console.log(`⏭️ [INSTAGRAM WEBHOOK] Comment doesn't contain trigger keywords`);
+    console.log(`⏭️ [INSTAGRAM COMMENT] No trigger keyword found in comment`);
+    console.log(`   Keywords configured: ${triggerKeywords.join(', ')}`);
     return;
   }
 
-  console.log(`🎯 [INSTAGRAM WEBHOOK] Comment triggered! Sending DM to ${comment.from.id}`);
+  console.log(`🎯 [INSTAGRAM COMMENT] Triggered by keyword "${matchedKeyword}"!`);
 
-  // Check if we already have a conversation with this user
-  const [existingConversation] = await db
+  // Get the auto-reply message
+  const autoReplyMessage = config.commentAutoReplyMessage || 
+    "Ciao! Grazie per il tuo commento. Ti scrivo in privato!";
+
+  // Get consultant's encryption salt for token decryption
+  const [consultant] = await db
     .select()
-    .from(instagramConversations)
-    .where(
-      and(
-        eq(instagramConversations.consultantId, config.consultantId),
-        eq(instagramConversations.instagramUserId, comment.from.id),
-        eq(instagramConversations.agentConfigId, config.id)
-      )
-    )
+    .from(users)
+    .where(eq(users.id, config.consultantId))
     .limit(1);
 
-  // Note: We can only send DM if we have an open window (user messaged us first)
-  // For comment-to-DM, we'll create a pending message that will be sent when user opens window
-  if (!existingConversation || !existingConversation.isWindowOpen) {
-    console.log(`⚠️ [INSTAGRAM WEBHOOK] No open window for ${comment.from.username}. Comment-to-DM requires user to message first in Instagram API.`);
-    // TODO: Store pending comment trigger for when user opens window
+  if (!consultant) {
+    console.error(`❌ [INSTAGRAM COMMENT] Consultant not found: ${config.consultantId}`);
     return;
   }
 
-  // If window is open, we can send the auto-reply DM
-  // This will be handled by the message processor
-  await db.insert(instagramPendingMessages).values({
-    conversationId: existingConversation.id,
-    consultantId: config.consultantId,
-    instagramUserId: comment.from.id,
-    messageText: `[Comment Trigger] User commented: "${comment.text}"`,
-    instagramMessageId: comment.id,
-    receivedAt: new Date(),
-    metadata: { commentTrigger: true, postId: comment.media.id },
+  // Decrypt page access token
+  let pageAccessToken: string | null = config.pageAccessToken;
+  if (!pageAccessToken) {
+    console.error(`❌ [INSTAGRAM COMMENT] No page access token configured`);
+    return;
+  }
+
+  try {
+    if (consultant.encryptionSalt) {
+      pageAccessToken = decryptForConsultant(pageAccessToken, consultant.encryptionSalt);
+    } else {
+      pageAccessToken = decrypt(pageAccessToken);
+    }
+  } catch (e) {
+    // Token might not be encrypted
+    console.log(`🔓 [INSTAGRAM COMMENT] Token decryption failed, using as-is`);
+  }
+
+  // Create MetaClient with the Facebook Page ID (not Instagram Page ID)
+  // For Private Replies, we POST to /{PAGE-ID}/messages
+  const metaClient = new MetaClient({
+    pageAccessToken,
+    instagramPageId: config.facebookPageId!, // Facebook Page ID is used for the API endpoint
+    isDryRun: config.isDryRun || false,
   });
 
-  // Schedule processing (dry run mode processes full flow without sending)
-  if (config.autoResponseEnabled) {
-    if (config.isDryRun) {
-      console.log(`🧪 [INSTAGRAM WEBHOOK] DRY RUN MODE - Processing comment trigger without sending actual messages`);
+  try {
+    console.log(`📤 [INSTAGRAM COMMENT] Sending Private Reply to comment ${comment.id}...`);
+    
+    // Send Private Reply using the comment ID (NOT user ID!)
+    const result = await metaClient.sendPrivateReply(comment.id, autoReplyMessage);
+    
+    if (result) {
+      console.log(`✅ [INSTAGRAM COMMENT] Private Reply sent successfully!`);
+      console.log(`   Message ID: ${result.message_id}`);
+      
+      // Optionally create/update conversation for future DMs
+      // The user can now reply to this DM and open a normal conversation window
+      const [existingConversation] = await db
+        .select()
+        .from(instagramConversations)
+        .where(
+          and(
+            eq(instagramConversations.consultantId, config.consultantId),
+            eq(instagramConversations.instagramUserId, comment.from.id),
+            eq(instagramConversations.agentConfigId, config.id)
+          )
+        )
+        .limit(1);
+
+      if (!existingConversation) {
+        // Create new conversation record for this user
+        const [newConversation] = await db
+          .insert(instagramConversations)
+          .values({
+            consultantId: config.consultantId,
+            agentConfigId: config.id,
+            instagramUserId: comment.from.id,
+            instagramUsername: comment.from.username,
+            isWindowOpen: false, // Window opens when they reply to our DM
+            lastUserMessageAt: null,
+            windowExpiresAt: null,
+          })
+          .returning();
+
+        console.log(`📝 [INSTAGRAM COMMENT] Created conversation record for @${comment.from.username}`);
+        
+        // Store the outbound message
+        await db.insert(instagramMessages).values({
+          conversationId: newConversation.id,
+          consultantId: config.consultantId,
+          direction: 'outbound',
+          messageText: autoReplyMessage,
+          instagramMessageId: result.message_id,
+          sentAt: new Date(),
+          metaStatus: 'sent',
+          metadata: { 
+            privateReply: true, 
+            triggerCommentId: comment.id,
+            triggerKeyword: matchedKeyword,
+          },
+        });
+      } else {
+        // Store the outbound message in existing conversation
+        await db.insert(instagramMessages).values({
+          conversationId: existingConversation.id,
+          consultantId: config.consultantId,
+          direction: 'outbound',
+          messageText: autoReplyMessage,
+          instagramMessageId: result.message_id,
+          sentAt: new Date(),
+          metaStatus: 'sent',
+          metadata: { 
+            privateReply: true, 
+            triggerCommentId: comment.id,
+            triggerKeyword: matchedKeyword,
+          },
+        });
+      }
     }
-    scheduleInstagramMessageProcessing(
-      existingConversation.id,
-      config.id,
-      config.consultantId
-    );
+  } catch (error: any) {
+    console.error(`❌ [INSTAGRAM COMMENT] Private Reply failed:`, error.message);
+    
+    // Common errors:
+    // - Already replied to this comment (1 reply limit)
+    // - Comment is older than 7 days
+    // - Invalid comment ID
+    if (error.message?.includes('code: 10')) {
+      console.log(`   💡 This usually means: already replied to this comment OR comment is >7 days old`);
+    }
   }
 }

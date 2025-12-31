@@ -264,6 +264,86 @@ export class MetaClient {
   getRateLimitStatus(): RateLimitStatus {
     return this.checkRateLimit();
   }
+
+  /**
+   * Send a Private Reply to a comment (Comment-to-DM)
+   * This is the correct way to send a DM in response to an Instagram comment.
+   * Limits: 1 DM per comment, within 7 days of the comment.
+   * 
+   * @see https://developers.facebook.com/docs/messenger-platform/instagram/features/private-replies
+   */
+  async sendPrivateReply(
+    commentId: string,
+    text: string
+  ): Promise<MetaSendMessageResponse | null> {
+    // Check rate limit
+    const rateLimitStatus = this.checkRateLimit();
+    if (rateLimitStatus.isLimited) {
+      console.log(
+        `⚠️ [INSTAGRAM] Rate limit exceeded for page ${this.instagramPageId}. Reset at: ${rateLimitStatus.resetAt}`
+      );
+      throw new Error(
+        `Rate limit exceeded. Try again after ${rateLimitStatus.resetAt.toISOString()}`
+      );
+    }
+
+    // Dry run mode - simulate sending
+    if (this.isDryRun) {
+      console.log(`🧪 [INSTAGRAM DRY RUN] Would send Private Reply to comment ${commentId}:`, text);
+      return {
+        recipient_id: `comment_${commentId}`,
+        message_id: `dry_run_private_reply_${Date.now()}`,
+      };
+    }
+
+    // Private Reply uses comment_id as recipient, NOT user id
+    const requestBody = {
+      recipient: { comment_id: commentId },
+      message: { text },
+    };
+
+    const endpoint = `${MESSENGER_GRAPH_API_BASE}/${this.instagramPageId}/messages`;
+    
+    console.log(`📤 [INSTAGRAM API] Sending Private Reply:`);
+    console.log(`   Endpoint: ${endpoint}`);
+    console.log(`   Comment ID: ${commentId}`);
+    console.log(`   Message: ${text.substring(0, 100)}...`);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.pageAccessToken}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      // Increment rate limit counter
+      this.incrementRateLimit();
+
+      if (!response.ok) {
+        const errorData: MetaGraphError = await response.json();
+        console.error(`❌ [INSTAGRAM] Private Reply failed:`, errorData);
+        
+        // Check for specific error codes
+        if (errorData.error?.code === 10) {
+          console.log(`⚠️ [INSTAGRAM] Private Reply limit reached (1 per comment) or comment too old (>7 days)`);
+        }
+        
+        throw new Error(
+          `Meta API Error: ${errorData.error.message} (code: ${errorData.error.code})`
+        );
+      }
+
+      const result: MetaSendMessageResponse = await response.json();
+      console.log(`✅ [INSTAGRAM] Private Reply sent for comment ${commentId}: ${result.message_id}`);
+      return result;
+    } catch (error) {
+      console.error(`❌ [INSTAGRAM] Error sending Private Reply:`, error);
+      throw error;
+    }
+  }
 }
 
 /**
