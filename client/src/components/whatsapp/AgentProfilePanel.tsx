@@ -1049,91 +1049,160 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
             {/* Performance Tab */}
             <TabsContent value="performance" className="space-y-4 mt-4">
-              <div className="flex justify-center">
-                <PerformanceGauge 
-                  score={analytics.performance.score} 
-                  trend={analytics.performance.trend}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2.5 bg-slate-50 rounded-lg">
-                  <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    <span className="text-xs">Conversazioni</span>
+              {/* AGENT IDENTITY: Chi è, Cosa fa, A cosa serve */}
+              <div className="p-4 bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-xl border border-slate-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <Bot className="h-5 w-5 text-white" />
                   </div>
-                  <p className="text-base font-semibold text-slate-900">
-                    {analytics.performance.conversationsTotal}
-                  </p>
-                </div>
-                <div className="p-2.5 bg-slate-50 rounded-lg">
-                  <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span className="text-xs">Tempo Risposta</span>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800">
+                        {agentTypeLabels[agentData?.agentType || "reactive_lead"] || "Agente AI"}
+                      </h3>
+                      <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                        <Sparkles className="h-3 w-3" />
+                        {personalityLabels[agentData?.personality || "consulente_professionale"] || "Professionale"}
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {agentTypeDescriptions[agentData?.agentType || "reactive_lead"] || "Gestisce le conversazioni con i lead."}
+                    </p>
                   </div>
-                  <p className="text-base font-semibold text-slate-900">
-                    {analytics.performance.avgResponseTime}
-                  </p>
-                </div>
-                <div className="p-2.5 bg-slate-50 rounded-lg">
-                  <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
-                    <Target className="h-3.5 w-3.5" />
-                    <span className="text-xs">Successo</span>
-                  </div>
-                  <p className="text-base font-semibold text-slate-900">
-                    {analytics.performance.successRate}%
-                  </p>
-                </div>
-                <div className="p-2.5 bg-slate-50 rounded-lg">
-                  <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span className="text-xs">Oggi</span>
-                  </div>
-                  <p className="text-base font-semibold text-slate-900">
-                    {analytics.performance.conversationsToday}
-                  </p>
                 </div>
               </div>
 
+              {/* QUICK ACTIONS - Prominent Position */}
+              <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-200/50">
+                <h3 className="text-xs font-semibold text-amber-800 mb-2.5 flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-amber-500" />
+                  AZIONI RAPIDE
+                </h3>
+                <div className="grid grid-cols-5 gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300"
+                    onClick={() => navigate(`/consultant/whatsapp/agent/${selectedAgent.id}`)}
+                  >
+                    <Settings className="h-4 w-4 text-slate-600" />
+                    <span className="text-[10px] font-medium">Configura</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300"
+                    onClick={() => navigate(`/consultant/whatsapp-agents-chat?agentId=${selectedAgent.id}`)}
+                  >
+                    <MessageSquare className="h-4 w-4 text-slate-600" />
+                    <span className="text-[10px] font-medium">Chat</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-emerald-50 border-slate-200 hover:border-emerald-300 text-emerald-600"
+                    onClick={() => setShowShareManager(true)}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">Condividi</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-blue-600"
+                    onClick={() => onDuplicateAgent?.(selectedAgent.id)}
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">Duplica</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-col h-auto py-2.5 gap-1 bg-white hover:bg-red-50 border-slate-200 hover:border-red-300 text-red-600"
+                    onClick={() => onDeleteAgent?.(selectedAgent.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">Elimina</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* PERFORMANCE METRICS */}
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  <PerformanceGauge 
+                    score={analytics.performance.score} 
+                    trend={analytics.performance.trend}
+                  />
+                </div>
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                  <div className="p-2.5 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
+                      <MessageSquare className="h-3 w-3" />
+                      <span className="text-[10px]">Conversazioni</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-900">
+                      {analytics.performance.conversationsTotal}
+                    </p>
+                  </div>
+                  <div className="p-2.5 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
+                      <Clock className="h-3 w-3" />
+                      <span className="text-[10px]">Risposta</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-900">
+                      {analytics.performance.avgResponseTime}
+                    </p>
+                  </div>
+                  <div className="p-2.5 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
+                      <Target className="h-3 w-3" />
+                      <span className="text-[10px]">Successo</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-900">
+                      {analytics.performance.successRate}%
+                    </p>
+                  </div>
+                  <div className="p-2.5 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
+                      <Calendar className="h-3 w-3" />
+                      <span className="text-[10px]">Oggi</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-900">
+                      {analytics.performance.conversationsToday}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* TREND CHART - Compact */}
               {analytics.trendData && analytics.trendData.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-medium text-slate-700 mb-2 flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
-                    Trend 7 Giorni
+                <div className="p-3 bg-slate-50/50 rounded-lg border border-slate-100">
+                  <h3 className="text-[10px] font-semibold text-slate-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+                    <TrendingUp className="h-3 w-3 text-blue-500" />
+                    Trend Ultimi 7 Giorni
                   </h3>
-                  <div className="h-40 w-full">
+                  <div className="h-28 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={analytics.trendData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#94a3b8" />
-                        <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                        <XAxis dataKey="date" tick={{ fontSize: 8 }} stroke="#94a3b8" />
+                        <YAxis tick={{ fontSize: 8 }} stroke="#94a3b8" width={25} />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: "white",
                             border: "1px solid #e2e8f0",
                             borderRadius: "8px",
-                            fontSize: "11px",
+                            fontSize: "10px",
                           }}
                         />
-                        <Line type="monotone" dataKey="conversations" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", strokeWidth: 2 }} name="Conversazioni" />
-                        <Line type="monotone" dataKey="successRate" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e", strokeWidth: 2 }} name="Successo %" />
+                        <Line type="monotone" dataKey="conversations" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 2 }} name="Conversazioni" />
+                        <Line type="monotone" dataKey="successRate" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e", r: 2 }} name="Successo %" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
               )}
-
-              <div>
-                <h3 className="text-xs font-medium text-slate-700 mb-2 flex items-center gap-1.5">
-                  <Brain className="h-3.5 w-3.5 text-purple-500" />
-                  Competenze
-                </h3>
-                <div className="space-y-3">
-                  {analytics.skills.map((skill, index) => (
-                    <SkillBar key={index} name={skill.name} level={skill.level} description={skill.description} />
-                  ))}
-                </div>
-              </div>
             </TabsContent>
 
             {/* Integrations Tab */}
@@ -1909,60 +1978,6 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
             </TabsContent>
           </Tabs>
 
-          {/* Quick Actions - Always visible */}
-          <div className="pt-3 border-t border-slate-200">
-            <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-amber-500" />
-              Azioni Rapide
-            </h3>
-            <div className="grid grid-cols-5 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-col h-auto py-3 gap-1"
-                onClick={() => navigate(`/consultant/whatsapp/agent/${selectedAgent.id}`)}
-              >
-                <Settings className="h-4 w-4" />
-                <span className="text-xs">Configura</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-col h-auto py-3 gap-1"
-                onClick={() => navigate(`/consultant/whatsapp-agents-chat?agentId=${selectedAgent.id}`)}
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-xs">Chat</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-col h-auto py-3 gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                onClick={() => setShowShareManager(true)}
-              >
-                <Share2 className="h-4 w-4" />
-                <span className="text-xs">Condividi</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-col h-auto py-3 gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                onClick={() => onDuplicateAgent?.(selectedAgent.id)}
-              >
-                <Copy className="h-4 w-4" />
-                <span className="text-xs">Duplica</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-col h-auto py-3 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={() => onDeleteAgent?.(selectedAgent.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="text-xs">Elimina</span>
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </ScrollArea>
 
