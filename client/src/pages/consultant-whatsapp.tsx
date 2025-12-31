@@ -558,22 +558,26 @@ export default function ConsultantWhatsAppPage() {
     mutationFn: async (config: WhatsAppConfig) => {
       const duplicateData = {
         agentName: `${config.agentName} - Copia`,
+        // Credenziali Twilio - sempre vuote per sicurezza (utente deve reinserirle)
         twilioAccountSid: "",
         twilioAuthToken: "",
         twilioWhatsappNumber: "",
         integrationMode: config.integrationMode || "whatsapp_ai",
         autoResponseEnabled: config.autoResponseEnabled,
         agentType: config.agentType,
+        // Working Hours
         workingHoursEnabled: config.workingHoursEnabled,
         workingHoursStart: config.workingHoursStart,
         workingHoursEnd: config.workingHoursEnd,
         workingDays: config.workingDays,
         afterHoursMessage: config.afterHoursMessage,
+        // Business Profile
         businessName: config.businessName,
         consultantDisplayName: config.consultantDisplayName,
         businessDescription: config.businessDescription,
         consultantBio: config.consultantBio,
         salesScript: config.salesScript,
+        // Authority & Positioning
         vision: config.vision,
         mission: config.mission,
         values: config.values,
@@ -582,24 +586,61 @@ export default function ConsultantWhatsAppPage() {
         whoWeDontHelp: config.whoWeDontHelp,
         whatWeDo: config.whatWeDo,
         howWeDoIt: config.howWeDoIt,
+        // Software & Books
         softwareCreated: config.softwareCreated,
         booksPublished: config.booksPublished,
+        // Proof & Credibility
         yearsExperience: config.yearsExperience,
         clientsHelped: config.clientsHelped,
         resultsGenerated: config.resultsGenerated,
         caseStudies: config.caseStudies,
+        // Services & Guarantees
         servicesOffered: config.servicesOffered,
         guarantees: config.guarantees,
+        // AI Personality
         aiPersonality: config.aiPersonality,
         whatsappConciseMode: config.whatsappConciseMode,
+        // Proactive Lead Defaults
         defaultObiettivi: config.defaultObiettivi,
         defaultDesideri: config.defaultDesideri,
         defaultUncino: config.defaultUncino,
         defaultIdealState: config.defaultIdealState,
+        // Dry Run & Agent Settings
         isDryRun: config.isDryRun,
+        isProactiveAgent: config.isProactiveAgent,
+        // Agent Instructions
         agentInstructions: config.agentInstructions,
         agentInstructionsEnabled: config.agentInstructionsEnabled,
         selectedTemplate: config.selectedTemplate,
+        // Feature Blocks
+        bookingEnabled: config.bookingEnabled,
+        objectionHandlingEnabled: config.objectionHandlingEnabled,
+        disqualificationEnabled: config.disqualificationEnabled,
+        upsellingEnabled: config.upsellingEnabled,
+        // WhatsApp Templates
+        whatsappTemplates: config.whatsappTemplates,
+        templateBodies: config.templateBodies,
+        // Business Header Configuration
+        businessHeaderMode: config.businessHeaderMode,
+        professionalRole: config.professionalRole,
+        customBusinessHeader: config.customBusinessHeader,
+        // TTS Configuration
+        ttsEnabled: config.ttsEnabled,
+        audioResponseMode: config.audioResponseMode,
+        // Availability Settings
+        availabilityTimezone: config.availabilityTimezone,
+        availabilityAppointmentDuration: config.availabilityAppointmentDuration,
+        availabilityBufferBefore: config.availabilityBufferBefore,
+        availabilityBufferAfter: config.availabilityBufferAfter,
+        availabilityMaxDaysAhead: config.availabilityMaxDaysAhead,
+        availabilityMinHoursNotice: config.availabilityMinHoursNotice,
+        availabilityWorkingHours: config.availabilityWorkingHours,
+        // Account References & Notes
+        twilioAccountReference: config.twilioAccountReference,
+        twilioNotes: config.twilioNotes,
+        // AI Assistant Integration
+        enableInAIAssistant: config.enableInAIAssistant,
+        fileSearchCategories: config.fileSearchCategories,
       };
 
       return duplicateData;
