@@ -591,6 +591,24 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                       </div>
                     )}
 
+                    {/* Warning when agent has no default values */}
+                    {selectedAgentId && !selectedAgent?.defaultUncino && !selectedAgent?.defaultIdealState && !selectedAgent?.defaultObiettivi && !selectedAgent?.defaultDesideri && (
+                      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600 shrink-0">
+                            <AlertCircle className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-amber-900 dark:text-amber-100">Valori predefiniti mancanti</p>
+                            <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                              Questo agente non ha valori predefiniti configurati (obiettivi, desideri, uncino, stato ideale). 
+                              Dovrai compilarli manualmente nello Step 3 per poter creare la campagna.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Template Preview in Step 2 */}
                     {selectedAgentId && assignedTemplates.length === 0 && (
                       <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl">
