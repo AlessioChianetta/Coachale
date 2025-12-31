@@ -609,6 +609,24 @@ router.post(
       const contactTiming = settings.contactTiming || 'immediate';
       const customContactDelay = settings.customContactDelay || 60;
       
+      // Fetch campaign data if campaignId is set to populate lead with campaign goals
+      let campaignData: { name?: string; obiettivi?: string; desideri?: string; uncino?: string; statoIdeale?: string } | null = null;
+      if (campaignId) {
+        const [campaign] = await db.select()
+          .from(schema.marketingCampaigns)
+          .where(eq(schema.marketingCampaigns.id, campaignId));
+        if (campaign) {
+          campaignData = {
+            name: campaign.name,
+            obiettivi: campaign.obiettivi || undefined,
+            desideri: campaign.desideri || undefined,
+            uncino: campaign.uncino || undefined,
+            statoIdeale: campaign.statoIdeale || undefined,
+          };
+          console.log(`[LEAD IMPORT] Using campaign "${campaign.name}" for import`);
+        }
+      }
+      
       let baseContactTime: Date;
       if (contactTiming === 'immediate') {
         baseContactTime = new Date();
@@ -732,6 +750,17 @@ router.post(
           
           if (campaignId) {
             leadData.campaignId = campaignId;
+            // Add campaign snapshot so obiettivo shows correctly in proactive-leads page
+            if (campaignData) {
+              leadData.campaignSnapshot = {
+                name: campaignData.name,
+                goal: campaignData.obiettivi || campaignData.name,
+                obiettivi: campaignData.obiettivi,
+                desideri: campaignData.desideri,
+                uncino: campaignData.uncino,
+                statoIdeale: campaignData.statoIdeale,
+              };
+            }
           }
           
           if (Object.keys(leadInfo).length > 0) {
