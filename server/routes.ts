@@ -11735,8 +11735,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         .select({
           id: schema.consultantInstagramConfig.id,
           instagramPageId: schema.consultantInstagramConfig.instagramPageId,
+          instagramUsername: schema.consultantInstagramConfig.instagramUsername,
           agentName: schema.consultantInstagramConfig.agentName,
           isActive: schema.consultantInstagramConfig.isActive,
+          isConnected: schema.consultantInstagramConfig.isConnected,
           autoResponseEnabled: schema.consultantInstagramConfig.autoResponseEnabled,
           storyReplyEnabled: schema.consultantInstagramConfig.storyReplyEnabled,
           commentToDmEnabled: schema.consultantInstagramConfig.commentToDmEnabled,
@@ -11746,6 +11748,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           iceBreakersEnabled: schema.consultantInstagramConfig.iceBreakersEnabled,
           iceBreakers: schema.consultantInstagramConfig.iceBreakers,
           isDryRun: schema.consultantInstagramConfig.isDryRun,
+          connectedAt: schema.consultantInstagramConfig.connectedAt,
         })
         .from(schema.consultantInstagramConfig)
         .where(

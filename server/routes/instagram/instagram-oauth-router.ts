@@ -10,6 +10,7 @@ import { authenticateToken, type AuthRequest } from "../../middleware/auth";
 import { db } from "../../db";
 import {
   consultantInstagramConfig,
+  consultantWhatsappConfig,
   superadminInstagramConfig,
   users,
 } from "../../../shared/schema";
@@ -289,19 +290,26 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
     // Calculate token expiry
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
-    // Check if config exists
+    // MULTI-ACCOUNT: Check if config exists for this SPECIFIC Instagram account
+    // Key change: search by (consultantId + instagramPageId) instead of just consultantId
+    // This allows multiple Instagram accounts per consultant
     const [existingConfig] = await db
       .select()
       .from(consultantInstagramConfig)
-      .where(eq(consultantInstagramConfig.consultantId, consultantId))
+      .where(
+        and(
+          eq(consultantInstagramConfig.consultantId, consultantId),
+          eq(consultantInstagramConfig.instagramPageId, instagramAccountId)
+        )
+      )
       .limit(1);
 
     if (existingConfig) {
-      // Update existing config - reactivate and reconnect
+      // Update existing config for this Instagram account - reactivate and reconnect
+      console.log(`[INSTAGRAM OAUTH] Updating existing config for @${instagramUsername} (config ID: ${existingConfig.id})`);
       await db
         .update(consultantInstagramConfig)
         .set({
-          instagramPageId: instagramAccountId,
           facebookPageId,
           pageAccessToken: encryptedToken,
           tokenExpiresAt,
@@ -313,7 +321,8 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
         })
         .where(eq(consultantInstagramConfig.id, existingConfig.id));
     } else {
-      // Create new config
+      // Create NEW config for this Instagram account (allows multiple accounts per consultant)
+      console.log(`[INSTAGRAM OAUTH] Creating NEW config for @${instagramUsername} (consultant: ${consultantId})`);
       await db
         .insert(consultantInstagramConfig)
         .values({
@@ -325,7 +334,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
           isConnected: true,
           connectedAt: new Date(),
           instagramUsername,
-          agentName: "Agente Instagram",
+          agentName: `Agente @${instagramUsername || 'Instagram'}`,
           isActive: true,
           autoResponseEnabled: true,
           isDryRun: true,
@@ -407,6 +416,66 @@ router.post("/oauth/disconnect", authenticateToken, async (req: AuthRequest, res
   } catch (error) {
     console.error("[INSTAGRAM OAUTH] Disconnect error:", error);
     return res.status(500).json({ error: "Failed to disconnect account" });
+  }
+});
+
+/**
+ * DELETE /api/instagram/oauth/config/:configId
+ * Delete a specific Instagram account configuration completely
+ * Used in multi-account setup to remove individual accounts
+ */
+router.delete("/config/:configId", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { configId } = req.params;
+
+    // Verify config belongs to this consultant
+    const [config] = await db
+      .select()
+      .from(consultantInstagramConfig)
+      .where(
+        and(
+          eq(consultantInstagramConfig.id, configId),
+          eq(consultantInstagramConfig.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!config) {
+      return res.status(404).json({ error: "Configurazione Instagram non trovata" });
+    }
+
+    // Check if any WhatsApp agent is linked to this config
+    const linkedAgents = await db
+      .select({ id: consultantWhatsappConfig.id, agentName: consultantWhatsappConfig.agentName })
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.instagramConfigId, configId));
+
+    if (linkedAgents.length > 0) {
+      // Unlink all agents before deletion
+      await db
+        .update(consultantWhatsappConfig)
+        .set({ instagramConfigId: null, updatedAt: new Date() })
+        .where(eq(consultantWhatsappConfig.instagramConfigId, configId));
+      
+      console.log(`[INSTAGRAM DELETE] Unlinked ${linkedAgents.length} agents from config ${configId}`);
+    }
+
+    // Delete the Instagram config completely
+    await db
+      .delete(consultantInstagramConfig)
+      .where(eq(consultantInstagramConfig.id, configId));
+
+    console.log(`[INSTAGRAM DELETE] Deleted Instagram config ${configId} (@${config.instagramUsername}) for consultant ${consultantId}`);
+
+    return res.json({ 
+      success: true, 
+      message: `Account @${config.instagramUsername || 'Instagram'} eliminato`,
+      unlinkedAgents: linkedAgents.map(a => a.agentName)
+    });
+  } catch (error) {
+    console.error("[INSTAGRAM DELETE] Error:", error);
+    return res.status(500).json({ error: "Failed to delete Instagram configuration" });
   }
 });
 
