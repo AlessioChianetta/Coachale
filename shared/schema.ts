@@ -61,14 +61,87 @@ export const users = pgTable("users", {
   // Pricing Page Configuration (consultant-level)
   pricingPageSlug: text("pricing_page_slug").unique(), // Slug for public pricing page (e.g., "marco" -> /c/marco/pricing)
   pricingPageConfig: jsonb("pricing_page_config").$type<{
+    // Hero Section
+    heroTitle?: string;
+    heroSubtitle?: string;
+    heroBadgeText?: string;
+    
+    // Bronze/Level 1 Configuration (Free tier)
+    level1Name?: string;
+    level1Description?: string;
+    level1DailyMessageLimit?: number;
+    level1Features?: string[];
+    
+    // Silver/Level 2 Configuration
     level2Name?: string;
     level2Description?: string;
-    level2PriceCents?: number;
+    level2ShortDescription?: string;
+    level2MonthlyPriceCents?: number;
+    level2YearlyPriceCents?: number;
+    level2Features?: string[];
+    level2Badge?: string;
+    level2CtaText?: string;
+    
+    // Gold/Level 3 Configuration
     level3Name?: string;
     level3Description?: string;
+    level3ShortDescription?: string;
+    level3MonthlyPriceCents?: number;
+    level3YearlyPriceCents?: number;
+    level3Features?: string[];
+    level3Badge?: string;
+    level3CtaText?: string;
+    
+    // Backwards compatibility
+    level2PriceCents?: number;
     level3PriceCents?: number;
+    
+    // Visual customization
     accentColor?: string;
     logoUrl?: string;
+    backgroundStyle?: 'gradient' | 'solid' | 'pattern';
+    
+    // FAQ Section
+    faqs?: Array<{
+      question: string;
+      answer: string;
+    }>;
+    
+    // Testimonials
+    testimonials?: Array<{
+      name: string;
+      role?: string;
+      company?: string;
+      content: string;
+      avatarUrl?: string;
+      rating?: number;
+    }>;
+    
+    // Trust Badges
+    trustBadges?: Array<{
+      icon: string;
+      text: string;
+    }>;
+    
+    // Guarantee Section
+    guaranteeEnabled?: boolean;
+    guaranteeDays?: number;
+    guaranteeText?: string;
+    
+    // Footer
+    footerText?: string;
+    contactEmail?: string;
+    termsUrl?: string;
+    privacyUrl?: string;
+    
+    // Comparison Table
+    showComparisonTable?: boolean;
+    comparisonFeatures?: Array<{
+      name: string;
+      bronze: boolean | string;
+      silver: boolean | string;
+      gold: boolean | string;
+    }>;
   }>().default(sql`'{}'::jsonb`),
 
   // Revenue Share Configuration (consultant-level) - Percentage split for subscription payments

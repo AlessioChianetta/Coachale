@@ -1,9 +1,31 @@
 import express, { Router, Request, Response } from "express";
 import { db } from "../db";
-import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases } from "@shared/schema";
-import { eq, sql, isNotNull, desc } from "drizzle-orm";
+import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares } from "@shared/schema";
+import { eq, sql, isNotNull, desc, and } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 import { decrypt } from "../encryption";
+import bcrypt from "bcrypt";
+import { sendEmail } from "../services/email-scheduler";
+
+function generateRandomPassword(length: number = 8): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
+function parseClientName(fullName: string): { firstName: string; lastName: string } {
+  const parts = (fullName || '').trim().split(/\s+/);
+  if (parts.length === 0 || (parts.length === 1 && parts[0] === '')) {
+    return { firstName: 'Cliente', lastName: '' };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' };
+  }
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
 
 const router: Router = express.Router();
 
@@ -157,7 +179,7 @@ router.post("/consultant/stripe-connect/disconnect", authenticateToken, requireR
 
 router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
   try {
-    const { consultantSlug, agentId, level, clientEmail, clientName } = req.body;
+    const { consultantSlug, agentId, level, clientEmail, clientName, billingPeriod } = req.body;
     
     if (!consultantSlug || !level) {
       return res.status(400).json({ error: "Missing required fields: consultantSlug, level" });
@@ -166,6 +188,8 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
     if (level !== "2" && level !== "3") {
       return res.status(400).json({ error: "Invalid level. Must be '2' or '3'" });
     }
+    
+    const validBillingPeriod = billingPeriod === 'yearly' ? 'yearly' : 'monthly';
     
     const [consultant] = await db.select().from(users)
       .where(eq(users.pricingPageSlug, consultantSlug));
@@ -188,14 +212,31 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
     const pricingConfig = consultant.pricingPageConfig as {
       level2PriceCents?: number;
       level3PriceCents?: number;
+      level2MonthlyPriceCents?: number;
+      level3MonthlyPriceCents?: number;
+      level2YearlyPriceCents?: number;
+      level3YearlyPriceCents?: number;
+      level2Name?: string;
+      level3Name?: string;
     } | null;
     
-    const price = level === "2" 
-      ? (pricingConfig?.level2PriceCents || 2900)
-      : (pricingConfig?.level3PriceCents || 5900);
+    let price: number;
+    if (level === "2") {
+      if (validBillingPeriod === 'yearly') {
+        price = pricingConfig?.level2YearlyPriceCents || (pricingConfig?.level2PriceCents ? pricingConfig.level2PriceCents * 12 : 29900);
+      } else {
+        price = pricingConfig?.level2MonthlyPriceCents || pricingConfig?.level2PriceCents || 2900;
+      }
+    } else {
+      if (validBillingPeriod === 'yearly') {
+        price = pricingConfig?.level3YearlyPriceCents || (pricingConfig?.level3PriceCents ? pricingConfig.level3PriceCents * 12 : 59900);
+      } else {
+        price = pricingConfig?.level3MonthlyPriceCents || pricingConfig?.level3PriceCents || 5900;
+      }
+    }
     
     const revenueSharePercentage = license.revenueSharePercentage || 50;
-    const applicationFee = Math.round((price * revenueSharePercentage) / 100);
+    const applicationFeePercent = revenueSharePercentage;
     
     const stripe = await getStripeInstance();
     
@@ -203,24 +244,41 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       : "http://localhost:5000";
     
+    const productName = level === "2" 
+      ? (pricingConfig?.level2Name || "Licenza Argento")
+      : (pricingConfig?.level3Name || "Licenza Deluxe");
+    
+    const intervalLabel = validBillingPeriod === 'yearly' ? 'anno' : 'mese';
+    
     const session = await stripe.checkout.sessions.create({
-      mode: "payment",
+      mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{
         price_data: {
           currency: "eur",
           product_data: {
-            name: level === "2" ? "Licenza Argento" : "Licenza Deluxe",
-            description: `Accesso ${level === "2" ? "Argento" : "Deluxe"} ai servizi AI`,
+            name: productName,
+            description: `Abbonamento ${level === "2" ? "Argento" : "Deluxe"} ai servizi AI (${intervalLabel})`,
           },
           unit_amount: price,
+          recurring: {
+            interval: validBillingPeriod === 'yearly' ? 'year' : 'month',
+          },
         },
         quantity: 1,
       }],
-      payment_intent_data: {
-        application_fee_amount: applicationFee,
+      subscription_data: {
+        application_fee_percent: applicationFeePercent,
         transfer_data: {
           destination: license.stripeConnectAccountId,
+        },
+        metadata: {
+          consultantId: consultant.id,
+          clientEmail,
+          clientName: clientName || "",
+          level,
+          agentId: agentId || "",
+          billingPeriod: validBillingPeriod,
         },
       },
       customer_email: clientEmail || undefined,
@@ -230,12 +288,13 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
         clientName: clientName || "",
         level,
         agentId: agentId || "",
+        billingPeriod: validBillingPeriod,
       },
-      success_url: `${baseUrl}/c/${consultantSlug}/pricing?success=true`,
+      success_url: `${baseUrl}/c/${consultantSlug}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/c/${consultantSlug}/pricing?canceled=true`,
     });
     
-    console.log(`[Stripe Checkout] Session created for ${clientEmail} (Level ${level}) - Consultant: ${consultant.id}`);
+    console.log(`[Stripe Checkout] Subscription session created for ${clientEmail} (Level ${level}, ${validBillingPeriod}) - Consultant: ${consultant.id}`);
     
     res.json({ checkoutUrl: session.url });
   } catch (error) {
@@ -295,7 +354,6 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
         if (metadata.type === "employee_licenses") {
           const { purchaseId } = metadata;
           
-          // SECURITY FIX: Fetch purchase record from database to get canonical quantity
           const [purchase] = await db.select()
             .from(employeeLicensePurchases)
             .where(eq(employeeLicensePurchases.id, purchaseId));
@@ -305,7 +363,6 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             break;
           }
           
-          // Use quantity from DB record, not from metadata
           const qty = purchase.quantity;
           const consultantId = purchase.consultantId;
           
@@ -326,14 +383,43 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           break;
         }
         
-        const { consultantId, clientEmail, clientName, level, agentId } = metadata;
+        const { consultantId, clientEmail, clientName, level, agentId, billingPeriod } = metadata;
         
         if (!consultantId || !clientEmail || !level) {
           console.error("[Stripe Webhook] Missing metadata in checkout session");
           break;
         }
         
-        await db.insert(clientLevelSubscriptions).values({
+        // Idempotency check: skip if subscription already exists for this Stripe session
+        const stripeSubscriptionId = session.subscription || null;
+        if (stripeSubscriptionId) {
+          const [existingSubscription] = await db.select()
+            .from(clientLevelSubscriptions)
+            .where(eq(clientLevelSubscriptions.stripeSubscriptionId, stripeSubscriptionId))
+            .limit(1);
+          
+          if (existingSubscription) {
+            console.log(`[Stripe Webhook] Subscription already processed: ${stripeSubscriptionId}`);
+            break;
+          }
+        }
+        
+        // Also check by session ID to prevent duplicate one-time payments
+        const stripeSessionId = session.id;
+        const [existingBySession] = await db.select()
+          .from(clientLevelSubscriptions)
+          .where(eq(clientLevelSubscriptions.stripeCustomerId, stripeSessionId))
+          .limit(1);
+        
+        if (existingBySession) {
+          console.log(`[Stripe Webhook] Session already processed: ${stripeSessionId}`);
+          break;
+        }
+        
+        const tempPassword = generateRandomPassword(8);
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        
+        const [subscription] = await db.insert(clientLevelSubscriptions).values({
           consultantId,
           clientEmail,
           clientName: clientName || null,
@@ -341,7 +427,9 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           status: "active",
           startDate: new Date(),
           stripeCustomerId: session.customer || null,
-        });
+          stripeSubscriptionId: session.subscription || null,
+          tempPassword,
+        }).returning();
         
         if (level === "2") {
           await db.update(consultantLicenses)
@@ -357,13 +445,180 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             .where(eq(consultantLicenses.consultantId, consultantId));
         }
         
-        console.log(`[Stripe Webhook] Subscription created for ${clientEmail} (Level ${level}) - Consultant: ${consultantId}`);
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : "http://localhost:5000";
+        
+        try {
+          if (level === "2") {
+            const existing = await db.select()
+              .from(managerUsers)
+              .where(and(
+                eq(managerUsers.email, clientEmail),
+                eq(managerUsers.consultantId, consultantId)
+              ))
+              .limit(1);
+            
+            if (existing.length === 0) {
+              const [manager] = await db.insert(managerUsers).values({
+                consultantId,
+                name: clientName || clientEmail.split('@')[0],
+                email: clientEmail,
+                passwordHash: hashedPassword,
+                status: "active",
+                metadata: {
+                  createdVia: "stripe_subscription",
+                  subscriptionId: subscription.id,
+                  agentId: agentId || null,
+                },
+              }).returning();
+              
+              if (agentId) {
+                const [agentShare] = await db.select()
+                  .from(whatsappAgentShares)
+                  .where(eq(whatsappAgentShares.agentConfigId, agentId))
+                  .limit(1);
+                
+                if (agentShare) {
+                  try {
+                    await db.insert(managerLinkAssignments).values({
+                      managerId: manager.id,
+                      shareId: agentShare.id,
+                      assignedBy: consultantId,
+                    });
+                  } catch (assignError) {
+                    console.log(`[Stripe Webhook] Manager assignment failed:`, assignError);
+                  }
+                }
+              }
+              
+              console.log(`[Stripe Webhook] Manager created for ${clientEmail}`);
+            }
+            
+            const loginUrl = `${baseUrl}/manager-chat`;
+            const emailHtml = `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #0891b2;">Benvenuto nel tuo Assistente AI Premium!</h2>
+                <p>Ciao <strong>${clientName || 'Manager'}</strong>,</p>
+                <p>Il tuo abbonamento è stato attivato con successo. Ora hai accesso all'assistente AI con funzionalità avanzate.</p>
+                <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0 0 10px 0;"><strong>Le tue credenziali di accesso:</strong></p>
+                  <p style="margin: 5px 0;">Email: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${clientEmail}</code></p>
+                  <p style="margin: 5px 0;">Password: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${tempPassword}</code></p>
+                </div>
+                <p><a href="${loginUrl}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Accedi Ora</a></p>
+                <p style="color: #64748b; font-size: 14px; margin-top: 20px;">Ti consigliamo di cambiare la password al primo accesso.</p>
+              </div>
+            `;
+            
+            await sendEmail({
+              to: clientEmail,
+              subject: "Benvenuto - Credenziali di Accesso Assistente AI",
+              html: emailHtml,
+              consultantId,
+            });
+            
+          } else if (level === "3") {
+            const existingUser = await db.select()
+              .from(users)
+              .where(eq(users.email, clientEmail))
+              .limit(1);
+            
+            if (existingUser.length === 0) {
+              const { firstName, lastName } = parseClientName(clientName || '');
+              const username = clientEmail.split('@')[0] + '_' + Date.now().toString(36);
+              
+              await db.insert(users).values({
+                username,
+                email: clientEmail,
+                password: hashedPassword,
+                firstName,
+                lastName,
+                role: "client",
+                consultantId,
+                isActive: true,
+                enrolledAt: new Date(),
+              });
+              
+              console.log(`[Stripe Webhook] Client user created for ${clientEmail}`);
+            }
+            
+            const loginUrl = `${baseUrl}/login`;
+            const { firstName } = parseClientName(clientName || '');
+            const emailHtml = `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #0891b2;">Benvenuto nella Piattaforma!</h2>
+                <p>Ciao <strong>${firstName}</strong>,</p>
+                <p>Il tuo abbonamento premium è stato attivato con successo. Ora hai accesso completo a tutte le funzionalità della piattaforma.</p>
+                <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0 0 10px 0;"><strong>Le tue credenziali di accesso:</strong></p>
+                  <p style="margin: 5px 0;">Email: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${clientEmail}</code></p>
+                  <p style="margin: 5px 0;">Password: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${tempPassword}</code></p>
+                </div>
+                <p><a href="${loginUrl}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Accedi Ora</a></p>
+                <p style="color: #64748b; font-size: 14px; margin-top: 20px;">Ti consigliamo di cambiare la password al primo accesso.</p>
+              </div>
+            `;
+            
+            await sendEmail({
+              to: clientEmail,
+              subject: "Benvenuto - Credenziali di Accesso Piattaforma",
+              html: emailHtml,
+              consultantId,
+            });
+          }
+        } catch (accountError: any) {
+          console.error(`[Stripe Webhook] Account creation/email failed:`, accountError.message);
+        }
+        
+        console.log(`[Stripe Webhook] Subscription created for ${clientEmail} (Level ${level}, ${billingPeriod || 'monthly'}) - Consultant: ${consultantId}`);
         break;
       }
       
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as any;
         console.log(`[Stripe Webhook] Payment failed: ${paymentIntent.id}`);
+        break;
+      }
+      
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as any;
+        const subscriptionId = subscription.id;
+        const status = subscription.status;
+        
+        let dbStatus: "active" | "canceled" | "past_due" | "pending" = "active";
+        if (status === "canceled" || status === "unpaid") {
+          dbStatus = "canceled";
+        } else if (status === "past_due") {
+          dbStatus = "past_due";
+        } else if (status === "active" || status === "trialing") {
+          dbStatus = "active";
+        }
+        
+        await db.update(clientLevelSubscriptions)
+          .set({
+            status: dbStatus,
+            updatedAt: new Date(),
+          })
+          .where(eq(clientLevelSubscriptions.stripeSubscriptionId, subscriptionId));
+        
+        console.log(`[Stripe Webhook] Subscription ${subscriptionId} updated to status: ${dbStatus}`);
+        break;
+      }
+      
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as any;
+        const subscriptionId = subscription.id;
+        
+        await db.update(clientLevelSubscriptions)
+          .set({
+            status: "canceled",
+            endDate: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(clientLevelSubscriptions.stripeSubscriptionId, subscriptionId));
+        
+        console.log(`[Stripe Webhook] Subscription ${subscriptionId} cancelled`);
         break;
       }
       
@@ -375,6 +630,60 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[Stripe Webhook] Error:", error);
     res.status(500).json({ error: "Webhook processing failed" });
+  }
+});
+
+router.get("/stripe/checkout-success/:sessionId", async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    
+    if (!sessionId) {
+      return res.status(400).json({ error: "Session ID is required" });
+    }
+    
+    const stripe = await getStripeInstance();
+    
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription'],
+    });
+    
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+    
+    const metadata = session.metadata || {};
+    const level = metadata.level;
+    const billingPeriod = metadata.billingPeriod || 'monthly';
+    const clientEmail = metadata.clientEmail;
+    const clientName = metadata.clientName;
+    
+    let userType: 'manager' | 'client' | null = null;
+    if (level === "2") {
+      userType = 'manager';
+    } else if (level === "3") {
+      userType = 'client';
+    }
+    
+    const subscription = session.subscription as any;
+    const subscriptionStatus = subscription?.status || 'active';
+    
+    res.json({
+      success: true,
+      level,
+      billingPeriod,
+      userType,
+      clientEmail,
+      clientName,
+      subscriptionStatus,
+      loginUrl: userType === 'manager' 
+        ? '/manager-chat'
+        : userType === 'client' 
+          ? '/login'
+          : null,
+    });
+  } catch (error: any) {
+    console.error("[Stripe Checkout Success] Error:", error);
+    res.status(500).json({ error: "Failed to retrieve session", details: error.message });
   }
 });
 

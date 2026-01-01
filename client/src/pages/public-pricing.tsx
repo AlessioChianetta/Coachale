@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Check, 
@@ -26,7 +33,11 @@ import {
   History,
   UserCheck,
   Crown,
-  Settings
+  Settings,
+  Mail,
+  ExternalLink,
+  Award,
+  Quote
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,21 +51,83 @@ interface Agent {
   businessDescription: string | null;
 }
 
+interface FAQ {
+  question: string;
+  answer: string;
+}
+
+interface Testimonial {
+  name: string;
+  role?: string;
+  company?: string;
+  content: string;
+  avatarUrl?: string;
+  rating?: number;
+}
+
+interface TrustBadge {
+  icon: string;
+  text: string;
+}
+
+interface ComparisonFeature {
+  name: string;
+  bronze: boolean | string;
+  silver: boolean | string;
+  gold: boolean | string;
+}
+
 interface PricingData {
   consultantName: string;
   consultantSlug: string;
   agents: Agent[];
   pricing: {
-    level2MonthlyPrice: number;
-    level2YearlyPrice: number;
+    heroTitle: string | null;
+    heroSubtitle: string | null;
+    heroBadgeText: string | null;
+    
+    level1Name: string;
+    level1Description: string;
+    level1DailyMessageLimit: number;
+    level1Features: string[];
+    
     level2Name: string;
     level2Description: string;
-    level3MonthlyPrice?: number;
-    level3YearlyPrice?: number;
-    level3Name?: string;
-    level3Description?: string;
+    level2ShortDescription: string | null;
+    level2MonthlyPrice: number;
+    level2YearlyPrice: number;
+    level2Features: string[];
+    level2Badge: string;
+    level2CtaText: string;
+    
+    level3Name: string;
+    level3Description: string;
+    level3ShortDescription: string | null;
+    level3MonthlyPrice: number;
+    level3YearlyPrice: number;
+    level3Features: string[];
+    level3Badge: string;
+    level3CtaText: string;
+    
     accentColor: string | null;
     logoUrl: string | null;
+    backgroundStyle: "gradient" | "solid" | "pattern";
+    
+    faqs: FAQ[];
+    testimonials: Testimonial[];
+    trustBadges: TrustBadge[];
+    
+    guaranteeEnabled: boolean;
+    guaranteeDays: number;
+    guaranteeText: string;
+    
+    footerText: string | null;
+    contactEmail: string | null;
+    termsUrl: string | null;
+    privacyUrl: string | null;
+    
+    showComparisonTable: boolean;
+    comparisonFeatures: ComparisonFeature[];
   };
 }
 
@@ -71,11 +144,43 @@ const COMPARISON_FEATURES = [
   { name: "Accesso completo software", bronze: false, silver: false, gold: true, icon: Crown },
 ];
 
-function FeatureItem({ children, included = true }: { children: React.ReactNode; included?: boolean }) {
+const DEFAULT_TRUST_BADGES = [
+  { icon: "Shield", text: "Pagamenti sicuri con Stripe" },
+  { icon: "Clock", text: "Attivazione immediata" },
+  { icon: "MessageSquare", text: "Cancella quando vuoi" },
+];
+
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Shield,
+  Clock,
+  MessageSquare,
+  Star,
+  Check,
+  Award,
+  Brain,
+  Bot,
+  Database,
+  History,
+  Settings,
+  UserCheck,
+  Headphones,
+  Crown,
+  Zap,
+  Sparkles,
+};
+
+function getIconComponent(iconName: string) {
+  return ICON_MAP[iconName] || Shield;
+}
+
+function FeatureItem({ children, included = true, accentColor }: { children: React.ReactNode; included?: boolean; accentColor?: string | null }) {
   return (
     <li className="flex items-start gap-3">
       {included ? (
-        <Check className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+        <Check 
+          className="h-5 w-5 shrink-0 mt-0.5" 
+          style={{ color: accentColor || "rgb(16 185 129)" }}
+        />
       ) : (
         <X className="h-5 w-5 text-slate-300 shrink-0 mt-0.5" />
       )}
@@ -113,6 +218,22 @@ function ComparisonTableCell({ value }: { value: boolean | string }) {
     );
   }
   return <span className="font-medium text-slate-900">{value}</span>;
+}
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={cn(
+            "h-4 w-4",
+            star <= rating ? "text-amber-400 fill-amber-400" : "text-slate-200"
+          )}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function PublicPricing() {
@@ -202,6 +323,13 @@ export default function PublicPricing() {
     return savings;
   };
 
+  const getAccentStyles = (accentColor: string | null | undefined) => {
+    if (!accentColor) return {};
+    return {
+      background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+    };
+  };
+
   if (error) {
     const errorMessage = error instanceof Error ? error.message : "GENERIC_ERROR";
     
@@ -245,10 +373,20 @@ export default function PublicPricing() {
   const level3Agent = data?.agents.find(a => a.level === "3");
 
   const tierNames = {
-    bronze: "Bronze",
+    bronze: data?.pricing.level1Name || "Bronze",
     silver: data?.pricing.level2Name || "Argento",
     gold: data?.pricing.level3Name || "Oro",
   };
+
+  const accentColor = data?.pricing.accentColor;
+
+  const trustBadges = data?.pricing.trustBadges?.length 
+    ? data.pricing.trustBadges 
+    : DEFAULT_TRUST_BADGES;
+
+  const comparisonFeatures = data?.pricing.comparisonFeatures?.length
+    ? data.pricing.comparisonFeatures
+    : COMPARISON_FEATURES;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
@@ -273,20 +411,42 @@ export default function PublicPricing() {
                 />
               )}
               
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-violet-100 to-indigo-100 text-violet-700 text-sm font-medium mb-6">
+              <div 
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
+                style={accentColor ? {
+                  backgroundColor: `${accentColor}15`,
+                  color: accentColor,
+                } : {
+                  background: "linear-gradient(to right, rgb(237 233 254), rgb(224 231 255))",
+                  color: "rgb(109 40 217)",
+                }}
+              >
                 <Bot className="h-4 w-4" />
-                Il Tuo Assistente AI Personale
+                {data?.pricing.heroBadgeText || "Il Tuo Assistente AI Personale"}
               </div>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-4 tracking-tight">
-                Scegli il piano perfetto
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600">
-                  per le tue esigenze
-                </span>
+                {data?.pricing.heroTitle ? (
+                  data.pricing.heroTitle
+                ) : (
+                  <>
+                    Scegli il piano perfetto
+                    <span 
+                      className="block text-transparent bg-clip-text"
+                      style={accentColor ? {
+                        backgroundImage: `linear-gradient(to right, ${accentColor}, ${accentColor}cc)`,
+                      } : {
+                        backgroundImage: "linear-gradient(to right, rgb(124 58 237), rgb(79 70 229))",
+                      }}
+                    >
+                      per le tue esigenze
+                    </span>
+                  </>
+                )}
               </h1>
               
               <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-2">
-                Accedi al tuo Dipendente AI personale e automatizza le tue attività quotidiane
+                {data?.pricing.heroSubtitle || "Accedi al tuo Dipendente AI personale e automatizza le tue attività quotidiane"}
               </p>
               
               {data?.consultantName && (
@@ -297,6 +457,27 @@ export default function PublicPricing() {
             </>
           )}
         </div>
+
+        {/* Trust Badges Row (above pricing cards) */}
+        {!isLoading && trustBadges.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
+            {trustBadges.map((badge, index) => {
+              const IconComponent = getIconComponent(badge.icon);
+              return (
+                <div 
+                  key={index}
+                  className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100"
+                >
+                  <IconComponent 
+                    className="h-5 w-5" 
+                    style={{ color: accentColor || "rgb(16 185 129)" }}
+                  />
+                  <span className="text-sm text-slate-600">{badge.text}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Billing Toggle */}
         <div className="flex items-center justify-center gap-4 mb-12">
@@ -310,6 +491,7 @@ export default function PublicPricing() {
             checked={isAnnual}
             onCheckedChange={setIsAnnual}
             className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-violet-600 data-[state=checked]:to-indigo-600"
+            style={accentColor && isAnnual ? { backgroundColor: accentColor } : undefined}
           />
           <span className={cn(
             "text-sm font-medium transition-colors",
@@ -318,11 +500,52 @@ export default function PublicPricing() {
             Annuale
           </span>
           {isAnnual && (
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 ml-2">
+            <Badge 
+              className="ml-2"
+              style={accentColor ? {
+                backgroundColor: `${accentColor}20`,
+                color: accentColor,
+              } : {
+                backgroundColor: "rgb(209 250 229)",
+                color: "rgb(21 128 61)",
+              }}
+            >
               Risparmia 15%
             </Badge>
           )}
         </div>
+
+        {/* Guarantee Banner */}
+        {!isLoading && data?.pricing.guaranteeEnabled && (
+          <div 
+            className="max-w-2xl mx-auto mb-10 p-4 rounded-xl border text-center"
+            style={accentColor ? {
+              backgroundColor: `${accentColor}10`,
+              borderColor: `${accentColor}30`,
+            } : {
+              backgroundColor: "rgb(236 253 245)",
+              borderColor: "rgb(167 243 208)",
+            }}
+          >
+            <div className="flex items-center justify-center gap-3">
+              <Shield 
+                className="h-6 w-6" 
+                style={{ color: accentColor || "rgb(16 185 129)" }}
+              />
+              <div>
+                <p 
+                  className="font-semibold"
+                  style={{ color: accentColor || "rgb(21 128 61)" }}
+                >
+                  Garanzia {data.pricing.guaranteeDays} giorni
+                </p>
+                <p className="text-sm text-slate-600">
+                  {data.pricing.guaranteeText}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto mb-20">
@@ -347,18 +570,17 @@ export default function PublicPricing() {
                       <span className="text-slate-500">/mese</span>
                     </div>
                     <p className="text-sm text-slate-500 min-h-[40px]">
-                      Per iniziare a scoprire il tuo assistente AI
+                      {data?.pricing.level1Description}
                     </p>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col">
                   <ul className="space-y-3 mb-8 flex-1">
-                    <FeatureItem>{level1Agent?.dailyMessageLimit || 15} messaggi al giorno</FeatureItem>
-                    <FeatureItem>Accesso senza registrazione</FeatureItem>
-                    <FeatureItem>Risposte AI immediate</FeatureItem>
-                    <FeatureItem>Disponibile 24/7</FeatureItem>
-                    <FeatureItem included={false}>Knowledge Base</FeatureItem>
-                    <FeatureItem included={false}>Storico conversazioni</FeatureItem>
+                    {data?.pricing.level1Features.map((feature, index) => (
+                      <FeatureItem key={index} accentColor={accentColor}>
+                        {feature}
+                      </FeatureItem>
+                    ))}
                   </ul>
                   
                   <Button 
@@ -384,21 +606,48 @@ export default function PublicPricing() {
               </Card>
 
               {/* Level 2 - Silver (Paid) */}
-              <Card className="relative flex flex-col border-2 border-violet-400 bg-white shadow-xl shadow-violet-100/50 scale-[1.02] hover:shadow-2xl transition-all duration-300">
+              <Card 
+                className="relative flex flex-col border-2 bg-white shadow-xl scale-[1.02] hover:shadow-2xl transition-all duration-300"
+                style={accentColor ? {
+                  borderColor: accentColor,
+                  boxShadow: `0 25px 50px -12px ${accentColor}20`,
+                } : {
+                  borderColor: "rgb(167 139 250)",
+                  boxShadow: "0 25px 50px -12px rgb(139 92 246 / 0.25)",
+                }}
+              >
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                  <Badge className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-600 hover:to-indigo-600 px-4 py-1.5 shadow-lg">
+                  <Badge 
+                    className="text-white px-4 py-1.5 shadow-lg"
+                    style={accentColor ? {
+                      background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+                    } : {
+                      background: "linear-gradient(to right, rgb(124 58 237), rgb(79 70 229))",
+                    }}
+                  >
                     <Star className="h-3.5 w-3.5 mr-1.5 fill-current" />
-                    Più Popolare
+                    {data?.pricing.level2Badge}
                   </Badge>
                 </div>
                 
                 <CardHeader className="text-center pb-6 pt-8">
-                  <Badge className="w-fit mx-auto mb-4 bg-gradient-to-r from-violet-50 to-indigo-50 text-violet-700 border border-violet-200 hover:from-violet-50 hover:to-indigo-50">
+                  <Badge 
+                    className="w-fit mx-auto mb-4 border"
+                    style={accentColor ? {
+                      backgroundColor: `${accentColor}10`,
+                      color: accentColor,
+                      borderColor: `${accentColor}30`,
+                    } : {
+                      background: "linear-gradient(to right, rgb(245 243 255), rgb(238 242 255))",
+                      color: "rgb(109 40 217)",
+                      borderColor: "rgb(221 214 254)",
+                    }}
+                  >
                     {tierNames.silver}
                   </Badge>
                   <div className="space-y-2">
                     <h3 className="text-xl font-bold text-slate-900">
-                      {data?.pricing.level2Name || "Argento"}
+                      {data?.pricing.level2Name}
                     </h3>
                     <div className="flex items-baseline justify-center gap-1">
                       <span className="text-5xl font-bold text-slate-900">
@@ -412,28 +661,32 @@ export default function PublicPricing() {
                       </p>
                     )}
                     <p className="text-sm text-slate-500 min-h-[40px]">
-                      {data?.pricing.level2Description || "Per chi vuole il massimo dal proprio assistente"}
+                      {data?.pricing.level2ShortDescription || data?.pricing.level2Description}
                     </p>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col">
                   <ul className="space-y-3 mb-8 flex-1">
-                    <FeatureItem>
-                      <span className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-amber-500" />
-                        Messaggi illimitati
-                      </span>
-                    </FeatureItem>
-                    <FeatureItem>Tutto del piano Bronze</FeatureItem>
-                    <FeatureItem>Accesso alla Knowledge Base</FeatureItem>
-                    <FeatureItem>Risposte personalizzate avanzate</FeatureItem>
-                    <FeatureItem>Storico conversazioni salvato</FeatureItem>
-                    <FeatureItem included={false}>Dashboard personale</FeatureItem>
+                    {data?.pricing.level2Features.map((feature, index) => (
+                      <FeatureItem key={index} accentColor={accentColor}>
+                        {index === 0 ? (
+                          <span className="flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-amber-500" />
+                            {feature}
+                          </span>
+                        ) : feature}
+                      </FeatureItem>
+                    ))}
                   </ul>
                   
                   <Button 
                     size="lg"
-                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-200/50 transition-all hover:shadow-xl"
+                    className="w-full shadow-lg transition-all hover:shadow-xl text-white"
+                    style={accentColor ? {
+                      background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+                    } : {
+                      background: "linear-gradient(to right, rgb(124 58 237), rgb(79 70 229))",
+                    }}
                     disabled={purchaseLoading !== null}
                     onClick={() => handlePurchase("2", level2Agent?.agentId || "")}
                   >
@@ -444,7 +697,7 @@ export default function PublicPricing() {
                       </>
                     ) : (
                       <>
-                        Inizia Ora
+                        {data?.pricing.level2CtaText}
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </>
                     )}
@@ -457,7 +710,7 @@ export default function PublicPricing() {
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                   <Badge className="bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-white hover:from-amber-500 hover:to-orange-500 px-4 py-1.5 shadow-lg">
                     <Crown className="h-3.5 w-3.5 mr-1.5" />
-                    Premium
+                    {data?.pricing.level3Badge}
                   </Badge>
                 </div>
                 
@@ -467,7 +720,7 @@ export default function PublicPricing() {
                   </Badge>
                   <div className="space-y-2">
                     <h3 className="text-xl font-bold text-slate-900">
-                      {data?.pricing.level3Name || "Oro"}
+                      {data?.pricing.level3Name}
                     </h3>
                     <div className="flex items-baseline justify-center gap-1">
                       <span className="text-5xl font-bold text-slate-900">
@@ -481,33 +734,27 @@ export default function PublicPricing() {
                       </p>
                     )}
                     <p className="text-sm text-slate-500 min-h-[40px]">
-                      {data?.pricing.level3Description || "Per professionisti che vogliono tutto"}
+                      {data?.pricing.level3ShortDescription || data?.pricing.level3Description}
                     </p>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col">
                   <ul className="space-y-3 mb-8 flex-1">
-                    <FeatureItem>
-                      <span className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-amber-500" />
-                        Accesso completo al software
-                      </span>
-                    </FeatureItem>
-                    <FeatureItem>Tutto del piano Argento</FeatureItem>
-                    <FeatureItem>AI Manager dedicato</FeatureItem>
-                    <FeatureItem>Dashboard personale completa</FeatureItem>
-                    <FeatureItem>
-                      <span className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-emerald-500" />
-                        Supporto VIP prioritario
-                      </span>
-                    </FeatureItem>
-                    <FeatureItem>Integrazioni avanzate</FeatureItem>
+                    {data?.pricing.level3Features.map((feature, index) => (
+                      <FeatureItem key={index} accentColor={accentColor}>
+                        {index === 0 ? (
+                          <span className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-amber-500" />
+                            {feature}
+                          </span>
+                        ) : feature}
+                      </FeatureItem>
+                    ))}
                   </ul>
                   
                   <Button 
                     size="lg"
-                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-200/50 transition-all hover:shadow-xl"
+                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-200/50 transition-all hover:shadow-xl text-white"
                     disabled={purchaseLoading !== null}
                     onClick={() => handlePurchase("3", level3Agent?.agentId || "")}
                   >
@@ -518,7 +765,7 @@ export default function PublicPricing() {
                       </>
                     ) : (
                       <>
-                        Acquista {tierNames.gold}
+                        {data?.pricing.level3CtaText}
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </>
                     )}
@@ -530,7 +777,7 @@ export default function PublicPricing() {
         </div>
 
         {/* Feature Comparison Table */}
-        {!isLoading && (
+        {!isLoading && data?.pricing.showComparisonTable && (
           <div className="max-w-5xl mx-auto mb-20">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-slate-900 mb-3">
@@ -555,9 +802,25 @@ export default function PublicPricing() {
                           <span className="text-sm font-normal text-slate-500">Gratuito</span>
                         </div>
                       </th>
-                      <th className="text-center py-4 px-6 font-semibold text-slate-900 bg-violet-50/50">
+                      <th 
+                        className="text-center py-4 px-6 font-semibold text-slate-900"
+                        style={accentColor ? { backgroundColor: `${accentColor}10` } : { backgroundColor: "rgb(245 243 255 / 0.5)" }}
+                      >
                         <div className="flex flex-col items-center gap-1">
-                          <Badge className="bg-gradient-to-r from-violet-100 to-indigo-100 text-violet-700 border border-violet-200">{tierNames.silver}</Badge>
+                          <Badge 
+                            className="border"
+                            style={accentColor ? {
+                              backgroundColor: `${accentColor}15`,
+                              color: accentColor,
+                              borderColor: `${accentColor}30`,
+                            } : {
+                              background: "linear-gradient(to right, rgb(238 242 255), rgb(224 231 255))",
+                              color: "rgb(109 40 217)",
+                              borderColor: "rgb(196 181 253)",
+                            }}
+                          >
+                            {tierNames.silver}
+                          </Badge>
                           <span className="text-sm font-normal text-slate-500">
                             €{getDisplayPrice(data?.pricing.level2MonthlyPrice || 29)}/mese
                           </span>
@@ -574,31 +837,37 @@ export default function PublicPricing() {
                     </tr>
                   </thead>
                   <tbody>
-                    {COMPARISON_FEATURES.map((feature, index) => (
-                      <tr 
-                        key={feature.name} 
-                        className={cn(
-                          "border-b border-slate-100 hover:bg-slate-50/50 transition-colors",
-                          index === COMPARISON_FEATURES.length - 1 && "border-b-0"
-                        )}
-                      >
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3">
-                            <feature.icon className="h-4 w-4 text-slate-400" />
-                            <span className="text-sm text-slate-700">{feature.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-center">
-                          <ComparisonTableCell value={feature.bronze} />
-                        </td>
-                        <td className="py-4 px-6 text-center bg-violet-50/30">
-                          <ComparisonTableCell value={feature.silver} />
-                        </td>
-                        <td className="py-4 px-6 text-center">
-                          <ComparisonTableCell value={feature.gold} />
-                        </td>
-                      </tr>
-                    ))}
+                    {comparisonFeatures.map((feature, index) => {
+                      const FeatureIcon = 'icon' in feature ? (feature as any).icon : null;
+                      return (
+                        <tr 
+                          key={feature.name} 
+                          className={cn(
+                            "border-b border-slate-100 hover:bg-slate-50/50 transition-colors",
+                            index === comparisonFeatures.length - 1 && "border-b-0"
+                          )}
+                        >
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              {FeatureIcon && <FeatureIcon className="h-4 w-4 text-slate-400" />}
+                              <span className="text-sm text-slate-700">{feature.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <ComparisonTableCell value={feature.bronze} />
+                          </td>
+                          <td 
+                            className="py-4 px-6 text-center"
+                            style={accentColor ? { backgroundColor: `${accentColor}05` } : { backgroundColor: "rgb(124 58 237 / 0.03)" }}
+                          >
+                            <ComparisonTableCell value={feature.silver} />
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <ComparisonTableCell value={feature.gold} />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -606,44 +875,146 @@ export default function PublicPricing() {
           </div>
         )}
 
-        {/* Trust Badges */}
-        <div className="text-center">
-          <div className="inline-flex flex-wrap items-center justify-center gap-8 text-sm text-slate-600">
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100">
-              <Shield className="h-5 w-5 text-emerald-500" />
-              <span>Pagamenti sicuri con Stripe</span>
+        {/* Testimonials Section */}
+        {!isLoading && data?.pricing.testimonials && data.pricing.testimonials.length > 0 && (
+          <div className="max-w-6xl mx-auto mb-20">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-slate-900 mb-3">
+                Cosa dicono i nostri clienti
+              </h2>
+              <p className="text-slate-600">
+                Scopri le esperienze di chi ha già scelto i nostri piani
+              </p>
             </div>
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100">
-              <Clock className="h-5 w-5 text-blue-500" />
-              <span>Attivazione immediata</span>
-            </div>
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100">
-              <MessageSquare className="h-5 w-5 text-violet-500" />
-              <span>Cancella quando vuoi</span>
+            
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {data.pricing.testimonials.map((testimonial, index) => (
+                <Card key={index} className="relative bg-white hover:shadow-lg transition-shadow">
+                  <CardContent className="pt-6">
+                    <Quote 
+                      className="h-8 w-8 mb-4 opacity-20" 
+                      style={{ color: accentColor || "rgb(124 58 237)" }}
+                    />
+                    <p className="text-slate-600 mb-6 leading-relaxed">
+                      "{testimonial.content}"
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        {testimonial.avatarUrl ? (
+                          <AvatarImage src={testimonial.avatarUrl} alt={testimonial.name} />
+                        ) : null}
+                        <AvatarFallback 
+                          style={accentColor ? { backgroundColor: `${accentColor}20`, color: accentColor } : undefined}
+                        >
+                          {testimonial.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-semibold text-slate-900">{testimonial.name}</p>
+                        {(testimonial.role || testimonial.company) && (
+                          <p className="text-sm text-slate-500">
+                            {testimonial.role}{testimonial.role && testimonial.company && " @ "}{testimonial.company}
+                          </p>
+                        )}
+                      </div>
+                      {testimonial.rating && (
+                        <StarRating rating={testimonial.rating} />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
-        </div>
+        )}
+
+        {/* FAQ Section */}
+        {!isLoading && data?.pricing.faqs && data.pricing.faqs.length > 0 && (
+          <div className="max-w-3xl mx-auto mb-20">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-slate-900 mb-3">
+                Domande Frequenti
+              </h2>
+              <p className="text-slate-600">
+                Trova le risposte alle domande più comuni
+              </p>
+            </div>
+            
+            <Card className="shadow-lg">
+              <CardContent className="pt-6">
+                <Accordion type="single" collapsible className="w-full">
+                  {data.pricing.faqs.map((faq, index) => (
+                    <AccordionItem key={index} value={`faq-${index}`}>
+                      <AccordionTrigger className="text-left hover:no-underline">
+                        <span className="font-medium text-slate-900">{faq.question}</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="text-slate-600 leading-relaxed">
+                        {faq.answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
+      {/* Footer */}
       <footer className="border-t bg-white/80 backdrop-blur-sm py-8 mt-8">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-slate-500">
-              © {new Date().getFullYear()} Orbitale di Chianetta Trovato Alessio
+              {data?.pricing.footerText || `© ${new Date().getFullYear()} ${data?.consultantName || "Orbitale"}`}
             </p>
             <div className="flex items-center gap-6">
-              <a 
-                href="/privacy" 
-                className="text-sm text-slate-500 hover:text-slate-900 transition-colors"
-              >
-                Privacy Policy
-              </a>
-              <a 
-                href="#" 
-                className="text-sm text-slate-500 hover:text-slate-900 transition-colors"
-              >
-                Termini di Servizio
-              </a>
+              {data?.pricing.contactEmail && (
+                <a 
+                  href={`mailto:${data.pricing.contactEmail}`}
+                  className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  <Mail className="h-4 w-4" />
+                  Contattaci
+                </a>
+              )}
+              {data?.pricing.privacyUrl && (
+                <a 
+                  href={data.pricing.privacyUrl} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  Privacy Policy
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {data?.pricing.termsUrl && (
+                <a 
+                  href={data.pricing.termsUrl} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  Termini di Servizio
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {!data?.pricing.privacyUrl && !data?.pricing.termsUrl && (
+                <>
+                  <a 
+                    href="/privacy" 
+                    className="text-sm text-slate-500 hover:text-slate-900 transition-colors"
+                  >
+                    Privacy Policy
+                  </a>
+                  <a 
+                    href="#" 
+                    className="text-sm text-slate-500 hover:text-slate-900 transition-colors"
+                  >
+                    Termini di Servizio
+                  </a>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -60,21 +60,106 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Nessun agente disponibile" });
     }
 
-    const config = consultant.pricingPageConfig || {};
-    const level2Price = config.level2PriceCents ? Math.floor(config.level2PriceCents / 100) : 29;
-    const level3Price = config.level3PriceCents ? Math.floor(config.level3PriceCents / 100) : Math.round(level2Price * 2);
+    const config = consultant.pricingPageConfig as any || {};
     
+    // Calculate prices with backwards compatibility - use proper decimal conversion
+    const centsToEuros = (cents: number) => Number((cents / 100).toFixed(2));
+    
+    const level2MonthlyPrice = config.level2MonthlyPriceCents 
+      ? centsToEuros(config.level2MonthlyPriceCents) 
+      : (config.level2PriceCents ? centsToEuros(config.level2PriceCents) : 29);
+    
+    const level2YearlyPrice = config.level2YearlyPriceCents 
+      ? centsToEuros(config.level2YearlyPriceCents) 
+      : Number((level2MonthlyPrice * 10).toFixed(2));
+    
+    const level3MonthlyPrice = config.level3MonthlyPriceCents 
+      ? centsToEuros(config.level3MonthlyPriceCents) 
+      : (config.level3PriceCents ? centsToEuros(config.level3PriceCents) : Number((level2MonthlyPrice * 2).toFixed(2)));
+    
+    const level3YearlyPrice = config.level3YearlyPriceCents 
+      ? centsToEuros(config.level3YearlyPriceCents) 
+      : Number((level3MonthlyPrice * 10).toFixed(2));
+
+    // Build comprehensive pricing response
     const pricing = {
-      level2MonthlyPrice: level2Price,
-      level2YearlyPrice: config.level2PriceCents ? Math.floor((config.level2PriceCents * 10) / 100) : 290,
-      level2Name: config.level2Name || "Livello Argento",
+      // Hero Section
+      heroTitle: config.heroTitle || null,
+      heroSubtitle: config.heroSubtitle || null,
+      heroBadgeText: config.heroBadgeText || null,
+      
+      // Level 1 (Bronze - Free)
+      level1Name: config.level1Name || "Bronze",
+      level1Description: config.level1Description || "Per iniziare a scoprire il tuo assistente AI",
+      level1DailyMessageLimit: config.level1DailyMessageLimit || 15,
+      level1Features: config.level1Features || [
+        "Messaggi limitati al giorno",
+        "Accesso senza registrazione",
+        "Risposte AI immediate",
+        "Disponibile 24/7"
+      ],
+      
+      // Level 2 (Silver)
+      level2Name: config.level2Name || "Argento",
       level2Description: config.level2Description || "Per chi vuole il massimo dal proprio assistente",
-      level3MonthlyPrice: level3Price,
-      level3YearlyPrice: Math.round(level3Price * 10),
-      level3Name: config.level3Name || "Livello Deluxe",
+      level2ShortDescription: config.level2ShortDescription || null,
+      level2MonthlyPrice,
+      level2YearlyPrice,
+      level2Features: config.level2Features || [
+        "Messaggi illimitati",
+        "Tutto del piano Bronze",
+        "Accesso alla Knowledge Base",
+        "Risposte personalizzate avanzate",
+        "Storico conversazioni salvato"
+      ],
+      level2Badge: config.level2Badge || "Più Popolare",
+      level2CtaText: config.level2CtaText || "Inizia Ora",
+      
+      // Level 3 (Gold)
+      level3Name: config.level3Name || "Oro",
       level3Description: config.level3Description || "Per professionisti che vogliono tutto",
+      level3ShortDescription: config.level3ShortDescription || null,
+      level3MonthlyPrice,
+      level3YearlyPrice,
+      level3Features: config.level3Features || [
+        "Accesso completo al software",
+        "Tutto del piano Argento",
+        "AI Manager dedicato",
+        "Dashboard personale completa",
+        "Supporto VIP prioritario",
+        "Integrazioni avanzate"
+      ],
+      level3Badge: config.level3Badge || "Premium",
+      level3CtaText: config.level3CtaText || "Acquista Premium",
+      
+      // Visual
       accentColor: config.accentColor || null,
       logoUrl: config.logoUrl || null,
+      backgroundStyle: config.backgroundStyle || "gradient",
+      
+      // FAQs
+      faqs: config.faqs || [],
+      
+      // Testimonials
+      testimonials: config.testimonials || [],
+      
+      // Trust Badges
+      trustBadges: config.trustBadges || [],
+      
+      // Guarantee
+      guaranteeEnabled: config.guaranteeEnabled || false,
+      guaranteeDays: config.guaranteeDays || 30,
+      guaranteeText: config.guaranteeText || "Soddisfatti o rimborsati",
+      
+      // Footer
+      footerText: config.footerText || null,
+      contactEmail: config.contactEmail || null,
+      termsUrl: config.termsUrl || null,
+      privacyUrl: config.privacyUrl || null,
+      
+      // Comparison Table
+      showComparisonTable: config.showComparisonTable !== false,
+      comparisonFeatures: config.comparisonFeatures || [],
     };
 
     res.json({

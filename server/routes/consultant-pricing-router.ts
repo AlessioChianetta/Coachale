@@ -67,24 +67,81 @@ router.post("/consultant/pricing-page", authenticateToken, requireRole("consulta
     }
     
     if (pricingPageConfig) {
-      if (pricingPageConfig.level2PriceCents !== undefined) {
-        const price = parseInt(pricingPageConfig.level2PriceCents);
+      // Validate and parse Level 2 prices
+      if (pricingPageConfig.level2MonthlyPriceCents !== undefined) {
+        const price = parseInt(pricingPageConfig.level2MonthlyPriceCents);
         if (isNaN(price) || price < 100) {
           return res.status(400).json({ 
-            error: "Il prezzo Level 2 deve essere almeno 1€" 
+            error: "Il prezzo mensile Level 2 deve essere almeno 1€" 
           });
         }
-        pricingPageConfig.level2PriceCents = price;
+        pricingPageConfig.level2MonthlyPriceCents = price;
+      }
+      
+      if (pricingPageConfig.level2YearlyPriceCents !== undefined) {
+        const price = parseInt(pricingPageConfig.level2YearlyPriceCents);
+        if (isNaN(price) || price < 100) {
+          return res.status(400).json({ 
+            error: "Il prezzo annuale Level 2 deve essere almeno 1€" 
+          });
+        }
+        pricingPageConfig.level2YearlyPriceCents = price;
+      }
+      
+      // Validate and parse Level 3 prices
+      if (pricingPageConfig.level3MonthlyPriceCents !== undefined) {
+        const price = parseInt(pricingPageConfig.level3MonthlyPriceCents);
+        if (isNaN(price) || price < 100) {
+          return res.status(400).json({ 
+            error: "Il prezzo mensile Level 3 deve essere almeno 1€" 
+          });
+        }
+        pricingPageConfig.level3MonthlyPriceCents = price;
+      }
+      
+      if (pricingPageConfig.level3YearlyPriceCents !== undefined) {
+        const price = parseInt(pricingPageConfig.level3YearlyPriceCents);
+        if (isNaN(price) || price < 100) {
+          return res.status(400).json({ 
+            error: "Il prezzo annuale Level 3 deve essere almeno 1€" 
+          });
+        }
+        pricingPageConfig.level3YearlyPriceCents = price;
+      }
+      
+      // Backwards compatibility - also validate old price fields
+      if (pricingPageConfig.level2PriceCents !== undefined) {
+        const price = parseInt(pricingPageConfig.level2PriceCents);
+        if (!isNaN(price) && price >= 100) {
+          pricingPageConfig.level2PriceCents = price;
+        }
       }
       
       if (pricingPageConfig.level3PriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level3PriceCents);
-        if (isNaN(price) || price < 100) {
-          return res.status(400).json({ 
-            error: "Il prezzo Level 3 deve essere almeno 1€" 
-          });
+        if (!isNaN(price) && price >= 100) {
+          pricingPageConfig.level3PriceCents = price;
         }
-        pricingPageConfig.level3PriceCents = price;
+      }
+      
+      // Validate Level 1 daily message limit
+      if (pricingPageConfig.level1DailyMessageLimit !== undefined) {
+        const limit = parseInt(pricingPageConfig.level1DailyMessageLimit);
+        if (!isNaN(limit) && limit >= 1) {
+          pricingPageConfig.level1DailyMessageLimit = limit;
+        } else {
+          pricingPageConfig.level1DailyMessageLimit = 15; // default
+        }
+      }
+      
+      // Validate guarantee days
+      if (pricingPageConfig.guaranteeDays !== undefined) {
+        const days = parseInt(pricingPageConfig.guaranteeDays);
+        if (!isNaN(days) && days >= 0) {
+          pricingPageConfig.guaranteeDays = days;
+        } else {
+          pricingPageConfig.guaranteeDays = 30; // default
+        }
       }
     }
     

@@ -122,6 +122,7 @@ const ManagerLogin = lazy(() => import("@/pages/manager-login"));
 const ManagerChat = lazy(() => import("@/pages/manager-chat"));
 const PublicAIChat = lazy(() => import("@/pages/public-ai-chat"));
 const PublicPricing = lazy(() => import("@/pages/public-pricing"));
+const PricingSuccess = lazy(() => import("@/pages/pricing-success"));
 
 const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
 const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
@@ -187,6 +188,9 @@ function Router() {
 
           {/* Public Pricing Page - no auth required */}
           <Route path="/c/:slug/pricing" component={PublicPricing} />
+
+          {/* Pricing Success Page - no auth required */}
+          <Route path="/c/:slug/pricing/success" component={PricingSuccess} />
 
           <Route path="/consultant">
             <AuthGuard requiredRole="consultant">
