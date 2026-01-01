@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,6 @@ import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAss
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import debounce from "lodash/debounce";
 
 interface PricingPageData {
   pricingPageSlug: string;
@@ -72,6 +71,7 @@ export default function ConsultantPricingSettingsPage() {
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [checkingSlug, setCheckingSlug] = useState(false);
   const [originalSlug, setOriginalSlug] = useState("");
+  const slugCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: pricingData, isLoading } = useQuery({
     queryKey: ["/api/consultant/pricing-page"],
@@ -99,16 +99,17 @@ export default function ConsultantPricingSettingsPage() {
 
   useEffect(() => {
     if (pricingData) {
+      const config = pricingData.pricingPageConfig || {};
       setFormData({
         pricingPageSlug: pricingData.pricingPageSlug || "",
-        level2Name: pricingData.level2Name || "",
-        level2Description: pricingData.level2Description || "",
-        level2PriceEuros: centsToEuros(pricingData.level2PriceCents),
-        level3Name: pricingData.level3Name || "",
-        level3Description: pricingData.level3Description || "",
-        level3PriceEuros: centsToEuros(pricingData.level3PriceCents),
-        accentColor: pricingData.accentColor || "#6366f1",
-        logoUrl: pricingData.logoUrl || "",
+        level2Name: config.level2Name || "",
+        level2Description: config.level2Description || "",
+        level2PriceEuros: centsToEuros(config.level2PriceCents),
+        level3Name: config.level3Name || "",
+        level3Description: config.level3Description || "",
+        level3PriceEuros: centsToEuros(config.level3PriceCents),
+        accentColor: config.accentColor || "#6366f1",
+        logoUrl: config.logoUrl || "",
       });
       setOriginalSlug(pricingData.pricingPageSlug || "");
       setSlugAvailable(true);
@@ -116,7 +117,11 @@ export default function ConsultantPricingSettingsPage() {
   }, [pricingData]);
 
   const checkSlugAvailability = useCallback(
-    debounce(async (slug: string) => {
+    (slug: string) => {
+      if (slugCheckTimeoutRef.current) {
+        clearTimeout(slugCheckTimeoutRef.current);
+      }
+
       if (!slug || slug === originalSlug) {
         setSlugAvailable(slug === originalSlug ? true : null);
         setCheckingSlug(false);
@@ -124,18 +129,20 @@ export default function ConsultantPricingSettingsPage() {
       }
 
       setCheckingSlug(true);
-      try {
-        const response = await fetch(`/api/consultant/pricing-page/check-slug?slug=${encodeURIComponent(slug)}`, {
-          headers: getAuthHeaders(),
-        });
-        const data = await response.json();
-        setSlugAvailable(data.available);
-      } catch (error) {
-        setSlugAvailable(null);
-      } finally {
-        setCheckingSlug(false);
-      }
-    }, 500),
+      slugCheckTimeoutRef.current = setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/consultant/pricing-page/check-slug/${encodeURIComponent(slug)}`, {
+            headers: getAuthHeaders(),
+          });
+          const data = await response.json();
+          setSlugAvailable(data.available);
+        } catch (error) {
+          setSlugAvailable(null);
+        } finally {
+          setCheckingSlug(false);
+        }
+      }, 500);
+    },
     [originalSlug]
   );
 
@@ -143,14 +150,16 @@ export default function ConsultantPricingSettingsPage() {
     mutationFn: async (data: FormData) => {
       const payload = {
         pricingPageSlug: data.pricingPageSlug,
-        level2Name: data.level2Name,
-        level2Description: data.level2Description,
-        level2PriceCents: eurosToCents(data.level2PriceEuros),
-        level3Name: data.level3Name,
-        level3Description: data.level3Description,
-        level3PriceCents: eurosToCents(data.level3PriceEuros),
-        accentColor: data.accentColor,
-        logoUrl: data.logoUrl,
+        pricingPageConfig: {
+          level2Name: data.level2Name,
+          level2Description: data.level2Description,
+          level2PriceCents: eurosToCents(data.level2PriceEuros),
+          level3Name: data.level3Name,
+          level3Description: data.level3Description,
+          level3PriceCents: eurosToCents(data.level3PriceEuros),
+          accentColor: data.accentColor,
+          logoUrl: data.logoUrl,
+        },
       };
 
       const response = await fetch("/api/consultant/pricing-page", {
