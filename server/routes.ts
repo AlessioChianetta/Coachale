@@ -11460,7 +11460,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         // File Search Categories
         fileSearchCategories,
         // AI Assistant Integration
-        enableInAIAssistant
+        enableInAIAssistant,
+        // Dipendente AI Level Configuration
+        level,
+        publicSlug,
+        dailyMessageLimit
       } = req.body;
 
       // Verify agent belongs to consultant
@@ -11608,6 +11612,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       if (availabilityMaxDaysAhead !== undefined) updateData.availabilityMaxDaysAhead = availabilityMaxDaysAhead;
       if (availabilityMinHoursNotice !== undefined) updateData.availabilityMinHoursNotice = availabilityMinHoursNotice;
       if (availabilityWorkingHours !== undefined) updateData.availabilityWorkingHours = availabilityWorkingHours;
+
+      // Dipendente AI Level Configuration
+      if (level !== undefined) updateData.level = level;
+      if (publicSlug !== undefined) updateData.publicSlug = publicSlug;
+      if (dailyMessageLimit !== undefined) updateData.dailyMessageLimit = dailyMessageLimit;
 
       // Handle useCentralCredentials - copy Twilio credentials from users table
       const { useCentralCredentials } = req.body;

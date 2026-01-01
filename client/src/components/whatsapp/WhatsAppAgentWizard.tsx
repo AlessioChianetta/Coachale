@@ -124,7 +124,7 @@ const emptyFormData = {
     library: false,
     university: false,
   },
-  level: null as "1" | "2" | null,
+  level: null as "1" | "2" | "3" | null,
   publicSlug: "",
   dailyMessageLimit: 15,
 };
