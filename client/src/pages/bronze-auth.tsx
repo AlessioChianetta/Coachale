@@ -100,7 +100,7 @@ export default function BronzeAuth() {
   const handleAuthSuccess = (token: string) => {
     localStorage.setItem(BRONZE_TOKEN_KEY, token);
     if (agentSlug) {
-      navigate(`/agent/${agentSlug}`);
+      navigate(`/agent/${agentSlug}/chat`);
     } else {
       toast({
         title: "Accesso completato",
