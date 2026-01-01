@@ -57,7 +57,14 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Public Pricing Page**: Consultant-branded pricing page at `/c/:slug/pricing` with 3-column layout for all tiers.
   - **Security**: Public chat endpoints validate Level 1 agents only, preventing L2/L3 access via public slugs.
   - **SuperAdmin Controls**: "Gestione Licenze Consulenti" card for managing license allocations and revenue share.
-  - **Stripe Integration**: Placeholder for Stripe checkout flow (connector setup required).
+  - **Stripe Connect Integration**: Complete payment flow implemented with:
+    - Express accounts for Italian consultants via OAuth onboarding
+    - Destination charges model: payments go to platform, transfers to consultant minus application fee
+    - Application fee based on `revenueSharePercentage` (default 50/50 split)
+    - Webhook handling for subscription activation (`checkout.session.completed`)
+    - SuperAdmin dashboard with platform-wide transaction overview
+    - Consultant subscription list in Stripe Connect tab
+    - Keys stored in `superadminStripeConfig` table (encrypted)
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
