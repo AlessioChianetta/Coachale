@@ -114,6 +114,7 @@ import agentInstagramRouter from "./routes/instagram/agent-instagram-router";
 import leadImportRouter from "./routes/lead-import-router";
 import stripeConnectRouter from "./routes/stripe-connect-router";
 import consultantPricingRouter from "./routes/consultant-pricing-router";
+import bronzeAuthRouter from "./routes/bronze-auth-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -9802,6 +9803,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Public Pricing routes (consultant pricing pages)
   app.use("/api/public/consultant", publicPricingRouter);
+
+  // Bronze Auth routes (Level 1 user authentication)
+  app.use("/api/bronze", bronzeAuthRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
