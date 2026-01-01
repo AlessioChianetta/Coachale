@@ -186,6 +186,7 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
         performanceScore: agent.score || agent.performanceScore || 0,
         trend: agent.trend || "stable",
         conversationsToday: agent.conversations7d || agent.conversationsToday || 0,
+        level: agent.level || null,
       }));
     },
     staleTime: 30000,

@@ -91,8 +91,7 @@ export function LevelSelector({
   const options = [
     { value: null, label: "Nessun Livello", description: "Agente standard senza accesso pubblico" },
     { value: "1" as const, label: "Livello 1 - Bronzo", description: "Accesso pubblico con limite messaggi giornaliero" },
-    { value: "2" as const, label: "Livello 2 - Argento", description: "Accesso clienti con knowledge base (a pagamento)" },
-    { value: "3" as const, label: "Livello 3 - Deluxe", description: "Accesso completo al software (premium)" }
+    { value: "2" as const, label: "Livello 2 - Argento", description: "Accesso clienti con knowledge base (a pagamento)" }
   ];
   
   return (
