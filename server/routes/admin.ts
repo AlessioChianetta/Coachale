@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireSuperAdmin, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig, superadminInstagramConfig, consultantLicenses } from "../../shared/schema";
+import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig, superadminInstagramConfig, consultantLicenses, superadminStripeConfig } from "../../shared/schema";
 import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { getAdminTurnConfig, saveAdminTurnConfig } from "../services/turn-config-service";
@@ -1738,6 +1738,120 @@ router.put(
       });
     } catch (error: any) {
       console.error("Update consultant licenses error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SuperAdmin Stripe Configuration - Centralized Stripe config for platform payments
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get(
+  "/admin/stripe-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [config] = await db
+        .select()
+        .from(superadminStripeConfig)
+        .limit(1);
+
+      if (!config) {
+        return res.json({
+          success: true,
+          configured: false,
+          config: null,
+        });
+      }
+
+      res.json({
+        success: true,
+        configured: !!config.stripeSecretKey && !!config.stripePublishableKey,
+        config: {
+          id: config.id,
+          stripePublishableKey: config.stripePublishableKey || "",
+          hasSecretKey: !!config.stripeSecretKey,
+          hasWebhookSecret: !!config.stripeWebhookSecret,
+          stripeConnectEnabled: config.stripeConnectEnabled ?? false,
+          enabled: config.enabled ?? false,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("Get superadmin stripe config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.put(
+  "/admin/stripe-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { stripeSecretKey, stripePublishableKey, stripeWebhookSecret, stripeConnectEnabled, enabled } = req.body;
+
+      const [existing] = await db
+        .select()
+        .from(superadminStripeConfig)
+        .limit(1);
+
+      const updateData: any = {
+        stripePublishableKey: stripePublishableKey || null,
+        stripeConnectEnabled: stripeConnectEnabled ?? false,
+        enabled: enabled ?? false,
+        updatedAt: new Date(),
+      };
+
+      if (stripeSecretKey && stripeSecretKey.trim() !== "") {
+        updateData.stripeSecretKey = encrypt(stripeSecretKey);
+      }
+
+      if (stripeWebhookSecret && stripeWebhookSecret.trim() !== "") {
+        updateData.stripeWebhookSecret = encrypt(stripeWebhookSecret);
+      }
+
+      if (existing) {
+        await db
+          .update(superadminStripeConfig)
+          .set(updateData)
+          .where(eq(superadminStripeConfig.id, existing.id));
+      } else {
+        if (!stripeSecretKey || !stripePublishableKey) {
+          return res.status(400).json({
+            success: false,
+            error: "Stripe Secret Key and Publishable Key are required for initial configuration",
+          });
+        }
+        await db.insert(superadminStripeConfig).values({
+          stripeSecretKey: encrypt(stripeSecretKey),
+          stripePublishableKey,
+          stripeWebhookSecret: stripeWebhookSecret ? encrypt(stripeWebhookSecret) : null,
+          stripeConnectEnabled: stripeConnectEnabled ?? false,
+          enabled: enabled ?? false,
+        });
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: existing ? "update_superadmin_stripe_config" : "create_superadmin_stripe_config",
+        targetType: "setting",
+        targetId: "superadmin_stripe_config",
+        details: { stripeConnectEnabled, enabled },
+      });
+
+      console.log(`✅ SuperAdmin Stripe config saved`);
+
+      res.json({
+        success: true,
+        message: "Stripe configuration saved successfully",
+      });
+    } catch (error: any) {
+      console.error("Save superadmin stripe config error:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }

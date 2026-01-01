@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,8 @@ import {
   Clock,
   Sparkles,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -94,11 +96,45 @@ export default function PublicPricing() {
     retry: false,
   });
 
-  const handleLevel2Purchase = async (agentId: string) => {
-    toast({
-      title: "Presto disponibile!",
-      description: "L'integrazione con Stripe è in arrivo. Presto potrai acquistare questo piano.",
-    });
+  const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
+
+  const createCheckoutMutation = useMutation({
+    mutationFn: async ({ level, agentId }: { level: "2" | "3"; agentId: string }) => {
+      const response = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consultantSlug: slug,
+          agentId,
+          level,
+          clientEmail: "",
+          clientName: "",
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore nel checkout");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+      setPurchaseLoading(null);
+    },
+  });
+
+  const handlePurchase = (level: "2" | "3", agentId: string) => {
+    setPurchaseLoading(`${level}-${agentId}`);
+    createCheckoutMutation.mutate({ level, agentId });
   };
 
   if (error) {
@@ -257,10 +293,20 @@ export default function PublicPricing() {
                   
                   <Button 
                     className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-                    onClick={() => level2Agent && handleLevel2Purchase(level2Agent.agentId)}
+                    disabled={purchaseLoading !== null}
+                    onClick={() => handlePurchase("2", level2Agent?.agentId || "")}
                   >
-                    Acquista Ora
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                    {purchaseLoading === `2-${level2Agent?.agentId}` ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Caricamento...
+                      </>
+                    ) : (
+                      <>
+                        Inizia Ora
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -314,13 +360,20 @@ export default function PublicPricing() {
                   
                   <Button 
                     className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                    onClick={() => toast({
-                      title: "Presto disponibile!",
-                      description: "L'integrazione con Stripe è in arrivo. Presto potrai acquistare questo piano.",
-                    })}
+                    disabled={purchaseLoading !== null}
+                    onClick={() => handlePurchase("3", level3Agent?.agentId || "")}
                   >
-                    Acquista Deluxe
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                    {purchaseLoading === `3-${level3Agent?.agentId}` ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Caricamento...
+                      </>
+                    ) : (
+                      <>
+                        Acquista Deluxe
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
                   </Button>
                 </CardContent>
               </Card>

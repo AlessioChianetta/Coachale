@@ -18,7 +18,7 @@ import {
   RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
   BookOpen, ChevronDown, ChevronUp, Shield, Database, Plug, Copy, Check, Filter,
   MapPin, Tag, Settings, Send, User, Zap, Instagram, FileSpreadsheet, ArrowRight, X,
-  History, Phone, Target
+  History, Phone, Target, CreditCard
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
@@ -363,7 +363,7 @@ export default function ConsultantApiKeysUnified() {
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     const tabParam = params.get('tab');
-    const validTabs = ['ai', 'client-ai', 'email', 'calendar', 'lead-import', 'video-meeting', 'twilio', 'instagram'];
+    const validTabs = ['ai', 'client-ai', 'email', 'calendar', 'lead-import', 'video-meeting', 'twilio', 'instagram', 'stripe'];
     if (tabParam === 'whatsapp') {
       setActiveTab('twilio');
     } else if (tabParam && validTabs.includes(tabParam)) {
@@ -674,6 +674,91 @@ export default function ConsultantApiKeysUnified() {
       return response.json();
     },
   });
+
+  // Stripe Connect Status query
+  const { data: stripeConnectStatus, isLoading: stripeConnectLoading } = useQuery({
+    queryKey: ["/api/consultant/stripe-connect/status"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/stripe-connect/status", { 
+        headers: getAuthHeaders() 
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Failed to fetch Stripe status");
+      }
+      if (response.status === 404) return { connected: false };
+      return response.json();
+    },
+  });
+
+  // Consultant Subscriptions query
+  const { data: mySubscriptions, isLoading: subscriptionsLoading } = useQuery({
+    queryKey: ["/api/consultant/subscriptions"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/subscriptions", { headers: getAuthHeaders() });
+      if (!response.ok) throw new Error("Failed to fetch subscriptions");
+      return response.json();
+    },
+    enabled: activeTab === "stripe",
+  });
+
+  // Stripe Connect Onboarding mutation
+  const startStripeOnboardingMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/stripe-connect/onboard", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to start onboarding");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.onboardingUrl) {
+        window.location.href = data.onboardingUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile avviare l'onboarding Stripe",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Stripe Disconnect mutation
+  const disconnectStripeMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/consultant/stripe-connect/disconnect", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to disconnect Stripe");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Stripe Scollegato",
+        description: "Il tuo account Stripe è stato scollegato con successo",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/stripe-connect/status"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile scollegare l'account Stripe",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Stripe disconnect confirmation state
+  const [showStripeDisconnectConfirm, setShowStripeDisconnectConfirm] = useState(false);
 
   // Lead Import queries and mutations
   const { data: leadImportConfigs } = useExternalApiConfigs();
@@ -2268,6 +2353,11 @@ export default function ConsultantApiKeysUnified() {
                   <Video className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Video Meeting</span>
                   <span className="sm:hidden">Video</span>
+                </TabsTrigger>
+                <TabsTrigger value="stripe" className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 text-xs sm:text-sm">
+                  <CreditCard className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Stripe Connect</span>
+                  <span className="sm:hidden">Stripe</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -7803,6 +7893,247 @@ export default function ConsultantApiKeysUnified() {
                         </Alert>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Stripe Connect Tab Content */}
+              <TabsContent value="stripe" className="space-y-6">
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-violet-100 to-purple-100 rounded-xl">
+                          <CreditCard className="h-6 w-6 text-violet-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Stripe Connect</CardTitle>
+                          <CardDescription>
+                            Collega il tuo account Stripe per ricevere pagamenti dai tuoi clienti
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {stripeConnectLoading ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
+                      ) : stripeConnectStatus?.connected ? (
+                        <Badge className="bg-green-100 text-green-700 border-green-300">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Connesso
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-gray-100 text-gray-600 border-gray-300">
+                          <XCircle className="h-3 w-3 mr-1" />
+                          Non connesso
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {stripeConnectLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+                      </div>
+                    ) : stripeConnectStatus?.connected ? (
+                      <>
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                            <span className="font-semibold text-green-800">Account Stripe Collegato</span>
+                          </div>
+                          <div className="text-sm text-green-700">
+                            <span className="font-medium">Account ID:</span>{" "}
+                            <code className="bg-green-100 px-2 py-0.5 rounded">
+                              {stripeConnectStatus.stripeAccountId 
+                                ? `${stripeConnectStatus.stripeAccountId.slice(0, 8)}...${stripeConnectStatus.stripeAccountId.slice(-4)}`
+                                : "acct_***"}
+                            </code>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                          <Button
+                            variant="outline"
+                            className="border-violet-300 text-violet-700 hover:bg-violet-50"
+                            onClick={() => window.open("https://dashboard.stripe.com", "_blank")}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Vai a Stripe Dashboard
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="border-red-300 text-red-700 hover:bg-red-50"
+                            onClick={() => setShowStripeDisconnectConfirm(true)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Scollega
+                          </Button>
+                        </div>
+
+                        {showStripeDisconnectConfirm && (
+                          <Alert className="bg-red-50 border-red-200">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertDescription className="text-red-800">
+                              <div className="space-y-3">
+                                <p><strong>Sei sicuro di voler scollegare il tuo account Stripe?</strong></p>
+                                <p className="text-sm">Non potrai più ricevere pagamenti finché non ricollegherai un account.</p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      disconnectStripeMutation.mutate();
+                                      setShowStripeDisconnectConfirm(false);
+                                    }}
+                                    disabled={disconnectStripeMutation.isPending}
+                                  >
+                                    {disconnectStripeMutation.isPending ? (
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : null}
+                                    Conferma Disconnessione
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setShowStripeDisconnectConfirm(false)}
+                                  >
+                                    Annulla
+                                  </Button>
+                                </div>
+                              </div>
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <Alert className="bg-violet-50 border-violet-200">
+                          <CreditCard className="h-4 w-4 text-violet-600" />
+                          <AlertDescription className="text-violet-800">
+                            <strong>Perché collegare Stripe?</strong>
+                            <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                              <li>Ricevi pagamenti direttamente sul tuo conto</li>
+                              <li>Gestisci i pagamenti dei tuoi clienti in modo sicuro</li>
+                              <li>Accedi alla dashboard Stripe per monitorare le transazioni</li>
+                            </ul>
+                          </AlertDescription>
+                        </Alert>
+
+                        <Button
+                          className="bg-violet-600 hover:bg-violet-700 text-white"
+                          onClick={() => startStripeOnboardingMutation.mutate()}
+                          disabled={startStripeOnboardingMutation.isPending}
+                        >
+                          {startStripeOnboardingMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <CreditCard className="h-4 w-4 mr-2" />
+                          )}
+                          Collega Stripe
+                        </Button>
+                      </>
+                    )}
+
+                    {stripeConnectStatus?.revenueSharePercentage !== undefined && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Shield className="h-5 w-5 text-blue-600" />
+                          <span className="font-semibold text-blue-800">Revenue Share</span>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          La tua percentuale di revenue share è del{" "}
+                          <span className="font-bold">{stripeConnectStatus.revenueSharePercentage}%</span>.
+                          Questa percentuale viene trattenuta automaticamente sui pagamenti ricevuti.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="border-t border-violet-200 pt-6 mt-6">
+                      <h4 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-violet-600" />
+                        Come Funziona
+                      </h4>
+                      
+                      <div className="space-y-4 text-sm text-slate-600">
+                        <div className="bg-white rounded-lg p-4 border border-slate-200">
+                          <h5 className="font-medium text-slate-700 mb-2">Processo di Collegamento</h5>
+                          <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                            <li>Clicca su "Collega Stripe"</li>
+                            <li>Verrai reindirizzato alla pagina di onboarding Stripe</li>
+                            <li>Completa la verifica del tuo account</li>
+                            <li>Una volta completato, sarai reindirizzato qui</li>
+                          </ol>
+                        </div>
+
+                        <Alert className="bg-amber-50 border-amber-200">
+                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                          <AlertDescription className="text-amber-800">
+                            <strong>Nota:</strong> La verifica Stripe può richiedere alcuni minuti. Assicurati di avere a portata di mano i documenti richiesti.
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Sottoscrizioni Attive */}
+                <Card className="mt-6 border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <Users className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <CardTitle>Sottoscrizioni Clienti</CardTitle>
+                        <CardDescription>Clienti che hanno acquistato licenze L2 o L3</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {subscriptionsLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : !mySubscriptions?.length ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p>Nessuna sottoscrizione attiva</p>
+                        <p className="text-sm">Le sottoscrizioni appariranno qui quando i clienti acquistano</p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Livello</TableHead>
+                            <TableHead>Stato</TableHead>
+                            <TableHead>Data</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {mySubscriptions.map((sub: any) => (
+                            <TableRow key={sub.id}>
+                              <TableCell>{sub.clientName || "-"}</TableCell>
+                              <TableCell>{sub.clientEmail}</TableCell>
+                              <TableCell>
+                                <Badge variant={sub.level === "3" ? "default" : "secondary"}>
+                                  L{sub.level}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={sub.status === "active" ? "default" : "outline"}
+                                  className={sub.status === "active" ? "bg-emerald-100 text-emerald-700" : ""}
+                                >
+                                  {sub.status === "active" ? "Attivo" : "In attesa"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{new Date(sub.startDate).toLocaleDateString("it-IT")}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

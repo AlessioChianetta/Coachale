@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Settings,
   Key,
@@ -33,6 +34,9 @@ import {
   Plus,
   Trash2,
   AlertCircle,
+  CreditCard,
+  Sparkles,
+  Plug,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -132,9 +136,47 @@ interface ConsultantLicenseData {
   revenueSharePercentage: number;
 }
 
+interface StripeConfig {
+  configured: boolean;
+  config: {
+    id: string;
+    stripePublishableKey: string;
+    hasSecretKey: boolean;
+    hasWebhookSecret: boolean;
+    stripeConnectEnabled: boolean;
+    enabled: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+  } | null;
+}
+
+interface StripeStatsData {
+  connectedConsultants: number;
+  totalSubscriptions: number;
+  platformRevenue: number;
+  recentSubscriptions: Array<{
+    id: string;
+    clientEmail: string;
+    clientName: string | null;
+    level: "2" | "3";
+    status: string;
+    createdAt: string | null;
+    consultantId: string;
+  }>;
+  consultantsWithStripe: Array<{
+    id: string;
+    name: string;
+    email: string;
+    stripeConnected: boolean;
+    onboarded: boolean;
+    revenueSharePercentage: number;
+  }>;
+}
+
 export default function AdminSettings() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("integrazioni");
   const [showClientSecret, setShowClientSecret] = useState(false);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -186,6 +228,17 @@ export default function AdminSettings() {
     level3Total: 10,
     revenueSharePercentage: 50,
   });
+
+  const [stripeFormData, setStripeFormData] = useState({
+    stripeSecretKey: "",
+    stripePublishableKey: "",
+    stripeWebhookSecret: "",
+    stripeConnectEnabled: false,
+    enabled: false,
+  });
+  const [showStripeSecretKey, setShowStripeSecretKey] = useState(false);
+  const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
+  const [isSavingStripe, setIsSavingStripe] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -346,6 +399,32 @@ export default function AdminSettings() {
     },
   });
 
+  const { data: stripeConfigData, isLoading: isLoadingStripeConfig, refetch: refetchStripeConfig } = useQuery<StripeConfig>({
+    queryKey: ["/api/admin/stripe-config"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/stripe-config", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Errore nel caricamento configurazione Stripe");
+      }
+      if (response.status === 404) return { configured: false, config: null };
+      return response.json();
+    },
+  });
+
+  const { data: stripeStatsData, isLoading: isLoadingStripeStats } = useQuery<StripeStatsData>({
+    queryKey: ["/api/admin/stripe-stats"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/stripe-stats", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      return response.json();
+    },
+    enabled: activeTab === "pagamenti",
+  });
+
   const updateLicenseMutation = useMutation({
     mutationFn: async (data: { consultantId: string; level2Total: number; level3Total: number; revenueSharePercentage: number }) => {
       const response = await fetch(`/api/admin/consultant-licenses/${data.consultantId}`, {
@@ -437,6 +516,18 @@ export default function AdminSettings() {
       });
     }
   }, [instagramConfigData]);
+
+  useEffect(() => {
+    if (stripeConfigData?.config) {
+      setStripeFormData({
+        stripeSecretKey: "",
+        stripePublishableKey: stripeConfigData.config.stripePublishableKey || "",
+        stripeWebhookSecret: "",
+        stripeConnectEnabled: stripeConfigData.config.stripeConnectEnabled ?? false,
+        enabled: stripeConfigData.config.enabled ?? false,
+      });
+    }
+  }, [stripeConfigData]);
 
   const oauthConfig: GoogleOAuthConfig = oauthData || {
     configured: false,
@@ -897,6 +988,57 @@ export default function AdminSettings() {
     }
   };
 
+  const handleSaveStripeConfig = async () => {
+    if (!stripeConfigData?.config && (!stripeFormData.stripeSecretKey || !stripeFormData.stripePublishableKey)) {
+      toast({
+        title: "Campi obbligatori",
+        description: "Inserisci Stripe Secret Key e Publishable Key.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingStripe(true);
+    try {
+      const response = await fetch("/api/admin/stripe-config", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          stripeSecretKey: stripeFormData.stripeSecretKey || undefined,
+          stripePublishableKey: stripeFormData.stripePublishableKey,
+          stripeWebhookSecret: stripeFormData.stripeWebhookSecret || undefined,
+          stripeConnectEnabled: stripeFormData.stripeConnectEnabled,
+          enabled: stripeFormData.enabled,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore durante il salvataggio");
+      }
+
+      toast({
+        title: "Configurazione salvata",
+        description: "Stripe configurato con successo.",
+      });
+
+      setStripeFormData(prev => ({ ...prev, stripeSecretKey: "", stripeWebhookSecret: "" }));
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stripe-config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-log"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingStripe(false);
+    }
+  };
+
   const getActionLabel = (action: string) => {
     const labels: Record<string, string> = {
       update_google_oauth: "Aggiornamento Google OAuth",
@@ -906,6 +1048,8 @@ export default function AdminSettings() {
       activate_user: "Attivazione utente",
       deactivate_user: "Disattivazione utente",
       create_user: "Creazione utente",
+      update_superadmin_stripe_config: "Aggiornamento Stripe Config",
+      create_superadmin_stripe_config: "Creazione Stripe Config",
     };
     return labels[action] || action;
   };
@@ -941,107 +1085,132 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="w-5 h-5 text-blue-500" />
-                  Google OAuth Credentials
-                </CardTitle>
-                <CardDescription>
-                  Configura le credenziali per l'integrazione con Google Drive e Calendar
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                  <div className={`p-2 rounded-lg ${oauthConfig.configured ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-                    {oauthConfig.configured ? (
-                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {oauthConfig.configured ? "Configurazione Attiva" : "Non Configurato"}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {oauthConfig.configured
-                        ? `Client ID: ${oauthConfig.clientId?.substring(0, 30)}...`
-                        : "Inserisci le credenziali per abilitare l'integrazione Google"}
-                    </p>
-                  </div>
-                </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 mb-6">
+              <TabsTrigger value="integrazioni" className="flex items-center gap-2">
+                <Plug className="w-4 h-4" />
+                <span className="hidden sm:inline">Integrazioni</span>
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">AI</span>
+              </TabsTrigger>
+              <TabsTrigger value="pagamenti" className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4" />
+                <span className="hidden sm:inline">Pagamenti</span>
+              </TabsTrigger>
+              <TabsTrigger value="licenze" className="flex items-center gap-2">
+                <Key className="w-4 h-4" />
+                <span className="hidden sm:inline">Licenze</span>
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="flex items-center gap-2">
+                <History className="w-4 h-4" />
+                <span className="hidden sm:inline">Audit</span>
+              </TabsTrigger>
+            </TabsList>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="clientId">Google OAuth Client ID</Label>
-                    <Input
-                      id="clientId"
-                      placeholder="123456789-abcdef.apps.googleusercontent.com"
-                      value={clientId}
-                      onChange={(e) => setClientId(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="clientSecret">Google OAuth Client Secret</Label>
-                    <div className="relative">
-                      <Input
-                        id="clientSecret"
-                        type={showClientSecret ? "text" : "password"}
-                        placeholder="GOCSPX-..."
-                        value={clientSecret}
-                        onChange={(e) => setClientSecret(e.target.value)}
-                        className="pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full"
-                        onClick={() => setShowClientSecret(!showClientSecret)}
-                      >
-                        {showClientSecret ? (
-                          <EyeOff className="w-4 h-4" />
+            <TabsContent value="integrazioni">
+              <div className="grid lg:grid-cols-2 gap-6">
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Key className="w-5 h-5 text-blue-500" />
+                      Google OAuth Credentials
+                    </CardTitle>
+                    <CardDescription>
+                      Configura le credenziali per l'integrazione con Google Drive e Calendar
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                      <div className={`p-2 rounded-lg ${oauthConfig.configured ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                        {oauthConfig.configured ? (
+                          <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
                         ) : (
-                          <Eye className="w-4 h-4" />
+                          <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                         )}
-                      </Button>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {oauthConfig.configured ? "Configurazione Attiva" : "Non Configurato"}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {oauthConfig.configured
+                            ? `Client ID: ${oauthConfig.clientId?.substring(0, 30)}...`
+                            : "Inserisci le credenziali per abilitare l'integrazione Google"}
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <Button
-                    onClick={handleSaveOAuth}
-                    disabled={saveOAuthMutation.isPending}
-                    className="w-full bg-gradient-to-r from-blue-500 to-indigo-500"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {saveOAuthMutation.isPending ? "Salvataggio..." : "Salva Credenziali"}
-                  </Button>
-                </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="clientId">Google OAuth Client ID</Label>
+                        <Input
+                          id="clientId"
+                          placeholder="123456789-abcdef.apps.googleusercontent.com"
+                          value={clientId}
+                          onChange={(e) => setClientId(e.target.value)}
+                        />
+                      </div>
 
-                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-3">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    <strong>Importante:</strong> Aggiungi questi URI nella Google Cloud Console prima di salvare:
-                  </p>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Drive Consulenti:</span>
-                      <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{allRedirectUris.consultantDrive}</code>
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(allRedirectUris.consultantDrive, 'consultantDrive2')}>
-                        {copiedUri === 'consultantDrive2' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                      <div className="space-y-2">
+                        <Label htmlFor="clientSecret">Google OAuth Client Secret</Label>
+                        <div className="relative">
+                          <Input
+                            id="clientSecret"
+                            type={showClientSecret ? "text" : "password"}
+                            placeholder="GOCSPX-..."
+                            value={clientSecret}
+                            onChange={(e) => setClientSecret(e.target.value)}
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full"
+                            onClick={() => setShowClientSecret(!showClientSecret)}
+                          >
+                            {showClientSecret ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={handleSaveOAuth}
+                        disabled={saveOAuthMutation.isPending}
+                        className="w-full bg-gradient-to-r from-blue-500 to-indigo-500"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {saveOAuthMutation.isPending ? "Salvataggio..." : "Salva Credenziali"}
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Drive Clienti:</span>
-                      <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{allRedirectUris.clientDrive}</code>
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(allRedirectUris.clientDrive, 'clientDrive2')}>
-                        {copiedUri === 'clientDrive2' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Calendar Consulenti:</span>
+
+                    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-3">
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        <strong>Importante:</strong> Aggiungi questi URI nella Google Cloud Console prima di salvare:
+                      </p>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Drive Consulenti:</span>
+                          <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{allRedirectUris.consultantDrive}</code>
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(allRedirectUris.consultantDrive, 'consultantDrive2')}>
+                            {copiedUri === 'consultantDrive2' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Drive Clienti:</span>
+                          <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{allRedirectUris.clientDrive}</code>
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(allRedirectUris.clientDrive, 'clientDrive2')}>
+                            {copiedUri === 'clientDrive2' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Calendar Consulenti:</span>
                       <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{allRedirectUris.consultantCalendar}</code>
                       <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(allRedirectUris.consultantCalendar, 'consultantCalendar')}>
                         {copiedUri === 'consultantCalendar' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
@@ -1478,9 +1647,13 @@ export default function AdminSettings() {
                 </Collapsible>
               </CardContent>
             </Card>
+              </div>
+            </TabsContent>
 
-            {/* Vertex AI SuperAdmin Configuration */}
-            <Card className="border-0 shadow-lg lg:col-span-2">
+            <TabsContent value="ai">
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Vertex AI SuperAdmin Configuration */}
+                <Card className="border-0 shadow-lg lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Cloud className="w-5 h-5 text-indigo-500" />
@@ -2134,18 +2307,18 @@ export default function AdminSettings() {
               </CardContent>
             </Card>
 
-            {/* Consultant Access List */}
-            <Card className="border-0 shadow-lg lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-green-500" />
-                  Accesso Consulenti a Vertex AI
-                </CardTitle>
-                <CardDescription>
-                  Gestisci quali consulenti possono utilizzare Vertex AI del SuperAdmin
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                {/* Consultant Access List */}
+                <Card className="border-0 shadow-lg lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-green-500" />
+                      Accesso Consulenti a Vertex AI
+                    </CardTitle>
+                    <CardDescription>
+                      Gestisci quali consulenti possono utilizzare Vertex AI del SuperAdmin
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                 {isLoadingConsultantAccess ? (
                   <div className="p-8 text-center">
                     <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4" />
@@ -2188,19 +2361,370 @@ export default function AdminSettings() {
                 )}
               </CardContent>
             </Card>
+              </div>
+            </TabsContent>
 
-            {/* Gestione Licenze Consulenti */}
-            <Card className="border-0 shadow-lg lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="w-5 h-5 text-amber-500" />
-                  Gestione Licenze Consulenti
-                </CardTitle>
-                <CardDescription>
-                  Gestisci le licenze L2/L3 e la percentuale di revenue share per ogni consulente
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <TabsContent value="pagamenti">
+              <div className="space-y-6">
+                {/* Stripe Connect Overview Card */}
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                          <CreditCard className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div>
+                          <CardTitle>Panoramica Stripe Connect</CardTitle>
+                          <CardDescription>Revenue e transazioni della piattaforma</CardDescription>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingStripeStats ? (
+                      <div className="p-8 text-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-violet-500 mx-auto mb-4" />
+                        <p className="text-gray-500">Caricamento statistiche...</p>
+                      </div>
+                    ) : stripeStatsData ? (
+                      <div className="space-y-6">
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-lg bg-blue-500/10">
+                                <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Sottoscrizioni Attive</p>
+                                <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{stripeStatsData.totalSubscriptions}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-800">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-lg bg-green-500/10">
+                                <CreditCard className="w-5 h-5 text-green-600 dark:text-green-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-green-600 dark:text-green-400 font-medium">Revenue Piattaforma</p>
+                                <p className="text-2xl font-bold text-green-900 dark:text-green-100">€{stripeStatsData.platformRevenue.toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-4 rounded-xl bg-gradient-to-br from-violet-50 to-violet-100 dark:from-violet-900/20 dark:to-violet-800/20 border border-violet-200 dark:border-violet-800">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-lg bg-violet-500/10">
+                                <Users className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-violet-600 dark:text-violet-400 font-medium">Consulenti Connessi</p>
+                                <p className="text-2xl font-bold text-violet-900 dark:text-violet-100">{stripeStatsData.connectedConsultants}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Recent Subscriptions Table */}
+                        {stripeStatsData.recentSubscriptions.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Ultime Transazioni</h4>
+                            <div className="overflow-x-auto rounded-lg border">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Email Cliente</TableHead>
+                                    <TableHead>Livello</TableHead>
+                                    <TableHead>Stato</TableHead>
+                                    <TableHead>Data</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {stripeStatsData.recentSubscriptions.map((sub) => (
+                                    <TableRow key={sub.id}>
+                                      <TableCell className="font-medium">{sub.clientEmail}</TableCell>
+                                      <TableCell>
+                                        <Badge variant={sub.level === "3" ? "default" : "secondary"}>
+                                          L{sub.level}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge 
+                                          variant="outline" 
+                                          className={
+                                            sub.status === "active" 
+                                              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" 
+                                              : sub.status === "pending"
+                                              ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800"
+                                              : "bg-gray-50 text-gray-700 border-gray-200"
+                                          }
+                                        >
+                                          {sub.status}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-gray-500">
+                                        {sub.createdAt ? format(new Date(sub.createdAt), "dd MMM yyyy", { locale: it }) : "N/A"}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Consultants with Stripe Table */}
+                        {stripeStatsData.consultantsWithStripe.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Consulenti con Stripe Connect</h4>
+                            <div className="overflow-x-auto rounded-lg border">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Nome</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead className="text-center">Revenue Share %</TableHead>
+                                    <TableHead className="text-center">Stato</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {stripeStatsData.consultantsWithStripe.map((consultant) => (
+                                    <TableRow key={consultant.id}>
+                                      <TableCell className="font-medium">{consultant.name}</TableCell>
+                                      <TableCell className="text-gray-500">{consultant.email}</TableCell>
+                                      <TableCell className="text-center">
+                                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
+                                          {consultant.revenueSharePercentage}%
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-center">
+                                        {consultant.onboarded ? (
+                                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                            <CheckCircle className="w-3 h-3 mr-1" />
+                                            Attivo
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="secondary">
+                                            <AlertCircle className="w-3 h-3 mr-1" />
+                                            In attesa
+                                          </Badge>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        )}
+
+                        {stripeStatsData.recentSubscriptions.length === 0 && stripeStatsData.consultantsWithStripe.length === 0 && (
+                          <div className="p-8 text-center">
+                            <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Nessuna transazione</h3>
+                            <p className="text-gray-500">Non ci sono ancora transazioni o consulenti connessi a Stripe.</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center">
+                        <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Dati non disponibili</h3>
+                        <p className="text-gray-500">Impossibile caricare le statistiche Stripe.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Stripe Configuration Card */}
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-green-500" />
+                      Stripe Connect Configuration
+                    </CardTitle>
+                    <CardDescription>
+                      Configura Stripe per i pagamenti della piattaforma e Stripe Connect per i consulenti
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                      <div className={`p-2 rounded-lg ${stripeConfigData?.configured ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                        {stripeConfigData?.configured ? (
+                          <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {stripeConfigData?.configured ? "Configurato" : "Non Configurato"}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {stripeConfigData?.configured
+                            ? `Publishable Key: ${stripeConfigData.config?.stripePublishableKey?.substring(0, 20)}...`
+                            : "Inserisci le credenziali Stripe per abilitare i pagamenti"}
+                        </p>
+                      </div>
+                      {stripeConfigData?.configured && (
+                        <Badge variant={stripeFormData.enabled ? "default" : "secondary"}>
+                          {stripeFormData.enabled ? "Abilitato" : "Disabilitato"}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="stripe-secret-key">Stripe Secret Key *</Label>
+                        <div className="relative">
+                          <Input
+                            id="stripe-secret-key"
+                            type={showStripeSecretKey ? "text" : "password"}
+                            placeholder="sk_live_..."
+                            value={stripeFormData.stripeSecretKey}
+                            onChange={(e) => setStripeFormData(prev => ({ ...prev, stripeSecretKey: e.target.value }))}
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full"
+                            onClick={() => setShowStripeSecretKey(!showStripeSecretKey)}
+                          >
+                            {showStripeSecretKey ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                        {stripeConfigData?.config?.hasSecretKey && (
+                          <p className="text-xs text-green-600">Secret Key già configurata (lascia vuoto per mantenere)</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="stripe-publishable-key">Stripe Publishable Key *</Label>
+                        <Input
+                          id="stripe-publishable-key"
+                          placeholder="pk_live_..."
+                          value={stripeFormData.stripePublishableKey}
+                          onChange={(e) => setStripeFormData(prev => ({ ...prev, stripePublishableKey: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="stripe-webhook-secret">Stripe Webhook Secret</Label>
+                      <div className="relative">
+                        <Input
+                          id="stripe-webhook-secret"
+                          type={showStripeWebhookSecret ? "text" : "password"}
+                          placeholder="whsec_..."
+                          value={stripeFormData.stripeWebhookSecret}
+                          onChange={(e) => setStripeFormData(prev => ({ ...prev, stripeWebhookSecret: e.target.value }))}
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full"
+                          onClick={() => setShowStripeWebhookSecret(!showStripeWebhookSecret)}
+                        >
+                          {showStripeWebhookSecret ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                      {stripeConfigData?.config?.hasWebhookSecret && (
+                        <p className="text-xs text-green-600">Webhook Secret già configurato (lascia vuoto per mantenere)</p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                      <div>
+                        <Label className="text-base font-medium">Abilita Stripe Connect</Label>
+                        <p className="text-sm text-gray-500">
+                          Permetti ai consulenti di ricevere pagamenti diretti tramite Stripe Connect
+                        </p>
+                      </div>
+                      <Switch
+                        checked={stripeFormData.stripeConnectEnabled}
+                        onCheckedChange={(checked) => setStripeFormData(prev => ({ ...prev, stripeConnectEnabled: checked }))}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border">
+                      <div>
+                        <Label className="text-base font-medium">Abilitato</Label>
+                        <p className="text-sm text-gray-500">
+                          Attiva/Disattiva la configurazione Stripe per la piattaforma
+                        </p>
+                      </div>
+                      <Switch
+                        checked={stripeFormData.enabled}
+                        onCheckedChange={(checked) => setStripeFormData(prev => ({ ...prev, enabled: checked }))}
+                      />
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                      <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                        <strong>Webhook URL:</strong> Configura questo URL nella dashboard Stripe per ricevere gli eventi webhook.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 bg-white dark:bg-gray-900 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 text-sm break-all">
+                          {baseUrl}/api/stripe/webhook
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => copyToClipboard(`${baseUrl}/api/stripe/webhook`, 'stripeWebhook')}
+                          className="shrink-0"
+                        >
+                          {copiedUri === 'stripeWebhook' ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={handleSaveStripeConfig}
+                      disabled={isSavingStripe || (!stripeConfigData?.config && (!stripeFormData.stripeSecretKey || !stripeFormData.stripePublishableKey))}
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500"
+                    >
+                      {isSavingStripe ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvataggio...</>
+                      ) : (
+                        <><Save className="w-4 h-4 mr-2" /> Salva Configurazione</>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="licenze">
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Gestione Licenze Consulenti */}
+                <Card className="border-0 shadow-lg lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Key className="w-5 h-5 text-amber-500" />
+                      Gestione Licenze Consulenti
+                    </CardTitle>
+                    <CardDescription>
+                      Gestisci le licenze L2/L3 e la percentuale di revenue share per ogni consulente
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                 {isLoadingConsultantLicenses ? (
                   <div className="p-8 text-center">
                     <div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full mx-auto mb-4" />
@@ -2339,18 +2863,22 @@ export default function AdminSettings() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+              </div>
+            </TabsContent>
 
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="w-5 h-5 text-purple-500" />
-                  Audit Log
-                </CardTitle>
-                <CardDescription>
-                  Registro delle modifiche recenti al sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <TabsContent value="audit">
+              <div className="grid lg:grid-cols-2 gap-6">
+                <Card className="border-0 shadow-lg lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <History className="w-5 h-5 text-purple-500" />
+                      Audit Log
+                    </CardTitle>
+                    <CardDescription>
+                      Registro delle modifiche recenti al sistema
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                 {auditLoading ? (
                   <div className="p-8 text-center">
                     <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4" />
@@ -2390,9 +2918,11 @@ export default function AdminSettings() {
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

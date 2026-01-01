@@ -112,6 +112,7 @@ import instagramConfigRouter from "./routes/instagram/instagram-config-router";
 import instagramOAuthRouter from "./routes/instagram/instagram-oauth-router";
 import agentInstagramRouter from "./routes/instagram/agent-instagram-router";
 import leadImportRouter from "./routes/lead-import-router";
+import stripeConnectRouter from "./routes/stripe-connect-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -9640,6 +9641,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Super Admin routes
   app.use("/api", adminRouter);
+
+  // Stripe Connect routes (for consultant onboarding to Stripe Connect)
+  app.use("/api", stripeConnectRouter);
 
   // Consultant Onboarding routes
   app.use("/api/consultant/onboarding", onboardingRouter);
