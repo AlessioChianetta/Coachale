@@ -11383,6 +11383,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           availabilityMaxDaysAhead: config.availabilityMaxDaysAhead,
           availabilityMinHoursNotice: config.availabilityMinHoursNotice,
           availabilityWorkingHours: config.availabilityWorkingHours,
+          // Dipendente AI Level Configuration
+          level: config.level,
+          publicSlug: config.publicSlug,
+          dailyMessageLimit: config.dailyMessageLimit,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         },
