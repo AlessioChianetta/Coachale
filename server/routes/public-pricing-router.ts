@@ -55,6 +55,11 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
         )
       );
 
+    const level1Or2Agents = agents.filter(a => a.level === "1" || a.level === "2");
+    if (level1Or2Agents.length === 0) {
+      return res.status(404).json({ error: "Nessun agente disponibile" });
+    }
+
     const config = consultant.pricingPageConfig || {};
     const pricing = {
       level2MonthlyPrice: config.level2PriceCents ? Math.floor(config.level2PriceCents / 100) : 29,

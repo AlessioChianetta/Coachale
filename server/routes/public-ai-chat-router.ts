@@ -49,16 +49,16 @@ router.get("/:slug/info", async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
 
-    if (!slug) {
+    if (!slug || !slug.trim()) {
       return res.status(400).json({ error: "Slug is required" });
     }
 
     const [agent] = await db.select()
       .from(consultantWhatsappConfig)
-      .where(eq(consultantWhatsappConfig.publicSlug, slug))
+      .where(eq(consultantWhatsappConfig.publicSlug, slug.trim()))
       .limit(1);
 
-    if (!agent) {
+    if (!agent || agent.level !== "1") {
       return res.status(404).json({ error: "Agente non trovato" });
     }
 
@@ -66,6 +66,7 @@ router.get("/:slug/info", async (req: Request, res: Response) => {
       firstName: users.firstName,
       lastName: users.lastName,
       pricingPageSlug: users.pricingPageSlug,
+      username: users.username,
     })
       .from(users)
       .where(eq(users.id, agent.consultantId))
@@ -75,10 +76,12 @@ router.get("/:slug/info", async (req: Request, res: Response) => {
       ? `${consultant.firstName} ${consultant.lastName}`.trim() 
       : agent.consultantDisplayName || "Consulente";
 
+    const consultantSlugValue = consultant?.pricingPageSlug || consultant?.username || null;
+
     res.json({
       agentName: agent.agentName || "Assistente AI",
       consultantName,
-      consultantSlug: consultant?.pricingPageSlug || null,
+      consultantSlug: consultantSlugValue,
       dailyMessageLimit: agent.dailyMessageLimit || 15,
       businessName: agent.businessName || null,
       businessDescription: agent.businessDescription || null,
@@ -94,7 +97,7 @@ router.post("/:slug/chat", async (req: Request, res: Response) => {
     const { slug } = req.params;
     const { message, conversationHistory = [] } = req.body;
 
-    if (!slug) {
+    if (!slug || !slug.trim()) {
       return res.status(400).json({ error: "Slug is required" });
     }
 
@@ -104,15 +107,16 @@ router.post("/:slug/chat", async (req: Request, res: Response) => {
 
     const [agent] = await db.select()
       .from(consultantWhatsappConfig)
-      .where(eq(consultantWhatsappConfig.publicSlug, slug))
+      .where(eq(consultantWhatsappConfig.publicSlug, slug.trim()))
       .limit(1);
 
-    if (!agent) {
+    if (!agent || agent.level !== "1") {
       return res.status(404).json({ error: "Agente non trovato" });
     }
 
     const [consultant] = await db.select({
       pricingPageSlug: users.pricingPageSlug,
+      username: users.username,
     })
       .from(users)
       .where(eq(users.id, agent.consultantId))
@@ -122,11 +126,12 @@ router.post("/:slug/chat", async (req: Request, res: Response) => {
     const today = new Date().toISOString().split('T')[0];
     const dailyLimit = agent.dailyMessageLimit || 15;
 
-    const currentCount = await getRateLimitCount(clientIP, slug, today);
+    const currentCount = await getRateLimitCount(clientIP, slug.trim(), today);
 
     if (currentCount >= dailyLimit) {
-      const upgradeUrl = consultant?.pricingPageSlug 
-        ? `/c/${consultant.pricingPageSlug}/pricing` 
+      const consultantSlugValue = consultant?.pricingPageSlug || consultant?.username || null;
+      const upgradeUrl = consultantSlugValue 
+        ? `/c/${consultantSlugValue}/pricing` 
         : null;
       
       return res.status(429).json({
@@ -136,7 +141,7 @@ router.post("/:slug/chat", async (req: Request, res: Response) => {
       });
     }
 
-    const newCount = await incrementRateLimit(clientIP, slug, today);
+    const newCount = await incrementRateLimit(clientIP, slug.trim(), today);
     const remainingMessages = dailyLimit - newCount;
 
     let aiResponse = "";

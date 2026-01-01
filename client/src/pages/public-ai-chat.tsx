@@ -347,7 +347,7 @@ export default function PublicAIChat() {
             <span className="text-orange-800">
               Hai raggiunto il limite giornaliero di messaggi gratuiti.
             </span>
-            {agentInfo.consultantSlug && (
+            {agentInfo.consultantSlug ? (
               <Button
                 variant="link"
                 className="text-orange-700 p-0 h-auto font-medium"
@@ -355,6 +355,10 @@ export default function PublicAIChat() {
               >
                 Passa al piano Premium <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
+            ) : (
+              <span className="text-orange-700 text-sm font-medium">
+                Contatta il consulente per l'upgrade
+              </span>
             )}
           </AlertDescription>
         </Alert>
