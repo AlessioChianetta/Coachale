@@ -62,6 +62,7 @@ const ConsultantLeadHub = lazy(() => import("@/pages/consultant-lead-hub"));
 const ConsultantApiSettings = lazy(() => import("@/pages/consultant-api-settings"));
 const ConsultantCalendarSettings = lazy(() => import("@/pages/consultant-calendar-settings"));
 const ConsultantProfileSettings = lazy(() => import("@/pages/consultant-profile-settings"));
+const ConsultantPricingSettings = lazy(() => import("@/pages/consultant-pricing-settings"));
 const ConsultantEmailJourney = lazy(() => import("@/pages/consultant-email-journey"));
 const ConsultantEchoDashboard = lazy(() => import("@/pages/consultant-echo-dashboard"));
 const ConsultantKnowledgeDocuments = lazy(() => import("@/pages/consultant-knowledge-documents"));
@@ -526,14 +527,7 @@ function Router() {
 
           <Route path="/consultant/settings">
             <AuthGuard requiredRole="consultant">
-              <div className="min-h-screen bg-background">
-                <div className="flex items-center justify-center h-screen">
-                  <div className="text-center">
-                    <h1 className="text-2xl font-bold mb-4">Impostazioni</h1>
-                    <p className="text-muted-foreground">Pagina in costruzione</p>
-                  </div>
-                </div>
-              </div>
+              <ConsultantPricingSettings />
             </AuthGuard>
           </Route>
 
