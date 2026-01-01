@@ -783,6 +783,7 @@ export type InsertSuperadminStripeConfig = typeof superadminStripeConfig.$inferI
 export const consultantLicenses = pgTable("consultant_licenses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  level1Used: integer("level1_used").default(0).notNull(), // Track how many Bronze (Level 1) users are registered
   level2Total: integer("level2_total").default(20).notNull(),
   level2Used: integer("level2_used").default(0).notNull(),
   level3Total: integer("level3_total").default(10).notNull(),
@@ -845,6 +846,28 @@ export const clientLevelSubscriptions = pgTable("client_level_subscriptions", {
 
 export type ClientLevelSubscription = typeof clientLevelSubscriptions.$inferSelect;
 export type InsertClientLevelSubscription = typeof clientLevelSubscriptions.$inferInsert;
+
+// Bronze Users (Level 1) - Free tier users managed by consultants
+export const bronzeUsers = pgTable("bronze_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  phone: text("phone"),
+  dailyMessagesUsed: integer("daily_messages_used").default(0).notNull(),
+  dailyMessageLimit: integer("daily_message_limit").default(15).notNull(), // Customizable limit per user
+  lastMessageResetAt: timestamp("last_message_reset_at").default(sql`now()`),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  lastLoginAt: timestamp("last_login_at"),
+}, (table) => ({
+  uniqueConsultantEmail: unique().on(table.consultantId, table.email),
+}));
+
+export type BronzeUser = typeof bronzeUsers.$inferSelect;
+export type InsertBronzeUser = typeof bronzeUsers.$inferInsert;
 
 // Monthly Invoices - Track monthly billing and revenue share for each consultant
 export const monthlyInvoices = pgTable("monthly_invoices", {
