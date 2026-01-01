@@ -77,7 +77,9 @@ import {
   CreditCard,
   AlertTriangle,
   Receipt,
-  Briefcase
+  Briefcase,
+  Crown,
+  Shield
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -229,6 +231,12 @@ export default function ConsultantWhatsAppPage() {
     conversationsToday: number;
   } | null>(null);
 
+  // Stati per gestione utenti (sezione Licenze)
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [bronzeCurrentPage, setBronzeCurrentPage] = useState(1);
+  const [userManagementTab, setUserManagementTab] = useState<"bronze" | "silver" | "gold">("bronze");
+  const [userToDelete, setUserToDelete] = useState<{ id: string; email: string } | null>(null);
+
   // Query per caricare i documenti dalla knowledge base
   const knowledgeDocsQuery = useQuery({
     queryKey: ["/api/consultant/onboarding/knowledge-documents"],
@@ -326,6 +334,66 @@ export default function ConsultantWhatsAppPage() {
   });
 
   const subscriptions = subscriptionsQuery.data?.data || [];
+
+  // Queries per gestione utenti (Bronze/Silver/Gold)
+  const bronzeUsersQuery = useQuery({
+    queryKey: ["/api/consultant/pricing/users/bronze", userSearchQuery, bronzeCurrentPage],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: bronzeCurrentPage.toString(), limit: "10" });
+      if (userSearchQuery) params.set("search", userSearchQuery);
+      const res = await fetch(`/api/consultant/pricing/users/bronze?${params}`, { headers: getAuthHeaders() });
+      return res.json();
+    }
+  });
+
+  const silverUsersQuery = useQuery({
+    queryKey: ["/api/consultant/pricing/users/silver"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/pricing/users/silver", { headers: getAuthHeaders() });
+      return res.json();
+    }
+  });
+
+  const goldUsersQuery = useQuery({
+    queryKey: ["/api/consultant/pricing/users/gold"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/pricing/users/gold", { headers: getAuthHeaders() });
+      return res.json();
+    }
+  });
+
+  const userStatsQuery = useQuery({
+    queryKey: ["/api/consultant/pricing/users/stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/pricing/users/stats", { headers: getAuthHeaders() });
+      return res.json();
+    }
+  });
+
+  // Mutation per eliminazione utente Bronze
+  const deleteBronzeUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`/api/consultant/pricing/users/bronze/${userId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to delete user");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/pricing/users/bronze"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/pricing/users/stats"] });
+      setUserToDelete(null);
+      toast({ title: "Utente eliminato", description: "L'utente Bronze è stato eliminato con successo." });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
 
   // Query per ottenere i dati del consulente (per pricing page)
   const consultantDataQuery = useQuery({
@@ -2259,6 +2327,350 @@ export default function ConsultantWhatsAppPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Gestione Utenti Registrati */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-violet-600" />
+                      Utenti Registrati
+                    </CardTitle>
+                    <CardDescription>
+                      Gestisci gli utenti registrati suddivisi per tier
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="bg-amber-100 text-amber-700 border-amber-300">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Bronze ({userStatsQuery.data?.bronze || 0})
+                    </Badge>
+                    <Badge className="bg-slate-100 text-slate-700 border-slate-300">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Argento ({userStatsQuery.data?.silver || 0})
+                    </Badge>
+                    <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">
+                      <Crown className="h-3 w-3 mr-1" />
+                      Oro ({userStatsQuery.data?.gold || 0})
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={userManagementTab} onValueChange={(v) => setUserManagementTab(v as "bronze" | "silver" | "gold")}>
+                  <TabsList className="grid w-full grid-cols-3 mb-4">
+                    <TabsTrigger value="bronze" className="data-[state=active]:bg-amber-100 data-[state=active]:text-amber-800">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Bronze (Gratuiti)
+                    </TabsTrigger>
+                    <TabsTrigger value="silver" className="data-[state=active]:bg-slate-200 data-[state=active]:text-slate-800">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Argento (Abbonati)
+                    </TabsTrigger>
+                    <TabsTrigger value="gold" className="data-[state=active]:bg-yellow-100 data-[state=active]:text-yellow-800">
+                      <Crown className="h-4 w-4 mr-2" />
+                      Oro (Premium)
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Bronze Users Tab */}
+                  <TabsContent value="bronze" className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="Cerca per email o nome..."
+                        value={userSearchQuery}
+                        onChange={(e) => {
+                          setUserSearchQuery(e.target.value);
+                          setBronzeCurrentPage(1);
+                        }}
+                        className="max-w-sm"
+                      />
+                    </div>
+                    
+                    {bronzeUsersQuery.isLoading ? (
+                      <div className="flex items-center justify-center p-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                      </div>
+                    ) : !bronzeUsersQuery.data?.users?.length ? (
+                      <div className="text-center py-8">
+                        <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-sm font-medium text-gray-500">Nessun utente Bronze trovato</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Desktop Table */}
+                        <div className="hidden md:block rounded-lg border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Stato</TableHead>
+                                <TableHead>Ultima attività</TableHead>
+                                <TableHead className="text-right">Azioni</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {bronzeUsersQuery.data.users.map((user: any) => (
+                                <TableRow key={user.id}>
+                                  <TableCell className="font-medium">{user.email}</TableCell>
+                                  <TableCell>{user.firstName} {user.lastName}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={user.isActive ? "default" : "outline"} className={user.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                                      {user.isActive ? "Attivo" : "Inattivo"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-gray-500">
+                                    {user.lastLoginAt ? format(new Date(user.lastLoginAt), "d MMM yyyy HH:mm", { locale: it }) : "Mai"}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                      onClick={() => setUserToDelete({ id: user.id, email: user.email })}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        
+                        {/* Mobile Cards */}
+                        <div className="md:hidden space-y-3">
+                          {bronzeUsersQuery.data.users.map((user: any) => (
+                            <div key={user.id} className="p-4 border rounded-lg space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-sm">{user.email}</span>
+                                <Badge variant={user.isActive ? "default" : "outline"} className={user.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                                  {user.isActive ? "Attivo" : "Inattivo"}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{user.firstName} {user.lastName}</p>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">
+                                  {user.lastLoginAt ? format(new Date(user.lastLoginAt), "d MMM yyyy", { locale: it }) : "Mai"}
+                                </span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-red-500 hover:text-red-700"
+                                  onClick={() => setUserToDelete({ id: user.id, email: user.email })}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Pagination */}
+                        {bronzeUsersQuery.data.totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setBronzeCurrentPage(p => Math.max(1, p - 1))}
+                              disabled={bronzeCurrentPage === 1}
+                            >
+                              Precedente
+                            </Button>
+                            <span className="text-sm text-gray-500">
+                              Pagina {bronzeCurrentPage} di {bronzeUsersQuery.data.totalPages}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setBronzeCurrentPage(p => Math.min(bronzeUsersQuery.data.totalPages, p + 1))}
+                              disabled={bronzeCurrentPage >= bronzeUsersQuery.data.totalPages}
+                            >
+                              Successiva
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </TabsContent>
+
+                  {/* Silver Users Tab */}
+                  <TabsContent value="silver" className="space-y-4">
+                    {silverUsersQuery.isLoading ? (
+                      <div className="flex items-center justify-center p-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+                      </div>
+                    ) : !silverUsersQuery.data?.users?.length ? (
+                      <div className="text-center py-8">
+                        <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-sm font-medium text-gray-500">Nessun utente Argento trovato</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Desktop Table */}
+                        <div className="hidden md:block rounded-lg border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Stato</TableHead>
+                                <TableHead>Data Inizio</TableHead>
+                                <TableHead className="text-right">Azioni</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {silverUsersQuery.data.users.map((user: any) => (
+                                <TableRow key={user.id}>
+                                  <TableCell className="font-medium">{user.clientEmail}</TableCell>
+                                  <TableCell>{user.clientName || "—"}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : user.status === "canceled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}>
+                                      {user.status === "active" ? "Attivo" : user.status === "canceled" ? "Annullato" : user.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-gray-500">
+                                    {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button variant="ghost" size="sm">
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        
+                        {/* Mobile Cards */}
+                        <div className="md:hidden space-y-3">
+                          {silverUsersQuery.data.users.map((user: any) => (
+                            <div key={user.id} className="p-4 border rounded-lg space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-sm">{user.clientEmail}</span>
+                                <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                                  {user.status === "active" ? "Attivo" : "Annullato"}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{user.clientName || "—"}</p>
+                              <span className="text-xs text-gray-500">
+                                {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </TabsContent>
+
+                  {/* Gold Users Tab */}
+                  <TabsContent value="gold" className="space-y-4">
+                    {goldUsersQuery.isLoading ? (
+                      <div className="flex items-center justify-center p-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-yellow-500" />
+                      </div>
+                    ) : !goldUsersQuery.data?.users?.length ? (
+                      <div className="text-center py-8">
+                        <Crown className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-sm font-medium text-gray-500">Nessun utente Oro trovato</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Desktop Table */}
+                        <div className="hidden md:block rounded-lg border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Stato</TableHead>
+                                <TableHead>Data Inizio</TableHead>
+                                <TableHead className="text-right">Azioni</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {goldUsersQuery.data.users.map((user: any) => (
+                                <TableRow key={user.id}>
+                                  <TableCell className="font-medium">{user.clientEmail}</TableCell>
+                                  <TableCell>{user.clientName || "—"}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : user.status === "canceled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}>
+                                      {user.status === "active" ? "Attivo" : user.status === "canceled" ? "Annullato" : user.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-gray-500">
+                                    {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button variant="ghost" size="sm">
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        
+                        {/* Mobile Cards */}
+                        <div className="md:hidden space-y-3">
+                          {goldUsersQuery.data.users.map((user: any) => (
+                            <div key={user.id} className="p-4 border rounded-lg space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-sm">{user.clientEmail}</span>
+                                <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                                  {user.status === "active" ? "Attivo" : "Annullato"}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{user.clientName || "—"}</p>
+                              <span className="text-xs text-gray-500">
+                                {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+
+            {/* AlertDialog per conferma eliminazione utente Bronze */}
+            <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Sei sicuro di voler eliminare l'utente <strong>{userToDelete?.email}</strong>?
+                    Questa azione non può essere annullata.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-600 hover:bg-red-700"
+                    onClick={() => userToDelete && deleteBronzeUserMutation.mutate(userToDelete.id)}
+                    disabled={deleteBronzeUserMutation.isPending}
+                  >
+                    {deleteBronzeUserMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Eliminazione...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Elimina
+                      </>
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* Active Subscriptions List */}
             <Card className="border-2 border-violet-200 dark:border-violet-800">
