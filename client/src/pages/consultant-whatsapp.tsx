@@ -75,7 +75,9 @@ import {
   Settings,
   ShoppingCart,
   CreditCard,
-  AlertTriangle
+  AlertTriangle,
+  Receipt,
+  Briefcase
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -272,7 +274,44 @@ export default function ConsultantWhatsAppPage() {
     level2Used: 0,
     level3Total: 10,
     level3Used: 0,
+    employeeTotal: 0,
+    employeeUsed: 0,
   };
+
+  // Query per caricare lo storico acquisti licenze
+  const purchasesQuery = useQuery({
+    queryKey: ["/api/consultant/licenses/purchases"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/licenses/purchases", { headers: getAuthHeaders() });
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
+  // Mutation per checkout acquisto licenze
+  const buyLicensesMutation = useMutation({
+    mutationFn: async (quantity: number) => {
+      const response = await fetch("/api/consultant/licenses/checkout", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ quantity }),
+      });
+      if (!response.ok) throw new Error("Checkout failed");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile avviare il checkout",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Query per caricare le sottoscrizioni dei clienti
   const subscriptionsQuery = useQuery({
@@ -2148,44 +2187,75 @@ export default function ConsultantWhatsAppPage() {
                 </CardContent>
               </Card>
 
-              {/* Buy More Licenses Card */}
+              {/* Buy Employee Licenses Card */}
               <Card className="border-2 border-violet-200 dark:border-violet-800">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5 text-violet-600" />
-                    Acquista Licenze
+                    <Briefcase className="h-5 w-5 text-violet-600" />
+                    Licenze Dipendenti
                   </CardTitle>
                   <CardDescription>
-                    Espandi il tuo piano con licenze aggiuntive
+                    Acquista licenze per il tuo team
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="bg-violet-50 dark:bg-violet-950/20 rounded-lg p-4 space-y-3">
-                    <p className="text-sm text-violet-800 dark:text-violet-200">
-                      Hai bisogno di più licenze per i tuoi clienti? 
-                      Acquista pacchetti aggiuntivi per espandere il tuo business.
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-amber-200">
-                        <p className="text-sm font-semibold text-amber-700">+10 Bronze</p>
-                        <p className="text-xs text-gray-500">Licenze Level 2</p>
+                  {/* Current Employee Licenses */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-violet-100 text-violet-700">Dipendenti</Badge>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Licenze Team
+                        </span>
                       </div>
-                      <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-slate-200">
-                        <p className="text-sm font-semibold text-slate-700">+5 Silver</p>
-                        <p className="text-xs text-gray-500">Licenze Level 3</p>
-                      </div>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {licenses.employeeUsed}/{licenses.employeeTotal}
+                      </span>
                     </div>
+                    <Progress 
+                      value={licenses.employeeTotal > 0 ? (licenses.employeeUsed / licenses.employeeTotal) * 100 : 0} 
+                      className={`h-3 ${
+                        licenses.employeeTotal > 0 && licenses.employeeUsed / licenses.employeeTotal >= 0.9 
+                          ? "[&>div]:bg-red-500" 
+                          : "[&>div]:bg-violet-500"
+                      }`}
+                    />
+                    {licenses.employeeTotal === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Non hai ancora acquistato licenze dipendenti
+                      </p>
+                    )}
                   </div>
-                  <Button 
-                    className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
-                    disabled
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Acquista altre licenze
-                    <Badge variant="outline" className="ml-2 text-xs bg-white/20 border-white/30">
-                      Presto disponibile
-                    </Badge>
-                  </Button>
+
+                  <div className="pt-4 border-t">
+                    <div className="bg-violet-50 dark:bg-violet-950/20 rounded-lg p-4 mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-violet-700">Pacchetto 10 Licenze</span>
+                        <span className="text-2xl font-bold text-violet-700">€200</span>
+                      </div>
+                      <p className="text-sm text-violet-600">
+                        €20 per licenza dipendente/mese
+                      </p>
+                    </div>
+                    
+                    <Button 
+                      className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                      disabled={buyLicensesMutation.isPending}
+                      onClick={() => buyLicensesMutation.mutate(10)}
+                    >
+                      {buyLicensesMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Caricamento...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Acquista 10 Licenze
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -2272,6 +2342,79 @@ export default function ConsultantWhatsAppPage() {
                               <Button variant="ghost" size="sm">
                                 <ExternalLink className="h-4 w-4" />
                               </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Employee License Purchases History */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-violet-600" />
+                  Storico Acquisti Licenze
+                </CardTitle>
+                <CardDescription>
+                  I tuoi acquisti di licenze dipendenti
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {purchasesQuery.isLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                  </div>
+                ) : !purchasesQuery.data?.length ? (
+                  <div className="text-center py-8">
+                    <Receipt className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                      Nessun acquisto effettuato
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      Gli acquisti di licenze dipendenti appariranno qui
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Licenze</TableHead>
+                          <TableHead>Importo</TableHead>
+                          <TableHead>Stato</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {purchasesQuery.data.map((purchase: any) => (
+                          <TableRow key={purchase.id}>
+                            <TableCell>
+                              {format(new Date(purchase.createdAt), "d MMM yyyy", { locale: it })}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{purchase.quantity} licenze</Badge>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              €{(purchase.amountCents / 100).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                className={
+                                  purchase.status === "completed" 
+                                    ? "bg-green-100 text-green-700" 
+                                    : purchase.status === "pending"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }
+                              >
+                                {purchase.status === "completed" ? "Completato" 
+                                  : purchase.status === "pending" ? "In attesa"
+                                  : "Fallito"}
+                              </Badge>
                             </TableCell>
                           </TableRow>
                         ))}

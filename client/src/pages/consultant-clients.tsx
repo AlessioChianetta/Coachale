@@ -31,7 +31,8 @@ import {
   Trash2,
   Key,
   CheckSquare,
-  Loader2
+  Loader2,
+  Briefcase
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
@@ -54,7 +55,8 @@ export default function ConsultantClientsPage() {
     firstName: '',
     lastName: '',
     email: '',
-    password: ''
+    password: '',
+    isEmployee: false
   });
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -92,7 +94,7 @@ export default function ConsultantClientsPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setIsNewClientDialogOpen(false);
-      setNewClientForm({ firstName: '', lastName: '', email: '', password: '' });
+      setNewClientForm({ firstName: '', lastName: '', email: '', password: '', isEmployee: false });
     },
     onError: (error: Error) => {
       toast({
@@ -659,13 +661,19 @@ export default function ConsultantClientsPage() {
         <DialogContent className="max-w-md bg-white/95 backdrop-blur-sm border-slate-200">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
-              <div className="p-2 bg-emerald-100 rounded-lg">
-                <UserPlus className="h-5 w-5 text-emerald-600" />
+              <div className={`p-2 rounded-lg ${newClientForm.isEmployee ? 'bg-violet-100' : 'bg-emerald-100'}`}>
+                {newClientForm.isEmployee ? (
+                  <Briefcase className="h-5 w-5 text-violet-600" />
+                ) : (
+                  <UserPlus className="h-5 w-5 text-emerald-600" />
+                )}
               </div>
-              Nuovo Cliente
+              {newClientForm.isEmployee ? 'Nuovo Dipendente' : 'Nuovo Cliente'}
             </DialogTitle>
             <DialogDescription className="text-slate-600">
-              Crea un nuovo account cliente associato al tuo profilo consulente
+              {newClientForm.isEmployee 
+                ? 'Aggiungi un collaboratore o dipendente al tuo team' 
+                : 'Crea un nuovo account cliente associato al tuo profilo consulente'}
             </DialogDescription>
           </DialogHeader>
           
@@ -722,6 +730,36 @@ export default function ConsultantClientsPage() {
                 className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Minimo 6 caratteri"
               />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-sm font-medium">
+                Tipo
+              </Label>
+              <div className="col-span-3 flex gap-4">
+                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${!newClientForm.isEmployee ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                  <input
+                    type="radio"
+                    name="userType"
+                    checked={!newClientForm.isEmployee}
+                    onChange={() => setNewClientForm(prev => ({...prev, isEmployee: false}))}
+                    className="sr-only"
+                  />
+                  <Users className="h-4 w-4 text-emerald-600" />
+                  <span className="text-sm font-medium">Cliente</span>
+                </label>
+                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${newClientForm.isEmployee ? 'border-violet-500 bg-violet-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                  <input
+                    type="radio"
+                    name="userType"
+                    checked={newClientForm.isEmployee}
+                    onChange={() => setNewClientForm(prev => ({...prev, isEmployee: true}))}
+                    className="sr-only"
+                  />
+                  <Briefcase className="h-4 w-4 text-violet-600" />
+                  <span className="text-sm font-medium">Dipendente</span>
+                </label>
+              </div>
             </div>
           </div>
           

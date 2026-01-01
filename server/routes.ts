@@ -2468,7 +2468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new client (consultant only)
   app.post("/api/clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { firstName, lastName, email, password } = req.body;
+      const { firstName, lastName, email, password, isEmployee = false } = req.body;
 
       // Validate required fields for email (always needed)
       if (!email) {
@@ -2563,6 +2563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
         role: "client",
         consultantId: req.user!.id,
+        isEmployee: isEmployee,
       });
 
       // Create default client profile for new user
@@ -9313,6 +9314,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
             level2Used: 0,
             level3Total: 10,
             level3Used: 0,
+            employeeTotal: 0,
+            employeeUsed: 0,
           })
           .returning();
         license = newLicense;
@@ -9325,6 +9328,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           level2Used: license.level2Used,
           level3Total: license.level3Total,
           level3Used: license.level3Used,
+          employeeTotal: license.employeeTotal || 0,
+          employeeUsed: license.employeeUsed || 0,
         },
       });
     } catch (error: any) {
