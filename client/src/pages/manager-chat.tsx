@@ -73,6 +73,7 @@ interface ManagerInfo {
   dailyMessagesUsed?: number;
   dailyMessageLimit?: number;
   remaining?: number;
+  consultantSlug?: string | null;
 }
 
 interface ManagerPreferences {
@@ -686,7 +687,12 @@ export default function ManagerChat() {
 
   const handleLogout = () => {
     localStorage.removeItem("manager_token");
-    setLocation(`/agent/${slug}/login`);
+    // Bronze users go to Bronze login page, Managers go to Manager login
+    if (managerInfo?.isBronze && managerInfo.consultantSlug) {
+      setLocation(`/c/${managerInfo.consultantSlug}/register`);
+    } else {
+      setLocation(`/agent/${slug}/login`);
+    }
   };
 
   useEffect(() => {
