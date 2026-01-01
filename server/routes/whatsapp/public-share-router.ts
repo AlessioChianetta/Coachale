@@ -152,6 +152,139 @@ async function validateVisitorSession(
 }
 
 /**
+ * Bronze User info attached to request for Level 1 agents
+ */
+interface BronzeUserInfo {
+  bronzeUserId: string;
+  consultantId: string;
+  email: string;
+  dailyMessagesUsed: number;
+  dailyMessageLimit: number;
+}
+
+/**
+ * Middleware to validate Bronze auth for Level 1 agents
+ * Extracts and verifies Bronze JWT token from Authorization header
+ */
+async function validateBronzeAuth(
+  req: Request & { share?: schema.WhatsappAgentShare; bronzeUser?: BronzeUserInfo },
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const share = req.share;
+    if (!share) {
+      return res.status(500).json({ error: 'Share non trovato in request context' });
+    }
+    
+    // Get agent config to check level
+    const [agentConfig] = await db
+      .select()
+      .from(schema.consultantWhatsappConfig)
+      .where(eq(schema.consultantWhatsappConfig.id, share.agentConfigId))
+      .limit(1);
+    
+    if (!agentConfig) {
+      return res.status(404).json({ error: 'Configurazione agente non trovata' });
+    }
+    
+    // Only require Bronze auth for Level 1 agents
+    if (agentConfig.level !== "1") {
+      return next();
+    }
+    
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        error: 'Autenticazione Bronze richiesta',
+        requiresBronzeAuth: true,
+      });
+    }
+    
+    const token = authHeader.slice(7);
+    const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
+    
+    if (!sessionSecret) {
+      console.error('[BRONZE AUTH] No SESSION_SECRET or JWT_SECRET configured');
+      return res.status(500).json({ error: 'Configurazione server mancante' });
+    }
+    
+    try {
+      const decoded = jwt.verify(token, sessionSecret) as any;
+      
+      // Verify token type is "bronze"
+      if (decoded.type !== 'bronze') {
+        return res.status(401).json({ 
+          error: 'Token non valido per utenti Bronze',
+          requiresBronzeAuth: true,
+        });
+      }
+      
+      // Verify consultantId matches the agent's consultant
+      if (decoded.consultantId !== agentConfig.consultantId) {
+        return res.status(403).json({ 
+          error: 'Token Bronze non valido per questo agente',
+          requiresBronzeAuth: true,
+        });
+      }
+      
+      // Get Bronze user data for message limits
+      const [bronzeUser] = await db
+        .select()
+        .from(schema.bronzeUsers)
+        .where(eq(schema.bronzeUsers.id, decoded.bronzeUserId))
+        .limit(1);
+      
+      if (!bronzeUser) {
+        return res.status(401).json({ 
+          error: 'Utente Bronze non trovato',
+          requiresBronzeAuth: true,
+        });
+      }
+      
+      if (!bronzeUser.isActive) {
+        return res.status(403).json({ 
+          error: 'Account Bronze disattivato',
+          requiresBronzeAuth: true,
+        });
+      }
+      
+      // Attach Bronze user info to request
+      req.bronzeUser = {
+        bronzeUserId: bronzeUser.id,
+        consultantId: bronzeUser.consultantId,
+        email: bronzeUser.email,
+        dailyMessagesUsed: bronzeUser.dailyMessagesUsed,
+        dailyMessageLimit: bronzeUser.dailyMessageLimit,
+      };
+      
+      console.log(`✅ [BRONZE AUTH] Valid token for user ${bronzeUser.email}`);
+      next();
+    } catch (jwtError) {
+      console.log(`⚠️ [BRONZE AUTH] JWT validation failed: ${(jwtError as Error).message}`);
+      return res.status(401).json({ 
+        error: 'Token Bronze scaduto o non valido',
+        requiresBronzeAuth: true,
+      });
+    }
+  } catch (error: any) {
+    console.error('Bronze auth validation error:', error);
+    res.status(500).json({ error: 'Errore validazione Bronze auth' });
+  }
+}
+
+/**
+ * Helper function to check if it's a new day (for message limit reset)
+ */
+function isNewDay(lastResetAt: Date | null): boolean {
+  if (!lastResetAt) return true;
+  const now = new Date();
+  const lastReset = new Date(lastResetAt);
+  return now.toDateString() !== lastReset.toDateString();
+}
+
+/**
  * Middleware to validate share exists and is active
  */
 async function validateShareExists(
@@ -204,6 +337,21 @@ router.get('/:slug/metadata', validateShareExists, async (req: Request & { share
       .where(eq(schema.consultantWhatsappConfig.id, share.agentConfigId))
       .limit(1);
     
+    // Get consultant info for Bronze auth redirect (pricingPageSlug)
+    let consultantSlug: string | null = null;
+    if (agentConfig) {
+      const [consultant] = await db
+        .select({ pricingPageSlug: schema.users.pricingPageSlug, username: schema.users.username })
+        .from(schema.users)
+        .where(eq(schema.users.id, agentConfig.consultantId))
+        .limit(1);
+      consultantSlug = consultant?.pricingPageSlug || consultant?.username || null;
+    }
+    
+    // Determine if Bronze auth is required (Level 1 agents)
+    const agentLevel = agentConfig?.level || null;
+    const requiresBronzeAuth = agentLevel === "1";
+    
     // Return public metadata with business info
     res.json({
       success: true,
@@ -215,6 +363,9 @@ router.get('/:slug/metadata', validateShareExists, async (req: Request & { share
         isActive: share.isActive,
         isExpired: share.expireAt ? new Date(share.expireAt) < new Date() : false,
         hasDomainsWhitelist: share.allowedDomains && share.allowedDomains.length > 0,
+        level: agentLevel,
+        requiresBronzeAuth,
+        consultantSlug,
         businessInfo: agentConfig ? {
           businessName: agentConfig.businessName || null,
           businessDescription: agentConfig.businessDescription || null,
@@ -547,10 +698,14 @@ router.post(
   validateShareExists,
   validateDomainAccess,
   validateVisitorSession,
-  async (req: Request & { share?: schema.WhatsappAgentShare; managerId?: string }, res) => {
+  validateBronzeAuth,
+  async (req: Request & { share?: schema.WhatsappAgentShare; managerId?: string; bronzeUser?: BronzeUserInfo }, res) => {
     // SECURITY: Get visitorId from query OR use managerId from JWT (for manager_login shares)
     const managerId = req.managerId;
-    const baseVisitorId = managerId ? `manager_${managerId}` : (req.query.visitorId as string);
+    const bronzeUser = req.bronzeUser;
+    const baseVisitorId = bronzeUser 
+      ? `bronze_${bronzeUser.bronzeUserId}` 
+      : (managerId ? `manager_${managerId}` : (req.query.visitorId as string));
     const { message, preferences, newConversation } = req.body;
     const share = req.share!;
     
@@ -603,6 +758,68 @@ router.post(
       }
       
       console.log(`✅ Agent: ${agentConfig.agentName} (TTS: ${agentConfig.ttsEnabled}, Mode: ${agentConfig.audioResponseMode})`);
+      
+      // Bronze user message limit check (Level 1 agents only)
+      let bronzeUsageInfo: { dailyMessagesUsed: number; dailyMessageLimit: number; remaining: number } | null = null;
+      if (bronzeUser && agentConfig.level === "1") {
+        console.log(`\n🔒 [BRONZE LIMIT] Checking message limits for ${bronzeUser.email}...`);
+        
+        // Get fresh Bronze user data
+        const [freshBronzeUser] = await db
+          .select()
+          .from(schema.bronzeUsers)
+          .where(eq(schema.bronzeUsers.id, bronzeUser.bronzeUserId))
+          .limit(1);
+        
+        if (!freshBronzeUser) {
+          return res.status(401).json({ error: 'Utente Bronze non trovato' });
+        }
+        
+        let dailyUsed = freshBronzeUser.dailyMessagesUsed;
+        const dailyLimit = freshBronzeUser.dailyMessageLimit;
+        
+        // Reset counter if new day
+        if (isNewDay(freshBronzeUser.lastMessageResetAt)) {
+          console.log(`   📅 New day detected, resetting counter`);
+          dailyUsed = 0;
+          await db
+            .update(schema.bronzeUsers)
+            .set({
+              dailyMessagesUsed: 0,
+              lastMessageResetAt: new Date(),
+            })
+            .where(eq(schema.bronzeUsers.id, bronzeUser.bronzeUserId));
+        }
+        
+        // Check if limit reached
+        if (dailyUsed >= dailyLimit) {
+          console.log(`   ⛔ Daily limit reached: ${dailyUsed}/${dailyLimit}`);
+          return res.status(429).json({
+            error: 'Limite giornaliero raggiunto',
+            message: `Hai raggiunto il limite di ${dailyLimit} messaggi giornalieri. Torna domani o considera un upgrade al piano Argento per messaggi illimitati.`,
+            dailyMessagesUsed: dailyUsed,
+            dailyMessageLimit: dailyLimit,
+            remaining: 0,
+          });
+        }
+        
+        // Increment usage counter
+        const newUsage = dailyUsed + 1;
+        await db
+          .update(schema.bronzeUsers)
+          .set({
+            dailyMessagesUsed: newUsage,
+          })
+          .where(eq(schema.bronzeUsers.id, bronzeUser.bronzeUserId));
+        
+        bronzeUsageInfo = {
+          dailyMessagesUsed: newUsage,
+          dailyMessageLimit: dailyLimit,
+          remaining: dailyLimit - newUsage,
+        };
+        
+        console.log(`   ✅ Message allowed: ${newUsage}/${dailyLimit} (remaining: ${bronzeUsageInfo.remaining})`);
+      }
       
       // Get or create conversation
       console.log(`\n📥 Fetching or creating conversation...`);
@@ -1558,14 +1775,19 @@ Ti aspettiamo! 🚀`;
           .set({ lastMessageAt: new Date() })
           .where(eq(schema.whatsappAgentConsultantConversations.id, conversation.id));
         
-        // Send completion signal with audio metadata and booking info
+        // Send completion signal with audio metadata, booking info, and Bronze usage info
         res.write(`data: ${JSON.stringify({ 
           type: 'done', 
           audioUrl: audioUrl || undefined,
           audioDuration: agentAudioDuration || undefined,
           bookingCreated: bookingResult.created || undefined,
           bookingId: bookingResult.booking?.id || undefined,
-          googleMeetLink: bookingResult.googleMeetLink || undefined
+          googleMeetLink: bookingResult.googleMeetLink || undefined,
+          ...(bronzeUsageInfo ? {
+            dailyMessagesUsed: bronzeUsageInfo.dailyMessagesUsed,
+            dailyMessageLimit: bronzeUsageInfo.dailyMessageLimit,
+            remaining: bronzeUsageInfo.remaining,
+          } : {}),
         })}\n\n`);
         res.end();
         

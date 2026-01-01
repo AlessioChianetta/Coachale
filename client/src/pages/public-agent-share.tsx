@@ -25,6 +25,9 @@ interface ShareMetadata {
   isActive: boolean;
   isExpired: boolean;
   hasDomainsWhitelist: boolean;
+  level?: "1" | "2" | "3" | null;
+  requiresBronzeAuth?: boolean;
+  consultantSlug?: string | null;
   businessInfo?: {
     businessName?: string | null;
     businessDescription?: string | null;
@@ -82,6 +85,15 @@ export default function PublicAgentShare() {
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [uploadingAudioPreview, setUploadingAudioPreview] = useState<string | null>(null);
+  
+  // Bronze auth state for Level 1 agents
+  const [bronzeToken, setBronzeToken] = useState<string | null>(null);
+  const [bronzeUsageInfo, setBronzeUsageInfo] = useState<{
+    dailyMessagesUsed: number;
+    dailyMessageLimit: number;
+    remaining: number;
+  } | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -148,6 +160,52 @@ export default function PublicAgentShare() {
       setShowPasswordGate(needsPassword);
     }
   }, [metadata, visitorId]);
+  
+  // Bronze auth check for Level 1 agents
+  useEffect(() => {
+    if (!metadata) return;
+    
+    // Only check Bronze auth for Level 1 agents
+    if (metadata.level !== "1" || !metadata.requiresBronzeAuth) return;
+    
+    // Check for bronzeAuthToken in localStorage
+    const storedToken = localStorage.getItem('bronzeAuthToken');
+    
+    if (!storedToken) {
+      // No token, redirect to registration
+      if (metadata.consultantSlug) {
+        navigate(`/c/${metadata.consultantSlug}/register`);
+      }
+      return;
+    }
+    
+    // Check if token is expired
+    try {
+      const tokenParts = storedToken.split('.');
+      if (tokenParts.length === 3) {
+        const payload = JSON.parse(atob(tokenParts[1]));
+        const expirationTime = payload.exp * 1000;
+        
+        if (Date.now() >= expirationTime) {
+          // Token expired, remove it and redirect
+          localStorage.removeItem('bronzeAuthToken');
+          if (metadata.consultantSlug) {
+            navigate(`/c/${metadata.consultantSlug}/register`);
+          }
+          return;
+        }
+        
+        // Token is valid, set it
+        setBronzeToken(storedToken);
+      }
+    } catch (e) {
+      // Invalid token format, remove it
+      localStorage.removeItem('bronzeAuthToken');
+      if (metadata.consultantSlug) {
+        navigate(`/c/${metadata.consultantSlug}/register`);
+      }
+    }
+  }, [metadata, navigate]);
   
   // Password validation mutation
   const validateMutation = useMutation({
@@ -236,12 +294,20 @@ export default function PublicAgentShare() {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
+      // Build headers with optional Bronze auth
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Bronze auth token for Level 1 agents
+      if (bronzeToken && metadata?.level === "1") {
+        headers['Authorization'] = `Bearer ${bronzeToken}`;
+      }
+      
       // Send visitorId as query param for security validation
       const response = await fetch(`/public/whatsapp/shares/${slug}/message?visitorId=${encodeURIComponent(visitorId || '')}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           message: content,
         }),
@@ -249,6 +315,28 @@ export default function PublicAgentShare() {
       
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Handle 429 (rate limit) errors for Bronze users
+        if (response.status === 429) {
+          setLimitReached(true);
+          setBronzeUsageInfo({
+            dailyMessagesUsed: errorData.dailyMessagesUsed || 0,
+            dailyMessageLimit: errorData.dailyMessageLimit || 15,
+            remaining: 0,
+          });
+          throw new Error(errorData.message || 'Limite giornaliero raggiunto');
+        }
+        
+        // Handle Bronze auth required
+        if (response.status === 401 && errorData.requiresBronzeAuth) {
+          localStorage.removeItem('bronzeAuthToken');
+          setBronzeToken(null);
+          if (metadata?.consultantSlug) {
+            navigate(`/c/${metadata.consultantSlug}/register`);
+          }
+          throw new Error('Autenticazione richiesta');
+        }
+        
         throw new Error(errorData.error || 'Errore nell\'invio del messaggio');
       }
       
@@ -315,6 +403,16 @@ export default function PublicAgentShare() {
                 // FIX FLASH: Non pulire streamingMessage subito
                 // Aspetta che il refetch completi prima di rimuovere lo streaming
                 setIsStreaming(false);
+                
+                // Update Bronze usage info if present
+                if (data.dailyMessagesUsed !== undefined && data.dailyMessageLimit !== undefined) {
+                  setBronzeUsageInfo({
+                    dailyMessagesUsed: data.dailyMessagesUsed,
+                    dailyMessageLimit: data.dailyMessageLimit,
+                    remaining: data.remaining,
+                  });
+                  setLimitReached(data.remaining === 0);
+                }
                 
                 // Prima fai il refetch, POI pulisci streamingMessage
                 await queryClient.invalidateQueries({
@@ -386,8 +484,8 @@ export default function PublicAgentShare() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Blocca invio se input è occupato o vuoto
-    if (!messageInput.trim() || isBusy || sendMessageMutation.isPending) {
+    // Blocca invio se input è occupato, vuoto, o limite raggiunto
+    if (!messageInput.trim() || isBusy || sendMessageMutation.isPending || limitReached) {
       return;
     }
     
@@ -757,6 +855,19 @@ export default function PublicAgentShare() {
                   <span className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse mr-1" />
                   Online
                 </Badge>
+                {metadata.level === "1" && bronzeUsageInfo && (
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "text-xs",
+                      bronzeUsageInfo.remaining <= 3 
+                        ? "bg-orange-100 text-orange-700 border-orange-300" 
+                        : "bg-blue-100 text-blue-700 border-blue-300"
+                    )}
+                  >
+                    {bronzeUsageInfo.remaining}/{bronzeUsageInfo.dailyMessageLimit} messaggi
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-slate-500">Assistente AI</p>
               {metadata.businessInfo?.businessName && (
@@ -932,6 +1043,19 @@ export default function PublicAgentShare() {
           </div>
         </ScrollArea>
         
+        {/* Limit reached alert for Bronze users */}
+        {limitReached && metadata.level === "1" && (
+          <div className="flex-shrink-0 px-4 pb-2">
+            <Alert className="bg-orange-50 border-orange-200 max-w-4xl mx-auto">
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-700">
+                <strong>Limite giornaliero raggiunto!</strong> Hai esaurito i tuoi {bronzeUsageInfo?.dailyMessageLimit || 15} messaggi giornalieri. 
+                Torna domani oppure contatta il consulente per un upgrade al piano Argento con messaggi illimitati.
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+        
         {/* Input area - modern gradient style */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -997,11 +1121,11 @@ export default function PublicAgentShare() {
                 <Input
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder={isBusy || sendMessageMutation.isPending ? "Attendere..." : "Scrivi un messaggio..."}
-                  disabled={isBusy || sendMessageMutation.isPending}
+                  placeholder={limitReached ? "Limite giornaliero raggiunto" : (isBusy || sendMessageMutation.isPending ? "Attendere..." : "Scrivi un messaggio...")}
+                  disabled={isBusy || sendMessageMutation.isPending || limitReached}
                   className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-gray-400 p-0 h-auto min-h-[28px] disabled:cursor-not-allowed"
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey && !isBusy && !sendMessageMutation.isPending) {
+                    if (e.key === 'Enter' && !e.shiftKey && !isBusy && !sendMessageMutation.isPending && !limitReached) {
                       e.preventDefault();
                       handleSendMessage(e);
                     }
@@ -1014,7 +1138,7 @@ export default function PublicAgentShare() {
                 <motion.div className="relative" whileTap={{ scale: 0.95 }}>
                   <Button
                     onClick={handleSendMessage}
-                    disabled={isBusy || sendMessageMutation.isPending}
+                    disabled={isBusy || sendMessageMutation.isPending || limitReached}
                     size="icon"
                     className="rounded-full h-12 w-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-70"
                   >
