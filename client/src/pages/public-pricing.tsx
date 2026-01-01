@@ -261,13 +261,15 @@ function StarRating({ rating }: { rating: number }) {
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.5 }
+  transition: { duration: 0.4 }
 };
 
 const staggerContainer = {
+  initial: {},
   animate: {
     transition: {
-      staggerChildren: 0.1
+      staggerChildren: 0.1,
+      delayChildren: 0.1
     }
   }
 };
@@ -275,6 +277,15 @@ const staggerContainer = {
 const cardHover = {
   scale: 1.02,
   transition: { duration: 0.2 }
+};
+
+const pricingCardVariants = {
+  initial: { opacity: 0, y: 30 },
+  animate: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" }
+  }
 };
 
 export default function PublicPricing() {
@@ -569,22 +580,21 @@ export default function PublicPricing() {
         {/* Features Section */}
         {!isLoading && (
           <motion.div 
-            className="max-w-5xl mx-auto mb-20"
+            className="max-w-5xl mx-auto mb-12 md:mb-20 px-2 sm:px-0"
             initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
+            animate="animate"
             variants={staggerContainer}
           >
-            <motion.div className="text-center mb-12" variants={fadeInUp}>
-              <h2 className="text-3xl font-bold text-slate-900 mb-3">
+            <motion.div className="text-center mb-8 md:mb-12" variants={fadeInUp}>
+              <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">
                 Tutto ciò di cui hai bisogno
               </h2>
-              <p className="text-slate-600">
+              <p className="text-sm md:text-base text-slate-600">
                 Funzionalità avanzate per automatizzare il tuo lavoro
               </p>
             </motion.div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {FEATURES.map((feature, index) => {
                 const IconComponent = feature.icon;
                 return (
@@ -619,23 +629,23 @@ export default function PublicPricing() {
         {/* Trust Badges Row */}
         {!isLoading && trustBadges.length > 0 && (
           <motion.div 
-            className="flex flex-wrap items-center justify-center gap-4 mb-10"
+            className="flex flex-wrap items-center justify-center gap-2 md:gap-4 mb-8 md:mb-10 px-2"
             initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
           >
             {trustBadges.map((badge, index) => {
               const IconComponent = getIconComponent(badge.icon);
               return (
                 <div 
                   key={index}
-                  className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100"
+                  className="flex items-center gap-1.5 md:gap-2 bg-white px-3 md:px-4 py-1.5 md:py-2 rounded-full shadow-sm border border-slate-100"
                 >
                   <IconComponent 
-                    className="h-5 w-5" 
+                    className="h-4 w-4 md:h-5 md:w-5" 
                     style={{ color: accentColor || "rgb(16 185 129)" }}
                   />
-                  <span className="text-sm text-slate-600">{badge.text}</span>
+                  <span className="text-xs md:text-sm text-slate-600">{badge.text}</span>
                 </div>
               );
             })}
@@ -712,10 +722,9 @@ export default function PublicPricing() {
 
         {/* Pricing Cards */}
         <motion.div 
-          className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto mb-20"
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto mb-16 md:mb-20 px-2 sm:px-0"
           initial="initial"
-          whileInView="animate"
-          viewport={{ once: true }}
+          animate="animate"
           variants={staggerContainer}
         >
           {isLoading ? (
@@ -727,7 +736,7 @@ export default function PublicPricing() {
           ) : (
             <>
               {/* Level 1 - Bronze (Free) */}
-              <motion.div variants={fadeInUp} whileHover={cardHover}>
+              <motion.div variants={pricingCardVariants} whileHover={cardHover}>
                 <Card className="relative flex flex-col h-full border border-slate-200 bg-white hover:shadow-xl hover:border-slate-300 transition-all duration-300 group">
                   <CardHeader className="text-center pb-6">
                     <Badge className="w-fit mx-auto mb-4 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-50">
@@ -767,7 +776,7 @@ export default function PublicPricing() {
               </motion.div>
 
               {/* Level 2 - Silver (Paid) */}
-              <motion.div variants={fadeInUp} whileHover={cardHover}>
+              <motion.div variants={pricingCardVariants} whileHover={cardHover}>
                 <Card 
                   className="relative flex flex-col h-full border-2 bg-white shadow-xl hover:shadow-2xl transition-all duration-300"
                   style={accentColor ? {
@@ -869,7 +878,7 @@ export default function PublicPricing() {
               </motion.div>
 
               {/* Level 3 - Gold (Premium) */}
-              <motion.div variants={fadeInUp} whileHover={cardHover}>
+              <motion.div variants={pricingCardVariants} whileHover={cardHover}>
                 <Card className="relative flex flex-col h-full border border-amber-300 bg-gradient-to-b from-amber-50/50 to-white hover:shadow-xl hover:border-amber-400 transition-all duration-300 group">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                     <Badge className="bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-white hover:from-amber-500 hover:to-orange-500 px-4 py-1.5 shadow-lg">
@@ -944,41 +953,41 @@ export default function PublicPricing() {
         {/* Comparison Table Section */}
         {!isLoading && (
           <motion.div 
-            className="max-w-5xl mx-auto mb-20"
+            className="max-w-5xl mx-auto mb-12 md:mb-20 px-2 sm:px-0"
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
           >
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-slate-900 mb-3">
+            <div className="text-center mb-6 md:mb-10">
+              <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">
                 Confronta i piani
               </h2>
-              <p className="text-slate-600">
+              <p className="text-sm md:text-base text-slate-600">
                 Scopri tutte le funzionalità incluse in ogni piano
               </p>
             </div>
             
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[480px]">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left py-4 px-6 font-semibold text-slate-900">
+                      <th className="text-left py-3 md:py-4 px-3 md:px-6 font-semibold text-slate-900 text-sm md:text-base">
                         Funzionalità
                       </th>
-                      <th className="text-center py-4 px-6 font-semibold text-slate-900">
+                      <th className="text-center py-3 md:py-4 px-2 md:px-6 font-semibold text-slate-900">
                         <div className="flex flex-col items-center gap-1">
-                          <Badge className="bg-amber-50 text-amber-700 border border-amber-200">{tierNames.bronze}</Badge>
-                          <span className="text-sm font-normal text-slate-500">Gratuito</span>
+                          <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-xs md:text-sm">{tierNames.bronze}</Badge>
+                          <span className="text-xs md:text-sm font-normal text-slate-500">Gratuito</span>
                         </div>
                       </th>
                       <th 
-                        className="text-center py-4 px-6 font-semibold text-slate-900"
+                        className="text-center py-3 md:py-4 px-2 md:px-6 font-semibold text-slate-900"
                         style={accentColor ? { backgroundColor: `${accentColor}10` } : { backgroundColor: "rgb(245 243 255 / 0.5)" }}
                       >
                         <div className="flex flex-col items-center gap-1">
                           <Badge 
-                            className="border"
+                            className="border text-xs md:text-sm"
                             style={accentColor ? {
                               backgroundColor: `${accentColor}15`,
                               color: accentColor,
@@ -991,15 +1000,15 @@ export default function PublicPricing() {
                           >
                             {tierNames.silver}
                           </Badge>
-                          <span className="text-sm font-normal text-slate-500">
+                          <span className="text-xs md:text-sm font-normal text-slate-500">
                             €{getDisplayPrice(data?.pricing.level2MonthlyPrice || 29)}/mese
                           </span>
                         </div>
                       </th>
-                      <th className="text-center py-4 px-6 font-semibold text-slate-900">
+                      <th className="text-center py-3 md:py-4 px-2 md:px-6 font-semibold text-slate-900">
                         <div className="flex flex-col items-center gap-1">
-                          <Badge className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border border-amber-200">{tierNames.gold}</Badge>
-                          <span className="text-sm font-normal text-slate-500">
+                          <Badge className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border border-amber-200 text-xs md:text-sm">{tierNames.gold}</Badge>
+                          <span className="text-xs md:text-sm font-normal text-slate-500">
                             €{getDisplayPrice(data?.pricing.level3MonthlyPrice || 59)}/mese
                           </span>
                         </div>
@@ -1015,19 +1024,19 @@ export default function PublicPricing() {
                           index === COMPARISON_ROWS.length - 1 && "border-b-0"
                         )}
                       >
-                        <td className="py-4 px-6">
-                          <span className="text-sm text-slate-700">{row.feature}</span>
+                        <td className="py-3 md:py-4 px-3 md:px-6">
+                          <span className="text-xs md:text-sm text-slate-700">{row.feature}</span>
                         </td>
-                        <td className="py-4 px-6 text-center">
+                        <td className="py-3 md:py-4 px-2 md:px-6 text-center">
                           <ComparisonTableCell value={row.bronze} />
                         </td>
                         <td 
-                          className="py-4 px-6 text-center"
+                          className="py-3 md:py-4 px-2 md:px-6 text-center"
                           style={accentColor ? { backgroundColor: `${accentColor}05` } : { backgroundColor: "rgb(124 58 237 / 0.03)" }}
                         >
                           <ComparisonTableCell value={row.silver} />
                         </td>
-                        <td className="py-4 px-6 text-center">
+                        <td className="py-3 md:py-4 px-2 md:px-6 text-center">
                           <ComparisonTableCell value={row.gold} />
                         </td>
                       </tr>
@@ -1042,13 +1051,13 @@ export default function PublicPricing() {
         {/* Social Proof Section */}
         {!isLoading && (
           <motion.div 
-            className="max-w-4xl mx-auto mb-20"
+            className="max-w-4xl mx-auto mb-12 md:mb-20 px-2 sm:px-0"
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
           >
             <div 
-              className="rounded-2xl p-8 text-center"
+              className="rounded-xl md:rounded-2xl p-5 md:p-8 text-center"
               style={accentColor ? {
                 background: `linear-gradient(135deg, ${accentColor}10, ${accentColor}05)`,
                 border: `1px solid ${accentColor}20`,
@@ -1062,7 +1071,7 @@ export default function PublicPricing() {
                   {[1, 2, 3, 4, 5].map((i) => (
                     <div 
                       key={i}
-                      className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-sm font-semibold text-white"
+                      className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white flex items-center justify-center text-xs md:text-sm font-semibold text-white"
                       style={{ 
                         backgroundColor: accentColor || "rgb(124 58 237)",
                         opacity: 1 - (i * 0.1)
@@ -1073,10 +1082,10 @@ export default function PublicPricing() {
                   ))}
                 </div>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">
+              <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-2">
                 Unisciti a centinaia di professionisti
               </h3>
-              <p className="text-slate-600">
+              <p className="text-sm md:text-base text-slate-600">
                 che hanno già automatizzato il loro lavoro con il nostro AI assistant
               </p>
             </div>
@@ -1086,28 +1095,27 @@ export default function PublicPricing() {
         {/* Testimonials Section */}
         {!isLoading && data?.pricing.testimonials && data.pricing.testimonials.length > 0 && (
           <motion.div 
-            className="max-w-6xl mx-auto mb-20"
+            className="max-w-6xl mx-auto mb-12 md:mb-20 px-2 sm:px-0"
             initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
           >
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-slate-900 mb-3">
+            <div className="text-center mb-6 md:mb-10">
+              <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">
                 Cosa dicono i nostri clienti
               </h2>
-              <p className="text-slate-600">
+              <p className="text-sm md:text-base text-slate-600">
                 Scopri le esperienze di chi ha già scelto i nostri piani
               </p>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {data.pricing.testimonials.map((testimonial, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + index * 0.1 }}
                 >
                   <Card className="relative bg-white hover:shadow-lg transition-shadow h-full">
                     <CardContent className="pt-6">
@@ -1152,16 +1160,16 @@ export default function PublicPricing() {
         {/* FAQ Section */}
         {!isLoading && data?.pricing.faqs && data.pricing.faqs.length > 0 && (
           <motion.div 
-            className="max-w-3xl mx-auto mb-20"
+            className="max-w-3xl mx-auto mb-12 md:mb-20 px-2 sm:px-0"
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
           >
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-slate-900 mb-3">
+            <div className="text-center mb-6 md:mb-10">
+              <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">
                 Domande Frequenti
               </h2>
-              <p className="text-slate-600">
+              <p className="text-sm md:text-base text-slate-600">
                 Trova le risposte alle domande più comuni
               </p>
             </div>
@@ -1188,28 +1196,28 @@ export default function PublicPricing() {
         {/* Final CTA Section */}
         {!isLoading && (
           <motion.div 
-            className="max-w-4xl mx-auto mb-12"
+            className="max-w-4xl mx-auto mb-8 md:mb-12 px-2 sm:px-0"
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
           >
             <div 
-              className="rounded-2xl p-10 text-center shadow-xl"
+              className="rounded-xl md:rounded-2xl p-6 md:p-10 text-center shadow-xl"
               style={accentColor ? {
                 background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
               } : {
                 background: "linear-gradient(135deg, rgb(124 58 237), rgb(79 70 229))",
               }}
             >
-              <h2 className="text-3xl font-bold text-white mb-3">
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
                 Pronto a iniziare?
               </h2>
-              <p className="text-white/80 mb-8 text-lg">
+              <p className="text-white/80 mb-6 md:mb-8 text-base md:text-lg">
                 Registrati gratis e scopri il potere dell'AI
               </p>
               <Button 
                 size="lg"
-                className="bg-white hover:bg-slate-100 text-slate-900 px-8 py-6 text-lg shadow-lg"
+                className="bg-white hover:bg-slate-100 text-slate-900 px-6 md:px-8 py-5 md:py-6 text-base md:text-lg shadow-lg w-full sm:w-auto"
                 onClick={() => navigate(`/c/${slug}/register`)}
               >
                 Inizia Gratis Ora
@@ -1221,9 +1229,9 @@ export default function PublicPricing() {
       </div>
 
       {/* Enhanced Footer */}
-      <footer className="border-t bg-white/80 backdrop-blur-sm py-10 mt-8">
+      <footer className="border-t bg-white/80 backdrop-blur-sm py-6 md:py-10 mt-4 md:mt-8">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col items-center gap-6">
+          <div className="flex flex-col items-center gap-4 md:gap-6">
             {data?.pricing.contactEmail && (
               <a 
                 href={`mailto:${data.pricing.contactEmail}`}
