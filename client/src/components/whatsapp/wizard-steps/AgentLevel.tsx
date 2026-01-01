@@ -38,7 +38,7 @@ function isValidSlug(slug: string): boolean {
 export default function AgentLevel({ formData, onChange, errors }: AgentLevelProps) {
   const [slugError, setSlugError] = useState<string | null>(null);
   
-  const handleLevelChange = (level: "1" | "2" | null) => {
+  const handleLevelChange = (level: "1" | "2" | "3" | null) => {
     onChange("level", level);
     if (level !== "1") {
       onChange("publicSlug", "");

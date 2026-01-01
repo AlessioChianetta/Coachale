@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 interface Agent {
   agentId: string;
   agentName: string;
-  level: "1" | "2" | null;
+  level: "1" | "2" | "3" | null;
   publicSlug: string | null;
   dailyMessageLimit: number | null;
   businessName: string | null;
@@ -37,6 +37,10 @@ interface PricingData {
     level2YearlyPrice: number;
     level2Name: string;
     level2Description: string;
+    level3MonthlyPrice?: number;
+    level3YearlyPrice?: number;
+    level3Name?: string;
+    level3Description?: string;
     accentColor: string | null;
     logoUrl: string | null;
   };
@@ -276,16 +280,16 @@ export default function PublicPricing() {
                   </Badge>
                   <div className="space-y-2">
                     <h3 className="text-xl font-semibold text-slate-900">
-                      {(data?.pricing as any)?.level3Name || "Livello Deluxe"}
+                      {data?.pricing.level3Name || "Livello Deluxe"}
                     </h3>
                     <div className="flex items-baseline justify-center gap-1">
                       <span className="text-4xl font-bold text-slate-900">
-                        €{(data?.pricing as any)?.level3MonthlyPrice || 59}
+                        €{data?.pricing.level3MonthlyPrice || 59}
                       </span>
                       <span className="text-muted-foreground">/mese</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {(data?.pricing as any)?.level3Description || "Per professionisti che vogliono tutto"}
+                      {data?.pricing.level3Description || "Per professionisti che vogliono tutto"}
                     </p>
                   </div>
                 </CardHeader>
