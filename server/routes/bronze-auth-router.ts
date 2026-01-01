@@ -1,12 +1,20 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, sql } from "drizzle-orm";
 import { bronzeUsers, consultantLicenses, users } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("[BRONZE AUTH] JWT_SECRET or SESSION_SECRET environment variable is required");
+  }
+  return secret;
+};
+
 const SALT_ROUNDS = 10;
 const TOKEN_EXPIRY = "30d";
 
@@ -35,7 +43,7 @@ async function authenticateBronzeToken(req: BronzeAuthRequest, res: Response, ne
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as {
+    const decoded = jwt.verify(token, getJwtSecret()) as {
       bronzeUserId: string;
       consultantId: string;
       email: string;
@@ -133,22 +141,9 @@ router.post("/:slug/register", async (req: Request, res: Response) => {
       .onConflictDoUpdate({
         target: consultantLicenses.consultantId,
         set: {
-          level1Used: db.select({ val: consultantLicenses.level1Used }).from(consultantLicenses).where(eq(consultantLicenses.consultantId, consultant.id)).limit(1),
+          level1Used: sql`COALESCE(${consultantLicenses.level1Used}, 0) + 1`,
         },
       });
-
-    const [license] = await db
-      .select()
-      .from(consultantLicenses)
-      .where(eq(consultantLicenses.consultantId, consultant.id))
-      .limit(1);
-
-    if (license) {
-      await db
-        .update(consultantLicenses)
-        .set({ level1Used: (license.level1Used || 0) + 1 })
-        .where(eq(consultantLicenses.consultantId, consultant.id));
-    }
 
     const token = jwt.sign(
       {
@@ -157,7 +152,7 @@ router.post("/:slug/register", async (req: Request, res: Response) => {
         email: newBronzeUser.email,
         type: "bronze",
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: TOKEN_EXPIRY }
     );
 
@@ -250,7 +245,7 @@ router.post("/:slug/login", async (req: Request, res: Response) => {
         email: bronzeUser.email,
         type: "bronze",
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: TOKEN_EXPIRY }
     );
 

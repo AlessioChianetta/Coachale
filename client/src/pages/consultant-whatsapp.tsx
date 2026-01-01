@@ -2344,15 +2344,15 @@ export default function ConsultantWhatsAppPage() {
                   <div className="flex flex-wrap gap-2">
                     <Badge className="bg-amber-100 text-amber-700 border-amber-300">
                       <Shield className="h-3 w-3 mr-1" />
-                      Bronze ({userStatsQuery.data?.bronze || 0})
+                      Bronze ({userStatsQuery.data?.bronze?.total || 0})
                     </Badge>
                     <Badge className="bg-slate-100 text-slate-700 border-slate-300">
                       <Shield className="h-3 w-3 mr-1" />
-                      Argento ({userStatsQuery.data?.silver || 0})
+                      Argento ({userStatsQuery.data?.silver?.total || 0})
                     </Badge>
                     <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">
                       <Crown className="h-3 w-3 mr-1" />
-                      Oro ({userStatsQuery.data?.gold || 0})
+                      Oro ({userStatsQuery.data?.gold?.total || 0})
                     </Badge>
                   </div>
                 </div>
