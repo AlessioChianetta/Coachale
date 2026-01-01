@@ -81,10 +81,10 @@ function validateDomainAccess(
 
 /**
  * Middleware to validate visitor session for password-protected shares
- * Also handles manager JWT tokens for any share type (manager_login or public)
+ * Also handles manager JWT tokens and Bronze tokens for any share type
  */
 async function validateVisitorSession(
-  req: Request & { share?: schema.WhatsappAgentShare; managerId?: string },
+  req: Request & { share?: schema.WhatsappAgentShare; managerId?: string; bronzeUserId?: string },
   res: Response,
   next: NextFunction
 ) {
@@ -94,8 +94,8 @@ async function validateVisitorSession(
       return res.status(500).json({ error: 'Share non trovato in request context' });
     }
     
-    // ALWAYS check for manager JWT token first (for any share type)
-    // This allows managers to access their own shares with full context
+    // ALWAYS check for JWT token first (for any share type)
+    // This handles both manager tokens and Bronze tokens
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
@@ -103,6 +103,23 @@ async function validateVisitorSession(
       if (sessionSecret) {
         try {
           const decoded = jwt.verify(token, sessionSecret) as any;
+          
+          // Check for Bronze token (type: "bronze")
+          if (decoded.type === 'bronze' && decoded.bronzeUserId) {
+            // Verify Bronze user exists and is active
+            const [bronzeUser] = await db.select()
+              .from(schema.bronzeUsers)
+              .where(eq(schema.bronzeUsers.id, decoded.bronzeUserId))
+              .limit(1);
+            
+            if (bronzeUser && bronzeUser.isActive) {
+              req.bronzeUserId = decoded.bronzeUserId;
+              req.managerId = decoded.bronzeUserId; // Use bronzeUserId as managerId for compatibility
+              console.log(`✅ [BRONZE AUTH] Valid bronze token for share ${share.slug}, bronzeUserId: ${decoded.bronzeUserId}`);
+              return next();
+            }
+          }
+          
           // Check for manager role and matching shareId
           if (decoded.role === 'manager' && decoded.shareId === share.id && decoded.managerId) {
             // Valid manager token - attach managerId to request and proceed
@@ -112,7 +129,7 @@ async function validateVisitorSession(
           }
         } catch (jwtError) {
           // Invalid JWT - fall through to other auth methods
-          console.log(`⚠️ [MANAGER AUTH] JWT validation failed: ${(jwtError as Error).message}`);
+          console.log(`⚠️ [AUTH] JWT validation failed: ${(jwtError as Error).message}`);
         }
       }
     }
@@ -288,7 +305,7 @@ function isNewDay(lastResetAt: Date | null): boolean {
  * Middleware to validate share exists and is active
  */
 async function validateShareExists(
-  req: Request & { share?: schema.WhatsappAgentShare },
+  req: Request & { share?: schema.WhatsappAgentShare; bronzeAgent?: typeof schema.consultantWhatsappConfig.$inferSelect },
   res: Response,
   next: NextFunction
 ) {
@@ -299,22 +316,53 @@ async function validateShareExists(
       return res.status(400).json({ error: 'Slug mancante' });
     }
     
-    // Get share
+    // First try to get share from whatsappAgentShares (legacy Manager system)
     const share = await shareService.getShareBySlug(slug);
-    if (!share) {
+    if (share) {
+      // Validate basic access (active, not expired, not revoked)
+      const validation = await shareService.validateShareById(share.id);
+      if (!validation.valid) {
+        return res.status(403).json({ 
+          error: validation.reason || 'Accesso negato',
+        });
+      }
+      
+      // Attach share to request for next middleware
+      req.share = share;
+      return next();
+    }
+    
+    // Not found in shares - try to find by public_slug in consultantWhatsappConfig (Bronze/Level 1 system)
+    const [agentConfig] = await db.select()
+      .from(schema.consultantWhatsappConfig)
+      .where(and(
+        eq(schema.consultantWhatsappConfig.publicSlug, slug),
+        eq(schema.consultantWhatsappConfig.isActive, true)
+      ))
+      .limit(1);
+
+    if (!agentConfig) {
       return res.status(404).json({ error: 'Condivisione non trovata' });
     }
-    
-    // Validate basic access (active, not expired, not revoked)
-    const validation = await shareService.validateShareById(share.id);
-    if (!validation.valid) {
-      return res.status(403).json({ 
-        error: validation.reason || 'Accesso negato',
-      });
-    }
-    
-    // Attach share to request for next middleware
-    req.share = share;
+
+    // Create a virtual share object for Bronze agents
+    const virtualShare = {
+      id: `bronze-${agentConfig.id}`,
+      slug: slug,
+      agentConfigId: agentConfig.id,
+      agentName: agentConfig.agentName || "AI Assistant",
+      consultantId: agentConfig.consultantId,
+      isActive: true,
+      accessType: 'public' as const,
+      requiresLogin: true, // Bronze requires login
+      expireAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      allowedDomains: null,
+    } as schema.WhatsappAgentShare;
+
+    req.share = virtualShare;
+    req.bronzeAgent = agentConfig;
     next();
   } catch (error: any) {
     console.error('Share validation error:', error);
