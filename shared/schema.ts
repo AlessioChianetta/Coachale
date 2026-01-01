@@ -74,6 +74,8 @@ export const users = pgTable("users", {
   // Revenue Share Configuration (consultant-level) - Percentage split for subscription payments
   revenueSharePercentage: integer("revenue_share_percentage").default(50), // Percentage that goes to consultant (default 50%)
 
+  isEmployee: boolean("is_employee").default(false), // true = dipendente/collaboratore del consulente
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -712,6 +714,9 @@ export const consultantLicenses = pgTable("consultant_licenses", {
   level2Used: integer("level2_used").default(0).notNull(),
   level3Total: integer("level3_total").default(10).notNull(),
   level3Used: integer("level3_used").default(0).notNull(),
+  // Employee/Collaborator license system (200€ per 10 licenses, paid to platform)
+  employeeTotal: integer("employee_total").default(0).notNull(), // Total employee seats purchased
+  employeeUsed: integer("employee_used").default(0).notNull(), // Employee seats currently used
   stripeCustomerId: text("stripe_customer_id"),
   
   // Stripe Connect fields - for consultant's connected Stripe account
@@ -731,6 +736,21 @@ export const consultantLicenses = pgTable("consultant_licenses", {
 
 export type ConsultantLicenses = typeof consultantLicenses.$inferSelect;
 export type InsertConsultantLicenses = typeof consultantLicenses.$inferInsert;
+
+// Employee License Purchases - Track consultant purchases of employee license bundles
+export const employeeLicensePurchases = pgTable("employee_license_purchases", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  quantity: integer("quantity").notNull(), // Number of licenses purchased (usually 10)
+  amountCents: integer("amount_cents").notNull(), // Amount paid in cents (usually 20000 = 200€)
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeSessionId: text("stripe_session_id"),
+  status: text("status").$type<"pending" | "completed" | "failed">().default("pending").notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type EmployeeLicensePurchase = typeof employeeLicensePurchases.$inferSelect;
+export type InsertEmployeeLicensePurchase = typeof employeeLicensePurchases.$inferInsert;
 
 // Client Level Subscriptions - Track client subscriptions to Level 2 or Level 3
 export const clientLevelSubscriptions = pgTable("client_level_subscriptions", {
