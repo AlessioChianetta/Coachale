@@ -607,10 +607,17 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
     console.log(`✅ AI Provider obtained: ${aiProvider.source} (${aiProvider.metadata.provider})`);
 
     // Step 6.5: Check for File Search Store (agent-specific or consultant fallback)
+    // SECURITY: Bronze (Level 1) and Silver (Level 2) users can ONLY access agent-specific store
+    // They should NOT have access to consultant's full store (contains CRM data, client info, consultations)
+    const agentLevel = agentConfig.level; // "1" = Bronze, "2" = Silver, "3" = Deluxe, null = internal
+    const isPublicTierAgent = agentLevel === "1" || agentLevel === "2";
+    
+    console.log(`🔐 [FILE SEARCH] Access check - Agent level: ${agentLevel}, isPublicTier: ${isPublicTierAgent}`);
+    
     let fileSearchTool: any = null;
     let fileSearchInfo: { storeName?: string; documentCount?: number; hasFileSearch: boolean } = { hasFileSearch: false };
     try {
-      // First try agent-specific store
+      // First try agent-specific store (safe for all users)
       const agentStore = await fileSearchSyncService.getWhatsappAgentStore(agentConfig.id);
       if (agentStore && agentStore.documentCount > 0) {
         fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
@@ -622,8 +629,9 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
         console.log(`🔍 [FILE SEARCH] Agent has FileSearchStore: ${agentStore.displayName}`);
         console.log(`   📦 Store: ${agentStore.googleStoreName}`);
         console.log(`   📄 Documents: ${agentStore.documentCount}`);
-      } else {
-        // Fallback to consultant's store
+      } else if (!isPublicTierAgent) {
+        // ONLY fallback to consultant's store for Level 3 (Deluxe) or internal agents
+        // Level 1 (Bronze) and Level 2 (Silver) should NEVER access consultant CRM data
         const consultantStore = await fileSearchSyncService.getConsultantStore(consultantId);
         if (consultantStore && consultantStore.documentCount > 0) {
           fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
@@ -640,6 +648,8 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
         } else {
           console.log(`ℹ️ [FILE SEARCH] No FileSearchStore available (no agent or consultant store)`);
         }
+      } else {
+        console.log(`🔐 [FILE SEARCH] Public tier agent (Level ${agentLevel}) - no consultant store fallback for security`);
       }
     } catch (fsError: any) {
       console.warn(`⚠️ [FILE SEARCH] Error checking stores: ${fsError.message}`);

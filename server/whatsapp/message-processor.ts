@@ -1532,18 +1532,25 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     console.log(`   🔢 TOTALE INPUT: ~${estimatedTotalInput.toLocaleString()} tokens\n`);
 
     // Check if agent has File Search Store for RAG-powered responses
-    // Priority: 1) Agent-specific store, 2) Consultant store (fallback)
+    // SECURITY: Bronze (Level 1) and Silver (Level 2) agents can ONLY access agent-specific store
+    // They should NOT have access to consultant's full store (contains CRM data, client info, consultations)
+    const agentLevel = consultantConfig.level; // "1" = Bronze, "2" = Silver, "3" = Deluxe, null = internal
+    const isPublicTierAgent = agentLevel === "1" || agentLevel === "2";
+    
+    console.log(`🔐 [FILE SEARCH] Access check - Agent level: ${agentLevel}, isPublicTier: ${isPublicTierAgent}`);
+    
     let fileSearchTool: any = null;
     try {
-      // First try agent-specific store
+      // First try agent-specific store (safe for all users)
       const agentStore = await fileSearchSyncService.getWhatsappAgentStore(consultantConfig.id);
       if (agentStore && agentStore.documentCount > 0) {
         fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
         console.log(`🔍 [FILE SEARCH] WhatsApp agent has FileSearchStore: ${agentStore.displayName}`);
         console.log(`   📦 Store: ${agentStore.googleStoreName}`);
         console.log(`   📄 Documents: ${agentStore.documentCount}`);
-      } else {
-        // Fallback to consultant's store
+      } else if (!isPublicTierAgent) {
+        // ONLY fallback to consultant's store for Level 3 (Deluxe) or internal agents
+        // Level 1 (Bronze) and Level 2 (Silver) should NEVER access consultant CRM data
         const consultantStore = await fileSearchSyncService.getConsultantStore(consultantConfig.consultantId);
         if (consultantStore && consultantStore.documentCount > 0) {
           fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
@@ -1555,6 +1562,8 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         } else {
           console.log(`ℹ️ [FILE SEARCH] No FileSearchStore available (no agent or consultant store)`);
         }
+      } else {
+        console.log(`🔐 [FILE SEARCH] Public tier agent (Level ${agentLevel}) - no consultant store fallback for security`);
       }
     } catch (fsError: any) {
       console.warn(`⚠️ [FILE SEARCH] Error checking stores: ${fsError.message}`);

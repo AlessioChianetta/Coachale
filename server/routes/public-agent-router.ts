@@ -10,6 +10,7 @@ import {
   whatsappAgentShares,
   consultantWhatsappConfig,
   bronzeUsers,
+  users,
 } from "@shared/schema";
 import { getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
