@@ -16,7 +16,14 @@ import { fileSearchSyncService } from "../services/file-search-sync-service";
 import { fileSearchService } from "../ai/file-search-service";
 
 const router = Router();
-const JWT_SECRET = process.env.SESSION_SECRET || "manager-fallback-secret-key";
+
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("[PUBLIC AGENT] JWT_SECRET or SESSION_SECRET environment variable is required");
+  }
+  return secret;
+};
 
 interface ManagerTokenPayload {
   managerId: string;
@@ -47,7 +54,7 @@ async function verifyManagerToken(
       return res.status(401).json({ message: "Authentication required" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as ManagerTokenPayload;
+    const decoded = jwt.verify(token, getJwtSecret()) as ManagerTokenPayload;
     
     if (decoded.role !== "manager") {
       return res.status(403).json({ message: "Invalid token role" });
@@ -85,35 +92,65 @@ async function loadShareAndAgent(
       return res.status(400).json({ message: "Slug is required" });
     }
 
+    // First, try to find by whatsappAgentShares slug
     const [share] = await db.select()
       .from(whatsappAgentShares)
       .where(eq(whatsappAgentShares.slug, slug))
       .limit(1);
 
-    if (!share) {
-      return res.status(404).json({ message: "Agent not found" });
+    if (share) {
+      // Found via share link
+      if (!share.isActive) {
+        return res.status(403).json({ message: "Agent is not active" });
+      }
+
+      if (share.expireAt && new Date(share.expireAt) < new Date()) {
+        return res.status(403).json({ message: "Agent link has expired" });
+      }
+
+      const [agentConfig] = await db.select()
+        .from(consultantWhatsappConfig)
+        .where(eq(consultantWhatsappConfig.id, share.agentConfigId))
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({ message: "Agent configuration not found" });
+      }
+
+      req.share = share;
+      req.agentConfig = agentConfig;
+      return next();
     }
 
-    if (!share.isActive) {
-      return res.status(403).json({ message: "Agent is not active" });
-    }
-
-    if (share.expireAt && new Date(share.expireAt) < new Date()) {
-      return res.status(403).json({ message: "Agent link has expired" });
-    }
-
-    const [agentConfig] = await db.select()
+    // Fallback: try to find by publicSlug in consultantWhatsappConfig (for Bronze users)
+    const [agentByPublicSlug] = await db.select()
       .from(consultantWhatsappConfig)
-      .where(eq(consultantWhatsappConfig.id, share.agentConfigId))
+      .where(eq(consultantWhatsappConfig.publicSlug, slug))
       .limit(1);
 
-    if (!agentConfig) {
-      return res.status(404).json({ message: "Agent configuration not found" });
+    if (agentByPublicSlug) {
+      // Create a synthetic share object for Bronze access
+      req.share = {
+        id: `bronze-${agentByPublicSlug.id}`,
+        slug: slug,
+        agentName: agentByPublicSlug.agentName || "AI Assistant",
+        agentConfigId: agentByPublicSlug.id,
+        consultantId: agentByPublicSlug.consultantId,
+        isActive: true,
+        requiresLogin: true, // Bronze always requires login
+        expireAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        maxVisitors: null,
+        currentVisitors: 0,
+        greetingMessage: agentByPublicSlug.greetingMessage,
+        accessType: "bronze" as any,
+      } as any;
+      req.agentConfig = agentByPublicSlug;
+      return next();
     }
 
-    req.share = share;
-    req.agentConfig = agentConfig;
-    next();
+    return res.status(404).json({ message: "Agent not found" });
   } catch (error: any) {
     console.error("[PUBLIC AGENT] Load share error:", error);
     return res.status(500).json({ message: "Failed to load agent" });
