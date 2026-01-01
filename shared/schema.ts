@@ -683,7 +683,7 @@ export type SuperadminInstagramConfig = typeof superadminInstagramConfig.$inferS
 export type InsertSuperadminInstagramConfig = typeof superadminInstagramConfig.$inferInsert;
 
 // SuperAdmin Stripe Config - Centralized Stripe configuration for platform-level payments
-// Used for selling license packs to consultants
+// Used for selling license packs to consultants and Stripe Connect platform
 export const superadminStripeConfig = pgTable("superadmin_stripe_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   stripeSecretKey: text("stripe_secret_key"),
@@ -695,6 +695,7 @@ export const superadminStripeConfig = pgTable("superadmin_stripe_config", {
   licensePackL3Quantity: integer("license_pack_l3_quantity").default(5),
   stripePriceIdL2Pack: text("stripe_price_id_l2_pack"),
   stripePriceIdL3Pack: text("stripe_price_id_l3_pack"),
+  stripeConnectEnabled: boolean("stripe_connect_enabled").default(false), // Enable Stripe Connect for consultants
   enabled: boolean("enabled").default(false).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -712,6 +713,12 @@ export const consultantLicenses = pgTable("consultant_licenses", {
   level3Total: integer("level3_total").default(10).notNull(),
   level3Used: integer("level3_used").default(0).notNull(),
   stripeCustomerId: text("stripe_customer_id"),
+  
+  // Stripe Connect fields - for consultant's connected Stripe account
+  stripeConnectAccountId: text("stripe_connect_account_id"), // Connected account ID (acct_xxx)
+  stripeConnectOnboarded: boolean("stripe_connect_onboarded").default(false), // Onboarding completed
+  stripeConnectDetailsSubmitted: boolean("stripe_connect_details_submitted").default(false), // Details submitted
+  revenueSharePercentage: integer("revenue_share_percentage").default(50), // Platform takes this % as application fee
   
   // AI Credits tracking (WIP for future billing)
   aiCreditsUsed: real("ai_credits_used").default(0), // Total AI credits consumed

@@ -1,0 +1,59 @@
+Ok, mettiamola giù pulita con il tuo scenario: tu (forfettario) → vendi a una SRL → la SRL rivende al cliente finale a 30€.
+
+1) Chi fattura cosa (quasi sempre, in un modello “reseller/white label”)
+
+La SRL fattura 30€ al cliente finale (perché è lei che sta vendendo).
+
+Tu fatturi alla SRL la tua parte (es. 15€) come licenza/canone/fee software (B2B).
+
+👉 Quindi: tu fatturi 15€ alla SRL, non 30€, se il venditore verso il cliente finale è la SRL.
+
+2) Cosa succede coi soldi (30€) usando Stripe Connect
+
+Per far combaciare “la SRL vende” con “tu prendi 15€ automaticamente”, il flusso più coerente è:
+
+Direct charge (consigliato in reseller)
+
+Il cliente finale paga 30€.
+
+La charge è della SRL (connected account) → quindi Merchant of Record = SRL. 
+Stripe Documentazione
++1
+
+Tu imposti una application fee (es. 15€) che va a te in automatico.
+
+Il resto va alla SRL (al netto di eventuali fee Stripe, a seconda di come configuri). 
+Stripe Documentazione
++1
+
+Nota: se invece fai destination charges, spesso Stripe considera MoR la piattaforma (tu) per quelle transazioni, e questo può “stonare” col fatto che la SRL sta rivendendo. 
+Stripe Documentazione
++1
+
+3) La tua fattura (forfettario) alla SRL: IVA e ritenuta
+
+Con regime forfettario:
+
+Non applichi IVA in fattura e inserisci la dicitura di legge tipo “operazione in franchigia/ senza applicazione IVA … L. 190/2014 commi 54–89”. 
+SumUp - A Better Way to Get Paid
++1
+
+La SRL non deve farti ritenuta d’acconto (tu incassi il 100% di quanto fatturi) e in fattura si usa la dicitura per la non applicazione della ritenuta (art. 1, comma 67, L. 190/2014). 
+Fisco e Tasse
++1
+
+La fattura verso la SRL sarà elettronica (obbligo per tutti i forfettari dal 1° gennaio 2024). 
+Agenzia delle Entrate
++1
+
+4) Quindi, nel tuo esempio “pagamento 30€” cosa succede?
+
+Scenario coerente (reseller):
+
+Cliente finale paga 30€ alla SRL (anche via Stripe Connect).
+
+Stripe “splitta”: 15€ a te (application fee) + 15€ alla SRL (con le regole fee).
+
+La SRL emette fattura 30€ al cliente finale.
+
+Tu emetti fattura 15€ alla SRL (forfettario: no IVA + no ritenuta + e-fattura).
