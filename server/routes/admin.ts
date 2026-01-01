@@ -1635,6 +1635,8 @@ router.get(
               level2Used: consultantLicenses.level2Used,
               level3Total: consultantLicenses.level3Total,
               level3Used: consultantLicenses.level3Used,
+              employeeTotal: consultantLicenses.employeeTotal,
+              employeeUsed: consultantLicenses.employeeUsed,
             })
             .from(consultantLicenses)
             .where(eq(consultantLicenses.consultantId, consultant.id))
@@ -1646,6 +1648,8 @@ router.get(
             level2Used: license?.level2Used ?? 0,
             level3Total: license?.level3Total ?? 10,
             level3Used: license?.level3Used ?? 0,
+            employeeTotal: license?.employeeTotal ?? 0,
+            employeeUsed: license?.employeeUsed ?? 0,
             revenueSharePercentage: consultant.revenueSharePercentage ?? 50,
           };
         })
@@ -1669,7 +1673,7 @@ router.put(
   async (req: AuthRequest, res) => {
     try {
       const { consultantId } = req.params;
-      const { level2Total, level3Total, revenueSharePercentage } = req.body;
+      const { level2Total, level3Total, employeeTotal, revenueSharePercentage } = req.body;
 
       const [consultant] = await db
         .select({ id: users.id, role: users.role })
@@ -1708,6 +1712,9 @@ router.put(
       if (level3Total !== undefined) {
         licenseData.level3Total = Math.max(0, parseInt(level3Total) || 0);
       }
+      if (employeeTotal !== undefined) {
+        licenseData.employeeTotal = Math.max(0, parseInt(employeeTotal) || 0);
+      }
 
       if (existingLicense) {
         await db
@@ -1721,6 +1728,8 @@ router.put(
           level3Total: licenseData.level3Total ?? 10,
           level2Used: 0,
           level3Used: 0,
+          employeeTotal: licenseData.employeeTotal ?? 0,
+          employeeUsed: 0,
         });
       }
 
@@ -1729,7 +1738,7 @@ router.put(
         action: "update_consultant_licenses",
         targetType: "consultant",
         targetId: consultantId,
-        details: { level2Total, level3Total, revenueSharePercentage },
+        details: { level2Total, level3Total, employeeTotal, revenueSharePercentage },
       });
 
       res.json({

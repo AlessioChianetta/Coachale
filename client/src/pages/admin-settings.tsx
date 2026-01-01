@@ -133,6 +133,8 @@ interface ConsultantLicenseData {
   level2Used: number;
   level3Total: number;
   level3Used: number;
+  employeeTotal: number;
+  employeeUsed: number;
   revenueSharePercentage: number;
 }
 
@@ -226,6 +228,7 @@ export default function AdminSettings() {
   const [licenseFormData, setLicenseFormData] = useState({
     level2Total: 20,
     level3Total: 10,
+    employeeTotal: 0,
     revenueSharePercentage: 50,
   });
 
@@ -426,7 +429,7 @@ export default function AdminSettings() {
   });
 
   const updateLicenseMutation = useMutation({
-    mutationFn: async (data: { consultantId: string; level2Total: number; level3Total: number; revenueSharePercentage: number }) => {
+    mutationFn: async (data: { consultantId: string; level2Total: number; level3Total: number; employeeTotal: number; revenueSharePercentage: number }) => {
       const response = await fetch(`/api/admin/consultant-licenses/${data.consultantId}`, {
         method: "PUT",
         headers: {
@@ -436,6 +439,7 @@ export default function AdminSettings() {
         body: JSON.stringify({
           level2Total: data.level2Total,
           level3Total: data.level3Total,
+          employeeTotal: data.employeeTotal,
           revenueSharePercentage: data.revenueSharePercentage,
         }),
       });
@@ -855,6 +859,7 @@ export default function AdminSettings() {
     setLicenseFormData({
       level2Total: consultant.level2Total,
       level3Total: consultant.level3Total,
+      employeeTotal: consultant.employeeTotal,
       revenueSharePercentage: consultant.revenueSharePercentage,
     });
   };
@@ -865,6 +870,7 @@ export default function AdminSettings() {
       consultantId: editingLicense.id,
       level2Total: licenseFormData.level2Total,
       level3Total: licenseFormData.level3Total,
+      employeeTotal: licenseFormData.employeeTotal,
       revenueSharePercentage: licenseFormData.revenueSharePercentage,
     });
   };
@@ -2745,6 +2751,7 @@ export default function AdminSettings() {
                           <TableHead>Email</TableHead>
                           <TableHead className="text-center">Licenze L2</TableHead>
                           <TableHead className="text-center">Licenze L3</TableHead>
+                          <TableHead className="text-center">Licenze Dipendenti</TableHead>
                           <TableHead className="text-center">Revenue Share %</TableHead>
                           <TableHead className="text-center">Azioni</TableHead>
                         </TableRow>
@@ -2764,6 +2771,11 @@ export default function AdminSettings() {
                             <TableCell className="text-center">
                               <span className={consultant.level3Used >= consultant.level3Total ? "text-red-500 font-semibold" : ""}>
                                 {consultant.level3Used}/{consultant.level3Total}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className={consultant.employeeUsed >= consultant.employeeTotal ? "text-red-500 font-semibold" : ""}>
+                                {consultant.employeeUsed}/{consultant.employeeTotal}
                               </span>
                             </TableCell>
                             <TableCell className="text-center">
@@ -2827,6 +2839,21 @@ export default function AdminSettings() {
                     {editingLicense && (
                       <p className="text-xs text-gray-500">
                         Attualmente in uso: {editingLicense.level3Used}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="employeeTotal">Licenze Dipendenti Totali</Label>
+                    <Input
+                      id="employeeTotal"
+                      type="number"
+                      min={0}
+                      value={licenseFormData.employeeTotal}
+                      onChange={(e) => setLicenseFormData(prev => ({ ...prev, employeeTotal: parseInt(e.target.value) || 0 }))}
+                    />
+                    {editingLicense && (
+                      <p className="text-xs text-gray-500">
+                        Attualmente in uso: {editingLicense.employeeUsed}
                       </p>
                     )}
                   </div>
