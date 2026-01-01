@@ -88,11 +88,16 @@ import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAss
 import { AgentInstructionsPanel } from "@/components/whatsapp/AgentInstructionsPanel";
 import { whatsappAgentIdeas } from "@/data/whatsapp-agent-ideas";
 import { AgentDashboardHeader } from "@/components/whatsapp/AgentDashboardHeader";
-import { AgentRoster } from "@/components/whatsapp/AgentRoster";
+import { AgentRoster, tierConfig, type AgentTier } from "@/components/whatsapp/AgentRoster";
 import { AgentProfilePanel } from "@/components/whatsapp/AgentProfilePanel";
-import { AgentLeaderboard } from "@/components/whatsapp/AgentLeaderboard";
-import { ActivityFeed } from "@/components/whatsapp/ActivityFeed";
 import { LevelBadge } from "@/components/whatsapp/LevelBadge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  BarChart3,
+  Shield,
+  Star,
+  Crown
+} from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Table,
@@ -195,6 +200,167 @@ const emptyConfig: WhatsAppConfig = {
   agentInstructionsEnabled: false,
   selectedTemplate: "receptionist",
 };
+
+// TODO: Connect to real tier data from agents
+interface KanbanAgent {
+  id: string;
+  name: string;
+  status: "active" | "paused" | "test";
+  tier: AgentTier;
+}
+
+// TODO: Connect to real license data
+const mockLicenses: Record<AgentTier, { used: number; total: number }> = {
+  base: { used: 2, total: 5 },
+  bronzo: { used: 3, total: 10 },
+  argento: { used: 1, total: 5 },
+  deluxe: { used: 1, total: 3 },
+};
+
+const kanbanTierConfig: Record<AgentTier, {
+  label: string;
+  emoji: string;
+  headerBg: string;
+  headerText: string;
+  cardBg: string;
+  borderColor: string;
+}> = {
+  base: {
+    label: "BASE",
+    emoji: "📊",
+    headerBg: "bg-gradient-to-r from-gray-500 to-gray-600",
+    headerText: "text-white",
+    cardBg: "bg-gray-50",
+    borderColor: "border-gray-200",
+  },
+  bronzo: {
+    label: "BRONZO",
+    emoji: "🛡️",
+    headerBg: "bg-gradient-to-r from-amber-500 to-amber-600",
+    headerText: "text-white",
+    cardBg: "bg-amber-50",
+    borderColor: "border-amber-200",
+  },
+  argento: {
+    label: "ARGENTO",
+    emoji: "⭐",
+    headerBg: "bg-gradient-to-r from-blue-400 to-blue-500",
+    headerText: "text-white",
+    cardBg: "bg-blue-50",
+    borderColor: "border-blue-200",
+  },
+  deluxe: {
+    label: "DELUXE",
+    emoji: "👑",
+    headerBg: "bg-gradient-to-r from-purple-500 via-purple-600 to-yellow-500",
+    headerText: "text-white",
+    cardBg: "bg-purple-50",
+    borderColor: "border-purple-200",
+  },
+};
+
+function TierKanbanBoard({ 
+  agents, 
+  onSelectAgent,
+  selectedAgentId 
+}: { 
+  agents: KanbanAgent[]; 
+  onSelectAgent: (agent: KanbanAgent) => void;
+  selectedAgentId?: string | null;
+}) {
+  const tiers: AgentTier[] = ["base", "bronzo", "argento", "deluxe"];
+  
+  // TODO: Connect to real tier data from agents
+  const agentsByTier = useMemo(() => {
+    const grouped: Record<AgentTier, KanbanAgent[]> = {
+      base: [],
+      bronzo: [],
+      argento: [],
+      deluxe: [],
+    };
+    agents.forEach((agent) => {
+      if (grouped[agent.tier]) {
+        grouped[agent.tier].push(agent);
+      }
+    });
+    return grouped;
+  }, [agents]);
+
+  return (
+    <Card className="bg-white border border-slate-200 h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-purple-600" />
+          Kanban Tier
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-3 pt-0">
+        <div className="grid grid-cols-4 gap-2 h-[400px]">
+          {tiers.map((tier) => {
+            const config = kanbanTierConfig[tier];
+            const license = mockLicenses[tier];
+            const tierAgents = agentsByTier[tier];
+
+            return (
+              <div key={tier} className="flex flex-col rounded-lg overflow-hidden border border-slate-200">
+                {/* Column Header */}
+                <div className={`${config.headerBg} ${config.headerText} p-2`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs flex items-center gap-1">
+                      {config.emoji} {config.label}
+                    </span>
+                    <Badge variant="secondary" className="bg-white/20 text-white text-[10px] px-1 py-0">
+                      {license.used}/{license.total}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Column Content */}
+                <ScrollArea className={`flex-1 ${config.cardBg} p-1.5`}>
+                  {tierAgents.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full py-6 text-center">
+                      <Bot className="h-6 w-6 text-slate-300 mb-1" />
+                      <p className="text-[10px] text-slate-400">Nessun agente</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {tierAgents.map((agent) => (
+                        <div
+                          key={agent.id}
+                          onClick={() => onSelectAgent(agent)}
+                          className={`p-2 rounded border cursor-pointer transition-all bg-white hover:shadow-sm ${
+                            selectedAgentId === agent.id 
+                              ? "border-blue-400 ring-1 ring-blue-200" 
+                              : config.borderColor
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-white text-[10px] font-medium">
+                              {agent.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-medium text-slate-800 truncate">
+                                {agent.name}
+                              </p>
+                            </div>
+                            <div className={`w-1.5 h-1.5 rounded-full ${
+                              agent.status === "active" ? "bg-green-500" :
+                              agent.status === "paused" ? "bg-amber-500" : "bg-blue-500"
+                            }`} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ConsultantWhatsAppPage() {
   const [, navigate] = useLocation();
@@ -982,18 +1148,36 @@ export default function ConsultantWhatsAppPage() {
                 {/* Enterprise Dashboard Header con KPI */}
                 <AgentDashboardHeader />
                 
-                {/* Layout principale: Roster + Profile */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  {/* Sidebar Roster (4 colonne) */}
-                  <div className="lg:col-span-4">
+                {/* Layout principale: Roster + Kanban + Profile (3+6+3 columns) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  {/* Enhanced Sidebar Roster (3 colonne) */}
+                  <div className="lg:col-span-3">
                     <AgentRoster 
                       onSelectAgent={(agent) => setSelectedAgent(agent)}
                       selectedAgentId={selectedAgent?.id}
                     />
                   </div>
                   
-                  {/* Pannello Profilo Agente (8 colonne) */}
-                  <div className="lg:col-span-8">
+                  {/* Kanban Tier Board (6 colonne) */}
+                  <div className="lg:col-span-6">
+                    {/* TODO: Connect to real tier data from agents */}
+                    <TierKanbanBoard 
+                      agents={agentStats.map((agent, index) => ({
+                        id: agent.id,
+                        name: agent.name,
+                        status: agent.status as "active" | "paused" | "test",
+                        tier: (["base", "bronzo", "argento", "deluxe"] as AgentTier[])[index % 4],
+                      }))}
+                      onSelectAgent={(agent) => {
+                        const fullAgent = agentStats.find(a => a.id === agent.id);
+                        if (fullAgent) setSelectedAgent(fullAgent);
+                      }}
+                      selectedAgentId={selectedAgent?.id}
+                    />
+                  </div>
+                  
+                  {/* Pannello Profilo Agente (3 colonne) */}
+                  <div className="lg:col-span-3">
                     <AgentProfilePanel 
                       selectedAgent={selectedAgent}
                       onDeleteAgent={(agentId) => {
@@ -1006,16 +1190,6 @@ export default function ConsultantWhatsAppPage() {
                       }}
                     />
                   </div>
-                </div>
-                
-                {/* Sezione Leaderboard + Activity Feed */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <AgentLeaderboard 
-                    agents={agentStats}
-                    isLoading={isLoadingStats}
-                    onSelectAgent={(agent) => setSelectedAgent(agent)}
-                  />
-                  <ActivityFeed />
                 </div>
               </div>
             )}

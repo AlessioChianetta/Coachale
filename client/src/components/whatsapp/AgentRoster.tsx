@@ -22,11 +22,60 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  AlertCircle
+  AlertCircle,
+  BarChart3,
+  Shield,
+  Star,
+  Crown
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { LevelBadge } from "./LevelBadge";
+
+// TODO: Connect to real tier data from agents
+export type AgentTier = "base" | "bronzo" | "argento" | "deluxe";
+
+export const tierConfig: Record<AgentTier, { 
+  label: string; 
+  icon: React.ElementType; 
+  emoji: string;
+  color: string; 
+  bgColor: string;
+  borderColor: string;
+}> = {
+  base: {
+    label: "Base",
+    icon: BarChart3,
+    emoji: "📊",
+    color: "text-gray-600",
+    bgColor: "bg-gray-100",
+    borderColor: "border-gray-200",
+  },
+  bronzo: {
+    label: "Bronzo",
+    icon: Shield,
+    emoji: "🛡️",
+    color: "text-amber-600",
+    bgColor: "bg-amber-50",
+    borderColor: "border-amber-200",
+  },
+  argento: {
+    label: "Argento",
+    icon: Star,
+    emoji: "⭐",
+    color: "text-blue-500",
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-200",
+  },
+  deluxe: {
+    label: "Deluxe",
+    icon: Crown,
+    emoji: "👑",
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+    borderColor: "border-purple-200",
+  },
+};
 
 interface Agent {
   id: string;
@@ -37,6 +86,7 @@ interface Agent {
   trend: "up" | "down" | "stable";
   conversationsToday: number;
   level?: "1" | "2" | null;
+  tier?: AgentTier;
 }
 
 interface AgentRosterProps {
@@ -72,6 +122,18 @@ const agentTypeLabels: Record<string, string> = {
   customer_success: "Customer Success",
   intake_coordinator: "Coordinatore Intake",
 };
+
+function TierBadge({ tier }: { tier: AgentTier }) {
+  const config = tierConfig[tier];
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border",
+      config.bgColor, config.color, config.borderColor
+    )}>
+      {config.emoji}
+    </span>
+  );
+}
 
 function AgentCard({ 
   agent, 
@@ -116,6 +178,7 @@ function AgentCard({
               {agent.name}
             </span>
             <div className={cn("w-2 h-2 rounded-full", status.dotColor)} />
+            {agent.tier && <TierBadge tier={agent.tier} />}
           </div>
           
           <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -162,9 +225,16 @@ function AgentCardSkeleton() {
   );
 }
 
+// TODO: Connect to real tier data from agents - for now using mock assignment based on agent index
+function getMockTier(index: number): AgentTier {
+  const tiers: AgentTier[] = ["base", "bronzo", "argento", "deluxe"];
+  return tiers[index % 4];
+}
+
 export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [tierFilter, setTierFilter] = useState<string>("all");
 
   const { data, isLoading, isError } = useQuery<Agent[]>({
     queryKey: ["/api/whatsapp/agents/leaderboard"],
@@ -178,7 +248,8 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
       const result = await response.json();
       const rawAgents = Array.isArray(result) ? result : (result.agents || []);
       
-      return rawAgents.map((agent: any) => ({
+      // TODO: Connect to real tier data from agents
+      return rawAgents.map((agent: any, index: number) => ({
         id: agent.id,
         name: agent.name || agent.agentName || "Agente",
         agentType: agent.type || agent.agentType || "reactive_lead",
@@ -187,6 +258,7 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
         trend: agent.trend || "stable",
         conversationsToday: agent.conversations7d || agent.conversationsToday || 0,
         level: agent.level || null,
+        tier: agent.tier || getMockTier(index),
       }));
     },
     staleTime: 30000,
@@ -194,13 +266,24 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
 
   const agents = data || [];
 
+  // Count agents per tier
+  const tierCounts = useMemo(() => {
+    return {
+      base: agents.filter(a => a.tier === "base").length,
+      bronzo: agents.filter(a => a.tier === "bronzo").length,
+      argento: agents.filter(a => a.tier === "argento").length,
+      deluxe: agents.filter(a => a.tier === "deluxe").length,
+    };
+  }, [agents]);
+
   const filteredAgents = useMemo(() => {
     return agents.filter((agent) => {
       const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || agent.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesTier = tierFilter === "all" || agent.tier === tierFilter;
+      return matchesSearch && matchesStatus && matchesTier;
     });
-  }, [agents, searchQuery, statusFilter]);
+  }, [agents, searchQuery, statusFilter, tierFilter]);
 
   const groupedAgents = useMemo(() => {
     const groups: Record<string, Agent[]> = {
@@ -250,17 +333,52 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
             />
           </div>
           
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="bg-slate-50 border-slate-200">
-              <SelectValue placeholder="Filtra per stato" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti gli stati</SelectItem>
-              <SelectItem value="active">Attivi</SelectItem>
-              <SelectItem value="paused">In Pausa</SelectItem>
-              <SelectItem value="test">Test</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="bg-slate-50 border-slate-200 flex-1">
+                <SelectValue placeholder="Stato" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti</SelectItem>
+                <SelectItem value="active">Attivi</SelectItem>
+                <SelectItem value="paused">Pausa</SelectItem>
+                <SelectItem value="test">Test</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={tierFilter} onValueChange={setTierFilter}>
+              <SelectTrigger className="bg-slate-50 border-slate-200 flex-1">
+                <SelectValue placeholder="Tier" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti</SelectItem>
+                <SelectItem value="base">📊 Base</SelectItem>
+                <SelectItem value="bronzo">🛡️ Bronzo</SelectItem>
+                <SelectItem value="argento">⭐ Argento</SelectItem>
+                <SelectItem value="deluxe">👑 Deluxe</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Tier Counters */}
+          <div className="grid grid-cols-2 gap-1.5 pt-2">
+            <div className={cn("flex items-center justify-between px-2 py-1 rounded text-xs", tierConfig.base.bgColor, tierConfig.base.borderColor, "border")}>
+              <span className={tierConfig.base.color}>📊 Base</span>
+              <span className={cn("font-semibold", tierConfig.base.color)}>{tierCounts.base}</span>
+            </div>
+            <div className={cn("flex items-center justify-between px-2 py-1 rounded text-xs", tierConfig.bronzo.bgColor, tierConfig.bronzo.borderColor, "border")}>
+              <span className={tierConfig.bronzo.color}>🛡️ Bronzo</span>
+              <span className={cn("font-semibold", tierConfig.bronzo.color)}>{tierCounts.bronzo}</span>
+            </div>
+            <div className={cn("flex items-center justify-between px-2 py-1 rounded text-xs", tierConfig.argento.bgColor, tierConfig.argento.borderColor, "border")}>
+              <span className={tierConfig.argento.color}>⭐ Argento</span>
+              <span className={cn("font-semibold", tierConfig.argento.color)}>{tierCounts.argento}</span>
+            </div>
+            <div className={cn("flex items-center justify-between px-2 py-1 rounded text-xs", tierConfig.deluxe.bgColor, tierConfig.deluxe.borderColor, "border")}>
+              <span className={tierConfig.deluxe.color}>👑 Deluxe</span>
+              <span className={cn("font-semibold", tierConfig.deluxe.color)}>{tierCounts.deluxe}</span>
+            </div>
+          </div>
         </div>
       </CardHeader>
       
