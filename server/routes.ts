@@ -105,6 +105,8 @@ import echoRouter from "./routes/echo";
 import aiAssistantRouter from "./routes/ai-assistant-router";
 import managerRouter from "./routes/manager-router";
 import publicAgentRouter from "./routes/public-agent-router";
+import publicAIChatRouter from "./routes/public-ai-chat-router";
+import publicPricingRouter from "./routes/public-pricing-router";
 import instagramWebhookRouter from "./routes/instagram/instagram-webhook-router";
 import instagramConfigRouter from "./routes/instagram/instagram-config-router";
 import instagramOAuthRouter from "./routes/instagram/instagram-oauth-router";
@@ -9781,6 +9783,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Public Agent routes (manager conversations with AI)
   app.use("/api/public/agent", publicAgentRouter);
+
+  // Public AI Chat routes (Level 1 anonymous chat)
+  app.use("/api/public/ai", publicAIChatRouter);
+
+  // Public Pricing routes (consultant pricing pages)
+  app.use("/api/public/consultant", publicPricingRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {

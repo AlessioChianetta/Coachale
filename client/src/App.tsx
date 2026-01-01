@@ -119,6 +119,8 @@ const ClientFileSearchDocuments = lazy(() => import("./pages/client-file-search-
 const TrainingMapPage = lazy(() => import("@/pages/training-map"));
 const ManagerLogin = lazy(() => import("@/pages/manager-login"));
 const ManagerChat = lazy(() => import("@/pages/manager-chat"));
+const PublicAIChat = lazy(() => import("@/pages/public-ai-chat"));
+const PublicPricing = lazy(() => import("@/pages/public-pricing"));
 
 const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
 const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
@@ -178,6 +180,12 @@ function Router() {
 
           {/* Manager Chat - uses manager_token auth */}
           <Route path="/agent/:slug/chat" component={ManagerChat} />
+
+          {/* Public AI Chat - no auth required (Level 1 agents) */}
+          <Route path="/ai/:slug" component={PublicAIChat} />
+
+          {/* Public Pricing Page - no auth required */}
+          <Route path="/c/:slug/pricing" component={PublicPricing} />
 
           <Route path="/consultant">
             <AuthGuard requiredRole="consultant">
