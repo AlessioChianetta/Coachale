@@ -1,7 +1,7 @@
 import express, { Router, Response } from "express";
 import { db } from "../db";
-import { users } from "@shared/schema";
-import { eq, and, ne } from "drizzle-orm";
+import { users, bronzeUsers, clientLevelSubscriptions, consultantLicenses } from "@shared/schema";
+import { eq, and, ne, sql, ilike, or, count } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 
 const router: Router = express.Router();
@@ -192,6 +192,234 @@ router.get("/consultant/pricing-page/check-slug/:slug", authenticateToken, requi
   } catch (error) {
     console.error("[Consultant Pricing] Check slug error:", error);
     res.status(500).json({ error: "Failed to check slug availability" });
+  }
+});
+
+// GET /api/consultant/pricing/users/bronze - Lista utenti Bronze (Level 1)
+router.get("/consultant/pricing/users/bronze", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const search = (req.query.search as string) || "";
+    const offset = (page - 1) * limit;
+
+    let whereCondition = eq(bronzeUsers.consultantId, consultantId);
+    
+    if (search) {
+      whereCondition = and(
+        eq(bronzeUsers.consultantId, consultantId),
+        or(
+          ilike(bronzeUsers.email, `%${search}%`),
+          ilike(bronzeUsers.firstName, `%${search}%`),
+          ilike(bronzeUsers.lastName, `%${search}%`)
+        )
+      )!;
+    }
+
+    const [bronzeUsersList, totalResult] = await Promise.all([
+      db.select({
+        id: bronzeUsers.id,
+        email: bronzeUsers.email,
+        firstName: bronzeUsers.firstName,
+        lastName: bronzeUsers.lastName,
+        dailyMessagesUsed: bronzeUsers.dailyMessagesUsed,
+        dailyMessageLimit: bronzeUsers.dailyMessageLimit,
+        lastMessageResetAt: bronzeUsers.lastMessageResetAt,
+        createdAt: bronzeUsers.createdAt,
+        lastLoginAt: bronzeUsers.lastLoginAt,
+        isActive: bronzeUsers.isActive,
+      })
+        .from(bronzeUsers)
+        .where(whereCondition)
+        .orderBy(bronzeUsers.createdAt)
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() })
+        .from(bronzeUsers)
+        .where(whereCondition)
+    ]);
+
+    res.json({
+      users: bronzeUsersList,
+      total: totalResult[0]?.count || 0,
+      page,
+      limit,
+      totalPages: Math.ceil((totalResult[0]?.count || 0) / limit),
+    });
+  } catch (error) {
+    console.error("[Consultant Pricing] Get bronze users error:", error);
+    res.status(500).json({ error: "Failed to get bronze users" });
+  }
+});
+
+// GET /api/consultant/pricing/users/silver - Lista utenti Argento (Level 2)
+router.get("/consultant/pricing/users/silver", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const silverUsers = await db.select({
+      id: clientLevelSubscriptions.id,
+      clientEmail: clientLevelSubscriptions.clientEmail,
+      clientName: clientLevelSubscriptions.clientName,
+      status: clientLevelSubscriptions.status,
+      startDate: clientLevelSubscriptions.startDate,
+      endDate: clientLevelSubscriptions.endDate,
+      stripeSubscriptionId: clientLevelSubscriptions.stripeSubscriptionId,
+      clientId: clientLevelSubscriptions.clientId,
+    })
+      .from(clientLevelSubscriptions)
+      .where(
+        and(
+          eq(clientLevelSubscriptions.consultantId, consultantId),
+          eq(clientLevelSubscriptions.level, "2")
+        )
+      )
+      .orderBy(clientLevelSubscriptions.createdAt);
+
+    const totalResult = await db.select({ count: count() })
+      .from(clientLevelSubscriptions)
+      .where(
+        and(
+          eq(clientLevelSubscriptions.consultantId, consultantId),
+          eq(clientLevelSubscriptions.level, "2")
+        )
+      );
+
+    res.json({
+      users: silverUsers,
+      total: totalResult[0]?.count || 0,
+    });
+  } catch (error) {
+    console.error("[Consultant Pricing] Get silver users error:", error);
+    res.status(500).json({ error: "Failed to get silver users" });
+  }
+});
+
+// GET /api/consultant/pricing/users/gold - Lista utenti Oro (Level 3)
+router.get("/consultant/pricing/users/gold", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const goldUsers = await db.select({
+      id: clientLevelSubscriptions.id,
+      clientEmail: clientLevelSubscriptions.clientEmail,
+      clientName: clientLevelSubscriptions.clientName,
+      status: clientLevelSubscriptions.status,
+      startDate: clientLevelSubscriptions.startDate,
+      endDate: clientLevelSubscriptions.endDate,
+      stripeSubscriptionId: clientLevelSubscriptions.stripeSubscriptionId,
+      clientId: clientLevelSubscriptions.clientId,
+    })
+      .from(clientLevelSubscriptions)
+      .where(
+        and(
+          eq(clientLevelSubscriptions.consultantId, consultantId),
+          eq(clientLevelSubscriptions.level, "3")
+        )
+      )
+      .orderBy(clientLevelSubscriptions.createdAt);
+
+    const totalResult = await db.select({ count: count() })
+      .from(clientLevelSubscriptions)
+      .where(
+        and(
+          eq(clientLevelSubscriptions.consultantId, consultantId),
+          eq(clientLevelSubscriptions.level, "3")
+        )
+      );
+
+    res.json({
+      users: goldUsers,
+      total: totalResult[0]?.count || 0,
+    });
+  } catch (error) {
+    console.error("[Consultant Pricing] Get gold users error:", error);
+    res.status(500).json({ error: "Failed to get gold users" });
+  }
+});
+
+// GET /api/consultant/pricing/users/stats - Statistiche aggregate
+router.get("/consultant/pricing/users/stats", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const [bronzeTotal, bronzeActive, silverTotal, silverActive, goldTotal, goldActive] = await Promise.all([
+      db.select({ count: count() })
+        .from(bronzeUsers)
+        .where(eq(bronzeUsers.consultantId, consultantId)),
+      db.select({ count: count() })
+        .from(bronzeUsers)
+        .where(and(eq(bronzeUsers.consultantId, consultantId), eq(bronzeUsers.isActive, true))),
+      db.select({ count: count() })
+        .from(clientLevelSubscriptions)
+        .where(and(eq(clientLevelSubscriptions.consultantId, consultantId), eq(clientLevelSubscriptions.level, "2"))),
+      db.select({ count: count() })
+        .from(clientLevelSubscriptions)
+        .where(and(
+          eq(clientLevelSubscriptions.consultantId, consultantId),
+          eq(clientLevelSubscriptions.level, "2"),
+          eq(clientLevelSubscriptions.status, "active")
+        )),
+      db.select({ count: count() })
+        .from(clientLevelSubscriptions)
+        .where(and(eq(clientLevelSubscriptions.consultantId, consultantId), eq(clientLevelSubscriptions.level, "3"))),
+      db.select({ count: count() })
+        .from(clientLevelSubscriptions)
+        .where(and(
+          eq(clientLevelSubscriptions.consultantId, consultantId),
+          eq(clientLevelSubscriptions.level, "3"),
+          eq(clientLevelSubscriptions.status, "active")
+        )),
+    ]);
+
+    res.json({
+      bronze: {
+        total: bronzeTotal[0]?.count || 0,
+        active: bronzeActive[0]?.count || 0,
+      },
+      silver: {
+        total: silverTotal[0]?.count || 0,
+        active: silverActive[0]?.count || 0,
+      },
+      gold: {
+        total: goldTotal[0]?.count || 0,
+        active: goldActive[0]?.count || 0,
+      },
+    });
+  } catch (error) {
+    console.error("[Consultant Pricing] Get stats error:", error);
+    res.status(500).json({ error: "Failed to get user stats" });
+  }
+});
+
+// DELETE /api/consultant/pricing/users/bronze/:id - Elimina utente Bronze
+router.delete("/consultant/pricing/users/bronze/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const bronzeUserId = req.params.id;
+
+    const [bronzeUser] = await db.select()
+      .from(bronzeUsers)
+      .where(and(eq(bronzeUsers.id, bronzeUserId), eq(bronzeUsers.consultantId, consultantId)));
+
+    if (!bronzeUser) {
+      return res.status(404).json({ error: "Utente Bronze non trovato o non autorizzato" });
+    }
+
+    await db.delete(bronzeUsers).where(eq(bronzeUsers.id, bronzeUserId));
+
+    await db.update(consultantLicenses)
+      .set({
+        level1Used: sql`GREATEST(${consultantLicenses.level1Used} - 1, 0)`,
+        updatedAt: new Date(),
+      })
+      .where(eq(consultantLicenses.consultantId, consultantId));
+
+    res.json({ success: true, message: "Utente Bronze eliminato con successo" });
+  } catch (error) {
+    console.error("[Consultant Pricing] Delete bronze user error:", error);
+    res.status(500).json({ error: "Failed to delete bronze user" });
   }
 });
 
