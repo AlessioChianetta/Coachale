@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { FloatingButton } from "./FloatingButton";
 import { ChatPanel } from "./ChatPanel";
-import { ContextButton } from "./ContextButton";
-import { ContextPanel } from "./ContextPanel";
 import { PageContext } from "@/hooks/use-page-context";
 import { OpenAndAskPayload } from "@/hooks/use-document-focus";
 
@@ -77,25 +75,6 @@ export function AIAssistant({ pageContext }: AIAssistantProps) {
 
   return (
     <>
-      {/* Pulsante contestuale sopra l'AI Assistant - appare solo quando c'è contesto */}
-      {hasContext && pageContext && (
-        <>
-          <div className="fixed bottom-28 right-6 z-[60]">
-            <ContextButton
-              pageContext={pageContext}
-              onClick={handleContextButtonClick}
-              isOpen={isContextPanelOpen}
-            />
-          </div>
-          <ContextPanel
-            isOpen={isContextPanelOpen}
-            onClose={() => setIsContextPanelOpen(false)}
-            pageContext={pageContext}
-            onOpenMainAI={handleOpenMainAI}
-          />
-        </>
-      )}
-
       {/* AI Assistant principale (sempre presente a destra) */}
       <FloatingButton
         onClick={() => setIsOpen(!isOpen)}
