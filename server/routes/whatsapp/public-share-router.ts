@@ -514,18 +514,34 @@ router.get(
       if (managerId) {
         const managerVisitorPattern = `manager_${managerId}%`;
         
+        // Check if this is a Bronze virtual share (ID starts with "bronze-")
+        const isBronzeShare = share.id.startsWith('bronze-');
+        
         // Get all conversations for this manager
-        const conversations = await db
-          .select()
-          .from(schema.whatsappAgentConsultantConversations)
-          .where(
-            and(
-              eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-              eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
-              sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
-            )
-          )
-          .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+        // Bronze shares use NULL shareId in the database
+        const conversations = isBronzeShare
+          ? await db
+              .select()
+              .from(schema.whatsappAgentConsultantConversations)
+              .where(
+                and(
+                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                  sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
+                  sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+                )
+              )
+              .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt))
+          : await db
+              .select()
+              .from(schema.whatsappAgentConsultantConversations)
+              .where(
+                and(
+                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                  eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
+                  sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+                )
+              )
+              .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
         
         // If conversationId is specified, get messages for that conversation
         if (conversationId) {
