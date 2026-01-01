@@ -871,28 +871,46 @@ router.post(
       
       // Get or create conversation
       console.log(`\n📥 Fetching or creating conversation...`);
-      let [conversation] = await db
-        .select()
-        .from(schema.whatsappAgentConsultantConversations)
-        .where(
-          and(
-            eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-            eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
-            eq(schema.whatsappAgentConsultantConversations.externalVisitorId, visitorId)
-          )
-        )
-        .limit(1);
+      
+      // Check if this is a Bronze virtual share (ID starts with "bronze-")
+      const isBronzeShare = share.id.startsWith('bronze-');
+      const actualShareId = isBronzeShare ? null : share.id;
+      
+      // Query differently based on whether this is a Bronze share or regular share
+      let [conversation] = isBronzeShare
+        ? await db
+            .select()
+            .from(schema.whatsappAgentConsultantConversations)
+            .where(
+              and(
+                eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
+                eq(schema.whatsappAgentConsultantConversations.externalVisitorId, visitorId)
+              )
+            )
+            .limit(1)
+        : await db
+            .select()
+            .from(schema.whatsappAgentConsultantConversations)
+            .where(
+              and(
+                eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
+                eq(schema.whatsappAgentConsultantConversations.externalVisitorId, visitorId)
+              )
+            )
+            .limit(1);
       
       if (!conversation) {
         console.log(`📝 No existing conversation, creating new one...`);
         
-        // Create new conversation for visitor
+        // Create new conversation for visitor (use null shareId for Bronze)
         [conversation] = await db
           .insert(schema.whatsappAgentConsultantConversations)
           .values({
             consultantId: agentConfig.consultantId,
             agentConfigId: share.agentConfigId,
-            shareId: share.id,
+            shareId: actualShareId,
             externalVisitorId: visitorId,
             phoneNumber: null, // No phone for web visitors
             customerName: `Visitor ${visitorId.slice(0, 8)}`,
@@ -903,11 +921,12 @@ router.post(
               userAgent: req.get('user-agent'),
               referrer: req.get('referer'),
               firstAccessAt: new Date().toISOString(),
+              isBronzeUser: isBronzeShare,
             },
           })
           .returning();
         
-        console.log(`✅ Conversation created: ${conversation.id}`);
+        console.log(`✅ Conversation created: ${conversation.id} (Bronze: ${isBronzeShare})`);
       } else {
         console.log(`✅ Existing conversation found: ${conversation.id}`);
       }
