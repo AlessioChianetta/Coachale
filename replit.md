@@ -65,6 +65,15 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
     - SuperAdmin dashboard with platform-wide transaction overview
     - Consultant subscription list in Stripe Connect tab
     - Keys stored in `superadminStripeConfig` table (encrypted)
+  - **Employee License System**: Separate licensing model for consultant team members:
+    - `isEmployee` flag on users table to distinguish clients from employees
+    - Employee licenses: €200 for 10 licenses (20€/license), paid directly to platform (no revenue share)
+    - Tracked in `consultantLicenses.employeeTotal/employeeUsed` fields
+    - Purchase history in `employeeLicensePurchases` table with status tracking
+    - "Nuovo Cliente" dialog with Cliente/Dipendente toggle (visual feedback)
+    - "Licenze" tab with 3 sections: L2 Clienti, L3 Clienti, and Dipendenti
+    - Server-side quantity validation (only 10/20/50 allowed), DB-verified webhooks
+    - Platform Stripe checkout (not Connect) for employee license purchases
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
