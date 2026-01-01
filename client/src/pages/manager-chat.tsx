@@ -69,6 +69,10 @@ interface ManagerInfo {
   id: string;
   name: string;
   email: string;
+  isBronze?: boolean;
+  dailyMessagesUsed?: number;
+  dailyMessageLimit?: number;
+  remaining?: number;
 }
 
 interface ManagerPreferences {
@@ -372,6 +376,11 @@ export default function ManagerChat() {
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const [loadingConversationId, setLoadingConversationId] = useState<string | null>(null);
   const [isNewConversation, setIsNewConversation] = useState(false);
+  const [bronzeUsage, setBronzeUsage] = useState<{
+    dailyMessagesUsed: number;
+    dailyMessageLimit: number;
+    remaining: number;
+  } | null>(null);
 
   const tempAssistantIdRef = useRef<string | null>(null);
 
@@ -413,6 +422,17 @@ export default function ManagerChat() {
   });
 
   const isAuthenticated = !!getManagerToken() && agentInfo?.requiresLogin === true;
+
+  // Initialize Bronze usage from manager info
+  useEffect(() => {
+    if (managerInfo?.isBronze && typeof managerInfo.dailyMessagesUsed === 'number') {
+      setBronzeUsage({
+        dailyMessagesUsed: managerInfo.dailyMessagesUsed,
+        dailyMessageLimit: managerInfo.dailyMessageLimit || 15,
+        remaining: managerInfo.remaining || 0,
+      });
+    }
+  }, [managerInfo]);
 
   const { data: conversationData, isLoading: conversationsLoading, refetch: refetchConversation } = useQuery<{
     conversations?: { id: string; createdAt: string; lastMessageAt?: string }[];
@@ -573,6 +593,14 @@ export default function ManagerChat() {
                   );
                 }
               } else if (data.type === "complete" || data.type === "done") {
+                // Extract Bronze usage info if present
+                if (typeof data.dailyMessagesUsed === 'number' && typeof data.dailyMessageLimit === 'number') {
+                  setBronzeUsage({
+                    dailyMessagesUsed: data.dailyMessagesUsed,
+                    dailyMessageLimit: data.dailyMessageLimit,
+                    remaining: data.remaining ?? (data.dailyMessageLimit - data.dailyMessagesUsed),
+                  });
+                }
               } else if (data.type === "error") {
                 throw new Error(data.error || "AI error");
               }
@@ -749,6 +777,17 @@ export default function ManagerChat() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {bronzeUsage && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
+                    <MessageSquare className="h-3.5 w-3.5 text-amber-400" />
+                    <span className="text-xs font-medium text-amber-300">
+                      {bronzeUsage.dailyMessagesUsed}/{bronzeUsage.dailyMessageLimit}
+                    </span>
+                    <span className="text-xs text-amber-400/70 hidden sm:inline">
+                      messaggi oggi
+                    </span>
+                  </div>
+                )}
                 {managerInfo && (
                   <span className="text-sm text-slate-300 hidden md:block mr-2">
                     {managerInfo.name}

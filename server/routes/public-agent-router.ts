@@ -226,6 +226,9 @@ router.get(
           lastName: bronzeUsers.lastName,
           email: bronzeUsers.email,
           isActive: bronzeUsers.isActive,
+          dailyMessagesUsed: bronzeUsers.dailyMessagesUsed,
+          dailyMessageLimit: bronzeUsers.dailyMessageLimit,
+          lastMessageResetAt: bronzeUsers.lastMessageResetAt,
         })
           .from(bronzeUsers)
           .where(eq(bronzeUsers.id, req.bronzeUser.bronzeUserId))
@@ -235,12 +238,33 @@ router.get(
           return res.status(404).json({ message: "User not found" });
         }
 
+        // Check if we need to reset the daily counter (new day)
+        let dailyUsed = bronzeUser.dailyMessagesUsed;
+        const dailyLimit = bronzeUser.dailyMessageLimit;
+        const lastReset = bronzeUser.lastMessageResetAt;
+        
+        // Helper to check if it's a new day
+        const isNewDay = (lastResetDate: Date | null): boolean => {
+          if (!lastResetDate) return true;
+          const now = new Date();
+          const lastResetDay = new Date(lastResetDate).setHours(0, 0, 0, 0);
+          const today = new Date(now).setHours(0, 0, 0, 0);
+          return today > lastResetDay;
+        };
+
+        if (isNewDay(lastReset)) {
+          dailyUsed = 0;
+        }
+
         return res.json({
           id: bronzeUser.id,
           name: [bronzeUser.firstName, bronzeUser.lastName].filter(Boolean).join(" ") || "Bronze User",
           email: bronzeUser.email,
           status: bronzeUser.isActive ? "active" : "inactive",
           isBronze: true,
+          dailyMessagesUsed: dailyUsed,
+          dailyMessageLimit: dailyLimit,
+          remaining: Math.max(0, dailyLimit - dailyUsed),
         });
       }
 
