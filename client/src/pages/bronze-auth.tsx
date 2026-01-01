@@ -46,7 +46,7 @@ interface PricingData {
   };
 }
 
-const BRONZE_TOKEN_KEY = "bronzeAuthToken";
+const BRONZE_TOKEN_KEY = "manager_token";
 
 function FeatureItem({ children }: { children: React.ReactNode }) {
   return (

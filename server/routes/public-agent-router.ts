@@ -9,6 +9,7 @@ import {
   managerMessages,
   whatsappAgentShares,
   consultantWhatsappConfig,
+  bronzeUsers,
 } from "@shared/schema";
 import { getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
@@ -25,8 +26,16 @@ interface ManagerTokenPayload {
   role: string;
 }
 
+interface BronzeTokenPayload {
+  bronzeUserId: string;
+  consultantId: string;
+  email: string;
+  type: "bronze";
+}
+
 interface ManagerRequest extends Request {
   manager?: ManagerTokenPayload;
+  bronzeUser?: BronzeTokenPayload;
   share?: typeof whatsappAgentShares.$inferSelect;
   agentConfig?: typeof consultantWhatsappConfig.$inferSelect;
 }
@@ -47,8 +56,39 @@ async function verifyManagerToken(
       return res.status(401).json({ message: "Authentication required" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as ManagerTokenPayload;
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
     
+    // Handle Bronze token (type: "bronze")
+    if (decoded.type === "bronze" && decoded.bronzeUserId) {
+      const [bronzeUser] = await db.select()
+        .from(bronzeUsers)
+        .where(eq(bronzeUsers.id, decoded.bronzeUserId))
+        .limit(1);
+
+      if (!bronzeUser || !bronzeUser.isActive) {
+        return res.status(403).json({ message: "Bronze account not active" });
+      }
+
+      // Set bronzeUser on request for Bronze flow
+      req.bronzeUser = {
+        bronzeUserId: decoded.bronzeUserId,
+        consultantId: decoded.consultantId,
+        email: decoded.email,
+        type: "bronze",
+      };
+      
+      // Also set a compatible manager object for shared endpoints
+      req.manager = {
+        managerId: decoded.bronzeUserId,
+        consultantId: decoded.consultantId,
+        shareId: `bronze-${decoded.bronzeUserId}`,
+        role: "bronze",
+      };
+      
+      return next();
+    }
+    
+    // Handle Manager token (role: "manager")
     if (decoded.role !== "manager") {
       return res.status(403).json({ message: "Invalid token role" });
     }
@@ -85,33 +125,64 @@ async function loadShareAndAgent(
       return res.status(400).json({ message: "Slug is required" });
     }
 
+    // First try to find in whatsappAgentShares (legacy manager system)
     const [share] = await db.select()
       .from(whatsappAgentShares)
       .where(eq(whatsappAgentShares.slug, slug))
       .limit(1);
 
-    if (!share) {
-      return res.status(404).json({ message: "Agent not found" });
+    if (share) {
+      // Found in shares table - use legacy flow
+      if (!share.isActive) {
+        return res.status(403).json({ message: "Agent is not active" });
+      }
+
+      if (share.expireAt && new Date(share.expireAt) < new Date()) {
+        return res.status(403).json({ message: "Agent link has expired" });
+      }
+
+      const [agentConfig] = await db.select()
+        .from(consultantWhatsappConfig)
+        .where(eq(consultantWhatsappConfig.id, share.agentConfigId))
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({ message: "Agent configuration not found" });
+      }
+
+      req.share = share;
+      req.agentConfig = agentConfig;
+      return next();
     }
 
-    if (!share.isActive) {
-      return res.status(403).json({ message: "Agent is not active" });
-    }
-
-    if (share.expireAt && new Date(share.expireAt) < new Date()) {
-      return res.status(403).json({ message: "Agent link has expired" });
-    }
-
+    // Not found in shares - try to find by public_slug in consultantWhatsappConfig (Bronze/Level 1 system)
     const [agentConfig] = await db.select()
       .from(consultantWhatsappConfig)
-      .where(eq(consultantWhatsappConfig.id, share.agentConfigId))
+      .where(and(
+        eq(consultantWhatsappConfig.publicSlug, slug),
+        eq(consultantWhatsappConfig.isActive, true)
+      ))
       .limit(1);
 
     if (!agentConfig) {
-      return res.status(404).json({ message: "Agent configuration not found" });
+      return res.status(404).json({ message: "Agent not found" });
     }
 
-    req.share = share;
+    // Create a virtual share object for Bronze agents
+    const virtualShare = {
+      id: `bronze-${agentConfig.id}`,
+      slug: slug,
+      agentConfigId: agentConfig.id,
+      agentName: agentConfig.agentName || "AI Assistant",
+      consultantId: agentConfig.consultantId,
+      isActive: true,
+      requiresLogin: true, // Bronze requires login
+      expireAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as typeof whatsappAgentShares.$inferSelect;
+
+    req.share = virtualShare;
     req.agentConfig = agentConfig;
     next();
   } catch (error: any) {
@@ -147,6 +218,33 @@ router.get(
       const manager = req.manager!;
       const share = req.share!;
 
+      // Handle Bronze users
+      if (req.bronzeUser) {
+        const [bronzeUser] = await db.select({
+          id: bronzeUsers.id,
+          firstName: bronzeUsers.firstName,
+          lastName: bronzeUsers.lastName,
+          email: bronzeUsers.email,
+          isActive: bronzeUsers.isActive,
+        })
+          .from(bronzeUsers)
+          .where(eq(bronzeUsers.id, req.bronzeUser.bronzeUserId))
+          .limit(1);
+
+        if (!bronzeUser) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        return res.json({
+          id: bronzeUser.id,
+          name: [bronzeUser.firstName, bronzeUser.lastName].filter(Boolean).join(" ") || "Bronze User",
+          email: bronzeUser.email,
+          status: bronzeUser.isActive ? "active" : "inactive",
+          isBronze: true,
+        });
+      }
+
+      // Handle Manager users (legacy flow)
       if (manager.shareId !== share.id) {
         return res.status(403).json({ message: "Access denied to this agent" });
       }
@@ -182,6 +280,18 @@ router.get(
       const manager = req.manager!;
       const share = req.share!;
 
+      const defaultPreferences = {
+        writingStyle: "default",
+        responseLength: "balanced",
+        customInstructions: null,
+      };
+
+      // Handle Bronze users - return default preferences
+      if (req.bronzeUser) {
+        return res.json(defaultPreferences);
+      }
+
+      // Handle Manager users (legacy flow)
       if (manager.shareId !== share.id) {
         return res.status(403).json({ message: "Access denied to this agent" });
       }
@@ -196,12 +306,6 @@ router.get(
       if (!managerData) {
         return res.status(404).json({ message: "Manager not found" });
       }
-
-      const defaultPreferences = {
-        writingStyle: "default",
-        responseLength: "balanced",
-        customInstructions: null,
-      };
 
       res.json({ ...defaultPreferences, ...(managerData.aiPreferences || {}) });
     } catch (error: any) {
