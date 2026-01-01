@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireSuperAdmin, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig, superadminInstagramConfig } from "../../shared/schema";
+import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig, superadminInstagramConfig, consultantLicenses } from "../../shared/schema";
 import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { getAdminTurnConfig, saveAdminTurnConfig } from "../services/turn-config-service";
@@ -1600,6 +1600,144 @@ router.delete(
       });
     } catch (error: any) {
       console.error("Delete superadmin instagram config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ============================================
+// Consultant Licenses Management
+// ============================================
+
+router.get(
+  "/admin/consultant-licenses",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const consultants = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          revenueSharePercentage: users.revenueSharePercentage,
+        })
+        .from(users)
+        .where(eq(users.role, "consultant"))
+        .orderBy(users.firstName, users.lastName);
+
+      const consultantsWithLicenses = await Promise.all(
+        consultants.map(async (consultant) => {
+          const [license] = await db
+            .select({
+              level2Total: consultantLicenses.level2Total,
+              level2Used: consultantLicenses.level2Used,
+              level3Total: consultantLicenses.level3Total,
+              level3Used: consultantLicenses.level3Used,
+            })
+            .from(consultantLicenses)
+            .where(eq(consultantLicenses.consultantId, consultant.id))
+            .limit(1);
+
+          return {
+            ...consultant,
+            level2Total: license?.level2Total ?? 20,
+            level2Used: license?.level2Used ?? 0,
+            level3Total: license?.level3Total ?? 10,
+            level3Used: license?.level3Used ?? 0,
+            revenueSharePercentage: consultant.revenueSharePercentage ?? 50,
+          };
+        })
+      );
+
+      res.json({
+        success: true,
+        consultants: consultantsWithLicenses,
+      });
+    } catch (error: any) {
+      console.error("Get consultant licenses error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.put(
+  "/admin/consultant-licenses/:consultantId",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { consultantId } = req.params;
+      const { level2Total, level3Total, revenueSharePercentage } = req.body;
+
+      const [consultant] = await db
+        .select({ id: users.id, role: users.role })
+        .from(users)
+        .where(and(eq(users.id, consultantId), eq(users.role, "consultant")))
+        .limit(1);
+
+      if (!consultant) {
+        return res.status(404).json({
+          success: false,
+          error: "Consultant not found",
+        });
+      }
+
+      if (revenueSharePercentage !== undefined) {
+        const percentage = Math.max(0, Math.min(100, parseInt(revenueSharePercentage) || 50));
+        await db
+          .update(users)
+          .set({ revenueSharePercentage: percentage })
+          .where(eq(users.id, consultantId));
+      }
+
+      const [existingLicense] = await db
+        .select({ id: consultantLicenses.id })
+        .from(consultantLicenses)
+        .where(eq(consultantLicenses.consultantId, consultantId))
+        .limit(1);
+
+      const licenseData: any = {
+        updatedAt: new Date(),
+      };
+
+      if (level2Total !== undefined) {
+        licenseData.level2Total = Math.max(0, parseInt(level2Total) || 0);
+      }
+      if (level3Total !== undefined) {
+        licenseData.level3Total = Math.max(0, parseInt(level3Total) || 0);
+      }
+
+      if (existingLicense) {
+        await db
+          .update(consultantLicenses)
+          .set(licenseData)
+          .where(eq(consultantLicenses.consultantId, consultantId));
+      } else {
+        await db.insert(consultantLicenses).values({
+          consultantId,
+          level2Total: licenseData.level2Total ?? 20,
+          level3Total: licenseData.level3Total ?? 10,
+          level2Used: 0,
+          level3Used: 0,
+        });
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "update_consultant_licenses",
+        targetType: "consultant",
+        targetId: consultantId,
+        details: { level2Total, level3Total, revenueSharePercentage },
+      });
+
+      res.json({
+        success: true,
+        message: "Consultant licenses updated successfully",
+      });
+    } catch (error: any) {
+      console.error("Update consultant licenses error:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }

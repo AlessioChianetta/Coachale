@@ -2282,6 +2282,34 @@ export default function ConsultantWhatsAppPage() {
               </CardContent>
             </Card>
 
+            {/* Monthly Invoices Section */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-violet-600" />
+                  Storico Fatture
+                </CardTitle>
+                <CardDescription>
+                  Riepilogo mensile delle tue entrate e commissioni
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <FileText className="h-10 w-10 text-gray-300 mx-auto mb-4" />
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Nessuna fattura disponibile
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+                    Quando avrai transazioni attive, qui troverai il riepilogo mensile con le tue entrate, 
+                    la quota piattaforma e i costi AI.
+                  </p>
+                  <Badge variant="outline" className="text-xs">
+                    Funzionalità in arrivo con Stripe
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Pricing Page Link Section */}
             <Card className="border-2 border-violet-200 dark:border-violet-800">
               <CardHeader>

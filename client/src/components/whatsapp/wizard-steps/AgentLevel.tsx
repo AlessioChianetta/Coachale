@@ -234,6 +234,61 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
         </Card>
       )}
 
+      {formData.level === "3" && (
+        <Card className="border-2 border-yellow-400/30 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-yellow-400/10 via-amber-400/10 to-orange-400/10">
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-amber-600" />
+              Informazioni Livello 3 - Deluxe
+            </CardTitle>
+            <CardDescription>
+              Accesso completo al software per clienti premium
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="grid gap-4">
+              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg">
+                <Lock className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-900">Login Cliente Richiesto</p>
+                  <p className="text-sm text-amber-700">
+                    Solo i clienti premium autenticati possono accedere
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg">
+                <BookOpen className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-900">Accesso Completo al Software</p>
+                  <p className="text-sm text-amber-700">
+                    Il cliente ha accesso a tutte le funzionalità della piattaforma
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg">
+                <MessageSquare className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-900">Messaggi Illimitati + AI Manager</p>
+                  <p className="text-sm text-amber-700">
+                    Accesso illimitato all'agente AI e alla sezione Manager
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Alert className="border-amber-300 bg-amber-50">
+              <Info className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                <strong>Premium:</strong> Questo livello richiede l'abbonamento più alto.
+                I clienti avranno accesso completo alla tua piattaforma.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      )}
+
       {!formData.level && (
         <Alert className="border-blue-200 bg-blue-50">
           <Info className="h-4 w-4 text-blue-600" />

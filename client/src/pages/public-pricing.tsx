@@ -118,6 +118,7 @@ export default function PublicPricing() {
 
   const level1Agent = data?.agents.find(a => a.level === "1");
   const level2Agent = data?.agents.find(a => a.level === "2") || level1Agent;
+  const level3Agent = data?.agents.find(a => a.level === "3");
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
@@ -151,14 +152,16 @@ export default function PublicPricing() {
           )}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {isLoading ? (
             <>
+              <PricingCardSkeleton />
               <PricingCardSkeleton />
               <PricingCardSkeleton />
             </>
           ) : (
             <>
+              {/* Level 1 - Bronzo (Free) */}
               <Card className="relative flex flex-col border-2 border-slate-200 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-shadow">
                 <CardHeader className="text-center pb-6">
                   <Badge className="w-fit mx-auto mb-4 bg-amber-100 text-amber-700 hover:bg-amber-100">
@@ -206,6 +209,7 @@ export default function PublicPricing() {
                 </CardContent>
               </Card>
 
+              {/* Level 2 - Argento (Paid) */}
               <Card className="relative flex flex-col border-2 border-violet-300 bg-white shadow-xl shadow-violet-100/50">
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                   <Badge className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-600 hover:to-indigo-600 px-4 py-1">
@@ -245,12 +249,6 @@ export default function PublicPricing() {
                     <FeatureItem>Accesso alla Knowledge Base</FeatureItem>
                     <FeatureItem>Risposte personalizzate avanzate</FeatureItem>
                     <FeatureItem>Storico conversazioni salvato</FeatureItem>
-                    <FeatureItem>
-                      <span className="flex items-center gap-1.5">
-                        <Shield className="h-4 w-4 text-emerald-500" />
-                        Supporto prioritario
-                      </span>
-                    </FeatureItem>
                   </ul>
                   
                   <Button 
@@ -258,6 +256,66 @@ export default function PublicPricing() {
                     onClick={() => level2Agent && handleLevel2Purchase(level2Agent.agentId)}
                   >
                     Acquista Ora
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Level 3 - Deluxe (Premium) */}
+              <Card className="relative flex flex-col border-2 border-amber-400 bg-gradient-to-b from-amber-50 to-white shadow-xl shadow-amber-100/50">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <Badge className="bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500 text-white hover:from-yellow-500 hover:to-orange-500 px-4 py-1 shadow-lg">
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                    Premium
+                  </Badge>
+                </div>
+                
+                <CardHeader className="text-center pb-6 pt-8">
+                  <Badge className="w-fit mx-auto mb-4 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 hover:from-amber-100 hover:to-orange-100">
+                    Accesso Completo
+                  </Badge>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-semibold text-slate-900">
+                      {(data?.pricing as any)?.level3Name || "Livello Deluxe"}
+                    </h3>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="text-4xl font-bold text-slate-900">
+                        €{(data?.pricing as any)?.level3MonthlyPrice || 59}
+                      </span>
+                      <span className="text-muted-foreground">/mese</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {(data?.pricing as any)?.level3Description || "Per professionisti che vogliono tutto"}
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col">
+                  <ul className="space-y-3 mb-8 flex-1">
+                    <FeatureItem>Tutto del piano Argento</FeatureItem>
+                    <FeatureItem>
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-amber-500" />
+                        Accesso completo al software
+                      </span>
+                    </FeatureItem>
+                    <FeatureItem>AI Manager dedicato</FeatureItem>
+                    <FeatureItem>Dashboard personale</FeatureItem>
+                    <FeatureItem>
+                      <span className="flex items-center gap-1.5">
+                        <Shield className="h-4 w-4 text-emerald-500" />
+                        Supporto VIP prioritario
+                      </span>
+                    </FeatureItem>
+                  </ul>
+                  
+                  <Button 
+                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                    onClick={() => toast({
+                      title: "Presto disponibile!",
+                      description: "L'integrazione con Stripe è in arrivo. Presto potrai acquistare questo piano.",
+                    })}
+                  >
+                    Acquista Deluxe
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </CardContent>

@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
-import { Award, Shield, Star } from "lucide-react";
+import { Award, Shield, Star, Crown } from "lucide-react";
 
 interface LevelBadgeProps {
-  level: "1" | "2" | null;
+  level: "1" | "2" | "3" | null;
   size?: "sm" | "md" | "lg";
   showLabel?: boolean;
   className?: string;
@@ -28,6 +28,16 @@ const levelConfig = {
     borderColor: "border-slate-400",
     iconColor: "text-slate-200",
     metalName: "Argento"
+  },
+  "3": {
+    label: "Livello 3",
+    shortLabel: "L3",
+    description: "Accesso completo al software",
+    icon: Crown,
+    colors: "bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500 text-white shadow-lg",
+    borderColor: "border-yellow-500",
+    iconColor: "text-yellow-100",
+    metalName: "Deluxe"
   }
 };
 
@@ -74,14 +84,15 @@ export function LevelSelector({
   onChange,
   disabled = false
 }: { 
-  value: "1" | "2" | null; 
-  onChange: (level: "1" | "2" | null) => void;
+  value: "1" | "2" | "3" | null; 
+  onChange: (level: "1" | "2" | "3" | null) => void;
   disabled?: boolean;
 }) {
   const options = [
     { value: null, label: "Nessun Livello", description: "Agente standard senza accesso pubblico" },
     { value: "1" as const, label: "Livello 1 - Bronzo", description: "Accesso pubblico con limite messaggi giornaliero" },
-    { value: "2" as const, label: "Livello 2 - Argento", description: "Accesso clienti con knowledge base" }
+    { value: "2" as const, label: "Livello 2 - Argento", description: "Accesso clienti con knowledge base (a pagamento)" },
+    { value: "3" as const, label: "Livello 3 - Deluxe", description: "Accesso completo al software (premium)" }
   ];
   
   return (

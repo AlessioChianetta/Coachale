@@ -55,17 +55,24 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
         )
       );
 
-    const level1Or2Agents = agents.filter(a => a.level === "1" || a.level === "2");
-    if (level1Or2Agents.length === 0) {
+    const availableAgents = agents.filter(a => a.level === "1" || a.level === "2" || a.level === "3");
+    if (availableAgents.length === 0) {
       return res.status(404).json({ error: "Nessun agente disponibile" });
     }
 
     const config = consultant.pricingPageConfig || {};
+    const level2Price = config.level2PriceCents ? Math.floor(config.level2PriceCents / 100) : 29;
+    const level3Price = config.level3PriceCents ? Math.floor(config.level3PriceCents / 100) : Math.round(level2Price * 2);
+    
     const pricing = {
-      level2MonthlyPrice: config.level2PriceCents ? Math.floor(config.level2PriceCents / 100) : 29,
+      level2MonthlyPrice: level2Price,
       level2YearlyPrice: config.level2PriceCents ? Math.floor((config.level2PriceCents * 10) / 100) : 290,
       level2Name: config.level2Name || "Livello Argento",
       level2Description: config.level2Description || "Per chi vuole il massimo dal proprio assistente",
+      level3MonthlyPrice: level3Price,
+      level3YearlyPrice: Math.round(level3Price * 10),
+      level3Name: config.level3Name || "Livello Deluxe",
+      level3Description: config.level3Description || "Per professionisti che vogliono tutto",
       accentColor: config.accentColor || null,
       logoUrl: config.logoUrl || null,
     };

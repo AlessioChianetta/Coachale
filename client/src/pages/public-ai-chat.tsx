@@ -343,11 +343,12 @@ export default function PublicAIChat() {
       {limitReached && (
         <Alert className="mx-4 mb-2 border-orange-200 bg-orange-50">
           <AlertCircle className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="flex items-center justify-between">
+          <AlertDescription className="flex items-center justify-between flex-wrap gap-2">
             <span className="text-orange-800">
               Hai raggiunto il limite giornaliero di messaggi gratuiti.
             </span>
-            {agentInfo.consultantSlug ? (
+            {/* SECURITY FIX 2.3: Only show upgrade button if consultantSlug is valid and not empty */}
+            {agentInfo.consultantSlug && agentInfo.consultantSlug.trim() !== '' && agentInfo.consultantSlug !== 'null' ? (
               <Button
                 variant="link"
                 className="text-orange-700 p-0 h-auto font-medium"
@@ -357,7 +358,7 @@ export default function PublicAIChat() {
               </Button>
             ) : (
               <span className="text-orange-700 text-sm font-medium">
-                Contatta il consulente per l'upgrade
+                Torna domani per altri messaggi gratuiti
               </span>
             )}
           </AlertDescription>

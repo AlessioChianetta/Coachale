@@ -49,16 +49,26 @@ router.get("/:slug/info", async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
 
-    if (!slug || !slug.trim()) {
+    // SECURITY FIX 2.2: Reject empty or whitespace-only slugs
+    if (!slug || !slug.trim() || slug.trim().length === 0) {
       return res.status(400).json({ error: "Slug is required" });
     }
 
+    const cleanSlug = slug.trim().toLowerCase();
+
+    // SECURITY FIX 2.1: Query ONLY Level 1 agents with valid publicSlug
     const [agent] = await db.select()
       .from(consultantWhatsappConfig)
-      .where(eq(consultantWhatsappConfig.publicSlug, slug.trim()))
+      .where(
+        and(
+          eq(consultantWhatsappConfig.publicSlug, cleanSlug),
+          eq(consultantWhatsappConfig.level, "1"),
+          eq(consultantWhatsappConfig.isActive, true)
+        )
+      )
       .limit(1);
 
-    if (!agent || agent.level !== "1") {
+    if (!agent) {
       return res.status(404).json({ error: "Agente non trovato" });
     }
 
@@ -97,7 +107,8 @@ router.post("/:slug/chat", async (req: Request, res: Response) => {
     const { slug } = req.params;
     const { message, conversationHistory = [] } = req.body;
 
-    if (!slug || !slug.trim()) {
+    // SECURITY FIX 2.2: Reject empty or whitespace-only slugs
+    if (!slug || !slug.trim() || slug.trim().length === 0) {
       return res.status(400).json({ error: "Slug is required" });
     }
 
@@ -105,12 +116,21 @@ router.post("/:slug/chat", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Il messaggio è obbligatorio" });
     }
 
+    const cleanSlug = slug.trim().toLowerCase();
+
+    // SECURITY FIX 2.1: Query ONLY Level 1 agents with valid publicSlug
     const [agent] = await db.select()
       .from(consultantWhatsappConfig)
-      .where(eq(consultantWhatsappConfig.publicSlug, slug.trim()))
+      .where(
+        and(
+          eq(consultantWhatsappConfig.publicSlug, cleanSlug),
+          eq(consultantWhatsappConfig.level, "1"),
+          eq(consultantWhatsappConfig.isActive, true)
+        )
+      )
       .limit(1);
 
-    if (!agent || agent.level !== "1") {
+    if (!agent) {
       return res.status(404).json({ error: "Agente non trovato" });
     }
 

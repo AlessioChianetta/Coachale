@@ -66,7 +66,7 @@ export const whatsappConfigSchema = z.object({
   defaultIdealState: z.string().optional(),
 
   // Step 4: Agent Level - Dipendente AI configuration
-  level: z.enum(["1", "2"]).nullable().optional(),
+  level: z.enum(["1", "2", "3"]).nullable().optional(),
   publicSlug: z.string().optional(),
   dailyMessageLimit: z.coerce.number().min(1).default(15),
 

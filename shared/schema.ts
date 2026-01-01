@@ -71,6 +71,9 @@ export const users = pgTable("users", {
     logoUrl?: string;
   }>().default(sql`'{}'::jsonb`),
 
+  // Revenue Share Configuration (consultant-level) - Percentage split for subscription payments
+  revenueSharePercentage: integer("revenue_share_percentage").default(50), // Percentage that goes to consultant (default 50%)
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -709,6 +712,12 @@ export const consultantLicenses = pgTable("consultant_licenses", {
   level3Total: integer("level3_total").default(10).notNull(),
   level3Used: integer("level3_used").default(0).notNull(),
   stripeCustomerId: text("stripe_customer_id"),
+  
+  // AI Credits tracking (WIP for future billing)
+  aiCreditsUsed: real("ai_credits_used").default(0), // Total AI credits consumed
+  aiCreditsCostUsd: real("ai_credits_cost_usd").default(0), // Cost in USD of AI credits used
+  aiCreditsLastReset: timestamp("ai_credits_last_reset").default(sql`now()`), // Last billing cycle reset
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -736,6 +745,58 @@ export const clientLevelSubscriptions = pgTable("client_level_subscriptions", {
 
 export type ClientLevelSubscription = typeof clientLevelSubscriptions.$inferSelect;
 export type InsertClientLevelSubscription = typeof clientLevelSubscriptions.$inferInsert;
+
+// Monthly Invoices - Track monthly billing and revenue share for each consultant
+export const monthlyInvoices = pgTable("monthly_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Invoice period
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(), // e.g., 2025
+  
+  // Transaction totals
+  totalTransactions: integer("total_transactions").default(0), // Number of subscription payments
+  totalRevenueCents: integer("total_revenue_cents").default(0), // Total revenue in cents
+  
+  // Revenue split
+  consultantShareCents: integer("consultant_share_cents").default(0), // Amount going to consultant
+  platformShareCents: integer("platform_share_cents").default(0), // Amount going to platform
+  revenueSharePercentage: integer("revenue_share_percentage").default(50), // Snapshot of % at time of invoice
+  
+  // AI Credits cost (WIP for future)
+  aiCreditsCostCents: integer("ai_credits_cost_cents").default(0), // Deducted from consultant share
+  
+  // Net amount
+  netConsultantCents: integer("net_consultant_cents").default(0), // Final amount after AI costs
+  
+  // Invoice status
+  status: text("status").$type<"pending" | "calculated" | "paid" | "disputed">().default("pending").notNull(),
+  
+  // Stripe payout (for future Stripe Connect)
+  stripePayoutId: text("stripe_payout_id"),
+  paidAt: timestamp("paid_at"),
+  
+  // Details
+  invoiceDetails: jsonb("invoice_details").$type<Array<{
+    subscriptionId: string;
+    clientEmail: string;
+    level: "2" | "3";
+    amountCents: number;
+    date: string;
+  }>>().default(sql`'[]'::jsonb`),
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  uniqueConsultantPeriod: unique().on(table.consultantId, table.month, table.year),
+  consultantIdx: index("idx_monthly_invoices_consultant").on(table.consultantId),
+  periodIdx: index("idx_monthly_invoices_period").on(table.year, table.month),
+}));
+
+export type MonthlyInvoice = typeof monthlyInvoices.$inferSelect;
+export type InsertMonthlyInvoice = typeof monthlyInvoices.$inferInsert;
 
 // Vertex AI Usage Tracking - Track all Vertex AI API calls with accurate cost breakdown
 // Supports Live API (audio/text) and standard API tracking
@@ -2472,7 +2533,7 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   ownInstagramConfigId: varchar("own_instagram_config_id"),
 
   // Dipendenti AI - Leveling System
-  level: text("level").$type<"1" | "2" | null>(), // 1 = pubblico, 2 = client con knowledge base, null = nessun livello
+  level: text("level").$type<"1" | "2" | "3" | null>(), // 1 = pubblico, 2 = argento (knowledge base), 3 = deluxe (accesso software), null = nessun livello
   publicSlug: text("public_slug").unique(), // Slug per accesso pubblico Level 1 (es: "silvia" -> /ai/silvia)
   dailyMessageLimit: integer("daily_message_limit").default(15), // Limite messaggi giornaliero per Level 1
 

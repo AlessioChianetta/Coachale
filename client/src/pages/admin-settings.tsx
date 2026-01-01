@@ -40,6 +40,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Pencil } from "lucide-react";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -118,6 +120,18 @@ interface InstagramConfig {
   } | null;
 }
 
+interface ConsultantLicenseData {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  level2Total: number;
+  level2Used: number;
+  level3Total: number;
+  level3Used: number;
+  revenueSharePercentage: number;
+}
+
 export default function AdminSettings() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -165,6 +179,13 @@ export default function AdminSettings() {
   const [showInstagramSecret, setShowInstagramSecret] = useState(false);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
   const [isTestingInstagram, setIsTestingInstagram] = useState(false);
+
+  const [editingLicense, setEditingLicense] = useState<ConsultantLicenseData | null>(null);
+  const [licenseFormData, setLicenseFormData] = useState({
+    level2Total: 20,
+    level3Total: 10,
+    revenueSharePercentage: 50,
+  });
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -313,6 +334,53 @@ export default function AdminSettings() {
       return response.json();
     },
   });
+
+  const { data: consultantLicensesData, isLoading: isLoadingConsultantLicenses } = useQuery({
+    queryKey: ["/api/admin/consultant-licenses"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/consultant-licenses", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Errore nel caricamento licenze consulenti");
+      return response.json();
+    },
+  });
+
+  const updateLicenseMutation = useMutation({
+    mutationFn: async (data: { consultantId: string; level2Total: number; level3Total: number; revenueSharePercentage: number }) => {
+      const response = await fetch(`/api/admin/consultant-licenses/${data.consultantId}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          level2Total: data.level2Total,
+          level3Total: data.level3Total,
+          revenueSharePercentage: data.revenueSharePercentage,
+        }),
+      });
+      if (!response.ok) throw new Error("Errore durante l'aggiornamento");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/consultant-licenses"] });
+      setEditingLicense(null);
+      toast({
+        title: "Licenze aggiornate",
+        description: "Le licenze e la revenue share sono state aggiornate con successo.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const consultantLicensesList: ConsultantLicenseData[] = consultantLicensesData?.consultants || [];
 
   const consultantList: ConsultantVertexAccess[] = (consultantAccessData?.consultants || []).map((c: any) => ({
     ...c,
@@ -689,6 +757,25 @@ export default function AdminSettings() {
     } finally {
       setIsSavingInstagram(false);
     }
+  };
+
+  const handleEditLicense = (consultant: ConsultantLicenseData) => {
+    setEditingLicense(consultant);
+    setLicenseFormData({
+      level2Total: consultant.level2Total,
+      level3Total: consultant.level3Total,
+      revenueSharePercentage: consultant.revenueSharePercentage,
+    });
+  };
+
+  const handleSaveLicense = () => {
+    if (!editingLicense) return;
+    updateLicenseMutation.mutate({
+      consultantId: editingLicense.id,
+      level2Total: licenseFormData.level2Total,
+      level3Total: licenseFormData.level3Total,
+      revenueSharePercentage: licenseFormData.revenueSharePercentage,
+    });
   };
 
   const handleTestInstagramConfig = async () => {
@@ -2101,6 +2188,157 @@ export default function AdminSettings() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Gestione Licenze Consulenti */}
+            <Card className="border-0 shadow-lg lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="w-5 h-5 text-amber-500" />
+                  Gestione Licenze Consulenti
+                </CardTitle>
+                <CardDescription>
+                  Gestisci le licenze L2/L3 e la percentuale di revenue share per ogni consulente
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingConsultantLicenses ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full mx-auto mb-4" />
+                    <p className="text-gray-500">Caricamento licenze...</p>
+                  </div>
+                ) : consultantLicensesList.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Nessun consulente</h3>
+                    <p className="text-gray-500">Non ci sono consulenti registrati nella piattaforma.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead className="text-center">Licenze L2</TableHead>
+                          <TableHead className="text-center">Licenze L3</TableHead>
+                          <TableHead className="text-center">Revenue Share %</TableHead>
+                          <TableHead className="text-center">Azioni</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {consultantLicensesList.map((consultant) => (
+                          <TableRow key={consultant.id}>
+                            <TableCell className="font-medium">
+                              {consultant.firstName} {consultant.lastName}
+                            </TableCell>
+                            <TableCell className="text-gray-500">{consultant.email}</TableCell>
+                            <TableCell className="text-center">
+                              <span className={consultant.level2Used >= consultant.level2Total ? "text-red-500 font-semibold" : ""}>
+                                {consultant.level2Used}/{consultant.level2Total}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className={consultant.level3Used >= consultant.level3Total ? "text-red-500 font-semibold" : ""}>
+                                {consultant.level3Used}/{consultant.level3Total}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                {consultant.revenueSharePercentage}%
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditLicense(consultant)}
+                              >
+                                <Pencil className="w-4 h-4 mr-1" />
+                                Modifica
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Edit License Dialog */}
+            <Dialog open={!!editingLicense} onOpenChange={(open) => !open && setEditingLicense(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Modifica Licenze e Revenue Share</DialogTitle>
+                  <DialogDescription>
+                    {editingLicense && `${editingLicense.firstName} ${editingLicense.lastName} - ${editingLicense.email}`}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="level2Total">Licenze L2 Totali</Label>
+                    <Input
+                      id="level2Total"
+                      type="number"
+                      min={0}
+                      value={licenseFormData.level2Total}
+                      onChange={(e) => setLicenseFormData(prev => ({ ...prev, level2Total: parseInt(e.target.value) || 0 }))}
+                    />
+                    {editingLicense && (
+                      <p className="text-xs text-gray-500">
+                        Attualmente in uso: {editingLicense.level2Used}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="level3Total">Licenze L3 Totali</Label>
+                    <Input
+                      id="level3Total"
+                      type="number"
+                      min={0}
+                      value={licenseFormData.level3Total}
+                      onChange={(e) => setLicenseFormData(prev => ({ ...prev, level3Total: parseInt(e.target.value) || 0 }))}
+                    />
+                    {editingLicense && (
+                      <p className="text-xs text-gray-500">
+                        Attualmente in uso: {editingLicense.level3Used}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="revenueSharePercentage">Revenue Share (%)</Label>
+                    <Input
+                      id="revenueSharePercentage"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={licenseFormData.revenueSharePercentage}
+                      onChange={(e) => setLicenseFormData(prev => ({ ...prev, revenueSharePercentage: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) }))}
+                    />
+                    <p className="text-xs text-gray-500">
+                      Percentuale che va al consulente sui pagamenti dei clienti
+                    </p>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setEditingLicense(null)}>
+                    Annulla
+                  </Button>
+                  <Button
+                    onClick={handleSaveLicense}
+                    disabled={updateLicenseMutation.isPending}
+                    className="bg-gradient-to-r from-amber-500 to-orange-500"
+                  >
+                    {updateLicenseMutation.isPending ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvataggio...</>
+                    ) : (
+                      <><Save className="w-4 h-4 mr-2" /> Salva</>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <Card className="border-0 shadow-lg">
               <CardHeader>
