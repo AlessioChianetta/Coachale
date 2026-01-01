@@ -54,7 +54,27 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Revenue Sharing**: Configurable per-consultant via SuperAdmin (default 50/50 split), stored in `revenueSharePercentage`.
   - **Monthly Invoicing**: `monthlyInvoices` table tracks totalRevenueCents, consultantShareCents, platformShareCents, and aiCreditsCostCents.
   - **AI Credits Tracking**: Fields for tracking AI usage costs (aiCreditsUsed, aiCreditsCostUsd) for future billing.
-  - **Public Pricing Page**: Consultant-branded pricing page at `/c/:slug/pricing` with 3-column layout for all tiers.
+  - **Public Pricing Page**: Consultant-branded pricing page at `/c/:slug/pricing` with 3-column layout for all tiers and comprehensive customization:
+    - Dynamic hero section with customizable title, subtitle, and badge
+    - Per-tier feature lists, names, descriptions, and badges
+    - Monthly/yearly billing toggle with separate pricing configuration
+    - FAQ accordion section with consultant-defined questions/answers
+    - Testimonials carousel with avatar, name, role, and quote
+    - Trust badges with configurable icons and text
+    - Guarantee banner with icon, title, and description
+    - Custom footer text and CTA buttons
+    - Pricing success page at `/c/:slug/pricing/success` with confetti animation
+  - **Consultant Pricing Settings**: 4-tab configuration interface for pricing page:
+    - Generale: Hero text, guarantee settings, footer customization
+    - Piani: Monthly/yearly prices in cents, tier names/descriptions, feature lists
+    - Contenuti: FAQ builder, testimonials manager, trust badges editor
+    - Stile: Visual customization options (badges, CTAs)
+  - **Stripe Subscription Flow**: Complete subscription checkout with:
+    - Monthly and yearly billing periods
+    - Automatic account provisioning (Manager for L2, Client for L3)
+    - Welcome emails with temporary credentials
+    - Idempotent webhook handling (prevents duplicate subscriptions on retry)
+    - Proper price display (cents to euros with decimals preserved).
   - **Security**: Public chat endpoints validate Level 1 agents only, preventing L2/L3 access via public slugs.
   - **SuperAdmin Controls**: "Gestione Licenze Consulenti" card for managing license allocations and revenue share.
   - **Stripe Connect Integration**: Complete payment flow implemented with:
