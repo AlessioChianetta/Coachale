@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { FloatingButton } from "./FloatingButton";
 import { ChatPanel } from "./ChatPanel";
+import { ContextButton } from "./ContextButton";
+import { ConsultantContextPanel } from "./ConsultantContextPanel";
 import { ConsultantPageContext, useConsultantPageContext } from "@/hooks/use-consultant-page-context";
 import { OpenAndAskPayload } from "@/hooks/use-document-focus";
 
@@ -60,6 +62,25 @@ export function ConsultantAIAssistant(props: ConsultantAIAssistantProps) {
 
   return (
     <>
+      {/* Context button appears above AI Assistant when there's specific page context */}
+      {hasContext && pageContext && (
+        <>
+          <div className="fixed bottom-28 right-6 z-[60]">
+            <ContextButton
+              pageContext={pageContext as any} // Type compatible with client PageContext
+              onClick={handleContextButtonClick}
+              isOpen={isContextPanelOpen}
+            />
+          </div>
+          <ConsultantContextPanel
+            isOpen={isContextPanelOpen}
+            onClose={() => setIsContextPanelOpen(false)}
+            pageContext={pageContext}
+            onOpenMainAI={handleOpenMainAI}
+          />
+        </>
+      )}
+
       {/* Main AI Assistant (always present bottom right) */}
       <FloatingButton
         onClick={() => setIsOpen(!isOpen)}
