@@ -1532,12 +1532,12 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     console.log(`   🔢 TOTALE INPUT: ~${estimatedTotalInput.toLocaleString()} tokens\n`);
 
     // Check if agent has File Search Store for RAG-powered responses
-    // SECURITY: Bronze (Level 1) and Silver (Level 2) agents can ONLY access agent-specific store
-    // They should NOT have access to consultant's full store (contains CRM data, client info, consultations)
-    const agentLevel = consultantConfig.level; // "1" = Bronze, "2" = Silver, "3" = Deluxe, null = internal
-    const isPublicTierAgent = agentLevel === "1" || agentLevel === "2";
+    // SECURITY: ONLY Level 3 (Deluxe) agents can access consultant's full store
+    // All other levels (null, "1", "2") can ONLY access agent-specific store
+    const agentLevel = consultantConfig.level; // "1" = Bronze, "2" = Silver, "3" = Deluxe, null = internal/public
+    const canAccessConsultantStore = agentLevel === "3"; // STRICT: Only explicit Level 3
     
-    console.log(`🔐 [FILE SEARCH] Access check - Agent level: ${agentLevel}, isPublicTier: ${isPublicTierAgent}`);
+    console.log(`🔐 [FILE SEARCH] Access check - Agent level: ${agentLevel}, canAccessConsultantStore: ${canAccessConsultantStore}`);
     
     let fileSearchTool: any = null;
     try {
@@ -1548,9 +1548,9 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         console.log(`🔍 [FILE SEARCH] WhatsApp agent has FileSearchStore: ${agentStore.displayName}`);
         console.log(`   📦 Store: ${agentStore.googleStoreName}`);
         console.log(`   📄 Documents: ${agentStore.documentCount}`);
-      } else if (!isPublicTierAgent) {
-        // ONLY fallback to consultant's store for Level 3 (Deluxe) or internal agents
-        // Level 1 (Bronze) and Level 2 (Silver) should NEVER access consultant CRM data
+      } else if (canAccessConsultantStore) {
+        // ONLY Level 3 (Deluxe) can fallback to consultant's store
+        // All other levels (null, "1", "2") are blocked from CRM data
         const consultantStore = await fileSearchSyncService.getConsultantStore(consultantConfig.consultantId);
         if (consultantStore && consultantStore.documentCount > 0) {
           fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
@@ -1563,7 +1563,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
           console.log(`ℹ️ [FILE SEARCH] No FileSearchStore available (no agent or consultant store)`);
         }
       } else {
-        console.log(`🔐 [FILE SEARCH] Public tier agent (Level ${agentLevel}) - no consultant store fallback for security`);
+        console.log(`🔐 [FILE SEARCH] Non-Deluxe agent (Level ${agentLevel ?? 'null'}) - consultant store BLOCKED for security`);
       }
     } catch (fsError: any) {
       console.warn(`⚠️ [FILE SEARCH] Error checking stores: ${fsError.message}`);

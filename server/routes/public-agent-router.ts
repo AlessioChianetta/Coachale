@@ -609,14 +609,13 @@ ${share.agentInstructions}
         console.log(`[PUBLIC AGENT] System prompt built: ${systemPrompt.length} characters`);
 
         // Check for File Search support
-        // SECURITY: Bronze (Level 1) and Silver (Level 2) users can ONLY access agent-specific store
-        // They should NOT have access to consultant's full store (contains CRM data, client info, consultations)
-        // Only Level 3 (Deluxe) or Manager users with real share access can use consultant store
-        const agentLevel = agentConfig.level; // "1" = Bronze, "2" = Silver, "3" = Deluxe, null = internal
-        const isBronzeUser = !!req.bronzeUser;
-        const isPublicTierUser = isBronzeUser || agentLevel === "1" || agentLevel === "2";
+        // SECURITY: ONLY Level 3 (Deluxe) agents can access consultant's full store
+        // All other levels (null, "1", "2") can ONLY access agent-specific store
+        // Consultant store contains CRM data, client info, consultations - must be protected
+        const agentLevel = agentConfig.level; // "1" = Bronze, "2" = Silver, "3" = Deluxe, null = internal/public
+        const canAccessConsultantStore = agentLevel === "3"; // STRICT: Only explicit Level 3
         
-        console.log(`[PUBLIC AGENT] Access check - Agent level: ${agentLevel}, isBronze: ${isBronzeUser}, isPublicTier: ${isPublicTierUser}`);
+        console.log(`[PUBLIC AGENT] Access check - Agent level: ${agentLevel}, canAccessConsultantStore: ${canAccessConsultantStore}`);
         
         let fileSearchTool: any = null;
         try {
@@ -625,9 +624,9 @@ ${share.agentInstructions}
           if (agentStore && agentStore.documentCount > 0) {
             fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
             console.log(`[PUBLIC AGENT] File Search enabled with agent store: ${agentStore.displayName} (${agentStore.documentCount} docs)`);
-          } else if (!isPublicTierUser) {
-            // ONLY fallback to consultant's store for Level 3 (Deluxe) or internal Manager users
-            // Level 1 (Bronze) and Level 2 (Silver) should NEVER access consultant CRM data
+          } else if (canAccessConsultantStore) {
+            // ONLY Level 3 (Deluxe) can fallback to consultant's store
+            // All other levels (null, "1", "2") are blocked from CRM data
             const consultantStore = await fileSearchSyncService.getConsultantStore(agentConfig.consultantId);
             if (consultantStore && consultantStore.documentCount > 0) {
               fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
@@ -636,7 +635,7 @@ ${share.agentInstructions}
               console.log('[PUBLIC AGENT] No File Search store available');
             }
           } else {
-            console.log(`[PUBLIC AGENT] Public tier user (Level ${agentLevel}) - no consultant store fallback for security`);
+            console.log(`[PUBLIC AGENT] Non-Deluxe agent (Level ${agentLevel ?? 'null'}) - consultant store BLOCKED for security`);
           }
         } catch (fsError: any) {
           console.warn(`[PUBLIC AGENT] Error checking File Search stores: ${fsError.message}`);
