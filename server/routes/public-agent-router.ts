@@ -257,9 +257,9 @@ router.get(
           dailyUsed = 0;
         }
 
-        // Get consultant's public slug for logout redirect
+        // Get consultant's pricing page slug for logout redirect
         const [consultant] = await db.select({
-          publicSlug: users.publicSlug,
+          pricingPageSlug: users.pricingPageSlug,
         })
           .from(users)
           .where(eq(users.id, req.bronzeUser.consultantId))
@@ -274,7 +274,7 @@ router.get(
           dailyMessagesUsed: dailyUsed,
           dailyMessageLimit: dailyLimit,
           remaining: Math.max(0, dailyLimit - dailyUsed),
-          consultantSlug: consultant?.publicSlug || null,
+          consultantSlug: consultant?.pricingPageSlug || null,
         });
       }
 
