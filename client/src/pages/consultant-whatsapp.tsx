@@ -37,6 +37,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -263,6 +264,11 @@ export default function ConsultantWhatsAppPage() {
   const [userManagementTab, setUserManagementTab] = useState<"bronze" | "silver" | "gold">("bronze");
   const [userToDelete, setUserToDelete] = useState<{ id: string; email: string } | null>(null);
 
+  // Stati per dialog reset password manuale
+  const [passwordResetTarget, setPasswordResetTarget] = useState<{ type: "bronze" | "silver", id: string, email: string } | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
+
   // Query per caricare i documenti dalla knowledge base
   const knowledgeDocsQuery = useQuery({
     queryKey: ["/api/consultant/onboarding/knowledge-documents"],
@@ -398,27 +404,45 @@ export default function ConsultantWhatsAppPage() {
     },
   });
 
-  const resetPasswordMutation = useMutation({
-    mutationFn: async (subscriptionId: string) => {
-      const res = await fetch(`/api/consultant/subscriptions/${subscriptionId}/reset-password`, {
+  const resetBronzePasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const res = await fetch(`/api/consultant/pricing/users/bronze/${userId}/reset-password`, {
         method: "POST",
-        headers: getAuthHeaders(),
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword }),
       });
       if (!res.ok) throw new Error("Failed to reset password");
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Password reimpostata",
-        description: "Una nuova password è stata inviata via email al cliente",
-      });
+      toast({ title: "Password aggiornata", description: "La nuova password è stata impostata con successo" });
+      setIsPasswordResetDialogOpen(false);
+      setNewPasswordInput("");
+      setPasswordResetTarget(null);
     },
     onError: () => {
-      toast({
-        title: "Errore",
-        description: "Impossibile reimpostare la password",
-        variant: "destructive",
+      toast({ title: "Errore", description: "Impossibile reimpostare la password", variant: "destructive" });
+    },
+  });
+
+  const resetSilverPasswordMutation = useMutation({
+    mutationFn: async ({ subscriptionId, newPassword }: { subscriptionId: string; newPassword: string }) => {
+      const res = await fetch(`/api/consultant/pricing/users/silver/${subscriptionId}/reset-password`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword }),
       });
+      if (!res.ok) throw new Error("Failed to reset password");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Password aggiornata", description: "La nuova password è stata impostata con successo" });
+      setIsPasswordResetDialogOpen(false);
+      setNewPasswordInput("");
+      setPasswordResetTarget(null);
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile reimpostare la password", variant: "destructive" });
     },
   });
 
@@ -2512,14 +2536,28 @@ export default function ConsultantWhatsAppPage() {
                                     {user.lastLoginAt ? format(new Date(user.lastLoginAt), "d MMM yyyy HH:mm", { locale: it }) : "Mai"}
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                      onClick={() => setUserToDelete({ id: user.id, email: user.email })}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                        onClick={() => {
+                                          setPasswordResetTarget({ type: "bronze", id: user.id, email: user.email });
+                                          setNewPasswordInput("");
+                                          setIsPasswordResetDialogOpen(true);
+                                        }}
+                                      >
+                                        <KeyRound className="h-4 w-4" />
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                        onClick={() => setUserToDelete({ id: user.id, email: user.email })}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -2542,14 +2580,28 @@ export default function ConsultantWhatsAppPage() {
                                 <span className="text-xs text-gray-500">
                                   {user.lastLoginAt ? format(new Date(user.lastLoginAt), "d MMM yyyy", { locale: it }) : "Mai"}
                                 </span>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="text-red-500 hover:text-red-700"
-                                  onClick={() => setUserToDelete({ id: user.id, email: user.email })}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-blue-500 hover:text-blue-700"
+                                    onClick={() => {
+                                      setPasswordResetTarget({ type: "bronze", id: user.id, email: user.email });
+                                      setNewPasswordInput("");
+                                      setIsPasswordResetDialogOpen(true);
+                                    }}
+                                  >
+                                    <KeyRound className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-red-500 hover:text-red-700"
+                                    onClick={() => setUserToDelete({ id: user.id, email: user.email })}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -2622,8 +2674,17 @@ export default function ConsultantWhatsAppPage() {
                                     {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <Button variant="ghost" size="sm">
-                                      <ExternalLink className="h-4 w-4" />
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                      onClick={() => {
+                                        setPasswordResetTarget({ type: "silver", id: user.id, email: user.clientEmail });
+                                        setNewPasswordInput("");
+                                        setIsPasswordResetDialogOpen(true);
+                                      }}
+                                    >
+                                      <KeyRound className="h-4 w-4" />
                                     </Button>
                                   </TableCell>
                                 </TableRow>
@@ -2643,9 +2704,23 @@ export default function ConsultantWhatsAppPage() {
                                 </Badge>
                               </div>
                               <p className="text-sm text-gray-600">{user.clientName || "—"}</p>
-                              <span className="text-xs text-gray-500">
-                                {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
-                              </span>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">
+                                  {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
+                                </span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-blue-500 hover:text-blue-700"
+                                  onClick={() => {
+                                    setPasswordResetTarget({ type: "silver", id: user.id, email: user.clientEmail });
+                                    setNewPasswordInput("");
+                                    setIsPasswordResetDialogOpen(true);
+                                  }}
+                                >
+                                  <KeyRound className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -2725,6 +2800,50 @@ export default function ConsultantWhatsAppPage() {
                 </Tabs>
               </CardContent>
             </Card>
+
+            {/* Password Reset Dialog */}
+            <Dialog open={isPasswordResetDialogOpen} onOpenChange={setIsPasswordResetDialogOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Reimposta Password</DialogTitle>
+                  <DialogDescription>
+                    Imposta una nuova password per {passwordResetTarget?.email}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">Nuova Password</Label>
+                    <Input
+                      id="newPassword"
+                      type="text"
+                      placeholder="Inserisci la nuova password (min. 6 caratteri)"
+                      value={newPasswordInput}
+                      onChange={(e) => setNewPasswordInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsPasswordResetDialogOpen(false)}>
+                    Annulla
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (passwordResetTarget?.type === "bronze") {
+                        resetBronzePasswordMutation.mutate({ userId: passwordResetTarget.id, newPassword: newPasswordInput });
+                      } else if (passwordResetTarget?.type === "silver") {
+                        resetSilverPasswordMutation.mutate({ subscriptionId: passwordResetTarget.id, newPassword: newPasswordInput });
+                      }
+                    }}
+                    disabled={newPasswordInput.length < 6 || resetBronzePasswordMutation.isPending || resetSilverPasswordMutation.isPending}
+                  >
+                    {(resetBronzePasswordMutation.isPending || resetSilverPasswordMutation.isPending) && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Imposta Password
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* AlertDialog per conferma eliminazione utente Bronze */}
             <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
@@ -2872,8 +2991,15 @@ export default function ConsultantWhatsAppPage() {
                                     Visualizza Dettagli
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
-                                    onClick={() => resetPasswordMutation.mutate(sub.id)}
-                                    disabled={resetPasswordMutation.isPending}
+                                    onClick={() => {
+                                      setPasswordResetTarget({ 
+                                        type: "silver", 
+                                        id: sub.id, 
+                                        email: sub.clientEmail 
+                                      });
+                                      setNewPasswordInput("");
+                                      setIsPasswordResetDialogOpen(true);
+                                    }}
                                   >
                                     <KeyRound className="h-4 w-4 mr-2" />
                                     Reset Password
@@ -3260,8 +3386,15 @@ export default function ConsultantWhatsAppPage() {
               <div className="border-t pt-4 flex gap-2">
                 <Button 
                   variant="outline"
-                  onClick={() => resetPasswordMutation.mutate(selectedSubscription.id)}
-                  disabled={resetPasswordMutation.isPending}
+                  onClick={() => {
+                    setPasswordResetTarget({ 
+                      type: "silver", 
+                      id: selectedSubscription.id, 
+                      email: selectedSubscription.clientEmail 
+                    });
+                    setNewPasswordInput("");
+                    setIsPasswordResetDialogOpen(true);
+                  }}
                 >
                   <KeyRound className="h-4 w-4 mr-2" />
                   Reset Password
