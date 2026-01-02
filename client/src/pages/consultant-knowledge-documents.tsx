@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -278,10 +278,14 @@ export default function ConsultantKnowledgeDocuments() {
 
   const documents: KnowledgeDocument[] = documentsResponse?.data || [];
 
+  // Track which documents we've subscribed to (to avoid duplicate subscriptions)
+  const subscribedDocsRef = useRef<Set<string>>(new Set());
+
   // Load persisted sync progress from database when documents are fetched
   useEffect(() => {
     if (documents.length > 0) {
       const initialProgress: Record<string, DocumentProgress> = {};
+      const docsNeedingSubscription: string[] = [];
       
       for (const doc of documents) {
         // Check if document has active sync progress in database
@@ -294,6 +298,10 @@ export default function ConsultantKnowledgeDocuments() {
             totalChunks: doc.syncTotalChunks || undefined,
             currentChunk: doc.syncCurrentChunk || undefined,
           };
+          // Track docs that need SSE subscription
+          if (!subscribedDocsRef.current.has(doc.id)) {
+            docsNeedingSubscription.push(doc.id);
+          }
         }
       }
       
@@ -301,8 +309,23 @@ export default function ConsultantKnowledgeDocuments() {
       if (Object.keys(initialProgress).length > 0) {
         setDocumentProgressMap(prev => ({ ...prev, ...initialProgress }));
       }
+      
+      // Re-subscribe to SSE for documents with active sync (after a short delay to let subscribeToDocumentProgress be defined)
+      if (docsNeedingSubscription.length > 0) {
+        setTimeout(() => {
+          docsNeedingSubscription.forEach(docId => {
+            if (!subscribedDocsRef.current.has(docId)) {
+              subscribedDocsRef.current.add(docId);
+              subscribeToDocumentProgressRef.current?.(docId);
+            }
+          });
+        }, 100);
+      }
     }
   }, [documentsResponse]);
+  
+  // Ref to hold the subscribeToDocumentProgress function for use in useEffect
+  const subscribeToDocumentProgressRef = useRef<((docId: string) => void) | null>(null);
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -490,12 +513,18 @@ export default function ConsultantKnowledgeDocuments() {
 
   const subscribeToDocumentProgress = useCallback(async (documentId: string) => {
     try {
+      // Mark as subscribed
+      subscribedDocsRef.current.add(documentId);
+      
       const tokenResponse = await fetch(`/api/consultant/knowledge/documents/${documentId}/progress-token`, {
         method: "POST",
         headers: getAuthHeaders(),
       });
       
-      if (!tokenResponse.ok) return;
+      if (!tokenResponse.ok) {
+        subscribedDocsRef.current.delete(documentId);
+        return;
+      }
       
       const { token } = await tokenResponse.json();
       const eventSource = new EventSource(`/api/consultant/knowledge/documents/${documentId}/progress?token=${token}`);
@@ -526,6 +555,7 @@ export default function ConsultantKnowledgeDocuments() {
             if (data.phase === "complete" || data.phase === "error") {
               setTimeout(() => {
                 eventSource.close();
+                subscribedDocsRef.current.delete(documentId);
                 queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
                 if (data.phase === "complete") {
                   setTimeout(() => {
@@ -546,15 +576,23 @@ export default function ConsultantKnowledgeDocuments() {
       
       eventSource.onerror = () => {
         eventSource.close();
+        subscribedDocsRef.current.delete(documentId);
       };
       
       return () => {
         eventSource.close();
+        subscribedDocsRef.current.delete(documentId);
       };
     } catch (e) {
       console.error("Error subscribing to document progress:", e);
+      subscribedDocsRef.current.delete(documentId);
     }
   }, [queryClient]);
+  
+  // Update ref when function changes
+  useEffect(() => {
+    subscribeToDocumentProgressRef.current = subscribeToDocumentProgress;
+  }, [subscribeToDocumentProgress]);
 
   const retryMutation = useMutation({
     mutationFn: async (documentId: string) => {
