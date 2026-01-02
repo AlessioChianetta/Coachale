@@ -700,6 +700,16 @@ export class FileSearchSyncService {
       if (isTabularFile && contentNeedsChunking) {
         const chunks = chunkTextContent(content, doc.title);
         
+        // Save initial progress to database for persistence
+        await db.update(consultantKnowledgeDocuments)
+          .set({ 
+            syncProgress: 55,
+            syncTotalChunks: chunks.length,
+            syncCurrentChunk: 0,
+            syncMessage: `Documento grande - suddivisione in ${chunks.length} parti`,
+          })
+          .where(eq(consultantKnowledgeDocuments.id, documentId));
+        
         syncProgressEmitter.emitDocumentProgress(documentId, 'chunking', 55, `Documento grande - suddivisione in ${chunks.length} parti`, {
           needsChunking: true,
           totalChunks: chunks.length,
@@ -738,6 +748,16 @@ export class FileSearchSyncService {
             if (result.success) {
               uploadedChunks++;
               const progress = 55 + Math.round((uploadedChunks / chunks.length) * 40);
+              
+              // Update progress in database for persistence
+              await db.update(consultantKnowledgeDocuments)
+                .set({ 
+                  syncProgress: progress,
+                  syncCurrentChunk: uploadedChunks,
+                  syncMessage: `Parte ${uploadedChunks}/${chunks.length} caricata`,
+                })
+                .where(eq(consultantKnowledgeDocuments.id, documentId));
+              
               syncProgressEmitter.emitDocumentProgress(documentId, 'chunking', progress, `Parte ${uploadedChunks}/${chunks.length} caricata`, {
                 needsChunking: true,
                 totalChunks: chunks.length,
@@ -748,8 +768,15 @@ export class FileSearchSyncService {
         }
         
         if (uploadedChunks === chunks.length) {
+          // Clear progress and mark as synced
           await db.update(consultantKnowledgeDocuments)
-            .set({ fileSearchSyncedAt: new Date() })
+            .set({ 
+              fileSearchSyncedAt: new Date(),
+              syncProgress: null,
+              syncCurrentChunk: null,
+              syncTotalChunks: null,
+              syncMessage: null,
+            })
             .where(eq(consultantKnowledgeDocuments.id, documentId));
         }
         return { success: uploadedChunks === chunks.length };

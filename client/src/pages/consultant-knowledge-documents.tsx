@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -124,6 +124,11 @@ interface KnowledgeDocument {
   lastUsedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  fileSearchSyncedAt: string | null;
+  syncProgress: number | null;
+  syncCurrentChunk: number | null;
+  syncTotalChunks: number | null;
+  syncMessage: string | null;
 }
 
 interface KnowledgeStats {
@@ -271,6 +276,32 @@ export default function ConsultantKnowledgeDocuments() {
   });
 
   const documents: KnowledgeDocument[] = documentsResponse?.data || [];
+
+  // Load persisted sync progress from database when documents are fetched
+  useEffect(() => {
+    if (documents.length > 0) {
+      const initialProgress: Record<string, DocumentProgress> = {};
+      
+      for (const doc of documents) {
+        // Check if document has active sync progress in database
+        if (doc.syncProgress !== null && doc.syncProgress !== undefined && doc.syncProgress > 0 && !doc.fileSearchSyncedAt) {
+          initialProgress[doc.id] = {
+            phase: 'chunking',
+            progress: doc.syncProgress,
+            message: doc.syncMessage || `Sincronizzazione in corso...`,
+            needsChunking: doc.syncTotalChunks ? doc.syncTotalChunks > 1 : false,
+            totalChunks: doc.syncTotalChunks || undefined,
+            currentChunk: doc.syncCurrentChunk || undefined,
+          };
+        }
+      }
+      
+      // Only update if there's progress to restore
+      if (Object.keys(initialProgress).length > 0) {
+        setDocumentProgressMap(prev => ({ ...prev, ...initialProgress }));
+      }
+    }
+  }, [documentsResponse]);
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {

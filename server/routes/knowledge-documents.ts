@@ -102,6 +102,10 @@ router.get(
           createdAt: consultantKnowledgeDocuments.createdAt,
           updatedAt: consultantKnowledgeDocuments.updatedAt,
           fileSearchSyncedAt: consultantKnowledgeDocuments.fileSearchSyncedAt,
+          syncProgress: consultantKnowledgeDocuments.syncProgress,
+          syncCurrentChunk: consultantKnowledgeDocuments.syncCurrentChunk,
+          syncTotalChunks: consultantKnowledgeDocuments.syncTotalChunks,
+          syncMessage: consultantKnowledgeDocuments.syncMessage,
         })
         .from(consultantKnowledgeDocuments)
         .where(eq(consultantKnowledgeDocuments.consultantId, consultantId))

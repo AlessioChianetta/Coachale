@@ -5286,6 +5286,12 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
 
   // File Search sync status
   fileSearchSyncedAt: timestamp("file_search_synced_at"), // When document was synced to File Search
+  
+  // Sync progress tracking (persisted for page reload)
+  syncProgress: integer("sync_progress").default(0), // 0-100 percentage
+  syncCurrentChunk: integer("sync_current_chunk"), // Current chunk being uploaded
+  syncTotalChunks: integer("sync_total_chunks"), // Total chunks to upload
+  syncMessage: text("sync_message"), // Current sync status message
 
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
