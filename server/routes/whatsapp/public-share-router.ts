@@ -288,74 +288,93 @@ async function validateBronzeAuth(
     }
     
     const token = authHeader.slice(7);
-    // Note: routes.ts uses "your-secret-key" as fallback when JWT_SECRET is not set
-    const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET || "your-secret-key";
+    // Try JWT_SECRET first (used by unified login), then SESSION_SECRET
+    const jwtSecret = process.env.JWT_SECRET || "your-secret-key";
+    const sessionSecret = process.env.SESSION_SECRET;
     
-    if (!sessionSecret) {
-      console.error('[BRONZE AUTH] No SESSION_SECRET or JWT_SECRET configured');
-      return res.status(500).json({ error: 'Configurazione server mancante' });
+    // Try to decode with JWT_SECRET first
+    let decoded: any = null;
+    try {
+      decoded = jwt.verify(token, jwtSecret) as any;
+      console.log(`📜 [VALIDATE-BRONZE-AUTH] Token decoded with JWT_SECRET:`, { type: decoded.type, bronzeUserId: decoded.bronzeUserId, subscriptionId: decoded.subscriptionId });
+    } catch (e) {
+      console.log(`⚠️ [VALIDATE-BRONZE-AUTH] JWT_SECRET verification failed: ${(e as Error).message}`);
+      // Try SESSION_SECRET as fallback
+      if (sessionSecret) {
+        try {
+          decoded = jwt.verify(token, sessionSecret) as any;
+          console.log(`📜 [VALIDATE-BRONZE-AUTH] Token decoded with SESSION_SECRET:`, { type: decoded.type, bronzeUserId: decoded.bronzeUserId, subscriptionId: decoded.subscriptionId });
+        } catch (e2) {
+          console.log(`⚠️ [VALIDATE-BRONZE-AUTH] SESSION_SECRET verification failed: ${(e2 as Error).message}`);
+        }
+      }
     }
     
-    try {
-      const decoded = jwt.verify(token, sessionSecret) as any;
-      console.log(`📜 [VALIDATE-BRONZE-AUTH] Token decoded:`, { type: decoded.type, bronzeUserId: decoded.bronzeUserId, consultantId: decoded.consultantId, agentConsultantId: agentConfig.consultantId });
-      
-      // Verify token type is "bronze"
-      if (decoded.type !== 'bronze') {
-        console.log(`❌ [VALIDATE-BRONZE-AUTH] Token type is not 'bronze': ${decoded.type}`);
-        return res.status(401).json({ 
-          error: 'Token non valido per utenti Bronze',
-          requiresBronzeAuth: true,
-        });
-      }
-      
-      // Verify consultantId matches the agent's consultant
-      if (decoded.consultantId !== agentConfig.consultantId) {
-        return res.status(403).json({ 
-          error: 'Token Bronze non valido per questo agente',
-          requiresBronzeAuth: true,
-        });
-      }
-      
-      // Get Bronze user data for message limits
-      const [bronzeUser] = await db
-        .select()
-        .from(schema.bronzeUsers)
-        .where(eq(schema.bronzeUsers.id, decoded.bronzeUserId))
-        .limit(1);
-      
-      if (!bronzeUser) {
-        return res.status(401).json({ 
-          error: 'Utente Bronze non trovato',
-          requiresBronzeAuth: true,
-        });
-      }
-      
-      if (!bronzeUser.isActive) {
-        return res.status(403).json({ 
-          error: 'Account Bronze disattivato',
-          requiresBronzeAuth: true,
-        });
-      }
-      
-      // Attach Bronze user info to request
-      req.bronzeUser = {
-        bronzeUserId: bronzeUser.id,
-        consultantId: bronzeUser.consultantId,
-        email: bronzeUser.email,
-        dailyMessagesUsed: bronzeUser.dailyMessagesUsed,
-        dailyMessageLimit: bronzeUser.dailyMessageLimit,
-      };
-      
-      console.log(`✅ [BRONZE AUTH] Valid token for user ${bronzeUser.email}`);
-      next();
-    } catch (jwtError) {
-      console.log(`⚠️ [BRONZE AUTH] JWT validation failed: ${(jwtError as Error).message}`);
+    if (!decoded) {
+      console.log(`❌ [VALIDATE-BRONZE-AUTH] Token verification failed with all secrets`);
       return res.status(401).json({ 
-        error: 'Token Bronze scaduto o non valido',
+        error: 'Token non valido',
         requiresBronzeAuth: true,
       });
     }
+    
+    console.log(`📜 [VALIDATE-BRONZE-AUTH] Token decoded:`, { type: decoded.type, bronzeUserId: decoded.bronzeUserId, subscriptionId: decoded.subscriptionId, consultantId: decoded.consultantId, agentConsultantId: agentConfig.consultantId });
+    
+    // Silver users have unlimited messages - skip Bronze limits check
+    if (decoded.type === 'silver') {
+      console.log(`✅ [VALIDATE-BRONZE-AUTH] Silver user detected, skipping Bronze limits (Silver has unlimited messages)`);
+      return next();
+    }
+    
+    // Verify token type is "bronze" for non-Silver users
+    if (decoded.type !== 'bronze') {
+      console.log(`❌ [VALIDATE-BRONZE-AUTH] Token type is not 'bronze' or 'silver': ${decoded.type}`);
+      return res.status(401).json({ 
+        error: 'Token non valido per utenti Bronze',
+        requiresBronzeAuth: true,
+      });
+    }
+    
+    // Verify consultantId matches the agent's consultant
+    if (decoded.consultantId !== agentConfig.consultantId) {
+      return res.status(403).json({ 
+        error: 'Token Bronze non valido per questo agente',
+        requiresBronzeAuth: true,
+      });
+    }
+    
+    // Get Bronze user data for message limits
+    const [bronzeUser] = await db
+      .select()
+      .from(schema.bronzeUsers)
+      .where(eq(schema.bronzeUsers.id, decoded.bronzeUserId))
+      .limit(1);
+    
+    if (!bronzeUser) {
+      return res.status(401).json({ 
+        error: 'Utente Bronze non trovato',
+        requiresBronzeAuth: true,
+      });
+    }
+    
+    if (!bronzeUser.isActive) {
+      return res.status(403).json({ 
+        error: 'Account Bronze disattivato',
+        requiresBronzeAuth: true,
+      });
+    }
+    
+    // Attach Bronze user info to request
+    req.bronzeUser = {
+      bronzeUserId: bronzeUser.id,
+      consultantId: bronzeUser.consultantId,
+      email: bronzeUser.email,
+      dailyMessagesUsed: bronzeUser.dailyMessagesUsed,
+      dailyMessageLimit: bronzeUser.dailyMessageLimit,
+    };
+    
+    console.log(`✅ [BRONZE AUTH] Valid token for user ${bronzeUser.email}`);
+    next();
   } catch (error: any) {
     console.error('Bronze auth validation error:', error);
     res.status(500).json({ error: 'Errore validazione Bronze auth' });
