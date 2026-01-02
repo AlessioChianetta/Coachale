@@ -179,10 +179,25 @@ router.post("/consultant/stripe-connect/disconnect", authenticateToken, requireR
 
 router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
   try {
-    const { consultantSlug, agentId, level, clientEmail, clientName, billingPeriod } = req.body;
+    const { 
+      consultantSlug, 
+      agentId, 
+      level, 
+      clientEmail, 
+      clientName, 
+      billingPeriod,
+      firstName,
+      lastName,
+      password,
+      phone 
+    } = req.body;
     
     if (!consultantSlug || !level) {
       return res.status(400).json({ error: "Missing required fields: consultantSlug, level" });
+    }
+    
+    if (!clientEmail || !firstName || !lastName || !password) {
+      return res.status(400).json({ error: "Missing required registration fields: email, firstName, lastName, password" });
     }
     
     if (level !== "2" && level !== "3") {
@@ -250,6 +265,9 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
     
     const intervalLabel = validBillingPeriod === 'yearly' ? 'anno' : 'mese';
     
+    // Hash password before storing in metadata (for security)
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -279,6 +297,10 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
           level,
           agentId: agentId || "",
           billingPeriod: validBillingPeriod,
+          firstName,
+          lastName,
+          hashedPassword,
+          phone: phone || "",
         },
       },
       customer_email: clientEmail || undefined,
@@ -289,6 +311,10 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
         level,
         agentId: agentId || "",
         billingPeriod: validBillingPeriod,
+        firstName,
+        lastName,
+        hashedPassword,
+        phone: phone || "",
       },
       success_url: `${baseUrl}/c/${consultantSlug}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/c/${consultantSlug}/pricing?canceled=true`,
@@ -383,7 +409,18 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           break;
         }
         
-        const { consultantId, clientEmail, clientName, level, agentId, billingPeriod } = metadata;
+        const { 
+          consultantId, 
+          clientEmail, 
+          clientName, 
+          level, 
+          agentId, 
+          billingPeriod,
+          firstName: metaFirstName,
+          lastName: metaLastName,
+          hashedPassword: metaHashedPassword,
+          phone: metaPhone
+        } = metadata;
         
         if (!consultantId || !clientEmail || !level) {
           console.error("[Stripe Webhook] Missing metadata in checkout session");
@@ -416,8 +453,10 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           break;
         }
         
-        const tempPassword = generateRandomPassword(8);
-        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        // Use password from registration form if available, otherwise generate temp password
+        const userProvidedPassword = !!metaHashedPassword;
+        const tempPassword = userProvidedPassword ? null : generateRandomPassword(8);
+        const hashedPassword = metaHashedPassword || await bcrypt.hash(tempPassword!, 10);
         
         const [subscription] = await db.insert(clientLevelSubscriptions).values({
           consultantId,
@@ -450,6 +489,11 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           : "http://localhost:5000";
         
         try {
+          // Use metadata names if available, otherwise parse from clientName
+          const displayFirstName = metaFirstName || parseClientName(clientName || '').firstName || clientEmail.split('@')[0];
+          const displayLastName = metaLastName || parseClientName(clientName || '').lastName || '';
+          const fullDisplayName = `${displayFirstName} ${displayLastName}`.trim() || clientName || clientEmail.split('@')[0];
+          
           if (level === "2") {
             const existing = await db.select()
               .from(managerUsers)
@@ -462,7 +506,7 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             if (existing.length === 0) {
               const [manager] = await db.insert(managerUsers).values({
                 consultantId,
-                name: clientName || clientEmail.split('@')[0],
+                name: fullDisplayName,
                 email: clientEmail,
                 passwordHash: hashedPassword,
                 status: "active",
@@ -470,6 +514,9 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
                   createdVia: "stripe_subscription",
                   subscriptionId: subscription.id,
                   agentId: agentId || null,
+                  firstName: metaFirstName || null,
+                  lastName: metaLastName || null,
+                  phone: metaPhone || null,
                 },
               }).returning();
               
@@ -496,10 +543,26 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             }
             
             const loginUrl = `${baseUrl}/manager-chat`;
-            const emailHtml = `
+            
+            // Different email content based on whether user provided their own password
+            const emailHtml = userProvidedPassword 
+              ? `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #0891b2;">Benvenuto nel tuo Assistente AI Premium!</h2>
-                <p>Ciao <strong>${clientName || 'Manager'}</strong>,</p>
+                <p>Ciao <strong>${displayFirstName}</strong>,</p>
+                <p>Il tuo abbonamento è stato attivato con successo. Ora hai accesso all'assistente AI con funzionalità avanzate.</p>
+                <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0 0 10px 0;"><strong>Il tuo account:</strong></p>
+                  <p style="margin: 5px 0;">Email: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${clientEmail}</code></p>
+                  <p style="margin: 5px 0; color: #64748b;">Usa la password che hai scelto durante la registrazione.</p>
+                </div>
+                <p><a href="${loginUrl}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Accedi Ora</a></p>
+              </div>
+            `
+              : `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #0891b2;">Benvenuto nel tuo Assistente AI Premium!</h2>
+                <p>Ciao <strong>${displayFirstName}</strong>,</p>
                 <p>Il tuo abbonamento è stato attivato con successo. Ora hai accesso all'assistente AI con funzionalità avanzate.</p>
                 <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
                   <p style="margin: 0 0 10px 0;"><strong>Le tue credenziali di accesso:</strong></p>
@@ -525,15 +588,15 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
               .limit(1);
             
             if (existingUser.length === 0) {
-              const { firstName, lastName } = parseClientName(clientName || '');
               const username = clientEmail.split('@')[0] + '_' + Date.now().toString(36);
               
               await db.insert(users).values({
                 username,
                 email: clientEmail,
                 password: hashedPassword,
-                firstName,
-                lastName,
+                firstName: displayFirstName,
+                lastName: displayLastName,
+                phone: metaPhone || null,
                 role: "client",
                 consultantId,
                 isActive: true,
@@ -544,11 +607,26 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             }
             
             const loginUrl = `${baseUrl}/login`;
-            const { firstName } = parseClientName(clientName || '');
-            const emailHtml = `
+            
+            // Different email content based on whether user provided their own password
+            const emailHtml = userProvidedPassword
+              ? `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #0891b2;">Benvenuto nella Piattaforma!</h2>
-                <p>Ciao <strong>${firstName}</strong>,</p>
+                <p>Ciao <strong>${displayFirstName}</strong>,</p>
+                <p>Il tuo abbonamento premium è stato attivato con successo. Ora hai accesso completo a tutte le funzionalità della piattaforma.</p>
+                <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0 0 10px 0;"><strong>Il tuo account:</strong></p>
+                  <p style="margin: 5px 0;">Email: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${clientEmail}</code></p>
+                  <p style="margin: 5px 0; color: #64748b;">Usa la password che hai scelto durante la registrazione.</p>
+                </div>
+                <p><a href="${loginUrl}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Accedi Ora</a></p>
+              </div>
+            `
+              : `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #0891b2;">Benvenuto nella Piattaforma!</h2>
+                <p>Ciao <strong>${displayFirstName}</strong>,</p>
                 <p>Il tuo abbonamento premium è stato attivato con successo. Ora hai accesso completo a tutte le funzionalità della piattaforma.</p>
                 <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
                   <p style="margin: 0 0 10px 0;"><strong>Le tue credenziali di accesso:</strong></p>

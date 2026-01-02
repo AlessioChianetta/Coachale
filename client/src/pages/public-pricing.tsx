@@ -8,6 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Accordion,
   AccordionContent,
@@ -288,11 +297,32 @@ const pricingCardVariants = {
   }
 };
 
+interface RegistrationForm {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+  confirmPassword: string;
+  phone: string;
+}
+
 export default function PublicPricing() {
   const { slug } = useParams<{ slug: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isAnnual, setIsAnnual] = useState(false);
+  
+  const [registrationDialogOpen, setRegistrationDialogOpen] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState<"2" | "3" | null>(null);
+  const [registrationForm, setRegistrationForm] = useState<RegistrationForm>({
+    email: "",
+    firstName: "",
+    lastName: "",
+    password: "",
+    confirmPassword: "",
+    phone: "",
+  });
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof RegistrationForm, string>>>({});
 
   const { data, isLoading, error } = useQuery<PricingData>({
     queryKey: ["/api/public/consultant", slug, "pricing"],
@@ -317,7 +347,11 @@ export default function PublicPricing() {
   const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
 
   const checkoutMutation = useMutation({
-    mutationFn: async ({ level, isAnnual: annual }: { level: "2" | "3"; isAnnual: boolean }) => {
+    mutationFn: async ({ level, isAnnual: annual, formData }: { 
+      level: "2" | "3"; 
+      isAnnual: boolean;
+      formData: RegistrationForm;
+    }) => {
       const agentId = level === "2" 
         ? (data?.agents.find(a => a.level === "2")?.agentId || data?.agents.find(a => a.level === "1")?.agentId || "")
         : (data?.agents.find(a => a.level === "3")?.agentId || "");
@@ -330,8 +364,12 @@ export default function PublicPricing() {
           agentId,
           level,
           billingPeriod: annual ? "yearly" : "monthly",
-          clientEmail: "",
-          clientName: "",
+          clientEmail: formData.email,
+          clientName: `${formData.firstName} ${formData.lastName}`.trim(),
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          password: formData.password,
+          phone: formData.phone,
         }),
       });
       if (!response.ok) {
@@ -356,8 +394,64 @@ export default function PublicPricing() {
   });
 
   const handlePurchase = (level: "2" | "3") => {
-    setPurchaseLoading(level);
-    checkoutMutation.mutate({ level, isAnnual });
+    setSelectedLevel(level);
+    setRegistrationForm({
+      email: "",
+      firstName: "",
+      lastName: "",
+      password: "",
+      confirmPassword: "",
+      phone: "",
+    });
+    setFormErrors({});
+    setRegistrationDialogOpen(true);
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Partial<Record<keyof RegistrationForm, string>> = {};
+    
+    if (!registrationForm.email) {
+      errors.email = "Email obbligatoria";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registrationForm.email)) {
+      errors.email = "Email non valida";
+    }
+    
+    if (!registrationForm.firstName) {
+      errors.firstName = "Nome obbligatorio";
+    }
+    
+    if (!registrationForm.lastName) {
+      errors.lastName = "Cognome obbligatorio";
+    }
+    
+    if (!registrationForm.password) {
+      errors.password = "Password obbligatoria";
+    } else if (registrationForm.password.length < 8) {
+      errors.password = "La password deve avere almeno 8 caratteri";
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(registrationForm.password)) {
+      errors.password = "La password deve contenere maiuscole, minuscole e numeri";
+    }
+    
+    if (!registrationForm.confirmPassword) {
+      errors.confirmPassword = "Conferma password obbligatoria";
+    } else if (registrationForm.password !== registrationForm.confirmPassword) {
+      errors.confirmPassword = "Le password non corrispondono";
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleFormSubmit = () => {
+    if (!validateForm() || !selectedLevel) return;
+    
+    setPurchaseLoading(selectedLevel);
+    setRegistrationDialogOpen(false);
+    checkoutMutation.mutate({ 
+      level: selectedLevel, 
+      isAnnual,
+      formData: registrationForm 
+    });
   };
 
   const scrollToPricing = () => {
@@ -1289,6 +1383,164 @@ export default function PublicPricing() {
           </div>
         </div>
       </footer>
+
+      {/* Registration Dialog */}
+      <Dialog open={registrationDialogOpen} onOpenChange={setRegistrationDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedLevel === "2" ? (
+                <>
+                  <Star className="h-5 w-5 text-violet-500" />
+                  Registrati per {data?.pricing.level2Name || "Piano Argento"}
+                </>
+              ) : (
+                <>
+                  <Crown className="h-5 w-5 text-amber-500" />
+                  Registrati per {data?.pricing.level3Name || "Piano Deluxe"}
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedLevel === "2" 
+                ? "Crea il tuo account per accedere all'assistente AI avanzato."
+                : "Crea il tuo account per accedere a tutte le funzionalita del software."}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">Nome *</Label>
+                <Input
+                  id="firstName"
+                  placeholder="Mario"
+                  value={registrationForm.firstName}
+                  onChange={(e) => setRegistrationForm(prev => ({ ...prev, firstName: e.target.value }))}
+                  className={formErrors.firstName ? "border-red-500" : ""}
+                />
+                {formErrors.firstName && (
+                  <p className="text-xs text-red-500">{formErrors.firstName}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Cognome *</Label>
+                <Input
+                  id="lastName"
+                  placeholder="Rossi"
+                  value={registrationForm.lastName}
+                  onChange={(e) => setRegistrationForm(prev => ({ ...prev, lastName: e.target.value }))}
+                  className={formErrors.lastName ? "border-red-500" : ""}
+                />
+                {formErrors.lastName && (
+                  <p className="text-xs text-red-500">{formErrors.lastName}</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="mario.rossi@email.com"
+                value={registrationForm.email}
+                onChange={(e) => setRegistrationForm(prev => ({ ...prev, email: e.target.value }))}
+                className={formErrors.email ? "border-red-500" : ""}
+              />
+              {formErrors.email && (
+                <p className="text-xs text-red-500">{formErrors.email}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefono (opzionale)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+39 333 1234567"
+                value={registrationForm.phone}
+                onChange={(e) => setRegistrationForm(prev => ({ ...prev, phone: e.target.value }))}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="password">Password *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Min. 8 caratteri"
+                  value={registrationForm.password}
+                  onChange={(e) => setRegistrationForm(prev => ({ ...prev, password: e.target.value }))}
+                  className={formErrors.password ? "border-red-500" : ""}
+                />
+                {formErrors.password && (
+                  <p className="text-xs text-red-500">{formErrors.password}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Conferma *</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Ripeti password"
+                  value={registrationForm.confirmPassword}
+                  onChange={(e) => setRegistrationForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className={formErrors.confirmPassword ? "border-red-500" : ""}
+                />
+                {formErrors.confirmPassword && (
+                  <p className="text-xs text-red-500">{formErrors.confirmPassword}</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="pt-2 space-y-3">
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <span className="text-sm font-medium">Abbonamento:</span>
+                <span className="text-sm">
+                  {isAnnual ? "Annuale" : "Mensile"} - {" "}
+                  <strong>
+                    {selectedLevel === "2" 
+                      ? `€${((isAnnual ? data?.pricing.level2YearlyPrice : data?.pricing.level2MonthlyPrice) || 0) / 100}`
+                      : `€${((isAnnual ? data?.pricing.level3YearlyPrice : data?.pricing.level3MonthlyPrice) || 0) / 100}`
+                    }
+                    {isAnnual ? "/anno" : "/mese"}
+                  </strong>
+                </span>
+              </div>
+              
+              <Button 
+                onClick={handleFormSubmit}
+                disabled={checkoutMutation.isPending}
+                className={cn(
+                  "w-full",
+                  selectedLevel === "2" 
+                    ? "bg-violet-600 hover:bg-violet-700" 
+                    : "bg-amber-600 hover:bg-amber-700"
+                )}
+                size="lg"
+              >
+                {checkoutMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Preparazione pagamento...
+                  </>
+                ) : (
+                  <>
+                    Continua al pagamento
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+              
+              <p className="text-xs text-center text-slate-500">
+                Cliccando "Continua al pagamento" verrai reindirizzato alla pagina di pagamento sicura di Stripe.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

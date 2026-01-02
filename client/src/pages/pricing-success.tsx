@@ -173,8 +173,8 @@ export default function PricingSuccess() {
                 <div>
                   <h4 className="font-semibold text-slate-900">Credenziali di accesso</h4>
                   <p className="text-sm text-slate-600">
-                    Troverai email e password temporanea nell'email che ti abbiamo inviato. 
-                    Ti consigliamo di cambiarla al primo accesso.
+                    Usa l'email e la password che hai scelto durante la registrazione per accedere.
+                    Ti abbiamo inviato una conferma via email.
                   </p>
                 </div>
               </div>
