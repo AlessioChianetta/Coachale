@@ -1354,8 +1354,12 @@ export class FileSearchSyncService {
     try {
       // CRITICAL FIX: Filter university lessons by consultantId using the proper chain
       // universityLessons -> modules -> trimesters -> years -> createdBy (consultantId)
+      // Also exclude locked years (isLocked=true) - locked years should not be indexed
       const consultantYears = await db.select({ id: universityYears.id })
-        .from(universityYears).where(eq(universityYears.createdBy, consultantId));
+        .from(universityYears).where(and(
+          eq(universityYears.createdBy, consultantId),
+          eq(universityYears.isLocked, false) // Only include unlocked years
+        ));
       const yearIds = consultantYears.map(y => y.id);
       
       let allLessons: { id: string; title: string }[] = [];
@@ -3402,8 +3406,12 @@ export class FileSearchSyncService {
       .from(exercises).where(eq(exercises.createdBy, consultantId));
     
     // University lessons with updatedAt
+    // Exclude locked years (isLocked=true) - locked years should not be indexed for File Search
     const consultantYears = await db.select({ id: universityYears.id })
-      .from(universityYears).where(eq(universityYears.createdBy, consultantId));
+      .from(universityYears).where(and(
+        eq(universityYears.createdBy, consultantId),
+        eq(universityYears.isLocked, false) // Only include unlocked years
+      ));
     const yearIds = consultantYears.map(y => y.id);
     
     let universityLessonsList: { id: string; title: string; updatedAt: Date | null }[] = [];
@@ -4270,6 +4278,7 @@ export class FileSearchSyncService {
     missing: Array<{ id: string; title: string; lessonTitle: string }>;
   }> {
     // universityLessons doesn't have createdBy - must join through modules -> trimesters -> years
+    // Also exclude locked years (isLocked=true) - locked years should not be indexed for File Search
     const lessonsWithModules = await db.select({
       id: universityLessons.id,
       title: universityLessons.title,
@@ -4280,7 +4289,10 @@ export class FileSearchSyncService {
       .innerJoin(universityModules, eq(universityLessons.moduleId, universityModules.id))
       .innerJoin(universityTrimesters, eq(universityModules.trimesterId, universityTrimesters.id))
       .innerJoin(universityYears, eq(universityTrimesters.yearId, universityYears.id))
-      .where(eq(universityYears.createdBy, consultantId));
+      .where(and(
+        eq(universityYears.createdBy, consultantId),
+        eq(universityYears.isLocked, false) // Only include unlocked years
+      ));
 
     const missing: Array<{ id: string; title: string; lessonTitle: string }> = [];
     let indexed = 0;
