@@ -2658,7 +2658,8 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   ownInstagramConfigId: varchar("own_instagram_config_id"),
 
   // Dipendenti AI - Leveling System
-  level: text("level").$type<"1" | "2" | "3" | null>(), // 1 = pubblico, 2 = argento (knowledge base), 3 = deluxe (accesso software), null = nessun livello
+  level: text("level").$type<"1" | "2" | "3" | null>(), // DEPRECATED: usare levels invece. Mantenuto per retrocompatibilità
+  levels: text("levels").array().$type<("1" | "2")[]>(), // Array di livelli: ["1"] = solo Bronze, ["2"] = solo Silver, ["1", "2"] = Bronze + Silver
   publicSlug: text("public_slug").unique(), // Slug per accesso pubblico Level 1 (es: "silvia" -> /ai/silvia)
   dailyMessageLimit: integer("daily_message_limit").default(15), // Limite messaggi giornaliero per Level 1
 
