@@ -101,6 +101,7 @@ router.get(
           lastUsedAt: consultantKnowledgeDocuments.lastUsedAt,
           createdAt: consultantKnowledgeDocuments.createdAt,
           updatedAt: consultantKnowledgeDocuments.updatedAt,
+          fileSearchSyncedAt: consultantKnowledgeDocuments.fileSearchSyncedAt,
         })
         .from(consultantKnowledgeDocuments)
         .where(eq(consultantKnowledgeDocuments.consultantId, consultantId))
