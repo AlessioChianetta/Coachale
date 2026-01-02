@@ -92,9 +92,16 @@ export default defineConfig({
   },
   assetsInclude: ['**/*.onnx', '**/*.wasm'],
   server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: false,
+    hmr: {
+      clientPort: 443,
+    },
     fs: {
       strict: true,
       deny: ["**/.*"],
     },
+    allowedHosts: true,
   },
 });
