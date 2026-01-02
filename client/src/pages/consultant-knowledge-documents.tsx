@@ -46,6 +46,7 @@ import {
   FileType,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   Clock,
   Database,
@@ -1122,6 +1123,23 @@ export default function ConsultantKnowledgeDocuments() {
                                 </span>
                               )}
                             </div>
+
+                            {/* Warning: Document indexed but NOT synced to File Search */}
+                            {doc.status === 'indexed' && !doc.fileSearchSyncedAt && !documentProgressMap[doc.id] && (
+                              <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border-2 border-orange-300 dark:border-orange-700">
+                                <div className="flex items-center gap-2">
+                                  <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
+                                  <div>
+                                    <p className="text-sm font-semibold text-orange-700 dark:text-orange-300">
+                                      Documento non sincronizzato con File Search
+                                    </p>
+                                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                      Vai su <strong>File Search</strong> e clicca "Sincronizza tutti" per abilitare la ricerca AI semantica su questo documento.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
 
                             {doc.tags && doc.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2">
