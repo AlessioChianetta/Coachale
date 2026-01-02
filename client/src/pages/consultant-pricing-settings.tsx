@@ -48,6 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface FAQ {
   question: string;
@@ -115,6 +116,8 @@ interface FormData {
   privacyUrl: string;
   showComparisonTable: boolean;
   comparisonFeatures: ComparisonFeature[];
+  level1EnabledAgents: string[];
+  level2EnabledAgents: string[];
 }
 
 const defaultFormData: FormData = {
@@ -175,6 +178,8 @@ const defaultFormData: FormData = {
   privacyUrl: "",
   showComparisonTable: false,
   comparisonFeatures: [],
+  level1EnabledAgents: [],
+  level2EnabledAgents: [],
 };
 
 export default function ConsultantPricingSettingsPage() {
@@ -203,6 +208,22 @@ export default function ConsultantPricingSettingsPage() {
       return response.json();
     },
   });
+
+  const { data: agentsData } = useQuery({
+    queryKey: ["/api/consultant/whatsapp-configs"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/whatsapp-configs", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("Errore nel caricamento degli agenti");
+      }
+      return response.json();
+    },
+  });
+
+  const level1Agents = (agentsData || []).filter((agent: any) => agent.level === "1");
+  const level2Agents = (agentsData || []).filter((agent: any) => agent.level === "2");
 
   const centsToEuros = (cents: number | undefined): string => {
     if (!cents && cents !== 0) return "";
@@ -258,6 +279,8 @@ export default function ConsultantPricingSettingsPage() {
         privacyUrl: config.privacyUrl || defaultFormData.privacyUrl,
         showComparisonTable: config.showComparisonTable ?? defaultFormData.showComparisonTable,
         comparisonFeatures: config.comparisonFeatures?.length > 0 ? config.comparisonFeatures : defaultFormData.comparisonFeatures,
+        level1EnabledAgents: config.level1EnabledAgents || defaultFormData.level1EnabledAgents,
+        level2EnabledAgents: config.level2EnabledAgents || defaultFormData.level2EnabledAgents,
       });
       setOriginalSlug(pricingData.pricingPageSlug || "");
       setSlugAvailable(true);
@@ -337,6 +360,8 @@ export default function ConsultantPricingSettingsPage() {
           privacyUrl: data.privacyUrl,
           showComparisonTable: data.showComparisonTable,
           comparisonFeatures: data.comparisonFeatures,
+          level1EnabledAgents: data.level1EnabledAgents,
+          level2EnabledAgents: data.level2EnabledAgents,
         },
       };
 
@@ -809,6 +834,41 @@ export default function ConsultantPricingSettingsPage() {
                         </div>
                       ))}
                     </div>
+
+                    <div className="space-y-3 pt-4 border-t">
+                      <div>
+                        <Label className="text-base font-semibold">Agenti abilitati per Bronze</Label>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Seleziona quali agenti sono disponibili per gli utenti Bronze. Se non selezioni nessuno, tutti gli agenti di livello 1 saranno disponibili.
+                        </p>
+                      </div>
+                      {level1Agents.length === 0 ? (
+                        <p className="text-sm text-gray-400 italic">
+                          Nessun agente di livello 1 configurato.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {level1Agents.map((agent: any) => (
+                            <div key={agent.id} className="flex items-center space-x-3">
+                              <Checkbox
+                                id={`level1-agent-${agent.id}`}
+                                checked={formData.level1EnabledAgents.includes(agent.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    updateField("level1EnabledAgents", [...formData.level1EnabledAgents, agent.id]);
+                                  } else {
+                                    updateField("level1EnabledAgents", formData.level1EnabledAgents.filter((id) => id !== agent.id));
+                                  }
+                                }}
+                              />
+                              <Label htmlFor={`level1-agent-${agent.id}`} className="cursor-pointer">
+                                {agent.agentName || agent.name || "Agente senza nome"}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -955,6 +1015,41 @@ export default function ConsultantPricingSettingsPage() {
                           </Button>
                         </div>
                       ))}
+                    </div>
+
+                    <div className="space-y-3 pt-4 border-t">
+                      <div>
+                        <Label className="text-base font-semibold">Agenti abilitati per Argento</Label>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Seleziona quali agenti sono disponibili per gli utenti Argento. Se non selezioni nessuno, tutti gli agenti di livello 2 saranno disponibili.
+                        </p>
+                      </div>
+                      {level2Agents.length === 0 ? (
+                        <p className="text-sm text-gray-400 italic">
+                          Nessun agente di livello 2 configurato.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {level2Agents.map((agent: any) => (
+                            <div key={agent.id} className="flex items-center space-x-3">
+                              <Checkbox
+                                id={`level2-agent-${agent.id}`}
+                                checked={formData.level2EnabledAgents.includes(agent.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    updateField("level2EnabledAgents", [...formData.level2EnabledAgents, agent.id]);
+                                  } else {
+                                    updateField("level2EnabledAgents", formData.level2EnabledAgents.filter((id) => id !== agent.id));
+                                  }
+                                }}
+                              />
+                              <Label htmlFor={`level2-agent-${agent.id}`} className="cursor-pointer">
+                                {agent.agentName || agent.name || "Agente senza nome"}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
