@@ -107,12 +107,24 @@ const RESPONSE_LENGTH_OPTIONS = [
 ];
 
 function getManagerToken(): string | null {
-  return localStorage.getItem("manager_token");
+  // Check manager_token first, then fallback to unified login token (for Bronze/Silver users)
+  return localStorage.getItem("manager_token") || localStorage.getItem("token");
 }
 
 function getManagerAuthHeaders(): Record<string, string> {
   const token = getManagerToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function isBronzeSilverUser(): boolean {
+  const userStr = localStorage.getItem("user");
+  if (!userStr) return false;
+  try {
+    const user = JSON.parse(userStr);
+    return user.tier === "bronze" || user.tier === "silver";
+  } catch {
+    return false;
+  }
 }
 
 interface ManagerAIPreferencesSheetProps {
@@ -395,14 +407,22 @@ export default function ManagerChat() {
     enabled: !!slug,
   });
 
+  // Check if user is Bronze/Silver from unified login
+  const isBronzeSilver = isBronzeSilverUser();
+  
   useEffect(() => {
     if (agentInfo && agentInfo.requiresLogin) {
       const token = getManagerToken();
       if (!token) {
-        setLocation(`/agent/${slug}/login`);
+        // Bronze/Silver users without token go to main login, managers go to agent login
+        if (isBronzeSilver) {
+          setLocation('/login');
+        } else {
+          setLocation(`/agent/${slug}/login`);
+        }
       }
     }
-  }, [agentInfo, slug, setLocation]);
+  }, [agentInfo, slug, setLocation, isBronzeSilver]);
 
   const { data: managerInfo } = useQuery<ManagerInfo>({
     queryKey: ["manager-info", slug],
@@ -413,16 +433,22 @@ export default function ManagerChat() {
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem("manager_token");
-          setLocation(`/agent/${slug}/login`);
+          // Bronze/Silver users go to main login on 401
+          if (isBronzeSilverUser()) {
+            setLocation('/login');
+          } else {
+            setLocation(`/agent/${slug}/login`);
+          }
         }
         throw new Error("Failed to fetch manager info");
       }
       return response.json();
     },
-    enabled: !!slug && !!getManagerToken() && agentInfo?.requiresLogin === true,
+    enabled: !!slug && !!getManagerToken() && (agentInfo?.requiresLogin === true || isBronzeSilver),
   });
 
-  const isAuthenticated = !!getManagerToken() && agentInfo?.requiresLogin === true;
+  // Bronze/Silver users are authenticated if they have a token, regardless of requiresLogin flag
+  const isAuthenticated = !!getManagerToken() && (agentInfo?.requiresLogin === true || isBronzeSilver);
 
   // Initialize Bronze usage from manager info
   useEffect(() => {
