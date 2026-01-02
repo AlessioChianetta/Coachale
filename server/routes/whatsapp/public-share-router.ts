@@ -105,7 +105,8 @@ async function validateVisitorSession(
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
       // Try JWT_SECRET first (used by unified login), then SESSION_SECRET (used by manager login)
-      const jwtSecret = process.env.JWT_SECRET;
+      // Note: routes.ts uses "your-secret-key" as fallback when JWT_SECRET is not set
+      const jwtSecret = process.env.JWT_SECRET || "your-secret-key";
       const sessionSecret = process.env.SESSION_SECRET;
       console.log(`🔐 [VALIDATE-SESSION] JWT_SECRET available: ${!!jwtSecret}, SESSION_SECRET available: ${!!sessionSecret}`);
       
@@ -262,7 +263,8 @@ async function validateBronzeAuth(
     }
     
     const token = authHeader.slice(7);
-    const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
+    // Note: routes.ts uses "your-secret-key" as fallback when JWT_SECRET is not set
+    const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET || "your-secret-key";
     
     if (!sessionSecret) {
       console.error('[BRONZE AUTH] No SESSION_SECRET or JWT_SECRET configured');
