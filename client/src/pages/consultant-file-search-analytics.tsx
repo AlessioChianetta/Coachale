@@ -95,6 +95,8 @@ interface FileSearchSettings {
   autoSyncClientKnowledge: boolean;
   autoSyncExerciseResponses: boolean;
   autoSyncFinancial: boolean;
+  autoSyncWhatsappAgents: boolean;
+  autoSyncConsultantGuides: boolean;
   autoSyncGoals: boolean;
   autoSyncTasks: boolean;
   autoSyncDailyReflections: boolean;

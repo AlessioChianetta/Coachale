@@ -2071,7 +2071,9 @@ export class FileSearchSyncService {
     syncProgressEmitter.emitStart(consultantId, 'daily_reflections', preCalcDailyReflectionsTotal);
     syncProgressEmitter.emitStart(consultantId, 'client_progress', preCalcClientProgressTotal);
     syncProgressEmitter.emitStart(consultantId, 'library_progress', preCalcLibraryProgressTotal);
-    syncProgressEmitter.emitStart(consultantId, 'email_journey', preCalcEmailJourneyTotal);
+    if (settings?.autoSyncEmailJourney) {
+      syncProgressEmitter.emitStart(consultantId, 'email_journey', preCalcEmailJourneyTotal);
+    }
 
     for (const client of clients) {
       console.log(`   📋 Processing client: ${client.firstName} ${client.lastName} (${client.id.substring(0, 8)}...)`);
@@ -2227,19 +2229,21 @@ export class FileSearchSyncService {
       syncProgressEmitter.emitItemProgress(consultantId, 'library_progress', clientDisplayName,
         totalLibraryProgress.synced + totalLibraryProgress.failed, preCalcLibraryProgressTotal);
 
-      // Sync email journey progress
-      const emailJourneyResult = await this.syncClientEmailJourneyProgress(client.id, consultantId);
-      totalEmailJourney.total++;
-      if (emailJourneyResult.success) {
-        totalEmailJourney.synced++;
-      } else {
-        totalEmailJourney.failed++;
-        if (emailJourneyResult.error) {
-          errors.push(`Client ${clientDisplayName} email journey: ${emailJourneyResult.error}`);
+      // Sync email journey progress (if enabled)
+      if (settings?.autoSyncEmailJourney) {
+        const emailJourneyResult = await this.syncClientEmailJourneyProgress(client.id, consultantId);
+        totalEmailJourney.total++;
+        if (emailJourneyResult.success) {
+          totalEmailJourney.synced++;
+        } else {
+          totalEmailJourney.failed++;
+          if (emailJourneyResult.error) {
+            errors.push(`Client ${clientDisplayName} email journey: ${emailJourneyResult.error}`);
+          }
         }
+        syncProgressEmitter.emitItemProgress(consultantId, 'email_journey', clientDisplayName,
+          totalEmailJourney.synced + totalEmailJourney.failed, preCalcEmailJourneyTotal);
       }
-      syncProgressEmitter.emitItemProgress(consultantId, 'email_journey', clientDisplayName,
-        totalEmailJourney.synced + totalEmailJourney.failed, preCalcEmailJourneyTotal);
 
       clientsProcessed++;
       
@@ -2360,14 +2364,16 @@ export class FileSearchSyncService {
       synced: totalLibraryProgress.synced,
       consultantId,
     });
-    syncProgressEmitter.emitProgress({
-      type: 'complete',
-      category: 'email_journey',
-      total: preCalcEmailJourneyTotal,
-      current: preCalcEmailJourneyTotal,
-      synced: totalEmailJourney.synced,
-      consultantId,
-    });
+    if (settings?.autoSyncEmailJourney) {
+      syncProgressEmitter.emitProgress({
+        type: 'complete',
+        category: 'email_journey',
+        total: preCalcEmailJourneyTotal,
+        current: preCalcEmailJourneyTotal,
+        synced: totalEmailJourney.synced,
+        consultantId,
+      });
+    }
 
     const totalSynced = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
       universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced +
