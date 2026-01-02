@@ -1069,15 +1069,35 @@ export class FileSearchSyncService {
       let updated = 0;
       let failed = 0;
       let skipped = 0;
-      let processed = 0;
       const errors: string[] = [];
 
-      console.log(`🔄 [FileSync] Syncing ${docs.length} knowledge documents for consultant ${consultantId}`);
+      console.log(`🔄 [FileSync] Syncing ${docs.length} knowledge documents for consultant ${consultantId} (PARALLEL)`);
       syncProgressEmitter.emitStart(consultantId, 'knowledge_base', docs.length);
 
-      for (const doc of docs) {
-        const result = await this.syncConsultantKnowledgeDocument(doc.id, consultantId);
-        processed++;
+      // Use ConcurrencyLimiter for parallel processing (max 5 concurrent uploads)
+      const uploadLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_UPLOADS);
+      let processedCount = 0;
+      const PROGRESS_INTERVAL = Math.max(5, Math.floor(docs.length / 30));
+
+      // Process all knowledge documents in parallel with concurrency limit
+      const results = await Promise.all(
+        docs.map(doc => 
+          uploadLimiter.run(async () => {
+            const result = await this.syncConsultantKnowledgeDocument(doc.id, consultantId);
+            processedCount++;
+            
+            // Emit progress periodically
+            if (processedCount % PROGRESS_INTERVAL === 0 || processedCount === docs.length) {
+              syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', doc.title, processedCount, docs.length);
+            }
+            
+            return { doc, result };
+          })
+        )
+      );
+
+      // Aggregate results after Promise.all
+      for (const { doc, result } of results) {
         if (result.success) {
           if (result.updated === false) {
             skipped++; // Already indexed and up-to-date
@@ -1086,7 +1106,6 @@ export class FileSearchSyncService {
           } else {
             synced++; // Newly synced
           }
-          syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', doc.title, processed, docs.length);
         } else {
           failed++;
           errors.push(`${doc.title}: ${result.error}`);
@@ -1094,7 +1113,7 @@ export class FileSearchSyncService {
         }
       }
 
-      console.log(`✅ [FileSync] Knowledge Base sync complete - Synced: ${synced}, Updated: ${updated}, Skipped: ${skipped}, Failed: ${failed}`);
+      console.log(`✅ [FileSync] Knowledge Base sync complete (PARALLEL) - Synced: ${synced}, Updated: ${updated}, Skipped: ${skipped}, Failed: ${failed}`);
       syncProgressEmitter.emitComplete(consultantId, 'knowledge_base', docs.length);
 
       return {
@@ -3210,28 +3229,40 @@ export class FileSearchSyncService {
         };
       }
 
-      // Fallback: Sequential processing (when no syncContext provided)
-      let synced = 0;
-      let failed = 0;
-      let skipped = 0;
+      // Fallback: Parallel processing with local limiter (when no syncContext provided)
+      const uploadLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_UPLOADS);
+      let processedCount = 0;
+      const PROGRESS_INTERVAL = Math.max(5, Math.floor(clientSubmissions.length / 30));
 
-      for (const submission of clientSubmissions) {
-        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', submission.id);
-        if (isAlreadyIndexed) {
-          skipped++;
-          continue;
-        }
+      const results = await Promise.all(
+        clientSubmissions.map(submission => 
+          uploadLimiter.run(async () => {
+            const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', submission.id);
+            if (isAlreadyIndexed) {
+              return { status: 'skipped' as const };
+            }
+            
+            processedCount++;
+            if (processedCount % PROGRESS_INTERVAL === 0 || processedCount === clientSubmissions.length) {
+              syncProgressEmitter.emitItemProgress(consultantId, 'exercise_responses', `Submission ${submission.id}`, processedCount, clientSubmissions.length);
+            }
+            
+            const result = await this.syncClientExerciseResponse(submission.id, clientId, consultantId);
+            if (result.success) {
+              return { status: 'synced' as const };
+            } else {
+              errors.push(`Submission ${submission.id}: ${result.error}`);
+              return { status: 'failed' as const };
+            }
+          })
+        )
+      );
 
-        const result = await this.syncClientExerciseResponse(submission.id, clientId, consultantId);
-        if (result.success) {
-          synced++;
-        } else {
-          failed++;
-          errors.push(`Submission ${submission.id}: ${result.error}`);
-        }
-      }
+      const synced = results.filter(r => r.status === 'synced').length;
+      const failed = results.filter(r => r.status === 'failed').length;
+      const skipped = results.filter(r => r.status === 'skipped').length;
 
-      console.log(`✅ [FileSync] Client exercise responses sync complete - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+      console.log(`✅ [FileSync] Client exercise responses sync complete (PARALLEL) - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
 
       return {
         total: clientSubmissions.length,
@@ -3322,28 +3353,40 @@ export class FileSearchSyncService {
         };
       }
 
-      // Fallback: Sequential processing
-      let synced = 0;
-      let failed = 0;
-      let skipped = 0;
+      // Fallback: Parallel processing with local limiter (when no syncContext provided)
+      const uploadLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_UPLOADS);
+      let processedCount = 0;
+      const PROGRESS_INTERVAL = Math.max(5, Math.floor(consultationsWithContent.length / 30));
 
-      for (const consultation of consultationsWithContent) {
-        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultation', `client_${consultation.id}`);
-        if (isAlreadyIndexed) {
-          skipped++;
-          continue;
-        }
+      const results = await Promise.all(
+        consultationsWithContent.map(consultation => 
+          uploadLimiter.run(async () => {
+            const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultation', `client_${consultation.id}`);
+            if (isAlreadyIndexed) {
+              return { status: 'skipped' as const };
+            }
+            
+            processedCount++;
+            if (processedCount % PROGRESS_INTERVAL === 0 || processedCount === consultationsWithContent.length) {
+              syncProgressEmitter.emitItemProgress(consultantId, 'client_consultations', `Consultation ${consultation.id}`, processedCount, consultationsWithContent.length);
+            }
+            
+            const result = await this.syncClientConsultationNotes(consultation.id, clientId, consultantId);
+            if (result.success) {
+              return { status: 'synced' as const };
+            } else {
+              errors.push(`Consultation ${consultation.id}: ${result.error}`);
+              return { status: 'failed' as const };
+            }
+          })
+        )
+      );
 
-        const result = await this.syncClientConsultationNotes(consultation.id, clientId, consultantId);
-        if (result.success) {
-          synced++;
-        } else {
-          failed++;
-          errors.push(`Consultation ${consultation.id}: ${result.error}`);
-        }
-      }
+      const synced = results.filter(r => r.status === 'synced').length;
+      const failed = results.filter(r => r.status === 'failed').length;
+      const skipped = results.filter(r => r.status === 'skipped').length;
 
-      console.log(`✅ [FileSync] Client consultations sync complete - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+      console.log(`✅ [FileSync] Client consultations sync complete (PARALLEL) - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
 
       return {
         total: consultationsWithContent.length,
@@ -3902,28 +3945,40 @@ export class FileSearchSyncService {
         };
       }
 
-      // Fallback: Sequential processing
-      let synced = 0;
-      let failed = 0;
-      let skipped = 0;
+      // Fallback: Parallel processing with local limiter (when no syncContext provided)
+      const uploadLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_UPLOADS);
+      let processedCount = 0;
+      const PROGRESS_INTERVAL = Math.max(5, Math.floor(docs.length / 30));
 
-      for (const doc of docs) {
-        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
-        if (isAlreadyIndexed) {
-          skipped++;
-          continue;
-        }
+      const results = await Promise.all(
+        docs.map(doc => 
+          uploadLimiter.run(async () => {
+            const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
+            if (isAlreadyIndexed) {
+              return { status: 'skipped' as const, doc };
+            }
+            
+            processedCount++;
+            if (processedCount % PROGRESS_INTERVAL === 0 || processedCount === docs.length) {
+              syncProgressEmitter.emitItemProgress(consultantId, 'client_knowledge', doc.title, processedCount, docs.length);
+            }
+            
+            const result = await this.syncClientKnowledgeDocument(doc.id, clientId, consultantId);
+            if (result.success) {
+              return { status: 'synced' as const, doc };
+            } else {
+              errors.push(`${doc.title}: ${result.error}`);
+              return { status: 'failed' as const, doc };
+            }
+          })
+        )
+      );
 
-        const result = await this.syncClientKnowledgeDocument(doc.id, clientId, consultantId);
-        if (result.success) {
-          synced++;
-        } else {
-          failed++;
-          errors.push(`${doc.title}: ${result.error}`);
-        }
-      }
+      const synced = results.filter(r => r.status === 'synced').length;
+      const failed = results.filter(r => r.status === 'failed').length;
+      const skipped = results.filter(r => r.status === 'skipped').length;
 
-      console.log(`✅ [FileSync] Client knowledge documents sync complete - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+      console.log(`✅ [FileSync] Client knowledge documents sync complete (PARALLEL) - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
 
       return {
         total: docs.length,
@@ -5560,16 +5615,37 @@ export class FileSearchSyncService {
     let totalItems = 0;
     const allErrors: string[] = [];
 
-    console.log(`📱 [FileSync] Syncing ${validAgentConfigs.length} active WhatsApp agents for consultant ${consultantId.substring(0, 8)}`);
+    console.log(`📱 [FileSync] Syncing ${validAgentConfigs.length} active WhatsApp agents for consultant ${consultantId.substring(0, 8)} (PARALLEL)`);
 
-    for (const agentConfig of validAgentConfigs) {
-      console.log(`   📱 Processing agent: ${agentConfig.agentName || 'Unnamed'} (${agentConfig.id.substring(0, 8)}...)`);
-      const result = await this.syncWhatsappAgentKnowledge(agentConfig.id);
+    // Use ConcurrencyLimiter for parallel processing (max 5 concurrent agent syncs)
+    const uploadLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_UPLOADS);
+    let processedCount = 0;
+
+    // Process all agents in parallel with concurrency limit
+    const results = await Promise.all(
+      validAgentConfigs.map(agentConfig => 
+        uploadLimiter.run(async () => {
+          console.log(`   📱 Processing agent: ${agentConfig.agentName || 'Unnamed'} (${agentConfig.id.substring(0, 8)}...)`);
+          const result = await this.syncWhatsappAgentKnowledge(agentConfig.id);
+          processedCount++;
+          
+          // Emit progress periodically
+          syncProgressEmitter.emitItemProgress(consultantId, 'whatsapp_agents', agentConfig.agentName || 'Unnamed', processedCount, validAgentConfigs.length);
+          
+          return { agentConfig, result };
+        })
+      )
+    );
+
+    // Aggregate results after Promise.all
+    for (const { agentConfig, result } of results) {
       totalItems += result.total;
       totalSynced += result.synced;
       totalFailed += result.failed;
       allErrors.push(...result.errors);
     }
+
+    console.log(`✅ [FileSync] WhatsApp agents sync complete (PARALLEL) - Agents: ${validAgentConfigs.length}, Items: ${totalItems}, Synced: ${totalSynced}, Failed: ${totalFailed}`);
 
     return {
       total: totalItems,
