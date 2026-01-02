@@ -1046,11 +1046,21 @@ export default function PublicAgentShare() {
         {/* Limit reached alert for Bronze users */}
         {limitReached && metadata.level === "1" && (
           <div className="flex-shrink-0 px-4 pb-2">
-            <Alert className="bg-orange-50 border-orange-200 max-w-4xl mx-auto">
+            <Alert className="bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 max-w-4xl mx-auto">
               <AlertCircle className="h-4 w-4 text-orange-600" />
               <AlertDescription className="text-orange-700">
-                <strong>Limite giornaliero raggiunto!</strong> Hai esaurito i tuoi {bronzeUsageInfo?.dailyMessageLimit || 15} messaggi giornalieri. 
-                Torna domani oppure contatta il consulente per un upgrade al piano Argento con messaggi illimitati.
+                <strong>Limite giornaliero raggiunto!</strong> Hai esaurito i tuoi {bronzeUsageInfo?.dailyMessageLimit || 15} messaggi giornalieri.
+                <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                  <span className="text-sm">Vuoi messaggi illimitati?</span>
+                  {metadata.consultantSlug && (
+                    <a
+                      href={`/c/${metadata.consultantSlug}/pricing`}
+                      className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 rounded-lg transition-all shadow-sm"
+                    >
+                      Passa a Silver - Messaggi Illimitati
+                    </a>
+                  )}
+                </div>
               </AlertDescription>
             </Alert>
           </div>

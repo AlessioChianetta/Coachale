@@ -330,82 +330,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const validatedData = loginSchema.parse(req.body);
+      const emailLower = validatedData.email.toLowerCase();
 
-      // Find user
-      const user = await storage.getUserByEmail(validatedData.email);
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
+      // 1. First try to find in main users table (Level 3 - Gold/Client, Consultant, Admin)
+      // Use emailLower for consistent case-insensitive matching across all tiers
+      const user = await storage.getUserByEmail(emailLower);
+      
+      if (user) {
+        // Verify password
+        const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+        if (!isValidPassword) {
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
 
-      // Verify password
-      const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
+        // Check for user role profiles (Email Condivisa feature)
+        let profiles = await storage.getUserRoleProfiles(user.id);
 
-      // Check for user role profiles (Email Condivisa feature)
-      let profiles = await storage.getUserRoleProfiles(user.id);
+        // If no profiles exist, create default profile based on users.role
+        if (profiles.length === 0) {
+          const defaultProfile = await storage.createUserRoleProfile({
+            userId: user.id,
+            role: user.role,
+            consultantId: user.role === 'client' ? user.consultantId : null,
+            isDefault: true,
+            isActive: true,
+          });
+          profiles = [defaultProfile];
+        }
 
-      // If no profiles exist, create default profile based on users.role
-      if (profiles.length === 0) {
-        const defaultProfile = await storage.createUserRoleProfile({
-          userId: user.id,
-          role: user.role,
-          consultantId: user.role === 'client' ? user.consultantId : null,
-          isDefault: true,
-          isActive: true,
-        });
-        profiles = [defaultProfile];
-      }
+        // If user has multiple profiles, require profile selection
+        if (profiles.length > 1) {
+          const tempToken = jwt.sign({ userId: user.id, requireProfileSelection: true }, JWT_SECRET, { expiresIn: '5m' });
+          
+          return res.json({
+            message: "Profile selection required",
+            requireProfileSelection: true,
+            tempToken,
+            profiles: profiles.map(p => ({
+              id: p.id,
+              role: p.role,
+              consultantId: p.consultantId,
+              isDefault: p.isDefault,
+            })),
+            user: {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              avatar: user.avatar,
+            },
+          });
+        }
 
-      // If user has multiple profiles, require profile selection
-      if (profiles.length > 1) {
-        // Generate a temporary token for profile selection (short-lived)
-        const tempToken = jwt.sign({ userId: user.id, requireProfileSelection: true }, JWT_SECRET, { expiresIn: '5m' });
-        
+        // Single profile: use that profile's role
+        const activeProfile = profiles[0];
+        const token = jwt.sign({ userId: user.id, profileId: activeProfile.id }, JWT_SECRET, { expiresIn: '7d' });
+
         return res.json({
-          message: "Profile selection required",
-          requireProfileSelection: true,
-          tempToken,
-          profiles: profiles.map(p => ({
-            id: p.id,
-            role: p.role,
-            consultantId: p.consultantId,
-            isDefault: p.isDefault,
-          })),
+          message: "Login successful",
+          token,
           user: {
             id: user.id,
             username: user.username,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
+            role: activeProfile.role,
             avatar: user.avatar,
+            geminiApiKeys: user.geminiApiKeys,
+            isActive: user.isActive,
+            profileId: activeProfile.id,
+            consultantId: activeProfile.consultantId || user.consultantId,
+            siteUrl: user.siteUrl,
+            tier: "gold",
           },
         });
       }
 
-      // Single profile: use that profile's role
-      const activeProfile = profiles[0];
-      const token = jwt.sign({ userId: user.id, profileId: activeProfile.id }, JWT_SECRET, { expiresIn: '7d' });
+      // 2. Try to find in Silver subscriptions (Level 2)
+      const [silverUser] = await db
+        .select()
+        .from(schema.clientLevelSubscriptions)
+        .where(
+          and(
+            eq(schema.clientLevelSubscriptions.clientEmail, emailLower),
+            eq(schema.clientLevelSubscriptions.status, "active"),
+            eq(schema.clientLevelSubscriptions.level, "2")
+          )
+        )
+        .limit(1);
 
-      res.json({
-        message: "Login successful",
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: activeProfile.role,
-          avatar: user.avatar,
-          geminiApiKeys: user.geminiApiKeys,
-          isActive: user.isActive,
-          profileId: activeProfile.id,
-          consultantId: activeProfile.consultantId || user.consultantId,
-          siteUrl: user.siteUrl,
-        },
-      });
+      if (silverUser && silverUser.passwordHash) {
+        const isValidPassword = await bcrypt.compare(validatedData.password, silverUser.passwordHash);
+        if (isValidPassword) {
+          const token = jwt.sign({ 
+            subscriptionId: silverUser.id, 
+            consultantId: silverUser.consultantId,
+            email: silverUser.clientEmail,
+            type: "silver" 
+          }, JWT_SECRET, { expiresIn: '30d' });
+
+          return res.json({
+            message: "Login successful",
+            token,
+            user: {
+              id: silverUser.id,
+              email: silverUser.clientEmail,
+              firstName: silverUser.clientName?.split(' ')[0] || '',
+              lastName: silverUser.clientName?.split(' ').slice(1).join(' ') || '',
+              role: "client",
+              tier: "silver",
+              consultantId: silverUser.consultantId,
+              subscriptionId: silverUser.id,
+            },
+          });
+        }
+      }
+
+      // 3. Try to find in Bronze users (Level 1)
+      const [bronzeUser] = await db
+        .select()
+        .from(schema.bronzeUsers)
+        .where(eq(schema.bronzeUsers.email, emailLower))
+        .limit(1);
+
+      if (bronzeUser) {
+        if (!bronzeUser.isActive) {
+          return res.status(403).json({ message: "Account disattivato" });
+        }
+
+        const isValidPassword = await bcrypt.compare(validatedData.password, bronzeUser.passwordHash);
+        if (isValidPassword) {
+          // Reset daily messages if new day
+          const now = new Date();
+          const lastReset = bronzeUser.lastMessageResetAt ? new Date(bronzeUser.lastMessageResetAt) : null;
+          const isNewDay = !lastReset || now.toDateString() !== lastReset.toDateString();
+          
+          let dailyMessagesUsed = bronzeUser.dailyMessagesUsed;
+          if (isNewDay) {
+            await db
+              .update(schema.bronzeUsers)
+              .set({ dailyMessagesUsed: 0, lastMessageResetAt: now, lastLoginAt: now })
+              .where(eq(schema.bronzeUsers.id, bronzeUser.id));
+            dailyMessagesUsed = 0;
+          } else {
+            await db
+              .update(schema.bronzeUsers)
+              .set({ lastLoginAt: now })
+              .where(eq(schema.bronzeUsers.id, bronzeUser.id));
+          }
+
+          const token = jwt.sign({ 
+            bronzeUserId: bronzeUser.id, 
+            consultantId: bronzeUser.consultantId,
+            email: bronzeUser.email,
+            type: "bronze" 
+          }, JWT_SECRET, { expiresIn: '30d' });
+
+          return res.json({
+            message: "Login successful",
+            token,
+            user: {
+              id: bronzeUser.id,
+              email: bronzeUser.email,
+              firstName: bronzeUser.firstName || '',
+              lastName: bronzeUser.lastName || '',
+              role: "client",
+              tier: "bronze",
+              consultantId: bronzeUser.consultantId,
+              dailyMessagesUsed,
+              dailyMessageLimit: bronzeUser.dailyMessageLimit,
+            },
+          });
+        }
+      }
+
+      // No user found in any table
+      return res.status(401).json({ message: "Invalid credentials" });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Login failed" });
     }

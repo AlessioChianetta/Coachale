@@ -62,12 +62,19 @@ export default function Login() {
     
     // Small delay before redirect to ensure login flag is processed
     setTimeout(() => {
-      // Redirect based on user role
+      // Redirect based on user role and tier
       if (data.user.role === "super_admin") {
         setLocation("/admin");
       } else if (data.user.role === "consultant") {
         setLocation("/consultant");
+      } else if (data.user.tier === "bronze" || data.user.tier === "silver") {
+        // Bronze and Silver users go to the AI chat
+        // Store tier info for chat component
+        localStorage.setItem('userTier', data.user.tier);
+        localStorage.setItem('consultantId', data.user.consultantId || '');
+        setLocation("/client");
       } else {
+        // Gold clients (Level 3)
         setLocation("/client");
       }
     }, 100);

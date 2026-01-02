@@ -423,4 +423,74 @@ router.delete("/consultant/pricing/users/bronze/:id", authenticateToken, require
   }
 });
 
+// POST /api/consultant/pricing/users/bronze/:id/reset-password - Reset password utente Bronze
+router.post("/consultant/pricing/users/bronze/:id/reset-password", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const bronzeUserId = req.params.id;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: "La password deve essere di almeno 6 caratteri" });
+    }
+
+    const [bronzeUser] = await db.select()
+      .from(bronzeUsers)
+      .where(and(eq(bronzeUsers.id, bronzeUserId), eq(bronzeUsers.consultantId, consultantId)));
+
+    if (!bronzeUser) {
+      return res.status(404).json({ error: "Utente Bronze non trovato o non autorizzato" });
+    }
+
+    const bcrypt = require("bcrypt");
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await db.update(bronzeUsers)
+      .set({ passwordHash })
+      .where(eq(bronzeUsers.id, bronzeUserId));
+
+    res.json({ success: true, message: "Password aggiornata con successo" });
+  } catch (error) {
+    console.error("[Consultant Pricing] Reset bronze password error:", error);
+    res.status(500).json({ error: "Failed to reset password" });
+  }
+});
+
+// POST /api/consultant/pricing/users/silver/:id/reset-password - Reset password utente Silver
+router.post("/consultant/pricing/users/silver/:id/reset-password", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const subscriptionId = req.params.id;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: "La password deve essere di almeno 6 caratteri" });
+    }
+
+    const [subscription] = await db.select()
+      .from(clientLevelSubscriptions)
+      .where(and(
+        eq(clientLevelSubscriptions.id, subscriptionId),
+        eq(clientLevelSubscriptions.consultantId, consultantId),
+        eq(clientLevelSubscriptions.level, "2")
+      ));
+
+    if (!subscription) {
+      return res.status(404).json({ error: "Sottoscrizione Silver non trovata o non autorizzata" });
+    }
+
+    const bcrypt = require("bcrypt");
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await db.update(clientLevelSubscriptions)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(clientLevelSubscriptions.id, subscriptionId));
+
+    res.json({ success: true, message: "Password aggiornata con successo" });
+  } catch (error) {
+    console.error("[Consultant Pricing] Reset silver password error:", error);
+    res.status(500).json({ error: "Failed to reset password" });
+  }
+});
+
 export default router;

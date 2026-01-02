@@ -6,6 +6,7 @@ import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth"
 import { decrypt } from "../encryption";
 import bcrypt from "bcrypt";
 import { sendEmail } from "../services/email-scheduler";
+import { sendWelcomeEmail } from "../services/welcome-email-service";
 
 function generateRandomPassword(length: number = 8): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -469,7 +470,21 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           stripeCustomerId: session.customer || null,
           stripeSubscriptionId: session.subscription || null,
           tempPassword,
+          passwordHash: hashedPassword,
         }).returning();
+        
+        // Send welcome email with credentials for Silver users (Level 2)
+        if (level === "2" && tempPassword) {
+          sendWelcomeEmail({
+            consultantId,
+            recipientEmail: clientEmail,
+            recipientName: clientName || clientEmail.split('@')[0],
+            password: tempPassword,
+            tier: "silver",
+          }).catch(err => {
+            console.error("[Stripe Webhook] Failed to send welcome email:", err);
+          });
+        }
         
         if (level === "2") {
           await db.update(consultantLicenses)

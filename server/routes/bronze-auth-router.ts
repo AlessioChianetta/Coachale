@@ -4,6 +4,7 @@ import { eq, and, or, sql } from "drizzle-orm";
 import { bronzeUsers, consultantLicenses, users } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { sendWelcomeEmail } from "../services/welcome-email-service";
 
 const router = Router();
 
@@ -155,6 +156,17 @@ router.post("/:slug/register", async (req: Request, res: Response) => {
       getJwtSecret(),
       { expiresIn: TOKEN_EXPIRY }
     );
+
+    // Send welcome email with credentials (async, don't block response)
+    sendWelcomeEmail({
+      consultantId: consultant.id,
+      recipientEmail: email.toLowerCase(),
+      recipientName: firstName || email.split('@')[0],
+      password: password,
+      tier: "bronze",
+    }).catch(err => {
+      console.error("[BRONZE AUTH] Failed to send welcome email:", err);
+    });
 
     res.status(201).json({
       success: true,
