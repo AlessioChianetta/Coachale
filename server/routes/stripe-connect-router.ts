@@ -779,9 +779,11 @@ router.get("/consultant/subscriptions", authenticateToken, requireRole("consulta
     let stripe: any;
     try {
       stripe = await getStripeInstance();
-    } catch (e) {
+      console.log("[Subscriptions] Stripe instance initialized successfully");
+    } catch (e: any) {
       // If Stripe not configured, return database data only
-      return res.json(dbSubscriptions);
+      console.log("[Subscriptions] Stripe not configured, returning DB-only data:", e?.message);
+      return res.json({ success: true, data: dbSubscriptions });
     }
     
     // Enrich each subscription with live Stripe data
@@ -809,7 +811,9 @@ router.get("/consultant/subscriptions", authenticateToken, requireRole("consulta
         // Fetch live data from Stripe if we have a subscription ID
         if (sub.stripeSubscriptionId) {
           try {
+            console.log(`[Subscriptions] Fetching Stripe data for subscription: ${sub.stripeSubscriptionId}`);
             const stripeSub = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+            console.log(`[Subscriptions] Retrieved Stripe subscription, status: ${stripeSub.status}`);
             
             stripeData = {
               currentPeriodEnd: stripeSub.current_period_end ? new Date(stripeSub.current_period_end * 1000).toISOString() : null,
@@ -862,7 +866,8 @@ router.get("/consultant/subscriptions", authenticateToken, requireRole("consulta
       })
     );
     
-    res.json(enrichedSubscriptions);
+    console.log(`[Subscriptions] Returning ${enrichedSubscriptions.length} subscriptions with Stripe data`);
+    res.json({ success: true, data: enrichedSubscriptions });
   } catch (error) {
     console.error("[Consultant Subscriptions] Error:", error);
     res.status(500).json({ error: "Failed to fetch subscriptions" });
