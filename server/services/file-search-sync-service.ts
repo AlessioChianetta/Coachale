@@ -82,11 +82,19 @@ export interface DocumentProgressEvent {
   error?: string;
 }
 
+export interface IndexedDocInfo {
+  documentId: string;
+  contentHash: string | null;
+  indexedAt: Date | null;
+  storeId: string;
+}
+
 export interface SyncContext {
   consultantId: string;
   consultantStore: { storeId: string; storeName: string } | null;
   clientStores: Map<string, { storeId: string; storeName: string } | null>;
   settings: typeof fileSearchSettings.$inferSelect | null;
+  indexedDocsMap: Map<string, IndexedDocInfo>;
 }
 
 export class SyncProgressEmitter extends EventEmitter {
@@ -215,8 +223,35 @@ export const syncProgressEmitter = SyncProgressEmitter.getInstance();
 
 export class FileSearchSyncService {
   /**
+   * Generate a lookup key for the indexed docs map.
+   * Format: "sourceType:sourceId" for O(1) lookup.
+   */
+  static getIndexedDocKey(sourceType: string, sourceId: string): string {
+    return `${sourceType}:${sourceId}`;
+  }
+
+  /**
+   * Check if a document needs re-upload using the batch-loaded indexedDocsMap.
+   * Returns true if document doesn't exist or content hash differs.
+   */
+  static needsReuploadFromContext(
+    sourceType: string,
+    sourceId: string,
+    contentHash: string,
+    context: SyncContext,
+  ): boolean {
+    const key = this.getIndexedDocKey(sourceType, sourceId);
+    const existing = context.indexedDocsMap.get(key);
+    
+    if (!existing) return true;
+    if (!existing.contentHash) return true;
+    return existing.contentHash !== contentHash;
+  }
+
+  /**
    * Build a SyncContext with cached stores for efficient batch sync operations.
-   * Pre-loads consultant store and all client stores in batch to avoid repeated DB queries.
+   * Pre-loads consultant store, all client stores, and ALL indexed documents in batch
+   * to avoid repeated DB queries during sync.
    */
   static async buildSyncContext(
     consultantId: string,
@@ -266,7 +301,50 @@ export class FileSearchSyncService {
       }
     }
 
-    console.log(`✅ [FileSync] SyncContext built: ${existingStoreCount} existing client stores cached`);
+    const indexedDocsMap = new Map<string, IndexedDocInfo>();
+    
+    const allStoreIds: string[] = [];
+    if (consultantStore) {
+      allStoreIds.push(consultantStore.id);
+    }
+    for (const [, store] of clientStores) {
+      if (store) {
+        allStoreIds.push(store.storeId);
+      }
+    }
+    
+    if (allStoreIds.length > 0) {
+      const allIndexedDocs = await db
+        .select({
+          id: fileSearchDocuments.id,
+          storeId: fileSearchDocuments.storeId,
+          sourceType: fileSearchDocuments.sourceType,
+          sourceId: fileSearchDocuments.sourceId,
+          contentHash: fileSearchDocuments.contentHash,
+          indexedAt: fileSearchDocuments.indexedAt,
+        })
+        .from(fileSearchDocuments)
+        .where(and(
+          inArray(fileSearchDocuments.storeId, allStoreIds),
+          eq(fileSearchDocuments.status, 'indexed')
+        ));
+      
+      for (const doc of allIndexedDocs) {
+        if (doc.sourceId) {
+          const key = this.getIndexedDocKey(doc.sourceType, doc.sourceId);
+          indexedDocsMap.set(key, {
+            documentId: doc.id,
+            contentHash: doc.contentHash,
+            indexedAt: doc.indexedAt,
+            storeId: doc.storeId,
+          });
+        }
+      }
+      
+      console.log(`📄 [FileSync] Pre-loaded ${indexedDocsMap.size} indexed documents for batch hash checking`);
+    }
+
+    console.log(`✅ [FileSync] SyncContext built: ${existingStoreCount} client stores, ${indexedDocsMap.size} indexed docs cached`);
     
     return {
       consultantId,
@@ -275,6 +353,7 @@ export class FileSearchSyncService {
         : null,
       clientStores,
       settings: settings || null,
+      indexedDocsMap,
     };
   }
 
