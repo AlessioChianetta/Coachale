@@ -223,8 +223,9 @@ export default function ConsultantPricingSettingsPage() {
     },
   });
 
-  const level1Agents = (agentsData || []).filter((agent: any) => agent.level === "1");
-  const level2Agents = (agentsData || []).filter((agent: any) => agent.level === "2");
+  const agentsArray = Array.isArray(agentsData) ? agentsData : [];
+  const level1Agents = agentsArray.filter((agent: any) => agent.level === "1");
+  const level2Agents = agentsArray.filter((agent: any) => agent.level === "2");
 
   const centsToEuros = (cents: number | undefined): string => {
     if (!cents && cents !== 0) return "";

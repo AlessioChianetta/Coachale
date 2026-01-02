@@ -11387,6 +11387,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           objectionHandlingEnabled: config.objectionHandlingEnabled,
           disqualificationEnabled: config.disqualificationEnabled,
           upsellingEnabled: config.upsellingEnabled,
+          // Dipendente AI Level Configuration
+          level: config.level,
+          publicSlug: config.publicSlug,
+          dailyMessageLimit: config.dailyMessageLimit,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         })),
