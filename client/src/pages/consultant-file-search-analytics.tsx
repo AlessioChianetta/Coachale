@@ -5075,7 +5075,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                       if (consultantData.length === 0) return null;
                                       
                                       const totalSynced = consultantData.reduce((sum, [, d]) => sum + (d.synced || 0), 0);
+                                      const totalSkipped = consultantData.reduce((sum, [, d]) => sum + (d.skipped || 0), 0);
                                       const totalProcessed = consultantData.reduce((sum, [, d]) => sum + (d.processed || 0), 0);
+                                      const totalIndexed = totalSynced + totalSkipped;
                                       
                                       return (
                                         <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-3">
@@ -5083,7 +5085,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                             <Database className="h-4 w-4 text-blue-600" />
                                             <h4 className="text-sm font-semibold text-blue-900">Store Consulente</h4>
                                             <Badge variant="outline" className="ml-auto text-xs bg-blue-100 text-blue-700 border-blue-300">
-                                              {totalSynced}/{totalProcessed} sync
+                                              {totalIndexed}/{totalProcessed} indicizzati
                                             </Badge>
                                           </div>
                                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -5098,12 +5100,20 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                   {key === 'consultations' && <MessageSquare className="h-3 w-3 text-teal-500" />}
                                                   <span className="font-medium text-gray-700">{detail.name}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1 mt-1 text-muted-foreground">
-                                                  <span className={detail.synced > 0 ? "text-green-600 font-medium" : "text-gray-400"}>{detail.synced}</span>
-                                                  <span className="text-gray-400">/</span>
-                                                  <span>{detail.processed}</span>
+                                                <div className="flex flex-col gap-0.5 mt-1 text-muted-foreground">
+                                                  <div className="flex items-center gap-1">
+                                                    <span className="text-gray-500 text-[10px]">Indicizzati:</span>
+                                                    <span className={(detail.synced + (detail.skipped || 0)) > 0 ? "text-green-600 font-medium" : "text-gray-400"}>
+                                                      {detail.synced + (detail.skipped || 0)}
+                                                    </span>
+                                                    <span className="text-gray-400">/</span>
+                                                    <span>{detail.processed}</span>
+                                                  </div>
+                                                  {detail.synced > 0 && (
+                                                    <span className="text-[10px] text-blue-500">+{detail.synced} nuovi</span>
+                                                  )}
                                                   {detail.failed > 0 && (
-                                                    <span className="text-red-500 ml-1 font-medium">({detail.failed} err)</span>
+                                                    <span className="text-red-500 text-[10px] font-medium">{detail.failed} errori</span>
                                                   )}
                                                 </div>
                                               </div>
@@ -5123,7 +5133,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                       if (clientData.length === 0) return null;
                                       
                                       const totalSynced = clientData.reduce((sum, [, d]) => sum + (d.synced || 0), 0);
+                                      const totalSkipped = clientData.reduce((sum, [, d]) => sum + (d.skipped || 0), 0);
                                       const totalProcessed = clientData.reduce((sum, [, d]) => sum + (d.processed || 0), 0);
+                                      const totalIndexed = totalSynced + totalSkipped;
                                       
                                       return (
                                         <div className="bg-green-50/50 border border-green-200 rounded-lg p-3">
@@ -5134,7 +5146,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                               <span className="text-xs text-green-600">({report.clientDetails.clientsProcessed} clienti)</span>
                                             )}
                                             <Badge variant="outline" className="ml-auto text-xs bg-green-100 text-green-700 border-green-300">
-                                              {totalSynced}/{totalProcessed} sync
+                                              {totalIndexed}/{totalProcessed} indicizzati
                                             </Badge>
                                           </div>
                                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -5153,12 +5165,20 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                   {key === 'emailJourney' && <Mail className="h-3 w-3 text-violet-500" />}
                                                   <span className="font-medium text-gray-700 truncate">{detail.name}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1 mt-1 text-muted-foreground">
-                                                  <span className={detail.synced > 0 ? "text-green-600 font-medium" : "text-gray-400"}>{detail.synced}</span>
-                                                  <span className="text-gray-400">/</span>
-                                                  <span>{detail.processed}</span>
+                                                <div className="flex flex-col gap-0.5 mt-1 text-muted-foreground">
+                                                  <div className="flex items-center gap-1">
+                                                    <span className="text-gray-500 text-[10px]">Indicizzati:</span>
+                                                    <span className={(detail.synced + (detail.skipped || 0)) > 0 ? "text-green-600 font-medium" : "text-gray-400"}>
+                                                      {detail.synced + (detail.skipped || 0)}
+                                                    </span>
+                                                    <span className="text-gray-400">/</span>
+                                                    <span>{detail.processed}</span>
+                                                  </div>
+                                                  {detail.synced > 0 && (
+                                                    <span className="text-[10px] text-blue-500">+{detail.synced} nuovi</span>
+                                                  )}
                                                   {detail.failed > 0 && (
-                                                    <span className="text-red-500 ml-1 font-medium">({detail.failed} err)</span>
+                                                    <span className="text-red-500 text-[10px] font-medium">{detail.failed} errori</span>
                                                   )}
                                                 </div>
                                               </div>
@@ -5178,7 +5198,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                       if (assignedData.length === 0) return null;
                                       
                                       const totalSynced = assignedData.reduce((sum, [, d]) => sum + (d.synced || 0), 0);
+                                      const totalSkipped = assignedData.reduce((sum, [, d]) => sum + (d.skipped || 0), 0);
                                       const totalProcessed = assignedData.reduce((sum, [, d]) => sum + (d.processed || 0), 0);
+                                      const totalIndexed = totalSynced + totalSkipped;
                                       
                                       return (
                                         <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
@@ -5186,7 +5208,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                             <Share2 className="h-4 w-4 text-amber-600" />
                                             <h4 className="text-sm font-semibold text-amber-900">Contenuti Assegnati ai Clienti</h4>
                                             <Badge variant="outline" className="ml-auto text-xs bg-amber-100 text-amber-700 border-amber-300">
-                                              {totalSynced}/{totalProcessed} sync
+                                              {totalIndexed}/{totalProcessed} indicizzati
                                             </Badge>
                                           </div>
                                           <p className="text-xs text-amber-700 mb-2">
@@ -5201,12 +5223,20 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                   {key === 'assignedUniversity' && <GraduationCap className="h-3 w-3 text-indigo-500" />}
                                                   <span className="font-medium text-gray-700">{detail.name}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1 mt-1 text-muted-foreground">
-                                                  <span className={detail.synced > 0 ? "text-green-600 font-medium" : "text-gray-400"}>{detail.synced}</span>
-                                                  <span className="text-gray-400">/</span>
-                                                  <span>{detail.processed}</span>
+                                                <div className="flex flex-col gap-0.5 mt-1 text-muted-foreground">
+                                                  <div className="flex items-center gap-1">
+                                                    <span className="text-gray-500 text-[10px]">Indicizzati:</span>
+                                                    <span className={(detail.synced + (detail.skipped || 0)) > 0 ? "text-green-600 font-medium" : "text-gray-400"}>
+                                                      {detail.synced + (detail.skipped || 0)}
+                                                    </span>
+                                                    <span className="text-gray-400">/</span>
+                                                    <span>{detail.processed}</span>
+                                                  </div>
+                                                  {detail.synced > 0 && (
+                                                    <span className="text-[10px] text-blue-500">+{detail.synced} nuovi</span>
+                                                  )}
                                                   {detail.failed > 0 && (
-                                                    <span className="text-red-500 ml-1 font-medium">({detail.failed} err)</span>
+                                                    <span className="text-red-500 text-[10px] font-medium">{detail.failed} errori</span>
                                                   )}
                                                 </div>
                                               </div>
