@@ -272,13 +272,40 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
       )}
 
       {levels.length === 0 && (
-        <Alert className="border-blue-200 bg-blue-50">
-          <Info className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            <strong>Agente Standard:</strong> Questo agente non sarà accessibile tramite il sistema Dipendenti AI. 
-            Sarà disponibile solo tramite WhatsApp diretto o le altre integrazioni configurate.
-          </AlertDescription>
-        </Alert>
+        <Card className="border-2 border-blue-200 bg-blue-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-blue-800 text-base">
+              <Info className="h-5 w-5" />
+              Nessun Livello Selezionato - Agente Standard
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            <p className="text-sm text-blue-700">
+              Quando non selezioni alcun livello, l'agente funziona come un <strong>agente WhatsApp standard</strong>:
+            </p>
+            <ul className="text-sm text-blue-700 space-y-2 ml-4">
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-0.5">•</span>
+                <span><strong>Non accessibile pubblicamente:</strong> L'agente non avrà una pagina pubblica nel sistema Dipendenti AI</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-0.5">•</span>
+                <span><strong>Solo WhatsApp diretto:</strong> Gli utenti potranno contattare l'agente solo tramite il numero WhatsApp configurato</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-0.5">•</span>
+                <span><strong>Nessun limite messaggi:</strong> Non ci sono limiti giornalieri per gli utenti</span>
+              </li>
+            </ul>
+            <div className="p-3 bg-blue-100/50 rounded-lg border border-blue-200">
+              <p className="text-xs text-blue-800">
+                <strong>Quando usare questa opzione:</strong> Scegli di non selezionare alcun livello se vuoi 
+                utilizzare l'agente solo per gestire conversazioni WhatsApp dirette senza il sistema di 
+                abbonamenti Dipendenti AI.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
