@@ -766,6 +766,11 @@ router.get("/stripe/checkout-success/:sessionId", async (req: Request, res: Resp
 });
 
 router.get("/consultant/subscriptions", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  // Disable caching to always get fresh Stripe data
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  
   try {
     const consultantId = req.user!.id;
     
