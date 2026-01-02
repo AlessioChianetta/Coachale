@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { authenticateToken, requireRole, type AuthRequest } from "../middleware/auth";
 import { upload } from "../middleware/upload";
 import { db } from "../db";
@@ -11,13 +11,24 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { extractTextFromFile, type VertexAICredentials } from "../services/document-processor";
 import { parseServiceAccountJson } from "../ai/provider-factory";
-import { fileSearchSyncService } from "../services/file-search-sync-service";
+import { fileSearchSyncService, syncProgressEmitter, type DocumentProgressEvent } from "../services/file-search-sync-service";
 import { FileSearchService } from "../ai/file-search-service";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 
 const fileSearchService = new FileSearchService();
+
+const documentSseTokenStore = new Map<string, { consultantId: string; documentId: string; expiresAt: number }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of documentSseTokenStore.entries()) {
+    if (data.expiresAt < now) {
+      documentSseTokenStore.delete(token);
+    }
+  }
+}, 60000);
 
 const router = Router();
 
@@ -231,8 +242,8 @@ router.post(
       (async () => {
         try {
           console.log(`🔄 [KNOWLEDGE DOCUMENTS] Extracting text from: ${file.originalname}`);
+          syncProgressEmitter.emitDocumentProgress(documentId, "extracting", 10, "Estrazione testo in corso...");
           
-          // Get Vertex AI credentials for audio transcription
           let vertexCredentials: VertexAICredentials | undefined;
           try {
             const [aiSettings] = await db
@@ -257,6 +268,8 @@ router.post(
           }
           
           const extractedContent = await extractTextFromFile(finalFilePath!, file.mimetype, vertexCredentials);
+          
+          syncProgressEmitter.emitDocumentProgress(documentId, "extracting_complete", 40, "Testo estratto con successo");
 
           await db
             .update(consultantKnowledgeDocuments)
@@ -269,10 +282,16 @@ router.post(
 
           console.log(`✅ [KNOWLEDGE DOCUMENTS] Document indexed: "${title}"`);
           
-          // Auto-sync to FileSearchStore for semantic AI search
-          fileSearchSyncService.onKnowledgeDocumentIndexed(documentId, consultantId)
-            .then(() => console.log(`🔍 [FileSearch] Document auto-synced to FileSearchStore: "${title}"`))
-            .catch(err => console.warn(`⚠️ [FileSearch] Auto-sync failed for "${title}":`, err.message));
+          syncProgressEmitter.emitDocumentProgress(documentId, "syncing", 50, "Sincronizzazione con AI in corso...");
+          
+          try {
+            await fileSearchSyncService.syncConsultantKnowledgeDocumentWithProgress(documentId, consultantId);
+            syncProgressEmitter.emitDocumentProgress(documentId, "complete", 100, "Documento elaborato con successo");
+            console.log(`🔍 [FileSearch] Document auto-synced to FileSearchStore: "${title}"`);
+          } catch (syncError: any) {
+            console.warn(`⚠️ [FileSearch] Auto-sync failed for "${title}":`, syncError.message);
+            syncProgressEmitter.emitDocumentProgress(documentId, "complete", 100, "Documento indicizzato (sync AI non disponibile)");
+          }
         } catch (extractError: any) {
           console.error(`❌ [KNOWLEDGE DOCUMENTS] Text extraction failed:`, extractError.message);
           await db
@@ -283,6 +302,7 @@ router.post(
               updatedAt: new Date(),
             })
             .where(eq(consultantKnowledgeDocuments.id, documentId));
+          syncProgressEmitter.emitDocumentProgress(documentId, "error", 0, "Errore durante l'elaborazione", { error: extractError.message });
         }
       })();
 
@@ -747,5 +767,222 @@ router.get(
     }
   }
 );
+
+router.post(
+  "/consultant/knowledge/documents/:id/progress-token",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    const consultantId = req.user!.id;
+    const { id } = req.params;
+
+    const [document] = await db
+      .select()
+      .from(consultantKnowledgeDocuments)
+      .where(
+        and(
+          eq(consultantKnowledgeDocuments.id, id),
+          eq(consultantKnowledgeDocuments.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!document) {
+      return res.status(404).json({ success: false, error: "Document not found" });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+    
+    documentSseTokenStore.set(token, { consultantId, documentId: id, expiresAt });
+    
+    res.json({ token, expiresIn: 600 });
+  }
+);
+
+router.get(
+  "/consultant/knowledge/documents/:id/progress",
+  async (req: Request, res: Response) => {
+    const token = req.query.token as string;
+    const { id } = req.params;
+
+    if (!token) {
+      return res.status(401).json({ error: "SSE token required" });
+    }
+
+    const tokenData = documentSseTokenStore.get(token);
+    if (!tokenData || tokenData.expiresAt < Date.now()) {
+      documentSseTokenStore.delete(token);
+      return res.status(401).json({ error: "Invalid or expired SSE token" });
+    }
+
+    if (tokenData.documentId !== id) {
+      return res.status(403).json({ error: "Token not valid for this document" });
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    res.write(`data: ${JSON.stringify({ type: "connected", documentId: id })}\n\n`);
+
+    const heartbeatInterval = setInterval(() => {
+      res.write(`:heartbeat\n\n`);
+    }, 30000);
+
+    const eventHandler = (event: DocumentProgressEvent) => {
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+      
+      if (event.phase === "complete" || event.phase === "error") {
+        setTimeout(() => {
+          documentSseTokenStore.delete(token);
+        }, 5000);
+      }
+    };
+
+    syncProgressEmitter.on(`doc:${id}`, eventHandler);
+
+    req.on("close", () => {
+      clearInterval(heartbeatInterval);
+      syncProgressEmitter.off(`doc:${id}`, eventHandler);
+      documentSseTokenStore.delete(token);
+      res.end();
+    });
+  }
+);
+
+router.post(
+  "/consultant/knowledge/documents/:id/retry",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const consultantId = req.user!.id;
+
+      const [document] = await db
+        .select()
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.id, id),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!document) {
+        return res.status(404).json({ success: false, error: "Document not found" });
+      }
+
+      if (!document.filePath) {
+        return res.status(400).json({ success: false, error: "Document file not found" });
+      }
+
+      await db
+        .update(consultantKnowledgeDocuments)
+        .set({
+          status: "processing",
+          errorMessage: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(consultantKnowledgeDocuments.id, id));
+
+      res.json({ success: true, message: "Retry started" });
+
+      (async () => {
+        try {
+          syncProgressEmitter.emitDocumentProgress(id, "extracting", 10, "Estrazione testo in corso...");
+
+          let vertexCredentials: VertexAICredentials | undefined;
+          try {
+            const [aiSettings] = await db
+              .select()
+              .from(vertexAiSettings)
+              .where(eq(vertexAiSettings.userId, consultantId))
+              .limit(1);
+
+            if (aiSettings?.serviceAccountJson && aiSettings.enabled) {
+              const parsedCredentials = await parseServiceAccountJson(aiSettings.serviceAccountJson);
+              if (parsedCredentials) {
+                vertexCredentials = {
+                  projectId: aiSettings.projectId,
+                  location: aiSettings.location || "us-central1",
+                  credentials: parsedCredentials,
+                };
+              }
+            }
+          } catch (credError: any) {
+            console.warn(`⚠️ [KNOWLEDGE DOCUMENTS] Could not load Vertex AI credentials:`, credError.message);
+          }
+
+          const mimeType = getMimeTypeFromFileType(document.fileType);
+          const extractedContent = await extractTextFromFile(document.filePath, mimeType, vertexCredentials);
+
+          syncProgressEmitter.emitDocumentProgress(id, "extracting_complete", 40, "Testo estratto con successo");
+
+          await db
+            .update(consultantKnowledgeDocuments)
+            .set({
+              extractedContent,
+              status: "indexed",
+              errorMessage: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(consultantKnowledgeDocuments.id, id));
+
+          syncProgressEmitter.emitDocumentProgress(id, "syncing", 50, "Sincronizzazione con AI in corso...");
+
+          try {
+            await fileSearchSyncService.syncConsultantKnowledgeDocumentWithProgress(id, consultantId);
+            syncProgressEmitter.emitDocumentProgress(id, "complete", 100, "Documento elaborato con successo");
+          } catch (syncError: any) {
+            console.warn(`⚠️ [KNOWLEDGE DOCUMENTS] FileSearch sync failed:`, syncError.message);
+            syncProgressEmitter.emitDocumentProgress(id, "complete", 100, "Documento indicizzato (sync AI non disponibile)");
+          }
+        } catch (extractError: any) {
+          console.error(`❌ [KNOWLEDGE DOCUMENTS] Retry failed:`, extractError.message);
+          await db
+            .update(consultantKnowledgeDocuments)
+            .set({
+              status: "error",
+              errorMessage: extractError.message,
+              updatedAt: new Date(),
+            })
+            .where(eq(consultantKnowledgeDocuments.id, id));
+          syncProgressEmitter.emitDocumentProgress(id, "error", 0, "Errore durante l'elaborazione", { error: extractError.message });
+        }
+      })();
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE DOCUMENTS] Error starting retry:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to start retry" });
+    }
+  }
+);
+
+function getMimeTypeFromFileType(fileType: string): string {
+  const mimeTypes: Record<string, string> = {
+    pdf: "application/pdf",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    txt: "text/plain",
+    md: "text/markdown",
+    rtf: "text/rtf",
+    odt: "application/vnd.oasis.opendocument.text",
+    csv: "text/csv",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    xls: "application/vnd.ms-excel",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ppt: "application/vnd.ms-powerpoint",
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    m4a: "audio/mp4",
+    ogg: "audio/ogg",
+    webm_audio: "audio/webm",
+  };
+  return mimeTypes[fileType] || "application/octet-stream";
+}
 
 export default router;

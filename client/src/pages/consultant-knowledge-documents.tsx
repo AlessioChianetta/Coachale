@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import {
   FileText,
   Upload,
@@ -63,6 +64,7 @@ import {
   Table2,
   Rows3,
   Columns3,
+  RefreshCw,
 } from "lucide-react";
 import {
   Collapsible,
@@ -142,6 +144,18 @@ interface KnowledgeStats {
   };
   totalKnowledgeItems: number;
   totalUsage: number;
+}
+
+type DocumentProgressPhase = 'extracting' | 'extracting_complete' | 'syncing' | 'chunking' | 'complete' | 'error';
+
+interface DocumentProgress {
+  phase: DocumentProgressPhase;
+  progress: number;
+  message: string;
+  needsChunking?: boolean;
+  totalChunks?: number;
+  currentChunk?: number;
+  error?: string;
 }
 
 const CATEGORY_LABELS: Record<DocumentCategory, string> = {
@@ -225,6 +239,8 @@ export default function ConsultantKnowledgeDocuments() {
   const ROWS_PER_PAGE = 50;
   const [showAskConfirmDialog, setShowAskConfirmDialog] = useState(false);
   const [isGoogleDriveOpen, setIsGoogleDriveOpen] = useState(false);
+  const [documentProgressMap, setDocumentProgressMap] = useState<Record<string, DocumentProgress>>({});
+  const [retryingDocId, setRetryingDocId] = useState<string | null>(null);
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -269,7 +285,7 @@ export default function ConsultantKnowledgeDocuments() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
       setUploadingFiles([]);
       setUploadForm({ title: "", description: "", category: "other", priority: 5 });
@@ -277,6 +293,9 @@ export default function ConsultantKnowledgeDocuments() {
         title: "Documento caricato",
         description: "Il documento è stato caricato con successo. L'elaborazione è in corso.",
       });
+      if (result.data?.id) {
+        subscribeToDocumentProgress(result.data.id);
+      }
     },
     onError: (error: any) => {
       toast({
@@ -436,6 +455,106 @@ export default function ConsultantKnowledgeDocuments() {
       });
     },
   });
+
+  const subscribeToDocumentProgress = useCallback(async (documentId: string) => {
+    try {
+      const tokenResponse = await fetch(`/api/consultant/knowledge/documents/${documentId}/progress-token`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      
+      if (!tokenResponse.ok) return;
+      
+      const { token } = await tokenResponse.json();
+      const eventSource = new EventSource(`/api/consultant/knowledge/documents/${documentId}/progress?token=${token}`);
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === "connected") {
+            setDocumentProgressMap(prev => ({
+              ...prev,
+              [documentId]: { phase: "extracting", progress: 5, message: "Connesso..." }
+            }));
+          } else if (data.type === "document_progress") {
+            setDocumentProgressMap(prev => ({
+              ...prev,
+              [documentId]: {
+                phase: data.phase,
+                progress: data.progress,
+                message: data.message,
+                needsChunking: data.needsChunking,
+                totalChunks: data.totalChunks,
+                currentChunk: data.currentChunk,
+                error: data.error,
+              }
+            }));
+            
+            if (data.phase === "complete" || data.phase === "error") {
+              setTimeout(() => {
+                eventSource.close();
+                queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+                if (data.phase === "complete") {
+                  setTimeout(() => {
+                    setDocumentProgressMap(prev => {
+                      const newMap = { ...prev };
+                      delete newMap[documentId];
+                      return newMap;
+                    });
+                  }, 3000);
+                }
+              }, 1000);
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing SSE:", e);
+        }
+      };
+      
+      eventSource.onerror = () => {
+        eventSource.close();
+      };
+      
+      return () => {
+        eventSource.close();
+      };
+    } catch (e) {
+      console.error("Error subscribing to document progress:", e);
+    }
+  }, [queryClient]);
+
+  const retryMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const response = await fetch(`/api/consultant/knowledge/documents/${documentId}/retry`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to retry");
+      }
+      return { documentId, ...await response.json() };
+    },
+    onSuccess: (data) => {
+      setRetryingDocId(null);
+      subscribeToDocumentProgress(data.documentId);
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+    },
+    onError: (error: any) => {
+      setRetryingDocId(null);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante il retry",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRetry = (documentId: string) => {
+    setRetryingDocId(documentId);
+    retryMutation.mutate(documentId);
+  };
 
   // Funzione per aprire l'anteprima documento
   const handlePreview = async (doc: KnowledgeDocument) => {
@@ -981,10 +1100,59 @@ export default function ConsultantKnowledgeDocuments() {
                               </div>
                             )}
 
+                            {documentProgressMap[doc.id] && (
+                              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                    {documentProgressMap[doc.id].message}
+                                  </span>
+                                </div>
+                                <Progress 
+                                  value={documentProgressMap[doc.id].progress} 
+                                  className="h-2"
+                                />
+                                {documentProgressMap[doc.id].needsChunking && documentProgressMap[doc.id].totalChunks && (
+                                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                                    Documento grande - suddivisione in {documentProgressMap[doc.id].totalChunks} parti
+                                    {documentProgressMap[doc.id].currentChunk ? ` (${documentProgressMap[doc.id].currentChunk}/${documentProgressMap[doc.id].totalChunks})` : ''}
+                                  </p>
+                                )}
+                                {documentProgressMap[doc.id].phase === "complete" && (
+                                  <div className="flex items-center gap-2 mt-2 text-green-600 dark:text-green-400">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    <span className="text-sm">Completato!</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             {doc.status === "error" && doc.errorMessage && (
-                              <p className="text-xs text-red-500 mt-2 bg-red-50 dark:bg-red-900/20 p-2 rounded">
-                                {doc.errorMessage}
-                              </p>
+                              <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+                                <p className="text-xs text-red-500">{doc.errorMessage}</p>
+                                {documentProgressMap[doc.id]?.phase === "error" && documentProgressMap[doc.id]?.error && (
+                                  <p className="text-xs text-red-500 mt-1">{documentProgressMap[doc.id].error}</p>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-2 text-red-600 border-red-300 hover:bg-red-100"
+                                  onClick={() => handleRetry(doc.id)}
+                                  disabled={retryingDocId === doc.id}
+                                >
+                                  {retryingDocId === doc.id ? (
+                                    <>
+                                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                      Riprovando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RefreshCw className="w-3 h-3 mr-1" />
+                                      Riprova
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </div>

@@ -67,6 +67,20 @@ export interface SyncProgressEvent {
   storesChecked?: number;
 }
 
+export type DocumentProgressPhase = 'extracting' | 'extracting_complete' | 'syncing' | 'chunking' | 'complete' | 'error';
+
+export interface DocumentProgressEvent {
+  type: 'document_progress';
+  documentId: string;
+  phase: DocumentProgressPhase;
+  progress: number;
+  message: string;
+  needsChunking?: boolean;
+  totalChunks?: number;
+  currentChunk?: number;
+  error?: string;
+}
+
 export class SyncProgressEmitter extends EventEmitter {
   private static instance: SyncProgressEmitter;
 
@@ -163,6 +177,29 @@ export class SyncProgressEmitter extends EventEmitter {
       storesChecked,
       consultantId,
     });
+  }
+
+  emitDocumentProgress(
+    documentId: string,
+    phase: DocumentProgressPhase,
+    progress: number,
+    message: string,
+    details?: {
+      needsChunking?: boolean;
+      totalChunks?: number;
+      currentChunk?: number;
+      error?: string;
+    }
+  ): void {
+    const event: DocumentProgressEvent = {
+      type: 'document_progress',
+      documentId,
+      phase,
+      progress,
+      message,
+      ...details,
+    };
+    this.emit(`doc:${documentId}`, event);
   }
 }
 
@@ -597,6 +634,130 @@ export class FileSearchSyncService {
         : { success: false, error: uploadResult.error };
     } catch (error: any) {
       console.error('[FileSync] Error syncing knowledge document:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Sync a consultant knowledge document with real-time progress events
+   * Emits events to SSE listeners for UI updates
+   */
+  static async syncConsultantKnowledgeDocumentWithProgress(
+    documentId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const doc = await db.query.consultantKnowledgeDocuments.findFirst({
+        where: and(
+          eq(consultantKnowledgeDocuments.id, documentId),
+          eq(consultantKnowledgeDocuments.consultantId, consultantId),
+        ),
+      });
+
+      if (!doc || doc.status !== 'indexed') {
+        return { success: false, error: 'Document not ready for sync' };
+      }
+
+      let consultantStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, consultantId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+        ),
+      });
+
+      if (!consultantStore) {
+        const result = await fileSearchService.createStore({
+          displayName: `Knowledge Base Consulente`,
+          ownerId: consultantId,
+          ownerType: 'consultant',
+          description: 'Documenti Knowledge Base sincronizzati per AI semantic search',
+        });
+
+        if (!result.success || !result.storeId) {
+          return { success: false, error: 'Failed to create FileSearchStore' };
+        }
+
+        consultantStore = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, result.storeId),
+        });
+
+        if (!consultantStore) {
+          return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      const content = doc.extractedContent || doc.contentSummary || `${doc.title}\n\n${doc.description || ''}`;
+      
+      const isTabularFile = ['xlsx', 'xls', 'csv'].includes(doc.fileType);
+      const contentNeedsChunking = needsChunking(content);
+      
+      if (isTabularFile && contentNeedsChunking) {
+        const chunks = chunkTextContent(content, doc.title);
+        
+        syncProgressEmitter.emitDocumentProgress(documentId, 'chunking', 55, `Documento grande - suddivisione in ${chunks.length} parti`, {
+          needsChunking: true,
+          totalChunks: chunks.length,
+          currentChunk: 0,
+        });
+        
+        let uploadedChunks = 0;
+        const PARALLEL_LIMIT = 10;
+        
+        for (let i = 0; i < chunks.length; i += PARALLEL_LIMIT) {
+          const batch = chunks.slice(i, i + PARALLEL_LIMIT);
+          
+          const batchPromises = batch.map(async (chunk) => {
+            const chunkDisplayName = `[KB] ${doc.title} - Parte ${chunk.chunkIndex + 1}/${chunk.totalChunks}`;
+            const chunkSourceId = `${documentId}_chunk_${chunk.chunkIndex}`;
+            
+            try {
+              const uploadResult = await fileSearchService.uploadDocumentFromContent({
+                content: chunk.content,
+                displayName: chunkDisplayName,
+                storeId: consultantStore!.id,
+                sourceType: 'knowledge_base',
+                sourceId: chunkSourceId,
+                userId: consultantId,
+              });
+              
+              return { success: uploadResult.success, chunkIndex: chunk.chunkIndex };
+            } catch (err: any) {
+              return { success: false, chunkIndex: chunk.chunkIndex };
+            }
+          });
+          
+          const batchResults = await Promise.all(batchPromises);
+          
+          for (const result of batchResults) {
+            if (result.success) {
+              uploadedChunks++;
+              const progress = 55 + Math.round((uploadedChunks / chunks.length) * 40);
+              syncProgressEmitter.emitDocumentProgress(documentId, 'chunking', progress, `Parte ${uploadedChunks}/${chunks.length} caricata`, {
+                needsChunking: true,
+                totalChunks: chunks.length,
+                currentChunk: uploadedChunks,
+              });
+            }
+          }
+        }
+        
+        return { success: uploadedChunks === chunks.length };
+      }
+      
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[KB] ${doc.title}`,
+        storeId: consultantStore.id,
+        sourceType: 'knowledge_base',
+        sourceId: documentId,
+        userId: consultantId,
+      });
+
+      return uploadResult.success 
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing knowledge document with progress:', error);
       return { success: false, error: error.message };
     }
   }
