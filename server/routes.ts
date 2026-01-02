@@ -11551,6 +11551,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           availabilityWorkingHours: config.availabilityWorkingHours,
           // Dipendente AI Level Configuration
           level: config.level,
+          levels: config.levels,
           publicSlug: config.publicSlug,
           dailyMessageLimit: config.dailyMessageLimit,
           createdAt: config.createdAt,
