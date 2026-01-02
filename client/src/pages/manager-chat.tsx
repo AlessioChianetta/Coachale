@@ -686,13 +686,19 @@ export default function ManagerChat() {
   };
 
   const handleLogout = () => {
+    // Clear ALL authentication-related localStorage items
     localStorage.removeItem("manager_token");
-    // Bronze users go to Bronze login page, Managers go to Manager login
-    if (managerInfo?.isBronze && managerInfo.consultantSlug) {
-      setLocation(`/c/${managerInfo.consultantSlug}/register`);
-    } else {
-      setLocation(`/agent/${slug}/login`);
-    }
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("sessionId");
+    localStorage.removeItem("bronzeAuthToken");
+    localStorage.removeItem("bronzeUserTier");
+    localStorage.removeItem("bronzeUserName");
+    localStorage.removeItem("bronzePublicSlug");
+    localStorage.removeItem("agentSlug");
+    
+    // Always redirect to homepage after complete logout
+    window.location.href = "/";
   };
 
   useEffect(() => {
