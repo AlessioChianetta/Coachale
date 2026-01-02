@@ -12361,11 +12361,21 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           enableInAIAssistant: enableInAIAssistant ?? existingConfig.enableInAIAssistant ?? false,
           // Dipendente AI Level Configuration
           // Sync legacy 'level' field with new 'levels' array for backward compatibility
+          // When levels is explicitly provided (even empty), derive level from it
           levels: levels !== undefined ? levels : existingConfig.levels,
           level: (() => {
-            const effectiveLevels = levels !== undefined ? levels : existingConfig.levels;
-            if (effectiveLevels && effectiveLevels.length > 0) {
-              return effectiveLevels.includes("1") ? "1" : (effectiveLevels.includes("2") ? "2" : null);
+            // If levels was explicitly provided in the request, derive level from it
+            if (levels !== undefined) {
+              if (levels && levels.length > 0) {
+                return levels.includes("1") ? "1" : (levels.includes("2") ? "2" : null);
+              }
+              // levels was provided but is empty - clear the legacy level
+              return null;
+            }
+            // levels not provided - use existing values
+            const existingLevels = existingConfig.levels;
+            if (existingLevels && existingLevels.length > 0) {
+              return existingLevels.includes("1") ? "1" : (existingLevels.includes("2") ? "2" : null);
             }
             return level !== undefined ? level : existingConfig.level;
           })(),
