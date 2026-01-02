@@ -164,6 +164,7 @@ router.post("/:slug/register", async (req: Request, res: Response) => {
       recipientName: firstName || email.split('@')[0],
       password: password,
       tier: "bronze",
+      dailyMessageLimit: 15,
     }).catch(err => {
       console.error("[BRONZE AUTH] Failed to send welcome email:", err);
     });
