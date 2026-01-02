@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LevelSelector } from "@/components/whatsapp/LevelBadge";
+import { MultiLevelSelector, LevelBadges } from "@/components/whatsapp/LevelBadge";
 import { 
   Users, 
   AlertCircle, 
@@ -12,7 +12,8 @@ import {
   BookOpen,
   MessageSquare,
   Link as LinkIcon,
-  Info
+  Info,
+  ArrowUpCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,9 +39,14 @@ function isValidSlug(slug: string): boolean {
 export default function AgentLevel({ formData, onChange, errors }: AgentLevelProps) {
   const [slugError, setSlugError] = useState<string | null>(null);
   
-  const handleLevelChange = (level: "1" | "2" | "3" | null) => {
-    onChange("level", level);
-    if (level !== "1") {
+  const levels: ("1" | "2")[] = formData.levels || [];
+  const hasLevel1 = levels.includes("1");
+  const hasLevel2 = levels.includes("2");
+  const hasBothLevels = hasLevel1 && hasLevel2;
+  
+  const handleLevelsChange = (newLevels: ("1" | "2")[]) => {
+    onChange("levels", newLevels);
+    if (!newLevels.includes("1")) {
       onChange("publicSlug", "");
     }
   };
@@ -82,21 +88,21 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
         <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10">
           <CardTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5 text-primary" />
-            Selezione Livello
+            Selezione Livelli
           </CardTitle>
           <CardDescription>
-            Scegli se rendere questo agente accessibile pubblicamente
+            Seleziona i livelli di accesso per questo agente. Puoi selezionarne più di uno per permettere agli utenti di fare upgrade.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <LevelSelector
-            value={formData.level}
-            onChange={handleLevelChange}
+          <MultiLevelSelector
+            values={levels}
+            onChange={handleLevelsChange}
           />
         </CardContent>
       </Card>
 
-      {formData.level === "1" && (
+      {hasLevel1 && (
         <Card className="border-2 border-amber-500/20 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-amber-500/5 to-amber-500/10">
             <CardTitle className="flex items-center gap-2">
@@ -178,7 +184,7 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
         </Card>
       )}
 
-      {formData.level === "2" && (
+      {hasLevel2 && (
         <Card className="border-2 border-slate-400/20 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-slate-400/5 to-slate-400/10">
             <CardTitle className="flex items-center gap-2">
@@ -234,66 +240,42 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
         </Card>
       )}
 
-      {formData.level === "3" && (
-        <Card className="border-2 border-yellow-400/30 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-yellow-400/10 via-amber-400/10 to-orange-400/10">
+      {hasBothLevels && (
+        <Card className="border-2 border-green-400/30 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-green-400/10 to-emerald-400/10">
             <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-amber-600" />
-              Informazioni Livello 3 - Deluxe
+              <ArrowUpCircle className="h-5 w-5 text-green-600" />
+              Percorso di Upgrade
             </CardTitle>
             <CardDescription>
-              Accesso completo al software per clienti premium
+              Gli utenti possono fare upgrade mantenendo lo stesso agente
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <div className="grid gap-4">
-              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg">
-                <Lock className="h-5 w-5 text-amber-600 mt-0.5" />
-                <div>
-                  <p className="font-medium text-amber-900">Login Cliente Richiesto</p>
-                  <p className="text-sm text-amber-700">
-                    Solo i clienti premium autenticati possono accedere
-                  </p>
-                </div>
+            <div className="flex items-center gap-4 justify-center p-4 bg-gradient-to-r from-amber-50 to-slate-50 rounded-lg">
+              <div className="text-center">
+                <LevelBadges levels={["1"]} />
+                <p className="text-xs text-muted-foreground mt-1">Bronze</p>
               </div>
-
-              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg">
-                <BookOpen className="h-5 w-5 text-amber-600 mt-0.5" />
-                <div>
-                  <p className="font-medium text-amber-900">Accesso Completo al Software</p>
-                  <p className="text-sm text-amber-700">
-                    Il cliente ha accesso a tutte le funzionalità della piattaforma
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg">
-                <MessageSquare className="h-5 w-5 text-amber-600 mt-0.5" />
-                <div>
-                  <p className="font-medium text-amber-900">Messaggi Illimitati + AI Manager</p>
-                  <p className="text-sm text-amber-700">
-                    Accesso illimitato all'agente AI e alla sezione Manager
-                  </p>
-                </div>
+              <ArrowUpCircle className="h-6 w-6 text-green-500" />
+              <div className="text-center">
+                <LevelBadges levels={["2"]} />
+                <p className="text-xs text-muted-foreground mt-1">Silver</p>
               </div>
             </div>
-
-            <Alert className="border-amber-300 bg-amber-50">
-              <Info className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800">
-                <strong>Premium:</strong> Questo livello richiede l'abbonamento più alto.
-                I clienti avranno accesso completo alla tua piattaforma.
-              </AlertDescription>
-            </Alert>
+            <p className="text-sm text-center text-muted-foreground">
+              Gli utenti Bronze che fanno upgrade a Silver mantengono le stesse credenziali 
+              e la cronologia delle conversazioni.
+            </p>
           </CardContent>
         </Card>
       )}
 
-      {!formData.level && (
+      {levels.length === 0 && (
         <Alert className="border-blue-200 bg-blue-50">
           <Info className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
-            <strong>Agente Standard:</strong> Questo agente non sarà accessibile pubblicamente. 
+            <strong>Agente Standard:</strong> Questo agente non sarà accessibile tramite il sistema Dipendenti AI. 
             Sarà disponibile solo tramite WhatsApp diretto o le altre integrazioni configurate.
           </AlertDescription>
         </Alert>

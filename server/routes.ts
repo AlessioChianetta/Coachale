@@ -11389,6 +11389,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           upsellingEnabled: config.upsellingEnabled,
           // Dipendente AI Level Configuration
           level: config.level,
+          levels: config.levels,
           publicSlug: config.publicSlug,
           dailyMessageLimit: config.dailyMessageLimit,
           createdAt: config.createdAt,
@@ -11632,6 +11633,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         enableInAIAssistant,
         // Dipendente AI Level Configuration
         level,
+        levels,
         publicSlug,
         dailyMessageLimit
       } = req.body;
@@ -11784,6 +11786,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
       // Dipendente AI Level Configuration
       if (level !== undefined) updateData.level = level;
+      if (levels !== undefined) updateData.levels = levels;
       if (publicSlug !== undefined) updateData.publicSlug = publicSlug;
       if (dailyMessageLimit !== undefined) updateData.dailyMessageLimit = dailyMessageLimit;
 
@@ -12150,6 +12153,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         enableInAIAssistant,
         // Dipendente AI Level Configuration
         level,
+        levels,
         publicSlug,
         dailyMessageLimit
       } = req.body;
@@ -12346,6 +12350,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           enableInAIAssistant: enableInAIAssistant ?? existingConfig.enableInAIAssistant ?? false,
           // Dipendente AI Level Configuration
           level: level !== undefined ? level : existingConfig.level,
+          levels: levels !== undefined ? levels : existingConfig.levels,
           publicSlug: publicSlug !== undefined ? publicSlug : existingConfig.publicSlug,
           dailyMessageLimit: dailyMessageLimit ?? existingConfig.dailyMessageLimit ?? 15,
         };
@@ -12467,6 +12472,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
             enableInAIAssistant: enableInAIAssistant ?? false,
             // Dipendente AI Level Configuration
             level: level || null,
+            levels: levels || null,
             publicSlug: publicSlug || null,
             dailyMessageLimit: dailyMessageLimit ?? 15,
           })

@@ -235,14 +235,16 @@ export default function ConsultantPricingSettingsPage() {
   });
 
   const agentsArray = Array.isArray(agentsData) ? agentsData : [];
-  console.log("🔍 agentsArray:", agentsArray, "Length:", agentsArray.length);
-  const level1Agents = agentsArray.filter((agent: any) => {
-    const isLevel1 = agent.level === "1" || agent.level === 1;
-    console.log(`Agent ${agent.agentName}: level=${agent.level}, type=${typeof agent.level}, isLevel1=${isLevel1}`);
-    return isLevel1;
-  });
-  const level2Agents = agentsArray.filter((agent: any) => agent.level === "2" || agent.level === 2);
-  console.log("✅ Level 1 agents:", level1Agents.length, "Level 2 agents:", level2Agents.length);
+  
+  const hasLevel = (agent: any, level: string) => {
+    if (agent.levels && Array.isArray(agent.levels)) {
+      return agent.levels.includes(level);
+    }
+    return agent.level === level || agent.level === parseInt(level);
+  };
+  
+  const level1Agents = agentsArray.filter((agent: any) => hasLevel(agent, "1"));
+  const level2Agents = agentsArray.filter((agent: any) => hasLevel(agent, "2"));
 
   const centsToEuros = (cents: number | undefined): string => {
     if (!cents && cents !== 0) return "";

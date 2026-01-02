@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
-import { eq, and, isNotNull, or } from "drizzle-orm";
+import { eq, and, isNotNull, or, sql } from "drizzle-orm";
 import { users, consultantWhatsappConfig } from "@shared/schema";
 
 const router = Router();
@@ -214,6 +214,7 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
       id: consultantWhatsappConfig.id,
       agentName: consultantWhatsappConfig.agentName,
       level: consultantWhatsappConfig.level,
+      levels: consultantWhatsappConfig.levels,
       publicSlug: consultantWhatsappConfig.publicSlug,
       dailyMessageLimit: consultantWhatsappConfig.dailyMessageLimit,
       businessName: consultantWhatsappConfig.businessName,
@@ -223,8 +224,11 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
       .where(
         and(
           eq(consultantWhatsappConfig.consultantId, consultant.id),
-          eq(consultantWhatsappConfig.level, tier),
-          eq(consultantWhatsappConfig.isActive, true)
+          eq(consultantWhatsappConfig.isActive, true),
+          or(
+            eq(consultantWhatsappConfig.level, tier),
+            sql`${consultantWhatsappConfig.levels} @> ARRAY[${tier}]::text[]`
+          )
         )
       );
 
