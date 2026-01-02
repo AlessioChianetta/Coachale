@@ -18,7 +18,7 @@ import { fileSearchSyncService } from "../services/file-search-sync-service";
 import { fileSearchService } from "../ai/file-search-service";
 
 const router = Router();
-const JWT_SECRET = process.env.SESSION_SECRET || "manager-fallback-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 interface ManagerTokenPayload {
   managerId: string;
