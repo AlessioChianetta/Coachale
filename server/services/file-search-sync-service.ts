@@ -1306,29 +1306,133 @@ export class FileSearchSyncService {
   }
 
   /**
-   * Sync ALL documents for a consultant (library + knowledge base)
+   * Sync ALL documents for a consultant based on enabled settings
    */
   static async syncAllDocumentsForConsultant(consultantId: string): Promise<{
-    library: { total: number; synced: number; failed: number; errors: string[] };
-    knowledgeBase: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
+    totalSynced: number;
+    totalUpdated: number;
+    totalSkipped: number;
+    totalFailed: number;
+    details: Record<string, { synced: number; updated?: number; skipped: number; failed: number }>;
   }> {
     console.log(`\n${'='.repeat(60)}`);
-    console.log(`🔄 [FileSync] Starting full sync for consultant ${consultantId}`);
+    console.log(`🔄 [FileSync] Starting SCHEDULED full sync for consultant ${consultantId}`);
     console.log(`${'='.repeat(60)}\n`);
 
-    const libraryResult = await this.syncAllLibraryDocuments(consultantId);
-    const knowledgeResult = await this.syncAllConsultantKnowledgeDocuments(consultantId);
+    const settings = await db.query.fileSearchSettings.findFirst({
+      where: eq(fileSearchSettings.consultantId, consultantId),
+    });
+
+    if (!settings) {
+      console.log(`⚠️ [FileSync] No settings found for consultant ${consultantId}`);
+      return { totalSynced: 0, totalUpdated: 0, totalSkipped: 0, totalFailed: 0, details: {} };
+    }
+
+    const details: Record<string, { synced: number; updated?: number; skipped: number; failed: number }> = {};
+    let totalSynced = 0, totalUpdated = 0, totalSkipped = 0, totalFailed = 0;
+
+    // 1. Consultant Guide
+    if (settings.autoSyncConsultantGuides) {
+      console.log(`📚 [Scheduled] Syncing Consultant Guide...`);
+      const result = await this.syncConsultantGuide(consultantId);
+      details.consultantGuide = { synced: result.success ? 1 : 0, skipped: result.success ? 0 : 1, failed: result.success ? 0 : 1 };
+      if (result.success) totalSynced++;
+      else totalFailed++;
+    }
+
+    // 2. Library
+    if (settings.autoSyncLibrary) {
+      console.log(`📖 [Scheduled] Syncing Library...`);
+      const result = await this.syncAllLibraryDocuments(consultantId);
+      details.library = { synced: result.synced, updated: result.updated || 0, skipped: result.total - result.synced - result.failed, failed: result.failed };
+      totalSynced += result.synced;
+      totalUpdated += result.updated || 0;
+      totalSkipped += result.total - result.synced - result.failed;
+      totalFailed += result.failed;
+    }
+
+    // 3. Knowledge Base
+    if (settings.autoSyncKnowledgeBase) {
+      console.log(`🧠 [Scheduled] Syncing Knowledge Base...`);
+      const result = await this.syncAllConsultantKnowledgeDocuments(consultantId);
+      details.knowledgeBase = { synced: result.synced, skipped: result.skipped, failed: result.failed };
+      totalSynced += result.synced;
+      totalSkipped += result.skipped;
+      totalFailed += result.failed;
+    }
+
+    // 4. Exercises
+    if (settings.autoSyncExercises) {
+      console.log(`🏋️ [Scheduled] Syncing Exercises...`);
+      const result = await this.syncAllExercises(consultantId);
+      details.exercises = { synced: result.synced, updated: result.updated || 0, skipped: result.skipped || 0, failed: result.failed };
+      totalSynced += result.synced;
+      totalUpdated += result.updated || 0;
+      totalSkipped += result.skipped || 0;
+      totalFailed += result.failed;
+    }
+
+    // 5. Consultations
+    if (settings.autoSyncConsultations) {
+      console.log(`📝 [Scheduled] Syncing Consultations...`);
+      const result = await this.syncAllConsultations(consultantId);
+      details.consultations = { synced: result.synced, updated: result.updated || 0, skipped: result.skipped || 0, failed: result.failed };
+      totalSynced += result.synced;
+      totalUpdated += result.updated || 0;
+      totalSkipped += result.skipped || 0;
+      totalFailed += result.failed;
+    }
+
+    // 6. University
+    if (settings.autoSyncUniversity) {
+      console.log(`🎓 [Scheduled] Syncing University Lessons...`);
+      const result = await this.syncAllUniversityLessons(consultantId);
+      details.university = { synced: result.synced, updated: result.updated || 0, skipped: result.skipped || 0, failed: result.failed };
+      totalSynced += result.synced;
+      totalUpdated += result.updated || 0;
+      totalSkipped += result.skipped || 0;
+      totalFailed += result.failed;
+    }
+
+    // 7. Client Exercise Responses
+    if (settings.autoSyncExerciseResponses) {
+      console.log(`✅ [Scheduled] Syncing Client Exercise Responses...`);
+      const result = await this.syncAllClientExerciseResponses(consultantId);
+      details.exerciseResponses = { synced: result.synced, skipped: result.skipped || 0, failed: result.failed };
+      totalSynced += result.synced;
+      totalSkipped += result.skipped || 0;
+      totalFailed += result.failed;
+    }
+
+    // 8. Client Knowledge
+    if (settings.autoSyncClientKnowledge) {
+      console.log(`📂 [Scheduled] Syncing Client Knowledge Documents...`);
+      const result = await this.syncAllClientKnowledgeDocuments(consultantId);
+      details.clientKnowledge = { synced: result.synced, skipped: result.skipped, failed: result.failed };
+      totalSynced += result.synced;
+      totalSkipped += result.skipped;
+      totalFailed += result.failed;
+    }
+
+    // 9. WhatsApp Agents
+    if (settings.autoSyncWhatsappAgents) {
+      console.log(`📱 [Scheduled] Syncing WhatsApp Agent Knowledge...`);
+      const result = await this.syncAllWhatsappAgentKnowledge(consultantId);
+      details.whatsappAgents = { synced: result.synced, skipped: result.skipped || 0, failed: result.failed };
+      totalSynced += result.synced;
+      totalSkipped += result.skipped || 0;
+      totalFailed += result.failed;
+    }
 
     console.log(`\n${'='.repeat(60)}`);
-    console.log(`✅ [FileSync] Full sync complete for consultant ${consultantId}`);
-    console.log(`   Library: ${libraryResult.synced}/${libraryResult.total} synced`);
-    console.log(`   Knowledge Base: ${knowledgeResult.synced}/${knowledgeResult.total} synced, ${knowledgeResult.skipped} skipped`);
+    console.log(`✅ [FileSync] SCHEDULED sync complete for consultant ${consultantId}`);
+    console.log(`   📊 Total: Synced ${totalSynced}, Updated ${totalUpdated}, Skipped ${totalSkipped}, Failed ${totalFailed}`);
+    Object.entries(details).forEach(([key, val]) => {
+      console.log(`   - ${key}: ${val.synced} synced, ${val.updated || 0} updated, ${val.skipped} skipped, ${val.failed} failed`);
+    });
     console.log(`${'='.repeat(60)}\n`);
 
-    return {
-      library: libraryResult,
-      knowledgeBase: knowledgeResult,
-    };
+    return { totalSynced, totalUpdated, totalSkipped, totalFailed, details };
   }
 
   /**
