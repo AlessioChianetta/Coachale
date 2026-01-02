@@ -2522,6 +2522,7 @@ export class FileSearchSyncService {
 
   /**
    * Sync ALL content for a consultant (library + knowledge base + exercises + university + consultations + whatsapp agents + client private data)
+   * Used by manual sync with SSE progress
    */
   static async syncAllContentForConsultant(consultantId: string): Promise<{
     library: { total: number; synced: number; failed: number; errors: string[] };
@@ -2542,9 +2543,21 @@ export class FileSearchSyncService {
       orphansRemoved: number;
       errors: string[];
     };
+    reportId?: string;
   }> {
+    const syncStartTime = Date.now();
+    
+    // Create initial report for manual sync
+    const [report] = await db.insert(fileSearchSyncReports).values({
+      consultantId,
+      syncType: 'manual',
+      status: 'running',
+      startedAt: new Date(),
+    }).returning();
+
     console.log(`\n${'═'.repeat(70)}`);
     console.log(`🔄 [FileSync] Starting FULL content sync for consultant ${consultantId}`);
+    console.log(`   📋 Report ID: ${report.id}`);
     console.log(`${'═'.repeat(70)}\n`);
 
     // Get all active clients AND sub-consultants FIRST (needed for SyncContext)
@@ -3130,8 +3143,84 @@ export class FileSearchSyncService {
       console.log(`   ✅ No source orphans found`);
     }
     
+    const syncDurationMs = Date.now() - syncStartTime;
+
+    // Calculate totals for report
+    const totalSyncedAll = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
+      universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced +
+      totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced +
+      totalFinancialData.synced + totalAssignedExercises.synced + totalAssignedLibrary.synced +
+      totalAssignedUniversity.synced + totalGoals.synced + totalTasks.synced;
+    
+    const totalFailedAll = libraryResult.failed + knowledgeResult.failed + exercisesResult.failed +
+      universityResult.failed + consultationsResult.failed + whatsappAgentsResult.failed +
+      totalExerciseResponses.failed + totalClientKnowledge.failed + totalClientConsultations.failed +
+      totalFinancialData.failed + totalAssignedExercises.failed + totalAssignedLibrary.failed +
+      totalAssignedUniversity.failed + totalGoals.failed + totalTasks.failed;
+
+    const totalProcessedAll = libraryResult.total + knowledgeResult.total + exercisesResult.total +
+      universityResult.total + consultationsResult.total + whatsappAgentsResult.total +
+      totalExerciseResponses.total + totalClientKnowledge.total + totalClientConsultations.total +
+      totalFinancialData.total + totalAssignedExercises.total + totalAssignedLibrary.total +
+      totalAssignedUniversity.total + totalGoals.total + totalTasks.total;
+
+    const totalSkippedAll = (knowledgeResult.skipped || 0) + (exercisesResult.skipped || 0) +
+      (universityResult.skipped || 0) + (consultationsResult.skipped || 0) +
+      (totalExerciseResponses.skipped || 0) + (totalClientKnowledge.skipped || 0) +
+      (totalClientConsultations.skipped || 0);
+
+    const reportStatus = totalFailedAll === 0 ? 'completed' : (totalSyncedAll > 0 ? 'partial' : 'failed');
+
+    // Build category details for report
+    const categoryDetails: Record<string, any> = {
+      library: { name: 'Libreria', processed: libraryResult.total, synced: libraryResult.synced, updated: 0, skipped: 0, failed: libraryResult.failed, durationMs: 0, errors: libraryResult.errors || [] },
+      knowledgeBase: { name: 'Knowledge Base', processed: knowledgeResult.total, synced: knowledgeResult.synced, updated: 0, skipped: knowledgeResult.skipped || 0, failed: knowledgeResult.failed, durationMs: 0, errors: knowledgeResult.errors || [] },
+      exercises: { name: 'Esercizi', processed: exercisesResult.total, synced: exercisesResult.synced, updated: 0, skipped: exercisesResult.skipped || 0, failed: exercisesResult.failed, durationMs: 0, errors: exercisesResult.errors || [] },
+      university: { name: 'University', processed: universityResult.total, synced: universityResult.synced, updated: 0, skipped: universityResult.skipped || 0, failed: universityResult.failed, durationMs: 0, errors: universityResult.errors || [] },
+      consultations: { name: 'Consultazioni', processed: consultationsResult.total, synced: consultationsResult.synced, updated: 0, skipped: consultationsResult.skipped || 0, failed: consultationsResult.failed, durationMs: 0, errors: consultationsResult.errors || [] },
+      whatsappAgents: { name: 'Agenti WhatsApp', processed: whatsappAgentsResult.total, synced: whatsappAgentsResult.synced, updated: 0, skipped: 0, failed: whatsappAgentsResult.failed, durationMs: 0, errors: whatsappAgentsResult.errors || [] },
+      exerciseResponses: { name: 'Risposte Esercizi', processed: totalExerciseResponses.total, synced: totalExerciseResponses.synced, updated: 0, skipped: totalExerciseResponses.skipped || 0, failed: totalExerciseResponses.failed, durationMs: 0, errors: [] },
+      clientKnowledge: { name: 'Knowledge Clienti', processed: totalClientKnowledge.total, synced: totalClientKnowledge.synced, updated: 0, skipped: totalClientKnowledge.skipped || 0, failed: totalClientKnowledge.failed, durationMs: 0, errors: [] },
+      financialData: { name: 'Dati Finanziari', processed: totalFinancialData.total, synced: totalFinancialData.synced, updated: 0, skipped: 0, failed: totalFinancialData.failed, durationMs: 0, errors: [] },
+      assignedExercises: { name: 'Esercizi Assegnati', processed: totalAssignedExercises.total, synced: totalAssignedExercises.synced, updated: 0, skipped: 0, failed: totalAssignedExercises.failed, durationMs: 0, errors: [] },
+      assignedLibrary: { name: 'Libreria Assegnata', processed: totalAssignedLibrary.total, synced: totalAssignedLibrary.synced, updated: 0, skipped: 0, failed: totalAssignedLibrary.failed, durationMs: 0, errors: [] },
+      assignedUniversity: { name: 'University Assegnata', processed: totalAssignedUniversity.total, synced: totalAssignedUniversity.synced, updated: 0, skipped: 0, failed: totalAssignedUniversity.failed, durationMs: 0, errors: [] },
+      goals: { name: 'Obiettivi', processed: totalGoals.total, synced: totalGoals.synced, updated: 0, skipped: 0, failed: totalGoals.failed, durationMs: 0, errors: [] },
+      tasks: { name: 'Task', processed: totalTasks.total, synced: totalTasks.synced, updated: 0, skipped: 0, failed: totalTasks.failed, durationMs: 0, errors: [] },
+    };
+
+    // Collect all errors
+    const allErrors = [
+      ...libraryResult.errors,
+      ...knowledgeResult.errors,
+      ...exercisesResult.errors,
+      ...universityResult.errors,
+      ...consultationsResult.errors,
+      ...whatsappAgentsResult.errors,
+      ...orphanErrors,
+    ];
+
+    // Update report with final results
+    await db.update(fileSearchSyncReports)
+      .set({
+        status: reportStatus,
+        completedAt: new Date(),
+        durationMs: syncDurationMs,
+        totalProcessed: totalProcessedAll,
+        totalSynced: totalSyncedAll,
+        totalUpdated: 0,
+        totalSkipped: totalSkippedAll,
+        totalFailed: totalFailedAll,
+        categoryDetails,
+        clientDetails: { clientsProcessed },
+        errors: allErrors,
+      })
+      .where(eq(fileSearchSyncReports.id, report.id));
+
     console.log(`\n${'═'.repeat(70)}`);
     console.log(`✅ [FileSync] FULL content sync complete for consultant ${consultantId}`);
+    console.log(`   ⏱️ Duration: ${(syncDurationMs / 1000).toFixed(1)}s`);
+    console.log(`   📋 Report ID: ${report.id}`);
     console.log(`   📚 Library: ${libraryResult.synced}/${libraryResult.total} synced`);
     console.log(`   📖 Knowledge Base: ${knowledgeResult.synced}/${knowledgeResult.total} synced`);
     console.log(`   🏋️ Exercises: ${exercisesResult.synced}/${exercisesResult.total} synced`);
@@ -3180,6 +3269,7 @@ export class FileSearchSyncService {
         orphansRemoved,
         errors: orphanErrors,
       },
+      reportId: report.id,
     };
   }
 
