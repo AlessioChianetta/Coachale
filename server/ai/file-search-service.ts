@@ -494,14 +494,34 @@ export class FileSearchService {
 
   /**
    * Check if document needs re-upload (content changed)
+   * FIXED: Now includes clientId and storeId to properly distinguish between
+   * consultant store documents and client private store documents
    */
-  async needsReupload(sourceType: string, sourceId: string, contentHash: string): Promise<boolean> {
+  async needsReupload(
+    sourceType: string, 
+    sourceId: string, 
+    contentHash: string,
+    options?: { clientId?: string; storeId?: string }
+  ): Promise<boolean> {
+    const conditions = [
+      eq(fileSearchDocuments.sourceType, sourceType),
+      eq(fileSearchDocuments.sourceId, sourceId),
+      eq(fileSearchDocuments.status, 'indexed')
+    ];
+    
+    // CRITICAL: When checking for client-specific documents, we MUST include
+    // clientId to avoid matching consultant's global documents
+    if (options?.clientId) {
+      conditions.push(eq(fileSearchDocuments.clientId, options.clientId));
+    }
+    
+    // Also filter by storeId if provided for extra precision
+    if (options?.storeId) {
+      conditions.push(eq(fileSearchDocuments.storeId, options.storeId));
+    }
+    
     const existingDoc = await db.query.fileSearchDocuments.findFirst({
-      where: and(
-        eq(fileSearchDocuments.sourceType, sourceType),
-        eq(fileSearchDocuments.sourceId, sourceId),
-        eq(fileSearchDocuments.status, 'indexed')
-      ),
+      where: and(...conditions),
     });
 
     if (!existingDoc) return true;
@@ -536,7 +556,14 @@ export class FileSearchService {
     const contentSize = params.content.length;
     
     if (!params.skipHashCheck && params.sourceId) {
-      const needsUpload = await this.needsReupload(params.sourceType, params.sourceId, contentHash);
+      // FIXED: Pass clientId and storeId to properly distinguish between
+      // consultant store documents and client private store documents
+      const needsUpload = await this.needsReupload(
+        params.sourceType, 
+        params.sourceId, 
+        contentHash,
+        { clientId: params.clientId, storeId: params.storeId }
+      );
       if (!needsUpload) {
         console.log(`⏭️ [FileSearch] Skipping upload - content unchanged: ${params.displayName} (hash: ${contentHash})`);
         return { success: true, fileId: 'unchanged', storeName: '' };
