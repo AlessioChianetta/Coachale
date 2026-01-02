@@ -432,10 +432,8 @@ export default function PublicPricing() {
     
     if (!registrationForm.password) {
       errors.password = "Password obbligatoria";
-    } else if (registrationForm.password.length < 8) {
-      errors.password = "La password deve avere almeno 8 caratteri";
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(registrationForm.password)) {
-      errors.password = "La password deve contenere maiuscole, minuscole e numeri";
+    } else if (registrationForm.password.length < 6) {
+      errors.password = "La password deve avere almeno 6 caratteri";
     }
     
     if (!registrationForm.confirmPassword) {
