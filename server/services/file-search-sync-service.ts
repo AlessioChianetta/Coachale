@@ -52,6 +52,43 @@ import { extractTextFromFile } from "./document-processor";
 import { getGuideAsDocument } from "../consultant-guides";
 import { chunkTextContent, estimateTokens, needsChunking } from "./file-chunker";
 
+// Parallelization constants
+const MAX_CONCURRENT_UPLOADS = 5; // Per Google limits
+const MAX_CONCURRENT_CLIENTS = 3; // Process multiple clients at once
+
+/**
+ * ConcurrencyLimiter - Controls the number of concurrent async operations
+ * Useful for respecting API rate limits while maximizing throughput
+ */
+export class ConcurrencyLimiter {
+  private running = 0;
+  private queue: Array<() => void> = [];
+  
+  constructor(private maxConcurrent: number = 5) {}
+  
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    while (this.running >= this.maxConcurrent) {
+      await new Promise<void>(resolve => this.queue.push(resolve));
+    }
+    this.running++;
+    try {
+      return await fn();
+    } finally {
+      this.running--;
+      const next = this.queue.shift();
+      if (next) next();
+    }
+  }
+
+  get currentRunning(): number {
+    return this.running;
+  }
+
+  get queueLength(): number {
+    return this.queue.length;
+  }
+}
+
 export type SyncEventType = 'start' | 'progress' | 'error' | 'complete' | 'all_complete' | 'orphan_start' | 'orphan_progress' | 'orphan_complete';
 
 export interface SyncProgressEvent {
@@ -95,6 +132,7 @@ export interface SyncContext {
   clientStores: Map<string, { storeId: string; storeName: string } | null>;
   settings: typeof fileSearchSettings.$inferSelect | null;
   indexedDocsMap: Map<string, IndexedDocInfo>;
+  uploadLimiter: ConcurrencyLimiter;
 }
 
 export class SyncProgressEmitter extends EventEmitter {
@@ -344,7 +382,10 @@ export class FileSearchSyncService {
       console.log(`📄 [FileSync] Pre-loaded ${indexedDocsMap.size} indexed documents for batch hash checking`);
     }
 
-    console.log(`✅ [FileSync] SyncContext built: ${existingStoreCount} client stores, ${indexedDocsMap.size} indexed docs cached`);
+    // Create a concurrency limiter for parallel uploads (respects Google's rate limits)
+    const uploadLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_UPLOADS);
+
+    console.log(`✅ [FileSync] SyncContext built: ${existingStoreCount} client stores, ${indexedDocsMap.size} indexed docs cached, uploadLimiter (max ${MAX_CONCURRENT_UPLOADS})`);
     
     return {
       consultantId,
@@ -354,6 +395,7 @@ export class FileSearchSyncService {
       clientStores,
       settings: settings || null,
       indexedDocsMap,
+      uploadLimiter,
     };
   }
 
@@ -2248,75 +2290,65 @@ export class FileSearchSyncService {
       syncProgressEmitter.emitStart(consultantId, 'email_journey', preCalcEmailJourneyTotal);
     }
 
-    for (const client of clients) {
+    // =======================================================================================
+    // PHASE 2: PARALLEL PROCESSING - Process clients in parallel batches (MAX_CONCURRENT_CLIENTS)
+    // =======================================================================================
+    console.log(`\n🚀 [FileSync] Processing ${clients.length} clients with PARALLEL batches (max ${MAX_CONCURRENT_CLIENTS} concurrent)`);
+    
+    // Create a client processing limiter for parallel client processing
+    const clientLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_CLIENTS);
+    
+    // Helper to process a single client and return aggregated results
+    const processClientData = async (client: typeof clients[0]) => {
       console.log(`   📋 Processing client: ${client.firstName} ${client.lastName} (${client.id.substring(0, 8)}...)`);
       const clientDisplayName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.id.substring(0, 8);
       
-      // Sync exercise responses to client's private store
-      const exerciseResponsesResult = await this.syncAllClientExerciseResponses(client.id, consultantId);
-      totalExerciseResponses.total += exerciseResponsesResult.total;
-      totalExerciseResponses.synced += exerciseResponsesResult.synced;
-      totalExerciseResponses.failed += exerciseResponsesResult.failed;
-      totalExerciseResponses.skipped += exerciseResponsesResult.skipped || 0;
-
-      // Sync client knowledge documents to client's private store
-      const clientKnowledgeResult = await this.syncAllClientKnowledgeDocuments(client.id, consultantId);
-      totalClientKnowledge.total += clientKnowledgeResult.total;
-      totalClientKnowledge.synced += clientKnowledgeResult.synced;
-      totalClientKnowledge.failed += clientKnowledgeResult.failed;
-      totalClientKnowledge.skipped += clientKnowledgeResult.skipped || 0;
-
-      // Sync client consultations to client's private store
-      const clientConsultationsResult = await this.syncAllClientConsultations(client.id, consultantId);
-      totalClientConsultations.total += clientConsultationsResult.total;
-      totalClientConsultations.synced += clientConsultationsResult.synced;
-      totalClientConsultations.failed += clientConsultationsResult.failed;
-      totalClientConsultations.skipped += clientConsultationsResult.skipped || 0;
+      // PARALLEL: Process independent client-level syncs in parallel using Promise.all
+      const [exerciseResponsesResult, clientKnowledgeResult, clientConsultationsResult] = await Promise.all([
+        this.syncAllClientExerciseResponses(client.id, consultantId, syncContext),
+        this.syncAllClientKnowledgeDocuments(client.id, consultantId, syncContext),
+        this.syncAllClientConsultations(client.id, consultantId, syncContext),
+      ]);
 
       // Sync financial data if enabled (only count if client actually has finance settings)
+      let financialResult = { success: false, error: 'disabled' };
       if (settings?.autoSyncFinancial) {
-        const financialResult = await this.syncClientFinancialData(client.id, consultantId);
-        if (financialResult.success) {
-          totalFinancialData.synced += 1;
-        } else if (financialResult.error !== 'Finance settings not configured for this client') {
-          totalFinancialData.failed += 1;
-        }
+        financialResult = await this.syncClientFinancialData(client.id, consultantId, syncContext);
       }
 
-      // Sync assigned content (exercises, library, university, goals, tasks) via inline migration
-      // This ensures all audit-expected content is synchronized to client private stores
+      // PARALLEL: Sync assigned content using the upload limiter for concurrent uploads
       const clientExerciseAssigns = await db.query.exerciseAssignments.findMany({
         where: eq(exerciseAssignments.clientId, client.id),
       });
-      for (const assignment of clientExerciseAssigns) {
-        const result = await this.syncExerciseToClient(assignment.exerciseId, client.id, consultantId);
-        totalAssignedExercises.total++;
-        if (result.success) {
-          totalAssignedExercises.synced++;
-        } else {
-          totalAssignedExercises.failed++;
-        }
-        syncProgressEmitter.emitItemProgress(consultantId, 'assigned_exercises', clientDisplayName, 
-          totalAssignedExercises.synced + totalAssignedExercises.failed, preCalcAssignedExercisesTotal);
-      }
+      
+      // Process exercise assignments in parallel with the upload limiter
+      const exerciseAssignResults = await Promise.all(
+        clientExerciseAssigns.map(assignment =>
+          syncContext.uploadLimiter.run(() => this.syncExerciseToClient(assignment.exerciseId, client.id, consultantId, syncContext))
+        )
+      );
+      const assignedExercisesResult = {
+        total: exerciseAssignResults.length,
+        synced: exerciseAssignResults.filter(r => r.success).length,
+        failed: exerciseAssignResults.filter(r => !r.success).length,
+      };
 
+      // PARALLEL: Library category assignments with upload limiter
       const clientLibAssigns = await db.query.libraryCategoryClientAssignments.findMany({
         where: eq(libraryCategoryClientAssignments.clientId, client.id),
       });
-      for (const assignment of clientLibAssigns) {
-        const result = await this.syncLibraryCategoryToClient(assignment.categoryId, client.id, consultantId);
-        totalAssignedLibrary.total++;
-        if (result.success) {
-          totalAssignedLibrary.synced += result.synced;
-          totalAssignedLibrary.failed += result.failed;
-        } else {
-          totalAssignedLibrary.failed++;
-        }
-        syncProgressEmitter.emitItemProgress(consultantId, 'assigned_library', clientDisplayName,
-          totalAssignedLibrary.total, preCalcAssignedLibraryTotal);
-      }
+      const libAssignResults = await Promise.all(
+        clientLibAssigns.map(assignment =>
+          syncContext.uploadLimiter.run(() => this.syncLibraryCategoryToClient(assignment.categoryId, client.id, consultantId, syncContext))
+        )
+      );
+      const assignedLibraryResult = {
+        total: libAssignResults.length,
+        synced: libAssignResults.reduce((sum, r) => sum + (r.success ? r.synced : 0), 0),
+        failed: libAssignResults.reduce((sum, r) => sum + (r.success ? r.failed : 1), 0),
+      };
 
-      // Only sync university years that are NOT locked (isLocked = false)
+      // PARALLEL: University year assignments with upload limiter (only non-locked years)
       const clientUniAssigns = await db.select({
         yearId: universityYearClientAssignments.yearId
       })
@@ -2324,116 +2356,173 @@ export class FileSearchSyncService {
         .innerJoin(universityYears, eq(universityYearClientAssignments.yearId, universityYears.id))
         .where(and(
           eq(universityYearClientAssignments.clientId, client.id),
-          eq(universityYears.isLocked, false)  // Exclude locked years from sync
+          eq(universityYears.isLocked, false)
         ));
-      for (const assignment of clientUniAssigns) {
-        const result = await this.syncUniversityYearToClient(assignment.yearId, client.id, consultantId);
-        totalAssignedUniversity.total++;
-        if (result.success) {
-          totalAssignedUniversity.synced += result.synced;
-          totalAssignedUniversity.failed += result.failed;
-        } else {
-          totalAssignedUniversity.failed++;
-        }
-        syncProgressEmitter.emitItemProgress(consultantId, 'assigned_university', clientDisplayName,
-          totalAssignedUniversity.total, preCalcAssignedUniversityTotal);
+      const uniAssignResults = await Promise.all(
+        clientUniAssigns.map(assignment =>
+          syncContext.uploadLimiter.run(() => this.syncUniversityYearToClient(assignment.yearId, client.id, consultantId, syncContext))
+        )
+      );
+      const assignedUniversityResult = {
+        total: uniAssignResults.length,
+        synced: uniAssignResults.reduce((sum, r) => sum + (r.success ? r.synced : 0), 0),
+        failed: uniAssignResults.reduce((sum, r) => sum + (r.success ? r.failed : 1), 0),
+      };
+
+      // PARALLEL: Sync goals, tasks, and other aggregated documents in parallel
+      const [goalsResult, tasksResult, reflectionsResult, progressHistResult, libraryProgResult] = await Promise.all([
+        this.syncClientGoals(client.id, consultantId, syncContext),
+        this.syncClientTasks(client.id, consultantId, syncContext),
+        this.syncClientDailyReflections(client.id, consultantId, syncContext),
+        this.syncClientProgress(client.id, consultantId, syncContext),
+        this.syncClientLibraryProgress(client.id, consultantId, syncContext),
+      ]);
+
+      // Sync email journey progress (if enabled)
+      let emailJourneyResult = { success: true, error: undefined as string | undefined };
+      if (settings?.autoSyncEmailJourney) {
+        emailJourneyResult = await this.syncClientEmailJourneyProgress(client.id, consultantId, syncContext);
       }
 
-      // Sync goals and tasks (aggregated documents) - always re-sync to ensure up-to-date
-      const goalsResult = await this.syncClientGoals(client.id, consultantId);
+      return {
+        clientDisplayName,
+        exerciseResponsesResult,
+        clientKnowledgeResult,
+        clientConsultationsResult,
+        financialResult,
+        assignedExercisesResult,
+        assignedLibraryResult,
+        assignedUniversityResult,
+        goalsResult,
+        tasksResult,
+        reflectionsResult,
+        progressHistResult,
+        libraryProgResult,
+        emailJourneyResult,
+      };
+    };
+
+    // Process all clients in parallel batches using the client limiter
+    const clientResults = await Promise.all(
+      clients.map(client => clientLimiter.run(() => processClientData(client)))
+    );
+
+    // Aggregate results from all client processing
+    for (const result of clientResults) {
+      totalExerciseResponses.total += result.exerciseResponsesResult.total;
+      totalExerciseResponses.synced += result.exerciseResponsesResult.synced;
+      totalExerciseResponses.failed += result.exerciseResponsesResult.failed;
+      totalExerciseResponses.skipped += result.exerciseResponsesResult.skipped || 0;
+
+      totalClientKnowledge.total += result.clientKnowledgeResult.total;
+      totalClientKnowledge.synced += result.clientKnowledgeResult.synced;
+      totalClientKnowledge.failed += result.clientKnowledgeResult.failed;
+      totalClientKnowledge.skipped += result.clientKnowledgeResult.skipped || 0;
+
+      totalClientConsultations.total += result.clientConsultationsResult.total;
+      totalClientConsultations.synced += result.clientConsultationsResult.synced;
+      totalClientConsultations.failed += result.clientConsultationsResult.failed;
+      totalClientConsultations.skipped += result.clientConsultationsResult.skipped || 0;
+
+      if (settings?.autoSyncFinancial) {
+        if (result.financialResult.success) {
+          totalFinancialData.synced += 1;
+        } else if (result.financialResult.error !== 'Finance settings not configured for this client' && result.financialResult.error !== 'disabled') {
+          totalFinancialData.failed += 1;
+        }
+      }
+
+      totalAssignedExercises.total += result.assignedExercisesResult.total;
+      totalAssignedExercises.synced += result.assignedExercisesResult.synced;
+      totalAssignedExercises.failed += result.assignedExercisesResult.failed;
+
+      totalAssignedLibrary.total += result.assignedLibraryResult.total;
+      totalAssignedLibrary.synced += result.assignedLibraryResult.synced;
+      totalAssignedLibrary.failed += result.assignedLibraryResult.failed;
+
+      totalAssignedUniversity.total += result.assignedUniversityResult.total;
+      totalAssignedUniversity.synced += result.assignedUniversityResult.synced;
+      totalAssignedUniversity.failed += result.assignedUniversityResult.failed;
+
       totalGoals.total++;
-      if (goalsResult.success) {
+      if (result.goalsResult.success) {
         totalGoals.synced++;
       } else {
         totalGoals.failed++;
       }
-      syncProgressEmitter.emitItemProgress(consultantId, 'goals', clientDisplayName,
-        totalGoals.synced + totalGoals.failed, preCalcGoalsTotal);
 
-      const tasksResult = await this.syncClientTasks(client.id, consultantId);
       totalTasks.total++;
-      if (tasksResult.success) {
+      if (result.tasksResult.success) {
         totalTasks.synced++;
       } else {
         totalTasks.failed++;
       }
-      syncProgressEmitter.emitItemProgress(consultantId, 'tasks', clientDisplayName,
-        totalTasks.synced + totalTasks.failed, preCalcTasksTotal);
 
-      // Sync daily reflections
-      const reflectionsResult = await this.syncClientDailyReflections(client.id, consultantId);
       totalDailyReflections.total++;
-      if (reflectionsResult.success) {
+      if (result.reflectionsResult.success) {
         totalDailyReflections.synced++;
       } else {
         totalDailyReflections.failed++;
-        if (reflectionsResult.error) {
-          errors.push(`Client ${clientDisplayName} riflessioni: ${reflectionsResult.error}`);
+        if (result.reflectionsResult.error) {
+          errors.push(`Client ${result.clientDisplayName} riflessioni: ${result.reflectionsResult.error}`);
         }
       }
-      syncProgressEmitter.emitItemProgress(consultantId, 'daily_reflections', clientDisplayName,
-        totalDailyReflections.synced + totalDailyReflections.failed, preCalcDailyReflectionsTotal);
 
-      // Sync client progress history
-      const progressHistResult = await this.syncClientProgress(client.id, consultantId);
       totalClientProgress.total++;
-      if (progressHistResult.success) {
+      if (result.progressHistResult.success) {
         totalClientProgress.synced++;
       } else {
         totalClientProgress.failed++;
-        if (progressHistResult.error) {
-          errors.push(`Client ${clientDisplayName} progresso: ${progressHistResult.error}`);
+        if (result.progressHistResult.error) {
+          errors.push(`Client ${result.clientDisplayName} progresso: ${result.progressHistResult.error}`);
         }
       }
-      syncProgressEmitter.emitItemProgress(consultantId, 'client_progress', clientDisplayName,
-        totalClientProgress.synced + totalClientProgress.failed, preCalcClientProgressTotal);
 
-      // Sync library progress  
-      const libraryProgResult = await this.syncClientLibraryProgress(client.id, consultantId);
       totalLibraryProgress.total++;
-      if (libraryProgResult.success) {
+      if (result.libraryProgResult.success) {
         totalLibraryProgress.synced++;
       } else {
         totalLibraryProgress.failed++;
-        if (libraryProgResult.error) {
-          errors.push(`Client ${clientDisplayName} progresso libreria: ${libraryProgResult.error}`);
+        if (result.libraryProgResult.error) {
+          errors.push(`Client ${result.clientDisplayName} progresso libreria: ${result.libraryProgResult.error}`);
         }
       }
-      syncProgressEmitter.emitItemProgress(consultantId, 'library_progress', clientDisplayName,
-        totalLibraryProgress.synced + totalLibraryProgress.failed, preCalcLibraryProgressTotal);
 
-      // Sync email journey progress (if enabled)
       if (settings?.autoSyncEmailJourney) {
-        const emailJourneyResult = await this.syncClientEmailJourneyProgress(client.id, consultantId, syncContext);
         totalEmailJourney.total++;
-        if (emailJourneyResult.success) {
+        if (result.emailJourneyResult.success) {
           totalEmailJourney.synced++;
         } else {
           totalEmailJourney.failed++;
-          if (emailJourneyResult.error) {
-            errors.push(`Client ${clientDisplayName} email journey: ${emailJourneyResult.error}`);
+          if (result.emailJourneyResult.error) {
+            errors.push(`Client ${result.clientDisplayName} email journey: ${result.emailJourneyResult.error}`);
           }
         }
-        syncProgressEmitter.emitItemProgress(consultantId, 'email_journey', clientDisplayName,
-          totalEmailJourney.synced + totalEmailJourney.failed, preCalcEmailJourneyTotal);
       }
 
       clientsProcessed++;
-      
-      // Calculate real progress for each category (processed items vs pre-calculated totals)
-      const exerciseResponsesProgress = totalExerciseResponses.synced + totalExerciseResponses.failed + totalExerciseResponses.skipped;
-      const clientKnowledgeProgress = totalClientKnowledge.synced + totalClientKnowledge.failed + totalClientKnowledge.skipped;
-      const clientConsultationsProgress = totalClientConsultations.synced + totalClientConsultations.failed + totalClientConsultations.skipped;
-      const financialProgress = totalFinancialData.synced + totalFinancialData.failed;
-      
-      // Emit SSE progress events with real progress vs pre-calculated totals
-      syncProgressEmitter.emitItemProgress(consultantId, 'exercise_responses', clientDisplayName, exerciseResponsesProgress, preCalcExerciseResponsesTotal);
-      syncProgressEmitter.emitItemProgress(consultantId, 'client_knowledge', clientDisplayName, clientKnowledgeProgress, preCalcClientKnowledgeTotal);
-      syncProgressEmitter.emitItemProgress(consultantId, 'client_consultations', clientDisplayName, clientConsultationsProgress, preCalcClientConsultationsTotal);
-      if (settings?.autoSyncFinancial) {
-        syncProgressEmitter.emitItemProgress(consultantId, 'financial_data', clientDisplayName, financialProgress, preCalcFinancialTotal);
-      }
     }
+
+    // Emit SSE progress events with final totals
+    syncProgressEmitter.emitItemProgress(consultantId, 'exercise_responses', 'all clients', totalExerciseResponses.synced + totalExerciseResponses.failed + totalExerciseResponses.skipped, preCalcExerciseResponsesTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'client_knowledge', 'all clients', totalClientKnowledge.synced + totalClientKnowledge.failed + totalClientKnowledge.skipped, preCalcClientKnowledgeTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'client_consultations', 'all clients', totalClientConsultations.synced + totalClientConsultations.failed + totalClientConsultations.skipped, preCalcClientConsultationsTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'assigned_exercises', 'all clients', totalAssignedExercises.synced + totalAssignedExercises.failed, preCalcAssignedExercisesTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'assigned_library', 'all clients', totalAssignedLibrary.total, preCalcAssignedLibraryTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'assigned_university', 'all clients', totalAssignedUniversity.total, preCalcAssignedUniversityTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'goals', 'all clients', totalGoals.synced + totalGoals.failed, preCalcGoalsTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'tasks', 'all clients', totalTasks.synced + totalTasks.failed, preCalcTasksTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'daily_reflections', 'all clients', totalDailyReflections.synced + totalDailyReflections.failed, preCalcDailyReflectionsTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'client_progress', 'all clients', totalClientProgress.synced + totalClientProgress.failed, preCalcClientProgressTotal);
+    syncProgressEmitter.emitItemProgress(consultantId, 'library_progress', 'all clients', totalLibraryProgress.synced + totalLibraryProgress.failed, preCalcLibraryProgressTotal);
+    if (settings?.autoSyncFinancial) {
+      syncProgressEmitter.emitItemProgress(consultantId, 'financial_data', 'all clients', totalFinancialData.synced + totalFinancialData.failed, preCalcFinancialTotal);
+    }
+    if (settings?.autoSyncEmailJourney) {
+      syncProgressEmitter.emitItemProgress(consultantId, 'email_journey', 'all clients', totalEmailJourney.synced + totalEmailJourney.failed, preCalcEmailJourneyTotal);
+    }
+    
+    console.log(`✅ [FileSync] Parallel client processing complete: ${clientsProcessed} clients processed`)
 
     // Set financial total from pre-calculated value (not incremented per client)
     totalFinancialData.total = preCalcFinancialTotal;
@@ -2980,10 +3069,12 @@ export class FileSearchSyncService {
 
   /**
    * Sync all exercise responses for a specific client to their PRIVATE store
+   * ENHANCED: Uses uploadLimiter for parallel processing when syncContext is provided
    */
   static async syncAllClientExerciseResponses(
     clientId: string,
     consultantId: string,
+    syncContext?: SyncContext,
   ): Promise<{
     total: number;
     synced: number;
@@ -3013,14 +3104,51 @@ export class FileSearchSyncService {
         ),
       });
 
-      let synced = 0;
-      let failed = 0;
-      let skipped = 0;
       const errors: string[] = [];
 
       console.log(`\n${'═'.repeat(60)}`);
-      console.log(`🔐 [FileSync] Syncing ${clientSubmissions.length} exercise responses for client ${clientId.substring(0, 8)} to PRIVATE store`);
+      console.log(`🔐 [FileSync] Syncing ${clientSubmissions.length} exercise responses for client ${clientId.substring(0, 8)} to PRIVATE store (PARALLEL)`);
       console.log(`${'═'.repeat(60)}\n`);
+
+      // PARALLEL PROCESSING: Use uploadLimiter if available, otherwise process sequentially
+      if (syncContext?.uploadLimiter) {
+        const results = await Promise.all(
+          clientSubmissions.map(async (submission) => {
+            const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', submission.id);
+            if (isAlreadyIndexed) {
+              return { status: 'skipped' as const };
+            }
+            return syncContext.uploadLimiter.run(async () => {
+              const result = await this.syncClientExerciseResponse(submission.id, clientId, consultantId);
+              if (result.success) {
+                return { status: 'synced' as const };
+              } else {
+                errors.push(`Submission ${submission.id}: ${result.error}`);
+                return { status: 'failed' as const };
+              }
+            });
+          })
+        );
+        
+        const synced = results.filter(r => r.status === 'synced').length;
+        const failed = results.filter(r => r.status === 'failed').length;
+        const skipped = results.filter(r => r.status === 'skipped').length;
+        
+        console.log(`✅ [FileSync] Client exercise responses sync complete - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+        
+        return {
+          total: clientSubmissions.length,
+          synced,
+          failed,
+          skipped,
+          errors,
+        };
+      }
+
+      // Fallback: Sequential processing (when no syncContext provided)
+      let synced = 0;
+      let failed = 0;
+      let skipped = 0;
 
       for (const submission of clientSubmissions) {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', submission.id);
@@ -3061,10 +3189,12 @@ export class FileSearchSyncService {
 
   /**
    * Sync all consultations for a specific client to their PRIVATE store
+   * ENHANCED: Uses uploadLimiter for parallel processing when syncContext is provided
    */
   static async syncAllClientConsultations(
     clientId: string,
     consultantId: string,
+    syncContext?: SyncContext,
   ): Promise<{
     total: number;
     synced: number;
@@ -3086,14 +3216,51 @@ export class FileSearchSyncService {
         c => c.transcript || c.notes || c.summaryEmail
       );
 
-      let synced = 0;
-      let failed = 0;
-      let skipped = 0;
       const errors: string[] = [];
 
       console.log(`\n${'═'.repeat(60)}`);
-      console.log(`🔐 [FileSync] Syncing ${consultationsWithContent.length} consultations for client ${clientId.substring(0, 8)} to PRIVATE store`);
+      console.log(`🔐 [FileSync] Syncing ${consultationsWithContent.length} consultations for client ${clientId.substring(0, 8)} to PRIVATE store (PARALLEL)`);
       console.log(`${'═'.repeat(60)}\n`);
+
+      // PARALLEL PROCESSING: Use uploadLimiter if available
+      if (syncContext?.uploadLimiter) {
+        const results = await Promise.all(
+          consultationsWithContent.map(async (consultation) => {
+            const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultation', `client_${consultation.id}`);
+            if (isAlreadyIndexed) {
+              return { status: 'skipped' as const };
+            }
+            return syncContext.uploadLimiter.run(async () => {
+              const result = await this.syncClientConsultationNotes(consultation.id, clientId, consultantId);
+              if (result.success) {
+                return { status: 'synced' as const };
+              } else {
+                errors.push(`Consultation ${consultation.id}: ${result.error}`);
+                return { status: 'failed' as const };
+              }
+            });
+          })
+        );
+        
+        const synced = results.filter(r => r.status === 'synced').length;
+        const failed = results.filter(r => r.status === 'failed').length;
+        const skipped = results.filter(r => r.status === 'skipped').length;
+        
+        console.log(`✅ [FileSync] Client consultations sync complete - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+        
+        return {
+          total: consultationsWithContent.length,
+          synced,
+          failed,
+          skipped,
+          errors,
+        };
+      }
+
+      // Fallback: Sequential processing
+      let synced = 0;
+      let failed = 0;
+      let skipped = 0;
 
       for (const consultation of consultationsWithContent) {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultation', `client_${consultation.id}`);
@@ -3596,10 +3763,12 @@ export class FileSearchSyncService {
 
   /**
    * Bulk sync all client knowledge documents for a specific client to their PRIVATE store
+   * ENHANCED: Uses uploadLimiter for parallel processing when syncContext is provided
    */
   static async syncAllClientKnowledgeDocuments(
     clientId: string,
     consultantId: string,
+    syncContext?: SyncContext,
   ): Promise<{
     total: number;
     synced: number;
@@ -3627,14 +3796,51 @@ export class FileSearchSyncService {
         orderBy: [desc(clientKnowledgeDocuments.priority)],
       });
 
-      let synced = 0;
-      let failed = 0;
-      let skipped = 0;
       const errors: string[] = [];
 
       console.log(`\n${'═'.repeat(60)}`);
-      console.log(`🔐 [FileSync] Syncing ${docs.length} knowledge documents for client ${clientId.substring(0, 8)} to PRIVATE store`);
+      console.log(`🔐 [FileSync] Syncing ${docs.length} knowledge documents for client ${clientId.substring(0, 8)} to PRIVATE store (PARALLEL)`);
       console.log(`${'═'.repeat(60)}\n`);
+
+      // PARALLEL PROCESSING: Use uploadLimiter if available
+      if (syncContext?.uploadLimiter) {
+        const results = await Promise.all(
+          docs.map(async (doc) => {
+            const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
+            if (isAlreadyIndexed) {
+              return { status: 'skipped' as const };
+            }
+            return syncContext.uploadLimiter.run(async () => {
+              const result = await this.syncClientKnowledgeDocument(doc.id, clientId, consultantId);
+              if (result.success) {
+                return { status: 'synced' as const };
+              } else {
+                errors.push(`${doc.title}: ${result.error}`);
+                return { status: 'failed' as const };
+              }
+            });
+          })
+        );
+        
+        const synced = results.filter(r => r.status === 'synced').length;
+        const failed = results.filter(r => r.status === 'failed').length;
+        const skipped = results.filter(r => r.status === 'skipped').length;
+        
+        console.log(`✅ [FileSync] Client knowledge documents sync complete - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+        
+        return {
+          total: docs.length,
+          synced,
+          failed,
+          skipped,
+          errors,
+        };
+      }
+
+      // Fallback: Sequential processing
+      let synced = 0;
+      let failed = 0;
+      let skipped = 0;
 
       for (const doc of docs) {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
@@ -4858,6 +5064,7 @@ export class FileSearchSyncService {
   static async syncClientFinancialData(
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       console.log(`\n${'═'.repeat(60)}`);
@@ -4917,8 +5124,8 @@ export class FileSearchSyncService {
         updatedAt: new Date().toISOString(),
       });
 
-      // Get or create the client's PRIVATE store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // Get or create the client's PRIVATE store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, error: 'Failed to get or create client private store' };
       }
@@ -5512,6 +5719,7 @@ export class FileSearchSyncService {
     exerciseId: string,
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const exercise = await db.query.exercises.findFirst({
@@ -5536,8 +5744,8 @@ export class FileSearchSyncService {
         return { success: true };
       }
 
-      // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // Get or create client's private store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, error: 'Failed to get or create client private store' };
       }
@@ -5586,6 +5794,7 @@ export class FileSearchSyncService {
     categoryId: string,
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; synced: number; failed: number; error?: string }> {
     try {
       // Get the category
@@ -5615,8 +5824,8 @@ export class FileSearchSyncService {
       console.log(`📚 [FileSync] Syncing ${docs.length} library docs from category "${category.name}" to client ${clientId.substring(0, 8)}`);
       console.log(`${'═'.repeat(60)}\n`);
 
-      // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // Get or create client's private store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, synced: 0, failed: 0, error: 'Failed to get or create client private store' };
       }
@@ -5673,6 +5882,7 @@ export class FileSearchSyncService {
     yearId: string,
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; synced: number; failed: number; error?: string }> {
     try {
       // Get the year
@@ -5713,8 +5923,8 @@ export class FileSearchSyncService {
       console.log(`🎓 [FileSync] Syncing ${allLessons.length} lessons from "${year.title}" to client ${clientId.substring(0, 8)}`);
       console.log(`${'═'.repeat(60)}\n`);
 
-      // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // Get or create client's private store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, synced: 0, failed: 0, error: 'Failed to get or create client private store' };
       }
@@ -5795,6 +6005,7 @@ export class FileSearchSyncService {
   static async syncClientGoals(
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; synced: number; error?: string }> {
     try {
       const clientGoals = await db.query.goals.findMany({
@@ -5805,8 +6016,8 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // Get or create client's private store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -5857,6 +6068,7 @@ export class FileSearchSyncService {
   static async syncClientTasks(
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; synced: number; error?: string }> {
     try {
       const clientTasks = await db.query.consultationTasks.findMany({
@@ -5867,8 +6079,8 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      // Get or create client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // Get or create client's private store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -5933,6 +6145,7 @@ export class FileSearchSyncService {
   static async syncClientDailyReflections(
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; synced: number; error?: string }> {
     try {
       const reflections = await db.query.dailyReflections.findMany({
@@ -5944,7 +6157,8 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // Get or create client's private store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -6011,6 +6225,7 @@ export class FileSearchSyncService {
   static async syncClientProgress(
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; synced: number; error?: string }> {
     try {
       const progressEntries = await db.query.clientProgress.findMany({
@@ -6022,7 +6237,8 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // Get or create client's private store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
@@ -6073,6 +6289,7 @@ export class FileSearchSyncService {
   static async syncClientLibraryProgress(
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; synced: number; error?: string }> {
     try {
       const libraryProgressEntries = await db
@@ -6092,7 +6309,8 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // Get or create client's private store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
