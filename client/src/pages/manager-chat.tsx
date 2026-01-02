@@ -789,61 +789,59 @@ export default function ManagerChat() {
         )}
 
         <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
-          <div className="border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-900 to-slate-800 px-4 py-3 flex-shrink-0">
-            <div className="flex items-center justify-between max-w-4xl mx-auto">
-              <div className="flex items-center gap-3">
-                {isMobile && isAuthenticated && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-white hover:bg-slate-700"
-                    onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
-                  >
-                    {chatSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                  </Button>
-                )}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md">
-                    <Bot className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <span className="font-semibold text-lg text-white">{agentInfo?.agentName || "Assistente"}</span>
-                    {agentInfo?.businessName && (
-                      <p className="text-xs text-slate-400">{agentInfo.businessName}</p>
-                    )}
-                  </div>
-                </div>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              {isMobile && isAuthenticated && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                  onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
+                >
+                  {chatSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </Button>
+              )}
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md ring-2 ring-cyan-200/50 dark:ring-cyan-700/50">
+                <Bot className="h-4 w-4 text-white" />
               </div>
-              <div className="flex items-center gap-2">
-                {bronzeUsage && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
-                    <MessageSquare className="h-3.5 w-3.5 text-amber-400" />
-                    <span className="text-xs font-medium text-amber-300">
-                      {bronzeUsage.dailyMessagesUsed}/{bronzeUsage.dailyMessageLimit}
-                    </span>
-                    <span className="text-xs text-amber-400/70 hidden sm:inline">
-                      messaggi oggi
-                    </span>
-                  </div>
+              <div>
+                <span className="font-semibold text-slate-900 dark:text-white">
+                  {agentInfo?.agentName || "Assistente"}
+                </span>
+                {agentInfo?.businessName && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{agentInfo.businessName}</p>
                 )}
-                {managerInfo && (
-                  <span className="text-sm text-slate-300 hidden md:block mr-2">
-                    {managerInfo.name}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {bronzeUsage && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30">
+                  <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                    {bronzeUsage.dailyMessagesUsed}/{bronzeUsage.dailyMessageLimit}
                   </span>
-                )}
-                <ManagerAIPreferencesSheet slug={slug!} />
-                {agentInfo?.requiresLogin && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-slate-300 hover:text-white hover:bg-slate-700"
-                    onClick={handleLogout}
-                    title="Esci"
-                  >
-                    <LogOut className="h-5 w-5" />
-                  </Button>
-                )}
-              </div>
+                  <span className="text-xs text-amber-600/70 dark:text-amber-400/70 hidden sm:inline">
+                    messaggi oggi
+                  </span>
+                </div>
+              )}
+              {managerInfo && (
+                <span className="text-sm text-slate-600 dark:text-slate-300 hidden md:block mr-2">
+                  {managerInfo.name}
+                </span>
+              )}
+              <ManagerAIPreferencesSheet slug={slug!} />
+              {agentInfo?.requiresLogin && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                  onClick={handleLogout}
+                  title="Esci"
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              )}
             </div>
           </div>
 
