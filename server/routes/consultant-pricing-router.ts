@@ -1,4 +1,5 @@
 import express, { Router, Response } from "express";
+import bcrypt from "bcrypt";
 import { db } from "../db";
 import { users, bronzeUsers, clientLevelSubscriptions, consultantLicenses } from "@shared/schema";
 import { eq, and, ne, sql, ilike, or, count } from "drizzle-orm";
@@ -442,7 +443,6 @@ router.post("/consultant/pricing/users/bronze/:id/reset-password", authenticateT
       return res.status(404).json({ error: "Utente Bronze non trovato o non autorizzato" });
     }
 
-    const bcrypt = require("bcrypt");
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     await db.update(bronzeUsers)
@@ -479,7 +479,6 @@ router.post("/consultant/pricing/users/silver/:id/reset-password", authenticateT
       return res.status(404).json({ error: "Sottoscrizione Silver non trovata o non autorizzata" });
     }
 
-    const bcrypt = require("bcrypt");
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     await db.update(clientLevelSubscriptions)
