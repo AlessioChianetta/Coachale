@@ -516,7 +516,7 @@ export class FileSearchService {
     content: string;
     displayName: string;
     storeId: string;
-    sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc';
+    sourceType: 'library' | 'knowledge_base' | 'client_knowledge' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc';
     sourceId?: string;
     clientId?: string;
     userId?: string;
@@ -1464,7 +1464,7 @@ export class FileSearchService {
       mimeType: doc.mimeType,
       status: doc.status as 'pending' | 'processing' | 'indexed' | 'failed',
       uploadedAt: doc.uploadedAt!,
-      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc',
+      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'client_knowledge' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc',
       sourceId: doc.sourceId || undefined,
       contentHash: doc.contentHash || undefined,
       clientId: doc.clientId || undefined,
@@ -1475,7 +1475,7 @@ export class FileSearchService {
    * Check if a document is already indexed
    * Also checks for chunked documents (sourceId_chunk_0, sourceId_chunk_1, etc.)
    */
-  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc', sourceId: string): Promise<boolean> {
+  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'client_knowledge' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc', sourceId: string): Promise<boolean> {
     // First check for exact match (non-chunked document)
     const doc = await db.query.fileSearchDocuments.findFirst({
       where: and(
@@ -1505,7 +1505,7 @@ export class FileSearchService {
    * Get document index info including indexedAt and contentHash
    * Used for staleness detection during sync
    */
-  async getDocumentIndexInfo(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc', sourceId: string): Promise<{
+  async getDocumentIndexInfo(sourceType: 'library' | 'knowledge_base' | 'client_knowledge' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc', sourceId: string): Promise<{
     exists: boolean;
     documentId?: string;
     indexedAt?: Date;
