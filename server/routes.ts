@@ -436,6 +436,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             )
             .limit(1);
 
+          // Get consultant's pricing page slug for agent selection
+          const [consultant] = await db
+            .select({ pricingPageSlug: schema.users.pricingPageSlug, username: schema.users.username })
+            .from(schema.users)
+            .where(eq(schema.users.id, silverUser.consultantId))
+            .limit(1);
+
           const token = jwt.sign({ 
             subscriptionId: silverUser.id, 
             consultantId: silverUser.consultantId,
@@ -457,6 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               subscriptionId: silverUser.id,
               agentSlug: silverAgent?.publicSlug || null,
             },
+            publicSlug: consultant?.pricingPageSlug || consultant?.username || null,
           });
         }
       }
@@ -506,6 +514,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             )
             .limit(1);
 
+          // Get consultant's pricing page slug for agent selection
+          const [consultantForBronze] = await db
+            .select({ pricingPageSlug: schema.users.pricingPageSlug, username: schema.users.username })
+            .from(schema.users)
+            .where(eq(schema.users.id, bronzeUser.consultantId))
+            .limit(1);
+
           const token = jwt.sign({ 
             bronzeUserId: bronzeUser.id, 
             consultantId: bronzeUser.consultantId,
@@ -528,6 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               dailyMessageLimit: bronzeUser.dailyMessageLimit,
               agentSlug: bronzeAgent?.publicSlug || null,
             },
+            publicSlug: consultantForBronze?.pricingPageSlug || consultantForBronze?.username || null,
           });
         }
       }

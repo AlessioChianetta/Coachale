@@ -68,15 +68,23 @@ export default function Login() {
       } else if (data.user.role === "consultant") {
         setLocation("/consultant");
       } else if (data.user.tier === "bronze" || data.user.tier === "silver") {
-        // Bronze and Silver users go to their specific agent chat
-        // Store tier info for chat component
+        // Bronze and Silver users go to agent selection page
+        // Store tier info for select-agent page
+        localStorage.setItem('bronzeUserTier', data.user.tier === "bronze" ? "1" : "2");
+        localStorage.setItem('bronzeUserName', data.user.firstName || '');
+        localStorage.setItem('bronzePublicSlug', data.publicSlug || '');
         localStorage.setItem('userTier', data.user.tier);
         localStorage.setItem('consultantId', data.user.consultantId || '');
-        if (data.user.agentSlug) {
+        
+        if (data.publicSlug) {
+          // Redirect to agent selection page
+          setLocation(`/c/${data.publicSlug}/select-agent`);
+        } else if (data.user.agentSlug) {
+          // Fallback: direct to chat if no publicSlug but has agentSlug
           localStorage.setItem('agentSlug', data.user.agentSlug);
-          setLocation(`/agent/${data.user.agentSlug}/chat`);
+          setLocation(`/c/${data.user.agentSlug}`);
         } else {
-          // Fallback: no agent configured, show error
+          // No agent configured
           toast({
             title: "Configurazione mancante",
             description: "Nessun agente configurato per il tuo piano. Contatta il consulente.",

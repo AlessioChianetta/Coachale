@@ -16,7 +16,8 @@ import {
   User, 
   Clock, 
   ArrowRight,
-  AlertCircle 
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -256,14 +257,28 @@ export default function PublicAIChat() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Clock className="h-4 w-4" />
-          <span className={cn(
-            remainingMessages <= 3 && "text-orange-600 font-medium",
-            remainingMessages <= 0 && "text-destructive font-medium"
-          )}>
-            {remainingMessages}/{agentInfo.dailyMessageLimit} messaggi oggi
-          </span>
+        <div className="flex items-center gap-3">
+          {/* Show "Cambia Agente" button for authenticated Bronze/Silver users */}
+          {localStorage.getItem('bronzeUserTier') && agentInfo.consultantSlug && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/c/${agentInfo.consultantSlug}/select-agent`)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Cambia Agente</span>
+            </Button>
+          )}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span className={cn(
+              remainingMessages <= 3 && "text-orange-600 font-medium",
+              remainingMessages <= 0 && "text-destructive font-medium"
+            )}>
+              {remainingMessages}/{agentInfo.dailyMessageLimit} messaggi oggi
+            </span>
+          </div>
         </div>
       </header>
 

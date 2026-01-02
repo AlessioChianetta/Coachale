@@ -80,9 +80,16 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Unified Login System**: Single `/login` page authenticates across all 3 tiers:
     - Search order: Gold (users table) → Silver (clientLevelSubscriptions) → Bronze (bronzeUsers)
     - Case-insensitive email matching with consistent lowercase normalization
-    - Tier-appropriate redirects: Bronze → AI chat, Silver → manager dashboard, Gold → full app
+    - Tier-appropriate redirects: Bronze/Silver → agent selection page, Gold → full app
     - Welcome emails with credentials sent via consultant's SMTP (async, non-blocking)
     - Manual password reset for Bronze/Silver users via consultant dashboard
+  - **Premium Agent Selection System**: Mobile-first interface for Bronze/Silver users to choose their AI agent:
+    - Route at `/c/:slug/select-agent` with $10K premium design (gradient mesh, glassmorphism, framer-motion animations)
+    - API endpoint `GET /api/public/consultant/:slug/agents/:tier` filters agents by tier and enabled list
+    - Per-tier agent configuration via `level1EnabledAgents` and `level2EnabledAgents` in pricingPageConfig
+    - Consultant settings UI for selecting which agents are available per tier (Bronze/Silver)
+    - "Cambia Agente" button in chat header to return to selection (visible only for authenticated users)
+    - User flow: Login → Agent Selection → Chat, with ability to switch agents anytime
   - **Stripe Subscription Flow**: Complete subscription checkout with:
     - Monthly and yearly billing periods
     - Automatic account provisioning (Manager for L2, Client for L3)

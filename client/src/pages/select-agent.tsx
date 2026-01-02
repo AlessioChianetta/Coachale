@@ -213,19 +213,32 @@ export default function SelectAgent() {
   const { slug } = useParams<{ slug: string }>();
   const [, navigate] = useLocation();
   
-  const [userName, setUserName] = useState<string>("");
-  const [userTier, setUserTier] = useState<string>("");
+  // Read localStorage synchronously on mount for immediate use
+  const initialTier = typeof window !== 'undefined' ? localStorage.getItem("bronzeUserTier") : null;
+  const initialName = typeof window !== 'undefined' ? localStorage.getItem("bronzeUserName") : null;
+  
+  const [userName, setUserName] = useState<string>(initialName || "");
+  const [userTier, setUserTier] = useState<string>(initialTier || "1");
   const [userSlug, setUserSlug] = useState<string>("");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!initialTier);
 
   useEffect(() => {
     const storedName = localStorage.getItem("bronzeUserName") || "";
-    const storedTier = localStorage.getItem("bronzeUserTier") || "1";
+    const storedTier = localStorage.getItem("bronzeUserTier") || "";
     const storedSlug = localStorage.getItem("bronzePublicSlug") || "";
+    
+    // If no bronzeUserTier is stored, user is not authenticated - redirect to pricing/login
+    if (!storedTier) {
+      setIsAuthenticated(false);
+      navigate(`/c/${slug}/pricing`);
+      return;
+    }
     
     setUserName(storedName);
     setUserTier(storedTier);
     setUserSlug(storedSlug);
-  }, []);
+    setIsAuthenticated(true);
+  }, [slug, navigate]);
 
   const { data, isLoading, error } = useQuery<AgentsResponse>({
     queryKey: ["/api/public/consultant", slug, "agents", userTier],
@@ -240,9 +253,22 @@ export default function SelectAgent() {
       }
       return response.json();
     },
-    enabled: !!slug && !!userTier,
+    enabled: !!slug && !!userTier && isAuthenticated,
     retry: false,
   });
+
+  // If not authenticated, show loading while redirecting
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <AnimatedBackground />
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-300">Reindirizzamento...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSelectAgent = (agent: Agent) => {
     if (agent.publicSlug) {
