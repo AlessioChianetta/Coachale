@@ -3286,7 +3286,7 @@ export class FileSearchSyncService {
                 content: chunk.content,
                 displayName: chunkDisplayName,
                 storeId: clientStore.storeId,
-                sourceType: 'knowledge_base',
+                sourceType: 'client_knowledge',
                 sourceId: chunkSourceId,
                 clientId: clientId,
                 userId: clientId,
@@ -3334,7 +3334,7 @@ export class FileSearchSyncService {
       }
       
       // For non-chunked content, check if already indexed
-      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', documentId);
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('client_knowledge', documentId);
       if (isAlreadyIndexed) {
         console.log(`📌 [FileSync] Client knowledge document already indexed: ${documentId}`);
         return { success: true };
@@ -3345,7 +3345,7 @@ export class FileSearchSyncService {
         content: content,
         displayName: `[CLIENT KB] ${doc.title}`,
         storeId: clientStore.storeId,
-        sourceType: 'knowledge_base',
+        sourceType: 'client_knowledge',
         sourceId: documentId,
         clientId: clientId,
         userId: clientId,
@@ -4087,7 +4087,7 @@ export class FileSearchSyncService {
       // Build indexed sets
       const indexedSubmissionIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
       const indexedConsultationIds = new Set(clientIndexed.filter(d => d.sourceType === 'consultation').map(d => d.sourceId));
-      const indexedClientKnowledgeIds = new Set(clientIndexed.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
+      const indexedClientKnowledgeIds = new Set(clientIndexed.filter(d => d.sourceType === 'client_knowledge').map(d => d.sourceId));
       const indexedExerciseTemplateIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
       const indexedLibraryCopyIds = new Set(clientIndexed.filter(d => d.sourceType === 'library').map(d => d.sourceId));
       const indexedUniversityCopyIds = new Set(clientIndexed.filter(d => d.sourceType === 'university_lesson').map(d => d.sourceId));
