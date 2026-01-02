@@ -2021,8 +2021,15 @@ export class FileSearchSyncService {
       : [];
     const preCalcAssignedLibraryTotal = allLibraryAssignments.length;
 
+    // Only count university years that are NOT locked (isLocked = false) for pre-calculation
     const allUniversityAssignments = clientIds.length > 0
-      ? await db.query.universityYearClientAssignments.findMany({ where: inArray(universityYearClientAssignments.clientId, clientIds) })
+      ? await db.select({ yearId: universityYearClientAssignments.yearId })
+          .from(universityYearClientAssignments)
+          .innerJoin(universityYears, eq(universityYearClientAssignments.yearId, universityYears.id))
+          .where(and(
+            inArray(universityYearClientAssignments.clientId, clientIds),
+            eq(universityYears.isLocked, false)  // Exclude locked years
+          ))
       : [];
     const preCalcAssignedUniversityTotal = allUniversityAssignments.length;
 
@@ -2133,9 +2140,16 @@ export class FileSearchSyncService {
           totalAssignedLibrary.total, preCalcAssignedLibraryTotal);
       }
 
-      const clientUniAssigns = await db.query.universityYearClientAssignments.findMany({
-        where: eq(universityYearClientAssignments.clientId, client.id),
-      });
+      // Only sync university years that are NOT locked (isLocked = false)
+      const clientUniAssigns = await db.select({
+        yearId: universityYearClientAssignments.yearId
+      })
+        .from(universityYearClientAssignments)
+        .innerJoin(universityYears, eq(universityYearClientAssignments.yearId, universityYears.id))
+        .where(and(
+          eq(universityYearClientAssignments.clientId, client.id),
+          eq(universityYears.isLocked, false)  // Exclude locked years from sync
+        ));
       for (const assignment of clientUniAssigns) {
         const result = await this.syncUniversityYearToClient(assignment.yearId, client.id, consultantId);
         totalAssignedUniversity.total++;
@@ -3857,9 +3871,19 @@ export class FileSearchSyncService {
           .from(libraryCategoryClientAssignments).where(inArray(libraryCategoryClientAssignments.clientId, allClientIds))
       : [];
     
+    // Only include university years that are NOT locked (isLocked = false)
+    // Locked years are like videogame levels that haven't been unlocked yet
     const allUniversityYearAssigns = allClientIds.length > 0
-      ? await db.select({ clientId: universityYearClientAssignments.clientId, yearId: universityYearClientAssignments.yearId })
-          .from(universityYearClientAssignments).where(inArray(universityYearClientAssignments.clientId, allClientIds))
+      ? await db.select({ 
+          clientId: universityYearClientAssignments.clientId, 
+          yearId: universityYearClientAssignments.yearId 
+        })
+          .from(universityYearClientAssignments)
+          .innerJoin(universityYears, eq(universityYearClientAssignments.yearId, universityYears.id))
+          .where(and(
+            inArray(universityYearClientAssignments.clientId, allClientIds),
+            eq(universityYears.isLocked, false)  // Exclude locked years from audit
+          ))
       : [];
     
     // Get all indexed documents for all clients in one query
@@ -6087,11 +6111,15 @@ export class FileSearchSyncService {
     }
     console.log(`   ✅ Library docs: ${libraryResult.synced} synced, ${libraryResult.failed} failed`);
 
-    // 3. Sync all assigned university years
+    // 3. Sync all assigned university years (only unlocked years)
     console.log(`\n🎓 [Migration] Step 3: Syncing assigned university years...`);
-    const universityAssignments = await db.query.universityYearClientAssignments.findMany({
-      where: eq(universityYearClientAssignments.clientId, clientId),
-    });
+    const universityAssignments = await db.select({ yearId: universityYearClientAssignments.yearId })
+      .from(universityYearClientAssignments)
+      .innerJoin(universityYears, eq(universityYearClientAssignments.yearId, universityYears.id))
+      .where(and(
+        eq(universityYearClientAssignments.clientId, clientId),
+        eq(universityYears.isLocked, false)  // Exclude locked years from sync
+      ));
 
     for (const assignment of universityAssignments) {
       const result = await this.syncUniversityYearToClient(assignment.yearId, clientId, consultantId);
