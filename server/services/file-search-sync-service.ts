@@ -590,6 +590,9 @@ export class FileSearchSyncService {
         
         if (uploadedChunks === chunks.length) {
           console.log(`✅ [FileSync] All ${chunks.length} chunks uploaded in ${totalTime}s for: ${doc.title}`);
+          await db.update(consultantKnowledgeDocuments)
+            .set({ fileSearchSyncedAt: new Date() })
+            .where(eq(consultantKnowledgeDocuments.id, documentId));
           return { success: true, updated: hasExistingContent };
         } else {
           console.log(`⚠️ [FileSync] Partial upload: ${uploadedChunks}/${chunks.length} succeeded, ${failedChunks} failed in ${totalTime}s`);
@@ -627,6 +630,9 @@ export class FileSearchSyncService {
       const wasUpdated = hasExistingContent; // If it existed before, this was an update
       if (uploadResult.success) {
         console.log(`✅ [FileSync] Knowledge document ${wasUpdated ? 'UPDATED' : 'synced'}: ${doc.title}`);
+        await db.update(consultantKnowledgeDocuments)
+          .set({ fileSearchSyncedAt: new Date() })
+          .where(eq(consultantKnowledgeDocuments.id, documentId));
       }
 
       return uploadResult.success 
@@ -741,6 +747,11 @@ export class FileSearchSyncService {
           }
         }
         
+        if (uploadedChunks === chunks.length) {
+          await db.update(consultantKnowledgeDocuments)
+            .set({ fileSearchSyncedAt: new Date() })
+            .where(eq(consultantKnowledgeDocuments.id, documentId));
+        }
         return { success: uploadedChunks === chunks.length };
       }
       
@@ -752,6 +763,12 @@ export class FileSearchSyncService {
         sourceId: documentId,
         userId: consultantId,
       });
+
+      if (uploadResult.success) {
+        await db.update(consultantKnowledgeDocuments)
+          .set({ fileSearchSyncedAt: new Date() })
+          .where(eq(consultantKnowledgeDocuments.id, documentId));
+      }
 
       return uploadResult.success 
         ? { success: true }

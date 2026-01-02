@@ -5284,6 +5284,9 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
   // Import source tracking
   googleDriveFileId: text("google_drive_file_id"), // Google Drive file ID if imported from Drive
 
+  // File Search sync status
+  fileSearchSyncedAt: timestamp("file_search_synced_at"), // When document was synced to File Search
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
