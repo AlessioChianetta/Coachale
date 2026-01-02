@@ -174,6 +174,96 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
+  try {
+    const { slug, tier } = req.params;
+
+    if (!slug) {
+      return res.status(400).json({ error: "Slug is required" });
+    }
+
+    if (tier !== "1" && tier !== "2") {
+      return res.status(400).json({ error: "Tier must be '1' (Bronze) or '2' (Silver)" });
+    }
+
+    const [consultant] = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      username: users.username,
+      pricingPageSlug: users.pricingPageSlug,
+      pricingPageConfig: users.pricingPageConfig,
+    })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "consultant"),
+          or(
+            eq(users.pricingPageSlug, slug),
+            eq(users.username, slug)
+          )
+        )
+      )
+      .limit(1);
+
+    if (!consultant) {
+      return res.status(404).json({ error: "Consulente non trovato" });
+    }
+
+    const allAgents = await db.select({
+      id: consultantWhatsappConfig.id,
+      agentName: consultantWhatsappConfig.agentName,
+      level: consultantWhatsappConfig.level,
+      publicSlug: consultantWhatsappConfig.publicSlug,
+      dailyMessageLimit: consultantWhatsappConfig.dailyMessageLimit,
+      businessName: consultantWhatsappConfig.businessName,
+      businessDescription: consultantWhatsappConfig.businessDescription,
+    })
+      .from(consultantWhatsappConfig)
+      .where(
+        and(
+          eq(consultantWhatsappConfig.consultantId, consultant.id),
+          eq(consultantWhatsappConfig.level, tier),
+          eq(consultantWhatsappConfig.isActive, true)
+        )
+      );
+
+    const config = consultant.pricingPageConfig as any || {};
+    
+    const enabledAgentsKey = tier === "1" ? "level1EnabledAgents" : "level2EnabledAgents";
+    const enabledAgentIds: string[] | undefined = config[enabledAgentsKey];
+    
+    let filteredAgents = allAgents;
+    if (enabledAgentIds && Array.isArray(enabledAgentIds) && enabledAgentIds.length > 0) {
+      filteredAgents = allAgents.filter(agent => enabledAgentIds.includes(agent.id));
+    }
+
+    const tierName = tier === "1" 
+      ? (config.level1Name || "Bronze")
+      : (config.level2Name || "Argento");
+
+    const agents = filteredAgents.map(agent => ({
+      id: agent.id,
+      name: agent.agentName,
+      publicSlug: agent.publicSlug,
+      businessName: agent.businessName || null,
+      description: agent.businessDescription || null,
+      avatar: null,
+    }));
+
+    res.json({
+      consultantName: `${consultant.firstName} ${consultant.lastName}`.trim(),
+      consultantSlug: consultant.pricingPageSlug || consultant.username,
+      tier: tier as "1" | "2",
+      tierName,
+      agents,
+    });
+  } catch (error: any) {
+    console.error("[PUBLIC PRICING] Get agents by tier error:", error);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
+});
+
 router.post("/:slug/checkout", async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
