@@ -674,17 +674,8 @@ export class FileSearchService {
         googleFileId = opResult;
       }
       
-      // Log the full operation structure for debugging if we couldn't find an ID
+      // Use operation name as fallback (Google API no longer returns googleFileId in result)
       if (!googleFileId) {
-        console.warn(`⚠️ [FileSearch] Could not extract googleFileId. Operation structure:`, JSON.stringify({
-          done: operation.done,
-          name: (operation as any).name,
-          resultKeys: opResult ? Object.keys(opResult) : 'null',
-          result: opResult,
-          metadataKeys: opMetadata ? Object.keys(opMetadata) : 'null',
-        }, null, 2));
-        
-        // Use operation name as fallback (contains the actual Google resource path)
         const opName = (operation as any).name;
         if (opName && typeof opName === 'string') {
           // Extract document ID from operation name like "operations/abc123" or use full name
@@ -775,7 +766,7 @@ export class FileSearchService {
             console.error(`❌ [FileSearch] Google delete failed:`, errorMessage);
             return { success: false, error: `Google API error: ${errorMessage}` };
           }
-          console.log(`⚠️ [FileSearch] Document not found on Google (404), cleaning up DB only`);
+          console.log(`🧹 [FileSearch] Document not on Google - cleaning up local record only`);
         }
       } else {
         console.warn(`⚠️ [FileSearch] No API client available, deleting from DB only`);
