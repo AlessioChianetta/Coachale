@@ -41,6 +41,7 @@ import {
   clientEmailJourneyProgress,
   emailJourneyTemplates,
   automatedEmailsLog,
+  fileSearchSyncReports,
 } from "../../shared/schema";
 import { PercorsoCapitaleClient } from "../percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
@@ -1307,16 +1308,19 @@ export class FileSearchSyncService {
 
   /**
    * Sync ALL documents for a consultant based on enabled settings
+   * @param syncType - 'scheduled' or 'manual' - for report tracking
    */
-  static async syncAllDocumentsForConsultant(consultantId: string): Promise<{
+  static async syncAllDocumentsForConsultant(consultantId: string, syncType: 'scheduled' | 'manual' = 'scheduled'): Promise<{
     totalSynced: number;
     totalUpdated: number;
     totalSkipped: number;
     totalFailed: number;
-    details: Record<string, { synced: number; updated?: number; skipped: number; failed: number }>;
+    details: Record<string, { synced: number; updated?: number; skipped: number; failed: number; durationMs?: number }>;
+    reportId?: string;
   }> {
+    const startTime = Date.now();
     console.log(`\n${'='.repeat(60)}`);
-    console.log(`🔄 [FileSync] Starting SCHEDULED full sync for consultant ${consultantId}`);
+    console.log(`🔄 [FileSync] Starting ${syncType.toUpperCase()} full sync for consultant ${consultantId}`);
     console.log(`${'='.repeat(60)}\n`);
 
     const settings = await db.query.fileSearchSettings.findFirst({
@@ -1328,7 +1332,18 @@ export class FileSearchSyncService {
       return { totalSynced: 0, totalUpdated: 0, totalSkipped: 0, totalFailed: 0, details: {} };
     }
 
-    const details: Record<string, { synced: number; updated?: number; skipped: number; failed: number }> = {};
+    // Create initial report
+    const [report] = await db.insert(fileSearchSyncReports).values({
+      consultantId,
+      syncType,
+      status: 'running',
+      startedAt: new Date(),
+    }).returning();
+
+    const details: Record<string, { synced: number; updated?: number; skipped: number; failed: number; durationMs?: number }> = {};
+    const categoryDetails: Record<string, any> = {};
+    const clientDetails: Record<string, any> = {};
+    const allErrors: string[] = [];
     let totalSynced = 0, totalUpdated = 0, totalSkipped = 0, totalFailed = 0;
 
     // 1. Consultant Guide
@@ -1605,15 +1620,48 @@ export class FileSearchSyncService {
       }
     }
 
+    const durationMs = Date.now() - startTime;
+    const totalProcessed = totalSynced + totalUpdated + totalSkipped + totalFailed;
+    const status = totalFailed === 0 ? 'completed' : (totalSynced > 0 ? 'partial' : 'failed');
+
     console.log(`\n${'='.repeat(60)}`);
-    console.log(`✅ [FileSync] SCHEDULED sync complete for consultant ${consultantId}`);
+    console.log(`✅ [FileSync] ${syncType.toUpperCase()} sync complete for consultant ${consultantId}`);
+    console.log(`   ⏱️ Duration: ${(durationMs / 1000).toFixed(1)}s`);
     console.log(`   📊 Total: Synced ${totalSynced}, Updated ${totalUpdated}, Skipped ${totalSkipped}, Failed ${totalFailed}`);
     Object.entries(details).forEach(([key, val]) => {
       console.log(`   - ${key}: ${val.synced} synced, ${val.updated || 0} updated, ${val.skipped} skipped, ${val.failed} failed`);
     });
     console.log(`${'='.repeat(60)}\n`);
 
-    return { totalSynced, totalUpdated, totalSkipped, totalFailed, details };
+    // Update report with final results
+    await db.update(fileSearchSyncReports)
+      .set({
+        status,
+        completedAt: new Date(),
+        durationMs,
+        totalProcessed,
+        totalSynced,
+        totalUpdated,
+        totalSkipped,
+        totalFailed,
+        categoryDetails: Object.fromEntries(
+          Object.entries(details).map(([key, val]) => [key, {
+            name: key,
+            processed: val.synced + (val.updated || 0) + val.skipped + val.failed,
+            synced: val.synced,
+            updated: val.updated || 0,
+            skipped: val.skipped,
+            failed: val.failed,
+            durationMs: val.durationMs || 0,
+            errors: [],
+          }])
+        ),
+        clientDetails,
+        errors: allErrors,
+      })
+      .where(eq(fileSearchSyncReports.id, report.id));
+
+    return { totalSynced, totalUpdated, totalSkipped, totalFailed, details, reportId: report.id };
   }
 
   /**
