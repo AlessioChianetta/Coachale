@@ -119,6 +119,7 @@ router.get("/leaderboard", authenticateToken, requireRole("consultant"), async (
         score,
         personality: agent.aiPersonality,
         level: agent.level,
+        levels: agent.levels,
         publicSlug: agent.publicSlug
       };
     }));
