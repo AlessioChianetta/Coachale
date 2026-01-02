@@ -2619,7 +2619,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <div>
                             <Label className="text-base font-medium text-blue-900">Sincronizzazione Giornaliera</Label>
                             <p className="text-sm text-blue-700">
-                              I documenti verranno sincronizzati automaticamente ogni giorno all'ora selezionata
+                              I documenti verranno sincronizzati automaticamente ogni giorno all'ora selezionata (orario italiano)
                             </p>
                           </div>
                           <div className="flex items-center gap-3">

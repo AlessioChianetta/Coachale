@@ -18,6 +18,7 @@ import { setupGeminiLiveWSService } from "./ai/gemini-live-ws-service";
 import { setupVideoCopilotWebSocket } from "./websocket/video-ai-copilot";
 import { initFollowupScheduler } from "./cron/followup-scheduler";
 import { initInstagramWindowCleanup } from "./cron/instagram-window-cleanup";
+import { initFileSearchScheduler } from "./cron/file-search-scheduler";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -359,6 +360,17 @@ app.use((req, res, next) => {
     log("✅ Instagram window cleanup started");
   } else {
     log("🪟 Instagram window cleanup is disabled (set INSTAGRAM_CLEANUP_ENABLED=true to enable)");
+  }
+
+  // Setup File Search Scheduled Sync (Daily at configured hour, Italian timezone)
+  const fileSearchSyncEnabled = process.env.FILE_SEARCH_SYNC_ENABLED !== "false";
+  
+  if (fileSearchSyncEnabled) {
+    log("📅 File Search scheduled sync enabled - starting scheduler (Europe/Rome timezone)...");
+    initFileSearchScheduler();
+    log("✅ File Search scheduled sync started");
+  } else {
+    log("📅 File Search scheduled sync is disabled (set FILE_SEARCH_SYNC_ENABLED=true to enable)");
   }
 
   // Setup Finance Data Pre-fetch Scheduler (Daily at 6:00 AM)
