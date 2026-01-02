@@ -40,6 +40,7 @@ import {
   clientLibraryProgress,
   clientEmailJourneyProgress,
   emailJourneyTemplates,
+  automatedEmailsLog,
 } from "../../shared/schema";
 import { PercorsoCapitaleClient } from "../percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
@@ -3861,9 +3862,19 @@ export class FileSearchSyncService {
           .from(clientLibraryProgress).where(inArray(clientLibraryProgress.clientId, allClientIds))
       : [];
     
+    // Use actual sent emails from automated_emails_log instead of just journey progress
     const allEmailProgress = allClientIds.length > 0
-      ? await db.select({ id: clientEmailJourneyProgress.id, clientId: clientEmailJourneyProgress.clientId })
-          .from(clientEmailJourneyProgress).where(inArray(clientEmailJourneyProgress.clientId, allClientIds))
+      ? await db.select({ 
+          id: automatedEmailsLog.id, 
+          clientId: automatedEmailsLog.clientId, 
+          subject: automatedEmailsLog.subject,
+          sentAt: automatedEmailsLog.sentAt 
+        })
+          .from(automatedEmailsLog)
+          .where(and(
+            inArray(automatedEmailsLog.clientId, allClientIds),
+            eq(automatedEmailsLog.isTest, false)  // Exclude test emails
+          ))
       : [];
     
     const allLibraryCategoryAssigns = allClientIds.length > 0
@@ -4120,7 +4131,7 @@ export class FileSearchSyncService {
       const hasReflectionsIndexed = clientIndexed.some(d => d.sourceType === 'daily_reflection' && d.sourceId === client.id);
       const hasProgressHistoryIndexed = clientIndexed.some(d => d.sourceType === 'client_progress' && d.sourceId === client.id);
       const hasLibraryProgressIndexed = clientIndexed.some(d => d.sourceType === 'library_progress' && d.sourceId === client.id);
-      const hasEmailJourneyIndexed = clientIndexed.some(d => d.sourceType === 'email_journey' && d.sourceId === client.id);
+      // NOTE: Email Journey now uses per-email tracking (not aggregated), so we build indexedEmailIds below instead of a boolean flag
 
       // Calculate missing
       // For knowledge docs, also check for chunked format (docId_chunk_0)
@@ -4158,9 +4169,17 @@ export class FileSearchSyncService {
         ? clientLibProgress.map(l => ({ id: l.id, documentTitle: l.documentId || 'Documento' }))
         : [];
 
-      const emailJourneyMissing = (clientEmailProgress.length > 0 && !hasEmailJourneyIndexed)
-        ? clientEmailProgress.map(e => ({ id: e.id, templateTitle: 'Email Journey' }))
-        : [];
+      // Build set of indexed email IDs for individual email tracking
+      const indexedEmailIds = new Set(clientIndexed.filter(d => d.sourceType === 'email_journey').map(d => d.sourceId));
+      
+      // Check each individual email (from automated_emails_log) for indexing status
+      const emailJourneyMissing = clientEmailProgress
+        .filter(e => !indexedEmailIds.has(e.id))
+        .map(e => ({ 
+          id: e.id, 
+          templateTitle: e.subject || 'Email',
+          sentAt: e.sentAt
+        }));
 
       const clientMissing = submissionsMissing.length + consultationsMissing.length + clientKnowledgeMissing.length +
                             assignedExercisesMissing.length + assignedLibraryMissing.length + assignedUniversityMissing.length +
@@ -5959,92 +5978,89 @@ export class FileSearchSyncService {
   }
 
   /**
-   * Sync client's email journey progress to their private store
+   * Sync client's sent emails (from automated_emails_log) to their private store
+   * Simple approach: compare sent emails vs indexed documents, upload missing ones
    */
   static async syncClientEmailJourneyProgress(
     clientId: string,
     consultantId: string,
   ): Promise<{ success: boolean; synced: number; error?: string }> {
     try {
-      const journeyProgressEntries = await db
+      // 1. Get all sent emails for this client
+      const sentEmails = await db
         .select({
-          id: clientEmailJourneyProgress.id,
-          currentDay: clientEmailJourneyProgress.currentDay,
-          monthStartDate: clientEmailJourneyProgress.monthStartDate,
-          lastEmailSentAt: clientEmailJourneyProgress.lastEmailSentAt,
-          lastEmailSubject: clientEmailJourneyProgress.lastEmailSubject,
-          templateId: clientEmailJourneyProgress.lastTemplateUsedId,
-          templateTitle: emailJourneyTemplates.title,
-          templateEmailType: emailJourneyTemplates.emailType,
-          templateDayOfMonth: emailJourneyTemplates.dayOfMonth,
+          id: automatedEmailsLog.id,
+          subject: automatedEmailsLog.subject,
+          sentAt: automatedEmailsLog.sentAt,
         })
-        .from(clientEmailJourneyProgress)
-        .leftJoin(emailJourneyTemplates, eq(clientEmailJourneyProgress.lastTemplateUsedId, emailJourneyTemplates.id))
-        .where(eq(clientEmailJourneyProgress.clientId, clientId));
+        .from(automatedEmailsLog)
+        .where(and(
+          eq(automatedEmailsLog.clientId, clientId),
+          eq(automatedEmailsLog.isTest, false)
+        ))
+        .orderBy(desc(automatedEmailsLog.sentAt));
 
-      if (journeyProgressEntries.length === 0) {
+      if (sentEmails.length === 0) {
         return { success: true, synced: 0 };
       }
 
+      // 2. Get client's private store
       const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
 
-      let content = `# Email Journey - Email Ricevute\n\n`;
-      content += `Data aggiornamento: ${new Date().toLocaleDateString('it-IT')}\n\n`;
+      // 3. Get already indexed email IDs (only from client's private store)
+      const indexedDocs = await db
+        .select({ sourceId: fileSearchDocuments.sourceId })
+        .from(fileSearchDocuments)
+        .where(and(
+          eq(fileSearchDocuments.sourceType, 'email_journey'),
+          eq(fileSearchDocuments.clientId, clientId),
+          eq(fileSearchDocuments.storeId, clientStore.storeId)
+        ));
+      
+      const indexedIds = new Set(indexedDocs.map(d => d.sourceId).filter(Boolean) as string[]);
 
-      for (const entry of journeyProgressEntries) {
-        content += `## Stato Journey\n`;
-        content += `- Giorno corrente nel ciclo: ${entry.currentDay}/28\n`;
-        if (entry.monthStartDate) {
-          content += `- Inizio ciclo: ${new Date(entry.monthStartDate).toLocaleDateString('it-IT')}\n`;
+      let syncedCount = 0;
+      let errorMessage: string | undefined;
+
+      for (const email of sentEmails) {
+        if (indexedIds.has(email.id)) {
+          continue;
         }
+
+        let content = `# Email Journey - Email Inviata\n\n`;
+        content += `- ID: ${email.id}\n`;
+        content += `- Oggetto: ${email.subject || 'Senza oggetto'}\n`;
+        content += `- Tipo: ${email.emailType || 'journey'}\n`;
+        content += `- Data invio: ${email.sentAt ? new Date(email.sentAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}\n`;
         content += '\n';
 
-        if (entry.lastEmailSentAt) {
-          content += `## Ultima Email Ricevuta\n`;
-          if (entry.lastEmailSubject) {
-            content += `- Oggetto: ${entry.lastEmailSubject}\n`;
-          }
-          if (entry.templateTitle) {
-            content += `- Template: ${entry.templateTitle}\n`;
-          }
-          if (entry.templateEmailType) {
-            content += `- Tipo: ${entry.templateEmailType}\n`;
-          }
-          if (entry.templateDayOfMonth) {
-            content += `- Giorno del mese: ${entry.templateDayOfMonth}\n`;
-          }
-          content += `- Inviata il: ${new Date(entry.lastEmailSentAt).toLocaleDateString('it-IT')}\n`;
+        const uploadResult = await fileSearchService.uploadDocumentFromContent({
+          content: content,
+          displayName: `[EMAIL] ${email.subject || 'Email Journey'}`,
+          storeId: clientStore.storeId,
+          sourceType: 'email_journey' as any,
+          sourceId: email.id,
+          clientId: clientId,
+          userId: clientId,
+        });
+
+        if (uploadResult.success) {
+          syncedCount++;
         } else {
-          content += `## Email\n`;
-          content += `- Nessuna email inviata ancora nel journey corrente\n`;
+          errorMessage = uploadResult.error;
         }
-        content += '\n';
       }
 
-      await fileSearchService.deleteDocumentBySource('email_journey' as any, clientId);
-
-      const uploadResult = await fileSearchService.uploadDocumentFromContent({
-        content: content,
-        displayName: `[EMAIL JOURNEY] Email Ricevute`,
-        storeId: clientStore.storeId,
-        sourceType: 'email_journey' as any,
-        sourceId: clientId,
-        clientId: clientId,
-        userId: clientId,
-      });
-
-      if (uploadResult.success) {
-        console.log(`✅ [FileSync] Email journey progress synced to client ${clientId.substring(0, 8)} private store`);
+      if (syncedCount > 0) {
+        console.log(`✅ [FileSync] Email journey: ${syncedCount}/${sentEmails.length} emails synced to client ${clientId.substring(0, 8)} private store`);
       }
 
-      return uploadResult.success
-        ? { success: true, synced: journeyProgressEntries.length }
-        : { success: false, synced: 0, error: uploadResult.error };
+      return { success: true, synced: syncedCount, error: errorMessage };
     } catch (error: any) {
-      console.error('[FileSync] Error syncing client email journey progress:', error);
+      console.error('[FileSync] Error syncing client email journey:', error);
       return { success: false, synced: 0, error: error.message };
     }
   }
