@@ -209,7 +209,7 @@ export default function ConsultantPricingSettingsPage() {
     },
   });
 
-  const { data: agentsData } = useQuery({
+  const { data: agentsData, isLoading: agentsLoading } = useQuery({
     queryKey: ["/api/whatsapp/config"],
     queryFn: async () => {
       const response = await fetch("/api/whatsapp/config", {
@@ -219,13 +219,24 @@ export default function ConsultantPricingSettingsPage() {
         throw new Error("Errore nel caricamento degli agenti");
       }
       const result = await response.json();
+      console.log("📦 WhatsApp config raw response:", result);
+      console.log("📦 Configs array:", result.configs);
+      if (result.configs && result.configs.length > 0) {
+        console.log("📦 First agent level:", result.configs[0].level, "Type:", typeof result.configs[0].level);
+      }
       return result.configs || [];
     },
   });
 
   const agentsArray = Array.isArray(agentsData) ? agentsData : [];
-  const level1Agents = agentsArray.filter((agent: any) => agent.level === "1" || agent.level === 1);
+  console.log("🔍 agentsArray:", agentsArray, "Length:", agentsArray.length);
+  const level1Agents = agentsArray.filter((agent: any) => {
+    const isLevel1 = agent.level === "1" || agent.level === 1;
+    console.log(`Agent ${agent.agentName}: level=${agent.level}, type=${typeof agent.level}, isLevel1=${isLevel1}`);
+    return isLevel1;
+  });
   const level2Agents = agentsArray.filter((agent: any) => agent.level === "2" || agent.level === 2);
+  console.log("✅ Level 1 agents:", level1Agents.length, "Level 2 agents:", level2Agents.length);
 
   const centsToEuros = (cents: number | undefined): string => {
     if (!cents && cents !== 0) return "";
