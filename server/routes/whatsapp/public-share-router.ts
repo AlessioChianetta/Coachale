@@ -90,33 +90,47 @@ async function validateVisitorSession(
 ) {
   try {
     const share = req.share;
+    console.log(`\n🔍 [VALIDATE-SESSION] Share: ${share?.slug}, accessType: ${share?.accessType}`);
+    
     if (!share) {
+      console.log(`❌ [VALIDATE-SESSION] Share not found in request context`);
       return res.status(500).json({ error: 'Share non trovato in request context' });
     }
     
     // ALWAYS check for JWT token first (for any share type)
     // This handles both manager tokens and Bronze tokens
     const authHeader = req.headers.authorization;
+    console.log(`🔑 [VALIDATE-SESSION] Auth header present: ${!!authHeader}, starts with Bearer: ${authHeader?.startsWith('Bearer ')}`);
+    
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
-      const sessionSecret = process.env.SESSION_SECRET;
+      // Try both SESSION_SECRET and JWT_SECRET for compatibility
+      const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
+      console.log(`🔐 [VALIDATE-SESSION] Session secret available: ${!!sessionSecret}`);
+      
       if (sessionSecret) {
         try {
           const decoded = jwt.verify(token, sessionSecret) as any;
+          console.log(`📜 [VALIDATE-SESSION] Token decoded:`, { type: decoded.type, role: decoded.role, bronzeUserId: decoded.bronzeUserId, managerId: decoded.managerId });
           
           // Check for Bronze token (type: "bronze")
           if (decoded.type === 'bronze' && decoded.bronzeUserId) {
+            console.log(`🔶 [VALIDATE-SESSION] Bronze token detected, verifying user...`);
             // Verify Bronze user exists and is active
             const [bronzeUser] = await db.select()
               .from(schema.bronzeUsers)
               .where(eq(schema.bronzeUsers.id, decoded.bronzeUserId))
               .limit(1);
             
+            console.log(`🔶 [VALIDATE-SESSION] Bronze user found: ${!!bronzeUser}, isActive: ${bronzeUser?.isActive}`);
+            
             if (bronzeUser && bronzeUser.isActive) {
               req.bronzeUserId = decoded.bronzeUserId;
               req.managerId = decoded.bronzeUserId; // Use bronzeUserId as managerId for compatibility
               console.log(`✅ [BRONZE AUTH] Valid bronze token for share ${share.slug}, bronzeUserId: ${decoded.bronzeUserId}`);
               return next();
+            } else {
+              console.log(`❌ [VALIDATE-SESSION] Bronze user not found or inactive`);
             }
           }
           
@@ -127,6 +141,8 @@ async function validateVisitorSession(
             console.log(`✅ [MANAGER AUTH] Valid manager token for share ${share.slug}, managerId: ${decoded.managerId}`);
             return next();
           }
+          
+          console.log(`⚠️ [VALIDATE-SESSION] Token valid but no matching auth type. type=${decoded.type}, role=${decoded.role}, shareId=${decoded.shareId}, expectedShareId=${share.id}`);
         } catch (jwtError) {
           // Invalid JWT - fall through to other auth methods
           console.log(`⚠️ [AUTH] JWT validation failed: ${(jwtError as Error).message}`);
@@ -190,7 +206,10 @@ async function validateBronzeAuth(
 ) {
   try {
     const share = req.share;
+    console.log(`\n🔒 [VALIDATE-BRONZE-AUTH] Share: ${share?.slug}`);
+    
     if (!share) {
+      console.log(`❌ [VALIDATE-BRONZE-AUTH] Share not found in request context`);
       return res.status(500).json({ error: 'Share non trovato in request context' });
     }
     
@@ -202,19 +221,26 @@ async function validateBronzeAuth(
       .limit(1);
     
     if (!agentConfig) {
+      console.log(`❌ [VALIDATE-BRONZE-AUTH] Agent config not found`);
       return res.status(404).json({ error: 'Configurazione agente non trovata' });
     }
     
     // Only require Bronze auth for Level 1 agents
     // Check both legacy 'level' field and new 'levels' array
     const hasLevel1 = agentConfig.level === "1" || (agentConfig.levels && agentConfig.levels.includes("1"));
+    console.log(`🔒 [VALIDATE-BRONZE-AUTH] Agent level: ${agentConfig.level}, levels: ${JSON.stringify(agentConfig.levels)}, hasLevel1: ${hasLevel1}`);
+    
     if (!hasLevel1) {
+      console.log(`✅ [VALIDATE-BRONZE-AUTH] Not a Level 1 agent, skipping Bronze auth`);
       return next();
     }
     
     // Extract token from Authorization header
     const authHeader = req.headers.authorization;
+    console.log(`🔑 [VALIDATE-BRONZE-AUTH] Auth header present: ${!!authHeader}`);
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log(`❌ [VALIDATE-BRONZE-AUTH] No Bearer token found`);
       return res.status(401).json({ 
         error: 'Autenticazione Bronze richiesta',
         requiresBronzeAuth: true,
@@ -231,9 +257,11 @@ async function validateBronzeAuth(
     
     try {
       const decoded = jwt.verify(token, sessionSecret) as any;
+      console.log(`📜 [VALIDATE-BRONZE-AUTH] Token decoded:`, { type: decoded.type, bronzeUserId: decoded.bronzeUserId, consultantId: decoded.consultantId, agentConsultantId: agentConfig.consultantId });
       
       // Verify token type is "bronze"
       if (decoded.type !== 'bronze') {
+        console.log(`❌ [VALIDATE-BRONZE-AUTH] Token type is not 'bronze': ${decoded.type}`);
         return res.status(401).json({ 
           error: 'Token non valido per utenti Bronze',
           requiresBronzeAuth: true,
