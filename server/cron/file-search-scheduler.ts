@@ -48,6 +48,10 @@ async function runScheduledSync() {
     );
 
     if (matchingConsultants.length === 0) {
+      // Log only on the hour for debugging (avoid log spam)
+      if (currentMinute === 0) {
+        console.log(`📅 [FileSearchScheduler] Check at ${currentHour.toString().padStart(2, '0')}:00 - ${allSettings.length} consultant(s) with scheduled sync enabled`);
+      }
       return;
     }
 
