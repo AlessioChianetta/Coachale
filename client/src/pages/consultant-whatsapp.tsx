@@ -351,8 +351,13 @@ export default function ConsultantWhatsAppPage() {
   const subscriptionsQuery = useQuery({
     queryKey: ["/api/consultant/subscriptions"],
     queryFn: async () => {
-      const res = await fetch("/api/consultant/subscriptions", {
-        headers: getAuthHeaders(),
+      // Add cache-busting to always get fresh Stripe data
+      const res = await fetch(`/api/consultant/subscriptions?_t=${Date.now()}`, {
+        headers: {
+          ...getAuthHeaders(),
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
       });
       if (!res.ok) throw new Error("Failed to fetch subscriptions");
       return res.json();
