@@ -272,7 +272,7 @@ export default function SelectAgent() {
 
   const handleSelectAgent = (agent: Agent) => {
     if (agent.publicSlug) {
-      navigate(`/c/${agent.publicSlug}`);
+      navigate(`/share/${agent.publicSlug}`);
     }
   };
 
