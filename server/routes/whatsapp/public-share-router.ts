@@ -348,6 +348,8 @@ async function validateShareExists(
     }
 
     // Create a virtual share object for Bronze agents
+    // Note: Bronze auth is handled via requiresBronzeAuth in metadata, not requiresLogin
+    // requiresLogin is for manager authentication (a different system)
     const virtualShare = {
       id: `bronze-${agentConfig.id}`,
       slug: slug,
@@ -356,7 +358,7 @@ async function validateShareExists(
       consultantId: agentConfig.consultantId,
       isActive: true,
       accessType: 'public' as const,
-      requiresLogin: true, // Bronze requires login
+      requiresLogin: false, // Bronze uses requiresBronzeAuth instead
       expireAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
