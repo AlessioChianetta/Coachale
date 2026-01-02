@@ -44,7 +44,9 @@ import {
   Target,
   Heart,
   Mail,
-  Link
+  Link,
+  History,
+  CalendarClock
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -357,6 +359,48 @@ interface MissingExternalDocsData {
   totalMissing: number;
   clientsWithMissing: number;
   byClient: MissingExternalDocsClient[];
+}
+
+interface CategoryDetail {
+  name: string;
+  processed: number;
+  synced: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  durationMs: number;
+  errors: string[];
+}
+
+interface SyncReport {
+  id: string;
+  consultantId: string;
+  syncType: 'manual' | 'scheduled';
+  status: 'running' | 'completed' | 'partial' | 'failed';
+  startedAt: string;
+  completedAt: string | null;
+  durationMs: number | null;
+  totalProcessed: number;
+  totalSynced: number;
+  totalUpdated: number;
+  totalSkipped: number;
+  totalFailed: number;
+  categoryDetails: Record<string, CategoryDetail> | null;
+  clientDetails: { clientsProcessed?: number } | null;
+  errors: string[] | null;
+  healthScoreBefore: number | null;
+  healthScoreAfter: number | null;
+  createdAt: string;
+}
+
+interface SyncReportsResponse {
+  reports: SyncReport[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
 }
 
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
@@ -1083,6 +1127,55 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
+  const [syncReportsPage, setSyncReportsPage] = useState(0);
+  const [syncReportsFilter, setSyncReportsFilter] = useState<{ syncType?: string; status?: string }>({});
+  const [selectedReport, setSelectedReport] = useState<SyncReport | null>(null);
+
+  const { data: syncReportsData, isLoading: syncReportsLoading, refetch: refetchSyncReports } = useQuery<SyncReportsResponse>({
+    queryKey: ["/api/file-search/sync-reports", syncReportsPage, syncReportsFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: "20",
+        offset: String(syncReportsPage * 20),
+      });
+      if (syncReportsFilter.syncType) params.append("syncType", syncReportsFilter.syncType);
+      if (syncReportsFilter.status) params.append("status", syncReportsFilter.status);
+      const response = await fetch(`/api/file-search/sync-reports?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch sync reports");
+      return response.json();
+    },
+  });
+
+  const deleteSyncReportMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const response = await fetch(`/api/file-search/sync-reports/${reportId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Delete failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/sync-reports"] });
+      toast({
+        title: "Report eliminato",
+        description: "Il report di sincronizzazione è stato eliminato.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const syncExternalDocMutation = useMutation({
     mutationFn: async (params: { assignmentId: string; clientId: string }) => {
       const response = await fetch("/api/file-search/external-docs/sync", {
@@ -1310,6 +1403,10 @@ export default function ConsultantFileSearchAnalyticsPage() {
                 <TabsTrigger value="migration">
                   <Users className="h-4 w-4 mr-1" />
                   Migrazione
+                </TabsTrigger>
+                <TabsTrigger value="history">
+                  <History className="h-4 w-4 mr-1" />
+                  Storico
                 </TabsTrigger>
               </TabsList>
 
@@ -4766,6 +4863,281 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="history" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <History className="h-5 w-5" />
+                          Storico Sincronizzazioni
+                        </CardTitle>
+                        <CardDescription>
+                          Cronologia delle sincronizzazioni manuali e programmate
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refetchSyncReports()}
+                        disabled={syncReportsLoading}
+                      >
+                        {syncReportsLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <Select
+                        value={syncReportsFilter.syncType || "all"}
+                        onValueChange={(value) => {
+                          setSyncReportsPage(0);
+                          setSyncReportsFilter(prev => ({ ...prev, syncType: value === "all" ? undefined : value }));
+                        }}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue placeholder="Tipo sync" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti i tipi</SelectItem>
+                          <SelectItem value="manual">Manuale</SelectItem>
+                          <SelectItem value="scheduled">Programmato</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={syncReportsFilter.status || "all"}
+                        onValueChange={(value) => {
+                          setSyncReportsPage(0);
+                          setSyncReportsFilter(prev => ({ ...prev, status: value === "all" ? undefined : value }));
+                        }}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue placeholder="Stato" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti gli stati</SelectItem>
+                          <SelectItem value="completed">Completato</SelectItem>
+                          <SelectItem value="partial">Parziale</SelectItem>
+                          <SelectItem value="failed">Fallito</SelectItem>
+                          <SelectItem value="running">In corso</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {syncReportsLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : !syncReportsData?.reports.length ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <History className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p>Nessun report di sincronizzazione trovato</p>
+                        <p className="text-sm">I report verranno creati automaticamente dopo ogni sincronizzazione</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {syncReportsData.reports.map((report) => (
+                          <div
+                            key={report.id}
+                            className={`border rounded-lg p-4 transition-colors cursor-pointer hover:bg-muted/50 ${
+                              selectedReport?.id === report.id ? "bg-muted/50 border-primary" : ""
+                            }`}
+                            onClick={() => setSelectedReport(selectedReport?.id === report.id ? null : report)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${
+                                  report.syncType === 'scheduled' ? 'bg-blue-100' : 'bg-purple-100'
+                                }`}>
+                                  {report.syncType === 'scheduled' ? (
+                                    <CalendarClock className={`h-4 w-4 ${
+                                      report.syncType === 'scheduled' ? 'text-blue-600' : 'text-purple-600'
+                                    }`} />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4 text-purple-600" />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {report.syncType === 'scheduled' ? 'Sync Programmato' : 'Sync Manuale'}
+                                    </span>
+                                    <Badge variant={
+                                      report.status === 'completed' ? 'default' :
+                                      report.status === 'partial' ? 'secondary' :
+                                      report.status === 'running' ? 'outline' : 'destructive'
+                                    } className={
+                                      report.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200' :
+                                      report.status === 'partial' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                                      report.status === 'running' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                      'bg-red-100 text-red-700 border-red-200'
+                                    }>
+                                      {report.status === 'completed' ? 'Completato' :
+                                       report.status === 'partial' ? 'Parziale' :
+                                       report.status === 'running' ? 'In corso' : 'Fallito'}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground mt-1">
+                                    {new Date(report.startedAt).toLocaleString('it-IT', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                    {report.durationMs && (
+                                      <span className="ml-2">
+                                        ({(report.durationMs / 1000).toFixed(1)}s)
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                  <div className="flex items-center gap-3 text-sm">
+                                    <span className="text-green-600 font-medium">
+                                      {report.totalSynced} sync
+                                    </span>
+                                    {report.totalSkipped > 0 && (
+                                      <span className="text-gray-500">
+                                        {report.totalSkipped} skip
+                                      </span>
+                                    )}
+                                    {report.totalFailed > 0 && (
+                                      <span className="text-red-500 font-medium">
+                                        {report.totalFailed} errori
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Eliminare il report?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Questa azione non può essere annullata. Il report verrà rimosso permanentemente.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteSyncReportMutation.mutate(report.id)}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Elimina
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${
+                                  selectedReport?.id === report.id ? 'rotate-180' : ''
+                                }`} />
+                              </div>
+                            </div>
+
+                            {selectedReport?.id === report.id && (
+                              <div className="mt-4 pt-4 border-t space-y-4">
+                                {report.categoryDetails && Object.keys(report.categoryDetails).length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-medium mb-2">Dettagli per categoria</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                      {Object.entries(report.categoryDetails).map(([key, detail]) => (
+                                        <div key={key} className="bg-muted/30 rounded-lg p-2 text-xs">
+                                          <div className="font-medium truncate">{detail.name}</div>
+                                          <div className="flex items-center gap-1 text-muted-foreground mt-1">
+                                            <span className="text-green-600">{detail.synced}</span>
+                                            <span>/</span>
+                                            <span>{detail.processed}</span>
+                                            {detail.failed > 0 && (
+                                              <span className="text-red-500 ml-1">({detail.failed} err)</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {report.clientDetails?.clientsProcessed && (
+                                  <div className="text-sm">
+                                    <span className="text-muted-foreground">Clienti processati:</span>{" "}
+                                    <span className="font-medium">{report.clientDetails.clientsProcessed}</span>
+                                  </div>
+                                )}
+
+                                {report.errors && report.errors.length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-medium mb-2 text-red-600 flex items-center gap-1">
+                                      <AlertTriangle className="h-4 w-4" />
+                                      Errori ({report.errors.length})
+                                    </h4>
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 max-h-40 overflow-y-auto">
+                                      {report.errors.slice(0, 10).map((error, idx) => (
+                                        <div key={idx} className="text-xs text-red-700 py-1">
+                                          {error}
+                                        </div>
+                                      ))}
+                                      {report.errors.length > 10 && (
+                                        <div className="text-xs text-red-500 pt-2">
+                                          ... e altri {report.errors.length - 10} errori
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {syncReportsData.pagination.total > 20 && (
+                          <div className="flex items-center justify-between pt-4">
+                            <div className="text-sm text-muted-foreground">
+                              Pagina {syncReportsPage + 1} di {Math.ceil(syncReportsData.pagination.total / 20)}
+                              ({syncReportsData.pagination.total} totali)
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSyncReportsPage(p => Math.max(0, p - 1))}
+                                disabled={syncReportsPage === 0}
+                              >
+                                Precedente
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSyncReportsPage(p => p + 1)}
+                                disabled={!syncReportsData.pagination.hasMore}
+                              >
+                                Successiva
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </CardContent>
