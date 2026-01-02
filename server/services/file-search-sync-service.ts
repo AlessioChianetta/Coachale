@@ -82,6 +82,13 @@ export interface DocumentProgressEvent {
   error?: string;
 }
 
+export interface SyncContext {
+  consultantId: string;
+  consultantStore: { storeId: string; storeName: string } | null;
+  clientStores: Map<string, { storeId: string; storeName: string } | null>;
+  settings: typeof fileSearchSettings.$inferSelect | null;
+}
+
 export class SyncProgressEmitter extends EventEmitter {
   private static instance: SyncProgressEmitter;
 
@@ -207,6 +214,95 @@ export class SyncProgressEmitter extends EventEmitter {
 export const syncProgressEmitter = SyncProgressEmitter.getInstance();
 
 export class FileSearchSyncService {
+  /**
+   * Build a SyncContext with cached stores for efficient batch sync operations.
+   * Pre-loads consultant store and all client stores in batch to avoid repeated DB queries.
+   */
+  static async buildSyncContext(
+    consultantId: string,
+    clientIds: string[],
+  ): Promise<SyncContext> {
+    console.log(`📦 [FileSync] Building SyncContext for ${clientIds.length} clients...`);
+    
+    const [settings] = await db
+      .select()
+      .from(fileSearchSettings)
+      .where(eq(fileSearchSettings.consultantId, consultantId))
+      .limit(1);
+    
+    const consultantStore = await db.query.fileSearchStores.findFirst({
+      where: and(
+        eq(fileSearchStores.ownerId, consultantId),
+        eq(fileSearchStores.ownerType, 'consultant'),
+        eq(fileSearchStores.isActive, true),
+      ),
+    });
+
+    const clientStores = new Map<string, { storeId: string; storeName: string } | null>();
+    let existingStoreCount = 0;
+    
+    if (clientIds.length > 0) {
+      const existingStores = await db.query.fileSearchStores.findMany({
+        where: and(
+          inArray(fileSearchStores.ownerId, clientIds),
+          eq(fileSearchStores.ownerType, 'client'),
+          eq(fileSearchStores.isActive, true),
+        ),
+      });
+      
+      existingStoreCount = existingStores.length;
+      
+      for (const store of existingStores) {
+        clientStores.set(store.ownerId, {
+          storeId: store.id,
+          storeName: store.googleStoreName,
+        });
+      }
+      
+      for (const clientId of clientIds) {
+        if (!clientStores.has(clientId)) {
+          clientStores.set(clientId, null);
+        }
+      }
+    }
+
+    console.log(`✅ [FileSync] SyncContext built: ${existingStoreCount} existing client stores cached`);
+    
+    return {
+      consultantId,
+      consultantStore: consultantStore 
+        ? { storeId: consultantStore.id, storeName: consultantStore.googleStoreName }
+        : null,
+      clientStores,
+      settings: settings || null,
+    };
+  }
+
+  /**
+   * Get or create a client store, using cache from SyncContext when available.
+   * Falls back to the original fileSearchService.getOrCreateClientStore if not cached.
+   */
+  static async getClientStoreFromContext(
+    clientId: string,
+    consultantId: string,
+    context?: SyncContext,
+  ): Promise<{ storeId: string; storeName: string } | null> {
+    if (context) {
+      const cached = context.clientStores.get(clientId);
+      if (cached) {
+        return cached;
+      }
+      if (context.clientStores.has(clientId) && cached === null) {
+        const newStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+        if (newStore) {
+          context.clientStores.set(clientId, newStore);
+        }
+        return newStore;
+      }
+    }
+    return fileSearchService.getOrCreateClientStore(clientId, consultantId);
+  }
+
   /**
    * Sync a library document to FileSearchStore
    * ENHANCED: Auto-detects and re-syncs outdated documents by comparing updatedAt timestamps
@@ -1913,8 +2009,23 @@ export class FileSearchSyncService {
     console.log(`🔄 [FileSync] Starting FULL content sync for consultant ${consultantId}`);
     console.log(`${'═'.repeat(70)}\n`);
 
-    // Get file search settings to check autoSyncWhatsappAgents
-    const [settings] = await db.select().from(fileSearchSettings).where(eq(fileSearchSettings.consultantId, consultantId)).limit(1);
+    // Get all active clients AND sub-consultants FIRST (needed for SyncContext)
+    const clients = await db
+      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName, role: users.role })
+      .from(users)
+      .where(and(
+        eq(users.consultantId, consultantId),
+        eq(users.isActive, true),
+        or(
+          eq(users.role, 'client'),
+          eq(users.role, 'consultant') // Include sub-consultants
+        )
+      ));
+    const clientIds = clients.map(c => c.id);
+
+    // Build SyncContext with cached stores for efficient batch operations
+    const syncContext = await this.buildSyncContext(consultantId, clientIds);
+    const settings = syncContext.settings;
 
     // Sync the consultant platform guide if enabled
     if (settings?.autoSyncConsultantGuides !== false) {
@@ -1945,28 +2056,11 @@ export class FileSearchSyncService {
     console.log(`🔐 [FileSync] Syncing CLIENT PRIVATE data...`);
     console.log(`${'─'.repeat(70)}`);
 
-    // Get all active clients AND sub-consultants (consultants who report to this consultant)
-    // Sub-consultants are users with role='consultant' but have a consultant_id set
-    const clients = await db
-      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName, role: users.role })
-      .from(users)
-      .where(and(
-        eq(users.consultantId, consultantId),
-        eq(users.isActive, true),
-        or(
-          eq(users.role, 'client'),
-          eq(users.role, 'consultant') // Include sub-consultants
-        )
-      ));
-
     let clientsProcessed = 0;
     let totalExerciseResponses = { total: 0, synced: 0, failed: 0, skipped: 0 };
     let totalClientKnowledge = { total: 0, synced: 0, failed: 0, skipped: 0 };
     let totalClientConsultations = { total: 0, synced: 0, failed: 0, skipped: 0 };
     let totalFinancialData = { total: 0, synced: 0, failed: 0 };
-
-    // Pre-calculate totals for accurate progress tracking
-    const clientIds = clients.map(c => c.id);
     
     // Get all exercise submissions for all clients
     const allClientAssignments = clientIds.length > 0 
@@ -2231,7 +2325,7 @@ export class FileSearchSyncService {
 
       // Sync email journey progress (if enabled)
       if (settings?.autoSyncEmailJourney) {
-        const emailJourneyResult = await this.syncClientEmailJourneyProgress(client.id, consultantId);
+        const emailJourneyResult = await this.syncClientEmailJourneyProgress(client.id, consultantId, syncContext);
         totalEmailJourney.total++;
         if (emailJourneyResult.success) {
           totalEmailJourney.synced++;
@@ -5986,10 +6080,12 @@ export class FileSearchSyncService {
   /**
    * Sync client's sent emails (from automated_emails_log) to their private store
    * Simple approach: compare sent emails vs indexed documents, upload missing ones
+   * @param context - Optional SyncContext with pre-cached stores for batch operations
    */
   static async syncClientEmailJourneyProgress(
     clientId: string,
     consultantId: string,
+    context?: SyncContext,
   ): Promise<{ success: boolean; synced: number; error?: string }> {
     try {
       // 1. Get all sent emails for this client
@@ -6010,8 +6106,8 @@ export class FileSearchSyncService {
         return { success: true, synced: 0 };
       }
 
-      // 2. Get client's private store
-      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      // 2. Get client's private store (using cached context if available)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
       if (!clientStore) {
         return { success: false, synced: 0, error: 'Failed to get or create client private store' };
       }
