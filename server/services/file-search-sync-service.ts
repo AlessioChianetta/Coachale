@@ -1424,6 +1424,187 @@ export class FileSearchSyncService {
       totalFailed += result.failed;
     }
 
+    // Get all clients for client-specific syncs
+    const needsClientSync = settings.autoSyncFinancial || settings.autoSyncGoals || 
+      settings.autoSyncTasks || settings.autoSyncDailyReflections || 
+      settings.autoSyncClientProgress || settings.autoSyncLibraryProgress || 
+      settings.autoSyncEmailJourney || settings.autoSyncAssignedExercises ||
+      settings.autoSyncAssignedLibrary || settings.autoSyncAssignedUniversity ||
+      settings.autoSyncExerciseExternalDocs;
+
+    if (needsClientSync) {
+      const clients = await db.query.users.findMany({
+        where: eq(users.consultantId, consultantId),
+        columns: { id: true, firstName: true },
+      });
+      console.log(`👥 [Scheduled] Found ${clients.length} clients for client-specific syncs`);
+
+      // 10. Financial Data
+      if (settings.autoSyncFinancial) {
+        console.log(`💰 [Scheduled] Syncing Client Financial Data...`);
+        let synced = 0, failed = 0;
+        for (const client of clients) {
+          try {
+            const result = await this.syncClientFinancialData(client.id, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.financialData = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 11. Goals
+      if (settings.autoSyncGoals) {
+        console.log(`🎯 [Scheduled] Syncing Client Goals...`);
+        let synced = 0, failed = 0;
+        for (const client of clients) {
+          try {
+            const result = await this.syncClientGoals(client.id, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.goals = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 12. Tasks
+      if (settings.autoSyncTasks) {
+        console.log(`✅ [Scheduled] Syncing Client Tasks...`);
+        let synced = 0, failed = 0;
+        for (const client of clients) {
+          try {
+            const result = await this.syncClientTasks(client.id, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.tasks = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 13. Daily Reflections
+      if (settings.autoSyncDailyReflections) {
+        console.log(`📔 [Scheduled] Syncing Client Daily Reflections...`);
+        let synced = 0, failed = 0;
+        for (const client of clients) {
+          try {
+            const result = await this.syncClientDailyReflections(client.id, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.dailyReflections = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 14. Client Progress
+      if (settings.autoSyncClientProgress) {
+        console.log(`📈 [Scheduled] Syncing Client Progress History...`);
+        let synced = 0, failed = 0;
+        for (const client of clients) {
+          try {
+            const result = await this.syncClientProgress(client.id, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.clientProgress = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 15. Library Progress
+      if (settings.autoSyncLibraryProgress) {
+        console.log(`📚 [Scheduled] Syncing Client Library Progress...`);
+        let synced = 0, failed = 0;
+        for (const client of clients) {
+          try {
+            const result = await this.syncClientLibraryProgress(client.id, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.libraryProgress = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 16. Email Journey Progress
+      if (settings.autoSyncEmailJourney) {
+        console.log(`📧 [Scheduled] Syncing Client Email Journey Progress...`);
+        let synced = 0, failed = 0;
+        for (const client of clients) {
+          try {
+            const result = await this.syncClientEmailJourneyProgress(client.id, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.emailJourney = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 17. Assigned Exercises
+      if (settings.autoSyncAssignedExercises) {
+        console.log(`📝 [Scheduled] Syncing Assigned Exercises...`);
+        let synced = 0, failed = 0;
+        const assignments = await db.query.exerciseAssignments.findMany({
+          where: eq(exerciseAssignments.consultantId, consultantId),
+        });
+        for (const assignment of assignments) {
+          try {
+            const result = await this.syncExerciseToClient(assignment.exerciseId, assignment.clientId, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.assignedExercises = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 18. Assigned Library
+      if (settings.autoSyncAssignedLibrary) {
+        console.log(`📖 [Scheduled] Syncing Assigned Library...`);
+        let synced = 0, failed = 0;
+        const assignments = await db.query.libraryCategoryClientAssignments.findMany({
+          where: eq(libraryCategoryClientAssignments.consultantId, consultantId),
+        });
+        for (const assignment of assignments) {
+          try {
+            const result = await this.syncLibraryCategoryToClient(assignment.categoryId, assignment.clientId, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.assignedLibrary = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 19. Assigned University
+      if (settings.autoSyncAssignedUniversity) {
+        console.log(`🎓 [Scheduled] Syncing Assigned University...`);
+        let synced = 0, failed = 0;
+        const assignments = await db.query.universityYearClientAssignments.findMany({
+          where: eq(universityYearClientAssignments.consultantId, consultantId),
+        });
+        for (const assignment of assignments) {
+          try {
+            const result = await this.syncUniversityYearToClient(assignment.yearId, assignment.clientId, consultantId);
+            if (result.success) synced++; else failed++;
+          } catch { failed++; }
+        }
+        details.assignedUniversity = { synced, skipped: 0, failed };
+        totalSynced += synced; totalFailed += failed;
+      }
+
+      // 20. External Exercise Docs
+      if (settings.autoSyncExerciseExternalDocs) {
+        console.log(`📄 [Scheduled] Syncing External Exercise Docs...`);
+        let synced = 0, failed = 0, skipped = 0;
+        for (const client of clients) {
+          try {
+            const result = await this.syncAllExternalDocsForClient(client.id, consultantId);
+            synced += result.synced;
+            skipped += result.skipped || 0;
+            failed += result.failed;
+          } catch { failed++; }
+        }
+        details.externalDocs = { synced, skipped, failed };
+        totalSynced += synced; totalSkipped += skipped; totalFailed += failed;
+      }
+    }
+
     console.log(`\n${'='.repeat(60)}`);
     console.log(`✅ [FileSync] SCHEDULED sync complete for consultant ${consultantId}`);
     console.log(`   📊 Total: Synced ${totalSynced}, Updated ${totalUpdated}, Skipped ${totalSkipped}, Failed ${totalFailed}`);
