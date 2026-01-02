@@ -1346,18 +1346,24 @@ export class FileSearchSyncService {
       const indexInfo = await fileSearchService.getDocumentIndexInfo('exercise', exerciseId);
       
       if (indexInfo.exists) {
-        // Check if outdated by comparing source updatedAt vs indexedAt
-        const sourceUpdatedAt = exercise.updatedAt;
+        // Exercises don't have updatedAt field, use createdAt as fallback
+        // If document was indexed after exercise creation, consider it up-to-date
+        const sourceDate = (exercise as any).updatedAt || exercise.createdAt;
         const indexedAt = indexInfo.indexedAt;
         
-        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
+        if (sourceDate && indexedAt && sourceDate <= indexedAt) {
           console.log(`📌 [FileSync] Exercise already indexed and up-to-date: ${exerciseId}`);
           return { success: true, updated: false };
         }
         
-        // Exercise is outdated - delete and re-upload
-        if (indexInfo.documentId) {
-          console.log(`🔄 [FileSync] Exercise "${exercise.title}" outdated - re-syncing...`);
+        // If we have a content hash, check if content actually changed before re-uploading
+        if (indexInfo.contentHash) {
+          // We'll check hash after building content - skip deletion for now
+          // and let uploadDocumentFromContent handle hash comparison
+          console.log(`🔍 [FileSync] Exercise "${exercise.title}" may be outdated - checking content hash...`);
+        } else if (indexInfo.documentId) {
+          // No hash comparison available - delete and re-upload
+          console.log(`🔄 [FileSync] Exercise "${exercise.title}" outdated (no hash) - re-syncing...`);
           await fileSearchService.deleteDocument(indexInfo.documentId);
         }
       }
