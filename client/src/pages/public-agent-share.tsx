@@ -168,14 +168,12 @@ export default function PublicAgentShare() {
     // Only check Bronze auth for Level 1 agents
     if (metadata.level !== "1" || !metadata.requiresBronzeAuth) return;
     
-    // Check for bronzeAuthToken in localStorage
-    const storedToken = localStorage.getItem('bronzeAuthToken');
+    // Check for bronzeAuthToken first, then fallback to main token (from unified login)
+    const storedToken = localStorage.getItem('bronzeAuthToken') || localStorage.getItem('token');
     
     if (!storedToken) {
-      // No token, redirect to registration
-      if (metadata.consultantSlug) {
-        navigate(`/c/${metadata.consultantSlug}/register`);
-      }
+      // No token, redirect to login page (not register)
+      navigate('/login');
       return;
     }
     
@@ -187,11 +185,11 @@ export default function PublicAgentShare() {
         const expirationTime = payload.exp * 1000;
         
         if (Date.now() >= expirationTime) {
-          // Token expired, remove it and redirect
+          // Token expired, remove tokens and redirect to login
           localStorage.removeItem('bronzeAuthToken');
-          if (metadata.consultantSlug) {
-            navigate(`/c/${metadata.consultantSlug}/register`);
-          }
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/login');
           return;
         }
         
@@ -199,11 +197,11 @@ export default function PublicAgentShare() {
         setBronzeToken(storedToken);
       }
     } catch (e) {
-      // Invalid token format, remove it
+      // Invalid token format, remove it and redirect to login
       localStorage.removeItem('bronzeAuthToken');
-      if (metadata.consultantSlug) {
-        navigate(`/c/${metadata.consultantSlug}/register`);
-      }
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login');
     }
   }, [metadata, navigate]);
   
@@ -330,10 +328,10 @@ export default function PublicAgentShare() {
         // Handle Bronze auth required
         if (response.status === 401 && errorData.requiresBronzeAuth) {
           localStorage.removeItem('bronzeAuthToken');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
           setBronzeToken(null);
-          if (metadata?.consultantSlug) {
-            navigate(`/c/${metadata.consultantSlug}/register`);
-          }
+          navigate('/login');
           throw new Error('Autenticazione richiesta');
         }
         

@@ -444,16 +444,22 @@ router.post('/:slug/validate', validateShareExists, async (req: Request & { shar
     const share = req.share!;
     const { password } = req.body;
     
+    // Check if this is a virtual Bronze share (not in database)
+    const isBronzeVirtualShare = share.id.startsWith('bronze-');
+    
     // If public access, generate visitor ID immediately
     if (share.accessType === 'public') {
       const visitorId = nanoid(16);
       
-      // Create session (for analytics tracking)
-      await shareService.createVisitorSession(share.id, visitorId, {
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-        referrer: req.get('referer'),
-      });
+      // Create session only for real shares (not virtual Bronze shares)
+      // Virtual Bronze shares don't exist in the database, so we can't create FK references
+      if (!isBronzeVirtualShare) {
+        await shareService.createVisitorSession(share.id, visitorId, {
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+          referrer: req.get('referer'),
+        });
+      }
       
       return res.json({
         success: true,
@@ -478,12 +484,14 @@ router.post('/:slug/validate', validateShareExists, async (req: Request & { shar
       // Generate visitor ID
       const visitorId = nanoid(16);
       
-      // Create authenticated visitor session
-      await shareService.createVisitorSession(share.id, visitorId, {
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-        referrer: req.get('referer'),
-      });
+      // Create authenticated visitor session only for real shares
+      if (!isBronzeVirtualShare) {
+        await shareService.createVisitorSession(share.id, visitorId, {
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+          referrer: req.get('referer'),
+        });
+      }
       
       return res.json({
         success: true,
