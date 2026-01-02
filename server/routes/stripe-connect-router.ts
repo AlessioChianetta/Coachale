@@ -550,6 +550,10 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             const loginUrl = `${baseUrl}/manager-chat`;
             
             // Send Silver welcome email using centralized service
+            // Note: If user provided their own password (metaHashedPassword), we only have the hash,
+            // so we can't include it in the email. The template handles this by showing
+            // "Usa la password che hai scelto durante la registrazione."
+            console.log(`[Stripe Webhook] Sending Silver welcome email to ${clientEmail} (temp password: ${!!tempPassword})`);
             sendWelcomeEmail({
               consultantId,
               recipientEmail: clientEmail,
@@ -589,6 +593,10 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             const loginUrl = `${baseUrl}/login`;
             
             // Send Gold welcome email using centralized service
+            // Note: If user provided their own password (metaHashedPassword), we only have the hash,
+            // so we can't include it in the email. The template handles this by showing
+            // "Usa la password che hai scelto durante la registrazione."
+            console.log(`[Stripe Webhook] Sending Gold welcome email to ${clientEmail} (temp password: ${!!tempPassword})`);
             sendWelcomeEmail({
               consultantId,
               recipientEmail: clientEmail,
