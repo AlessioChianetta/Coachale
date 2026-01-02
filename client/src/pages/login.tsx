@@ -68,11 +68,21 @@ export default function Login() {
       } else if (data.user.role === "consultant") {
         setLocation("/consultant");
       } else if (data.user.tier === "bronze" || data.user.tier === "silver") {
-        // Bronze and Silver users go to the AI chat
+        // Bronze and Silver users go to their specific agent chat
         // Store tier info for chat component
         localStorage.setItem('userTier', data.user.tier);
         localStorage.setItem('consultantId', data.user.consultantId || '');
-        setLocation("/client");
+        if (data.user.agentSlug) {
+          localStorage.setItem('agentSlug', data.user.agentSlug);
+          setLocation(`/agent/${data.user.agentSlug}/chat`);
+        } else {
+          // Fallback: no agent configured, show error
+          toast({
+            title: "Configurazione mancante",
+            description: "Nessun agente configurato per il tuo piano. Contatta il consulente.",
+            variant: "destructive",
+          });
+        }
       } else {
         // Gold clients (Level 3)
         setLocation("/client");

@@ -424,6 +424,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (silverUser && silverUser.passwordHash) {
         const isValidPassword = await bcrypt.compare(validatedData.password, silverUser.passwordHash);
         if (isValidPassword) {
+          // Find the Level 2 agent for this consultant to get the publicSlug
+          const [silverAgent] = await db
+            .select({ publicSlug: schema.consultantWhatsappConfig.publicSlug })
+            .from(schema.consultantWhatsappConfig)
+            .where(
+              and(
+                eq(schema.consultantWhatsappConfig.consultantId, silverUser.consultantId),
+                eq(schema.consultantWhatsappConfig.level, "2")
+              )
+            )
+            .limit(1);
+
           const token = jwt.sign({ 
             subscriptionId: silverUser.id, 
             consultantId: silverUser.consultantId,
@@ -443,6 +455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               tier: "silver",
               consultantId: silverUser.consultantId,
               subscriptionId: silverUser.id,
+              agentSlug: silverAgent?.publicSlug || null,
             },
           });
         }
@@ -481,6 +494,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .where(eq(schema.bronzeUsers.id, bronzeUser.id));
           }
 
+          // Find the Level 1 agent for this consultant to get the publicSlug
+          const [bronzeAgent] = await db
+            .select({ publicSlug: schema.consultantWhatsappConfig.publicSlug })
+            .from(schema.consultantWhatsappConfig)
+            .where(
+              and(
+                eq(schema.consultantWhatsappConfig.consultantId, bronzeUser.consultantId),
+                eq(schema.consultantWhatsappConfig.level, "1")
+              )
+            )
+            .limit(1);
+
           const token = jwt.sign({ 
             bronzeUserId: bronzeUser.id, 
             consultantId: bronzeUser.consultantId,
@@ -501,6 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               consultantId: bronzeUser.consultantId,
               dailyMessagesUsed,
               dailyMessageLimit: bronzeUser.dailyMessageLimit,
+              agentSlug: bronzeAgent?.publicSlug || null,
             },
           });
         }

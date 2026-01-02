@@ -540,55 +540,55 @@ function Router() {
           </Route>
 
           <Route path="/client">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientDashboard />
             </AuthGuard>
           </Route>
 
           <Route path="/client/exercises">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientExercises />
             </AuthGuard>
           </Route>
 
           <Route path="/client/consultations">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientConsultations />
             </AuthGuard>
           </Route>
 
           <Route path="/client/roadmap">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientRoadmap />
             </AuthGuard>
           </Route>
 
           <Route path="/client/library">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientLibrary />
             </AuthGuard>
           </Route>
 
           <Route path="/client/library/:documentId">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientLibraryDocument />
             </AuthGuard>
           </Route>
 
           <Route path="/client/daily-tasks">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientDailyTasks />
             </AuthGuard>
           </Route>
 
           <Route path="/client/university">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientUniversity />
             </AuthGuard>
           </Route>
 
           <Route path="/client/ai-assistant">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientAIAssistant />
             </AuthGuard>
           </Route>
@@ -602,115 +602,115 @@ function Router() {
           <Route path="/live-consultation" component={LiveConsultation} />
 
           <Route path="/client/ai-consultations-history">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <AIConsultationsHistory />
             </AuthGuard>
           </Route>
 
           <Route path="/client/settings">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientSettings />
             </AuthGuard>
           </Route>
 
           <Route path="/client/calendar">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientCalendar />
             </AuthGuard>
           </Route>
 
           <Route path="/client/sales-agents">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientSalesAgentsList />
             </AuthGuard>
           </Route>
 
           <Route path="/client/human-sellers">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientHumanSellersList />
             </AuthGuard>
           </Route>
 
           <Route path="/client/human-sellers/analytics">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientHumanSellersAnalyticsDashboard />
             </AuthGuard>
           </Route>
 
           <Route path="/client/human-sellers/meetings">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientHumanSellerMeetings />
             </AuthGuard>
           </Route>
 
           <Route path="/client/human-sellers/:id/analytics">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientSalesAgentAnalytics />
             </AuthGuard>
           </Route>
 
           <Route path="/client/human-sellers/:id">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientHumanSellerConfig />
             </AuthGuard>
           </Route>
 
           <Route path="/client/sales-agents/:agentId/analytics">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientSalesAgentAnalytics />
             </AuthGuard>
           </Route>
 
           <Route path="/client/sales-agents/:agentId/scripts">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientScriptManager />
             </AuthGuard>
           </Route>
 
           <Route path="/client/scripts">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientScriptManager />
             </AuthGuard>
           </Route>
 
           <Route path="/client/scripts/builder">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ScriptBuilder />
             </AuthGuard>
           </Route>
 
           <Route path="/client/analytics/vertex-ai">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientVertexAIAnalytics />
             </AuthGuard>
           </Route>
 
           <Route path="/client/knowledge-documents">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientKnowledgeDocuments />
             </AuthGuard>
           </Route>
 
           <Route path="/client/knowledge-apis">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientKnowledgeApis />
             </AuthGuard>
           </Route>
 
           <Route path="/client/documents">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientFileSearchDocuments />
             </AuthGuard>
           </Route>
 
           <Route path="/client/sales-agents/:agentId">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientSalesAgentConfig />
             </AuthGuard>
           </Route>
 
           <Route path="/training/:agentId/:conversationId">
-            <AuthGuard requiredRole="client">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <TrainingMapPage />
             </AuthGuard>
           </Route>

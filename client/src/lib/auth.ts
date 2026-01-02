@@ -14,6 +14,8 @@ export interface AuthUser {
   profileId?: string;
   consultantId?: string | null;
   siteUrl?: string | null;
+  tier?: "bronze" | "silver" | "gold";
+  agentSlug?: string | null;
 }
 
 export const getToken = (): string | null => {
