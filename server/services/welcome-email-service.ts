@@ -22,7 +22,6 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams): Promise<{ su
       .select({
         firstName: schema.users.firstName,
         lastName: schema.users.lastName,
-        companyName: schema.users.companyName,
         pricingPageSlug: schema.users.pricingPageSlug,
       })
       .from(schema.users)
@@ -34,7 +33,7 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams): Promise<{ su
       return { success: false, error: "Consulente non trovato" };
     }
 
-    const consultantName = consultant.companyName || `${consultant.firstName} ${consultant.lastName}`.trim() || "Il tuo consulente";
+    const consultantName = `${consultant.firstName} ${consultant.lastName}`.trim() || "Il tuo consulente";
     
     const tierLabels = {
       bronze: { name: "Bronze", color: "#CD7F32", gradient: "linear-gradient(135deg, #CD7F32 0%, #B8860B 100%)" },
