@@ -133,8 +133,10 @@ export function validateStep(
       break;
 
     case 3: // Step 4: Agent Level
-      // Validate publicSlug if level is "1"
-      if ((data as any).level === "1") {
+      // Validate publicSlug if levels includes "1" (Bronze)
+      const levels = (data as any).levels as ("1" | "2")[] | undefined;
+      const hasLevel1 = levels && levels.includes("1");
+      if (hasLevel1) {
         const publicSlug = (data as any).publicSlug;
         if (!publicSlug?.trim()) {
           errors.publicSlug = "Lo slug URL è obbligatorio per il Livello 1";
