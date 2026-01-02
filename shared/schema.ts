@@ -6968,3 +6968,45 @@ export const insertLandingLeadSchema = createInsertSchema(landingLeads).omit({
   id: true,
   createdAt: true,
 });
+
+// File Search Sync Reports - Historical tracking of synchronization operations
+export const fileSearchSyncReports = pgTable("file_search_sync_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull(),
+  syncType: varchar("sync_type", { length: 20 }).notNull().default("manual"), // 'manual' or 'scheduled'
+  status: varchar("status", { length: 20 }).notNull().default("running"), // 'running', 'completed', 'partial', 'failed'
+  startedAt: timestamp("started_at").notNull().default(sql`now()`),
+  completedAt: timestamp("completed_at"),
+  durationMs: integer("duration_ms"),
+  totalProcessed: integer("total_processed").default(0),
+  totalSynced: integer("total_synced").default(0),
+  totalUpdated: integer("total_updated").default(0),
+  totalSkipped: integer("total_skipped").default(0),
+  totalFailed: integer("total_failed").default(0),
+  healthScoreBefore: integer("health_score_before"),
+  healthScoreAfter: integer("health_score_after"),
+  categoryDetails: jsonb("category_details").$type<Record<string, {
+    name: string;
+    processed: number;
+    synced: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+    durationMs: number;
+    errors: string[];
+  }>>().default({}),
+  clientDetails: jsonb("client_details").$type<Record<string, {
+    clientName: string;
+    processed: number;
+    synced: number;
+    errors: string[];
+  }>>().default({}),
+  errors: jsonb("errors").$type<string[]>().default([]),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_file_search_sync_reports_consultant").on(table.consultantId),
+  createdAtIdx: index("idx_file_search_sync_reports_created_at").on(table.createdAt),
+}));
+
+export type FileSearchSyncReport = typeof fileSearchSyncReports.$inferSelect;
+export type InsertFileSearchSyncReport = typeof fileSearchSyncReports.$inferInsert;
