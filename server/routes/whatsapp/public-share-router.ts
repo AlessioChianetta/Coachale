@@ -153,6 +153,31 @@ async function validateVisitorSession(
           }
         }
         
+        // Check for Silver token (type: "silver")
+        if (decoded.type === 'silver' && decoded.subscriptionId) {
+          console.log(`🥈 [VALIDATE-SESSION] Silver token detected, verifying subscription...`);
+          // Verify Silver subscription exists and is active
+          const [silverSubscription] = await db.select()
+            .from(schema.clientLevelSubscriptions)
+            .where(
+              and(
+                eq(schema.clientLevelSubscriptions.id, decoded.subscriptionId),
+                eq(schema.clientLevelSubscriptions.status, 'active')
+              )
+            )
+            .limit(1);
+          
+          console.log(`🥈 [VALIDATE-SESSION] Silver subscription found: ${!!silverSubscription}, status: ${silverSubscription?.status}`);
+          
+          if (silverSubscription) {
+            req.managerId = decoded.subscriptionId; // Use subscriptionId as managerId for compatibility
+            console.log(`✅ [SILVER AUTH] Valid silver token for share ${share.slug}, subscriptionId: ${decoded.subscriptionId}`);
+            return next();
+          } else {
+            console.log(`❌ [VALIDATE-SESSION] Silver subscription not found or inactive`);
+          }
+        }
+        
         // Check for manager role and matching shareId
         if (decoded.role === 'manager' && decoded.shareId === share.id && decoded.managerId) {
           // Valid manager token - attach managerId to request and proceed
