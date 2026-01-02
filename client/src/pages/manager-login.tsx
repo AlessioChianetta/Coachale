@@ -63,7 +63,8 @@ export default function ManagerLogin() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: ManagerLoginFormData) => {
-      const response = await fetch("/api/managers/login", {
+      // First try manager login
+      const managerResponse = await fetch("/api/managers/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -72,14 +73,47 @@ export default function ManagerLogin() {
           slug,
         }),
       });
-      if (!response.ok) {
-        const error = await response.json();
+      
+      if (managerResponse.ok) {
+        const result = await managerResponse.json();
+        return { ...result, userType: "manager" };
+      }
+      
+      // If manager login fails, try unified login (Bronze/Silver/Gold)
+      const unifiedResponse = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+      });
+      
+      if (!unifiedResponse.ok) {
+        const error = await unifiedResponse.json();
         throw new Error(error.message || "Credenziali non valide");
       }
-      return response.json();
+      
+      const result = await unifiedResponse.json();
+      return { ...result, userType: result.user?.tier || "gold" };
     },
     onSuccess: (data) => {
-      localStorage.setItem("manager_token", data.token);
+      if (data.userType === "manager") {
+        // Manager login - use manager_token
+        localStorage.setItem("manager_token", data.token);
+      } else {
+        // Bronze/Silver/Gold login - use unified token
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        
+        // Set Bronze-specific localStorage items for compatibility
+        if (data.user?.tier === "bronze" || data.user?.tier === "silver") {
+          localStorage.setItem("bronzeUserTier", data.user.tier === "bronze" ? "1" : "2");
+          localStorage.setItem("bronzeUserName", `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim());
+          localStorage.setItem("agentSlug", slug || "");
+        }
+      }
+      
       toast({
         title: "Accesso effettuato",
         description: "Benvenuto!",
