@@ -1,0 +1,62 @@
+✅ No pending leads to process at this time
+5:24:20 AM [express] GET /api/public/consultant/orbitale/pricing 200 in 814ms :: {"consultantName":"…
+[Stripe Checkout] Error: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'stripe' imported from /home/runner/workspace/server/routes/stripe-connect-router.ts
+    at packageResolve (node:internal/modules/esm/resolve:873:9)
+    at moduleResolve (node:internal/modules/esm/resolve:946:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at nextResolve (node:internal/modules/esm/hooks:864:28)
+    at resolveBase (file:///home/runner/workspace/node_modules/tsx/dist/esm/index.mjs?1767330564037:2:3744)
+    at resolveDirectory (file:///home/runner/workspace/node_modules/tsx/dist/esm/index.mjs?1767330564037:2:4243)
+    at resolveTsPaths (file:///home/runner/workspace/node_modules/tsx/dist/esm/index.mjs?1767330564037:2:4984)
+    at async resolve (file:///home/runner/workspace/node_modules/tsx/dist/esm/index.mjs?1767330564037:2:5355)
+    at async nextResolve (node:internal/modules/esm/hooks:864:22)
+    at async Hooks.resolve (node:internal/modules/esm/hooks:306:24) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+5:24:55 AM [express] POST /api/stripe/create-checkout 500 in 983ms :: {"error":"Failed to create che…
+
+[SHEETS POLLING] Starting polling cycle (ExecID: qxxij7)...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🪟 [INSTAGRAM CRON] Starting window cleanup...
+⏰ [FOLLOWUP-SCHEDULER] HOT/WARM evaluation cycle triggered
+🔍 [FOLLOWUP-SCHEDULER] Starting HOT/WARM follow-up evaluation cycle...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-02T05:25:00.030Z
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Processing job f33cfa03-2d1f-4b28-871b-84359e998576 (test)
+[SHEETS POLLING] Date filter applied: 165 -> 8 rows (from 2025-12-30)
+[SHEETS POLLING] Processing 8 rows for job f33cfa03-2d1f-4b28-871b-84359e998576 (checking database for each)
+[SHEETS POLLING] Using campaign "Campagna Euro Space Massimo" for import
+⚠️  [CALENDAR SYNC] No consultants with Google Calendar connected
+🪟 [INSTAGRAM CRON] No expired windows to close
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+⏸️ [FOLLOWUP-SCHEDULER] Skipping 2 consultants with automations disabled
+🧠 [FOLLOWUP-SCHEDULER] AI-ONLY mode: Found 3 consultants with active WhatsApp configs and automations enabled
+✅ [FILTER-CHECK] Excluding closed states: 'closed_won', 'closed_lost' from candidate search
+🌡️ [FOLLOWUP-SCHEDULER] Filtering by temperature: hot, warm
+📊 [FOLLOWUP-SCHEDULER] Found 0 HOT/WARM candidate conversations
+💤 [FOLLOWUP-SCHEDULER] No HOT/WARM conversations to evaluate
+[SHEETS POLLING] Completed import for job f33cfa03-2d1f-4b28-871b-84359e998576: 0 imported, 8 duplicates, 0 skipped, 0 errors
+[SHEETS POLLING] Polling cycle completed (ExecID: qxxij7)
+[Stripe Checkout] Error: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'stripe' imported from /home/runner/workspace/server/routes/stripe-connect-router.ts
+    at packageResolve (node:internal/modules/esm/resolve:873:9)
+    at moduleResolve (node:internal/modules/esm/resolve:946:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at nextResolve (node:internal/modules/esm/hooks:864:28)
+    at resolveBase (file:///home/runner/workspace/node_modules/tsx/dist/esm/index.mjs?1767330564037:2:3744)
+    at resolveDirectory (file:///home/runner/workspace/node_modules/tsx/dist/esm/index.mjs?1767330564037:2:4243)
+    at resolveTsPaths (file:///home/runner/workspace/node_modules/tsx/dist/esm/index.mjs?1767330564037:2:4984)
+    at async resolve (file:///home/runner/workspace/node_modules/tsx/dist/esm/index.mjs?1767330564037:2:5355)
+    at async nextResolve (node:internal/modules/esm/hooks:864:22)
+    at async Hooks.resolve (node:internal/modules/esm/hooks:306:24) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+5:25:15 AM [express] POST /api/stripe/create-checkout 500 in 371ms :: {"error":"Failed to create che…
