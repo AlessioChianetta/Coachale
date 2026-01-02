@@ -1023,7 +1023,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         documents: {
           exerciseResponses: clientDocuments.filter(d => d.sourceType === 'exercise'),
           consultationNotes: clientDocuments.filter(d => d.sourceType === 'consultation'),
-          knowledgeBase: clientDocuments.filter(d => d.sourceType === 'knowledge_base'),
+          knowledgeBase: clientDocuments.filter(d => d.sourceType === 'knowledge_base' || d.sourceType === 'client_knowledge'),
           goals: clientDocuments.filter(d => d.sourceType === 'goal'),
           tasks: clientDocuments.filter(d => d.sourceType === 'task'),
           dailyReflections: clientDocuments.filter(d => d.sourceType === 'daily_reflection'),
@@ -1038,7 +1038,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         totals: {
           exerciseResponses: clientDocuments.filter(d => d.sourceType === 'exercise').length,
           consultationNotes: clientDocuments.filter(d => d.sourceType === 'consultation').length,
-          knowledgeBase: clientDocuments.filter(d => d.sourceType === 'knowledge_base').length,
+          knowledgeBase: clientDocuments.filter(d => d.sourceType === 'knowledge_base' || d.sourceType === 'client_knowledge').length,
           goals: clientDocuments.filter(d => d.sourceType === 'goal').length,
           tasks: clientDocuments.filter(d => d.sourceType === 'task').length,
           dailyReflections: clientDocuments.filter(d => d.sourceType === 'daily_reflection').length,
