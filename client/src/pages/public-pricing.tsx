@@ -424,6 +424,12 @@ export default function PublicPricing() {
       errors.lastName = "Cognome obbligatorio";
     }
     
+    if (!registrationForm.phone) {
+      errors.phone = "Telefono obbligatorio";
+    } else if (registrationForm.phone.length < 6) {
+      errors.phone = "Numero di telefono non valido";
+    }
+    
     if (!registrationForm.password) {
       errors.password = "Password obbligatoria";
     } else if (registrationForm.password.length < 8) {
@@ -1454,14 +1460,18 @@ export default function PublicPricing() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefono (opzionale)</Label>
+              <Label htmlFor="phone">Telefono *</Label>
               <Input
                 id="phone"
                 type="tel"
                 placeholder="+39 333 1234567"
                 value={registrationForm.phone}
                 onChange={(e) => setRegistrationForm(prev => ({ ...prev, phone: e.target.value }))}
+                className={formErrors.phone ? "border-red-500" : ""}
               />
+              {formErrors.phone && (
+                <p className="text-xs text-red-500">{formErrors.phone}</p>
+              )}
             </div>
             
             <div className="grid grid-cols-2 gap-3">

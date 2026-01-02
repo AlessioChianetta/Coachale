@@ -196,8 +196,8 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required fields: consultantSlug, level" });
     }
     
-    if (!clientEmail || !firstName || !lastName || !password) {
-      return res.status(400).json({ error: "Missing required registration fields: email, firstName, lastName, password" });
+    if (!clientEmail || !firstName || !lastName || !password || !phone) {
+      return res.status(400).json({ error: "Missing required registration fields: email, firstName, lastName, password, phone" });
     }
     
     if (level !== "2" && level !== "3") {
