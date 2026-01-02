@@ -473,18 +473,7 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           passwordHash: hashedPassword,
         }).returning();
         
-        // Send welcome email with credentials for Silver users (Level 2)
-        if (level === "2" && tempPassword) {
-          sendWelcomeEmail({
-            consultantId,
-            recipientEmail: clientEmail,
-            recipientName: clientName || clientEmail.split('@')[0],
-            password: tempPassword,
-            tier: "silver",
-          }).catch(err => {
-            console.error("[Stripe Webhook] Failed to send welcome email:", err);
-          });
-        }
+        // Welcome email is now sent after account creation (see below)
         
         if (level === "2") {
           await db.update(consultantLicenses)
@@ -560,41 +549,16 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             
             const loginUrl = `${baseUrl}/manager-chat`;
             
-            // Different email content based on whether user provided their own password
-            const emailHtml = userProvidedPassword 
-              ? `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #0891b2;">Benvenuto nel tuo Assistente AI Premium!</h2>
-                <p>Ciao <strong>${displayFirstName}</strong>,</p>
-                <p>Il tuo abbonamento è stato attivato con successo. Ora hai accesso all'assistente AI con funzionalità avanzate.</p>
-                <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <p style="margin: 0 0 10px 0;"><strong>Il tuo account:</strong></p>
-                  <p style="margin: 5px 0;">Email: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${clientEmail}</code></p>
-                  <p style="margin: 5px 0; color: #64748b;">Usa la password che hai scelto durante la registrazione.</p>
-                </div>
-                <p><a href="${loginUrl}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Accedi Ora</a></p>
-              </div>
-            `
-              : `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #0891b2;">Benvenuto nel tuo Assistente AI Premium!</h2>
-                <p>Ciao <strong>${displayFirstName}</strong>,</p>
-                <p>Il tuo abbonamento è stato attivato con successo. Ora hai accesso all'assistente AI con funzionalità avanzate.</p>
-                <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <p style="margin: 0 0 10px 0;"><strong>Le tue credenziali di accesso:</strong></p>
-                  <p style="margin: 5px 0;">Email: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${clientEmail}</code></p>
-                  <p style="margin: 5px 0;">Password: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${tempPassword}</code></p>
-                </div>
-                <p><a href="${loginUrl}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Accedi Ora</a></p>
-                <p style="color: #64748b; font-size: 14px; margin-top: 20px;">Ti consigliamo di cambiare la password al primo accesso.</p>
-              </div>
-            `;
-            
-            await sendEmail({
-              to: clientEmail,
-              subject: "Benvenuto - Credenziali di Accesso Assistente AI",
-              html: emailHtml,
+            // Send Silver welcome email using centralized service
+            sendWelcomeEmail({
               consultantId,
+              recipientEmail: clientEmail,
+              recipientName: fullDisplayName,
+              password: tempPassword || undefined,
+              tier: "silver",
+              loginUrl,
+            }).catch(err => {
+              console.error("[Stripe Webhook] Failed to send Silver welcome email:", err);
             });
             
           } else if (level === "3") {
@@ -624,41 +588,16 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             
             const loginUrl = `${baseUrl}/login`;
             
-            // Different email content based on whether user provided their own password
-            const emailHtml = userProvidedPassword
-              ? `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #0891b2;">Benvenuto nella Piattaforma!</h2>
-                <p>Ciao <strong>${displayFirstName}</strong>,</p>
-                <p>Il tuo abbonamento premium è stato attivato con successo. Ora hai accesso completo a tutte le funzionalità della piattaforma.</p>
-                <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <p style="margin: 0 0 10px 0;"><strong>Il tuo account:</strong></p>
-                  <p style="margin: 5px 0;">Email: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${clientEmail}</code></p>
-                  <p style="margin: 5px 0; color: #64748b;">Usa la password che hai scelto durante la registrazione.</p>
-                </div>
-                <p><a href="${loginUrl}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Accedi Ora</a></p>
-              </div>
-            `
-              : `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #0891b2;">Benvenuto nella Piattaforma!</h2>
-                <p>Ciao <strong>${displayFirstName}</strong>,</p>
-                <p>Il tuo abbonamento premium è stato attivato con successo. Ora hai accesso completo a tutte le funzionalità della piattaforma.</p>
-                <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <p style="margin: 0 0 10px 0;"><strong>Le tue credenziali di accesso:</strong></p>
-                  <p style="margin: 5px 0;">Email: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${clientEmail}</code></p>
-                  <p style="margin: 5px 0;">Password: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${tempPassword}</code></p>
-                </div>
-                <p><a href="${loginUrl}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Accedi Ora</a></p>
-                <p style="color: #64748b; font-size: 14px; margin-top: 20px;">Ti consigliamo di cambiare la password al primo accesso.</p>
-              </div>
-            `;
-            
-            await sendEmail({
-              to: clientEmail,
-              subject: "Benvenuto - Credenziali di Accesso Piattaforma",
-              html: emailHtml,
+            // Send Gold welcome email using centralized service
+            sendWelcomeEmail({
               consultantId,
+              recipientEmail: clientEmail,
+              recipientName: fullDisplayName,
+              password: tempPassword || undefined,
+              tier: "gold",
+              loginUrl,
+            }).catch(err => {
+              console.error("[Stripe Webhook] Failed to send Gold welcome email:", err);
             });
           }
         } catch (accountError: any) {
