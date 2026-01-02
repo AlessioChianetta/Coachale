@@ -104,49 +104,63 @@ async function validateVisitorSession(
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
-      // Try both SESSION_SECRET and JWT_SECRET for compatibility
-      const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
-      console.log(`🔐 [VALIDATE-SESSION] Session secret available: ${!!sessionSecret}`);
+      // Try JWT_SECRET first (used by unified login), then SESSION_SECRET (used by manager login)
+      const jwtSecret = process.env.JWT_SECRET;
+      const sessionSecret = process.env.SESSION_SECRET;
+      console.log(`🔐 [VALIDATE-SESSION] JWT_SECRET available: ${!!jwtSecret}, SESSION_SECRET available: ${!!sessionSecret}`);
       
-      if (sessionSecret) {
+      // Try to decode with JWT_SECRET first
+      let decoded: any = null;
+      if (jwtSecret) {
         try {
-          const decoded = jwt.verify(token, sessionSecret) as any;
-          console.log(`📜 [VALIDATE-SESSION] Token decoded:`, { type: decoded.type, role: decoded.role, bronzeUserId: decoded.bronzeUserId, managerId: decoded.managerId });
-          
-          // Check for Bronze token (type: "bronze")
-          if (decoded.type === 'bronze' && decoded.bronzeUserId) {
-            console.log(`🔶 [VALIDATE-SESSION] Bronze token detected, verifying user...`);
-            // Verify Bronze user exists and is active
-            const [bronzeUser] = await db.select()
-              .from(schema.bronzeUsers)
-              .where(eq(schema.bronzeUsers.id, decoded.bronzeUserId))
-              .limit(1);
-            
-            console.log(`🔶 [VALIDATE-SESSION] Bronze user found: ${!!bronzeUser}, isActive: ${bronzeUser?.isActive}`);
-            
-            if (bronzeUser && bronzeUser.isActive) {
-              req.bronzeUserId = decoded.bronzeUserId;
-              req.managerId = decoded.bronzeUserId; // Use bronzeUserId as managerId for compatibility
-              console.log(`✅ [BRONZE AUTH] Valid bronze token for share ${share.slug}, bronzeUserId: ${decoded.bronzeUserId}`);
-              return next();
-            } else {
-              console.log(`❌ [VALIDATE-SESSION] Bronze user not found or inactive`);
-            }
-          }
-          
-          // Check for manager role and matching shareId
-          if (decoded.role === 'manager' && decoded.shareId === share.id && decoded.managerId) {
-            // Valid manager token - attach managerId to request and proceed
-            req.managerId = decoded.managerId;
-            console.log(`✅ [MANAGER AUTH] Valid manager token for share ${share.slug}, managerId: ${decoded.managerId}`);
-            return next();
-          }
-          
-          console.log(`⚠️ [VALIDATE-SESSION] Token valid but no matching auth type. type=${decoded.type}, role=${decoded.role}, shareId=${decoded.shareId}, expectedShareId=${share.id}`);
-        } catch (jwtError) {
-          // Invalid JWT - fall through to other auth methods
-          console.log(`⚠️ [AUTH] JWT validation failed: ${(jwtError as Error).message}`);
+          decoded = jwt.verify(token, jwtSecret) as any;
+          console.log(`📜 [VALIDATE-SESSION] Token decoded with JWT_SECRET:`, { type: decoded.type, role: decoded.role, bronzeUserId: decoded.bronzeUserId, managerId: decoded.managerId });
+        } catch (e) {
+          console.log(`⚠️ [VALIDATE-SESSION] JWT_SECRET verification failed: ${(e as Error).message}`);
         }
+      }
+      
+      // If JWT_SECRET failed, try SESSION_SECRET
+      if (!decoded && sessionSecret) {
+        try {
+          decoded = jwt.verify(token, sessionSecret) as any;
+          console.log(`📜 [VALIDATE-SESSION] Token decoded with SESSION_SECRET:`, { type: decoded.type, role: decoded.role, bronzeUserId: decoded.bronzeUserId, managerId: decoded.managerId });
+        } catch (e) {
+          console.log(`⚠️ [VALIDATE-SESSION] SESSION_SECRET verification failed: ${(e as Error).message}`);
+        }
+      }
+      
+      if (decoded) {
+        // Check for Bronze token (type: "bronze")
+        if (decoded.type === 'bronze' && decoded.bronzeUserId) {
+          console.log(`🔶 [VALIDATE-SESSION] Bronze token detected, verifying user...`);
+          // Verify Bronze user exists and is active
+          const [bronzeUser] = await db.select()
+            .from(schema.bronzeUsers)
+            .where(eq(schema.bronzeUsers.id, decoded.bronzeUserId))
+            .limit(1);
+          
+          console.log(`🔶 [VALIDATE-SESSION] Bronze user found: ${!!bronzeUser}, isActive: ${bronzeUser?.isActive}`);
+          
+          if (bronzeUser && bronzeUser.isActive) {
+            req.bronzeUserId = decoded.bronzeUserId;
+            req.managerId = decoded.bronzeUserId; // Use bronzeUserId as managerId for compatibility
+            console.log(`✅ [BRONZE AUTH] Valid bronze token for share ${share.slug}, bronzeUserId: ${decoded.bronzeUserId}`);
+            return next();
+          } else {
+            console.log(`❌ [VALIDATE-SESSION] Bronze user not found or inactive`);
+          }
+        }
+        
+        // Check for manager role and matching shareId
+        if (decoded.role === 'manager' && decoded.shareId === share.id && decoded.managerId) {
+          // Valid manager token - attach managerId to request and proceed
+          req.managerId = decoded.managerId;
+          console.log(`✅ [MANAGER AUTH] Valid manager token for share ${share.slug}, managerId: ${decoded.managerId}`);
+          return next();
+        }
+        
+        console.log(`⚠️ [VALIDATE-SESSION] Token valid but no matching auth type. type=${decoded.type}, role=${decoded.role}, shareId=${decoded.shareId}, expectedShareId=${share.id}`);
       }
     }
     
