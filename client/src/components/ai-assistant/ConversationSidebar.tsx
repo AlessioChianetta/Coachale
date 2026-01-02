@@ -146,25 +146,54 @@ export function ConversationSidebar({
       "h-full border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col transition-all duration-300 overflow-hidden",
       sidebarMinimized ? "w-16" : "w-72"
     )}>
-      <div className="p-3 space-y-2 flex-shrink-0 overflow-hidden">
-        <div className="flex items-center gap-2">
+      <div className="p-2 space-y-1.5 flex-shrink-0 overflow-hidden">
+        <div className="flex items-center gap-1.5">
           {!sidebarMinimized ? (
             <>
               <Button
                 onClick={onNewConversation}
-                className="flex-1 h-9 bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:from-cyan-600 hover:to-teal-600 border-0 shadow-sm hover:shadow-md transition-all duration-200"
+                size="sm"
+                className="flex-1 h-7 text-xs bg-cyan-500 hover:bg-cyan-600 text-white border-0 rounded-md shadow-sm"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="font-medium text-sm">Nuova chat</span>
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                Nuova
+              </Button>
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Cerca..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-7 pl-7 pr-2 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-md"
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setFiltersExpanded(!filtersExpanded)}
+                className={cn(
+                  "h-7 w-7 rounded-md",
+                  filtersExpanded || activeFiltersCount > 0
+                    ? "text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/30"
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                )}
+              >
+                <Filter className="h-3.5 w-3.5" />
+                {activeFiltersCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-cyan-500 text-white text-[9px] font-bold flex items-center justify-center">
+                    {activeFiltersCount}
+                  </span>
+                )}
               </Button>
               {!isMobile && (
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={onToggleMinimize}
-                  className="h-9 w-9 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
+                  className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-md"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
               )}
             </>
@@ -172,7 +201,7 @@ export function ConversationSidebar({
             <Button
               onClick={onNewConversation}
               size="icon"
-              className="h-9 w-9 mx-auto bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:from-cyan-600 hover:to-teal-600 border-0"
+              className="h-8 w-8 mx-auto bg-cyan-500 hover:bg-cyan-600 text-white border-0 rounded-md"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -180,110 +209,78 @@ export function ConversationSidebar({
         </div>
 
         {!sidebarMinimized && (
-          <>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input
-                type="text"
-                placeholder="Cerca chat..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 pl-8 pr-3 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
-              />
-            </div>
+          <AnimatePresence>
+            {filtersExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-1 pb-0.5 space-y-1.5">
+                  <div className="flex flex-wrap gap-1">
+                    {filterOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setActiveFilter(option.value)}
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors",
+                          activeFilter === option.value
+                            ? "bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        )}
+                      >
+                        {option.icon}
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
 
-            <button
-              onClick={() => setFiltersExpanded(!filtersExpanded)}
-              className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-            >
-              <div className="flex items-center gap-1.5">
-                <Filter className="h-3 w-3" />
-                <span>Filtri</span>
-                {activeFiltersCount > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 text-[10px] font-semibold">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </div>
-              <ChevronDown className={cn(
-                "h-3 w-3 transition-transform duration-200",
-                filtersExpanded && "rotate-180"
-              )} />
-            </button>
-
-            <AnimatePresence>
-              {filtersExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div className="space-y-2 pb-1">
-                    <div className="flex flex-wrap gap-1">
-                      {filterOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => setActiveFilter(option.value)}
-                          className={cn(
-                            "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-150",
-                            activeFilter === option.value
-                              ? "bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300"
-                              : "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-700/60"
-                          )}
-                        >
-                          {option.icon}
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {availableAgents.length > 0 && onAgentFilterChange && (
-                      <Select value={agentFilter} onValueChange={onAgentFilterChange}>
-                        <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  {availableAgents.length > 0 && onAgentFilterChange && (
+                    <Select value={agentFilter} onValueChange={onAgentFilterChange}>
+                      <SelectTrigger className="h-7 text-[11px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-md">
+                        <div className="flex items-center gap-1.5">
+                          <Bot className="h-3 w-3 text-slate-400" />
+                          <SelectValue placeholder="Tutti gli agenti" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
                           <div className="flex items-center gap-1.5">
-                            <Bot className="h-3 w-3 text-slate-400" />
-                            <SelectValue placeholder="Tutti gli agenti" />
+                            <Bot className="h-3 w-3" />
+                            Tutti gli agenti
                           </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">
+                        </SelectItem>
+                        <SelectItem value="base">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="h-3 w-3" />
+                            Assistente Base
+                          </div>
+                        </SelectItem>
+                        {availableAgents.map((agent) => (
+                          <SelectItem key={agent.id} value={agent.id}>
                             <div className="flex items-center gap-1.5">
                               <Bot className="h-3 w-3" />
-                              Tutti gli agenti
+                              <span className="truncate max-w-[140px]">{agent.name}</span>
                             </div>
                           </SelectItem>
-                          <SelectItem value="base">
-                            <div className="flex items-center gap-1.5">
-                              <Sparkles className="h-3 w-3" />
-                              Assistente Base
-                            </div>
-                          </SelectItem>
-                          {availableAgents.map((agent) => (
-                            <SelectItem key={agent.id} value={agent.id}>
-                              <div className="flex items-center gap-1.5">
-                                <Bot className="h-3 w-3" />
-                                <span className="truncate max-w-[140px]">{agent.name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
 
         {!sidebarMinimized && variant === "consultant" && onSettingsClick && (
           <button
             onClick={onSettingsClick}
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-md transition-colors"
+            className="w-full flex items-center gap-1.5 px-2 py-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
           >
-            <Settings className="h-3.5 w-3.5" />
+            <Settings className="h-3 w-3" />
             <span>Impostazioni</span>
           </button>
         )}
