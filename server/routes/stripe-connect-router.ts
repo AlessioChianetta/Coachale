@@ -619,6 +619,72 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as any;
         console.log(`[Stripe Webhook] Payment failed: ${paymentIntent.id}`);
+        
+        // Try to find the subscription and notify customer + consultant
+        try {
+          const customerId = paymentIntent.customer;
+          if (customerId) {
+            // Find the subscription associated with this customer
+            const [subscription] = await db.select()
+              .from(clientLevelSubscriptions)
+              .where(eq(clientLevelSubscriptions.stripeCustomerId, customerId))
+              .limit(1);
+            
+            if (subscription) {
+              const clientEmail = subscription.clientEmail;
+              const consultantId = subscription.consultantId;
+              const level = subscription.level;
+              
+              // Get consultant email
+              const [consultant] = await db.select()
+                .from(users)
+                .where(eq(users.id, consultantId))
+                .limit(1);
+              
+              const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+                ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+                : "http://localhost:5000";
+              
+              // Notify client about failed payment
+              if (clientEmail) {
+                await sendEmail({
+                  to: clientEmail,
+                  subject: "Pagamento non riuscito - Azione richiesta",
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <h2 style="color: #e53e3e;">Pagamento non riuscito</h2>
+                      <p>Gentile Cliente,</p>
+                      <p>Il pagamento per il tuo abbonamento ${level === 2 ? "Silver" : "Gold"} non è andato a buon fine.</p>
+                      <p>Per continuare ad utilizzare i servizi, ti preghiamo di aggiornare il metodo di pagamento.</p>
+                      <p>Se hai bisogno di assistenza, contatta il tuo consulente.</p>
+                      <br/>
+                      <p>Cordiali saluti</p>
+                    </div>
+                  `,
+                }, consultantId).catch(e => console.error("[Stripe Webhook] Failed to send payment failed email to client:", e));
+                console.log(`[Stripe Webhook] Payment failed email sent to ${clientEmail}`);
+              }
+              
+              // Notify consultant
+              if (consultant?.email) {
+                await sendEmail({
+                  to: consultant.email,
+                  subject: `Pagamento fallito - Cliente ${clientEmail}`,
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <h2 style="color: #e53e3e;">Notifica pagamento fallito</h2>
+                      <p>Il pagamento per il cliente <strong>${clientEmail}</strong> (${level === 2 ? "Silver" : "Gold"}) non è andato a buon fine.</p>
+                      <p>Il sistema riproverà automaticamente il pagamento nei prossimi giorni.</p>
+                      <p>Se il problema persiste, il cliente potrebbe perdere l'accesso ai servizi.</p>
+                    </div>
+                  `,
+                }, consultantId).catch(e => console.error("[Stripe Webhook] Failed to send payment failed email to consultant:", e));
+              }
+            }
+          }
+        } catch (notifyError: any) {
+          console.error("[Stripe Webhook] Failed to process payment failed notification:", notifyError.message);
+        }
         break;
       }
       
@@ -626,6 +692,12 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
         const subscription = event.data.object as any;
         const subscriptionId = subscription.id;
         const status = subscription.status;
+        
+        // Get existing subscription to check if status changed
+        const [existingSub] = await db.select()
+          .from(clientLevelSubscriptions)
+          .where(eq(clientLevelSubscriptions.stripeSubscriptionId, subscriptionId))
+          .limit(1);
         
         let dbStatus: "active" | "canceled" | "past_due" | "pending" = "active";
         if (status === "canceled" || status === "unpaid") {
@@ -643,6 +715,53 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           })
           .where(eq(clientLevelSubscriptions.stripeSubscriptionId, subscriptionId));
         
+        // Send email notification if status changed to past_due (first time warning)
+        if (existingSub && existingSub.status !== "past_due" && dbStatus === "past_due") {
+          const { consultantId, level, clientEmail } = existingSub;
+          
+          // Get consultant for notification
+          const [consultant] = await db.select()
+            .from(users)
+            .where(eq(users.id, consultantId))
+            .limit(1);
+          
+          // Warn client about past_due status
+          if (clientEmail) {
+            await sendEmail({
+              to: clientEmail,
+              subject: "Avviso: Pagamento in sospeso - Azione richiesta",
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #dd6b20;">Pagamento in sospeso</h2>
+                  <p>Gentile Cliente,</p>
+                  <p>Il pagamento per il tuo abbonamento ${level === 2 ? "Silver" : "Gold"} non è andato a buon fine.</p>
+                  <p><strong>L'accesso ai servizi è temporaneamente sospeso</strong> fino al completamento del pagamento.</p>
+                  <p>Il sistema riproverà automaticamente nei prossimi giorni. Se il problema persiste, ti preghiamo di aggiornare il metodo di pagamento o contattare il tuo consulente.</p>
+                  <br/>
+                  <p>Cordiali saluti</p>
+                </div>
+              `,
+            }, consultantId).catch(e => console.error("[Stripe Webhook] Failed to send past_due email to client:", e));
+            console.log(`[Stripe Webhook] Past due warning email sent to ${clientEmail}`);
+          }
+          
+          // Notify consultant
+          if (consultant?.email) {
+            await sendEmail({
+              to: consultant.email,
+              subject: `Abbonamento in sospeso - Cliente ${clientEmail}`,
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #dd6b20;">Notifica pagamento in sospeso</h2>
+                  <p>L'abbonamento del cliente <strong>${clientEmail}</strong> (${level === 2 ? "Silver" : "Gold"}) è in stato <strong>past_due</strong>.</p>
+                  <p>Il cliente non può accedere ai servizi premium fino a quando il pagamento non sarà completato.</p>
+                  <p>Il sistema riproverà automaticamente il pagamento.</p>
+                </div>
+              `,
+            }, consultantId).catch(e => console.error("[Stripe Webhook] Failed to send past_due email to consultant:", e));
+          }
+        }
+        
         console.log(`[Stripe Webhook] Subscription ${subscriptionId} updated to status: ${dbStatus}`);
         break;
       }
@@ -651,6 +770,12 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
         const subscription = event.data.object as any;
         const subscriptionId = subscription.id;
         
+        // Get subscription details before marking as cancelled
+        const [existingSub] = await db.select()
+          .from(clientLevelSubscriptions)
+          .where(eq(clientLevelSubscriptions.stripeSubscriptionId, subscriptionId))
+          .limit(1);
+        
         await db.update(clientLevelSubscriptions)
           .set({
             status: "canceled",
@@ -658,6 +783,69 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             updatedAt: new Date(),
           })
           .where(eq(clientLevelSubscriptions.stripeSubscriptionId, subscriptionId));
+        
+        // Decrement license count and send notification emails
+        if (existingSub) {
+          const { consultantId, level, clientEmail } = existingSub;
+          
+          // Decrement the appropriate license counter
+          if (level === 2) {
+            await db.update(consultantLicenses)
+              .set({
+                level2Used: sql`GREATEST(0, ${consultantLicenses.level2Used} - 1)`,
+              })
+              .where(eq(consultantLicenses.consultantId, consultantId));
+            console.log(`[Stripe Webhook] Decremented level2Used for consultant ${consultantId}`);
+          } else if (level === 3) {
+            await db.update(consultantLicenses)
+              .set({
+                level3Used: sql`GREATEST(0, ${consultantLicenses.level3Used} - 1)`,
+              })
+              .where(eq(consultantLicenses.consultantId, consultantId));
+            console.log(`[Stripe Webhook] Decremented level3Used for consultant ${consultantId}`);
+          }
+          
+          // Get consultant for notification
+          const [consultant] = await db.select()
+            .from(users)
+            .where(eq(users.id, consultantId))
+            .limit(1);
+          
+          // Send cancellation email to client
+          if (clientEmail) {
+            await sendEmail({
+              to: clientEmail,
+              subject: "Abbonamento cancellato",
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #4a5568;">Abbonamento cancellato</h2>
+                  <p>Gentile Cliente,</p>
+                  <p>Il tuo abbonamento ${level === 2 ? "Silver" : "Gold"} è stato cancellato.</p>
+                  <p>L'accesso ai servizi premium non sarà più disponibile.</p>
+                  <p>Se desideri riattivare l'abbonamento, contatta il tuo consulente.</p>
+                  <br/>
+                  <p>Cordiali saluti</p>
+                </div>
+              `,
+            }, consultantId).catch(e => console.error("[Stripe Webhook] Failed to send cancellation email to client:", e));
+            console.log(`[Stripe Webhook] Cancellation email sent to ${clientEmail}`);
+          }
+          
+          // Notify consultant
+          if (consultant?.email) {
+            await sendEmail({
+              to: consultant.email,
+              subject: `Abbonamento cancellato - Cliente ${clientEmail}`,
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #4a5568;">Notifica cancellazione abbonamento</h2>
+                  <p>L'abbonamento del cliente <strong>${clientEmail}</strong> (${level === 2 ? "Silver" : "Gold"}) è stato cancellato.</p>
+                  <p>La licenza è stata automaticamente liberata e può essere riutilizzata.</p>
+                </div>
+              `,
+            }, consultantId).catch(e => console.error("[Stripe Webhook] Failed to send cancellation email to consultant:", e));
+          }
+        }
         
         console.log(`[Stripe Webhook] Subscription ${subscriptionId} cancelled`);
         break;

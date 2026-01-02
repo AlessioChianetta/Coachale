@@ -1735,10 +1735,19 @@ export class FileSearchSyncService {
     console.log(`🔐 [FileSync] Syncing CLIENT PRIVATE data...`);
     console.log(`${'─'.repeat(70)}`);
 
+    // Get all active clients AND sub-consultants (consultants who report to this consultant)
+    // Sub-consultants are users with role='consultant' but have a consultant_id set
     const clients = await db
-      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName, role: users.role })
       .from(users)
-      .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
+      .where(and(
+        eq(users.consultantId, consultantId),
+        eq(users.isActive, true),
+        or(
+          eq(users.role, 'client'),
+          eq(users.role, 'consultant') // Include sub-consultants
+        )
+      ));
 
     let clientsProcessed = 0;
     let totalExerciseResponses = { total: 0, synced: 0, failed: 0, skipped: 0 };
@@ -3562,9 +3571,16 @@ export class FileSearchSyncService {
     const phase4Start = Date.now();
     console.log(`📊 [Audit] Phase 4: Bulk loading client data...`);
     
-    // Get all clients
-    const clientUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email })
-      .from(users).where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
+    // Get all active clients AND sub-consultants (consultants who report to this consultant)
+    const clientUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email, role: users.role })
+      .from(users).where(and(
+        eq(users.consultantId, consultantId),
+        eq(users.isActive, true),
+        or(
+          eq(users.role, 'client'),
+          eq(users.role, 'consultant') // Include sub-consultants
+        )
+      ));
     const allClientIds = clientUsers.map(c => c.id);
     
     if (allClientIds.length === 0) {

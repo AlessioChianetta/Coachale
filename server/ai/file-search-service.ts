@@ -430,7 +430,27 @@ export class FileSearchService {
         return { success: false, error: 'Upload operation timed out' };
       }
 
-      const googleFileId = (operation as any).result?.name || `file-${Date.now()}`;
+      // Extract Google File ID from operation result
+      const opResult = (operation as any).result;
+      const opMetadata = (operation as any).metadata;
+      
+      let googleFileId = opResult?.name || opResult?.file?.name || opMetadata?.file?.name;
+      
+      if (!googleFileId && typeof opResult === 'string') {
+        googleFileId = opResult;
+      }
+      
+      if (!googleFileId) {
+        const opName = (operation as any).name;
+        if (opName && typeof opName === 'string') {
+          googleFileId = opName.includes('/') ? opName.split('/').pop() : opName;
+        }
+      }
+      
+      if (!googleFileId) {
+        googleFileId = `file-${Date.now()}`;
+        console.error(`❌ [FileSearch] CRITICAL: Using timestamp fallback for googleFileId.`);
+      }
 
       const [dbDoc] = await db.insert(fileSearchDocuments).values({
         storeId: params.storeId,
@@ -641,7 +661,42 @@ export class FileSearchService {
         return { success: false, error: 'Upload operation timed out' };
       }
 
-      const googleFileId = (operation as any).result?.name || `file-${Date.now()}`;
+      // Extract Google File ID from operation result
+      // The ID can be in different locations depending on the API response structure
+      const opResult = (operation as any).result;
+      const opMetadata = (operation as any).metadata;
+      
+      // Try multiple possible locations for the file ID
+      let googleFileId = opResult?.name || opResult?.file?.name || opMetadata?.file?.name;
+      
+      // If still no ID, check if the result itself is a string (some APIs return the name directly)
+      if (!googleFileId && typeof opResult === 'string') {
+        googleFileId = opResult;
+      }
+      
+      // Log the full operation structure for debugging if we couldn't find an ID
+      if (!googleFileId) {
+        console.warn(`⚠️ [FileSearch] Could not extract googleFileId. Operation structure:`, JSON.stringify({
+          done: operation.done,
+          name: (operation as any).name,
+          resultKeys: opResult ? Object.keys(opResult) : 'null',
+          result: opResult,
+          metadataKeys: opMetadata ? Object.keys(opMetadata) : 'null',
+        }, null, 2));
+        
+        // Use operation name as fallback (contains the actual Google resource path)
+        const opName = (operation as any).name;
+        if (opName && typeof opName === 'string') {
+          // Extract document ID from operation name like "operations/abc123" or use full name
+          googleFileId = opName.includes('/') ? opName.split('/').pop() : opName;
+        }
+      }
+      
+      // Final fallback - but log it prominently
+      if (!googleFileId) {
+        googleFileId = `file-${Date.now()}`;
+        console.error(`❌ [FileSearch] CRITICAL: Using timestamp fallback for googleFileId. This will cause 404 errors on future updates.`);
+      }
 
       const [dbDoc] = await db.insert(fileSearchDocuments).values({
         storeId: params.storeId,

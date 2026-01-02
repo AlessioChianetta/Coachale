@@ -1,0 +1,28 @@
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Document not found on Google (404), cleaning up DB only
+🗑️ [FileSearch] Document deleted: ee37b8d2-c872-4535-9374-57e400d97e3a
+🔍 [FileSync] Scraping Google Doc for exercise: Flusso di Cassa
+🧹 Cleaned: 20586 → 20265 chars (1.6% reduction)
+✅ [FileSync] Scraped 20586 chars from Google Doc
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
+📤 [FileSearch] Uploading "[EX] Flusso di Cassa" (hash: 86d255822e0c95bb) to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+✅ [FileSearch] Document uploaded: file-1767334041020 (hash: 86d255822e0c95bb)
+✅ [FileSync] Exercise UPDATED: Flusso di Cassa
+🔄 [FileSync] Exercise "Cameriere Aumentato" outdated - re-syncing...
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Document not found on Google (404), cleaning up DB only
+🗑️ [FileSearch] Document deleted: e67cf3fd-ea6e-4d6b-b62f-b21cbfc89d4e
+🔍 [FileSync] Scraping Google Doc for exercise: Cameriere Aumentato
+🧹 Cleaned: 7065 → 6959 chars (1.5% reduction)
+✅ [FileSync] Scraped 7065 chars from Google Doc
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
+📤 [FileSearch] Uploading "[EX] Cameriere Aumentato" (hash: 27f10851866eb2d3) to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+✅ [FileSearch] Document uploaded: file-1767334047197 (hash: 27f10851866eb2d3)
+✅ [FileSync] Exercise UPDATED: Cameriere Aumentato
+🔄 [FileSync] Exercise "3. Creazione del Messaggio di Marketing" outdated - re-syncing...
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Document not found on Google (404), cleaning up DB only
+🗑️ [FileSearch] Document deleted: e46515bd-329a-433a-accb-9dd74511378f
+🔍 [FileSync] Scraping Google Doc for exercise: 3. Creazione del Messaggio di Marketing
