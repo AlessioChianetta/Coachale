@@ -1,0 +1,44 @@
+consultant-whatsapp.tsx:2800 Uncaught TypeError: subscriptions.map is not a function
+    at ConsultantWhatsAppPage (consultant-whatsapp.tsx:2800:40)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=f4727a25:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=f4727a25:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=f4727a25:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=f4727a25:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=f4727a25:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=f4727a25:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=f4727a25:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=f4727a25:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=f4727a25:19137:13)Understand this error
+injected.js:37 The above error occurred in the <ConsultantWhatsAppPage> component:
+
+    at ConsultantWhatsAppPage (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/src/pages/consultant-whatsapp.tsx:165:24)
+    at AuthGuard (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f4727a25:226:16)
+    at Switch (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f4727a25:283:17)
+    at Suspense
+    at Router (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/src/App.tsx?v=KGGsadr9qw6F101LPUM3s:264:35)
+    at Provider (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=f4727a25:44:15)
+    at TooltipProvider (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f4727a25:158:5)
+    at TourProvider (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=f4727a25:3096:3)
+    at V (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=f4727a25:44:25)
+    at J (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=f4727a25:42:18)
+    at App (https://bbf42560-b80c-49fb-8633-a9a49bbf84bd-00-j5ss84jai5nr.picard.replit.dev/src/App.tsx?v=KGGsadr9qw6F101LPUM3s:1649:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonymous) @ injected.js:37Understand this error
+chunk-RPCDYKBN.js?v=f4727a25:9129 Uncaught TypeError: subscriptions.map is not a function
+    at ConsultantWhatsAppPage (consultant-whatsapp.tsx:2800:40)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=f4727a25:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=f4727a25:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=f4727a25:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=f4727a25:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=f4727a25:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=f4727a25:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=f4727a25:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=f4727a25:18736:28)
+    at performSyncWorkOnRoot (chunk-RPCDYKBN.js?v=f4727a25:18879:28)Understand this error
+stallwart.build.js:1 stallwart: failed ping 1
+stallwart.build.js:1 stallwart: failed ping 2

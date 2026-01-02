@@ -359,7 +359,7 @@ export default function ConsultantWhatsAppPage() {
     },
   });
 
-  const subscriptions = subscriptionsQuery.data || [];
+  const subscriptions = Array.isArray(subscriptionsQuery.data) ? subscriptionsQuery.data : [];
 
   // Mutations per gestione sottoscrizioni
   const cancelSubscriptionMutation = useMutation({
