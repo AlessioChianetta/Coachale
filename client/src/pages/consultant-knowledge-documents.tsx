@@ -1084,6 +1084,12 @@ export default function ConsultantKnowledgeDocuments() {
                                   Riassunto
                                 </span>
                               )}
+                              {doc.fileSearchSyncedAt && (
+                                <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+                                  <Database className="w-3 h-3" />
+                                  File Search
+                                </span>
+                              )}
                             </div>
 
                             {doc.tags && doc.tags.length > 0 && (
