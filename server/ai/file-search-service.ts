@@ -874,12 +874,16 @@ export class FileSearchService {
     requestingUserId?: string
   ): Promise<{ success: boolean; deleted: number; errors: string[] }> {
     try {
+      // Find both exact match and chunked documents (sourceId_chunk_*)
       const docs = await db
         .select()
         .from(fileSearchDocuments)
         .where(and(
           eq(fileSearchDocuments.sourceType, sourceType as any),
-          eq(fileSearchDocuments.sourceId, sourceId)
+          or(
+            eq(fileSearchDocuments.sourceId, sourceId),
+            sql`${fileSearchDocuments.sourceId} LIKE ${sourceId + '_chunk_%'}`
+          )
         ));
 
       if (docs.length === 0) {
