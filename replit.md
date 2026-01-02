@@ -47,7 +47,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Lead Import System (Close CRM style)**: Bulk import leads from Excel, CSV, or Google Sheets with auto-mapping, SHA256 hash deduplication, incremental imports, and phone number normalization. Features comprehensive Google Sheets integration with automatic polling/sync at configurable intervals (15/30/60 min), full 18-field CRM mapping (firstName, lastName, phone, email, company, obiettivi, desideri, uncino, fonte, address, city, state, postalCode, country, tags, dateOfBirth, website), intelligent column synonym detection, and centralized management in the API Keys page with toggle on/off and delete functionality for configured sheets.
 - **SaaS Landing Page (/Sas)**: Public landing page for lead generation with a modern gradient design, featuring Hero section, Features section (AI, Automation, Training), Benefits section with testimonial, Lead capture form (firstName, lastName, email, phone), and Login CTA. Leads are stored in the `landing_leads` table with duplicate email detection.
 - **Dipendenti AI Subscription System**: Multi-tier subscription system for AI agents with:
-  - **Level 1 (Bronzo/Free)**: Requires Bronze user registration with email/password, configurable daily message limits (default 15), daily counter reset at midnight, JWT-based authentication with 30-day token expiry. Registration page at `/c/:slug/register` with login/register tabs.
+  - **Level 1 (Bronzo/Free)**: Requires Bronze user registration with email/password, configurable daily message limits (default 15), daily counter reset at midnight, JWT-based authentication with 30-day token expiry. Registration page at `/c/:slug/register` with login/register tabs. Shows upgrade prompt with link to pricing page when daily limit is reached.
   - **Level 2 (Argento/Paid)**: Authenticated clients with knowledge base access and unlimited messages.
   - **Level 3 (Deluxe/Premium)**: Full software access with AI Manager and dashboard for premium clients.
   - **Consultant Licenses**: Tracked in `consultantLicenses` table with level2Total/Used and level3Total/Used counters (default 20 L2, 10 L3).
@@ -77,6 +77,12 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
     - Piani: Monthly/yearly prices in cents, tier names/descriptions, feature lists
     - Contenuti: FAQ builder, testimonials manager, trust badges editor
     - Stile: Visual customization options (badges, CTAs)
+  - **Unified Login System**: Single `/login` page authenticates across all 3 tiers:
+    - Search order: Gold (users table) → Silver (clientLevelSubscriptions) → Bronze (bronzeUsers)
+    - Case-insensitive email matching with consistent lowercase normalization
+    - Tier-appropriate redirects: Bronze → AI chat, Silver → manager dashboard, Gold → full app
+    - Welcome emails with credentials sent via consultant's SMTP (async, non-blocking)
+    - Manual password reset for Bronze/Silver users via consultant dashboard
   - **Stripe Subscription Flow**: Complete subscription checkout with:
     - Monthly and yearly billing periods
     - Automatic account provisioning (Manager for L2, Client for L3)
