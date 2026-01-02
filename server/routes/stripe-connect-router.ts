@@ -462,6 +462,7 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           consultantId,
           clientEmail,
           clientName: clientName || null,
+          phone: metaPhone || null,
           level: level as "2" | "3",
           status: "active",
           startDate: new Date(),
@@ -796,21 +797,22 @@ router.get("/consultant/subscriptions", authenticateToken, requireRole("consulta
       dbSubscriptions.map(async (sub) => {
         let stripeData: any = {};
         let invoices: any[] = [];
-        let phone: string | null = null;
         
-        // Get phone from the appropriate user table
-        if (sub.level === "2") {
-          // Level 2 = managerUsers
-          const [manager] = await db.select()
-            .from(managerUsers)
-            .where(eq(managerUsers.email, sub.clientEmail));
-          phone = manager?.phone || null;
-        } else if (sub.level === "3") {
-          // Level 3 = users table
-          const [user] = await db.select()
-            .from(users)
-            .where(eq(users.email, sub.clientEmail));
-          phone = user?.phoneNumber || null;
+        // Use phone from subscription record (saved during checkout)
+        // Fallback to user tables for legacy records without phone
+        let phone: string | null = sub.phone || null;
+        if (!phone) {
+          if (sub.level === "2") {
+            const [manager] = await db.select()
+              .from(managerUsers)
+              .where(eq(managerUsers.email, sub.clientEmail));
+            phone = manager?.phone || null;
+          } else if (sub.level === "3") {
+            const [user] = await db.select()
+              .from(users)
+              .where(eq(users.email, sub.clientEmail));
+            phone = user?.phoneNumber || null;
+          }
         }
         
         // Fetch live data from Stripe if we have a subscription ID

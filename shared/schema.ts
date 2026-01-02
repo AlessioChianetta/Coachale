@@ -839,6 +839,7 @@ export const clientLevelSubscriptions = pgTable("client_level_subscriptions", {
   endDate: timestamp("end_date"),
   clientEmail: text("client_email").notNull(),
   clientName: text("client_name"),
+  phone: text("phone"), // Phone number collected during checkout
   tempPassword: text("temp_password"), // Temporary password for auto-created accounts
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
