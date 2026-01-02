@@ -272,7 +272,9 @@ export default function SelectAgent() {
 
   const handleSelectAgent = (agent: Agent) => {
     if (agent.publicSlug) {
-      navigate(`/share/${agent.publicSlug}`);
+      // Store agent slug for auth-guard routing
+      localStorage.setItem('agentSlug', agent.publicSlug);
+      navigate(`/agent/${agent.publicSlug}/chat`);
     }
   };
 
