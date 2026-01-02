@@ -46,7 +46,11 @@ import {
   Mail,
   Link,
   History,
-  CalendarClock
+  CalendarClock,
+  Share2,
+  CheckSquare,
+  ListTodo,
+  BookMarked
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -5058,32 +5062,159 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             </div>
 
                             {selectedReport?.id === report.id && (
-                              <div className="mt-4 pt-4 border-t space-y-4">
+                              <div className="mt-4 pt-4 border-t space-y-5">
                                 {report.categoryDetails && Object.keys(report.categoryDetails).length > 0 && (
-                                  <div>
-                                    <h4 className="text-sm font-medium mb-2">Dettagli per categoria</h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                      {Object.entries(report.categoryDetails).map(([key, detail]) => (
-                                        <div key={key} className="bg-muted/30 rounded-lg p-2 text-xs">
-                                          <div className="font-medium truncate">{detail.name}</div>
-                                          <div className="flex items-center gap-1 text-muted-foreground mt-1">
-                                            <span className="text-green-600">{detail.synced}</span>
-                                            <span>/</span>
-                                            <span>{detail.processed}</span>
-                                            {detail.failed > 0 && (
-                                              <span className="text-red-500 ml-1">({detail.failed} err)</span>
-                                            )}
+                                  <div className="space-y-4">
+                                    {/* SEZIONE 1: Store Consulente */}
+                                    {(() => {
+                                      const consultantCategories = ['library', 'knowledgeBase', 'exercises', 'university', 'consultantGuide', 'consultations'];
+                                      const consultantData = Object.entries(report.categoryDetails)
+                                        .filter(([key]) => consultantCategories.includes(key))
+                                        .filter(([, detail]) => detail.processed > 0 || detail.synced > 0);
+                                      
+                                      if (consultantData.length === 0) return null;
+                                      
+                                      const totalSynced = consultantData.reduce((sum, [, d]) => sum + (d.synced || 0), 0);
+                                      const totalProcessed = consultantData.reduce((sum, [, d]) => sum + (d.processed || 0), 0);
+                                      
+                                      return (
+                                        <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-3">
+                                          <div className="flex items-center gap-2 mb-3">
+                                            <Database className="h-4 w-4 text-blue-600" />
+                                            <h4 className="text-sm font-semibold text-blue-900">Store Consulente</h4>
+                                            <Badge variant="outline" className="ml-auto text-xs bg-blue-100 text-blue-700 border-blue-300">
+                                              {totalSynced}/{totalProcessed} sync
+                                            </Badge>
+                                          </div>
+                                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                            {consultantData.map(([key, detail]) => (
+                                              <div key={key} className="bg-white rounded-md p-2 text-xs border border-blue-100">
+                                                <div className="flex items-center gap-1.5">
+                                                  {key === 'library' && <BookOpen className="h-3 w-3 text-blue-500" />}
+                                                  {key === 'knowledgeBase' && <Brain className="h-3 w-3 text-purple-500" />}
+                                                  {key === 'exercises' && <Dumbbell className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'university' && <GraduationCap className="h-3 w-3 text-indigo-500" />}
+                                                  {key === 'consultantGuide' && <FileText className="h-3 w-3 text-green-500" />}
+                                                  {key === 'consultations' && <MessageSquare className="h-3 w-3 text-teal-500" />}
+                                                  <span className="font-medium text-gray-700">{detail.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 mt-1 text-muted-foreground">
+                                                  <span className={detail.synced > 0 ? "text-green-600 font-medium" : "text-gray-400"}>{detail.synced}</span>
+                                                  <span className="text-gray-400">/</span>
+                                                  <span>{detail.processed}</span>
+                                                  {detail.failed > 0 && (
+                                                    <span className="text-red-500 ml-1 font-medium">({detail.failed} err)</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ))}
                                           </div>
                                         </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
+                                      );
+                                    })()}
 
-                                {report.clientDetails?.clientsProcessed && (
-                                  <div className="text-sm">
-                                    <span className="text-muted-foreground">Clienti processati:</span>{" "}
-                                    <span className="font-medium">{report.clientDetails.clientsProcessed}</span>
+                                    {/* SEZIONE 2: Dati Clienti */}
+                                    {(() => {
+                                      const clientCategories = ['exerciseResponses', 'clientKnowledge', 'clientConsultations', 'financialData', 'goals', 'tasks', 'dailyReflections', 'progressHistory', 'libraryProgress', 'emailJourney'];
+                                      const clientData = Object.entries(report.categoryDetails)
+                                        .filter(([key]) => clientCategories.includes(key))
+                                        .filter(([, detail]) => detail.processed > 0 || detail.synced > 0);
+                                      
+                                      if (clientData.length === 0) return null;
+                                      
+                                      const totalSynced = clientData.reduce((sum, [, d]) => sum + (d.synced || 0), 0);
+                                      const totalProcessed = clientData.reduce((sum, [, d]) => sum + (d.processed || 0), 0);
+                                      
+                                      return (
+                                        <div className="bg-green-50/50 border border-green-200 rounded-lg p-3">
+                                          <div className="flex items-center gap-2 mb-3">
+                                            <Users className="h-4 w-4 text-green-600" />
+                                            <h4 className="text-sm font-semibold text-green-900">Dati Clienti</h4>
+                                            {report.clientDetails?.clientsProcessed && (
+                                              <span className="text-xs text-green-600">({report.clientDetails.clientsProcessed} clienti)</span>
+                                            )}
+                                            <Badge variant="outline" className="ml-auto text-xs bg-green-100 text-green-700 border-green-300">
+                                              {totalSynced}/{totalProcessed} sync
+                                            </Badge>
+                                          </div>
+                                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                            {clientData.map(([key, detail]) => (
+                                              <div key={key} className="bg-white rounded-md p-2 text-xs border border-green-100">
+                                                <div className="flex items-center gap-1.5">
+                                                  {key === 'exerciseResponses' && <CheckSquare className="h-3 w-3 text-green-500" />}
+                                                  {key === 'clientKnowledge' && <Brain className="h-3 w-3 text-purple-500" />}
+                                                  {key === 'clientConsultations' && <MessageSquare className="h-3 w-3 text-teal-500" />}
+                                                  {key === 'financialData' && <TrendingUp className="h-3 w-3 text-emerald-500" />}
+                                                  {key === 'goals' && <Target className="h-3 w-3 text-amber-500" />}
+                                                  {key === 'tasks' && <ListTodo className="h-3 w-3 text-blue-500" />}
+                                                  {key === 'dailyReflections' && <Heart className="h-3 w-3 text-pink-500" />}
+                                                  {key === 'progressHistory' && <BarChart3 className="h-3 w-3 text-cyan-500" />}
+                                                  {key === 'libraryProgress' && <BookMarked className="h-3 w-3 text-indigo-500" />}
+                                                  {key === 'emailJourney' && <Mail className="h-3 w-3 text-violet-500" />}
+                                                  <span className="font-medium text-gray-700 truncate">{detail.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 mt-1 text-muted-foreground">
+                                                  <span className={detail.synced > 0 ? "text-green-600 font-medium" : "text-gray-400"}>{detail.synced}</span>
+                                                  <span className="text-gray-400">/</span>
+                                                  <span>{detail.processed}</span>
+                                                  {detail.failed > 0 && (
+                                                    <span className="text-red-500 ml-1 font-medium">({detail.failed} err)</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {/* SEZIONE 3: Contenuti Assegnati (copiati nei client store) */}
+                                    {(() => {
+                                      const assignedCategories = ['assignedExercises', 'assignedLibrary', 'assignedUniversity'];
+                                      const assignedData = Object.entries(report.categoryDetails)
+                                        .filter(([key]) => assignedCategories.includes(key))
+                                        .filter(([, detail]) => detail.processed > 0 || detail.synced > 0);
+                                      
+                                      if (assignedData.length === 0) return null;
+                                      
+                                      const totalSynced = assignedData.reduce((sum, [, d]) => sum + (d.synced || 0), 0);
+                                      const totalProcessed = assignedData.reduce((sum, [, d]) => sum + (d.processed || 0), 0);
+                                      
+                                      return (
+                                        <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
+                                          <div className="flex items-center gap-2 mb-3">
+                                            <Share2 className="h-4 w-4 text-amber-600" />
+                                            <h4 className="text-sm font-semibold text-amber-900">Contenuti Assegnati ai Clienti</h4>
+                                            <Badge variant="outline" className="ml-auto text-xs bg-amber-100 text-amber-700 border-amber-300">
+                                              {totalSynced}/{totalProcessed} sync
+                                            </Badge>
+                                          </div>
+                                          <p className="text-xs text-amber-700 mb-2">
+                                            Documenti copiati negli store privati dei clienti
+                                          </p>
+                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                            {assignedData.map(([key, detail]) => (
+                                              <div key={key} className="bg-white rounded-md p-2 text-xs border border-amber-100">
+                                                <div className="flex items-center gap-1.5">
+                                                  {key === 'assignedExercises' && <Dumbbell className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'assignedLibrary' && <BookOpen className="h-3 w-3 text-blue-500" />}
+                                                  {key === 'assignedUniversity' && <GraduationCap className="h-3 w-3 text-indigo-500" />}
+                                                  <span className="font-medium text-gray-700">{detail.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 mt-1 text-muted-foreground">
+                                                  <span className={detail.synced > 0 ? "text-green-600 font-medium" : "text-gray-400"}>{detail.synced}</span>
+                                                  <span className="text-gray-400">/</span>
+                                                  <span>{detail.processed}</span>
+                                                  {detail.failed > 0 && (
+                                                    <span className="text-red-500 ml-1 font-medium">({detail.failed} err)</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 )}
 
