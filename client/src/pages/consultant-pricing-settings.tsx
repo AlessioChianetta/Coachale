@@ -210,11 +210,15 @@ export default function ConsultantPricingSettingsPage() {
   });
 
   const { data: agentsData, isLoading: agentsLoading } = useQuery({
-    queryKey: ["/api/whatsapp/config"],
+    queryKey: ["/api/whatsapp/config/pricing"],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
+      console.log("🚀 QUERY STARTING - fetching /api/whatsapp/config");
       const response = await fetch("/api/whatsapp/config", {
         headers: getAuthHeaders(),
       });
+      console.log("📡 Response status:", response.status);
       if (!response.ok) {
         throw new Error("Errore nel caricamento degli agenti");
       }
@@ -222,7 +226,9 @@ export default function ConsultantPricingSettingsPage() {
       console.log("📦 WhatsApp config raw response:", result);
       console.log("📦 Configs array:", result.configs);
       if (result.configs && result.configs.length > 0) {
-        console.log("📦 First agent level:", result.configs[0].level, "Type:", typeof result.configs[0].level);
+        result.configs.forEach((agent: any, i: number) => {
+          console.log(`📦 Agent ${i}: name=${agent.agentName}, level=${agent.level}, type=${typeof agent.level}`);
+        });
       }
       return result.configs || [];
     },
