@@ -1766,49 +1766,59 @@ export class FileSearchService {
         bySourceType[st].push(doc);
       }
 
+      // Helper function to extract base ID from chunked sourceId
+      // e.g., "f7f666e6-734f-4ac9-8746-5c1d754494eb_chunk_10" -> "f7f666e6-734f-4ac9-8746-5c1d754494eb"
+      const extractBaseId = (sourceId: string): string => {
+        const chunkMatch = sourceId.match(/^(.+)_chunk_\d+$/);
+        return chunkMatch ? chunkMatch[1] : sourceId;
+      };
+
       for (const [sourceType, typeDocs] of Object.entries(bySourceType)) {
         const sourceIds = typeDocs.map(d => d.sourceId!).filter(Boolean);
         if (sourceIds.length === 0) continue;
 
-        let existingIds: Set<string> = new Set();
+        // Extract base IDs for chunked documents
+        const baseIds = [...new Set(sourceIds.map(extractBaseId))];
+
+        let existingBaseIds: Set<string> = new Set();
 
         try {
           switch (sourceType) {
             case 'knowledge_base':
               const kbDocs = await db.select({ id: consultantKnowledgeDocuments.id })
                 .from(consultantKnowledgeDocuments)
-                .where(inArray(consultantKnowledgeDocuments.id, sourceIds));
-              existingIds = new Set(kbDocs.map(d => d.id));
+                .where(inArray(consultantKnowledgeDocuments.id, baseIds));
+              existingBaseIds = new Set(kbDocs.map(d => d.id));
               break;
             case 'client_knowledge':
               const ckDocs = await db.select({ id: clientKnowledgeDocuments.id })
                 .from(clientKnowledgeDocuments)
-                .where(inArray(clientKnowledgeDocuments.id, sourceIds));
-              existingIds = new Set(ckDocs.map(d => d.id));
+                .where(inArray(clientKnowledgeDocuments.id, baseIds));
+              existingBaseIds = new Set(ckDocs.map(d => d.id));
               break;
             case 'whatsapp_agent_knowledge':
               const wakDocs = await db.select({ id: whatsappAgentKnowledgeItems.id })
                 .from(whatsappAgentKnowledgeItems)
-                .where(inArray(whatsappAgentKnowledgeItems.id, sourceIds));
-              existingIds = new Set(wakDocs.map(d => d.id));
+                .where(inArray(whatsappAgentKnowledgeItems.id, baseIds));
+              existingBaseIds = new Set(wakDocs.map(d => d.id));
               break;
             case 'exercise':
               const exDocs = await db.select({ id: consultantExercises.id })
                 .from(consultantExercises)
-                .where(inArray(consultantExercises.id, sourceIds));
-              existingIds = new Set(exDocs.map(d => d.id));
+                .where(inArray(consultantExercises.id, baseIds));
+              existingBaseIds = new Set(exDocs.map(d => d.id));
               break;
             case 'consultation':
               const consDocs = await db.select({ id: consultations.id })
                 .from(consultations)
-                .where(inArray(consultations.id, sourceIds));
-              existingIds = new Set(consDocs.map(d => d.id));
+                .where(inArray(consultations.id, baseIds));
+              existingBaseIds = new Set(consDocs.map(d => d.id));
               break;
             case 'library':
               const libDocs = await db.select({ id: libraryDocuments.id })
                 .from(libraryDocuments)
-                .where(inArray(libraryDocuments.id, sourceIds));
-              existingIds = new Set(libDocs.map(d => d.id));
+                .where(inArray(libraryDocuments.id, baseIds));
+              existingBaseIds = new Set(libDocs.map(d => d.id));
               break;
             default:
               console.log(`⚠️ [FileSearch] Unknown sourceType for orphan check: ${sourceType}`);
@@ -1819,15 +1829,19 @@ export class FileSearchService {
           continue;
         }
 
+        // Check if the base ID exists (handles both regular docs and chunks)
         for (const doc of typeDocs) {
-          if (doc.sourceId && !existingIds.has(doc.sourceId)) {
-            orphans.push({
-              id: doc.id,
-              fileName: doc.fileName,
-              googleFileId: doc.googleFileId,
-              sourceType: doc.sourceType || 'unknown',
-              sourceId: doc.sourceId,
-            });
+          if (doc.sourceId) {
+            const baseId = extractBaseId(doc.sourceId);
+            if (!existingBaseIds.has(baseId)) {
+              orphans.push({
+                id: doc.id,
+                fileName: doc.fileName,
+                googleFileId: doc.googleFileId,
+                sourceType: doc.sourceType || 'unknown',
+                sourceId: doc.sourceId,
+              });
+            }
           }
         }
       }
