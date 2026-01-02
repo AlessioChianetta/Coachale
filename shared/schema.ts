@@ -6293,6 +6293,7 @@ export const fileSearchSettings = pgTable("file_search_settings", {
   autoSyncConsultantGuides: boolean("auto_sync_consultant_guides").default(true).notNull(),
   scheduledSyncEnabled: boolean("scheduled_sync_enabled").default(false).notNull(),
   scheduledSyncHour: integer("scheduled_sync_hour").default(3).notNull(),
+  scheduledSyncMinute: integer("scheduled_sync_minute").default(0).notNull(),
   lastScheduledSync: timestamp("last_scheduled_sync"),
   lastSyncAt: timestamp("last_sync_at"),
   totalDocumentsSynced: integer("total_documents_synced").default(0).notNull(),

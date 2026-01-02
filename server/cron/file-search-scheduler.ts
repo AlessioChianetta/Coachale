@@ -12,10 +12,10 @@ export function initFileSearchScheduler() {
     return;
   }
 
-  console.log('📅 [FileSearchScheduler] Initializing scheduled sync (runs every hour at :05)');
+  console.log('📅 [FileSearchScheduler] Initializing scheduled sync (checks every minute)');
   console.log('   Timezone: Europe/Rome (Italian time)');
   
-  schedulerTask = cron.schedule('5 * * * *', async () => {
+  schedulerTask = cron.schedule('* * * * *', async () => {
     await runScheduledSync();
   }, {
     timezone: 'Europe/Rome'
@@ -26,17 +26,17 @@ export function initFileSearchScheduler() {
 
 async function runScheduledSync() {
   const now = new Date();
-  const italianHour = new Intl.DateTimeFormat('it-IT', {
+  
+  const italianTime = new Intl.DateTimeFormat('it-IT', {
     timeZone: 'Europe/Rome',
     hour: 'numeric',
+    minute: 'numeric',
     hour12: false
   }).format(now);
   
-  const currentHour = parseInt(italianHour, 10);
-  
-  console.log(`\n${'═'.repeat(60)}`);
-  console.log(`📅 [FileSearchScheduler] Checking for scheduled syncs at ${currentHour}:00 (Italian time)`);
-  console.log(`${'═'.repeat(60)}`);
+  const [hourStr, minuteStr] = italianTime.split(':');
+  const currentHour = parseInt(hourStr, 10);
+  const currentMinute = parseInt(minuteStr, 10);
 
   try {
     const allSettings = await db.select()
@@ -44,15 +44,17 @@ async function runScheduledSync() {
       .where(eq(fileSearchSettings.scheduledSyncEnabled, true));
 
     const matchingConsultants = allSettings.filter(
-      s => s.scheduledSyncHour === currentHour
+      s => s.scheduledSyncHour === currentHour && (s.scheduledSyncMinute ?? 0) === currentMinute
     );
 
     if (matchingConsultants.length === 0) {
-      console.log(`   ⏭️  No consultants scheduled for ${currentHour}:00`);
       return;
     }
 
-    console.log(`   🎯 Found ${matchingConsultants.length} consultant(s) scheduled for ${currentHour}:00`);
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`📅 [FileSearchScheduler] Running scheduled syncs at ${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')} (Italian time)`);
+    console.log(`   🎯 Found ${matchingConsultants.length} consultant(s) scheduled for this time`);
+    console.log(`${'═'.repeat(60)}`);
 
     for (const settings of matchingConsultants) {
       try {

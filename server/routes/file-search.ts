@@ -624,6 +624,7 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
       autoSyncExerciseExternalDocs,
       scheduledSyncEnabled,
       scheduledSyncHour,
+      scheduledSyncMinute,
       autoSyncGoals,
       autoSyncTasks,
       autoSyncDailyReflections,
@@ -654,6 +655,9 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
     if (typeof scheduledSyncEnabled === 'boolean') updateData.scheduledSyncEnabled = scheduledSyncEnabled;
     if (typeof scheduledSyncHour === 'number' && scheduledSyncHour >= 0 && scheduledSyncHour <= 23) {
       updateData.scheduledSyncHour = scheduledSyncHour;
+    }
+    if (typeof scheduledSyncMinute === 'number' && scheduledSyncMinute >= 0 && scheduledSyncMinute <= 59) {
+      updateData.scheduledSyncMinute = scheduledSyncMinute;
     }
     if (typeof autoSyncGoals === 'boolean') updateData.autoSyncGoals = autoSyncGoals;
     if (typeof autoSyncTasks === 'boolean') updateData.autoSyncTasks = autoSyncTasks;

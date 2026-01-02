@@ -2622,19 +2622,36 @@ export default function ConsultantFileSearchAnalyticsPage() {
                               I documenti verranno sincronizzati automaticamente ogni giorno all'ora selezionata (orario italiano)
                             </p>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                             <Select
                               value={settings?.scheduledSyncHour?.toString() ?? "3"}
                               onValueChange={(value) => handleToggle('scheduledSyncHour', parseInt(value))}
                               disabled={updateSettingsMutation.isPending || !(settings?.scheduledSyncEnabled ?? false)}
                             >
-                              <SelectTrigger className="w-[120px] bg-white">
+                              <SelectTrigger className="w-[80px] bg-white">
                                 <SelectValue placeholder="Ora" />
                               </SelectTrigger>
                               <SelectContent>
                                 {Array.from({ length: 24 }, (_, i) => (
                                   <SelectItem key={i} value={i.toString()}>
-                                    {i.toString().padStart(2, '0')}:00
+                                    {i.toString().padStart(2, '0')}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <span className="text-gray-500 font-medium">:</span>
+                            <Select
+                              value={settings?.scheduledSyncMinute?.toString() ?? "0"}
+                              onValueChange={(value) => handleToggle('scheduledSyncMinute', parseInt(value))}
+                              disabled={updateSettingsMutation.isPending || !(settings?.scheduledSyncEnabled ?? false)}
+                            >
+                              <SelectTrigger className="w-[80px] bg-white">
+                                <SelectValue placeholder="Min" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: 60 }, (_, i) => (
+                                  <SelectItem key={i} value={i.toString()}>
+                                    {i.toString().padStart(2, '0')}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
