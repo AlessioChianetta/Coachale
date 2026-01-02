@@ -3,7 +3,7 @@ import { authenticateToken, requireRole, type AuthRequest } from '../middleware/
 import { fileSearchService } from '../ai/file-search-service';
 import { fileSearchSyncService } from '../services/file-search-sync-service';
 import { db } from '../db';
-import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig } from '../../shared/schema';
+import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig, fileSearchSyncReports } from '../../shared/schema';
 import { eq, desc, sql, and, gte, isNull, isNotNull, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -598,6 +598,120 @@ router.get('/settings', authenticateToken, requireRole('consultant'), async (req
     res.json(settings);
   } catch (error: any) {
     console.error('[FileSearch API] Error fetching settings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/file-search/sync-reports
+ * Get sync reports history for current consultant
+ * 
+ * Query params:
+ * - limit: number of reports to return (default 20, max 100)
+ * - offset: pagination offset (default 0)
+ * - syncType: filter by 'manual' or 'scheduled' (optional)
+ * - status: filter by status (optional)
+ */
+router.get('/sync-reports', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const syncType = req.query.syncType as string | undefined;
+    const status = req.query.status as string | undefined;
+    
+    // Build query conditions
+    let conditions = [eq(fileSearchSyncReports.consultantId, consultantId)];
+    if (syncType && ['manual', 'scheduled'].includes(syncType)) {
+      conditions.push(eq(fileSearchSyncReports.syncType, syncType));
+    }
+    if (status && ['running', 'completed', 'partial', 'failed'].includes(status)) {
+      conditions.push(eq(fileSearchSyncReports.status, status));
+    }
+    
+    // Get reports with pagination
+    const reports = await db
+      .select()
+      .from(fileSearchSyncReports)
+      .where(and(...conditions))
+      .orderBy(desc(fileSearchSyncReports.startedAt))
+      .limit(limit)
+      .offset(offset);
+    
+    // Get total count for pagination
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(fileSearchSyncReports)
+      .where(and(...conditions));
+    
+    res.json({
+      reports,
+      pagination: {
+        total: countResult?.count || 0,
+        limit,
+        offset,
+        hasMore: offset + reports.length < (countResult?.count || 0),
+      },
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error fetching sync reports:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/file-search/sync-reports/:reportId
+ * Get a specific sync report with full details
+ */
+router.get('/sync-reports/:reportId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { reportId } = req.params;
+    
+    const [report] = await db
+      .select()
+      .from(fileSearchSyncReports)
+      .where(and(
+        eq(fileSearchSyncReports.id, reportId),
+        eq(fileSearchSyncReports.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!report) {
+      return res.status(404).json({ error: 'Report non trovato' });
+    }
+    
+    res.json(report);
+  } catch (error: any) {
+    console.error('[FileSearch API] Error fetching sync report:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/file-search/sync-reports/:reportId
+ * Delete a specific sync report
+ */
+router.delete('/sync-reports/:reportId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { reportId } = req.params;
+    
+    const result = await db
+      .delete(fileSearchSyncReports)
+      .where(and(
+        eq(fileSearchSyncReports.id, reportId),
+        eq(fileSearchSyncReports.consultantId, consultantId)
+      ))
+      .returning();
+    
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Report non trovato' });
+    }
+    
+    res.json({ success: true, message: 'Report eliminato' });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error deleting sync report:', error);
     res.status(500).json({ error: error.message });
   }
 });
