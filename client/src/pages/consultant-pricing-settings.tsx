@@ -210,15 +210,16 @@ export default function ConsultantPricingSettingsPage() {
   });
 
   const { data: agentsData } = useQuery({
-    queryKey: ["/api/consultant/whatsapp-configs"],
+    queryKey: ["/api/whatsapp/config"],
     queryFn: async () => {
-      const response = await fetch("/api/consultant/whatsapp-configs", {
+      const response = await fetch("/api/whatsapp/config", {
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
         throw new Error("Errore nel caricamento degli agenti");
       }
-      return response.json();
+      const result = await response.json();
+      return result.configs || [];
     },
   });
 
