@@ -1,0 +1,63 @@
+⚠️ [FileSearch] Could not extract googleFileId. Operation structure: {
+  "done": true,
+  "name": "fileSearchStores/knowledge-base-consulente-juw371zchi3s/upload/operations/kb-ddtrighe-parte-34261-83ewr3rg47fq",
+  "resultKeys": "null",
+  "metadataKeys": "null"
+}
+⚠️ [FileSearch] Could not extract googleFileId. Operation structure: {
+  "done": true,
+  "name": "fileSearchStores/knowledge-base-consulente-juw371zchi3s/upload/operations/kb-ddtrighe-parte-39261-e8mpjcv6m0ak",
+  "resultKeys": "null",
+  "metadataKeys": "null"
+}
+⚠️ [FileSearch] Could not extract googleFileId. Operation structure: {
+  "done": true,
+  "name": "fileSearchStores/knowledge-base-consulente-juw371zchi3s/upload/operations/kb-ddtrighe-parte-31261-t8ieid9posg8",
+  "resultKeys": "null",
+  "metadataKeys": "null"
+}
+⚠️ [FileSearch] Could not extract googleFileId. Operation structure: {
+  "done": true,
+  "name": "fileSearchStores/knowledge-base-consulente-juw371zchi3s/upload/operations/kb-ddtrighe-parte-40261-83swnfsxiu1g",
+  "resultKeys": "null",
+  "metadataKeys": "null"
+}
+⚠️ [FileSearch] Could not extract googleFileId. Operation structure: {
+  "done": true,
+  "name": "fileSearchStores/knowledge-base-consulente-juw371zchi3s/upload/operations/kb-ddtrighe-parte-38261-18epvo95atrf",
+  "resultKeys": "null",
+  "metadataKeys": "null"
+}
+✅ [FileSearch] Document uploaded: kb-ddtrighe-parte-34261-83ewr3rg47fq (hash: 1f8196c562b6c6ba)
+✅ [FileSearch] Document uploaded: kb-ddtrighe-parte-39261-e8mpjcv6m0ak (hash: 08f4e01824267ca3)
+✅ [FileSearch] Document uploaded: kb-ddtrighe-parte-31261-t8ieid9posg8 (hash: 16c42f636fd84209)
+✅ [FileSearch] Document uploaded: kb-ddtrighe-parte-40261-83swnfsxiu1g (hash: 44e16ac2bfe64826)
+⚠️ [FileSearch] Could not extract googleFileId. Operation structure: {
+  "done": true,
+  "name": "fileSearchStores/knowledge-base-consulente-juw371zchi3s/upload/operations/kb-ddtrighe-parte-35261-gfggmfbqbx9w",
+  "resultKeys": "null",
+  "metadataKeys": "null"
+}
+✅ [FileSearch] Document uploaded: kb-ddtrighe-parte-38261-18epvo95atrf (hash: eea7120f14818009)
+⚠️ [FileSearch] Could not extract googleFileId. Operation structure: {
+  "done": true,
+  "name": "fileSearchStores/knowledge-base-consulente-juw371zchi3s/upload/operations/kb-ddtrighe-parte-33261-av8zv51zqzb7",
+  "resultKeys": "null",
+  "metadataKeys": "null"
+}
+⚠️ [FileSearch] Could not extract googleFileId. Operation structure: {
+  "done": true,
+  "name": "fileSearchStores/knowledge-base-consulente-juw371zchi3s/upload/operations/kb-ddtrighe-parte-36261-faqe7z62yjp8",
+  "resultKeys": "null",
+  "metadataKeys": "null"
+}
+⚠️ [FileSearch] Could not extract googleFileId. Operation structure: {
+  "done": true,
+  "name": "fileSearchStores/knowledge-base-consulente-juw371zchi3s/upload/operations/kb-ddtrighe-parte-32261-nm4r5fa1et7i",
+  "resultKeys": "null",
+  "metadataKeys": "null"
+}
+✅ [FileSearch] Document uploaded: kb-ddtrighe-parte-35261-gfggmfbqbx9w (hash: 4aae1d3881f7ea3b)
+✅ [FileSearch] Document uploaded: kb-ddtrighe-parte-36261-faqe7z62yjp8 (hash: 0cf7066199f82d2e)
+✅ [FileSearch] Document uploaded: kb-ddtrighe-parte-33261-av8zv51zqzb7 (hash: da3f42ca5def8483)
+✅ [FileSearch] Document uploaded: kb-ddtrighe-parte-32261-nm4r5fa1et7i (hash: a99ed87a6b96cc5c)
