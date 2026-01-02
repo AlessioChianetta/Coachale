@@ -769,15 +769,211 @@ router.get("/consultant/subscriptions", authenticateToken, requireRole("consulta
   try {
     const consultantId = req.user!.id;
     
-    const subscriptions = await db.select()
+    // Get subscriptions from database
+    const dbSubscriptions = await db.select()
       .from(clientLevelSubscriptions)
       .where(eq(clientLevelSubscriptions.consultantId, consultantId))
       .orderBy(desc(clientLevelSubscriptions.startDate));
     
-    res.json(subscriptions);
+    // Get platform Stripe instance
+    let stripe: any;
+    try {
+      stripe = await getStripeInstance();
+    } catch (e) {
+      // If Stripe not configured, return database data only
+      return res.json(dbSubscriptions);
+    }
+    
+    // Enrich each subscription with live Stripe data
+    const enrichedSubscriptions = await Promise.all(
+      dbSubscriptions.map(async (sub) => {
+        let stripeData: any = {};
+        let invoices: any[] = [];
+        let phone: string | null = null;
+        
+        // Get phone from the appropriate user table
+        if (sub.level === "2") {
+          // Level 2 = managerUsers
+          const [manager] = await db.select()
+            .from(managerUsers)
+            .where(eq(managerUsers.email, sub.clientEmail));
+          phone = manager?.phone || null;
+        } else if (sub.level === "3") {
+          // Level 3 = users table
+          const [user] = await db.select()
+            .from(users)
+            .where(eq(users.email, sub.clientEmail));
+          phone = user?.phoneNumber || null;
+        }
+        
+        // Fetch live data from Stripe if we have a subscription ID
+        if (sub.stripeSubscriptionId) {
+          try {
+            const stripeSub = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+            
+            stripeData = {
+              currentPeriodEnd: stripeSub.current_period_end ? new Date(stripeSub.current_period_end * 1000).toISOString() : null,
+              currentPeriodStart: stripeSub.current_period_start ? new Date(stripeSub.current_period_start * 1000).toISOString() : null,
+              cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+              canceledAt: stripeSub.canceled_at ? new Date(stripeSub.canceled_at * 1000).toISOString() : null,
+              stripeStatus: stripeSub.status,
+              // Get price info from the first item
+              amount: stripeSub.items?.data?.[0]?.price?.unit_amount || null,
+              currency: stripeSub.items?.data?.[0]?.price?.currency || 'eur',
+              interval: stripeSub.items?.data?.[0]?.price?.recurring?.interval || null,
+              intervalCount: stripeSub.items?.data?.[0]?.price?.recurring?.interval_count || 1,
+            };
+            
+            // Fetch invoice history for this subscription
+            if (sub.stripeCustomerId) {
+              try {
+                const invoiceList = await stripe.invoices.list({
+                  customer: sub.stripeCustomerId,
+                  subscription: sub.stripeSubscriptionId,
+                  limit: 10,
+                });
+                
+                invoices = invoiceList.data.map((inv: any) => ({
+                  id: inv.id,
+                  number: inv.number,
+                  amountPaid: inv.amount_paid,
+                  currency: inv.currency,
+                  status: inv.status,
+                  created: new Date(inv.created * 1000).toISOString(),
+                  invoicePdf: inv.invoice_pdf,
+                  hostedInvoiceUrl: inv.hosted_invoice_url,
+                }));
+              } catch (invErr) {
+                console.error(`[Subscriptions] Failed to fetch invoices for ${sub.id}:`, invErr);
+              }
+            }
+          } catch (stripeErr: any) {
+            console.error(`[Subscriptions] Failed to fetch Stripe data for ${sub.stripeSubscriptionId}:`, stripeErr?.message);
+          }
+        }
+        
+        return {
+          ...sub,
+          phone,
+          stripe: stripeData,
+          invoices,
+          totalPaid: invoices.reduce((sum, inv) => sum + (inv.amountPaid || 0), 0),
+        };
+      })
+    );
+    
+    res.json(enrichedSubscriptions);
   } catch (error) {
     console.error("[Consultant Subscriptions] Error:", error);
     res.status(500).json({ error: "Failed to fetch subscriptions" });
+  }
+});
+
+// Cancel a subscription
+router.post("/consultant/subscriptions/:subscriptionId/cancel", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { subscriptionId } = req.params;
+    const { cancelImmediately } = req.body;
+    
+    // Verify subscription belongs to this consultant
+    const [sub] = await db.select()
+      .from(clientLevelSubscriptions)
+      .where(and(
+        eq(clientLevelSubscriptions.id, subscriptionId),
+        eq(clientLevelSubscriptions.consultantId, consultantId)
+      ));
+    
+    if (!sub) {
+      return res.status(404).json({ error: "Subscription not found" });
+    }
+    
+    if (!sub.stripeSubscriptionId) {
+      return res.status(400).json({ error: "No Stripe subscription linked" });
+    }
+    
+    const stripe = await getStripeInstance();
+    
+    if (cancelImmediately) {
+      // Cancel immediately
+      await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
+      
+      await db.update(clientLevelSubscriptions)
+        .set({ status: "canceled", updatedAt: new Date() })
+        .where(eq(clientLevelSubscriptions.id, subscriptionId));
+    } else {
+      // Cancel at period end
+      await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+    }
+    
+    res.json({ success: true, canceledImmediately: !!cancelImmediately });
+  } catch (error: any) {
+    console.error("[Cancel Subscription] Error:", error);
+    res.status(500).json({ error: "Failed to cancel subscription", details: error?.message });
+  }
+});
+
+// Reset password for a subscribed user
+router.post("/consultant/subscriptions/:subscriptionId/reset-password", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { subscriptionId } = req.params;
+    
+    // Verify subscription belongs to this consultant
+    const [sub] = await db.select()
+      .from(clientLevelSubscriptions)
+      .where(and(
+        eq(clientLevelSubscriptions.id, subscriptionId),
+        eq(clientLevelSubscriptions.consultantId, consultantId)
+      ));
+    
+    if (!sub) {
+      return res.status(404).json({ error: "Subscription not found" });
+    }
+    
+    // Generate new password
+    const newPassword = generateRandomPassword(10);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    if (sub.level === "2") {
+      // Update managerUsers
+      await db.update(managerUsers)
+        .set({ passwordHash: hashedPassword })
+        .where(eq(managerUsers.email, sub.clientEmail));
+    } else if (sub.level === "3") {
+      // Update users table
+      await db.update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.email, sub.clientEmail));
+    }
+    
+    // Send email with new password
+    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "http://localhost:5000";
+    
+    const loginUrl = sub.level === "2" ? `${baseUrl}/manager-chat` : `${baseUrl}/login`;
+    
+    await sendEmail({
+      to: sub.clientEmail,
+      subject: "Password Reset - Nuova Password",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Password Reimpostata</h2>
+          <p>La tua password è stata reimpostata dal consulente.</p>
+          <p><strong>Nuova password:</strong> ${newPassword}</p>
+          <p><a href="${loginUrl}" style="display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">Accedi Ora</a></p>
+          <p style="color: #666; font-size: 14px;">Ti consigliamo di cambiare la password dopo il primo accesso.</p>
+        </div>
+      `,
+    });
+    
+    res.json({ success: true, message: "Password reset email sent" });
+  } catch (error: any) {
+    console.error("[Reset Password] Error:", error);
+    res.status(500).json({ error: "Failed to reset password", details: error?.message });
   }
 });
 

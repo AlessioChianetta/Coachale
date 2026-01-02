@@ -27,6 +27,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -79,7 +93,13 @@ import {
   Receipt,
   Briefcase,
   Crown,
-  Shield
+  Shield,
+  MoreHorizontal,
+  KeyRound,
+  Ban,
+  Eye,
+  FileDown,
+  RefreshCw
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -206,6 +226,12 @@ export default function ConsultantWhatsAppPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [configToDelete, setConfigToDelete] = useState<WhatsAppConfig | null>(null);
   const [newApiKey, setNewApiKey] = useState("");
+  
+  // Stati per gestione sottoscrizioni
+  const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
+  const [isSubscriptionDetailOpen, setIsSubscriptionDetailOpen] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [subscriptionToCancel, setSubscriptionToCancel] = useState<any>(null);
 
   // Stati per tab Idee
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -333,7 +359,62 @@ export default function ConsultantWhatsAppPage() {
     },
   });
 
-  const subscriptions = subscriptionsQuery.data?.data || [];
+  const subscriptions = subscriptionsQuery.data || [];
+
+  // Mutations per gestione sottoscrizioni
+  const cancelSubscriptionMutation = useMutation({
+    mutationFn: async ({ subscriptionId, cancelImmediately }: { subscriptionId: string; cancelImmediately: boolean }) => {
+      const res = await fetch(`/api/consultant/subscriptions/${subscriptionId}/cancel`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ cancelImmediately }),
+      });
+      if (!res.ok) throw new Error("Failed to cancel subscription");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/subscriptions"] });
+      setIsCancelDialogOpen(false);
+      setSubscriptionToCancel(null);
+      toast({
+        title: "Abbonamento annullato",
+        description: data.canceledImmediately 
+          ? "L'abbonamento è stato annullato immediatamente" 
+          : "L'abbonamento verrà annullato alla fine del periodo corrente",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile annullare l'abbonamento",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const res = await fetch(`/api/consultant/subscriptions/${subscriptionId}/reset-password`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to reset password");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password reimpostata",
+        description: "Una nuova password è stata inviata via email al cliente",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile reimpostare la password",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Queries per gestione utenti (Bronze/Silver/Gold)
   const bronzeUsersQuery = useQuery({
@@ -2700,15 +2781,18 @@ export default function ConsultantWhatsAppPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="rounded-lg border">
+                  <div className="rounded-lg border overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Cliente</TableHead>
                           <TableHead>Email</TableHead>
+                          <TableHead>Telefono</TableHead>
                           <TableHead>Livello</TableHead>
+                          <TableHead>Importo</TableHead>
                           <TableHead>Stato</TableHead>
-                          <TableHead>Data Inizio</TableHead>
+                          <TableHead>Prossimo Rinnovo</TableHead>
+                          <TableHead>Totale Pagato</TableHead>
                           <TableHead className="text-right">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -2721,8 +2805,16 @@ export default function ConsultantWhatsAppPage() {
                             <TableCell className="text-gray-500">
                               {sub.clientEmail}
                             </TableCell>
+                            <TableCell className="text-gray-500">
+                              {sub.phone || "—"}
+                            </TableCell>
                             <TableCell>
                               <LevelBadge level={sub.level} size="sm" />
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {sub.stripe?.amount 
+                                ? `€${(sub.stripe.amount / 100).toFixed(2)}/${sub.stripe.interval === 'year' ? 'anno' : 'mese'}` 
+                                : "—"}
                             </TableCell>
                             <TableCell>
                               <Badge 
@@ -2743,17 +2835,71 @@ export default function ConsultantWhatsAppPage() {
                                   : sub.status === "expired" ? "Scaduto"
                                   : sub.status === "past_due" ? "Scaduto"
                                   : sub.status}
+                                {sub.stripe?.cancelAtPeriodEnd && " (in scadenza)"}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-gray-500">
-                              {sub.startDate 
-                                ? format(new Date(sub.startDate), "d MMM yyyy", { locale: it })
+                              {sub.stripe?.currentPeriodEnd 
+                                ? format(new Date(sub.stripe.currentPeriodEnd), "d MMM yyyy", { locale: it })
                                 : "—"}
                             </TableCell>
+                            <TableCell className="font-medium text-green-600">
+                              {sub.totalPaid 
+                                ? `€${(sub.totalPaid / 100).toFixed(2)}`
+                                : "€0,00"}
+                            </TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="sm">
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setSelectedSubscription(sub);
+                                      setIsSubscriptionDetailOpen(true);
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Visualizza Dettagli
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => resetPasswordMutation.mutate(sub.id)}
+                                    disabled={resetPasswordMutation.isPending}
+                                  >
+                                    <KeyRound className="h-4 w-4 mr-2" />
+                                    Reset Password
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {sub.status === "active" && !sub.stripe?.cancelAtPeriodEnd && (
+                                    <DropdownMenuItem 
+                                      className="text-red-600"
+                                      onClick={() => {
+                                        setSubscriptionToCancel(sub);
+                                        setIsCancelDialogOpen(true);
+                                      }}
+                                    >
+                                      <Ban className="h-4 w-4 mr-2" />
+                                      Annulla Abbonamento
+                                    </DropdownMenuItem>
+                                  )}
+                                  {sub.invoices?.length > 0 && (
+                                    <DropdownMenuItem 
+                                      onClick={() => {
+                                        const lastInvoice = sub.invoices[0];
+                                        if (lastInvoice?.hostedInvoiceUrl) {
+                                          window.open(lastInvoice.hostedInvoiceUrl, "_blank");
+                                        }
+                                      }}
+                                    >
+                                      <FileDown className="h-4 w-4 mr-2" />
+                                      Ultima Fattura
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -2969,6 +3115,218 @@ export default function ConsultantWhatsAppPage() {
               ) : (
                 "Elimina"
               )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Subscription Detail Modal */}
+      <Dialog open={isSubscriptionDetailOpen} onOpenChange={setIsSubscriptionDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-violet-600" />
+              Dettagli Sottoscrizione
+            </DialogTitle>
+            <DialogDescription>
+              Informazioni complete sulla sottoscrizione del cliente
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedSubscription && (
+            <div className="space-y-6">
+              {/* Client Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">Nome</p>
+                  <p className="font-medium">{selectedSubscription.clientName || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="font-medium">{selectedSubscription.clientEmail}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">Telefono</p>
+                  <p className="font-medium">{selectedSubscription.phone || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">Livello</p>
+                  <LevelBadge level={selectedSubscription.level} size="sm" />
+                </div>
+              </div>
+
+              {/* Subscription Info */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Abbonamento
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Importo</p>
+                    <p className="font-medium text-lg">
+                      {selectedSubscription.stripe?.amount 
+                        ? `€${(selectedSubscription.stripe.amount / 100).toFixed(2)}/${selectedSubscription.stripe.interval === 'year' ? 'anno' : 'mese'}` 
+                        : "—"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Stato</p>
+                    <Badge 
+                      className={
+                        selectedSubscription.status === "active" 
+                          ? "bg-green-100 text-green-700" 
+                          : selectedSubscription.status === "canceled"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-gray-100 text-gray-700"
+                      }
+                    >
+                      {selectedSubscription.status === "active" ? "Attivo" 
+                        : selectedSubscription.status === "canceled" ? "Annullato"
+                        : selectedSubscription.status}
+                      {selectedSubscription.stripe?.cancelAtPeriodEnd && " (in scadenza)"}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Data Inizio</p>
+                    <p className="font-medium">
+                      {selectedSubscription.startDate 
+                        ? format(new Date(selectedSubscription.startDate), "d MMMM yyyy", { locale: it })
+                        : "—"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Prossimo Rinnovo</p>
+                    <p className="font-medium">
+                      {selectedSubscription.stripe?.currentPeriodEnd 
+                        ? format(new Date(selectedSubscription.stripe.currentPeriodEnd), "d MMMM yyyy", { locale: it })
+                        : "—"}
+                    </p>
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <p className="text-sm text-gray-500">Totale Pagato</p>
+                    <p className="font-medium text-xl text-green-600">
+                      €{((selectedSubscription.totalPaid || 0) / 100).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice History */}
+              {selectedSubscription.invoices?.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Receipt className="h-4 w-4" />
+                    Storico Pagamenti
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedSubscription.invoices.map((invoice: any) => (
+                      <div key={invoice.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <p className="font-medium">€{(invoice.amountPaid / 100).toFixed(2)}</p>
+                            <p className="text-sm text-gray-500">
+                              {format(new Date(invoice.created), "d MMM yyyy", { locale: it })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={invoice.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                            {invoice.status === "paid" ? "Pagata" : invoice.status}
+                          </Badge>
+                          {invoice.hostedInvoiceUrl && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => window.open(invoice.hostedInvoiceUrl, "_blank")}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="border-t pt-4 flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => resetPasswordMutation.mutate(selectedSubscription.id)}
+                  disabled={resetPasswordMutation.isPending}
+                >
+                  <KeyRound className="h-4 w-4 mr-2" />
+                  Reset Password
+                </Button>
+                {selectedSubscription.status === "active" && !selectedSubscription.stripe?.cancelAtPeriodEnd && (
+                  <Button 
+                    variant="destructive"
+                    onClick={() => {
+                      setSubscriptionToCancel(selectedSubscription);
+                      setIsSubscriptionDetailOpen(false);
+                      setIsCancelDialogOpen(true);
+                    }}
+                  >
+                    <Ban className="h-4 w-4 mr-2" />
+                    Annulla Abbonamento
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Subscription Dialog */}
+      <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Annulla Abbonamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per annullare l'abbonamento di <strong>{subscriptionToCancel?.clientName || subscriptionToCancel?.clientEmail}</strong>.
+              <br /><br />
+              Scegli come procedere:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={cancelSubscriptionMutation.isPending}>
+              Mantieni Attivo
+            </AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (subscriptionToCancel) {
+                  cancelSubscriptionMutation.mutate({ 
+                    subscriptionId: subscriptionToCancel.id, 
+                    cancelImmediately: false 
+                  });
+                }
+              }}
+              disabled={cancelSubscriptionMutation.isPending}
+            >
+              {cancelSubscriptionMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Annulla a Fine Periodo
+            </Button>
+            <AlertDialogAction
+              onClick={() => {
+                if (subscriptionToCancel) {
+                  cancelSubscriptionMutation.mutate({ 
+                    subscriptionId: subscriptionToCancel.id, 
+                    cancelImmediately: true 
+                  });
+                }
+              }}
+              disabled={cancelSubscriptionMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {cancelSubscriptionMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Annulla Subito
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
