@@ -206,7 +206,9 @@ async function validateBronzeAuth(
     }
     
     // Only require Bronze auth for Level 1 agents
-    if (agentConfig.level !== "1") {
+    // Check both legacy 'level' field and new 'levels' array
+    const hasLevel1 = agentConfig.level === "1" || (agentConfig.levels && agentConfig.levels.includes("1"));
+    if (!hasLevel1) {
       return next();
     }
     
@@ -397,8 +399,11 @@ router.get('/:slug/metadata', validateShareExists, async (req: Request & { share
     }
     
     // Determine if Bronze auth is required (Level 1 agents)
+    // Check both legacy 'level' field and new 'levels' array
     const agentLevel = agentConfig?.level || null;
-    const requiresBronzeAuth = agentLevel === "1";
+    const agentLevels = agentConfig?.levels || null;
+    const hasLevel1 = agentLevel === "1" || (agentLevels && agentLevels.includes("1"));
+    const requiresBronzeAuth = hasLevel1;
     
     // Return public metadata with business info
     res.json({

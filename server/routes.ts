@@ -11786,8 +11786,18 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       if (availabilityWorkingHours !== undefined) updateData.availabilityWorkingHours = availabilityWorkingHours;
 
       // Dipendente AI Level Configuration
-      if (level !== undefined) updateData.level = level;
-      if (levels !== undefined) updateData.levels = levels;
+      // Sync legacy 'level' field with new 'levels' array for backward compatibility
+      if (levels !== undefined) {
+        updateData.levels = levels;
+        // Derive legacy level from levels array: null if empty, "1" if has 1, "2" if has 2 only
+        if (levels && levels.length > 0) {
+          updateData.level = levels.includes("1") ? "1" : (levels.includes("2") ? "2" : null);
+        } else {
+          updateData.level = null;
+        }
+      } else if (level !== undefined) {
+        updateData.level = level;
+      }
       if (publicSlug !== undefined) updateData.publicSlug = publicSlug;
       if (dailyMessageLimit !== undefined) updateData.dailyMessageLimit = dailyMessageLimit;
 
@@ -12350,8 +12360,15 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           // AI Assistant Integration
           enableInAIAssistant: enableInAIAssistant ?? existingConfig.enableInAIAssistant ?? false,
           // Dipendente AI Level Configuration
-          level: level !== undefined ? level : existingConfig.level,
+          // Sync legacy 'level' field with new 'levels' array for backward compatibility
           levels: levels !== undefined ? levels : existingConfig.levels,
+          level: (() => {
+            const effectiveLevels = levels !== undefined ? levels : existingConfig.levels;
+            if (effectiveLevels && effectiveLevels.length > 0) {
+              return effectiveLevels.includes("1") ? "1" : (effectiveLevels.includes("2") ? "2" : null);
+            }
+            return level !== undefined ? level : existingConfig.level;
+          })(),
           publicSlug: publicSlug !== undefined ? publicSlug : existingConfig.publicSlug,
           dailyMessageLimit: dailyMessageLimit ?? existingConfig.dailyMessageLimit ?? 15,
         };
@@ -12472,8 +12489,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
             // AI Assistant Integration
             enableInAIAssistant: enableInAIAssistant ?? false,
             // Dipendente AI Level Configuration
-            level: level || null,
+            // Sync legacy 'level' field with new 'levels' array for backward compatibility
             levels: levels || null,
+            level: levels && levels.length > 0 
+              ? (levels.includes("1") ? "1" : (levels.includes("2") ? "2" : null))
+              : (level || null),
             publicSlug: publicSlug || null,
             dailyMessageLimit: dailyMessageLimit ?? 15,
           })
