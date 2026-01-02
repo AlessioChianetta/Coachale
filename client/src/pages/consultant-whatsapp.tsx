@@ -359,7 +359,8 @@ export default function ConsultantWhatsAppPage() {
     },
   });
 
-  const subscriptions = Array.isArray(subscriptionsQuery.data) ? subscriptionsQuery.data : [];
+  const subscriptions = Array.isArray(subscriptionsQuery.data?.data) ? subscriptionsQuery.data.data : 
+                        Array.isArray(subscriptionsQuery.data) ? subscriptionsQuery.data : [];
 
   // Mutations per gestione sottoscrizioni
   const cancelSubscriptionMutation = useMutation({
