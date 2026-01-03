@@ -1869,22 +1869,10 @@ export class FileSearchSyncService {
         }
       }
 
-      // Scrape workPlatform content if it's a Google Doc URL
-      let workPlatformContent: string | null = null;
-      if (exercise.workPlatform && exercise.workPlatform.includes('docs.google.com')) {
-        try {
-          console.log(`🔍 [FileSync] Scraping Google Doc for exercise: ${exercise.title}`);
-          workPlatformContent = await scrapeGoogleDoc(exercise.workPlatform);
-          if (workPlatformContent) {
-            console.log(`✅ [FileSync] Scraped ${workPlatformContent.length} chars from Google Doc`);
-          }
-        } catch (scrapeError: any) {
-          console.warn(`⚠️ [FileSync] Failed to scrape Google Doc for ${exercise.title}: ${scrapeError.message}`);
-        }
-      }
-
-      // Build exercise content for indexing (including scraped content)
-      const content = this.buildExerciseContent(exercise, workPlatformContent);
+      // Build exercise content for indexing (WITHOUT scraping - external docs are synced separately)
+      // If exercise has workPlatform, the Google Doc will be synced via syncExerciseExternalDoc()
+      const hasExternalDoc = exercise.workPlatform && exercise.workPlatform.includes('docs.google.com');
+      const content = this.buildExerciseContent(exercise, hasExternalDoc);
       
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
@@ -1912,9 +1900,9 @@ export class FileSearchSyncService {
   /**
    * Build searchable content from an exercise
    * @param exercise - The exercise object
-   * @param workPlatformContent - Optional scraped content from workPlatform (Google Doc)
+   * @param hasExternalDoc - Whether this exercise has an external Google Doc that will be synced separately
    */
-  private static buildExerciseContent(exercise: any, workPlatformContent?: string | null): string {
+  private static buildExerciseContent(exercise: any, hasExternalDoc?: boolean): string {
     const parts: string[] = [];
     
     parts.push(`# ${exercise.title}`);
@@ -1945,9 +1933,12 @@ export class FileSearchSyncService {
       parts.push(`\n## Piattaforma di lavoro\nURL: ${exercise.workPlatform}`);
     }
 
-    // Include scraped content from Google Doc if available
-    if (workPlatformContent) {
-      parts.push(`\n## Contenuto Documento\n${workPlatformContent}`);
+    // Add reference to external document if present (content is in separate document for complete indexing)
+    if (hasExternalDoc) {
+      parts.push(`\n## 📎 Documento di Lavoro Collegato`);
+      parts.push(`Questo esercizio ha un documento Google Docs associato contenente le istruzioni dettagliate.`);
+      parts.push(`Il contenuto completo del documento è indicizzato separatamente come "[DOC ESTERNO] ${exercise.title}".`);
+      parts.push(`Per informazioni dettagliate sul contenuto del documento, cerca il documento esterno collegato.`);
     }
     
     return parts.join('\n');
@@ -6455,8 +6446,21 @@ export class FileSearchSyncService {
         return { success: false, error: 'Failed to get or create client private store' };
       }
 
-      // Check if already synced to this client's store (CRITICAL: must include storeId to prevent cross-store confusion)
-      const existingDoc = await db.query.fileSearchDocuments.findFirst({
+      // Find the assignment FIRST to check for personalized links
+      const assignment = await db.query.exerciseAssignments.findFirst({
+        where: and(
+          eq(exerciseAssignments.exerciseId, exerciseId),
+          eq(exerciseAssignments.assignedTo, clientId),
+        ),
+      });
+
+      // Check for external doc in BOTH template AND assignment (personalized link)
+      const templateHasExternalDoc = exercise.workPlatform && exercise.workPlatform.includes('docs.google.com');
+      const assignmentHasPersonalizedLink = assignment?.workPlatform && assignment.workPlatform.includes('docs.google.com');
+      const hasExternalDoc = templateHasExternalDoc || assignmentHasPersonalizedLink;
+
+      // Check if exercise metadata already synced to this client's store
+      const existingMetadataDoc = await db.query.fileSearchDocuments.findFirst({
         where: and(
           eq(fileSearchDocuments.storeId, clientStore.storeId),
           eq(fileSearchDocuments.sourceType, 'exercise'),
@@ -6465,41 +6469,112 @@ export class FileSearchSyncService {
         ),
       });
 
-      if (existingDoc) {
-        console.log(`📌 [FileSync] Exercise already synced to client ${clientId.substring(0, 8)}: ${exercise.title}`);
+      // Check if external doc already synced (separately from metadata)
+      const existingExternalDoc = hasExternalDoc ? await db.query.fileSearchDocuments.findFirst({
+        where: and(
+          eq(fileSearchDocuments.storeId, clientStore.storeId),
+          eq(fileSearchDocuments.sourceType, 'exercise_external_doc'),
+          eq(fileSearchDocuments.sourceId, exerciseId),
+          eq(fileSearchDocuments.clientId, clientId),
+        ),
+      }) : null;
+
+      // Early exit if BOTH metadata AND external doc (if applicable) are already synced
+      if (existingMetadataDoc && (!hasExternalDoc || existingExternalDoc)) {
+        console.log(`📌 [FileSync] Exercise and external doc already synced to client ${clientId.substring(0, 8)}: ${exercise.title}`);
         return { success: true };
       }
 
-      // Build exercise content
-      let workPlatformContent: string | null = null;
-      if (exercise.workPlatform && exercise.workPlatform.includes('docs.google.com')) {
-        try {
-          workPlatformContent = await scrapeGoogleDoc(exercise.workPlatform);
-        } catch (e) {
-          console.warn(`⚠️ [FileSync] Failed to scrape Google Doc for ${exercise.title}`);
+      let metadataSuccess = !!existingMetadataDoc;
+
+      // Sync metadata if not already present
+      if (!existingMetadataDoc) {
+        const content = this.buildExerciseContent(exercise, hasExternalDoc);
+        const uploadResult = await fileSearchService.uploadDocumentFromContent({
+          content: content,
+          displayName: `[ESERCIZIO ASSEGNATO] ${exercise.title}`,
+          storeId: clientStore.storeId,
+          sourceType: 'exercise',
+          sourceId: exerciseId,
+          clientId: clientId,
+          userId: clientId,
+        });
+
+        if (uploadResult.success) {
+          console.log(`✅ [FileSync] Exercise synced to client ${clientId.substring(0, 8)} private store: ${exercise.title}`);
+          metadataSuccess = true;
+        } else {
+          console.error(`❌ [FileSync] Failed to sync exercise metadata: ${uploadResult.error}`);
+          return { success: false, error: uploadResult.error };
         }
+      } else {
+        console.log(`📌 [FileSync] Exercise metadata already exists for client ${clientId.substring(0, 8)}: ${exercise.title}`);
       }
 
-      const content = this.buildExerciseContent(exercise, workPlatformContent);
-
-      // Upload to client's PRIVATE store
-      const uploadResult = await fileSearchService.uploadDocumentFromContent({
-        content: content,
-        displayName: `[ESERCIZIO ASSEGNATO] ${exercise.title}`,
-        storeId: clientStore.storeId,
-        sourceType: 'exercise',
-        sourceId: exerciseId,
-        clientId: clientId,
-        userId: clientId,
-      });
-
-      if (uploadResult.success) {
-        console.log(`✅ [FileSync] Exercise synced to client ${clientId.substring(0, 8)} private store: ${exercise.title}`);
+      // Sync external doc if needed and not already present
+      if (hasExternalDoc && !existingExternalDoc) {
+        if (assignment) {
+          // Use syncExerciseExternalDoc which handles personalized vs template URLs
+          const linkType = assignmentHasPersonalizedLink ? 'personalizzato' : 'template';
+          console.log(`📎 [FileSync] Syncing external doc for exercise "${exercise.title}" (${linkType}, via assignment)...`);
+          const externalDocResult = await this.syncExerciseExternalDoc(assignment.id, clientId, consultantId);
+          if (externalDocResult.success) {
+            console.log(`   ✅ External doc synced successfully`);
+          } else {
+            console.warn(`   ⚠️ External doc sync failed: ${externalDocResult.error}`);
+          }
+        } else if (templateHasExternalDoc) {
+          // FALLBACK: No assignment found but template has URL, scrape template URL directly
+          console.log(`📎 [FileSync] No assignment found, syncing external doc from template URL for "${exercise.title}"...`);
+          const scraped = await scrapeGoogleDoc(exercise.workPlatform!, 100000);
+          
+          if (scraped.success && scraped.content) {
+            // Build content with exercise reference
+            const contentWithReference = [
+              `# Documento di Lavoro: ${exercise.title}`,
+              ``,
+              `## 📌 Esercizio Collegato`,
+              `Questo documento è associato all'esercizio "${exercise.title}" (ID: ${exercise.id}).`,
+              `Categoria: ${exercise.category}`,
+              `Tipo: ${exercise.type}`,
+              `Versione: Template standard (no assignment trovato)`,
+              ``,
+              `## Contenuto Documento`,
+              scraped.content,
+            ].join('\n');
+            
+            // Use exerciseId as sourceId for consistent linking with exercise metadata doc
+            const externalUpload = await fileSearchService.uploadDocumentFromContent({
+              content: contentWithReference,
+              displayName: `[DOC ESTERNO] ${exercise.title}`,
+              storeId: clientStore.storeId,
+              sourceType: 'exercise_external_doc',
+              sourceId: exercise.id, // Use exerciseId for linking, clientId is already in the record
+              clientId: clientId,
+              userId: clientId,
+              customMetadata: {
+                docType: 'external_exercise_doc',
+                category: exercise.category,
+              },
+            });
+            
+            if (externalUpload.success) {
+              console.log(`   ✅ External doc synced (template fallback) - ${scraped.content.length} chars`);
+            } else {
+              console.warn(`   ⚠️ External doc upload failed: ${externalUpload.error}`);
+            }
+          } else {
+            console.warn(`   ⚠️ [FileSync] Skipped external doc - scraping failed: ${scraped.error}`);
+          }
+        } else {
+          // Edge case: hasExternalDoc is true due to personalized link but no assignment found
+          console.warn(`   ⚠️ [FileSync] External doc detected but no assignment and no template URL - skipping`);
+        }
+      } else if (existingExternalDoc) {
+        console.log(`📌 [FileSync] External doc already exists for client ${clientId.substring(0, 8)}: ${exercise.title}`);
       }
 
-      return uploadResult.success
-        ? { success: true }
-        : { success: false, error: uploadResult.error };
+      return { success: metadataSuccess };
     } catch (error: any) {
       console.error('[FileSync] Error syncing exercise to client:', error);
       return { success: false, error: error.message };
@@ -7716,13 +7791,28 @@ export class FileSearchSyncService {
         ? `[DOC ESTERNO PERS.] ${exercise.title}`
         : `[DOC ESTERNO] ${exercise.title}`;
 
+      // Build content with exercise reference for AI context linking
+      const contentWithReference = [
+        `# Documento di Lavoro: ${exercise.title}`,
+        ``,
+        `## 📌 Esercizio Collegato`,
+        `Questo documento è associato all'esercizio "${exercise.title}" (ID: ${exercise.id}).`,
+        `Categoria: ${exercise.category}`,
+        `Tipo: ${exercise.type}`,
+        isPersonalized ? `Versione: Personalizzata per questo cliente` : `Versione: Template standard`,
+        ``,
+        `## Contenuto Documento`,
+        scraped.content,
+      ].join('\n');
+
       // Upload to client's PRIVATE store
+      // Use exerciseId as sourceId for consistent linking (clientId is already in the record)
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
-        content: scraped.content,
+        content: contentWithReference,
         displayName: displayName,
         storeId: clientStore.storeId,
         sourceType: 'exercise_external_doc',
-        sourceId: assignmentId,
+        sourceId: exercise.id, // Use exerciseId for linking, unique within this client's store
         clientId: clientId,
         userId: clientId,
         customMetadata: {
