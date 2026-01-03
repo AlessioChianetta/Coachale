@@ -773,6 +773,17 @@ export class FileSearchService {
       });
       if (!store) return { success: false, error: 'Store not found' };
 
+      // CRITICAL LOGGING: Log exactly what we're deleting and from where
+      const storeType = store.clientId ? 'CLIENT' : 'CONSULTANT';
+      const ownerInfo = store.clientId ? `clientId=${store.clientId.substring(0, 8)}` : `consultantId=${store.consultantId.substring(0, 8)}`;
+      console.log(`\n🔍 [FileSearch DELETE] ══════════════════════════════════════════════`);
+      console.log(`   📄 Document: ${doc.displayName || doc.id.substring(0, 8)}`);
+      console.log(`   🏪 Store: ${storeType} (${ownerInfo}, storeId=${doc.storeId.substring(0, 8)})`);
+      console.log(`   📋 sourceType: ${doc.sourceType}, sourceId: ${doc.sourceId?.substring(0, 8) || 'null'}`);
+      console.log(`   👤 clientId on doc: ${doc.clientId?.substring(0, 8) || 'null (consultant master)'}`);
+      console.log(`   🔑 Requesting user: ${requestingUserId?.substring(0, 8) || 'none'}`);
+      console.log(`══════════════════════════════════════════════════════════════════════\n`);
+
       // Resolve the correct user ID for API credentials
       const credentialOwnerId = await this.resolveStoreCredentialOwner(store, requestingUserId);
       const ai = await this.getClientForUser(credentialOwnerId || undefined);
@@ -830,6 +841,24 @@ export class FileSearchService {
     requestingUserId?: string
   ): Promise<{ removed: number; errors: string[] }> {
     try {
+      // Get store info for detailed logging
+      const store = await db.query.fileSearchStores.findFirst({
+        where: eq(fileSearchStores.id, storeId),
+      });
+      const storeType = store?.clientId ? 'CLIENT' : 'CONSULTANT';
+      const ownerInfo = store?.clientId 
+        ? `clientId=${store.clientId.substring(0, 8)}` 
+        : `consultantId=${store?.consultantId?.substring(0, 8) || 'unknown'}`;
+
+      console.log(`\n🔍 [FileSearch RECONCILE] ════════════════════════════════════════════`);
+      console.log(`   🏪 Store: ${storeType} (${ownerInfo}, storeId=${storeId.substring(0, 8)})`);
+      console.log(`   📋 sourceType: ${sourceType}`);
+      console.log(`   ✅ validSourceIds count: ${validSourceIds.length}`);
+      if (validSourceIds.length > 0 && validSourceIds.length <= 10) {
+        console.log(`   ✅ validSourceIds: ${validSourceIds.map(id => id.substring(0, 8)).join(', ')}`);
+      }
+      console.log(`══════════════════════════════════════════════════════════════════════\n`);
+
       let orphanedDocs;
       if (validSourceIds.length === 0) {
         orphanedDocs = await db
@@ -852,10 +881,14 @@ export class FileSearchService {
       }
 
       if (orphanedDocs.length === 0) {
+        console.log(`   ℹ️ No orphaned documents found - nothing to reconcile`);
         return { removed: 0, errors: [] };
       }
 
-      console.log(`🧹 [FileSearch] Reconciling ${orphanedDocs.length} orphaned ${sourceType} documents`);
+      console.log(`🧹 [FileSearch RECONCILE] Found ${orphanedDocs.length} orphaned ${sourceType} documents to remove:`);
+      for (const doc of orphanedDocs) {
+        console.log(`   ⚠️ ORPHAN: "${doc.displayName}" (sourceId=${doc.sourceId?.substring(0, 8) || 'null'}, clientId=${doc.clientId?.substring(0, 8) || 'null'})`);
+      }
 
       let removed = 0;
       const errors: string[] = [];

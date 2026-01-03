@@ -569,7 +569,12 @@ export class FileSearchSyncService {
         
         // Document is outdated - delete and re-upload
         if (indexInfo.documentId) {
-          console.log(`🔄 [FileSync] Library document "${doc.title}" outdated in consultant store - re-syncing...`);
+          console.log(`\n🔄 [FileSync CONSULTANT LIBRARY UPDATE] ═══════════════════════════════`);
+          console.log(`   📄 Document: "${doc.title}" (${documentId.substring(0, 8)})`);
+          console.log(`   🏪 Store: CONSULTANT (storeId=${consultantStore.id.substring(0, 8)})`);
+          console.log(`   📅 Source updated: ${sourceUpdatedAt}, Indexed: ${indexedAt}`);
+          console.log(`   🗑️ Deleting outdated version from CONSULTANT store, then re-uploading...`);
+          console.log(`══════════════════════════════════════════════════════════════════════\n`);
           await fileSearchService.deleteDocument(indexInfo.documentId);
         }
       }
@@ -6545,8 +6550,17 @@ export class FileSearchSyncService {
         return { success: false, synced: 0, failed: 0, error: 'Failed to get or create client private store' };
       }
 
+      // DETAILED LOGGING: Show store info for debugging
+      console.log(`\n🔍 [FileSync LIBRARY→CLIENT] ══════════════════════════════════════════`);
+      console.log(`   📋 Category: "${category.name}" (${categoryId.substring(0, 8)})`);
+      console.log(`   👤 Client: ${clientId.substring(0, 8)}`);
+      console.log(`   🏪 Client Store: ${clientStore.storeId.substring(0, 8)}`);
+      console.log(`   📄 Documents to sync: ${docs.length}`);
+      console.log(`══════════════════════════════════════════════════════════════════════\n`);
+
       let synced = 0;
       let failed = 0;
+      let alreadyExists = 0;
 
       for (const doc of docs) {
         // Check if already synced (CRITICAL: must include storeId to prevent cross-store confusion)
@@ -6560,9 +6574,12 @@ export class FileSearchSyncService {
         });
 
         if (existingDoc) {
+          alreadyExists++;
           synced++; // Count as success
           continue;
         }
+        
+        console.log(`   ➕ Uploading new: "${doc.title}" (${doc.id.substring(0, 8)}) to client store ${clientStore.storeId.substring(0, 8)}`);
 
         const uploadResult = await fileSearchService.uploadDocumentFromContent({
           content: doc.content || `${doc.title}\n\n${doc.description || ''}`,
@@ -6576,11 +6593,21 @@ export class FileSearchSyncService {
 
         if (uploadResult.success) {
           synced++;
+          console.log(`   ✅ Success: "${doc.title}"`);
         } else {
           failed++;
+          console.log(`   ❌ Failed: "${doc.title}" - ${uploadResult.error}`);
         }
       }
 
+      console.log(`\n🔍 [FileSync LIBRARY→CLIENT SUMMARY] ═════════════════════════════════`);
+      console.log(`   📋 Category: "${category.name}"`);
+      console.log(`   👤 Client: ${clientId.substring(0, 8)}`);
+      console.log(`   ✅ Already existed: ${alreadyExists}`);
+      console.log(`   ➕ Newly synced: ${synced - alreadyExists}`);
+      console.log(`   ❌ Failed: ${failed}`);
+      console.log(`   📊 Total: ${synced}/${docs.length} synced`);
+      console.log(`══════════════════════════════════════════════════════════════════════\n`);
       console.log(`✅ [FileSync] Library category sync complete - Synced: ${synced}, Failed: ${failed}`);
 
       return { success: true, synced, failed };
