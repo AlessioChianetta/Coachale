@@ -643,7 +643,7 @@ export default function ClientAIAssistant() {
                 </div>
               )}
 
-              <div className="border-t border-slate-200 dark:border-slate-700 pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0 shadow-lg">
+              <div className="pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0">
                 <div className="max-w-4xl mx-auto">
                   <InputArea
                     onSend={handleSendMessage}

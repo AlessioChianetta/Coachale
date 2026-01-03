@@ -614,7 +614,7 @@ export default function ConsultantAIAssistant() {
               )}
             </div>
             
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0 shadow-lg">
+            <div className="pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0">
               <div className="max-w-4xl mx-auto space-y-3">
                 {isRetrying && (
                   <Alert className="border-orange-300 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-700">
