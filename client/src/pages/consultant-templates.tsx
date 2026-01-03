@@ -63,7 +63,25 @@ import {
   CheckCircle2,
   Copy,
   Eye,
+  Settings2,
+  ChevronDown,
+  Loader2,
+  Dumbbell,
+  Unlink,
 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -115,6 +133,15 @@ export default function ConsultantTemplates() {
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [aiWizardOpen, setAiWizardOpen] = useState(false);
 
+  const [manageSheetOpen, setManageSheetOpen] = useState(false);
+  const [managingTemplateId, setMananingTemplateId] = useState<string | null>(null);
+  const [expandedTrimesters, setExpandedTrimesters] = useState<string[]>([]);
+  const [expandedModules, setExpandedModules] = useState<string[]>([]);
+  const [coursePickerOpen, setCoursePickerOpen] = useState(false);
+  const [coursePickerTrimesterId, setCoursePickerTrimesterId] = useState<string>("");
+  const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
+  const [exercisePickerLessonId, setExercisePickerLessonId] = useState<string>("");
+
   const [templateFormData, setTemplateFormData] = useState({ name: "", description: "", isActive: true });
   const [trimesterFormData, setTrimesterFormData] = useState({ title: "", description: "", sortOrder: 0 });
   const [moduleFormData, setModuleFormData] = useState({ title: "", description: "", sortOrder: 0 });
@@ -156,6 +183,42 @@ export default function ConsultantTemplates() {
       return response.json();
     },
     enabled: !!previewTemplateId && previewDialogOpen,
+  });
+
+  const { data: managingTemplate, isLoading: managingTemplateLoading } = useQuery<TemplateWithStructure>({
+    queryKey: ["/api/university/templates", managingTemplateId, "full"],
+    queryFn: async () => {
+      const response = await fetch(`/api/university/templates/${managingTemplateId}/full`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch template");
+      return response.json();
+    },
+    enabled: !!managingTemplateId && manageSheetOpen,
+  });
+
+  const { data: availableCourses = [] } = useQuery<{ id: string; name: string; description?: string }[]>({
+    queryKey: ["/api/university/ai/courses"],
+    queryFn: async () => {
+      const response = await fetch("/api/university/ai/courses", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch courses");
+      return response.json();
+    },
+    enabled: coursePickerOpen,
+  });
+
+  const { data: availableExercises = [] } = useQuery<{ id: string; title: string; category?: string }[]>({
+    queryKey: ["/api/exercises"],
+    queryFn: async () => {
+      const response = await fetch("/api/exercises", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch exercises");
+      return response.json();
+    },
+    enabled: exercisePickerOpen,
   });
 
   const createTemplateMutation = useMutation({
@@ -216,6 +279,40 @@ export default function ConsultantTemplates() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/university/templates"] });
       toast({ title: "Template duplicato con successo" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const addCourseToTrimesterMutation = useMutation({
+    mutationFn: async (data: { templateId: string; trimesterId: string; libraryCategoryId: string }) => {
+      return await apiRequest("POST", `/api/university/templates/${data.templateId}/trimesters/${data.trimesterId}/add-course`, {
+        libraryCategoryId: data.libraryCategoryId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/university/templates", managingTemplateId, "full"] });
+      setCoursePickerOpen(false);
+      setCoursePickerTrimesterId("");
+      toast({ title: "Corso aggiunto con successo" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateLessonExerciseMutation = useMutation({
+    mutationFn: async (data: { lessonId: string; exerciseId: string | null }) => {
+      return await apiRequest("PATCH", `/api/university/templates/lessons/${data.lessonId}/exercise`, {
+        exerciseId: data.exerciseId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/university/templates", managingTemplateId, "full"] });
+      setExercisePickerOpen(false);
+      setExercisePickerLessonId("");
+      toast({ title: "Esercizio aggiornato con successo" });
     },
     onError: (error: Error) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -1175,6 +1272,19 @@ export default function ConsultantTemplates() {
                             className="flex-1 h-8"
                             onClick={(e) => {
                               e.stopPropagation();
+                              setMananingTemplateId(template.id);
+                              setManageSheetOpen(true);
+                            }}
+                            title="Gestisci"
+                          >
+                            <Settings2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="flex-1 h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               duplicateTemplateMutation.mutate(template.id);
                             }}
                           >
@@ -1376,6 +1486,285 @@ export default function ConsultantTemplates() {
           toast({ title: "Percorso creato con successo", description: "Il template è stato generato dall'AI" });
         }}
       />
+
+      <Sheet open={manageSheetOpen} onOpenChange={(open) => {
+        setManageSheetOpen(open);
+        if (!open) {
+          setMananingTemplateId(null);
+          setExpandedTrimesters([]);
+          setExpandedModules([]);
+        }
+      }}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-hidden flex flex-col">
+          <SheetHeader className="flex-shrink-0">
+            <SheetTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Gestisci Template
+            </SheetTitle>
+            <SheetDescription>
+              {managingTemplate?.name || "Caricamento..."}
+            </SheetDescription>
+          </SheetHeader>
+
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            {managingTemplateLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : managingTemplate ? (
+              <div className="space-y-4 py-4">
+                {managingTemplate.description && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">{managingTemplate.description}</p>
+                  </div>
+                )}
+
+                {managingTemplate.trimesters && managingTemplate.trimesters.length > 0 ? (
+                  <div className="space-y-3">
+                    {managingTemplate.trimesters.map((trimester, tIndex) => (
+                      <Collapsible
+                        key={trimester.id}
+                        open={expandedTrimesters.includes(trimester.id)}
+                        onOpenChange={(open) => {
+                          setExpandedTrimesters(open 
+                            ? [...expandedTrimesters, trimester.id]
+                            : expandedTrimesters.filter(id => id !== trimester.id)
+                          );
+                        }}
+                      >
+                        <div className="border rounded-lg overflow-hidden">
+                          <CollapsibleTrigger className="w-full">
+                            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-950/20 dark:to-teal-950/20 hover:from-cyan-100 hover:to-teal-100 dark:hover:from-cyan-950/30 dark:hover:to-teal-950/30 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-cyan-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                                  {tIndex + 1}
+                                </div>
+                                <div className="text-left">
+                                  <h4 className="font-semibold text-sm">{trimester.title}</h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    {trimester.modules?.length || 0} moduli
+                                  </p>
+                                </div>
+                              </div>
+                              <ChevronDown className={`h-5 w-5 transition-transform ${expandedTrimesters.includes(trimester.id) ? 'rotate-180' : ''}`} />
+                            </div>
+                          </CollapsibleTrigger>
+
+                          <CollapsibleContent>
+                            <div className="p-4 space-y-3 border-t">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full justify-start gap-2"
+                                onClick={() => {
+                                  setCoursePickerTrimesterId(trimester.id);
+                                  setCoursePickerOpen(true);
+                                }}
+                              >
+                                <Plus className="h-4 w-4" />
+                                Aggiungi Corso
+                              </Button>
+
+                              {trimester.modules && trimester.modules.length > 0 && (
+                                <div className="space-y-2">
+                                  {trimester.modules.map((module, mIndex) => (
+                                    <Collapsible
+                                      key={module.id}
+                                      open={expandedModules.includes(module.id)}
+                                      onOpenChange={(open) => {
+                                        setExpandedModules(open 
+                                          ? [...expandedModules, module.id]
+                                          : expandedModules.filter(id => id !== module.id)
+                                        );
+                                      }}
+                                    >
+                                      <div className="border rounded-lg overflow-hidden ml-4">
+                                        <CollapsibleTrigger className="w-full">
+                                          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
+                                            <div className="flex items-center gap-2">
+                                              <div className="w-6 h-6 bg-teal-500 text-white rounded flex items-center justify-center font-semibold text-xs">
+                                                {mIndex + 1}
+                                              </div>
+                                              <div className="text-left">
+                                                <h5 className="font-medium text-sm">{module.title}</h5>
+                                                <p className="text-xs text-muted-foreground">
+                                                  {module.lessons?.length || 0} lezioni
+                                                </p>
+                                              </div>
+                                            </div>
+                                            <ChevronDown className={`h-4 w-4 transition-transform ${expandedModules.includes(module.id) ? 'rotate-180' : ''}`} />
+                                          </div>
+                                        </CollapsibleTrigger>
+
+                                        <CollapsibleContent>
+                                          <div className="p-3 space-y-2 border-t bg-white dark:bg-slate-950">
+                                            {module.lessons && module.lessons.length > 0 ? (
+                                              module.lessons.map((lesson) => (
+                                                <div key={lesson.id} className="flex items-center justify-between p-2 rounded-lg border bg-slate-50 dark:bg-slate-900/30">
+                                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                                    <span className="text-sm font-medium truncate">{lesson.title}</span>
+                                                  </div>
+                                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                                    {lesson.exerciseId ? (
+                                                      <>
+                                                        <Badge variant="secondary" className="text-xs gap-1">
+                                                          <Dumbbell className="h-3 w-3" />
+                                                          Esercizio
+                                                        </Badge>
+                                                        <Button
+                                                          size="sm"
+                                                          variant="ghost"
+                                                          className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                                                          onClick={() => {
+                                                            updateLessonExerciseMutation.mutate({
+                                                              lessonId: lesson.id,
+                                                              exerciseId: null,
+                                                            });
+                                                          }}
+                                                          title="Scollega esercizio"
+                                                        >
+                                                          <Unlink className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                      </>
+                                                    ) : (
+                                                      <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-7 text-xs gap-1"
+                                                        onClick={() => {
+                                                          setExercisePickerLessonId(lesson.id);
+                                                          setExercisePickerOpen(true);
+                                                        }}
+                                                      >
+                                                        <Dumbbell className="h-3 w-3" />
+                                                        Collega Esercizio
+                                                      </Button>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              ))
+                                            ) : (
+                                              <p className="text-xs text-muted-foreground text-center py-2">
+                                                Nessuna lezione in questo modulo
+                                              </p>
+                                            )}
+                                          </div>
+                                        </CollapsibleContent>
+                                      </div>
+                                    </Collapsible>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <GraduationCap className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>Nessuna struttura definita per questo template</p>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={coursePickerOpen} onOpenChange={setCoursePickerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Seleziona Corso
+            </DialogTitle>
+            <DialogDescription>
+              Scegli un corso dalla libreria da aggiungere al trimestre
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px]">
+            <div className="space-y-2">
+              {availableCourses.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nessun corso disponibile
+                </p>
+              ) : (
+                availableCourses.map((course) => (
+                  <div
+                    key={course.id}
+                    className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      if (managingTemplateId && coursePickerTrimesterId) {
+                        addCourseToTrimesterMutation.mutate({
+                          templateId: managingTemplateId,
+                          trimesterId: coursePickerTrimesterId,
+                          libraryCategoryId: course.id,
+                        });
+                      }
+                    }}
+                  >
+                    <h4 className="font-medium text-sm">{course.name}</h4>
+                    {course.description && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {course.description}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={exercisePickerOpen} onOpenChange={setExercisePickerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Dumbbell className="h-5 w-5" />
+              Seleziona Esercizio
+            </DialogTitle>
+            <DialogDescription>
+              Scegli un esercizio da collegare alla lezione
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px]">
+            <div className="space-y-2">
+              {availableExercises.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nessun esercizio disponibile
+                </p>
+              ) : (
+                availableExercises.map((exercise) => (
+                  <div
+                    key={exercise.id}
+                    className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      if (exercisePickerLessonId) {
+                        updateLessonExerciseMutation.mutate({
+                          lessonId: exercisePickerLessonId,
+                          exerciseId: exercise.id,
+                        });
+                      }
+                    }}
+                  >
+                    <h4 className="font-medium text-sm">{exercise.title}</h4>
+                    {exercise.category && (
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {exercise.category}
+                      </Badge>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       <ConsultantAIAssistant />
     </div>
   );
