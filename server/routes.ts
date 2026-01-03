@@ -7344,7 +7344,9 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
     }
   });
 
-  // Add Course to Trimester - creates a module from library category with all its documents as lessons
+  // Add Course to Trimester - creates module(s) from library category with all its documents as lessons
+  // If category has subcategories, creates one module per subcategory with only that subcategory's documents
+  // Also propagates to all client pathways (universityYears) linked to this template
   app.post("/api/university/templates/:templateId/trimesters/:trimesterId/add-course", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { templateId, trimesterId } = req.params;
@@ -7391,6 +7393,17 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
         return res.status(404).json({ message: "Library category not found" });
       }
 
+      // Check for subcategories
+      const subcategories = await db.select()
+        .from(schema.librarySubcategories)
+        .where(
+          and(
+            eq(schema.librarySubcategories.categoryId, libraryCategoryId),
+            eq(schema.librarySubcategories.isActive, true)
+          )
+        )
+        .orderBy(schema.librarySubcategories.sortOrder);
+
       // Get all documents from this category
       const documents = await db.select()
         .from(schema.libraryDocuments)
@@ -7401,39 +7414,230 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
       const [maxSortResult] = await db.select({ maxSort: sql<number>`COALESCE(MAX(sort_order), -1)` })
         .from(schema.templateModules)
         .where(eq(schema.templateModules.templateTrimesterId, trimesterId));
-      const nextSortOrder = (maxSortResult?.maxSort ?? -1) + 1;
+      let nextSortOrder = (maxSortResult?.maxSort ?? -1) + 1;
 
-      // Use a transaction for atomicity
+      // Find all universityYears linked to this template for propagation
+      const linkedYears = await db.select()
+        .from(schema.universityYears)
+        .where(eq(schema.universityYears.templateId, templateId));
+
+      // For each year, find the client trimester that matches by sortOrder
+      const clientTrimesters: Array<{ yearId: string; trimesterId: string }> = [];
+      for (const year of linkedYears) {
+        const [clientTrimester] = await db.select()
+          .from(schema.universityTrimesters)
+          .where(
+            and(
+              eq(schema.universityTrimesters.yearId, year.id),
+              eq(schema.universityTrimesters.sortOrder, trimester.sortOrder)
+            )
+          );
+        if (clientTrimester) {
+          clientTrimesters.push({ yearId: year.id, trimesterId: clientTrimester.id });
+        }
+      }
+
+      // Use a transaction for atomicity (includes template inserts AND client pathway propagation)
       const result = await db.transaction(async (tx) => {
-        // Create the module from the category
-        const [newModule] = await tx.insert(schema.templateModules)
-          .values({
-            templateTrimesterId: trimesterId,
-            title: category.name,
-            description: category.description,
-            libraryCategoryId: libraryCategoryId,
-            sortOrder: nextSortOrder,
-          })
-          .returning();
+        const createdModules: Array<{ module: any; lessons: any[] }> = [];
+        let propagatedYearsCount = 0;
 
-        // Create lessons from all documents
-        const lessons = [];
-        for (let i = 0; i < documents.length; i++) {
-          const doc = documents[i];
-          const [lesson] = await tx.insert(schema.templateLessons)
+        if (subcategories.length > 0) {
+          // Create one module per subcategory
+          for (const subcategory of subcategories) {
+            // Get documents for this subcategory
+            const subcategoryDocs = documents.filter(doc => doc.subcategoryId === subcategory.id);
+            
+            if (subcategoryDocs.length === 0) {
+              continue; // Skip empty subcategories
+            }
+
+            // Create module for this subcategory
+            const [newModule] = await tx.insert(schema.templateModules)
+              .values({
+                templateTrimesterId: trimesterId,
+                title: subcategory.name,
+                description: subcategory.description,
+                libraryCategoryId: libraryCategoryId,
+                sortOrder: nextSortOrder,
+              })
+              .returning();
+
+            // Create lessons from subcategory documents
+            const lessons = [];
+            for (let i = 0; i < subcategoryDocs.length; i++) {
+              const doc = subcategoryDocs[i];
+              const [lesson] = await tx.insert(schema.templateLessons)
+                .values({
+                  templateModuleId: newModule.id,
+                  title: doc.title,
+                  description: doc.description,
+                  resourceUrl: doc.videoUrl,
+                  libraryDocumentId: doc.id,
+                  sortOrder: i,
+                })
+                .returning();
+              lessons.push(lesson);
+            }
+
+            createdModules.push({ module: newModule, lessons });
+
+            // Propagate to client trimesters (inside same transaction for rollback consistency)
+            for (const clientTrimester of clientTrimesters) {
+              // Duplicate detection: check if a module with this subcategory's title already exists
+              const [existingModule] = await tx.select({ id: schema.universityModules.id })
+                .from(schema.universityModules)
+                .where(
+                  and(
+                    eq(schema.universityModules.trimesterId, clientTrimester.trimesterId),
+                    eq(schema.universityModules.title, subcategory.name)
+                  )
+                )
+                .limit(1);
+
+              if (existingModule) {
+                // Skip duplicate - module with same subcategory name already exists in this trimester
+                continue;
+              }
+
+              // Calculate max sortOrder for THIS specific client trimester independently
+              const [clientMaxSort] = await tx.select({ maxSort: sql<number>`COALESCE(MAX(sort_order), -1)` })
+                .from(schema.universityModules)
+                .where(eq(schema.universityModules.trimesterId, clientTrimester.trimesterId));
+              const clientNextSort = (clientMaxSort?.maxSort ?? -1) + 1;
+
+              // Create client module
+              const [clientModule] = await tx.insert(schema.universityModules)
+                .values({
+                  trimesterId: clientTrimester.trimesterId,
+                  title: subcategory.name,
+                  description: subcategory.description,
+                  sortOrder: clientNextSort,
+                })
+                .returning();
+
+              // Create client lessons
+              for (let i = 0; i < subcategoryDocs.length; i++) {
+                const doc = subcategoryDocs[i];
+                await tx.insert(schema.universityLessons)
+                  .values({
+                    moduleId: clientModule.id,
+                    title: doc.title,
+                    description: doc.description,
+                    resourceUrl: doc.videoUrl,
+                    libraryDocumentId: doc.id,
+                    sortOrder: i,
+                  });
+              }
+              propagatedYearsCount++;
+            }
+
+            nextSortOrder++;
+          }
+        } else {
+          // No subcategories - keep original behavior (one module with all documents)
+          const [newModule] = await tx.insert(schema.templateModules)
             .values({
-              templateModuleId: newModule.id,
-              title: doc.title,
-              description: doc.description,
-              resourceUrl: doc.videoUrl,
-              libraryDocumentId: doc.id,
-              sortOrder: i,
+              templateTrimesterId: trimesterId,
+              title: category.name,
+              description: category.description,
+              libraryCategoryId: libraryCategoryId,
+              sortOrder: nextSortOrder,
             })
             .returning();
-          lessons.push(lesson);
+
+          // Create lessons from all documents
+          const lessons = [];
+          for (let i = 0; i < documents.length; i++) {
+            const doc = documents[i];
+            const [lesson] = await tx.insert(schema.templateLessons)
+              .values({
+                templateModuleId: newModule.id,
+                title: doc.title,
+                description: doc.description,
+                resourceUrl: doc.videoUrl,
+                libraryDocumentId: doc.id,
+                sortOrder: i,
+              })
+              .returning();
+            lessons.push(lesson);
+          }
+
+          createdModules.push({ module: newModule, lessons });
+
+          // Propagate to client trimesters (inside same transaction for rollback consistency)
+          for (const clientTrimester of clientTrimesters) {
+            // Duplicate detection: check if a module with this libraryCategoryId already exists
+            const [existingModule] = await tx.select({ id: schema.universityModules.id })
+              .from(schema.universityModules)
+              .where(
+                and(
+                  eq(schema.universityModules.trimesterId, clientTrimester.trimesterId),
+                  eq(schema.universityModules.title, category.name)
+                )
+              )
+              .limit(1);
+
+            if (existingModule) {
+              // Skip duplicate - module with same category name already exists in this trimester
+              continue;
+            }
+
+            // Calculate max sortOrder for THIS specific client trimester independently
+            const [clientMaxSort] = await tx.select({ maxSort: sql<number>`COALESCE(MAX(sort_order), -1)` })
+              .from(schema.universityModules)
+              .where(eq(schema.universityModules.trimesterId, clientTrimester.trimesterId));
+            const clientNextSort = (clientMaxSort?.maxSort ?? -1) + 1;
+
+            // Create client module
+            const [clientModule] = await tx.insert(schema.universityModules)
+              .values({
+                trimesterId: clientTrimester.trimesterId,
+                title: category.name,
+                description: category.description,
+                sortOrder: clientNextSort,
+              })
+              .returning();
+
+            // Create client lessons
+            for (let i = 0; i < documents.length; i++) {
+              const doc = documents[i];
+              await tx.insert(schema.universityLessons)
+                .values({
+                  moduleId: clientModule.id,
+                  title: doc.title,
+                  description: doc.description,
+                  resourceUrl: doc.videoUrl,
+                  libraryDocumentId: doc.id,
+                  sortOrder: i,
+                });
+            }
+            propagatedYearsCount++;
+          }
         }
 
-        return { ...newModule, lessons };
+        // ALWAYS return backward-compatible response format:
+        // Return the first module with its lessons, plus optional metadata
+        if (createdModules.length === 0) {
+          throw new Error("No modules were created - category may be empty");
+        }
+
+        const firstModule = createdModules[0];
+        return {
+          // Original fields (backward compatible)
+          id: firstModule.module.id,
+          title: firstModule.module.title,
+          description: firstModule.module.description,
+          libraryCategoryId: firstModule.module.libraryCategoryId,
+          templateTrimesterId: firstModule.module.templateTrimesterId,
+          sortOrder: firstModule.module.sortOrder,
+          createdAt: firstModule.module.createdAt,
+          updatedAt: firstModule.module.updatedAt,
+          lessons: firstModule.lessons,
+          // Optional new metadata fields (frontend can ignore these)
+          additionalModulesCount: createdModules.length > 1 ? createdModules.length - 1 : undefined,
+          propagatedToYears: propagatedYearsCount > 0 ? propagatedYearsCount : undefined,
+        };
       });
 
       res.status(201).json(result);
