@@ -319,6 +319,27 @@ export default function ConsultantTemplates() {
     },
   });
 
+  const autoLinkExercisesMutation = useMutation({
+    mutationFn: async (moduleId: string) => {
+      return await apiRequest("POST", `/api/university/templates/modules/${moduleId}/auto-link-exercises`);
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/university/templates", managingTemplateId, "full"] });
+      if (data.linkedCount > 0) {
+        toast({ title: `${data.linkedCount} esercizi collegati automaticamente` });
+      } else {
+        toast({ 
+          title: "Nessun esercizio trovato", 
+          description: "Nessun esercizio corrispondente trovato per le lezioni di questo modulo",
+          variant: "destructive" 
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   const removeCourseFromTemplateMutation = useMutation({
     mutationFn: async (data: { templateId: string; moduleId: string }) => {
       return await apiRequest("DELETE", `/api/university/templates/${data.templateId}/modules/${data.moduleId}`);
@@ -1677,28 +1698,52 @@ export default function ConsultantTemplates() {
                                             </div>
                                             <ChevronDown className={`h-4 w-4 transition-transform flex-shrink-0 ${expandedModules.includes(module.id) ? 'rotate-180' : ''}`} />
                                           </CollapsibleTrigger>
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex-shrink-0 ml-2"
-                                            disabled={removeCourseFromTemplateMutation.isPending}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (managingTemplateId) {
-                                                removeCourseFromTemplateMutation.mutate({
-                                                  templateId: managingTemplateId,
-                                                  moduleId: module.id,
-                                                });
-                                              }
-                                            }}
-                                            title="Rimuovi corso dal template"
-                                          >
-                                            {removeCourseFromTemplateMutation.isPending ? (
-                                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                            ) : (
-                                              <Trash2 className="h-3.5 w-3.5" />
+                                          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                            {module.lessons?.some((l: any) => !l.exerciseId) && (
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30"
+                                                disabled={autoLinkExercisesMutation.isPending}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  autoLinkExercisesMutation.mutate(module.id);
+                                                }}
+                                                title="Collega automaticamente tutti gli esercizi"
+                                              >
+                                                {autoLinkExercisesMutation.isPending ? (
+                                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                ) : (
+                                                  <>
+                                                    <Dumbbell className="h-3 w-3 mr-1" />
+                                                    Auto
+                                                  </>
+                                                )}
+                                              </Button>
                                             )}
-                                          </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                              disabled={removeCourseFromTemplateMutation.isPending}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (managingTemplateId) {
+                                                  removeCourseFromTemplateMutation.mutate({
+                                                    templateId: managingTemplateId,
+                                                    moduleId: module.id,
+                                                  });
+                                                }
+                                              }}
+                                              title="Rimuovi corso dal template"
+                                            >
+                                              {removeCourseFromTemplateMutation.isPending ? (
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                              ) : (
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                              )}
+                                            </Button>
+                                          </div>
                                         </div>
 
                                         <CollapsibleContent>

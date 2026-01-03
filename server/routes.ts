@@ -8151,14 +8151,18 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
             );
           
           if (templates.length > 0) {
-            // Find all clients linked to this template via universityYears
+            // Find all clients linked to this template via universityYearClientAssignments
             const clientIds: string[] = [];
-            for (const year of linkedYears) {
-              const [yearData] = await db.select({ clientId: schema.universityYears.clientId })
-                .from(schema.universityYears)
-                .where(eq(schema.universityYears.id, year.id));
-              if (yearData?.clientId && !clientIds.includes(yearData.clientId)) {
-                clientIds.push(yearData.clientId);
+            if (linkedYears.length > 0) {
+              const yearIds = linkedYears.map(y => y.id);
+              const clientAssignments = await db.select({ clientId: schema.universityYearClientAssignments.clientId })
+                .from(schema.universityYearClientAssignments)
+                .where(inArray(schema.universityYearClientAssignments.yearId, yearIds));
+              
+              for (const assignment of clientAssignments) {
+                if (assignment.clientId && !clientIds.includes(assignment.clientId)) {
+                  clientIds.push(assignment.clientId);
+                }
               }
             }
             
@@ -8270,6 +8274,102 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
       });
     } catch (error: any) {
       console.error("Error adding course to template:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Auto-link all exercises to lessons in a module
+  app.post("/api/university/templates/modules/:moduleId/auto-link-exercises", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { moduleId } = req.params;
+      const consultantId = req.user!.id;
+
+      // Get the module
+      const [module] = await db.select()
+        .from(schema.templateModules)
+        .where(eq(schema.templateModules.id, moduleId));
+
+      if (!module) {
+        return res.status(404).json({ message: "Module not found" });
+      }
+
+      // Get the trimester
+      const [trimester] = await db.select()
+        .from(schema.templateTrimesters)
+        .where(eq(schema.templateTrimesters.id, module.templateTrimesterId));
+
+      if (!trimester) {
+        return res.status(404).json({ message: "Trimester not found" });
+      }
+
+      // Verify the consultant owns the template
+      const [template] = await db.select()
+        .from(schema.universityTemplates)
+        .where(
+          and(
+            eq(schema.universityTemplates.id, trimester.templateId),
+            eq(schema.universityTemplates.createdBy, consultantId)
+          )
+        );
+
+      if (!template) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get all lessons in this module that don't have an exercise linked
+      const lessons = await db.select()
+        .from(schema.templateLessons)
+        .where(
+          and(
+            eq(schema.templateLessons.templateModuleId, moduleId),
+            isNull(schema.templateLessons.exerciseId)
+          )
+        );
+
+      if (lessons.length === 0) {
+        return res.json({ message: "All lessons already have exercises linked", linkedCount: 0 });
+      }
+
+      // Get all exercises for this consultant
+      const exercises = await db.select()
+        .from(schema.exercises)
+        .where(eq(schema.exercises.createdBy, consultantId));
+
+      let linkedCount = 0;
+
+      // For each lesson, try to find a matching exercise by libraryDocumentId
+      for (const lesson of lessons) {
+        if (lesson.libraryDocumentId) {
+          const matchingExercise = exercises.find(ex => ex.libraryDocumentId === lesson.libraryDocumentId);
+          
+          if (matchingExercise) {
+            // Update template lesson
+            await db.update(schema.templateLessons)
+              .set({ exerciseId: matchingExercise.id, updatedAt: new Date() })
+              .where(eq(schema.templateLessons.id, lesson.id));
+
+            // Also update any universityLessons with the same libraryDocumentId
+            await db.update(schema.universityLessons)
+              .set({ exerciseId: matchingExercise.id, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(schema.universityLessons.libraryDocumentId, lesson.libraryDocumentId),
+                  isNull(schema.universityLessons.exerciseId)
+                )
+              );
+
+            linkedCount++;
+          }
+        }
+      }
+
+      res.json({ 
+        message: linkedCount > 0 ? `Linked ${linkedCount} exercises automatically` : "No matching exercises found",
+        linkedCount,
+        totalLessonsWithoutExercise: lessons.length
+      });
+    } catch (error: any) {
+      console.error("Error auto-linking exercises:", error);
       res.status(500).json({ message: error.message });
     }
   });
