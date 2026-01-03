@@ -6640,7 +6640,7 @@ export class FileSearchSyncService {
       console.log(`   👤 Client: ${clientId.substring(0, 8)}`);
       console.log(`══════════════════════════════════════════════════════════════════════\n`);
 
-      const clientStore = await this.getOrCreateClientPrivateStore(clientId, consultantId);
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId);
       if (!clientStore) {
         return { success: false, error: 'Failed to get or create client private store' };
       }
@@ -6705,7 +6705,7 @@ export class FileSearchSyncService {
       console.log(`   👤 Client: ${clientId.substring(0, 8)}`);
       console.log(`══════════════════════════════════════════════════════════════════════\n`);
 
-      const clientStore = await this.getOrCreateClientPrivateStore(clientId, consultantId);
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId);
       if (!clientStore) {
         return { success: false, error: 'Failed to get or create client private store' };
       }
