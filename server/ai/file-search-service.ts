@@ -774,11 +774,13 @@ export class FileSearchService {
       if (!store) return { success: false, error: 'Store not found' };
 
       // CRITICAL LOGGING: Log exactly what we're deleting and from where
-      const storeType = store.clientId ? 'CLIENT' : 'CONSULTANT';
-      const ownerInfo = store.clientId ? `clientId=${store.clientId.substring(0, 8)}` : `consultantId=${store.consultantId.substring(0, 8)}`;
+      const storeType = store.clientId ? 'CLIENT' : (store.ownerType === 'whatsapp_agent' ? 'AGENT' : 'CONSULTANT');
+      const ownerInfo = store.clientId 
+        ? `clientId=${store.clientId.substring(0, 8)}` 
+        : (store.consultantId ? `consultantId=${store.consultantId.substring(0, 8)}` : `ownerId=${store.ownerId?.substring(0, 8) || 'unknown'}`);
       console.log(`\n🔍 [FileSearch DELETE] ══════════════════════════════════════════════`);
-      console.log(`   📄 Document: ${doc.displayName || doc.id.substring(0, 8)}`);
-      console.log(`   🏪 Store: ${storeType} (${ownerInfo}, storeId=${doc.storeId.substring(0, 8)})`);
+      console.log(`   📄 Document: ${doc.displayName || doc.id?.substring(0, 8) || 'unknown'}`);
+      console.log(`   🏪 Store: ${storeType} (${ownerInfo}, storeId=${doc.storeId?.substring(0, 8) || 'unknown'})`);
       console.log(`   📋 sourceType: ${doc.sourceType}, sourceId: ${doc.sourceId?.substring(0, 8) || 'null'}`);
       console.log(`   👤 clientId on doc: ${doc.clientId?.substring(0, 8) || 'null (consultant master)'}`);
       console.log(`   🔑 Requesting user: ${requestingUserId?.substring(0, 8) || 'none'}`);
@@ -845,10 +847,10 @@ export class FileSearchService {
       const store = await db.query.fileSearchStores.findFirst({
         where: eq(fileSearchStores.id, storeId),
       });
-      const storeType = store?.clientId ? 'CLIENT' : 'CONSULTANT';
+      const storeType = store?.clientId ? 'CLIENT' : (store?.ownerType === 'whatsapp_agent' ? 'AGENT' : 'CONSULTANT');
       const ownerInfo = store?.clientId 
         ? `clientId=${store.clientId.substring(0, 8)}` 
-        : `consultantId=${store?.consultantId?.substring(0, 8) || 'unknown'}`;
+        : (store?.consultantId ? `consultantId=${store.consultantId.substring(0, 8)}` : `ownerId=${store?.ownerId?.substring(0, 8) || 'unknown'}`);
 
       console.log(`\n🔍 [FileSearch RECONCILE] ════════════════════════════════════════════`);
       console.log(`   🏪 Store: ${storeType} (${ownerInfo}, storeId=${storeId.substring(0, 8)})`);
