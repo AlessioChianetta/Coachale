@@ -5686,7 +5686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get category to find its name
       const category = await storage.getLibraryCategory(categoryId);
-      if (!category || category.consultantId !== consultantId) {
+      if (!category || category.createdBy !== consultantId) {
         return res.status(404).json({ message: "Category not found" });
       }
       
