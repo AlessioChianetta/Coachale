@@ -133,6 +133,7 @@ const INSTRUCTION_PRESETS = [
   { value: "platform", label: "Assistenza Piattaforma", prompt: "Aiuta l'utente a utilizzare la piattaforma. Spiega funzionalità, risolvi problemi tecnici e guida passo-passo. Sii chiaro e paziente." },
   { value: "life_coach", label: "Life Coach", prompt: "Agisci come un life coach. Aiuta con obiettivi personali, motivazione, produttività e equilibrio vita-lavoro. Sii empatico e incoraggiante." },
   { value: "marketing", label: "Esperto Marketing", prompt: "Agisci come esperto di marketing digitale. Consiglia su strategie social, content marketing, SEO e campagne pubblicitarie. Sii creativo e orientato ai risultati." },
+  { value: "sales_coach", label: "Sales Coach", prompt: "Agisci come un sales coach esperto. Aiuta con tecniche di vendita, negoziazione, gestione obiezioni e closing. Sii persuasivo ma autentico, orientato ai risultati." },
 ];
 
 function getManagerToken(): string | null {
