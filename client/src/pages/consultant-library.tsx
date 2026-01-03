@@ -3133,7 +3133,7 @@ export default function ConsultantLibrary() {
             <Button
               variant="secondary"
               onClick={() => handleSaveAssignment(false)}
-              disabled={assignCategoryMutation.isPending || selectedClients.length === 0}
+              disabled={assignCategoryMutation.isPending}
               className="gap-2"
             >
               <BookOpen size={16} />
@@ -3143,6 +3143,7 @@ export default function ConsultantLibrary() {
               onClick={() => handleSaveAssignment(true)}
               disabled={assignCategoryMutation.isPending || selectedClients.length === 0}
               className="bg-blue-600 hover:bg-blue-700 gap-2"
+              title="Seleziona almeno un cliente per assegnare esercizi"
             >
               <Dumbbell size={16} />
               {assignCategoryMutation.isPending ? "Salvataggio..." : "Corso + Esercizi"}
