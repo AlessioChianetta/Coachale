@@ -1803,7 +1803,7 @@ export class FileSearchService {
     error?: string;
   }> {
     try {
-      const { consultantKnowledgeDocuments, clientKnowledgeDocuments, whatsappAgentKnowledgeItems, consultantExercises, consultations, libraryDocuments, universityLessons } = await import('../../shared/schema');
+      const { consultantKnowledgeDocuments, clientKnowledgeDocuments, whatsappAgentKnowledgeItems, exercises, consultations, libraryDocuments, universityLessons } = await import('../../shared/schema');
       
       const docs = await db
         .select()
@@ -1865,9 +1865,9 @@ export class FileSearchService {
               existingBaseIds = new Set(wakDocs.map(d => d.id));
               break;
             case 'exercise':
-              const exDocs = await db.select({ id: consultantExercises.id })
-                .from(consultantExercises)
-                .where(inArray(consultantExercises.id, baseIds));
+              const exDocs = await db.select({ id: exercises.id })
+                .from(exercises)
+                .where(inArray(exercises.id, baseIds));
               existingBaseIds = new Set(exDocs.map(d => d.id));
               break;
             case 'consultation':
@@ -1887,6 +1887,11 @@ export class FileSearchService {
                 .from(universityLessons)
                 .where(inArray(universityLessons.id, baseIds));
               existingBaseIds = new Set(uniDocs.map(d => d.id));
+              break;
+            case 'consultant_guide':
+              // Consultant guide is dynamically generated and always exists
+              // The sourceId is the consultant user ID - mark all as existing
+              existingBaseIds = new Set(baseIds);
               break;
             default:
               console.log(`⚠️ [FileSearch] Unknown sourceType for orphan check: ${sourceType}`);
