@@ -1848,7 +1848,7 @@ export class FileSearchService {
     error?: string;
   }> {
     try {
-      const { consultantKnowledgeDocuments, clientKnowledgeDocuments, whatsappAgentKnowledgeItems, exercises, consultations, libraryDocuments, universityLessons } = await import('../../shared/schema');
+      const { consultantKnowledgeDocuments, clientKnowledgeDocuments, whatsappAgentKnowledgeItems, exercises, exerciseSubmissions, consultations, libraryDocuments, universityLessons } = await import('../../shared/schema');
       
       const docs = await db
         .select()
@@ -1910,10 +1910,23 @@ export class FileSearchService {
               existingBaseIds = new Set(wakDocs.map(d => d.id));
               break;
             case 'exercise':
+              // Exercise sourceType is used for BOTH:
+              // 1. Exercise metadata (sourceId = exerciseId in `exercises` table)
+              // 2. Exercise responses (sourceId = submissionId in `exerciseSubmissions` table)
+              // We must check BOTH tables to avoid false orphan detection
               const exDocs = await db.select({ id: exercises.id })
                 .from(exercises)
                 .where(inArray(exercises.id, baseIds));
-              existingBaseIds = new Set(exDocs.map(d => d.id));
+              const exerciseIds = new Set(exDocs.map(d => d.id));
+              
+              // Also check exerciseSubmissions for response documents
+              const subDocs = await db.select({ id: exerciseSubmissions.id })
+                .from(exerciseSubmissions)
+                .where(inArray(exerciseSubmissions.id, baseIds));
+              const submissionIds = new Set(subDocs.map(d => d.id));
+              
+              // Combine both sets - if sourceId exists in either, it's not an orphan
+              existingBaseIds = new Set([...exerciseIds, ...submissionIds]);
               break;
             case 'consultation':
               const consDocs = await db.select({ id: consultations.id })
