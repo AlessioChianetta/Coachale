@@ -139,6 +139,8 @@ export default function ConsultantTemplates() {
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
   const [coursePickerTrimesterId, setCoursePickerTrimesterId] = useState<string | null>(null);
   const [exercisePickerLessonId, setExercisePickerLessonId] = useState<string | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<{ id: string; name: string; description?: string } | null>(null);
+  const [courseConfirmDialogOpen, setCourseConfirmDialogOpen] = useState(false);
 
   const [templateFormData, setTemplateFormData] = useState({ name: "", description: "", isActive: true });
   const [trimesterFormData, setTrimesterFormData] = useState({ title: "", description: "", sortOrder: 0 });
@@ -291,8 +293,7 @@ export default function ConsultantTemplates() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/university/templates", managingTemplateId, "full"] });
-      setCoursePickerOpen(false);
-      setCoursePickerTrimesterId("");
+      setCoursePickerTrimesterId(null);
       toast({ title: "Corso aggiunto con successo" });
     },
     onError: (error: Error) => {
@@ -308,8 +309,7 @@ export default function ConsultantTemplates() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/university/templates", managingTemplateId, "full"] });
-      setExercisePickerOpen(false);
-      setExercisePickerLessonId("");
+      setExercisePickerLessonId(null);
       toast({ title: "Esercizio aggiornato con successo" });
     },
     onError: (error: Error) => {
@@ -1551,9 +1551,9 @@ export default function ConsultantTemplates() {
                           <CollapsibleContent>
                             <div className="p-4 space-y-3 border-t">
                               {coursePickerTrimesterId === trimester.id ? (
-                                <div className="space-y-2">
+                                <div className="space-y-3 p-3 border-2 border-dashed border-cyan-300 dark:border-cyan-700 rounded-lg bg-cyan-50/50 dark:bg-cyan-950/20">
                                   <div className="flex items-center justify-between">
-                                    <h5 className="text-sm font-medium">Seleziona un corso</h5>
+                                    <h5 className="text-sm font-semibold text-cyan-700 dark:text-cyan-300">Seleziona un corso da aggiungere</h5>
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -1563,30 +1563,49 @@ export default function ConsultantTemplates() {
                                       <X className="h-4 w-4" />
                                     </Button>
                                   </div>
-                                  <div className="max-h-48 overflow-y-auto space-y-1 border rounded-lg p-2 bg-white dark:bg-slate-950">
+                                  <div className="max-h-60 overflow-y-auto space-y-2">
                                     {availableCourses.length === 0 ? (
-                                      <p className="text-xs text-muted-foreground text-center py-2">
-                                        Nessun corso disponibile
+                                      <p className="text-sm text-muted-foreground text-center py-4">
+                                        Nessun corso disponibile nella libreria
                                       </p>
                                     ) : (
-                                      availableCourses.map((course) => (
-                                        <div
-                                          key={course.id}
-                                          className="p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors text-sm"
-                                          onClick={() => {
-                                            if (managingTemplateId) {
-                                              addCourseToTrimesterMutation.mutate({
-                                                templateId: managingTemplateId,
-                                                trimesterId: trimester.id,
-                                                libraryCategoryId: course.id,
-                                              });
-                                              setCoursePickerTrimesterId(null);
-                                            }
-                                          }}
-                                        >
-                                          <span className="font-medium">{course.name}</span>
-                                        </div>
-                                      ))
+                                      availableCourses.map((course) => {
+                                        const isAlreadyInTemplate = managingTemplate?.trimesters?.some(t => 
+                                          t.modules?.some(m => m.libraryCategoryId === course.id)
+                                        );
+                                        return (
+                                          <div
+                                            key={course.id}
+                                            className={`p-3 rounded-lg border transition-all ${
+                                              isAlreadyInTemplate 
+                                                ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 opacity-60' 
+                                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-cyan-400 hover:shadow-md cursor-pointer'
+                                            }`}
+                                            onClick={() => {
+                                              if (!isAlreadyInTemplate) {
+                                                setSelectedCourse(course);
+                                                setCourseConfirmDialogOpen(true);
+                                              }
+                                            }}
+                                          >
+                                            <div className="flex items-center justify-between">
+                                              <div>
+                                                <span className="font-medium text-sm">{course.name}</span>
+                                                {course.description && (
+                                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{course.description}</p>
+                                                )}
+                                              </div>
+                                              {isAlreadyInTemplate ? (
+                                                <Badge variant="outline" className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300">
+                                                  Già presente
+                                                </Badge>
+                                              ) : (
+                                                <Plus className="h-4 w-4 text-cyan-500" />
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })
                                     )}
                                   </div>
                                 </div>
@@ -1594,7 +1613,7 @@ export default function ConsultantTemplates() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="w-full justify-start gap-2"
+                                  className="w-full justify-center gap-2 border-dashed border-2 hover:border-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
                                   onClick={() => setCoursePickerTrimesterId(trimester.id)}
                                 >
                                   <Plus className="h-4 w-4" />
@@ -1615,7 +1634,7 @@ export default function ConsultantTemplates() {
                                         );
                                       }}
                                     >
-                                      <div className="border rounded-lg overflow-hidden ml-4">
+                                      <div className="border rounded-lg overflow-hidden ml-2">
                                         <CollapsibleTrigger className="w-full">
                                           <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
                                             <div className="flex items-center gap-2">
@@ -1638,22 +1657,22 @@ export default function ConsultantTemplates() {
                                             {module.lessons && module.lessons.length > 0 ? (
                                               module.lessons.map((lesson) => (
                                                 <div key={lesson.id} className="space-y-2">
-                                                  <div className="flex items-center justify-between p-2 rounded-lg border bg-slate-50 dark:bg-slate-900/30">
-                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                                                      <span className="text-sm font-medium truncate">{lesson.title}</span>
+                                                  <div className="flex items-center justify-between p-2 rounded-lg border bg-slate-50 dark:bg-slate-900/30 gap-2">
+                                                    <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden">
+                                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                                                      <span className="text-xs font-medium truncate">{lesson.title}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <div className="flex items-center gap-1 flex-shrink-0">
                                                       {lesson.exerciseId ? (
                                                         <>
-                                                          <Badge variant="secondary" className="text-xs gap-1">
-                                                            <Dumbbell className="h-3 w-3" />
-                                                            Esercizio
+                                                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 gap-0.5">
+                                                            <Dumbbell className="h-2.5 w-2.5" />
+                                                            OK
                                                           </Badge>
                                                           <Button
                                                             size="sm"
                                                             variant="ghost"
-                                                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                                                            className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
                                                             onClick={() => {
                                                               updateLessonExerciseMutation.mutate({
                                                                 lessonId: lesson.id,
@@ -1662,35 +1681,35 @@ export default function ConsultantTemplates() {
                                                             }}
                                                             title="Scollega esercizio"
                                                           >
-                                                            <Unlink className="h-3.5 w-3.5" />
+                                                            <Unlink className="h-3 w-3" />
                                                           </Button>
                                                         </>
                                                       ) : exercisePickerLessonId === lesson.id ? (
                                                         <Button
                                                           size="sm"
                                                           variant="ghost"
-                                                          className="h-7 w-7 p-0"
+                                                          className="h-6 w-6 p-0"
                                                           onClick={() => setExercisePickerLessonId(null)}
                                                         >
-                                                          <X className="h-4 w-4" />
+                                                          <X className="h-3.5 w-3.5" />
                                                         </Button>
                                                       ) : (
                                                         <Button
                                                           size="sm"
                                                           variant="outline"
-                                                          className="h-7 text-xs gap-1"
+                                                          className="h-6 text-[10px] px-2 gap-0.5"
                                                           onClick={() => setExercisePickerLessonId(lesson.id)}
                                                         >
-                                                          <Dumbbell className="h-3 w-3" />
-                                                          Collega Esercizio
+                                                          <Dumbbell className="h-2.5 w-2.5" />
+                                                          Esercizio
                                                         </Button>
                                                       )}
                                                     </div>
                                                   </div>
                                                   {exercisePickerLessonId === lesson.id && (
-                                                    <div className="ml-6 p-2 border rounded-lg bg-white dark:bg-slate-950">
-                                                      <p className="text-xs font-medium mb-2">Seleziona esercizio:</p>
-                                                      <div className="max-h-32 overflow-y-auto space-y-1">
+                                                    <div className="ml-2 p-2 border rounded-lg bg-white dark:bg-slate-950">
+                                                      <p className="text-[10px] font-medium mb-1.5 text-muted-foreground">Seleziona esercizio:</p>
+                                                      <div className="max-h-28 overflow-y-auto space-y-1">
                                                         {availableExercises.length === 0 ? (
                                                           <p className="text-xs text-muted-foreground text-center py-2">
                                                             Nessun esercizio disponibile
@@ -1747,6 +1766,56 @@ export default function ConsultantTemplates() {
         </SheetContent>
       </Sheet>
 
+
+      <AlertDialog open={courseConfirmDialogOpen} onOpenChange={setCourseConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-cyan-500" />
+              Conferma aggiunta corso
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Stai per aggiungere il seguente corso al trimestre:</p>
+                {selectedCourse && (
+                  <div className="p-3 bg-cyan-50 dark:bg-cyan-950/30 rounded-lg border border-cyan-200 dark:border-cyan-800">
+                    <p className="font-semibold text-foreground">{selectedCourse.name}</p>
+                    {selectedCourse.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{selectedCourse.description}</p>
+                    )}
+                  </div>
+                )}
+                <p className="text-sm">Tutte le lezioni del corso verranno importate automaticamente.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setSelectedCourse(null);
+              setCourseConfirmDialogOpen(false);
+            }}>
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-cyan-500 hover:bg-cyan-600"
+              onClick={() => {
+                if (managingTemplateId && coursePickerTrimesterId && selectedCourse) {
+                  addCourseToTrimesterMutation.mutate({
+                    templateId: managingTemplateId,
+                    trimesterId: coursePickerTrimesterId,
+                    libraryCategoryId: selectedCourse.id,
+                  });
+                  setSelectedCourse(null);
+                  setCourseConfirmDialogOpen(false);
+                  setCoursePickerTrimesterId(null);
+                }
+              }}
+            >
+              Aggiungi Corso
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ConsultantAIAssistant />
     </div>
