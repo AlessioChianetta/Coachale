@@ -2692,6 +2692,8 @@ export const aiAssistantPreferences = pgTable("ai_assistant_preferences", {
   responseLength: text("response_length").$type<"short" | "balanced" | "comprehensive">().default("balanced").notNull(),
   customInstructions: text("custom_instructions"),
   defaultSystemInstructions: text("default_system_instructions"),
+  preferredModel: text("preferred_model").$type<"gemini-2.5-pro" | "gemini-3-flash-preview" | "gemini-3-pro-preview">().default("gemini-3-flash-preview"),
+  thinkingLevel: text("thinking_level").$type<"none" | "low" | "medium" | "high">().default("none"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

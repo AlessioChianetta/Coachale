@@ -239,6 +239,8 @@ router.get("/preferences", authenticateToken, async (req: AuthRequest, res: Resp
         customInstructions: null,
         defaultSystemInstructions: null,
         consultantDefaultInstructions,
+        preferredModel: "gemini-3-flash-preview",
+        thinkingLevel: "none",
       });
     }
 
@@ -248,6 +250,8 @@ router.get("/preferences", authenticateToken, async (req: AuthRequest, res: Resp
       customInstructions: prefs.customInstructions,
       defaultSystemInstructions: prefs.defaultSystemInstructions,
       consultantDefaultInstructions,
+      preferredModel: prefs.preferredModel || "gemini-3-flash-preview",
+      thinkingLevel: prefs.thinkingLevel || "none",
     });
   } catch (error) {
     console.error("[AI Assistant] Error fetching preferences:", error);
@@ -258,7 +262,7 @@ router.get("/preferences", authenticateToken, async (req: AuthRequest, res: Resp
 router.put("/preferences", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const { writingStyle, responseLength, customInstructions, defaultSystemInstructions } = req.body;
+    const { writingStyle, responseLength, customInstructions, defaultSystemInstructions, preferredModel, thinkingLevel } = req.body;
 
     const [existing] = await db.select()
       .from(aiAssistantPreferences)
@@ -272,6 +276,8 @@ router.put("/preferences", authenticateToken, async (req: AuthRequest, res: Resp
           responseLength: responseLength || "balanced",
           customInstructions: customInstructions || null,
           defaultSystemInstructions: defaultSystemInstructions !== undefined ? defaultSystemInstructions : existing.defaultSystemInstructions,
+          preferredModel: preferredModel !== undefined ? preferredModel : existing.preferredModel,
+          thinkingLevel: thinkingLevel !== undefined ? thinkingLevel : existing.thinkingLevel,
           updatedAt: new Date(),
         })
         .where(eq(aiAssistantPreferences.userId, userId));
@@ -282,6 +288,8 @@ router.put("/preferences", authenticateToken, async (req: AuthRequest, res: Resp
         responseLength: responseLength || "balanced",
         customInstructions: customInstructions || null,
         defaultSystemInstructions: defaultSystemInstructions || null,
+        preferredModel: preferredModel || "gemini-3-flash-preview",
+        thinkingLevel: thinkingLevel || "none",
       });
     }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings2, Loader2, MessageSquare, FileText, Sparkles, Bot, Lightbulb } from "lucide-react";
+import { Settings2, Loader2, MessageSquare, FileText, Sparkles, Bot, Lightbulb, Brain, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,12 +18,17 @@ import { Separator } from "@/components/ui/separator";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
+type AIModel = "gemini-2.5-pro" | "gemini-3-flash-preview" | "gemini-3-pro-preview";
+type ThinkingLevel = "none" | "low" | "medium" | "high";
+
 interface AIPreferences {
   writingStyle: "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom";
   responseLength: "short" | "balanced" | "comprehensive";
   customInstructions: string | null;
   defaultSystemInstructions?: string | null;
   consultantDefaultInstructions?: string | null;
+  preferredModel?: AIModel;
+  thinkingLevel?: ThinkingLevel;
 }
 
 const DEFAULT_PREFERENCES: AIPreferences = {
@@ -32,7 +37,22 @@ const DEFAULT_PREFERENCES: AIPreferences = {
   customInstructions: null,
   defaultSystemInstructions: null,
   consultantDefaultInstructions: null,
+  preferredModel: "gemini-3-flash-preview",
+  thinkingLevel: "none",
 };
+
+const MODEL_OPTIONS = [
+  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash", description: "Veloce e versatile" },
+  { value: "gemini-3-pro-preview", label: "Gemini 3 Pro", description: "Ragionamento avanzato" },
+  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", description: "Stabile e affidabile" },
+];
+
+const THINKING_LEVEL_OPTIONS = [
+  { value: "none", label: "Nessuno", description: "Risposta diretta" },
+  { value: "low", label: "Basso", description: "Ragionamento breve" },
+  { value: "medium", label: "Medio", description: "Ragionamento moderato" },
+  { value: "high", label: "Alto", description: "Ragionamento approfondito" },
+];
 
 const WRITING_STYLE_OPTIONS = [
   { value: "default", label: "Predefinito", description: "Stile e tono predefiniti" },
@@ -167,6 +187,8 @@ export function AIPreferencesSheet() {
       ...localPreferences,
       customInstructions: localPreferences.customInstructions || null,
       defaultSystemInstructions: isConsultant ? (localPreferences.defaultSystemInstructions || null) : undefined,
+      preferredModel: localPreferences.preferredModel || "gemini-3-flash-preview",
+      thinkingLevel: localPreferences.thinkingLevel || "none",
     };
     savePreferencesMutation.mutate(preferencesToSave);
   };
@@ -199,14 +221,39 @@ export function AIPreferencesSheet() {
     }));
   };
 
+  const handleModelChange = (value: string) => {
+    setLocalPreferences((prev) => ({
+      ...prev,
+      preferredModel: value as AIModel,
+    }));
+  };
+
+  const handleThinkingLevelChange = (value: string) => {
+    setLocalPreferences((prev) => ({
+      ...prev,
+      thinkingLevel: value as ThinkingLevel,
+    }));
+  };
+
   const handlePresetChange = (presetValue: string) => {
     setSelectedPreset(presetValue);
     const preset = INSTRUCTION_PRESET_OPTIONS.find(p => p.value === presetValue);
-    if (preset && preset.instructions) {
+    if (preset) {
       setLocalPreferences((prev) => ({
         ...prev,
-        customInstructions: preset.instructions,
+        customInstructions: preset.instructions || "",
       }));
+    }
+  };
+
+  const handleCustomInstructionsManualChange = (value: string) => {
+    setLocalPreferences((prev) => ({
+      ...prev,
+      customInstructions: value,
+    }));
+    const currentPreset = INSTRUCTION_PRESET_OPTIONS.find(p => p.value === selectedPreset);
+    if (currentPreset && value !== currentPreset.instructions) {
+      setSelectedPreset("none");
     }
   };
 
@@ -243,6 +290,63 @@ export function AIPreferencesSheet() {
           </div>
         ) : (
           <div className="mt-6 space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-green-600" />
+                <Label className="text-base font-semibold">Modello AI</Label>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {MODEL_OPTIONS.map((option) => (
+                  <div
+                    key={option.value}
+                    onClick={() => handleModelChange(option.value)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all text-center ${
+                      localPreferences.preferredModel === option.value
+                        ? "border-green-500 bg-green-50 dark:bg-green-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <p className="font-medium text-sm">{option.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Brain className="h-4 w-4 text-indigo-600" />
+                <Label className="text-base font-semibold">Livello Ragionamento</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {localPreferences.preferredModel === "gemini-2.5-pro" 
+                  ? "Il ragionamento non è disponibile per Gemini 2.5 Pro"
+                  : "Quanto l'AI deve mostrare il suo processo di pensiero"}
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {THINKING_LEVEL_OPTIONS.map((option) => (
+                  <div
+                    key={option.value}
+                    onClick={() => localPreferences.preferredModel !== "gemini-2.5-pro" && handleThinkingLevelChange(option.value)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all text-center ${
+                      localPreferences.preferredModel === "gemini-2.5-pro"
+                        ? "opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                        : localPreferences.thinkingLevel === option.value
+                          ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <p className="font-medium text-sm">{option.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-purple-600" />
@@ -388,7 +492,7 @@ export function AIPreferencesSheet() {
               )}
               <Textarea
                 value={localPreferences.customInstructions || ""}
-                onChange={(e) => handleCustomInstructionsChange(e.target.value)}
+                onChange={(e) => handleCustomInstructionsManualChange(e.target.value)}
                 placeholder={
                   !isConsultant && preferences?.consultantDefaultInstructions
                     ? "Aggiungi istruzioni aggiuntive a quelle del tuo consulente..."
