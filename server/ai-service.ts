@@ -63,13 +63,12 @@ function getTextChatModel(providerName: string): { model: string; useThinking: b
 
 // Dynamic model configuration based on user-selected model and thinking level
 // Frontend model names mapped to actual Gemini API model names
-type DynamicAIModel = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'gemini-2.5-pro';
+type DynamicAIModel = 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
 type DynamicThinkingLevel = 'none' | 'low' | 'medium' | 'high';
 
 const MODEL_NAME_MAP: Record<string, string> = {
   'gemini-3-flash-preview': 'gemini-3-flash-preview',
   'gemini-3-pro-preview': 'gemini-3-pro-preview',
-  'gemini-2.5-pro': 'gemini-2.5-pro',
 };
 
 // Models that support thinking/reasoning
@@ -2782,7 +2781,7 @@ export interface FocusedDocument {
   category?: string;
 }
 
-export type AIModel = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'gemini-2.5-pro';
+export type AIModel = 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high';
 
 export interface ConsultantChatRequest {

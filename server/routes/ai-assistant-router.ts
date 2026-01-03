@@ -277,9 +277,7 @@ router.put("/preferences", authenticateToken, async (req: AuthRequest, res: Resp
           customInstructions: customInstructions || null,
           defaultSystemInstructions: defaultSystemInstructions !== undefined ? defaultSystemInstructions : existing.defaultSystemInstructions,
           preferredModel: preferredModel !== undefined ? preferredModel : existing.preferredModel,
-          thinkingLevel: (preferredModel === "gemini-2.5-pro") 
-            ? "none" 
-            : (thinkingLevel !== undefined ? thinkingLevel : existing.thinkingLevel),
+          thinkingLevel: thinkingLevel !== undefined ? thinkingLevel : existing.thinkingLevel,
           updatedAt: new Date(),
         })
         .where(eq(aiAssistantPreferences.userId, userId));

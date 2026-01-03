@@ -8,6 +8,8 @@ interface MessageListProps {
     id: string;
     role: "user" | "assistant";
     content: string;
+    thinking?: string;
+    isThinking?: boolean;
     suggestedActions?: Array<{
       type: string;
       label: string;

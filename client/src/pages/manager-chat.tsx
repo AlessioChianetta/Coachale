@@ -84,7 +84,7 @@ interface ManagerPreferences {
   writingStyle: "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom";
   responseLength: "short" | "balanced" | "comprehensive";
   customInstructions: string | null;
-  aiModel?: "gemini-2.5-flash-preview-05-20" | "gemini-2.5-pro-preview-05-06";
+  aiModel?: "gemini-3-flash-preview" | "gemini-3-pro-preview";
   thinkingLevel?: "none" | "low" | "medium" | "high";
 }
 
@@ -92,7 +92,7 @@ const DEFAULT_PREFERENCES: ManagerPreferences = {
   writingStyle: "default",
   responseLength: "balanced",
   customInstructions: null,
-  aiModel: "gemini-2.5-flash-preview-05-20",
+  aiModel: "gemini-3-flash-preview",
   thinkingLevel: "none",
 };
 
@@ -115,8 +115,8 @@ const RESPONSE_LENGTH_OPTIONS = [
 ];
 
 const AI_MODEL_OPTIONS = [
-  { value: "gemini-2.5-flash-preview-05-20", label: "Gemini 3 Flash Preview", description: "Veloce e bilanciato (default)" },
-  { value: "gemini-2.5-pro-preview-05-06", label: "Gemini 3 Pro Preview", description: "Ragionamento avanzato" },
+  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash", description: "Veloce e bilanciato (default)" },
+  { value: "gemini-3-pro-preview", label: "Gemini 3 Pro", description: "Ragionamento avanzato" },
 ];
 
 const THINKING_LEVEL_OPTIONS = [
