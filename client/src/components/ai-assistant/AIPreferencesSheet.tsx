@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
-type AIModel = "gemini-2.5-pro" | "gemini-3-flash-preview" | "gemini-3-pro-preview";
+type AIModel = "gemini-3-flash-preview" | "gemini-3-pro-preview";
 type ThinkingLevel = "none" | "low" | "medium" | "high";
 
 interface AIPreferences {
@@ -44,7 +44,6 @@ const DEFAULT_PREFERENCES: AIPreferences = {
 const MODEL_OPTIONS = [
   { value: "gemini-3-flash-preview", label: "Gemini 3 Flash", description: "Veloce e versatile" },
   { value: "gemini-3-pro-preview", label: "Gemini 3 Pro", description: "Ragionamento avanzato" },
-  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", description: "Stabile e affidabile" },
 ];
 
 const THINKING_LEVEL_OPTIONS = [
@@ -225,7 +224,6 @@ export function AIPreferencesSheet() {
     setLocalPreferences((prev) => ({
       ...prev,
       preferredModel: value as AIModel,
-      thinkingLevel: value === "gemini-2.5-pro" ? "none" : prev.thinkingLevel,
     }));
   };
 
@@ -322,21 +320,17 @@ export function AIPreferencesSheet() {
                 <Label className="text-base font-semibold">Livello Ragionamento</Label>
               </div>
               <p className="text-xs text-muted-foreground">
-                {localPreferences.preferredModel === "gemini-2.5-pro" 
-                  ? "Il ragionamento non è disponibile per Gemini 2.5 Pro"
-                  : "Quanto l'AI deve mostrare il suo processo di pensiero"}
+                Quanto l'AI deve mostrare il suo processo di pensiero
               </p>
               <div className="grid grid-cols-4 gap-2">
                 {THINKING_LEVEL_OPTIONS.map((option) => (
                   <div
                     key={option.value}
-                    onClick={() => localPreferences.preferredModel !== "gemini-2.5-pro" && handleThinkingLevelChange(option.value)}
+                    onClick={() => handleThinkingLevelChange(option.value)}
                     className={`p-3 rounded-lg border cursor-pointer transition-all text-center ${
-                      localPreferences.preferredModel === "gemini-2.5-pro"
-                        ? "opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700"
-                        : localPreferences.thinkingLevel === option.value
-                          ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
-                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                      localPreferences.thinkingLevel === option.value
+                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                     }`}
                   >
                     <p className="font-medium text-sm">{option.label}</p>

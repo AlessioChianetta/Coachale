@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-export type AIModel = "gemini-3-flash-preview" | "gemini-3-pro-preview" | "gemini-2.5-pro";
+export type AIModel = "gemini-3-flash-preview" | "gemini-3-pro-preview";
 export type ThinkingLevel = "low" | "medium" | "high";
 
 export interface AttachedFile {
@@ -67,12 +67,6 @@ const MODEL_INFO = {
     description: "Massima potenza + pensiero",
     icon: Brain,
     supportsThinking: true,
-  },
-  "gemini-2.5-pro": {
-    name: "Pro 2.5",
-    description: "Stabile e affidabile",
-    icon: Sparkles,
-    supportsThinking: false,
   },
 };
 

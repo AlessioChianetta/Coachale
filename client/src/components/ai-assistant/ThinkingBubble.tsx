@@ -2,6 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, Brain, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ThinkingBubbleProps {
   thinking?: string;
@@ -71,9 +73,11 @@ export function ThinkingBubble({ thinking, isThinking = false, className }: Thin
                   Ragionamento
                 </span>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                {thinking}
-              </p>
+              <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-slate-700 dark:prose-headings:text-slate-200 prose-headings:font-semibold prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-li:my-0.5">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {thinking}
+                </ReactMarkdown>
+              </div>
             </div>
           </motion.div>
         )}

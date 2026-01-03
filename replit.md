@@ -1,5 +1,5 @@
 # Overview
-This full-stack web application is a consultation platform connecting consultants and clients for exercise assignments, progress tracking, and performance analytics. It features an AI assistant for personalized financial insights using real-time data, advanced client management, and communication tools. The platform also includes a robust AI knowledge base system, aiming to enhance consultant-client interactions, streamline financial guidance, and improve client outcomes and consultant efficiency. The project also encompasses a comprehensive multi-tier subscription system for AI agents with revenue sharing, and an employee license system, alongside a public landing page for lead generation.
+This full-stack web application is a consultation platform connecting consultants and clients for exercise assignments, progress tracking, and performance analytics. It features an AI assistant for personalized financial insights, advanced client management, communication tools, and a robust AI knowledge base. The platform aims to enhance consultant-client interactions, streamline financial guidance, and improve client outcomes and consultant efficiency. It also includes a comprehensive multi-tier subscription system for AI agents with revenue sharing, an employee license system, and a public landing page for lead generation.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -23,103 +23,35 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Redesigned "Libreria Formativa" layout with a Sidebar + Content pattern, redesigned course cards, 4-level deletion protection, responsive action buttons, integrated search, and a compact header.
 ## AI Integration
 - **Percorso Capitale**: Personalized financial insights with graceful degradation and daily pre-fetch.
-- **AI Knowledge Base System**: Allows document uploads (PDF, DOCX, TXT) and external API integrations for AI context, featuring text extraction, indexing, priority-based ranking, and multi-tenant isolation.
-- **Gemini File Search Integration (RAG)**: Semantic document retrieval using Google's native File Search with per-client toggles, external document auto-sync, automatic large file chunking, and cross-store isolation. Architecture uses separate stores: one global "Knowledge Base Consulente" for consultant master documents and individual private stores per client. All sync queries include mandatory `storeId` filters to prevent cross-store deletion bugs when documents are duplicated across stores.
+- **AI Knowledge Base System**: Document uploads (PDF, DOCX, TXT) and external API integrations for AI context, featuring text extraction, indexing, priority-based ranking, and multi-tenant isolation.
+- **Gemini File Search Integration (RAG)**: Semantic document retrieval using Google's native File Search with per-client toggles, external document auto-sync, automatic large file chunking, and cross-store isolation.
 - **Echo - AI Consultation Summary Agent**: Generates consultation summary emails and extracts actionable tasks from Fathom transcripts with approval workflows.
 - **AI System Prompt Architecture**: All AI endpoints use `buildSystemPrompt()` for comprehensive context.
 - **Token Optimization Strategy**: Hybrid approach using intent detection, conditional database queries, intent-scoped caching, dynamic exercise scraping limits, and File Search RAG to reduce AI token consumption.
 - **WhatsApp Business Integration**: Full-featured WhatsApp messaging via Twilio with AI-powered responses, rich media, and automatic API key rotation, including multi-tenant configuration and Gemini AI responses.
-- **Instagram Direct Messaging Integration**: AI sales agents for Instagram DMs via Meta Graph API, supporting reactive messaging, comment-to-DM automation, story replies/mentions, and ice breakers. Includes HMAC verification, rate limiting, encrypted token storage, and a pending message queue.
+- **Instagram Direct Messaging Integration**: AI sales agents for Instagram DMs via Meta Graph API, supporting reactive messaging, comment-to-DM automation, story replies/mentions, and ice breakers.
 - **Per-Agent Google Calendar Integration**: Each WhatsApp agent operates independently with mandatory agent calendars, agent-specific availability settings, and isolated booking data.
 - **Sales Agent Configuration**: Configurable AI agent execution for sales phases with dynamic token usage optimization, intelligent personality profiling, and sequentially validated scripts.
-- **Human Seller Analytics & Session Persistence**: Unified analytics for AI agents and human sellers, with session state storage and restoration.
 - **Checkpoint Validation System**: 3-tier status system (VALIDATED, VAGUE, MISSING) for sales coaching.
 - **Gemini Model Configuration**: Dynamic model selection based on provider type and priority for SuperAdmin Gemini Keys for Gemini 3 capabilities.
-- **Video Copilot Turn-Taking System**: Prevents API bombardment during video meetings via intelligent turn-taking.
-- **WebRTC/WebSocket Resilience System**: Implements heartbeat, exponential backoff, and network change detection for robust connectivity.
-- **AI-Driven Follow-up Automation System**: 100% AI-driven follow-up system guided by per-consultant preferences while maintaining decision autonomy.
-- **Booking Extraction Accumulator Pattern**: Prevents booking data loss during AI re-extraction cycles by progressively accumulating fields across multiple attempts.
-- **AI Course Builder**: 5-step wizard to generate lessons from YouTube videos with multi-layer transcript extraction, AI lesson generation, SSE progress tracking, draft management, and a Course Theme System. Supports parallel batch processing, auto-save/resume, `yt-dlp` JavaScript runtime, and transcript failure handling.
+- **AI-Driven Follow-up Automation System**: 100% AI-driven follow-up system guided by per-consultant preferences.
+- **AI Course Builder**: 5-step wizard to generate lessons from YouTube videos with multi-layer transcript extraction, AI lesson generation, SSE progress tracking, draft management, and a Course Theme System.
 - **AI University Pathway Generator**: 4-step wizard for AI-powered university pathway creation, including course selection, trimester assignment, pathway details, and optional client assignment.
 - **AI Exercise Generator**: Generates exercises from course lessons with multi-language support, adjustable writing styles, automatic or fixed question count, and SSE streaming for progress updates.
-- **AI Assistant Agent Integration**: WhatsApp agents can be enabled for use in the AI Assistant interface with per-agent toggles, agent context injection, client sharing, File Search category selection, and ChatGPT-style `aiAssistantPreferences`. Features a hierarchical AI instruction system with consultant defaults and client overrides.
-- **AI Assistant Enhanced Features (Gemini/ChatGPT-style)**: 
-  - **Dynamic Model Selection**: Three AI models available (Gemini 3 Flash Preview, Gemini 3 Pro Preview, Gemini 2.5 Pro) with user-configurable preferences saved per-user.
-  - **Thinking/Reasoning Visualization**: Real-time display of AI reasoning process via expandable ThinkingBubble component, with thinking levels (none/low/medium/high). Thinking is disabled for Gemini 2.5 Pro (auto-reset on model switch).
-  - **Instruction Preset Templates**: Quick-select templates for different roles (Business Coach, Consulente Finanziario, Assistenza Piattaforma, Life Coach, Esperto Marketing) that auto-populate custom instructions.
-  - **Persistent AI Preferences**: User preferences for model, thinking level, writing style, response length, and custom instructions are persisted in `ai_assistant_preferences` table with `preferredModel` and `thinkingLevel` columns.
+- **AI Assistant Agent Integration**: WhatsApp agents can be enabled for use in the AI Assistant interface with per-agent toggles, agent context injection, client sharing, File Search category selection, and ChatGPT-style `aiAssistantPreferences`.
+- **AI Assistant Enhanced Features (Gemini/ChatGPT-style)**: Dynamic model selection, thinking/reasoning visualization, instruction preset templates, and persistent AI preferences.
 - **Multi-Agent Instagram Architecture**: Each WhatsApp agent can have its own independent Instagram account with per-agent configuration, webhook routing, and integration into the agent wizard and conversations page.
-- **Lead Import System (Close CRM style)**: Bulk import leads from Excel, CSV, or Google Sheets with auto-mapping, SHA256 hash deduplication, incremental imports, and phone number normalization. Features comprehensive Google Sheets integration with automatic polling/sync at configurable intervals (15/30/60 min), full 18-field CRM mapping (firstName, lastName, phone, email, company, obiettivi, desideri, uncino, fonte, address, city, state, postalCode, country, tags, dateOfBirth, website), intelligent column synonym detection, and centralized management in the API Keys page with toggle on/off and delete functionality for configured sheets.
-- **SaaS Landing Page (/Sas)**: Public landing page for lead generation with a modern gradient design, featuring Hero section, Features section (AI, Automation, Training), Benefits section with testimonial, Lead capture form (firstName, lastName, email, phone), and Login CTA. Leads are stored in the `landing_leads` table with duplicate email detection.
-- **Dipendenti AI Subscription System**: Multi-tier subscription system for AI agents with:
-  - **Level 1 (Bronzo/Free)**: Requires Bronze user registration with email/password, configurable daily message limits (default 15), daily counter reset at midnight, JWT-based authentication with 30-day token expiry. Registration page at `/c/:slug/register` with login/register tabs. Shows upgrade prompt with link to pricing page when daily limit is reached.
-  - **Level 2 (Argento/Paid)**: Authenticated clients with knowledge base access and unlimited messages.
-  - **Level 3 (Deluxe/Premium)**: Full software access with AI Manager and dashboard for premium clients.
-  - **Consultant Licenses**: Tracked in `consultantLicenses` table with level2Total/Used and level3Total/Used counters (default 20 L2, 10 L3).
-  - **Revenue Sharing**: Configurable per-consultant via SuperAdmin (default 50/50 split), stored in `revenueSharePercentage`.
-  - **Monthly Invoicing**: `monthlyInvoices` table tracks totalRevenueCents, consultantShareCents, platformShareCents, and aiCreditsCostCents.
-  - **AI Credits Tracking**: Fields for tracking AI usage costs (aiCreditsUsed, aiCreditsCostUsd) for future billing.
-  - **User Management Dashboard**: "Utenti Registrati" section in Licenze tab with:
-    - Bronze/Silver/Gold sub-tabs for tier-specific user lists
-    - Aggregate stats badges showing user counts per tier
-    - Search and pagination for Bronze users
-    - User deletion with license counter adjustment
-    - Responsive mobile/desktop layouts
-  - **Public Pricing Page**: Full landing page at `/c/:slug/pricing` with Make.com-style design:
-    - Animated hero section with dual CTAs (Bronze registration, scroll to pricing)
-    - 6-feature grid: AI Assistant, Unlimited Chat, Continuous Learning, Knowledge Base, 24/7 Availability, Advanced Security
-    - 3-column pricing cards with tier comparison
-    - Comparison table with feature matrix (Bronze/Silver/Gold)
-    - Social proof banner and testimonials carousel
-    - FAQ accordion section with consultant-defined questions/answers
-    - Trust badges with configurable icons and text
-    - Guarantee banner with icon, title, and description
-    - Final CTA section with gradient background
-    - Pricing success page at `/c/:slug/pricing/success` with confetti animation
-    - CTA flows: Bronze → registration page, Silver/Gold → Stripe checkout
-  - **Consultant Pricing Settings**: 4-tab configuration interface for pricing page:
-    - Generale: Hero text, guarantee settings, footer customization
-    - Piani: Monthly/yearly prices in cents, tier names/descriptions, feature lists
-    - Contenuti: FAQ builder, testimonials manager, trust badges editor
-    - Stile: Visual customization options (badges, CTAs)
-  - **Unified Login System**: Single `/login` page authenticates across all 3 tiers:
-    - Search order: Gold (users table) → Silver (clientLevelSubscriptions) → Bronze (bronzeUsers)
-    - Case-insensitive email matching with consistent lowercase normalization
-    - Tier-appropriate redirects: Bronze/Silver → agent selection page, Gold → full app
-    - Welcome emails with credentials sent via consultant's SMTP (async, non-blocking)
-    - Manual password reset for Bronze/Silver users via consultant dashboard
-  - **Premium Agent Selection System**: Mobile-first interface for Bronze/Silver users to choose their AI agent:
-    - Route at `/c/:slug/select-agent` with $10K premium design (gradient mesh, glassmorphism, framer-motion animations)
-    - API endpoint `GET /api/public/consultant/:slug/agents/:tier` filters agents by tier and enabled list
-    - Per-tier agent configuration via `level1EnabledAgents` and `level2EnabledAgents` in pricingPageConfig
-    - Consultant settings UI for selecting which agents are available per tier (Bronze/Silver)
-    - "Cambia Agente" button in chat header to return to selection (visible only for authenticated users)
-    - User flow: Login → Agent Selection → Chat, with ability to switch agents anytime
-  - **Stripe Subscription Flow**: Complete subscription checkout with:
-    - Monthly and yearly billing periods
-    - Automatic account provisioning (Manager for L2, Client for L3)
-    - Welcome emails with temporary credentials
-    - Idempotent webhook handling (prevents duplicate subscriptions on retry)
-    - Proper price display (cents to euros with decimals preserved).
-  - **Security**: Public chat endpoints validate Level 1 agents only, preventing L2/L3 access via public slugs.
-  - **SuperAdmin Controls**: "Gestione Licenze Consulenti" card for managing license allocations and revenue share.
-  - **Stripe Connect Integration**: Complete payment flow implemented with:
-    - Express accounts for Italian consultants via OAuth onboarding
-    - Destination charges model: payments go to platform, transfers to consultant minus application fee
-    - Application fee based on `revenueSharePercentage` (default 50/50 split)
-    - Webhook handling for subscription activation (`checkout.session.completed`)
-    - SuperAdmin dashboard with platform-wide transaction overview
-    - Consultant subscription list in Stripe Connect tab
-    - Keys stored in `superadminStripeConfig` table (encrypted)
-  - **Employee License System**: Separate licensing model for consultant team members:
-    - `isEmployee` flag on users table to distinguish clients from employees
-    - Employee licenses: €200 for 10 licenses (20€/license), paid directly to platform (no revenue share)
-    - Tracked in `consultantLicenses.employeeTotal/employeeUsed` fields
-    - Purchase history in `employeeLicensePurchases` table with status tracking
-    - "Nuovo Cliente" dialog with Cliente/Dipendente toggle (visual feedback)
-    - "Licenze" tab with 3 sections: L2 Clienti, L3 Clienti, and Dipendenti
-    - Server-side quantity validation (only 10/20/50 allowed), DB-verified webhooks
-    - Platform Stripe checkout (not Connect) for employee license purchases
+- **Lead Import System (Close CRM style)**: Bulk import leads from Excel, CSV, or Google Sheets with auto-mapping, SHA256 hash deduplication, incremental imports, phone number normalization, and comprehensive Google Sheets integration with automatic polling/sync.
+- **SaaS Landing Page (/Sas)**: Public landing page for lead generation with a modern gradient design, featuring Hero section, Features section (AI, Automation, Training), Benefits section with testimonial, Lead capture form, and Login CTA.
+- **Dipendenti AI Subscription System**: Multi-tier subscription system for AI agents with Bronze (Free), Silver (Paid), and Deluxe (Premium) tiers, consultant licenses tracking, revenue sharing, monthly invoicing, and AI credits tracking.
+- **User Management Dashboard**: "Utenti Registrati" section in Licenze tab with tier-specific user lists, aggregate stats, search, pagination, and user deletion.
+- **Public Pricing Page**: Full landing page at `/c/:slug/pricing` with animated hero, feature grid, 3-column pricing cards, comparison table, social proof, FAQ, trust badges, guarantee banner, and final CTA.
+- **Consultant Pricing Settings**: 4-tab configuration interface for pricing page (General, Plans, Content, Style).
+- **Unified Login System**: Single `/login` page authenticates across all 3 tiers with case-insensitive email matching, tier-appropriate redirects, welcome emails, and manual password reset.
+- **Premium Agent Selection System**: Mobile-first interface for Bronze/Silver users to choose their AI agent with per-tier agent configuration.
+- **Stripe Subscription Flow**: Complete subscription checkout with monthly/yearly billing, automatic account provisioning, welcome emails, idempotent webhook handling, and proper price display.
+- **Stripe Connect Integration**: Complete payment flow with Express accounts for Italian consultants via OAuth onboarding, destination charges model, application fee based on `revenueSharePercentage`, and webhook handling.
+- **Employee License System**: Separate licensing model for consultant team members with `isEmployee` flag, employee license tracking, purchase history, and platform Stripe checkout.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.

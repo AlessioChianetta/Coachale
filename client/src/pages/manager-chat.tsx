@@ -24,7 +24,9 @@ import {
   Settings2,
   Sparkles,
   MessageSquare,
-  FileText
+  FileText,
+  Brain,
+  Cpu
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -55,6 +57,8 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  thinking?: string;
+  isThinking?: boolean;
 }
 
 interface AgentInfo {
@@ -80,12 +84,16 @@ interface ManagerPreferences {
   writingStyle: "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom";
   responseLength: "short" | "balanced" | "comprehensive";
   customInstructions: string | null;
+  aiModel?: "gemini-2.5-flash-preview-05-20" | "gemini-2.5-pro-preview-05-06";
+  thinkingLevel?: "none" | "low" | "medium" | "high";
 }
 
 const DEFAULT_PREFERENCES: ManagerPreferences = {
   writingStyle: "default",
   responseLength: "balanced",
   customInstructions: null,
+  aiModel: "gemini-2.5-flash-preview-05-20",
+  thinkingLevel: "none",
 };
 
 const WRITING_STYLE_OPTIONS = [
@@ -104,6 +112,27 @@ const RESPONSE_LENGTH_OPTIONS = [
   { value: "short", label: "Breve", description: "1-2 paragrafi" },
   { value: "balanced", label: "Bilanciata", description: "Lunghezza moderata" },
   { value: "comprehensive", label: "Completa", description: "Dettagliata e completa" },
+];
+
+const AI_MODEL_OPTIONS = [
+  { value: "gemini-2.5-flash-preview-05-20", label: "Gemini 3 Flash Preview", description: "Veloce e bilanciato (default)" },
+  { value: "gemini-2.5-pro-preview-05-06", label: "Gemini 3 Pro Preview", description: "Ragionamento avanzato" },
+];
+
+const THINKING_LEVEL_OPTIONS = [
+  { value: "none", label: "Nessuno", description: "Risposte dirette" },
+  { value: "low", label: "Basso", description: "Ragionamento leggero" },
+  { value: "medium", label: "Medio", description: "Ragionamento moderato" },
+  { value: "high", label: "Alto", description: "Ragionamento approfondito" },
+];
+
+const INSTRUCTION_PRESETS = [
+  { value: "none", label: "Nessun preset", prompt: "" },
+  { value: "business_coach", label: "Business Coach", prompt: "Agisci come un business coach esperto. Fornisci consigli pratici per la crescita aziendale, analisi strategiche e supporto decisionale. Usa un tono motivante ma professionale." },
+  { value: "finance", label: "Consulente Finanziario", prompt: "Agisci come un consulente finanziario esperto. Aiuta con pianificazione finanziaria, investimenti, budget e strategie fiscali. Sii preciso e pratico." },
+  { value: "platform", label: "Assistenza Piattaforma", prompt: "Aiuta l'utente a utilizzare la piattaforma. Spiega funzionalità, risolvi problemi tecnici e guida passo-passo. Sii chiaro e paziente." },
+  { value: "life_coach", label: "Life Coach", prompt: "Agisci come un life coach. Aiuta con obiettivi personali, motivazione, produttività e equilibrio vita-lavoro. Sii empatico e incoraggiante." },
+  { value: "marketing", label: "Esperto Marketing", prompt: "Agisci come esperto di marketing digitale. Consiglia su strategie social, content marketing, SEO e campagne pubblicitarie. Sii creativo e orientato ai risultati." },
 ];
 
 function getManagerToken(): string | null {
@@ -136,6 +165,7 @@ function ManagerAIPreferencesSheet({ slug }: ManagerAIPreferencesSheetProps) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [localPreferences, setLocalPreferences] = useState<ManagerPreferences>(DEFAULT_PREFERENCES);
+  const [selectedPreset, setSelectedPreset] = useState<string>("none");
 
   const { data: preferences, isLoading } = useQuery<ManagerPreferences>({
     queryKey: ["manager-preferences", slug],
@@ -215,6 +245,31 @@ function ManagerAIPreferencesSheet({ slug }: ManagerAIPreferencesSheetProps) {
       ...prev,
       customInstructions: value,
     }));
+  };
+
+  const handleModelChange = (value: string) => {
+    setLocalPreferences((prev) => ({
+      ...prev,
+      aiModel: value as ManagerPreferences["aiModel"],
+    }));
+  };
+
+  const handleThinkingLevelChange = (value: string) => {
+    setLocalPreferences((prev) => ({
+      ...prev,
+      thinkingLevel: value as ManagerPreferences["thinkingLevel"],
+    }));
+  };
+
+  const handlePresetChange = (value: string) => {
+    setSelectedPreset(value);
+    const preset = INSTRUCTION_PRESETS.find((p) => p.value === value);
+    if (preset && preset.prompt) {
+      setLocalPreferences((prev) => ({
+        ...prev,
+        customInstructions: preset.prompt,
+      }));
+    }
   };
 
   return (
@@ -324,9 +379,112 @@ function ManagerAIPreferencesSheet({ slug }: ManagerAIPreferencesSheetProps) {
 
             <Separator />
 
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-cyan-600" />
+                <Label className="text-base font-semibold">Modello AI</Label>
+              </div>
+              <RadioGroup
+                value={localPreferences.aiModel || "gemini-2.5-flash-preview-05-20"}
+                onValueChange={handleModelChange}
+                className="space-y-3"
+              >
+                {AI_MODEL_OPTIONS.map((option) => (
+                  <div
+                    key={option.value}
+                    className={`flex items-start space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                      localPreferences.aiModel === option.value
+                        ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                    onClick={() => handleModelChange(option.value)}
+                  >
+                    <RadioGroupItem value={option.value} id={`model-${option.value}`} className="mt-0.5" />
+                    <div className="flex-1">
+                      <Label
+                        htmlFor={`model-${option.value}`}
+                        className="font-medium cursor-pointer"
+                      >
+                        {option.label}
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Brain className="h-4 w-4 text-teal-600" />
+                <Label className="text-base font-semibold">Livello Ragionamento</Label>
+              </div>
+              <RadioGroup
+                value={localPreferences.thinkingLevel || "none"}
+                onValueChange={handleThinkingLevelChange}
+                className="space-y-3"
+              >
+                {THINKING_LEVEL_OPTIONS.map((option) => (
+                  <div
+                    key={option.value}
+                    className={`flex items-start space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                      localPreferences.thinkingLevel === option.value
+                        ? "border-teal-500 bg-teal-50 dark:bg-teal-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                    onClick={() => handleThinkingLevelChange(option.value)}
+                  >
+                    <RadioGroupItem 
+                      value={option.value} 
+                      id={`thinking-${option.value}`} 
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <Label
+                        htmlFor={`thinking-${option.value}`}
+                        className="font-medium cursor-pointer"
+                      >
+                        {option.label}
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            <Separator />
+
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-pink-600" />
+                <Label className="text-base font-semibold">Preset Istruzioni</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Scegli un preset per popolare automaticamente le istruzioni personalizzate.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {INSTRUCTION_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.value}
+                    variant={selectedPreset === preset.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePresetChange(preset.value)}
+                    className={selectedPreset === preset.value ? "bg-pink-600 hover:bg-pink-700" : ""}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-indigo-600" />
                 <Label className="text-base font-semibold">Istruzioni Personalizzate</Label>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -567,8 +725,13 @@ export default function ManagerChat() {
             writingStyle: preferences.writingStyle,
             responseLength: preferences.responseLength,
             customInstructions: preferences.customInstructions,
+            aiModel: preferences.aiModel,
+            thinkingLevel: preferences.thinkingLevel,
           }
-        : undefined;
+        : {
+            aiModel: preferences?.aiModel || "gemini-2.5-flash-preview-05-20",
+            thinkingLevel: preferences?.thinkingLevel || "none",
+          };
       
       const response = await fetch(
         `/public/whatsapp/shares/${slug}/message`,
@@ -593,6 +756,7 @@ export default function ManagerChat() {
 
       const decoder = new TextDecoder();
       let fullContent = "";
+      let fullThinking = "";
       let buffer = "";
 
       while (true) {
@@ -608,7 +772,27 @@ export default function ManagerChat() {
             try {
               const data = JSON.parse(line.slice(6));
 
-              if (data.type === "delta" || data.type === "chunk") {
+              if (data.type === "thinking") {
+                fullThinking += data.content || "";
+                if (tempAssistantIdRef.current) {
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === tempAssistantIdRef.current
+                        ? { ...msg, thinking: fullThinking, isThinking: true }
+                        : msg
+                    )
+                  );
+                }
+              } else if (data.type === "delta" || data.type === "chunk") {
+                if (tempAssistantIdRef.current && fullThinking) {
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === tempAssistantIdRef.current
+                        ? { ...msg, isThinking: false }
+                        : msg
+                    )
+                  );
+                }
                 fullContent += data.content;
                 if (tempAssistantIdRef.current) {
                   setMessages((prev) =>
