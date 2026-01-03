@@ -1531,19 +1531,43 @@ export class FileSearchService {
   /**
    * Get document index info including indexedAt and contentHash
    * Used for staleness detection during sync
+   * 
+   * @param sourceType - The type of source document
+   * @param sourceId - The ID of the source document
+   * @param options - Optional filtering options
+   * @param options.storeId - If provided, only search in this specific store
+   * @param options.clientId - If provided, only search for documents belonging to this client
    */
-  async getDocumentIndexInfo(sourceType: 'library' | 'knowledge_base' | 'client_knowledge' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc', sourceId: string): Promise<{
+  async getDocumentIndexInfo(
+    sourceType: 'library' | 'knowledge_base' | 'client_knowledge' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual' | 'consultant_guide' | 'exercise_external_doc', 
+    sourceId: string,
+    options?: { storeId?: string; clientId?: string }
+  ): Promise<{
     exists: boolean;
     documentId?: string;
     indexedAt?: Date;
     contentHash?: string;
+    storeId?: string;
   }> {
+    // Build conditions array
+    const conditions = [
+      eq(fileSearchDocuments.sourceType, sourceType),
+      eq(fileSearchDocuments.sourceId, sourceId),
+      eq(fileSearchDocuments.status, 'indexed')
+    ];
+    
+    // Add optional store filter
+    if (options?.storeId) {
+      conditions.push(eq(fileSearchDocuments.storeId, options.storeId));
+    }
+    
+    // Add optional client filter
+    if (options?.clientId) {
+      conditions.push(eq(fileSearchDocuments.clientId, options.clientId));
+    }
+    
     const doc = await db.query.fileSearchDocuments.findFirst({
-      where: and(
-        eq(fileSearchDocuments.sourceType, sourceType),
-        eq(fileSearchDocuments.sourceId, sourceId),
-        eq(fileSearchDocuments.status, 'indexed')
-      ),
+      where: and(...conditions),
     });
 
     if (!doc) {
@@ -1555,6 +1579,7 @@ export class FileSearchService {
       documentId: doc.id,
       indexedAt: doc.indexedAt ?? undefined,
       contentHash: doc.contentHash ?? undefined,
+      storeId: doc.storeId,
     };
   }
 

@@ -104,6 +104,13 @@ export interface SyncProgressEvent {
   consultantId: string;
   orphansRemoved?: number;
   storesChecked?: number;
+  // Enhanced context for hierarchical logging
+  storeType?: 'consultant' | 'client';
+  clientId?: string;
+  clientName?: string;
+  clientEmail?: string;
+  documentTitle?: string;
+  status?: 'synced' | 'updated' | 'skipped' | 'error';
 }
 
 export type DocumentProgressPhase = 'extracting' | 'extracting_complete' | 'syncing' | 'chunking' | 'complete' | 'error';
@@ -231,6 +238,40 @@ export class SyncProgressEmitter extends EventEmitter {
       orphansRemoved: totalRemoved,
       storesChecked,
       consultantId,
+    });
+  }
+
+  /**
+   * Emit detailed progress with hierarchical context (Store Type → Client → Document)
+   * This provides rich context for the frontend to display sync progress with full hierarchy
+   */
+  emitDetailedProgress(params: {
+    consultantId: string;
+    category: SyncProgressEvent['category'];
+    storeType: 'consultant' | 'client';
+    documentTitle: string;
+    status: 'synced' | 'updated' | 'skipped' | 'error';
+    current: number;
+    total: number;
+    clientId?: string;
+    clientName?: string;
+    clientEmail?: string;
+    error?: string;
+  }): void {
+    this.emitProgress({
+      type: 'progress',
+      category: params.category,
+      item: params.documentTitle,
+      current: params.current,
+      total: params.total,
+      consultantId: params.consultantId,
+      storeType: params.storeType,
+      clientId: params.clientId,
+      clientName: params.clientName,
+      clientEmail: params.clientEmail,
+      documentTitle: params.documentTitle,
+      status: params.status,
+      error: params.error,
     });
   }
 
@@ -428,6 +469,7 @@ export class FileSearchSyncService {
   /**
    * Sync a library document to FileSearchStore
    * ENHANCED: Auto-detects and re-syncs outdated documents by comparing updatedAt timestamps
+   * FIX: Now properly checks if document exists in CONSULTANT's store (not globally)
    */
   static async syncLibraryDocument(
     documentId: string,
@@ -442,26 +484,7 @@ export class FileSearchSyncService {
         return { success: false, error: 'Document not found' };
       }
 
-      // Check if document exists and get its metadata for staleness detection
-      const indexInfo = await fileSearchService.getDocumentIndexInfo('library', documentId);
-      
-      if (indexInfo.exists) {
-        // Check if outdated by comparing source updatedAt vs indexedAt
-        const sourceUpdatedAt = doc.updatedAt;
-        const indexedAt = indexInfo.indexedAt;
-        
-        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
-          console.log(`📌 [FileSync] Document already indexed and up-to-date: ${documentId}`);
-          return { success: true, updated: false };
-        }
-        
-        // Document is outdated - delete and re-upload
-        if (indexInfo.documentId) {
-          console.log(`🔄 [FileSync] Library document "${doc.title}" outdated - re-syncing...`);
-          await fileSearchService.deleteDocument(indexInfo.documentId);
-        }
-      }
-
+      // FIRST: Get or create consultant store (needed for context-aware index check)
       let consultantStore = await db.query.fileSearchStores.findFirst({
         where: and(
           eq(fileSearchStores.ownerId, consultantId),
@@ -471,7 +494,7 @@ export class FileSearchSyncService {
 
       if (!consultantStore) {
         const result = await fileSearchService.createStore({
-          displayName: `Libreria Consulente`,
+          displayName: `Knowledge Base Consulente`,
           ownerId: consultantId,
           ownerType: 'consultant',
           description: 'Documenti della libreria sincronizzati per AI search',
@@ -487,6 +510,28 @@ export class FileSearchSyncService {
 
         if (!consultantStore) {
           return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      // THEN: Check if document exists in CONSULTANT'S store (not globally!)
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('library', documentId, {
+        storeId: consultantStore.id
+      });
+      
+      if (indexInfo.exists) {
+        // Check if outdated by comparing source updatedAt vs indexedAt
+        const sourceUpdatedAt = doc.updatedAt;
+        const indexedAt = indexInfo.indexedAt;
+        
+        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
+          console.log(`📌 [FileSync] Library doc already in consultant store and up-to-date: ${documentId}`);
+          return { success: true, updated: false };
+        }
+        
+        // Document is outdated - delete and re-upload
+        if (indexInfo.documentId) {
+          console.log(`🔄 [FileSync] Library document "${doc.title}" outdated in consultant store - re-syncing...`);
+          await fileSearchService.deleteDocument(indexInfo.documentId);
         }
       }
 
@@ -673,27 +718,7 @@ export class FileSearchSyncService {
     }
     
     try {
-      // Check if document exists and get its metadata for staleness detection
-      // For chunked documents, check the first chunk; for regular docs, check the base ID
-      const baseIndexInfo = await fileSearchService.getDocumentIndexInfo('knowledge_base', documentId);
-      const firstChunkIndexInfo = await fileSearchService.getDocumentIndexInfo('knowledge_base', `${documentId}_chunk_0`);
-      
-      // Document exists if either the base doc or chunks exist
-      const hasExistingContent = baseIndexInfo.exists || firstChunkIndexInfo.exists;
-      const indexedAt = baseIndexInfo.indexedAt || firstChunkIndexInfo.indexedAt;
-      
-      if (hasExistingContent) {
-        // Check if outdated by comparing source updatedAt vs indexedAt
-        const sourceUpdatedAt = doc.updatedAt;
-        
-        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
-          console.log(`📌 [FileSync] Knowledge document already indexed and up-to-date: ${documentId}`);
-          return { success: true, updated: false };
-        }
-        
-        console.log(`🔄 [FileSync] Knowledge document "${doc.title}" outdated - re-syncing...`);
-      }
-
+      // FIRST: Get or create consultant store (needed for context-aware index check)
       let consultantStore = await db.query.fileSearchStores.findFirst({
         where: and(
           eq(fileSearchStores.ownerId, consultantId),
@@ -720,6 +745,31 @@ export class FileSearchSyncService {
         if (!consultantStore) {
           return { success: false, error: 'Store created but not found' };
         }
+      }
+
+      // THEN: Check if document exists in CONSULTANT'S store (not globally!)
+      // For chunked documents, check the first chunk; for regular docs, check the base ID
+      const baseIndexInfo = await fileSearchService.getDocumentIndexInfo('knowledge_base', documentId, {
+        storeId: consultantStore.id
+      });
+      const firstChunkIndexInfo = await fileSearchService.getDocumentIndexInfo('knowledge_base', `${documentId}_chunk_0`, {
+        storeId: consultantStore.id
+      });
+      
+      // Document exists if either the base doc or chunks exist
+      const hasExistingContent = baseIndexInfo.exists || firstChunkIndexInfo.exists;
+      const indexedAt = baseIndexInfo.indexedAt || firstChunkIndexInfo.indexedAt;
+      
+      if (hasExistingContent) {
+        // Check if outdated by comparing source updatedAt vs indexedAt
+        const sourceUpdatedAt = doc.updatedAt;
+        
+        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
+          console.log(`📌 [FileSync] Knowledge doc already in consultant store and up-to-date: ${documentId}`);
+          return { success: true, updated: false };
+        }
+        
+        console.log(`🔄 [FileSync] Knowledge document "${doc.title}" outdated in consultant store - re-syncing...`);
       }
 
       const content = doc.extractedContent || doc.contentSummary || `${doc.title}\n\n${doc.description || ''}`;
@@ -1167,23 +1217,7 @@ export class FileSearchSyncService {
       // Emit start event for SSE progress tracking
       syncProgressEmitter.emitStart(consultantId, 'consultant_guide', 1);
       
-      // Check if document exists and get its metadata
-      const indexInfo = await fileSearchService.getDocumentIndexInfo('consultant_guide', guideSourceId);
-      
-      if (indexInfo.exists) {
-        // Check if outdated by comparing content hash
-        if (indexInfo.contentHash && indexInfo.contentHash === currentHash) {
-          console.log(`📌 [FileSync] Consultant guide already indexed and up-to-date for: ${consultantId}`);
-          return { success: true, updated: false };
-        }
-        
-        // Guide is outdated - delete and re-upload
-        if (indexInfo.documentId) {
-          console.log(`🔄 [FileSync] Consultant guide outdated for ${consultantId} - re-syncing...`);
-          await fileSearchService.deleteDocument(indexInfo.documentId);
-        }
-      }
-
+      // FIRST: Get or create consultant store (needed for context-aware index check)
       let consultantStore = await db.query.fileSearchStores.findFirst({
         where: and(
           eq(fileSearchStores.ownerId, consultantId),
@@ -1209,6 +1243,25 @@ export class FileSearchSyncService {
 
         if (!consultantStore) {
           return { success: false, error: 'Store created but not found' };
+        }
+      }
+      
+      // THEN: Check if document exists in CONSULTANT'S store (not globally!)
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('consultant_guide', guideSourceId, {
+        storeId: consultantStore.id
+      });
+      
+      if (indexInfo.exists) {
+        // Check if outdated by comparing content hash
+        if (indexInfo.contentHash && indexInfo.contentHash === currentHash) {
+          console.log(`📌 [FileSync] Consultant guide already in consultant store and up-to-date for: ${consultantId}`);
+          return { success: true, updated: false };
+        }
+        
+        // Guide is outdated - delete and re-upload
+        if (indexInfo.documentId) {
+          console.log(`🔄 [FileSync] Consultant guide outdated in consultant store for ${consultantId} - re-syncing...`);
+          await fileSearchService.deleteDocument(indexInfo.documentId);
         }
       }
 
@@ -1700,6 +1753,7 @@ export class FileSearchSyncService {
   /**
    * Sync a single exercise to FileSearchStore
    * ENHANCED: Auto-detects and re-syncs outdated exercises by comparing updatedAt timestamps
+   * FIX: Now properly checks if exercise exists in CONSULTANT's store (not globally)
    */
   static async syncExercise(
     exerciseId: string,
@@ -1714,33 +1768,7 @@ export class FileSearchSyncService {
         return { success: false, error: 'Exercise not found' };
       }
 
-      // Check if document exists and get its metadata for staleness detection
-      const indexInfo = await fileSearchService.getDocumentIndexInfo('exercise', exerciseId);
-      
-      if (indexInfo.exists) {
-        // Exercises don't have updatedAt field, use createdAt as fallback
-        // If document was indexed after exercise creation, consider it up-to-date
-        const sourceDate = (exercise as any).updatedAt || exercise.createdAt;
-        const indexedAt = indexInfo.indexedAt;
-        
-        if (sourceDate && indexedAt && sourceDate <= indexedAt) {
-          console.log(`📌 [FileSync] Exercise already indexed and up-to-date: ${exerciseId}`);
-          return { success: true, updated: false };
-        }
-        
-        // If we have a content hash, check if content actually changed before re-uploading
-        if (indexInfo.contentHash) {
-          // We'll check hash after building content - skip deletion for now
-          // and let uploadDocumentFromContent handle hash comparison
-          console.log(`🔍 [FileSync] Exercise "${exercise.title}" may be outdated - checking content hash...`);
-        } else if (indexInfo.documentId) {
-          // No hash comparison available - delete and re-upload
-          console.log(`🔄 [FileSync] Exercise "${exercise.title}" outdated (no hash) - re-syncing...`);
-          await fileSearchService.deleteDocument(indexInfo.documentId);
-        }
-      }
-
-      // Get or create consultant store
+      // FIRST: Get or create consultant store (needed for context-aware index check)
       let consultantStore = await db.query.fileSearchStores.findFirst({
         where: and(
           eq(fileSearchStores.ownerId, consultantId),
@@ -1766,6 +1794,34 @@ export class FileSearchSyncService {
 
         if (!consultantStore) {
           return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      // THEN: Check if exercise exists in CONSULTANT'S store (not globally!)
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('exercise', exerciseId, {
+        storeId: consultantStore.id
+      });
+      
+      if (indexInfo.exists) {
+        // Exercises don't have updatedAt field, use createdAt as fallback
+        // If document was indexed after exercise creation, consider it up-to-date
+        const sourceDate = (exercise as any).updatedAt || exercise.createdAt;
+        const indexedAt = indexInfo.indexedAt;
+        
+        if (sourceDate && indexedAt && sourceDate <= indexedAt) {
+          console.log(`📌 [FileSync] Exercise already in consultant store and up-to-date: ${exerciseId}`);
+          return { success: true, updated: false };
+        }
+        
+        // If we have a content hash, check if content actually changed before re-uploading
+        if (indexInfo.contentHash) {
+          // We'll check hash after building content - skip deletion for now
+          // and let uploadDocumentFromContent handle hash comparison
+          console.log(`🔍 [FileSync] Exercise "${exercise.title}" may be outdated in consultant store - checking content hash...`);
+        } else if (indexInfo.documentId) {
+          // No hash comparison available - delete and re-upload
+          console.log(`🔄 [FileSync] Exercise "${exercise.title}" outdated in consultant store (no hash) - re-syncing...`);
+          await fileSearchService.deleteDocument(indexInfo.documentId);
         }
       }
 
@@ -1960,6 +2016,7 @@ export class FileSearchSyncService {
    * Sync a single university lesson to FileSearchStore
    * INCLUDES linked library document content for full-text search
    * ENHANCED: Auto-detects and re-syncs outdated lessons by comparing updatedAt timestamps
+   * FIX: Now properly checks if lesson exists in CONSULTANT's store (not globally)
    */
   static async syncUniversityLesson(
     lessonId: string,
@@ -2002,48 +2059,7 @@ export class FileSearchSyncService {
         }
       }
 
-      // Check if document exists and get its metadata for staleness detection
-      const indexInfo = await fileSearchService.getDocumentIndexInfo('university_lesson', lessonId);
-      let shouldResync = forceUpdate;
-      
-      if (indexInfo.exists && !forceUpdate) {
-        // Check if outdated by comparing source updatedAt vs indexedAt
-        const sourceUpdatedAt = lesson.updatedAt;
-        const indexedAt = indexInfo.indexedAt;
-        
-        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt > indexedAt) {
-          console.log(`🔄 [FileSync] Lesson "${lesson.title}" outdated - auto-triggering re-sync...`);
-          shouldResync = true;
-        } else if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
-          console.log(`📌 [FileSync] Lesson already indexed and up-to-date: ${lessonId}`);
-          return { success: true, updated: false };
-        }
-      }
-
-      // Delete existing document if re-syncing (force or outdated)
-      if (indexInfo.exists && shouldResync && indexInfo.documentId) {
-        console.log(`🔄 [FileSync] Deleting old lesson version: ${lessonId}`);
-        await fileSearchService.deleteDocument(indexInfo.documentId);
-      }
-
-      // CRITICAL FIX: Load the linked library document content if exists
-      let linkedDocument: { title: string; content: string | null; contentType: string | null; videoUrl: string | null } | null = null;
-      if (lessonWithHierarchy.libraryDocumentId) {
-        const libDoc = await db.query.libraryDocuments.findFirst({
-          where: eq(libraryDocuments.id, lessonWithHierarchy.libraryDocumentId),
-        });
-        if (libDoc) {
-          linkedDocument = {
-            title: libDoc.title,
-            content: libDoc.content,
-            contentType: libDoc.contentType,
-            videoUrl: libDoc.videoUrl,
-          };
-          console.log(`📚 [FileSync] Found linked library document for lesson "${lessonWithHierarchy.title}": "${libDoc.title}" (${libDoc.content?.length || 0} chars)`);
-        }
-      }
-
-      // Get or create consultant store
+      // FIRST: Get or create consultant store (needed for context-aware index check)
       let consultantStore = await db.query.fileSearchStores.findFirst({
         where: and(
           eq(fileSearchStores.ownerId, consultantId),
@@ -2069,6 +2085,49 @@ export class FileSearchSyncService {
 
         if (!consultantStore) {
           return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      // THEN: Check if lesson exists in CONSULTANT'S store (not globally!)
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('university_lesson', lessonId, {
+        storeId: consultantStore.id
+      });
+      let shouldResync = forceUpdate;
+      
+      if (indexInfo.exists && !forceUpdate) {
+        // Check if outdated by comparing source updatedAt vs indexedAt
+        const sourceUpdatedAt = lesson.updatedAt;
+        const indexedAt = indexInfo.indexedAt;
+        
+        if (sourceUpdatedAt && indexedAt && sourceUpdatedAt > indexedAt) {
+          console.log(`🔄 [FileSync] Lesson "${lesson.title}" outdated in consultant store - auto-triggering re-sync...`);
+          shouldResync = true;
+        } else if (sourceUpdatedAt && indexedAt && sourceUpdatedAt <= indexedAt) {
+          console.log(`📌 [FileSync] Lesson already in consultant store and up-to-date: ${lessonId}`);
+          return { success: true, updated: false };
+        }
+      }
+
+      // Delete existing document if re-syncing (force or outdated)
+      if (indexInfo.exists && shouldResync && indexInfo.documentId) {
+        console.log(`🔄 [FileSync] Deleting old lesson version from consultant store: ${lessonId}`);
+        await fileSearchService.deleteDocument(indexInfo.documentId);
+      }
+
+      // CRITICAL FIX: Load the linked library document content if exists
+      let linkedDocument: { title: string; content: string | null; contentType: string | null; videoUrl: string | null } | null = null;
+      if (lessonWithHierarchy.libraryDocumentId) {
+        const libDoc = await db.query.libraryDocuments.findFirst({
+          where: eq(libraryDocuments.id, lessonWithHierarchy.libraryDocumentId),
+        });
+        if (libDoc) {
+          linkedDocument = {
+            title: libDoc.title,
+            content: libDoc.content,
+            contentType: libDoc.contentType,
+            videoUrl: libDoc.videoUrl,
+          };
+          console.log(`📚 [FileSync] Found linked library document for lesson "${lessonWithHierarchy.title}": "${libDoc.title}" (${libDoc.content?.length || 0} chars)`);
         }
       }
 

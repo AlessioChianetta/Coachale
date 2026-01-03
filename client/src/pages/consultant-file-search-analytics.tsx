@@ -417,6 +417,13 @@ interface SyncLogEntry {
   category?: string;
   current?: number;
   total?: number;
+  // Hierarchical context for improved logging display
+  storeType?: 'consultant' | 'client';
+  clientId?: string;
+  clientName?: string;
+  clientEmail?: string;
+  documentTitle?: string;
+  status?: 'synced' | 'updated' | 'skipped' | 'error';
 }
 
 interface CategoryProgress {
@@ -554,10 +561,34 @@ export default function ConsultantFileSearchAnalyticsPage() {
                 }
               }));
               if (showDetailedLogs) {
-                addSyncLog('progress', `[${data.category}] ${data.current}/${data.total}: ${data.item}`, { 
+                // Build hierarchical log message with context
+                let logMessage = `[${data.category}] ${data.current}/${data.total}`;
+                
+                // Add store context (consultant vs client)
+                if (data.storeType === 'client' && data.clientName) {
+                  logMessage += ` [Cliente: ${data.clientName}]`;
+                } else if (data.storeType === 'consultant') {
+                  logMessage += ` [Store Consulente]`;
+                }
+                
+                // Add document title and status
+                const docTitle = data.documentTitle || data.item;
+                const statusIcon = data.status === 'synced' ? '✓' : 
+                                   data.status === 'updated' ? '↻' : 
+                                   data.status === 'skipped' ? '→' : 
+                                   data.status === 'error' ? '✗' : '•';
+                logMessage += `: ${statusIcon} ${docTitle}`;
+                
+                addSyncLog('progress', logMessage, { 
                   category: data.category, 
                   current: data.current, 
-                  total: data.total 
+                  total: data.total,
+                  storeType: data.storeType,
+                  clientId: data.clientId,
+                  clientName: data.clientName,
+                  clientEmail: data.clientEmail,
+                  documentTitle: data.documentTitle,
+                  status: data.status
                 });
               }
             } else if (data.type === 'error') {
