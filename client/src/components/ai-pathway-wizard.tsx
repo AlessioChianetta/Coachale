@@ -41,6 +41,8 @@ import {
   GraduationCap,
   Layers,
   Calendar,
+  Plus,
+  X,
 } from "lucide-react";
 
 export interface AIPathwayWizardProps {
@@ -130,6 +132,9 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
   const [duplicateTemplates, setDuplicateTemplates] = useState<DuplicateTemplate[]>([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+  const [showAddCourseDialog, setShowAddCourseDialog] = useState(false);
+  const [addCourseId, setAddCourseId] = useState<string>("");
+  const [addCourseTrimester, setAddCourseTrimester] = useState<TrimesterValue>("Q1");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -147,6 +152,9 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       setDuplicateTemplates([]);
       setShowDuplicateWarning(false);
       setIsCheckingDuplicates(false);
+      setShowAddCourseDialog(false);
+      setAddCourseId("");
+      setAddCourseTrimester("Q1");
     }
   }, [open]);
 
@@ -317,6 +325,59 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       description: `Trimestre impostato su ${assignment.originalAISuggestion}`,
     });
   };
+
+  const handleAddCourse = () => {
+    if (!addCourseId) {
+      toast({
+        title: "Seleziona un corso",
+        description: "Devi selezionare un corso da aggiungere",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const course = courses.find(c => c.id === addCourseId);
+    if (!course) return;
+    
+    // Add to selectedCourseIds if not already there
+    if (!selectedCourseIds.includes(addCourseId)) {
+      setSelectedCourseIds(prev => [...prev, addCourseId]);
+    }
+    
+    // Add to assignments with the selected trimester
+    const existingAssignment = assignments.find(a => a.courseId === addCourseId);
+    if (existingAssignment) {
+      // Update existing assignment to include this trimester
+      if (!existingAssignment.trimesters.includes(addCourseTrimester)) {
+        setAssignments(prev => prev.map(a => 
+          a.courseId === addCourseId 
+            ? { ...a, trimesters: [...a.trimesters, addCourseTrimester].sort() as TrimesterValue[] }
+            : a
+        ));
+      }
+    } else {
+      // Create new assignment
+      setAssignments(prev => [...prev, {
+        courseId: addCourseId,
+        courseName: course.name,
+        trimesters: [addCourseTrimester],
+        originalAISuggestion: addCourseTrimester,
+        reasoning: "Aggiunto manualmente",
+      }]);
+    }
+    
+    toast({
+      title: "Corso aggiunto",
+      description: `"${course.name}" aggiunto al trimestre ${addCourseTrimester}`,
+    });
+    
+    setShowAddCourseDialog(false);
+    setAddCourseId("");
+    setAddCourseTrimester("Q1");
+  };
+
+  // Get courses not yet in assignments
+  const availableCoursesToAdd = courses.filter(c => !assignments.some(a => a.courseId === c.id));
 
   const handleAnalyze = async () => {
     if (selectedCourseIds.length === 0) {
@@ -697,10 +758,23 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
             </div>
 
             <div className="space-y-3 mt-6">
-              <Label className="flex items-center gap-2">
-                <Layers className="h-4 w-4" />
-                Anteprima Struttura
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <Layers className="h-4 w-4" />
+                  Anteprima Struttura
+                </Label>
+                {availableCoursesToAdd.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddCourseDialog(true)}
+                    className="gap-1 text-xs h-7"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Aggiungi Corso
+                  </Button>
+                )}
+              </div>
               <ScrollArea className="h-[200px] border rounded-lg p-4">
                 <div className="grid grid-cols-4 gap-3">
                   {Object.entries(groupedAssignments).map(([trimester, courses]) => (
@@ -730,6 +804,68 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
                   ))}
                 </div>
               </ScrollArea>
+
+              {showAddCourseDialog && (
+                <Card className="border-primary/50 bg-primary/5">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Aggiungi un nuovo corso</Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => {
+                          setShowAddCourseDialog(false);
+                          setAddCourseId("");
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Corso</Label>
+                        <Select value={addCourseId} onValueChange={setAddCourseId}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Seleziona corso..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableCoursesToAdd.map((course) => (
+                              <SelectItem key={course.id} value={course.id}>
+                                {course.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Trimestre</Label>
+                        <Select value={addCourseTrimester} onValueChange={(v) => setAddCourseTrimester(v as TrimesterValue)}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {trimesterOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleAddCourse}
+                      disabled={!addCourseId}
+                      size="sm"
+                      className="w-full gap-1"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Aggiungi
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t">
