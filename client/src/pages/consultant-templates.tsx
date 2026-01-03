@@ -204,7 +204,7 @@ export default function ConsultantTemplates() {
       if (!response.ok) throw new Error("Failed to fetch courses");
       return response.json();
     },
-    enabled: coursePickerOpen,
+    enabled: manageSheetOpen,
   });
 
   const { data: availableExercises = [] } = useQuery<{ id: string; title: string; category?: string }[]>({
@@ -216,7 +216,7 @@ export default function ConsultantTemplates() {
       if (!response.ok) throw new Error("Failed to fetch exercises");
       return response.json();
     },
-    enabled: exercisePickerOpen,
+    enabled: manageSheetOpen,
   });
 
   const createTemplateMutation = useMutation({
