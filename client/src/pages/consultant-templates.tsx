@@ -317,6 +317,19 @@ export default function ConsultantTemplates() {
     },
   });
 
+  const removeCourseFromTemplateMutation = useMutation({
+    mutationFn: async (data: { templateId: string; moduleId: string }) => {
+      return await apiRequest("DELETE", `/api/university/templates/${data.templateId}/modules/${data.moduleId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/university/templates", managingTemplateId, "full"] });
+      toast({ title: "Corso rimosso con successo" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   const createTrimesterMutation = useMutation({
     mutationFn: async (data: { templateId: string; title: string; description: string; sortOrder: number }) => {
       return await apiRequest("POST", `/api/university/templates/${data.templateId}/trimesters`, data);
@@ -1635,22 +1648,37 @@ export default function ConsultantTemplates() {
                                       }}
                                     >
                                       <div className="border rounded-lg overflow-hidden ml-2">
-                                        <CollapsibleTrigger className="w-full">
-                                          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
-                                            <div className="flex items-center gap-2">
-                                              <div className="w-6 h-6 bg-teal-500 text-white rounded flex items-center justify-center font-semibold text-xs">
-                                                {mIndex + 1}
-                                              </div>
-                                              <div className="text-left">
-                                                <h5 className="font-medium text-sm">{module.title}</h5>
-                                                <p className="text-xs text-muted-foreground">
-                                                  {module.lessons?.length || 0} lezioni
-                                                </p>
-                                              </div>
+                                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
+                                          <CollapsibleTrigger className="flex items-center gap-2 flex-1 min-w-0">
+                                            <div className="w-6 h-6 bg-teal-500 text-white rounded flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                                              {mIndex + 1}
                                             </div>
-                                            <ChevronDown className={`h-4 w-4 transition-transform ${expandedModules.includes(module.id) ? 'rotate-180' : ''}`} />
-                                          </div>
-                                        </CollapsibleTrigger>
+                                            <div className="text-left min-w-0">
+                                              <h5 className="font-medium text-sm truncate">{module.title}</h5>
+                                              <p className="text-xs text-muted-foreground">
+                                                {module.lessons?.length || 0} lezioni
+                                              </p>
+                                            </div>
+                                            <ChevronDown className={`h-4 w-4 transition-transform flex-shrink-0 ${expandedModules.includes(module.id) ? 'rotate-180' : ''}`} />
+                                          </CollapsibleTrigger>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex-shrink-0 ml-2"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (managingTemplateId) {
+                                                removeCourseFromTemplateMutation.mutate({
+                                                  templateId: managingTemplateId,
+                                                  moduleId: module.id,
+                                                });
+                                              }
+                                            }}
+                                            title="Rimuovi corso dal template"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
 
                                         <CollapsibleContent>
                                           <div className="p-3 space-y-2 border-t bg-white dark:bg-slate-950">

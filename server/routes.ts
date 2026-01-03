@@ -7443,6 +7443,66 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
     }
   });
 
+  // Remove Course from Template - deletes a module and all its lessons
+  app.delete("/api/university/templates/:templateId/modules/:moduleId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { templateId, moduleId } = req.params;
+
+      // Verify the template exists and consultant owns it
+      const [template] = await db.select()
+        .from(schema.universityTemplates)
+        .where(
+          and(
+            eq(schema.universityTemplates.id, templateId),
+            eq(schema.universityTemplates.createdBy, req.user!.id)
+          )
+        );
+
+      if (!template) {
+        return res.status(404).json({ message: "Template not found or access denied" });
+      }
+
+      // Get the module and verify it belongs to this template
+      const [module] = await db.select()
+        .from(schema.templateModules)
+        .where(eq(schema.templateModules.id, moduleId));
+
+      if (!module) {
+        return res.status(404).json({ message: "Module not found" });
+      }
+
+      // Verify the module's trimester belongs to this template
+      const [trimester] = await db.select()
+        .from(schema.templateTrimesters)
+        .where(
+          and(
+            eq(schema.templateTrimesters.id, module.templateTrimesterId),
+            eq(schema.templateTrimesters.templateId, templateId)
+          )
+        );
+
+      if (!trimester) {
+        return res.status(403).json({ message: "Module does not belong to this template" });
+      }
+
+      // Use a transaction for atomicity - delete lessons first, then module
+      await db.transaction(async (tx) => {
+        // Delete all lessons in this module
+        await tx.delete(schema.templateLessons)
+          .where(eq(schema.templateLessons.templateModuleId, moduleId));
+
+        // Delete the module
+        await tx.delete(schema.templateModules)
+          .where(eq(schema.templateModules.id, moduleId));
+      });
+
+      res.json({ message: "Course removed from template successfully" });
+    } catch (error: any) {
+      console.error("Error removing course from template:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Update Lesson Exercise - set or clear exerciseId on a template lesson
   app.patch("/api/university/templates/lessons/:lessonId/exercise", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
