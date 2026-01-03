@@ -366,7 +366,11 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       });
       return;
     }
-    await generateMutation.mutateAsync();
+    const result = await generateMutation.mutateAsync();
+    // Set templateId immediately from result, don't rely on onSuccess timing
+    if (result?.templateId) {
+      setCreatedTemplateId(result.templateId);
+    }
     setCurrentStep(3);
   };
 
