@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ModeSelector } from "./ModeSelector";
 import { ConsultantTypePicker } from "./ConsultantTypePicker";
 import { MessageList } from "./MessageList";
-import { InputArea } from "./InputArea";
+import { InputArea, AIModel, ThinkingLevel, AttachedFile } from "./InputArea";
 import { QuickActions } from "./QuickActions";
 import { ConsultantQuickActions } from "./ConsultantQuickActions";
 import { AIMode, ConsultantType } from "./AIAssistant";
@@ -717,12 +717,9 @@ export function ChatPanel({
               )}
               <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
                 <InputArea
-                  onSendMessage={handleSendMessage}
-                  isTyping={isTyping}
-                  placeholder="Scrivi un messaggio..."
-                  isWaiting={rateLimitInfo.isWaiting}
-                  waitingSeconds={rateLimitInfo.isWaiting ? Math.ceil((rateLimitInfo.resetAt - Date.now()) / 1000) : 0}
-                  retryInfo={retryInfo.isRetrying ? retryInfo : undefined}
+                  onSend={handleSendMessage}
+                  isProcessing={isTyping}
+                  disabled={rateLimitInfo.isWaiting}
                 />
               </div>
             </>

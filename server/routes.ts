@@ -10305,7 +10305,7 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
 
   app.post("/api/ai/chat", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
     try {
-      const { message, conversationId, mode, consultantType, pageContext, hasPageContext, focusedDocument, agentId } = req.body;
+      const { message, conversationId, mode, consultantType, pageContext, hasPageContext, focusedDocument, agentId, model, thinkingLevel } = req.body;
       
       if (!message || !mode) {
         return res.status(400).json({ message: "Message and mode are required" });
@@ -10348,6 +10348,8 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
           activeConsultantId: req.user!.consultantId,
           // Agent context for AI assistant with selected agent
           agentId,
+          model,
+          thinkingLevel,
         })) {
           // Send chunk as SSE event and flush immediately
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);
@@ -10541,7 +10543,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   app.post("/api/consultant/ai/chat", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { message, conversationId, pageContext, focusedDocument, agentId } = req.body;
+      const { message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel } = req.body;
       
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
@@ -10568,6 +10570,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           pageContext,
           focusedDocument,
           agentId,
+          model,
+          thinkingLevel,
         })) {
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);
           

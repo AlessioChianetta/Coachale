@@ -61,6 +61,47 @@ function getTextChatModel(providerName: string): { model: string; useThinking: b
   return { model: GEMINI_LEGACY_MODEL, useThinking: false };
 }
 
+// Dynamic model configuration based on user-selected model and thinking level
+// Frontend model names mapped to actual Gemini API model names
+type DynamicAIModel = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'gemini-2.5-pro';
+type DynamicThinkingLevel = 'none' | 'low' | 'medium' | 'high';
+
+const MODEL_NAME_MAP: Record<string, string> = {
+  'gemini-3-flash-preview': 'gemini-3-flash-preview',
+  'gemini-3-pro-preview': 'gemini-3-pro-preview',
+  'gemini-2.5-pro': 'gemini-2.5-pro',
+};
+
+// Models that support thinking/reasoning
+const THINKING_SUPPORTED_MODELS = ['gemini-3-flash-preview', 'gemini-3-pro-preview'];
+
+function getDynamicModelConfig(
+  requestedModel?: DynamicAIModel,
+  requestedThinkingLevel?: DynamicThinkingLevel,
+  providerName?: string
+): { model: string; useThinking: boolean; thinkingLevel: 'low' | 'medium' | 'high' | null } {
+  // If user selected a specific model, use it
+  if (requestedModel) {
+    const modelName = MODEL_NAME_MAP[requestedModel] || requestedModel;
+    // Gemini 3 Flash and Pro both support thinking
+    const modelSupportsThinking = THINKING_SUPPORTED_MODELS.includes(requestedModel);
+    const useThinking = modelSupportsThinking && requestedThinkingLevel && requestedThinkingLevel !== 'none';
+    return {
+      model: modelName,
+      useThinking: !!useThinking,
+      thinkingLevel: useThinking ? requestedThinkingLevel as 'low' | 'medium' | 'high' : null
+    };
+  }
+  
+  // Fallback to provider-based model selection
+  const defaultConfig = getTextChatModel(providerName || 'Google AI Studio');
+  return {
+    model: defaultConfig.model,
+    useThinking: defaultConfig.useThinking,
+    thinkingLevel: defaultConfig.useThinking ? GEMINI_3_THINKING_LEVEL : null
+  };
+}
+
 // Default model for backward compatibility (uses legacy)
 const TEXT_CHAT_MODEL = GEMINI_LEGACY_MODEL;
 
@@ -630,6 +671,9 @@ export interface ChatRequest {
   activeConsultantId?: string;
   // Agent context: Use selected WhatsApp agent as AI persona
   agentId?: string;
+  // Model and thinking level for dynamic AI config
+  model?: AIModel;
+  thinkingLevel?: ThinkingLevel;
 }
 
 export interface ChatResponse {
@@ -1332,7 +1376,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
 }
 
 export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerator<ChatStreamChunk> {
-  const { clientId, message, conversationId, mode, consultantType, pageContext, focusedDocument, userRole, activeConsultantId, agentId } = request;
+  const { clientId, message, conversationId, mode, consultantType, pageContext, focusedDocument, userRole, activeConsultantId, agentId, model: requestedModel, thinkingLevel: requestedThinkingLevel } = request;
 
   // ========================================
   // AGENT CONTEXT: Fetch agent persona if agentId is provided
@@ -2016,23 +2060,27 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     console.log(`${'═'.repeat(70)}\n`);
 
-    // Select model dynamically based on provider (Gemini 3 only for Google AI Studio)
-    const { model: clientStreamModel, useThinking: clientStreamUseThinking } = getTextChatModel(providerMetadata.name);
-    console.log(`[AI] Using model: ${clientStreamModel} with thinking_level: ${clientStreamUseThinking ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'} [CLIENT STREAMING]`);
-    console.log(`[AI] Provider: ${providerMetadata.name} -> ${clientStreamUseThinking ? 'Gemini 3 Flash' : 'Gemini 2.5 Flash'}`);
+    // Select model dynamically based on user selection or provider default
+    const dynamicConfig = getDynamicModelConfig(
+      requestedModel as DynamicAIModel | undefined,
+      requestedThinkingLevel as DynamicThinkingLevel | undefined,
+      providerMetadata.name
+    );
+    console.log(`[AI] Using model: ${dynamicConfig.model} with thinking_level: ${dynamicConfig.thinkingLevel || 'N/A'} [CLIENT STREAMING]`);
+    console.log(`[AI] Provider: ${providerMetadata.name}, User-selected: ${requestedModel ? 'YES' : 'NO'}`);
 
     // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
-      model: clientStreamModel,
+      model: dynamicConfig.model,
       contents: geminiMessages.map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
       })),
       generationConfig: {
         systemInstruction: systemPrompt,
-        ...(clientStreamUseThinking && {
+        ...(dynamicConfig.useThinking && dynamicConfig.thinkingLevel && {
           thinkingConfig: {
-            thinkingLevel: GEMINI_3_THINKING_LEVEL
+            thinkingLevel: dynamicConfig.thinkingLevel
           }
         }),
       },
@@ -2722,6 +2770,9 @@ export interface FocusedDocument {
   category?: string;
 }
 
+export type AIModel = 'gemini-2.5-flash-preview-05-20' | 'gemini-2.5-pro-preview-05-06';
+export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high';
+
 export interface ConsultantChatRequest {
   consultantId: string;
   message: string;
@@ -2730,10 +2781,13 @@ export interface ConsultantChatRequest {
   focusedDocument?: FocusedDocument;
   // Agent context: Use selected WhatsApp agent as AI persona
   agentId?: string;
+  // Model and thinking level for dynamic AI config
+  model?: AIModel;
+  thinkingLevel?: ThinkingLevel;
 }
 
 export async function* sendConsultantChatMessageStream(request: ConsultantChatRequest) {
-  const { consultantId, message, conversationId, pageContext, focusedDocument, agentId } = request;
+  const { consultantId, message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel } = request;
 
   // ========================================
   // AGENT CONTEXT: Fetch agent persona if agentId is provided
@@ -3035,23 +3089,27 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     console.log(`${'═'.repeat(70)}\n`);
 
-    // Select model dynamically based on provider (Gemini 3 only for Google AI Studio)
-    const { model: selectedModel, useThinking } = getTextChatModel(providerMetadata.name);
-    console.log(`[AI] Using model: ${selectedModel} with thinking_level: ${useThinking ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'} [CONSULTANT STREAMING]`);
-    console.log(`[AI] Provider: ${providerMetadata.name} -> ${useThinking ? 'Gemini 3 Flash' : 'Gemini 2.5 Flash'}`);
+    // Select model dynamically based on user selection or provider default
+    const consultantDynamicConfig = getDynamicModelConfig(
+      model as DynamicAIModel | undefined,
+      thinkingLevel as DynamicThinkingLevel | undefined,
+      providerMetadata.name
+    );
+    console.log(`[AI] Using model: ${consultantDynamicConfig.model} with thinking_level: ${consultantDynamicConfig.thinkingLevel || 'N/A'} [CONSULTANT STREAMING]`);
+    console.log(`[AI] Provider: ${providerMetadata.name}, User-selected: ${model ? 'YES' : 'NO'}`);
 
     // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
-      model: selectedModel,
+      model: consultantDynamicConfig.model,
       contents: geminiMessages.map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
       })),
       generationConfig: {
         systemInstruction: systemPrompt,
-        ...(useThinking && {
+        ...(consultantDynamicConfig.useThinking && consultantDynamicConfig.thinkingLevel && {
           thinkingConfig: {
-            thinkingLevel: GEMINI_3_THINKING_LEVEL
+            thinkingLevel: consultantDynamicConfig.thinkingLevel
           }
         }),
       },

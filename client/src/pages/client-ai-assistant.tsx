@@ -17,7 +17,7 @@ import {
 import { ModeSelector } from "@/components/ai-assistant/ModeSelector";
 import { ConsultantTypePicker } from "@/components/ai-assistant/ConsultantTypePicker";
 import { MessageList } from "@/components/ai-assistant/MessageList";
-import { InputArea } from "@/components/ai-assistant/InputArea";
+import { InputArea, AIModel, ThinkingLevel, AttachedFile } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
 import { LiveModeScreen } from "@/components/ai-assistant/live-mode/LiveModeScreen";
 import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
@@ -125,6 +125,8 @@ export default function ClientAIAssistant() {
   const [isLiveModeActive, setIsLiveModeActive] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [selectedModel, setSelectedModel] = useState<AIModel>("gemini-3-flash-preview");
+  const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("low");
 
   const { data: availableAgents = [] } = useQuery<AgentForAssistant[]>({
     queryKey: ["/api/ai-assistant/client/agents-for-assistant"],
@@ -230,7 +232,7 @@ export default function ClientAIAssistant() {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, model, thinkingLevel: thinkLevel }: { message: string; model?: AIModel; thinkingLevel?: ThinkingLevel }) => {
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: {
@@ -243,6 +245,8 @@ export default function ClientAIAssistant() {
           consultantType: mode === "consulente" ? consultantType : undefined,
           conversationId: selectedConversationId,
           agentId: selectedAgentId,
+          model: model || selectedModel,
+          thinkingLevel: thinkLevel || thinkingLevel,
         }),
       });
 
@@ -422,8 +426,8 @@ export default function ClientAIAssistant() {
     },
   });
 
-  const handleSendMessage = (message: string) => {
-    sendMessageMutation.mutate(message);
+  const handleSendMessage = (message: string, _files?: AttachedFile[], model?: AIModel, thinkLevel?: ThinkingLevel) => {
+    sendMessageMutation.mutate({ message, model: model || selectedModel, thinkingLevel: thinkLevel || thinkingLevel });
   };
 
   const handleNewConversation = () => {
@@ -630,6 +634,10 @@ export default function ClientAIAssistant() {
                     onSend={handleSendMessage}
                     disabled={isTyping || sendMessageMutation.isPending}
                     onLiveModeClick={() => setIsLiveModeActive(true)}
+                    selectedModel={selectedModel}
+                    onModelChange={setSelectedModel}
+                    thinkingLevel={thinkingLevel}
+                    onThinkingLevelChange={setThinkingLevel}
                   />
                 </div>
               </div>

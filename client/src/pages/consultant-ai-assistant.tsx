@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot, Settings2, Filter } from "lucide-react";
 import { MessageList } from "@/components/ai-assistant/MessageList";
-import { InputArea } from "@/components/ai-assistant/InputArea";
+import { InputArea, AIModel, ThinkingLevel, AttachedFile } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
 import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
 import { ClientAIPreferencesManager } from "@/components/ai-assistant/ClientAIPreferencesManager";
@@ -104,6 +104,8 @@ export default function ConsultantAIAssistant() {
   const [loadingConversationId, setLoadingConversationId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [conversationFilter, setConversationFilter] = useState<string>("all");
+  const [selectedModel, setSelectedModel] = useState<AIModel>("gemini-3-flash-preview");
+  const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("low");
 
   const tempAssistantIdRef = useRef<string | null>(null);
   const [isNewConversation, setIsNewConversation] = useState<boolean>(false);
@@ -238,7 +240,7 @@ export default function ConsultantAIAssistant() {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, model, thinkingLevel: thinkLevel }: { message: string; model?: AIModel; thinkingLevel?: ThinkingLevel }) => {
       const response = await fetch("/api/consultant/ai/chat", {
         method: "POST",
         headers: {
@@ -249,6 +251,8 @@ export default function ConsultantAIAssistant() {
           message,
           conversationId: selectedConversationId,
           agentId: selectedAgentId,
+          model: model || selectedModel,
+          thinkingLevel: thinkLevel || thinkingLevel,
         }),
       });
 
@@ -426,8 +430,8 @@ export default function ConsultantAIAssistant() {
     },
   });
 
-  const handleSendMessage = (message: string) => {
-    sendMessageMutation.mutate(message);
+  const handleSendMessage = (message: string, _files?: AttachedFile[], model?: AIModel, thinkLevel?: ThinkingLevel) => {
+    sendMessageMutation.mutate({ message, model: model || selectedModel, thinkingLevel: thinkLevel || thinkingLevel });
   };
 
   const handleNewConversation = () => {
@@ -613,7 +617,14 @@ export default function ConsultantAIAssistant() {
                     </AlertDescription>
                   </Alert>
                 )}
-                <InputArea onSend={handleSendMessage} isProcessing={isTyping} />
+                <InputArea 
+                  onSend={handleSendMessage} 
+                  isProcessing={isTyping}
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                  thinkingLevel={thinkingLevel}
+                  onThinkingLevelChange={setThinkingLevel}
+                />
               </div>
             </div>
           </div>
