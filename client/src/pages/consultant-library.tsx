@@ -3122,26 +3122,9 @@ export default function ConsultantLibrary() {
                   : `Il corso "${assigningCategory?.name}" sarà visibile a ${selectedClients.length} client${selectedClients.length === 1 ? 'e' : 'i'}.`
                 }
               </p>
-              
-              {/* Exercise auto-assignment info */}
-              {categoryExerciseInfo && categoryExerciseInfo.count > 0 && (
-                <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Dumbbell className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-blue-800 dark:text-blue-200">
-                      <strong>{categoryExerciseInfo.count}</strong> esercizi verranno auto-assegnati ai nuovi clienti
-                    </span>
-                  </div>
-                  {categoryExerciseInfo.withExternalLinks > 0 && (
-                    <div className="flex items-center gap-2 text-xs mt-1.5 text-amber-700 dark:text-amber-400">
-                      <LinkIcon className="h-3.5 w-3.5" />
-                      <span>
-                        {categoryExerciseInfo.withExternalLinks} con link esterno (personalizzabili dopo l'assegnazione)
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                💡 Per assegnare gli esercizi del corso, usa il pulsante "Assegna Modulo" nella pagina Template Esercizi.
+              </p>
             </div>
           </div>
 
@@ -3158,22 +3141,12 @@ export default function ConsultantLibrary() {
               Annulla
             </Button>
             <Button
-              variant="secondary"
               onClick={() => handleSaveAssignment(false)}
               disabled={assignCategoryMutation.isPending}
-              className="gap-2"
+              className="bg-blue-600 hover:bg-blue-700 gap-2"
             >
               <BookOpen size={16} />
-              {assignCategoryMutation.isPending ? "Salvataggio..." : "Solo Corso"}
-            </Button>
-            <Button
-              onClick={() => handleSaveAssignment(true)}
-              disabled={assignCategoryMutation.isPending || selectedClients.length === 0}
-              className="bg-blue-600 hover:bg-blue-700 gap-2"
-              title="Seleziona almeno un cliente per assegnare esercizi"
-            >
-              <Dumbbell size={16} />
-              {assignCategoryMutation.isPending ? "Salvataggio..." : "Corso + Esercizi"}
+              {assignCategoryMutation.isPending ? "Salvataggio..." : "Salva Assegnazione"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -57,7 +57,9 @@ import {
   Sparkles,
   ArrowLeft,
   FolderOpen,
+  Users,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import TemplateForm from "@/components/template-form";
@@ -85,6 +87,9 @@ export default function ConsultantTemplates() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
+  const [bulkAssignCategory, setBulkAssignCategory] = useState<string | null>(null);
+  const [bulkSelectedClients, setBulkSelectedClients] = useState<string[]>([]);
   const itemsPerPage = 10;
 
   const { toast } = useToast();
@@ -139,7 +144,43 @@ export default function ConsultantTemplates() {
     enabled: !!deletingTemplate,
   });
 
+  // Fetch clients for bulk assign
+  const { data: clients = [] } = useQuery<any[]>({
+    queryKey: ["/api/clients", "active"],
+    queryFn: async () => {
+      const response = await fetch("/api/clients?activeOnly=true", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch clients");
+      return response.json();
+    },
+  });
 
+  // Bulk assign mutation
+  const bulkAssignMutation = useMutation({
+    mutationFn: async ({ categorySlug, clientIds }: { categorySlug: string; clientIds: string[] }) => {
+      const response = await apiRequest("POST", `/api/templates/${categorySlug}/bulk-assign`, { clientIds });
+      return response;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exercises"] });
+      setShowBulkAssignDialog(false);
+      setBulkAssignCategory(null);
+      setBulkSelectedClients([]);
+      toast({
+        title: "Modulo assegnato con successo",
+        description: `Creati ${data.exercisesCreated || 0} esercizi per ${data.assignmentsCreated || 0} assegnazioni`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'assegnazione del modulo",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Filter templates based on mode
   const filteredTemplates = templates.filter((template: ExerciseTemplate) => {
@@ -778,6 +819,18 @@ export default function ConsultantTemplates() {
                     <Badge variant="secondary">
                       {sortedFilteredTemplates.filter((t: ExerciseTemplate) => t.category === activeTab).length} esercizi
                     </Badge>
+                    <Button
+                      onClick={() => {
+                        setBulkAssignCategory(activeTab);
+                        setBulkSelectedClients([]);
+                        setShowBulkAssignDialog(true);
+                      }}
+                      className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white ml-2"
+                      size="sm"
+                    >
+                      <Users size={16} className="mr-2" />
+                      Assegna Modulo
+                    </Button>
                   </div>
                 </div>
 
@@ -986,7 +1039,125 @@ export default function ConsultantTemplates() {
         </div>
       )}
 
+      {/* Bulk Assign Dialog */}
+      <Dialog open={showBulkAssignDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowBulkAssignDialog(false);
+          setBulkAssignCategory(null);
+          setBulkSelectedClients([]);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-cyan-500" />
+              Assegna Modulo Completo
+            </DialogTitle>
+            <DialogDescription>
+              Assegna tutti gli esercizi della categoria "{bulkAssignCategory ? (categoryDisplayNames[bulkAssignCategory] || bulkAssignCategory) : ''}" ai clienti selezionati.
+            </DialogDescription>
+          </DialogHeader>
 
+          <div className="py-4 space-y-4">
+            {/* Select All / Deselect All */}
+            <div className="flex items-center justify-between pb-2 border-b">
+              <span className="text-sm font-medium">
+                {bulkSelectedClients.length} di {clients.length} clienti selezionati
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (bulkSelectedClients.length === clients.length) {
+                    setBulkSelectedClients([]);
+                  } else {
+                    setBulkSelectedClients(clients.map((c: any) => c.id));
+                  }
+                }}
+              >
+                {bulkSelectedClients.length === clients.length ? 'Deseleziona Tutti' : 'Seleziona Tutti'}
+              </Button>
+            </div>
+
+            {/* Client List */}
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {clients.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nessun cliente attivo trovato
+                </p>
+              ) : (
+                clients.map((client: any) => (
+                  <div
+                    key={client.id}
+                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <Checkbox
+                      id={`client-${client.id}`}
+                      checked={bulkSelectedClients.includes(client.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setBulkSelectedClients([...bulkSelectedClients, client.id]);
+                        } else {
+                          setBulkSelectedClients(bulkSelectedClients.filter(id => id !== client.id));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`client-${client.id}`}
+                      className="flex-1 text-sm font-medium cursor-pointer"
+                    >
+                      {client.fullName || client.username}
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Summary */}
+            {bulkSelectedClients.length > 0 && bulkAssignCategory && (
+              <div className="p-3 bg-cyan-50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-800 rounded-lg">
+                <p className="text-sm text-cyan-700 dark:text-cyan-300">
+                  Verranno creati <strong>{sortedFilteredTemplates.filter((t: ExerciseTemplate) => t.category === bulkAssignCategory).length}</strong> esercizi per ciascuno dei <strong>{bulkSelectedClients.length}</strong> clienti selezionati.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowBulkAssignDialog(false);
+                setBulkAssignCategory(null);
+                setBulkSelectedClients([]);
+              }}
+            >
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                if (bulkAssignCategory && bulkSelectedClients.length > 0) {
+                  bulkAssignMutation.mutate({
+                    categorySlug: bulkAssignCategory,
+                    clientIds: bulkSelectedClients,
+                  });
+                }
+              }}
+              disabled={bulkSelectedClients.length === 0 || bulkAssignMutation.isPending}
+              className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
+            >
+              {bulkAssignMutation.isPending ? (
+                <>Assegnazione in corso...</>
+              ) : (
+                <>
+                  <Users size={16} className="mr-2" />
+                  Assegna Tutti gli Esercizi
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

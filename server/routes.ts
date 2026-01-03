@@ -1746,6 +1746,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk assign all templates from a category to multiple clients
+  app.post("/api/templates/:categorySlug/bulk-assign", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { categorySlug } = req.params;
+      const { clientIds } = req.body as { clientIds: string[] };
+      const consultantId = req.user!.id;
+
+      console.log(`🏋️ [BULK-ASSIGN] Starting bulk assignment for category: ${categorySlug}`);
+      console.log(`🏋️ [BULK-ASSIGN] Target clients: ${clientIds?.length || 0}`);
+
+      if (!clientIds || !Array.isArray(clientIds) || clientIds.length === 0) {
+        console.log(`🏋️ [BULK-ASSIGN] Error: No clientIds provided`);
+        return res.status(400).json({ message: "clientIds array is required" });
+      }
+
+      // Find all exercise templates with matching category slug owned by this consultant
+      const templates = await db.select()
+        .from(schema.exerciseTemplates)
+        .where(
+          and(
+            eq(schema.exerciseTemplates.category, categorySlug),
+            eq(schema.exerciseTemplates.createdBy, consultantId)
+          )
+        );
+
+      console.log(`🏋️ [BULK-ASSIGN] Found ${templates.length} templates in category "${categorySlug}"`);
+
+      if (templates.length === 0) {
+        console.log(`🏋️ [BULK-ASSIGN] No templates found for category "${categorySlug}"`);
+        return res.status(404).json({ message: `No templates found for category: ${categorySlug}` });
+      }
+
+      let exercisesCreated = 0;
+      let assignmentsCreated = 0;
+
+      for (const template of templates) {
+        console.log(`🏋️ [BULK-ASSIGN] Processing template: ${template.name} (${template.id})`);
+
+        // Check if an exercise already exists with this templateId
+        let exercise = await db.select()
+          .from(schema.exercises)
+          .where(
+            and(
+              eq(schema.exercises.templateId, template.id),
+              eq(schema.exercises.createdBy, consultantId)
+            )
+          )
+          .limit(1)
+          .then(rows => rows[0]);
+
+        // If no exercise exists, create one from the template
+        if (!exercise) {
+          console.log(`🏋️ [BULK-ASSIGN] Creating new exercise from template: ${template.name}`);
+          
+          const [newExercise] = await db.insert(schema.exercises)
+            .values({
+              title: template.name,
+              description: template.description,
+              type: template.type,
+              category: template.category,
+              estimatedDuration: template.estimatedDuration,
+              instructions: template.instructions,
+              questions: template.questions || [],
+              attachments: [],
+              workPlatform: template.workPlatform,
+              libraryDocumentId: template.libraryDocumentId,
+              templateId: template.id,
+              isPublic: false,
+              createdBy: consultantId,
+            })
+            .returning();
+
+          exercise = newExercise;
+          exercisesCreated++;
+          console.log(`🏋️ [BULK-ASSIGN] Created exercise: ${exercise.id}`);
+        } else {
+          console.log(`🏋️ [BULK-ASSIGN] Using existing exercise: ${exercise.id}`);
+        }
+
+        // For each client, create an assignment (with deduplication)
+        for (const clientId of clientIds) {
+          // Check if assignment already exists
+          const existingAssignment = await db.select()
+            .from(schema.exerciseAssignments)
+            .where(
+              and(
+                eq(schema.exerciseAssignments.exerciseId, exercise.id),
+                eq(schema.exerciseAssignments.clientId, clientId),
+                eq(schema.exerciseAssignments.consultantId, consultantId)
+              )
+            )
+            .limit(1)
+            .then(rows => rows[0]);
+
+          if (!existingAssignment) {
+            console.log(`🏋️ [BULK-ASSIGN] Creating assignment for client ${clientId} -> exercise ${exercise.id}`);
+            
+            await storage.createExerciseAssignment({
+              exerciseId: exercise.id,
+              clientId: clientId,
+              consultantId: consultantId,
+              status: "pending",
+              dueDate: null,
+            });
+
+            assignmentsCreated++;
+
+            // Sync exercise to client's private store for file search
+            fileSearchSyncService.syncExerciseToClient(exercise.id, clientId, consultantId).catch(err => {
+              console.error(`🏋️ [BULK-ASSIGN] Failed to sync exercise to client:`, err.message);
+            });
+          } else {
+            console.log(`🏋️ [BULK-ASSIGN] Assignment already exists for client ${clientId} -> exercise ${exercise.id}, skipping`);
+          }
+        }
+      }
+
+      console.log(`🏋️ [BULK-ASSIGN] Completed - exercisesCreated: ${exercisesCreated}, assignmentsCreated: ${assignmentsCreated}`);
+
+      res.json({
+        success: true,
+        exercisesCreated,
+        assignmentsCreated,
+      });
+    } catch (error: any) {
+      console.error(`🏋️ [BULK-ASSIGN] Error:`, error.message);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Exercise assignment routes
   app.post("/api/exercise-assignments", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
