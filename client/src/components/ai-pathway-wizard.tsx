@@ -367,9 +367,11 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
       return;
     }
     const result = await generateMutation.mutateAsync();
-    // Set templateId immediately from result, don't rely on onSuccess timing
-    if (result?.templateId) {
-      setCreatedTemplateId(result.templateId);
+    // Set templateId immediately from result - it's inside pathway object
+    const templateId = result?.pathway?.templateId || result?.templateId;
+    console.log("[AI-PATHWAY] Generate result:", { templateId, result });
+    if (templateId) {
+      setCreatedTemplateId(templateId);
     }
     setCurrentStep(3);
   };
