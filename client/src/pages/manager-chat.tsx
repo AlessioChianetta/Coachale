@@ -730,12 +730,12 @@ export default function ManagerChat() {
             writingStyle: preferences.writingStyle,
             responseLength: preferences.responseLength,
             customInstructions: preferences.customInstructions,
-            aiModel: preferences.aiModel,
-            thinkingLevel: preferences.thinkingLevel,
+            aiModel: selectedModel,
+            thinkingLevel: thinkingLevel,
           }
         : {
-            aiModel: preferences?.aiModel || "gemini-2.5-flash-preview-05-20",
-            thinkingLevel: preferences?.thinkingLevel || "none",
+            aiModel: selectedModel,
+            thinkingLevel: thinkingLevel,
           };
       
       const response = await fetch(
