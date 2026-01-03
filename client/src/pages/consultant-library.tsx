@@ -676,23 +676,26 @@ export default function ConsultantLibrary() {
 
   // Mutation for assigning courses to clients
   const assignCategoryMutation = useMutation({
-    mutationFn: async ({ categoryId, clientIds }: { categoryId: string; clientIds: string[] }) => {
+    mutationFn: async ({ categoryId, clientIds, includeExercises }: { categoryId: string; clientIds: string[]; includeExercises: boolean }) => {
       const response = await fetch(`/api/library/categories/${categoryId}/assign-clients`, {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ clientIds }),
+        body: JSON.stringify({ clientIds, includeExercises }),
       });
       if (!response.ok) throw new Error("Failed to save assignments");
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/library/categories", assigningCategory?.id, "assignments"] });
+      const exerciseMsg = data.autoAssignedExercises > 0 
+        ? ` e ${data.autoAssignedExercises} esercizi auto-assegnati`
+        : "";
       toast({
         title: "Assegnazione salvata",
-        description: "Le assegnazioni del corso sono state salvate con successo.",
+        description: `Le assegnazioni del corso sono state salvate con successo${exerciseMsg}.`,
       });
       setShowAssignmentDialog(false);
       setAssigningCategory(undefined);
@@ -1218,17 +1221,15 @@ export default function ConsultantLibrary() {
     return subcategory ? `${course.name} > ${subcategory.name}` : course.name;
   };
 
-  const handleSaveAssignment = () => {
+  const handleSaveAssignment = (includeExercises: boolean) => {
     if (!assigningCategory?.id) return;
 
     const clientsToAssign = selectedClients;
-    const existingAssignedClientIds = categoryAssignments.map((assignment: any) => assignment.clientId);
 
-    // For now, we'll just send the list of selected clients.
-    // A more robust solution would handle additions and removals separately.
     assignCategoryMutation.mutate({
       categoryId: assigningCategory.id,
       clientIds: clientsToAssign,
+      includeExercises,
     });
   };
 
@@ -3117,7 +3118,7 @@ export default function ConsultantLibrary() {
             </div>
           </div>
 
-          <DialogFooter className="gap-3">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -3130,11 +3131,21 @@ export default function ConsultantLibrary() {
               Annulla
             </Button>
             <Button
-              onClick={handleSaveAssignment}
-              disabled={assignCategoryMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              variant="secondary"
+              onClick={() => handleSaveAssignment(false)}
+              disabled={assignCategoryMutation.isPending || selectedClients.length === 0}
+              className="gap-2"
             >
-              {assignCategoryMutation.isPending ? "Salvataggio..." : "Salva Assegnazioni"}
+              <BookOpen size={16} />
+              {assignCategoryMutation.isPending ? "Salvataggio..." : "Solo Corso"}
+            </Button>
+            <Button
+              onClick={() => handleSaveAssignment(true)}
+              disabled={assignCategoryMutation.isPending || selectedClients.length === 0}
+              className="bg-blue-600 hover:bg-blue-700 gap-2"
+            >
+              <Dumbbell size={16} />
+              {assignCategoryMutation.isPending ? "Salvataggio..." : "Corso + Esercizi"}
             </Button>
           </DialogFooter>
         </DialogContent>

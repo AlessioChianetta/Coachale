@@ -5174,7 +5174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Category-Client Assignment Routes
   app.post("/api/library/categories/:id/assign-clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { clientIds } = req.body;
+      const { clientIds, includeExercises = false } = req.body;
       const consultantId = req.user!.id;
       const categoryId = req.params.id;
 
@@ -5191,9 +5191,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.assignCategoryToClients(categoryId, clientIds || [], consultantId);
       
-      // AUTO-ASSIGN EXERCISES for new clients
+      // AUTO-ASSIGN EXERCISES for new clients (only if includeExercises is true)
       let autoAssignedExercises = 0;
-      if (newClientIds.length > 0) {
+      if (includeExercises && newClientIds.length > 0) {
         // Generate category slug from name (same logic as frontend)
         const categorySlug = category.name.toLowerCase()
           .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
