@@ -1,0 +1,59 @@
+
+[SHEETS POLLING] Starting polling cycle (ExecID: al421w)...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-03T16:18:00.032Z
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job f33cfa03-2d1f-4b28-871b-84359e998576 - next poll in 0 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: al421w)
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+
+[SHEETS POLLING] Starting polling cycle (ExecID: xuhq1f)...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-03T16:19:00.027Z
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job f33cfa03-2d1f-4b28-871b-84359e998576 - next poll in 1 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: xuhq1f)
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+4:19:06 PM [express] POST /api/activity/session/heartbeat 200 in 453ms :: {"success":true,"lastActiv…
+🏋️ [ExerciseAutoAssign] Starting for 1 clients on course "Risposte Flash"
+🏋️ [ExerciseAutoAssign] Category slug: "risposte-flash"
+🏋️ [ExerciseAutoAssign] Found 0 exercises by category slug
+🏋️ [ExerciseAutoAssign] Found 0 exercises to potentially assign
+🏋️ [ExerciseAutoAssign] Exercise IDs: 
+🏋️ [ExerciseAutoAssign] Found 0 existing assignments (will skip these)
+🏋️ [ExerciseAutoAssign] Completed: 0 new assignments created
+📋 [CourseAssignment] Category "Risposte Flash" assigned. New clients: 1, Auto-assigned exercises: 0
+4:19:10 PM [express] POST /api/library/categories/f112f0da-cb4e-43b5-8f9b-6b26b7019309/assign-client…
+
+════════════════════════════════════════════════════════════
+📚 [FileSync] Syncing 16 library docs from category "Risposte Flash" to client 7f4ef77f
+════════════════════════════════════════════════════════════
+
+📦 [FileSearch] Found existing client store for 7f4ef77f-6cff-4562-bddb-11f7f9438b30: fileSearchStores/private-store-client-7f4ef7-6lllyboogti8
+
+🔍 [FileSync LIBRARY→CLIENT] ══════════════════════════════════════════
+   📋 Category: "Risposte Flash" (f112f0da)
+   👤 Client: 7f4ef77f
+   🏪 Client Store: 4d21cac5
+   📄 Documents to sync: 16
+══════════════════════════════════════════════════════════════════════
+
+4:19:11 PM [express] GET /api/library/categories/f112f0da-cb4e-43b5-8f9b-6b26b7019309/assignments 20…
+4:19:11 PM [express] GET /api/library/clients-assignment-counts 200 in 751ms :: {"7f4ef77f-6cff-4562…
+
+🔍 [FileSync LIBRARY→CLIENT SUMMARY] ═════════════════════════════════
+   📋 Category: "Risposte Flash"
+   👤 Client: 7f4ef77f
+   ✅ Already existed: 16
+   ➕ Newly synced: 0
+   ❌ Failed: 0
+   📊 Total: 16/16 synced
+════════════════════════════════════════
