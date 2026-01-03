@@ -42,7 +42,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { MessageList } from "@/components/ai-assistant/MessageList";
-import { InputArea } from "@/components/ai-assistant/InputArea";
+import { InputArea, AIModel, ThinkingLevel } from "@/components/ai-assistant/InputArea";
 import { WelcomeScreen } from "@/components/ai-assistant/WelcomeScreen";
 import { ConversationSidebar } from "@/components/ai-assistant/ConversationSidebar";
 
@@ -543,6 +543,8 @@ export default function ManagerChat() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<AIModel>("gemini-3-flash-preview");
+  const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("low");
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const [chatSidebarOpen, setChatSidebarOpen] = useState(!isMobile);
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
@@ -875,7 +877,9 @@ export default function ManagerChat() {
     },
   });
 
-  const handleSendMessage = (message: string) => {
+  const handleSendMessage = (message: string, _files?: unknown, model?: AIModel, thinking?: ThinkingLevel) => {
+    if (model) setSelectedModel(model);
+    if (thinking) setThinkingLevel(thinking);
     sendMessageMutation.mutate(message);
   };
 
@@ -1046,7 +1050,14 @@ export default function ManagerChat() {
 
           <div className="border-t border-slate-200 dark:border-slate-700 pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0 shadow-lg">
             <div className="max-w-4xl mx-auto">
-              <InputArea onSend={handleSendMessage} isProcessing={isTyping} />
+              <InputArea 
+                onSend={handleSendMessage} 
+                isProcessing={isTyping}
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                thinkingLevel={thinkingLevel}
+                onThinkingLevelChange={setThinkingLevel}
+              />
             </div>
           </div>
         </div>

@@ -30,7 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export type AIModel = "gemini-3-flash-preview" | "gemini-3-pro-preview";
-export type ThinkingLevel = "low" | "medium" | "high";
+export type ThinkingLevel = "none" | "low" | "medium" | "high";
 
 export interface AttachedFile {
   id: string;
@@ -71,6 +71,7 @@ const MODEL_INFO = {
 };
 
 const THINKING_LEVELS = {
+  none: { label: "Nessuno", description: "Risposte dirette" },
   low: { label: "Basso", description: "Risposte rapide" },
   medium: { label: "Medio", description: "Bilanciato" },
   high: { label: "Alto", description: "Ragionamento profondo" },
