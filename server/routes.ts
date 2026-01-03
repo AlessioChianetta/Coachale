@@ -8833,6 +8833,7 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
                 console.log(`        📝 Copying lesson: "${templateLesson.title}"`);
                 console.log(`           - Template lesson ID: ${templateLesson.id}`);
                 console.log(`           - Library document ID: ${templateLesson.libraryDocumentId || 'NOT SET'}`);
+                console.log(`           - Exercise ID: ${templateLesson.exerciseId || 'NOT SET'}`);
                 console.log(`           - Resource URL: ${templateLesson.resourceUrl || 'NOT SET'}`);
                 
                 const newLesson = await db.insert(schema.universityLessons)
@@ -8841,13 +8842,15 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
                     title: templateLesson.title,
                     description: templateLesson.description,
                     resourceUrl: templateLesson.resourceUrl,
-                    libraryDocumentId: templateLesson.libraryDocumentId, // 🔥 COPIA IL LIBRARY DOCUMENT ID
+                    libraryDocumentId: templateLesson.libraryDocumentId,
+                    exerciseId: templateLesson.exerciseId, // 🔥 COPIA L'EXERCISE ID DAL TEMPLATE
                     sortOrder: templateLesson.sortOrder,
                   })
                   .returning();
                 
                 console.log(`           ✅ Created university lesson ID: ${newLesson[0].id}`);
                 console.log(`           ✅ Copied libraryDocumentId: ${newLesson[0].libraryDocumentId || 'NOT COPIED'}`);
+                console.log(`           ✅ Copied exerciseId: ${newLesson[0].exerciseId || 'NOT COPIED'}`);
               }
             }
           }
