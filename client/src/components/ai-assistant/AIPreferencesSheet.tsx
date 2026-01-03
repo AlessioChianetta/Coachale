@@ -225,6 +225,7 @@ export function AIPreferencesSheet() {
     setLocalPreferences((prev) => ({
       ...prev,
       preferredModel: value as AIModel,
+      thinkingLevel: value === "gemini-2.5-pro" ? "none" : prev.thinkingLevel,
     }));
   };
 
