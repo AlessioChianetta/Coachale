@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings2, Loader2, MessageSquare, FileText, Sparkles, Bot } from "lucide-react";
+import { Settings2, Loader2, MessageSquare, FileText, Sparkles, Bot, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,11 +52,51 @@ const RESPONSE_LENGTH_OPTIONS = [
   { value: "comprehensive", label: "Completa", description: "Dettagliata e completa" },
 ];
 
+const INSTRUCTION_PRESET_OPTIONS = [
+  { 
+    value: "none", 
+    label: "Nessun preset", 
+    description: "Usa le tue istruzioni personalizzate",
+    instructions: ""
+  },
+  { 
+    value: "business_coach", 
+    label: "Business Coach", 
+    description: "Strategie e sviluppo aziendale",
+    instructions: "Sei un business coach esperto. Aiuta l'utente a sviluppare strategie aziendali efficaci, ottimizzare i processi, migliorare la leadership e raggiungere obiettivi di crescita. Fornisci consigli pratici e azioni concrete, usa esempi reali dal mondo business."
+  },
+  { 
+    value: "finance", 
+    label: "Consulente Finanziario", 
+    description: "Pianificazione e investimenti",
+    instructions: "Sei un consulente finanziario professionale. Aiuta l'utente con pianificazione finanziaria, investimenti, gestione del budget e obiettivi di risparmio. Spiega concetti finanziari in modo chiaro, offri analisi equilibrate dei rischi e opportunità."
+  },
+  { 
+    value: "platform_assistance", 
+    label: "Assistenza Piattaforma", 
+    description: "Supporto tecnico e guida",
+    instructions: "Sei un assistente della piattaforma. Guida l'utente nell'utilizzo delle funzionalità, risolvi problemi tecnici, spiega come sfruttare al meglio tutti gli strumenti disponibili. Rispondi in modo chiaro e passo-passo."
+  },
+  { 
+    value: "life_coach", 
+    label: "Life Coach", 
+    description: "Sviluppo personale e motivazione",
+    instructions: "Sei un life coach empatico e motivante. Aiuta l'utente a definire e raggiungere obiettivi personali, superare ostacoli, migliorare le relazioni e trovare equilibrio. Ascolta attivamente, fai domande potenti e offri prospettive costruttive."
+  },
+  { 
+    value: "marketing", 
+    label: "Esperto Marketing", 
+    description: "Strategie digitali e brand",
+    instructions: "Sei un esperto di marketing digitale. Aiuta l'utente con strategie di marketing, branding, social media, content marketing, SEO e campagne pubblicitarie. Offri idee creative, analisi del target e metriche di successo."
+  },
+];
+
 export function AIPreferencesSheet() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [localPreferences, setLocalPreferences] = useState<AIPreferences>(DEFAULT_PREFERENCES);
+  const [selectedPreset, setSelectedPreset] = useState<string>("none");
 
   const { data: userProfile } = useQuery<{ role: string }>({
     queryKey: ["/api/user/profile"],
@@ -157,6 +197,17 @@ export function AIPreferencesSheet() {
       ...prev,
       customInstructions: value,
     }));
+  };
+
+  const handlePresetChange = (presetValue: string) => {
+    setSelectedPreset(presetValue);
+    const preset = INSTRUCTION_PRESET_OPTIONS.find(p => p.value === presetValue);
+    if (preset && preset.instructions) {
+      setLocalPreferences((prev) => ({
+        ...prev,
+        customInstructions: preset.instructions,
+      }));
+    }
   };
 
   return (
@@ -289,6 +340,34 @@ export function AIPreferencesSheet() {
                 <Separator />
               </>
             )}
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-amber-600" />
+                <Label className="text-base font-semibold">Template Istruzioni</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Scegli un ruolo predefinito per configurare rapidamente le istruzioni dell'AI.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {INSTRUCTION_PRESET_OPTIONS.map((preset) => (
+                  <div
+                    key={preset.value}
+                    onClick={() => handlePresetChange(preset.value)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      selectedPreset === preset.value
+                        ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <p className="font-medium text-sm">{preset.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
