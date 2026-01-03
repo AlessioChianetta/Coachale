@@ -8202,6 +8202,29 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
                   exercisesCreated++;
                 }
                 
+                // AUTO-ASSOCIATE exercise to lessons by libraryDocumentId (reliable matching)
+                // Only auto-link if the exercise template has a libraryDocumentId
+                if (template.libraryDocumentId) {
+                  await db.update(schema.templateLessons)
+                    .set({ exerciseId: exercise.id })
+                    .where(
+                      and(
+                        eq(schema.templateLessons.libraryDocumentId, template.libraryDocumentId),
+                        isNull(schema.templateLessons.exerciseId)
+                      )
+                    );
+                  
+                  await db.update(schema.universityLessons)
+                    .set({ exerciseId: exercise.id })
+                    .where(
+                      and(
+                        eq(schema.universityLessons.libraryDocumentId, template.libraryDocumentId),
+                        isNull(schema.universityLessons.exerciseId)
+                      )
+                    );
+                }
+                // If no libraryDocumentId, exercises can still be manually linked via UI
+                
                 // Create assignments for each client
                 for (const clientId of clientIds) {
                   const existingAssignment = await db.select()
