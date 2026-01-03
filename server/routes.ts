@@ -9799,10 +9799,12 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
       const result = await instantiatePathwayForClients(templateId, req.user!.id, clientIds, yearTitle);
       
       // Sync to client stores for privacy isolation
-      for (const assignment of result.clientAssignments) {
-        fileSearchSyncService.syncUniversityYearToClient(result.yearId, assignment.clientId, req.user!.id).catch(err => {
-          console.error(`[FileSync] Failed to sync university year to client ${assignment.clientId}:`, err.message);
-        });
+      if (result.success && result.instantiatedYear) {
+        for (const assignment of result.instantiatedYear.clientAssignments) {
+          fileSearchSyncService.syncUniversityYearToClient(result.instantiatedYear.yearId, assignment.clientId, req.user!.id).catch(err => {
+            console.error(`[FileSync] Failed to sync university year to client ${assignment.clientId}:`, err.message);
+          });
+        }
       }
       
       res.status(201).json(result);
