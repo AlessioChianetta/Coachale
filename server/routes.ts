@@ -5175,25 +5175,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/library/categories/:id/assign-clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { clientIds } = req.body;
+      const consultantId = req.user!.id;
+      const categoryId = req.params.id;
 
       // Verify category exists
-      const category = await storage.getLibraryCategory(req.params.id);
+      const category = await storage.getLibraryCategory(categoryId);
       if (!category) {
         return res.status(404).json({ message: "Category not found" });
       }
 
-      await storage.assignCategoryToClients(req.params.id, clientIds || [], req.user!.id);
+      // Get current assignments to determine new clients
+      const currentAssignments = await storage.getCategoryClientAssignments(categoryId, consultantId);
+      const currentClientIds = currentAssignments.map(a => a.clientId);
+      const newClientIds = (clientIds || []).filter((id: string) => !currentClientIds.includes(id));
+
+      await storage.assignCategoryToClients(categoryId, clientIds || [], consultantId);
+      
+      // AUTO-ASSIGN EXERCISES for new clients
+      let autoAssignedExercises = 0;
+      if (newClientIds.length > 0) {
+        // Get all library documents (lessons) in this category
+        const documents = await db.select()
+          .from(schema.libraryDocuments)
+          .where(eq(schema.libraryDocuments.categoryId, categoryId));
+        
+        const documentIds = documents.map(d => d.id);
+        
+        if (documentIds.length > 0) {
+          // Find all templateLessons that reference these documents and have exerciseId
+          const templateLessonsWithExercises = await db.select({
+            exerciseId: schema.templateLessons.exerciseId,
+            libraryDocumentId: schema.templateLessons.libraryDocumentId,
+            workPlatform: schema.exercises.workPlatform,
+          })
+            .from(schema.templateLessons)
+            .innerJoin(schema.exercises, eq(schema.templateLessons.exerciseId, schema.exercises.id))
+            .where(
+              and(
+                inArray(schema.templateLessons.libraryDocumentId, documentIds),
+                isNotNull(schema.templateLessons.exerciseId)
+              )
+            );
+          
+          // Also find exercises that directly reference library documents
+          const directExercises = await db.select({
+            id: schema.exercises.id,
+            workPlatform: schema.exercises.workPlatform,
+          })
+            .from(schema.exercises)
+            .where(inArray(schema.exercises.libraryDocumentId, documentIds));
+          
+          // Collect unique exercise IDs with their workPlatform
+          const exercisesToAssign = new Map<string, string | null>();
+          
+          templateLessonsWithExercises.forEach(tl => {
+            if (tl.exerciseId && !exercisesToAssign.has(tl.exerciseId)) {
+              exercisesToAssign.set(tl.exerciseId, tl.workPlatform);
+            }
+          });
+          
+          directExercises.forEach(ex => {
+            if (!exercisesToAssign.has(ex.id)) {
+              exercisesToAssign.set(ex.id, ex.workPlatform);
+            }
+          });
+          
+          // Batch dedupe: get all existing assignments for new clients and target exercises
+          const exerciseIds = Array.from(exercisesToAssign.keys());
+          const existingAssignments = exerciseIds.length > 0 && newClientIds.length > 0 
+            ? await db.select({ exerciseId: schema.exerciseAssignments.exerciseId, clientId: schema.exerciseAssignments.clientId })
+                .from(schema.exerciseAssignments)
+                .where(
+                  and(
+                    inArray(schema.exerciseAssignments.exerciseId, exerciseIds),
+                    inArray(schema.exerciseAssignments.clientId, newClientIds)
+                  )
+                )
+            : [];
+          
+          // Build set of existing pairs for O(1) lookup
+          const existingPairs = new Set(
+            existingAssignments.map(a => `${a.exerciseId}:${a.clientId}`)
+          );
+          
+          // Create exercise assignments for new clients (filtered by dedupe)
+          for (const clientId of newClientIds) {
+            for (const [exerciseId, workPlatform] of exercisesToAssign) {
+              const pairKey = `${exerciseId}:${clientId}`;
+              if (!existingPairs.has(pairKey)) {
+                await storage.createExerciseAssignment({
+                  exerciseId,
+                  clientId,
+                  consultantId,
+                  status: 'pending',
+                  workPlatform: workPlatform || undefined,
+                });
+                autoAssignedExercises++;
+              }
+            }
+          }
+        }
+      }
       
       // PRIVACY ISOLATION: Sync library docs to each client's private store
       if (clientIds && clientIds.length > 0) {
         for (const clientId of clientIds) {
-          fileSearchSyncService.syncLibraryCategoryToClient(req.params.id, clientId, req.user!.id).catch(err => {
+          fileSearchSyncService.syncLibraryCategoryToClient(categoryId, clientId, consultantId).catch(err => {
             console.error(`[FileSync] Failed to sync library category to client ${clientId}:`, err.message);
           });
         }
       }
       
-      res.json({ message: "Category assignments updated successfully" });
+      res.json({ 
+        message: "Category assignments updated successfully",
+        autoAssignedExercises,
+        newClientsCount: newClientIds.length
+      });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -5228,6 +5325,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(assignmentsWithClients);
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get exercises info for a category (for auto-assignment preview)
+  app.get("/api/library/categories/:id/exercises-info", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const categoryId = req.params.id;
+      const consultantId = req.user!.id;
+      
+      // Verify category belongs to this consultant (multitenancy security)
+      const category = await storage.getLibraryCategory(categoryId);
+      if (!category || category.consultantId !== consultantId) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      // Get all library documents in this category
+      const documents = await db.select()
+        .from(schema.libraryDocuments)
+        .where(eq(schema.libraryDocuments.categoryId, categoryId));
+      
+      const documentIds = documents.map(d => d.id);
+      
+      if (documentIds.length === 0) {
+        return res.json({ count: 0, withExternalLinks: 0, exercises: [] });
+      }
+      
+      // Find all templateLessons that reference these documents and have exerciseId
+      const templateLessonsWithExercises = await db.select({
+        exerciseId: schema.templateLessons.exerciseId,
+        exerciseTitle: schema.exercises.title,
+        workPlatform: schema.exercises.workPlatform,
+      })
+        .from(schema.templateLessons)
+        .innerJoin(schema.exercises, eq(schema.templateLessons.exerciseId, schema.exercises.id))
+        .where(
+          and(
+            inArray(schema.templateLessons.libraryDocumentId, documentIds),
+            isNotNull(schema.templateLessons.exerciseId)
+          )
+        );
+      
+      // Also find exercises that directly reference library documents
+      const directExercises = await db.select({
+        id: schema.exercises.id,
+        title: schema.exercises.title,
+        workPlatform: schema.exercises.workPlatform,
+      })
+        .from(schema.exercises)
+        .where(inArray(schema.exercises.libraryDocumentId, documentIds));
+      
+      // Collect unique exercises with their info
+      const exerciseMap = new Map<string, { id: string; title: string; workPlatform: string | null }>();
+      
+      templateLessonsWithExercises.forEach(tl => {
+        if (tl.exerciseId && !exerciseMap.has(tl.exerciseId)) {
+          exerciseMap.set(tl.exerciseId, {
+            id: tl.exerciseId,
+            title: tl.exerciseTitle || '',
+            workPlatform: tl.workPlatform
+          });
+        }
+      });
+      
+      directExercises.forEach(ex => {
+        if (!exerciseMap.has(ex.id)) {
+          exerciseMap.set(ex.id, {
+            id: ex.id,
+            title: ex.title,
+            workPlatform: ex.workPlatform
+          });
+        }
+      });
+      
+      const exercises = Array.from(exerciseMap.values());
+      const withExternalLinks = exercises.filter(e => e.workPlatform && e.workPlatform.trim() !== '').length;
+      
+      res.json({
+        count: exercises.length,
+        withExternalLinks,
+        exercises
+      });
+    } catch (error: any) {
+      console.error("Error fetching category exercises info:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -7712,6 +7893,7 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
     try {
       const { lessonId } = req.params;
       const { exerciseId } = req.body;
+      const consultantId = req.user!.id;
 
       // Get the lesson
       const [lesson] = await db.select()
@@ -7746,7 +7928,7 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
         .where(
           and(
             eq(schema.universityTemplates.id, trimester.templateId),
-            eq(schema.universityTemplates.createdBy, req.user!.id)
+            eq(schema.universityTemplates.createdBy, consultantId)
           )
         );
 
@@ -7754,7 +7936,8 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
         return res.status(403).json({ message: "Access denied - you do not own this template" });
       }
 
-      // If exerciseId is provided, verify it exists
+      // Get exercise details if exerciseId is provided
+      let exerciseWorkPlatform: string | null = null;
       if (exerciseId) {
         const [exercise] = await db.select()
           .from(schema.exercises)
@@ -7763,6 +7946,7 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
         if (!exercise) {
           return res.status(404).json({ message: "Exercise not found" });
         }
+        exerciseWorkPlatform = exercise.workPlatform;
       }
 
       // Update the lesson
@@ -7774,7 +7958,92 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
         .where(eq(schema.templateLessons.id, lessonId))
         .returning();
 
-      res.json(updatedLesson);
+      // AUTO-ASSIGN EXERCISE to clients with this course assigned
+      let autoAssignedCount = 0;
+      if (exerciseId && module.libraryCategoryId) {
+        // Get all clients that have this library category assigned (regardless of visibility)
+        // Visibility controls client-side access, not exercise assignment propagation
+        const categoryAssignments = await db.select()
+          .from(schema.libraryCategoryClientAssignments)
+          .where(
+            and(
+              eq(schema.libraryCategoryClientAssignments.categoryId, module.libraryCategoryId),
+              eq(schema.libraryCategoryClientAssignments.consultantId, consultantId)
+            )
+          );
+
+        // Batch dedupe: get all existing assignments for this exercise and target clients
+        const clientIds = categoryAssignments.map(a => a.clientId);
+        const existingAssignments = clientIds.length > 0 
+          ? await db.select({ clientId: schema.exerciseAssignments.clientId })
+              .from(schema.exerciseAssignments)
+              .where(
+                and(
+                  eq(schema.exerciseAssignments.exerciseId, exerciseId),
+                  inArray(schema.exerciseAssignments.clientId, clientIds)
+                )
+              )
+          : [];
+        
+        const existingClientIds = new Set(existingAssignments.map(a => a.clientId));
+        
+        // Create exercise assignments for clients without existing assignment
+        for (const assignment of categoryAssignments) {
+          if (!existingClientIds.has(assignment.clientId)) {
+            await storage.createExerciseAssignment({
+              exerciseId,
+              clientId: assignment.clientId,
+              consultantId,
+              status: 'pending',
+              workPlatform: exerciseWorkPlatform || undefined,
+            });
+            autoAssignedCount++;
+          }
+        }
+
+        // PROPAGATE TO UNIVERSITY PATHWAYS - update universityLessons that reference this templateLesson
+        // Find university years that use this template
+        const universityYears = await db.select()
+          .from(schema.universityYears)
+          .where(eq(schema.universityYears.templateId, template.id));
+
+        if (universityYears.length > 0) {
+          const yearIds = universityYears.map(y => y.id);
+          
+          // Find all universityLessons that reference the same libraryDocumentId as this templateLesson
+          if (lesson.libraryDocumentId) {
+            const uniLessons = await db.select({
+              id: schema.universityLessons.id,
+              moduleId: schema.universityLessons.moduleId,
+            })
+              .from(schema.universityLessons)
+              .innerJoin(schema.universityModules, eq(schema.universityLessons.moduleId, schema.universityModules.id))
+              .innerJoin(schema.universityTrimesters, eq(schema.universityModules.trimesterId, schema.universityTrimesters.id))
+              .where(
+                and(
+                  inArray(schema.universityTrimesters.yearId, yearIds),
+                  eq(schema.universityLessons.libraryDocumentId, lesson.libraryDocumentId)
+                )
+              );
+
+            // Batch update these lessons with the exerciseId
+            if (uniLessons.length > 0) {
+              const lessonIds = uniLessons.map(l => l.id);
+              await db.update(schema.universityLessons)
+                .set({ 
+                  exerciseId: exerciseId,
+                  updatedAt: new Date() 
+                })
+                .where(inArray(schema.universityLessons.id, lessonIds));
+            }
+          }
+        }
+      }
+
+      res.json({
+        ...updatedLesson,
+        autoAssignedCount
+      });
     } catch (error: any) {
       console.error("Error updating lesson exercise:", error);
       res.status(500).json({ message: error.message });
