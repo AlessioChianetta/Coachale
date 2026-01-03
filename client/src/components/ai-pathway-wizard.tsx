@@ -379,6 +379,14 @@ export function AIPathwayWizard({ open, onOpenChange, onComplete }: AIPathwayWiz
   };
 
   const handleAssignAndCreate = async () => {
+    if (!createdTemplateId) {
+      toast({
+        title: "Template non creato",
+        description: "Devi prima creare il template nel passaggio precedente",
+        variant: "destructive",
+      });
+      return;
+    }
     if (selectedClientIds.length === 0) {
       toast({
         title: "Nessun cliente selezionato",
