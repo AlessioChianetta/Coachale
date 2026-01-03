@@ -5678,6 +5678,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get exercise templates count for a category (for university template course addition)
+  app.get("/api/library/categories/:id/exercise-templates-count", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const categoryId = req.params.id;
+      const consultantId = req.user!.id;
+      
+      // Get category to find its name
+      const category = await storage.getLibraryCategory(categoryId);
+      if (!category || category.consultantId !== consultantId) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      // Generate category slug from name (matching exercise_templates.category format)
+      const categorySlug = category.name.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      
+      // Count exercise templates with this category slug
+      const [result] = await db.select({ count: sql<number>`count(*)::int` })
+        .from(schema.exerciseTemplates)
+        .where(
+          and(
+            eq(schema.exerciseTemplates.category, categorySlug),
+            eq(schema.exerciseTemplates.createdBy, consultantId)
+          )
+        );
+      
+      res.json({
+        categoryId,
+        categoryName: category.name,
+        categorySlug,
+        exerciseTemplatesCount: result?.count || 0
+      });
+    } catch (error: any) {
+      console.error("Error fetching exercise templates count:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.patch("/api/library/categories/:categoryId/clients/:clientId/visibility", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { isVisible } = req.body;
@@ -7796,7 +7838,7 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
   app.post("/api/university/templates/:templateId/trimesters/:trimesterId/add-course", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { templateId, trimesterId } = req.params;
-      const { libraryCategoryId } = req.body;
+      const { libraryCategoryId, includeExercises } = req.body;
 
       if (!libraryCategoryId) {
         return res.status(400).json({ message: "libraryCategoryId is required" });
@@ -8086,7 +8128,123 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
         };
       });
 
-      res.status(201).json(result);
+      // If includeExercises is true, sync exercise templates and assign to linked clients
+      let exercisesSyncResult = null;
+      if (includeExercises) {
+        try {
+          // Generate category slug from category name
+          const categorySlug = category.name.toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .trim();
+          
+          // Find all exercise templates with matching category slug
+          const templates = await db.select()
+            .from(schema.exerciseTemplates)
+            .where(
+              and(
+                eq(schema.exerciseTemplates.category, categorySlug),
+                eq(schema.exerciseTemplates.createdBy, req.user!.id)
+              )
+            );
+          
+          if (templates.length > 0) {
+            // Find all clients linked to this template via universityYears
+            const clientIds: string[] = [];
+            for (const year of linkedYears) {
+              const [yearData] = await db.select({ clientId: schema.universityYears.clientId })
+                .from(schema.universityYears)
+                .where(eq(schema.universityYears.id, year.id));
+              if (yearData?.clientId && !clientIds.includes(yearData.clientId)) {
+                clientIds.push(yearData.clientId);
+              }
+            }
+            
+            if (clientIds.length > 0) {
+              let exercisesCreated = 0;
+              let assignmentsCreated = 0;
+              
+              for (const template of templates) {
+                // Check if exercise already exists for this template
+                let exercise = await db.select()
+                  .from(schema.exercises)
+                  .where(
+                    and(
+                      eq(schema.exercises.templateId, template.id),
+                      eq(schema.exercises.createdBy, req.user!.id)
+                    )
+                  )
+                  .limit(1)
+                  .then(rows => rows[0]);
+                
+                // Create exercise from template if not exists
+                if (!exercise) {
+                  const [newExercise] = await db.insert(schema.exercises)
+                    .values({
+                      title: template.name,
+                      description: template.description,
+                      type: template.type,
+                      category: template.category,
+                      estimatedDuration: template.estimatedDuration,
+                      instructions: template.instructions,
+                      questions: template.questions || [],
+                      attachments: [],
+                      workPlatform: template.workPlatform,
+                      libraryDocumentId: template.libraryDocumentId,
+                      templateId: template.id,
+                      isPublic: false,
+                      createdBy: req.user!.id,
+                    })
+                    .returning();
+                  exercise = newExercise;
+                  exercisesCreated++;
+                }
+                
+                // Create assignments for each client
+                for (const clientId of clientIds) {
+                  const existingAssignment = await db.select()
+                    .from(schema.exerciseAssignments)
+                    .where(
+                      and(
+                        eq(schema.exerciseAssignments.exerciseId, exercise.id),
+                        eq(schema.exerciseAssignments.clientId, clientId),
+                        eq(schema.exerciseAssignments.consultantId, req.user!.id)
+                      )
+                    )
+                    .limit(1)
+                    .then(rows => rows[0]);
+                  
+                  if (!existingAssignment) {
+                    await storage.createExerciseAssignment({
+                      exerciseId: exercise.id,
+                      clientId: clientId,
+                      consultantId: req.user!.id,
+                      status: "pending",
+                      dueDate: null,
+                    });
+                    assignmentsCreated++;
+                    
+                    // Sync to file search
+                    fileSearchSyncService.syncExerciseToClient(exercise.id, clientId, req.user!.id).catch(() => {});
+                  }
+                }
+              }
+              
+              exercisesSyncResult = { exercisesCreated, assignmentsCreated, clientsCount: clientIds.length };
+            }
+          }
+        } catch (exerciseError: any) {
+          console.error("Error syncing exercises:", exerciseError.message);
+          // Don't fail the entire request, just log
+        }
+      }
+
+      res.status(201).json({
+        ...result,
+        exercisesSyncResult
+      });
     } catch (error: any) {
       console.error("Error adding course to template:", error);
       res.status(500).json({ message: error.message });

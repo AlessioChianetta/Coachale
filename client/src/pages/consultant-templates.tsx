@@ -141,6 +141,7 @@ export default function ConsultantTemplates() {
   const [exercisePickerLessonId, setExercisePickerLessonId] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<{ id: string; name: string; description?: string } | null>(null);
   const [courseConfirmDialogOpen, setCourseConfirmDialogOpen] = useState(false);
+  const [selectedCourseExerciseCount, setSelectedCourseExerciseCount] = useState<number>(0);
 
   const [templateFormData, setTemplateFormData] = useState({ name: "", description: "", isActive: true });
   const [trimesterFormData, setTrimesterFormData] = useState({ title: "", description: "", sortOrder: 0 });
@@ -286,9 +287,10 @@ export default function ConsultantTemplates() {
   });
 
   const addCourseToTrimesterMutation = useMutation({
-    mutationFn: async (data: { templateId: string; trimesterId: string; libraryCategoryId: string }) => {
+    mutationFn: async (data: { templateId: string; trimesterId: string; libraryCategoryId: string; includeExercises?: boolean }) => {
       return await apiRequest("POST", `/api/university/templates/${data.templateId}/trimesters/${data.trimesterId}/add-course`, {
         libraryCategoryId: data.libraryCategoryId,
+        includeExercises: data.includeExercises,
       });
     },
     onSuccess: () => {
@@ -1594,10 +1596,24 @@ export default function ConsultantTemplates() {
                                                 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 opacity-60' 
                                                 : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-cyan-400 hover:shadow-md cursor-pointer'
                                             }`}
-                                            onClick={() => {
+                                            onClick={async () => {
                                               if (!isAlreadyInTemplate) {
                                                 setSelectedCourse(course);
                                                 setCourseConfirmDialogOpen(true);
+                                                // Fetch exercise template count for this course
+                                                try {
+                                                  const response = await fetch(`/api/library/categories/${course.id}/exercise-templates-count`, {
+                                                    headers: getAuthHeaders(),
+                                                  });
+                                                  if (response.ok) {
+                                                    const data = await response.json();
+                                                    setSelectedCourseExerciseCount(data.exerciseTemplatesCount || 0);
+                                                  } else {
+                                                    setSelectedCourseExerciseCount(0);
+                                                  }
+                                                } catch {
+                                                  setSelectedCourseExerciseCount(0);
+                                                }
                                               }
                                             }}
                                           >
@@ -1824,16 +1840,50 @@ export default function ConsultantTemplates() {
                   </div>
                 )}
                 <p className="text-sm">Tutte le lezioni del corso verranno importate automaticamente.</p>
+                {selectedCourseExerciseCount > 0 && (
+                  <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-2">
+                      <Dumbbell className="h-4 w-4 text-green-600" />
+                      <span className="text-sm text-green-800 dark:text-green-200">
+                        <strong>{selectedCourseExerciseCount}</strong> esercizi disponibili per questo corso
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel onClick={() => {
               setSelectedCourse(null);
               setCourseConfirmDialogOpen(false);
+              setSelectedCourseExerciseCount(0);
             }}>
               Annulla
             </AlertDialogCancel>
+            {selectedCourseExerciseCount > 0 && (
+              <Button
+                variant="outline"
+                className="border-cyan-300 text-cyan-700 hover:bg-cyan-50"
+                disabled={addCourseToTrimesterMutation.isPending}
+                onClick={() => {
+                  if (managingTemplateId && coursePickerTrimesterId && selectedCourse) {
+                    addCourseToTrimesterMutation.mutate({
+                      templateId: managingTemplateId,
+                      trimesterId: coursePickerTrimesterId,
+                      libraryCategoryId: selectedCourse.id,
+                      includeExercises: false,
+                    });
+                    setSelectedCourse(null);
+                    setCourseConfirmDialogOpen(false);
+                    setCoursePickerTrimesterId(null);
+                    setSelectedCourseExerciseCount(0);
+                  }
+                }}
+              >
+                Solo Corso
+              </Button>
+            )}
             <AlertDialogAction
               className="bg-cyan-500 hover:bg-cyan-600"
               disabled={addCourseToTrimesterMutation.isPending}
@@ -1843,10 +1893,12 @@ export default function ConsultantTemplates() {
                     templateId: managingTemplateId,
                     trimesterId: coursePickerTrimesterId,
                     libraryCategoryId: selectedCourse.id,
+                    includeExercises: selectedCourseExerciseCount > 0,
                   });
                   setSelectedCourse(null);
                   setCourseConfirmDialogOpen(false);
                   setCoursePickerTrimesterId(null);
+                  setSelectedCourseExerciseCount(0);
                 }
               }}
             >
@@ -1854,6 +1906,11 @@ export default function ConsultantTemplates() {
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Caricamento...
+                </>
+              ) : selectedCourseExerciseCount > 0 ? (
+                <>
+                  <Dumbbell className="h-4 w-4 mr-2" />
+                  Corso + Esercizi
                 </>
               ) : (
                 "Aggiungi Corso"
