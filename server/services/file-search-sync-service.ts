@@ -7674,6 +7674,7 @@ export class FileSearchSyncService {
       const exerciseMap = new Map(exerciseList.map(e => [e.id, e]));
 
       // Get already indexed external docs for this client
+      // NOTE: sourceId is now exerciseId (not assignmentId) for consistent linking
       const indexedDocs = await db.query.fileSearchDocuments.findMany({
         where: and(
           eq(fileSearchDocuments.sourceType, 'exercise_external_doc'),
@@ -7681,7 +7682,8 @@ export class FileSearchSyncService {
           eq(fileSearchDocuments.status, 'indexed'),
         ),
       });
-      const indexedAssignmentIds = new Set(indexedDocs.map(d => d.sourceId));
+      // sourceId is now exerciseId, so we track indexed exercise IDs
+      const indexedExerciseIds = new Set(indexedDocs.map(d => d.sourceId));
 
       const missing: Array<{
         assignmentId: string;
@@ -7691,9 +7693,18 @@ export class FileSearchSyncService {
         isPersonalized: boolean;
       }> = [];
 
+      // Track processed exercise IDs to avoid duplicates (same exercise, multiple assignments)
+      const processedExerciseIds = new Set<string>();
+
       for (const assignment of assignments) {
         const exercise = exerciseMap.get(assignment.exerciseId);
         if (!exercise) continue;
+
+        // Skip if this exercise's external doc is already indexed for this client
+        if (indexedExerciseIds.has(exercise.id)) continue;
+
+        // Skip if we already processed this exercise (avoid duplicates from multiple assignments)
+        if (processedExerciseIds.has(exercise.id)) continue;
 
         // Determine which URL to use
         let workPlatformUrl: string | null = null;
@@ -7712,9 +7723,7 @@ export class FileSearchSyncService {
         // Skip if no workPlatform URL
         if (!workPlatformUrl) continue;
 
-        // Skip if already indexed
-        if (indexedAssignmentIds.has(assignment.id)) continue;
-
+        processedExerciseIds.add(exercise.id);
         missing.push({
           assignmentId: assignment.id,
           exerciseId: exercise.id,
