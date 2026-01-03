@@ -1,6 +1,7 @@
 import { Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { ThinkingBubble } from "./ThinkingBubble";
 
 interface MessageProps {
   message: {
@@ -8,6 +9,8 @@ interface MessageProps {
     role: "user" | "assistant";
     content: string;
     status?: "processing" | "completed" | "error";
+    thinking?: string;
+    isThinking?: boolean;
     suggestedActions?: Array<{
       type: string;
       label: string;
@@ -853,7 +856,14 @@ export function Message({ message, onActionClick }: MessageProps) {
       </div>
 
       <div className="flex-1 min-w-0 max-w-full overflow-hidden flex flex-col">
-        {isProcessing && (
+        {(message.thinking || message.isThinking) && (
+          <ThinkingBubble 
+            thinking={message.thinking} 
+            isThinking={message.isThinking} 
+            className="mb-3"
+          />
+        )}
+        {isProcessing && !message.thinking && !message.isThinking && (
           <div className="flex items-center gap-3 py-2">
             <div className="flex gap-1.5">
               <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>

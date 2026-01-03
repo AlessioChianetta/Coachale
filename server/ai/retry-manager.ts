@@ -67,6 +67,12 @@ export type AiRetryEvent =
       content: string;
     }
   | {
+      type: 'thinking';
+      conversationId: string;
+      provider: AiProviderMetadata;
+      content: string;
+    }
+  | {
       type: 'complete';
       conversationId: string;
       provider: AiProviderMetadata;
@@ -220,10 +226,31 @@ export async function retryWithBackoff<T>(
 }
 
 /**
+ * Gemini chunk part with thinking support
+ */
+export interface GeminiPart {
+  text?: string;
+  thought?: boolean;
+}
+
+/**
+ * Gemini chunk with candidates structure (for thinking support)
+ */
+export interface GeminiStreamChunk {
+  text?: string;
+  usageMetadata?: GeminiUsageMetadata;
+  candidates?: Array<{
+    content?: {
+      parts?: GeminiPart[];
+    };
+  }>;
+}
+
+/**
  * Streaming retry with backoff
  * For streaming AI calls (generateContentStream, etc.)
  */
-export async function* streamWithBackoff<TChunk extends { text?: string; usageMetadata?: GeminiUsageMetadata }>(
+export async function* streamWithBackoff<TChunk extends GeminiStreamChunk>(
   streamFactory: (ctx: OperationAttemptContext) => Promise<AsyncIterable<TChunk>>,
   context: AiRetryContext,
   options: RetryOptions = {}
@@ -302,17 +329,45 @@ export async function* streamWithBackoff<TChunk extends { text?: string; usageMe
 
       // Stream chunks to client
       for await (const chunk of streamResponse) {
-        const chunkText = chunk.text || '';
-
-        if (chunkText) {
-          accumulatedMessage += chunkText;
-
-          yield {
-            type: 'delta',
-            conversationId: context.conversationId,
-            provider: context.provider,
-            content: chunkText,
-          };
+        // Check if chunk has candidates with parts (Gemini thinking format)
+        const parts = chunk.candidates?.[0]?.content?.parts;
+        
+        if (parts && parts.length > 0) {
+          // Process each part - thinking parts have thought: true
+          for (const part of parts) {
+            if (part.text) {
+              if (part.thought === true) {
+                // This is a thinking/reasoning part
+                yield {
+                  type: 'thinking',
+                  conversationId: context.conversationId,
+                  provider: context.provider,
+                  content: part.text,
+                };
+              } else {
+                // This is a regular response part
+                accumulatedMessage += part.text;
+                yield {
+                  type: 'delta',
+                  conversationId: context.conversationId,
+                  provider: context.provider,
+                  content: part.text,
+                };
+              }
+            }
+          }
+        } else {
+          // Fallback to legacy chunk.text format (backward compatibility)
+          const chunkText = chunk.text || '';
+          if (chunkText) {
+            accumulatedMessage += chunkText;
+            yield {
+              type: 'delta',
+              conversationId: context.conversationId,
+              provider: context.provider,
+              content: chunkText,
+            };
+          }
         }
         
         // Capture usageMetadata from chunks (typically available in final chunk)

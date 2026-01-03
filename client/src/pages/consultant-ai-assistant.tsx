@@ -67,6 +67,8 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   status?: "processing" | "completed" | "error";
+  thinking?: string;
+  isThinking?: boolean;
   suggestedActions?: Array<{
     type: string;
     label: string;
@@ -263,6 +265,7 @@ export default function ConsultantAIAssistant() {
 
       const decoder = new TextDecoder();
       let fullContent = "";
+      let fullThinking = "";
       let conversationId = "";
       let messageId = "";
       let suggestedActions: any[] = [];
@@ -288,6 +291,18 @@ export default function ConsultantAIAssistant() {
                   setSelectedConversationId(conversationId);
                 }
                 setIsRetrying(false);
+              } else if (data.type === 'thinking') {
+                fullThinking += data.content;
+                
+                if (tempAssistantIdRef.current) {
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === tempAssistantIdRef.current
+                        ? { ...msg, thinking: fullThinking, isThinking: true }
+                        : msg
+                    )
+                  );
+                }
               } else if (data.type === 'delta') {
                 fullContent += data.content;
 
@@ -295,7 +310,7 @@ export default function ConsultantAIAssistant() {
                   setMessages((prev) =>
                     prev.map((msg) =>
                       msg.id === tempAssistantIdRef.current
-                        ? { ...msg, content: fullContent }
+                        ? { ...msg, content: fullContent, isThinking: false }
                         : msg
                     )
                   );

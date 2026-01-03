@@ -163,6 +163,16 @@ async function* streamWithRetriesAdapter(
         };
         break;
 
+      case 'thinking':
+        // Map thinking event with provider metadata (Gemini thinking/reasoning)
+        yield {
+          type: 'thinking',
+          conversationId: event.conversationId,
+          provider: event.provider,
+          content: event.content,
+        };
+        break;
+
       case 'complete':
         // CRITICAL: Yield complete event for SSE termination and conversation persistence
         yield {
@@ -690,7 +700,7 @@ export interface ChatResponse {
 }
 
 export interface ChatStreamChunk {
-  type: "start" | "delta" | "complete" | "error" | "retry" | "heartbeat";
+  type: "start" | "delta" | "complete" | "error" | "retry" | "heartbeat" | "thinking";
   conversationId: string;
   messageId?: string;
   content?: string;
@@ -1221,7 +1231,8 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
             systemInstruction: systemPrompt,
             ...(clientUseThinking && {
               thinkingConfig: {
-                thinkingLevel: GEMINI_3_THINKING_LEVEL
+                thinkingLevel: GEMINI_3_THINKING_LEVEL,
+                includeThoughts: true
               }
             }),
           },
@@ -2080,7 +2091,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         systemInstruction: systemPrompt,
         ...(dynamicConfig.useThinking && dynamicConfig.thinkingLevel && {
           thinkingConfig: {
-            thinkingLevel: dynamicConfig.thinkingLevel
+            thinkingLevel: dynamicConfig.thinkingLevel,
+            includeThoughts: true
           }
         }),
       },
@@ -3109,7 +3121,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         systemInstruction: systemPrompt,
         ...(consultantDynamicConfig.useThinking && consultantDynamicConfig.thinkingLevel && {
           thinkingConfig: {
-            thinkingLevel: consultantDynamicConfig.thinkingLevel
+            thinkingLevel: consultantDynamicConfig.thinkingLevel,
+            includeThoughts: true
           }
         }),
       },
