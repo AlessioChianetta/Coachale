@@ -5191,9 +5191,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.assignCategoryToClients(categoryId, clientIds || [], consultantId);
       
-      // AUTO-ASSIGN EXERCISES for new clients (only if includeExercises is true)
+      // AUTO-ASSIGN EXERCISES to ALL selected clients (only if includeExercises is true)
       let autoAssignedExercises = 0;
-      if (includeExercises && newClientIds.length > 0) {
+      const targetClientIds = clientIds || [];
+      
+      if (includeExercises && targetClientIds.length > 0) {
+        console.log(`🏋️ [ExerciseAutoAssign] Starting for ${targetClientIds.length} clients on course "${category.name}"`);
+        
         // Generate category slug from name (same logic as frontend)
         const categorySlug = category.name.toLowerCase()
           .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
@@ -5202,10 +5206,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .replace(/-+/g, '-') // Remove duplicate hyphens
           .trim();
         
+        console.log(`🏋️ [ExerciseAutoAssign] Category slug: "${categorySlug}"`);
+        
         // Find exercises by category slug (main source for course exercises)
         const categoryExercises = await db.select({
           id: schema.exercises.id,
           workPlatform: schema.exercises.workPlatform,
+          title: schema.exercises.title,
         })
           .from(schema.exercises)
           .where(
@@ -5214,6 +5221,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               eq(schema.exercises.createdBy, consultantId) // Only consultant's exercises
             )
           );
+        
+        console.log(`🏋️ [ExerciseAutoAssign] Found ${categoryExercises.length} exercises by category slug`);
+        categoryExercises.forEach(ex => {
+          console.log(`   - "${ex.title}" (${ex.id.slice(0,8)})`);
+        });
         
         // Collect unique exercise IDs with their workPlatform
         const exercisesToAssign = new Map<string, string | null>();
@@ -5269,29 +5281,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Batch dedupe: get all existing assignments for new clients and target exercises
+        // Batch dedupe: get all existing assignments for target clients and exercises
         const exerciseIds = Array.from(exercisesToAssign.keys());
-        const existingAssignments = exerciseIds.length > 0 && newClientIds.length > 0 
+        console.log(`🏋️ [ExerciseAutoAssign] Found ${exerciseIds.length} exercises to potentially assign`);
+        console.log(`🏋️ [ExerciseAutoAssign] Exercise IDs: ${exerciseIds.join(', ')}`);
+        
+        const existingAssignments = exerciseIds.length > 0 && targetClientIds.length > 0 
           ? await db.select({ exerciseId: schema.exerciseAssignments.exerciseId, clientId: schema.exerciseAssignments.clientId })
               .from(schema.exerciseAssignments)
               .where(
                 and(
                   inArray(schema.exerciseAssignments.exerciseId, exerciseIds),
-                  inArray(schema.exerciseAssignments.clientId, newClientIds)
+                  inArray(schema.exerciseAssignments.clientId, targetClientIds)
                 )
               )
           : [];
+        
+        console.log(`🏋️ [ExerciseAutoAssign] Found ${existingAssignments.length} existing assignments (will skip these)`);
         
         // Build set of existing pairs for O(1) lookup
         const existingPairs = new Set(
           existingAssignments.map(a => `${a.exerciseId}:${a.clientId}`)
         );
         
-        // Create exercise assignments for new clients (filtered by dedupe)
-        for (const clientId of newClientIds) {
+        // Create exercise assignments for ALL selected clients (filtered by dedupe)
+        for (const clientId of targetClientIds) {
           for (const [exerciseId, workPlatform] of exercisesToAssign) {
             const pairKey = `${exerciseId}:${clientId}`;
             if (!existingPairs.has(pairKey)) {
+              console.log(`🏋️ [ExerciseAutoAssign] Creating assignment: exercise ${exerciseId.slice(0,8)} -> client ${clientId.slice(0,8)}`);
               await storage.createExerciseAssignment({
                 exerciseId,
                 clientId,
@@ -5300,9 +5318,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 workPlatform: workPlatform || undefined,
               });
               autoAssignedExercises++;
+            } else {
+              console.log(`🏋️ [ExerciseAutoAssign] Skipping (already exists): exercise ${exerciseId.slice(0,8)} -> client ${clientId.slice(0,8)}`);
             }
           }
         }
+        console.log(`🏋️ [ExerciseAutoAssign] Completed: ${autoAssignedExercises} new assignments created`);
       }
       
       // PRIVACY ISOLATION: Sync library docs to each client's private store
@@ -5354,6 +5375,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       res.json(assignmentsWithClients);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get exercise/module assignment counts for all consultant's clients
+  app.get("/api/library/clients-assignment-counts", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      // Get all clients for this consultant
+      const clients = await storage.getClientsByConsultant(consultantId);
+      const clientIds = clients.map(c => c.id);
+      
+      if (clientIds.length === 0) {
+        return res.json({});
+      }
+      
+      // Get exercise assignment counts per client
+      const exerciseCounts = await db.select({
+        clientId: schema.exerciseAssignments.clientId,
+        count: sql<number>`count(*)::int`,
+      })
+        .from(schema.exerciseAssignments)
+        .where(inArray(schema.exerciseAssignments.clientId, clientIds))
+        .groupBy(schema.exerciseAssignments.clientId);
+      
+      // Get course (category) assignment counts per client
+      const courseCounts = await db.select({
+        clientId: schema.libraryCategoryClientAssignments.clientId,
+        count: sql<number>`count(*)::int`,
+      })
+        .from(schema.libraryCategoryClientAssignments)
+        .where(inArray(schema.libraryCategoryClientAssignments.clientId, clientIds))
+        .groupBy(schema.libraryCategoryClientAssignments.clientId);
+      
+      // Build result map
+      const result: Record<string, { exercises: number; courses: number }> = {};
+      
+      exerciseCounts.forEach(ec => {
+        if (!result[ec.clientId]) {
+          result[ec.clientId] = { exercises: 0, courses: 0 };
+        }
+        result[ec.clientId].exercises = ec.count;
+      });
+      
+      courseCounts.forEach(cc => {
+        if (!result[cc.clientId]) {
+          result[cc.clientId] = { exercises: 0, courses: 0 };
+        }
+        result[cc.clientId].courses = cc.count;
+      });
+      
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

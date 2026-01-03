@@ -320,6 +320,19 @@ export default function ConsultantLibrary() {
     enabled: !!assigningCategory?.id,
   });
 
+  // Fetch exercise/course assignment counts per client (for dialog display)
+  const { data: clientAssignmentCounts = {} } = useQuery<Record<string, { exercises: number; courses: number }>>({
+    queryKey: ["/api/library/clients-assignment-counts"],
+    queryFn: async () => {
+      const response = await fetch("/api/library/clients-assignment-counts", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return {};
+      return response.json();
+    },
+    enabled: showAssignmentDialog,
+  });
+
   // Create category mutation
   const createCategoryMutation = useMutation({
     mutationFn: async (categoryData: any) => {
@@ -690,6 +703,7 @@ export default function ConsultantLibrary() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/library/categories", assigningCategory?.id, "assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/library/clients-assignment-counts"] });
       const exerciseMsg = data.autoAssignedExercises > 0 
         ? ` e ${data.autoAssignedExercises} esercizi auto-assegnati`
         : "";
@@ -3060,9 +3074,22 @@ export default function ConsultantLibrary() {
                         </div>
 
                         <div className="flex items-center space-x-2">
+                          {/* Assignment counts */}
+                          {clientAssignmentCounts[client.id] && (
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-xs px-1.5 py-0.5 flex items-center gap-1">
+                                <Dumbbell size={10} />
+                                {clientAssignmentCounts[client.id].exercises}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs px-1.5 py-0.5 flex items-center gap-1">
+                                <BookOpen size={10} />
+                                {clientAssignmentCounts[client.id].courses}
+                              </Badge>
+                            </div>
+                          )}
                           {isAssigned && (
-                            <Badge variant="secondary" className="text-xs">
-                              Attualmente assegnato
+                            <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                              Assegnato
                             </Badge>
                           )}
                           <input
