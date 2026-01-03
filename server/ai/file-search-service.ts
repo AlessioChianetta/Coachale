@@ -1803,7 +1803,7 @@ export class FileSearchService {
     error?: string;
   }> {
     try {
-      const { consultantKnowledgeDocuments, clientKnowledgeDocuments, whatsappAgentKnowledgeItems, consultantExercises, consultations, libraryDocuments } = await import('../../shared/schema');
+      const { consultantKnowledgeDocuments, clientKnowledgeDocuments, whatsappAgentKnowledgeItems, consultantExercises, consultations, libraryDocuments, universityLessons } = await import('../../shared/schema');
       
       const docs = await db
         .select()
@@ -1881,6 +1881,12 @@ export class FileSearchService {
                 .from(libraryDocuments)
                 .where(inArray(libraryDocuments.id, baseIds));
               existingBaseIds = new Set(libDocs.map(d => d.id));
+              break;
+            case 'university_lesson':
+              const uniDocs = await db.select({ id: universityLessons.id })
+                .from(universityLessons)
+                .where(inArray(universityLessons.id, baseIds));
+              existingBaseIds = new Set(uniDocs.map(d => d.id));
               break;
             default:
               console.log(`⚠️ [FileSearch] Unknown sourceType for orphan check: ${sourceType}`);

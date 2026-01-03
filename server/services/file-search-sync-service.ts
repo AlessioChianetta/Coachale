@@ -4640,14 +4640,15 @@ export class FileSearchSyncService {
     
     // University lessons with updatedAt
     // Exclude locked years (isLocked=true) - locked years should not be indexed for File Search
-    const consultantYears = await db.select({ id: universityYears.id })
+    const consultantYears = await db.select({ id: universityYears.id, createdAt: universityYears.createdAt })
       .from(universityYears).where(and(
         eq(universityYears.createdBy, consultantId),
         eq(universityYears.isLocked, false) // Only include unlocked years
-      ));
+      ))
+      .orderBy(universityYears.createdAt); // Order by creation date to get oldest first
     const yearIds = consultantYears.map(y => y.id);
     
-    let universityLessonsList: { id: string; title: string; updatedAt: Date | null }[] = [];
+    let allUniversityLessons: { id: string; title: string; updatedAt: Date | null; createdAt: Date | null }[] = [];
     if (yearIds.length > 0) {
       const trimesters = await db.select({ id: universityTrimesters.id })
         .from(universityTrimesters).where(inArray(universityTrimesters.yearId, yearIds));
@@ -4659,15 +4660,33 @@ export class FileSearchSyncService {
         const moduleIds = modules.map(m => m.id);
         
         if (moduleIds.length > 0) {
-          universityLessonsList = await db.select({ 
+          allUniversityLessons = await db.select({ 
             id: universityLessons.id, 
             title: universityLessons.title,
-            updatedAt: universityLessons.updatedAt
+            updatedAt: universityLessons.updatedAt,
+            createdAt: universityLessons.createdAt
           })
-            .from(universityLessons).where(inArray(universityLessons.moduleId, moduleIds));
+            .from(universityLessons)
+            .where(inArray(universityLessons.moduleId, moduleIds))
+            .orderBy(universityLessons.createdAt); // Order by creation date
         }
       }
     }
+    
+    // CRITICAL: Deduplicate lessons by title - keep only ONE copy (the oldest/master)
+    // This prevents counting 1000+ duplicate lessons when only ~200 unique titles exist
+    const seenTitles = new Set<string>();
+    const universityLessonsList: { id: string; title: string; updatedAt: Date | null }[] = [];
+    
+    for (const lesson of allUniversityLessons) {
+      const normalizedTitle = lesson.title.trim().toLowerCase();
+      if (!seenTitles.has(normalizedTitle)) {
+        seenTitles.add(normalizedTitle);
+        universityLessonsList.push({ id: lesson.id, title: lesson.title, updatedAt: lesson.updatedAt });
+      }
+    }
+    
+    console.log(`📚 [Audit] University deduplication: ${allUniversityLessons.length} total → ${universityLessonsList.length} unique titles`);
     
     console.log(`📊 [Audit] Phase 1 complete in ${Date.now() - phase1Start}ms - Library: ${libraryDocs.length}, Knowledge: ${knowledgeDocs.length}, Exercises: ${allExercises.length}, University: ${universityLessonsList.length}`);
 
