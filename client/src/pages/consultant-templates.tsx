@@ -1796,7 +1796,7 @@ export default function ConsultantTemplates() {
 
 
       <AlertDialog open={courseConfirmDialogOpen} onOpenChange={setCourseConfirmDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="z-[100]">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-cyan-500" />
