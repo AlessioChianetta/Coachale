@@ -4622,6 +4622,7 @@ export class FileSearchSyncService {
       assignedExercises: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
       assignedLibrary: { total: number; indexed: number; missing: Array<{ id: string; title: string; categoryName: string }> };
       assignedUniversity: { total: number; indexed: number; missing: Array<{ id: string; title: string; yearName: string }> };
+      externalDocs: { total: number; indexed: number; missing: Array<{ id: string; title: string; isPersonalized: boolean }> };
       goals: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
       tasks: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
       dailyReflections: { total: number; indexed: number; missing: Array<{ id: string; date: string }> };
@@ -5217,6 +5218,18 @@ export class FileSearchSyncService {
         title: l.title, 
         yearName: l.yearId ? (yearNamesById.get(l.yearId) || 'Anno') : 'Senza anno'
       }));
+      
+      // External docs (workPlatform Google Docs) - use getMissingExternalDocsForClient
+      const externalDocsMissingRaw = await this.getMissingExternalDocsForClient(client.id, consultantId);
+      const externalDocsMissing = externalDocsMissingRaw.map(d => ({
+        id: d.exerciseId,
+        title: d.exerciseTitle,
+        isPersonalized: d.isPersonalized,
+      }));
+      // Count indexed external docs in client's store
+      const indexedExternalDocIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise_external_doc').map(d => d.sourceId));
+      const externalDocsTotal = indexedExternalDocIds.size + externalDocsMissing.length;
+      
       const goalsMissing = (clientGoals.length > 0 && !hasGoalsIndexed) 
         ? clientGoals.map(g => ({ id: g.id, title: g.title })) 
         : [];
@@ -5250,7 +5263,8 @@ export class FileSearchSyncService {
 
       const clientMissing = submissionsMissing.length + consultationsMissing.length + clientKnowledgeMissing.length +
                             assignedExercisesMissing.length + assignedLibraryMissing.length + assignedUniversityMissing.length +
-                            goalsMissing.length + tasksMissing.length + reflectionsMissing.length + progressHistoryMissing.length + libraryProgressMissing.length + emailJourneyMissing.length;
+                            externalDocsMissing.length + goalsMissing.length + tasksMissing.length + reflectionsMissing.length + 
+                            progressHistoryMissing.length + libraryProgressMissing.length + emailJourneyMissing.length;
       
       const hasFinancialDataIndexed = clientIndexed.some(d => d.sourceType === 'financial_data');
 
@@ -5271,6 +5285,7 @@ export class FileSearchSyncService {
           assignedExercises: { total: assignedExercisesList.length, indexed: assignedExercisesList.length - assignedExercisesMissing.length, missing: assignedExercisesMissing },
           assignedLibrary: { total: assignedLibraryDocs.length, indexed: assignedLibraryDocs.length - assignedLibraryMissing.length, missing: assignedLibraryMissing },
           assignedUniversity: { total: assignedLessons.length, indexed: assignedLessons.length - assignedUniversityMissing.length, missing: assignedUniversityMissing },
+          externalDocs: { total: externalDocsTotal, indexed: externalDocsTotal - externalDocsMissing.length, missing: externalDocsMissing },
           goals: { total: clientGoals.length, indexed: clientGoals.length - goalsMissing.length, missing: goalsMissing },
           tasks: { total: clientTasks.length, indexed: clientTasks.length - tasksMissing.length, missing: tasksMissing },
           dailyReflections: { total: clientReflections.length, indexed: clientReflections.length - reflectionsMissing.length, missing: reflectionsMissing },
@@ -7841,6 +7856,110 @@ export class FileSearchSyncService {
         : { success: false, error: uploadResult.error };
     } catch (error: any) {
       console.error('[FileSync] Error syncing external doc:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Sync a single external doc by exerciseId (finds the assignment for this client)
+   * Used by the audit UI sync button
+   */
+  static async syncExerciseExternalDocToClient(
+    exerciseId: string,
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Find the assignment for this exercise and client
+      const assignment = await db.query.exerciseAssignments.findFirst({
+        where: and(
+          eq(exerciseAssignments.exerciseId, exerciseId),
+          eq(exerciseAssignments.userId, clientId),
+        ),
+      });
+
+      if (assignment) {
+        // Use the existing method with the found assignment
+        return await this.syncExerciseExternalDoc(assignment.id, clientId, consultantId);
+      }
+
+      // No assignment found - try syncing directly with exercise template
+      const exercise = await db.query.exercises.findFirst({
+        where: eq(exercises.id, exerciseId),
+      });
+
+      if (!exercise) {
+        return { success: false, error: 'Exercise not found' };
+      }
+
+      if (!exercise.workPlatform) {
+        return { success: false, error: 'Exercise has no workPlatform URL' };
+      }
+
+      console.log(`\n📄 [FileSync] Syncing external doc for exercise "${exercise.title}" (client: ${clientId.substring(0, 8)}) - NO ASSIGNMENT`);
+      console.log(`   🔗 URL: ${exercise.workPlatform}`);
+      console.log(`   📌 Type: Template (no personalization available)`);
+
+      // Scrape the Google Doc content
+      const { scrapeGoogleDoc } = require('../web-scraper');
+      const scraped = await scrapeGoogleDoc(exercise.workPlatform, 100000);
+      
+      if (!scraped.success || !scraped.content) {
+        console.error(`   ❌ Scraping failed: ${scraped.error}`);
+        return { success: false, error: scraped.error || 'Failed to scrape document' };
+      }
+
+      console.log(`   ✅ Scraped ${scraped.content.length.toLocaleString()} chars`);
+
+      // Get or create the client's private store
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, error: 'Failed to get or create client private store' };
+      }
+
+      // Build display name
+      const displayName = `[DOC ESTERNO] ${exercise.title}`;
+
+      // Build content with exercise reference for AI context linking
+      const contentWithReference = [
+        `# Documento di Lavoro: ${exercise.title}`,
+        ``,
+        `## 📌 Esercizio Collegato`,
+        `Questo documento è associato all'esercizio "${exercise.title}" (ID: ${exercise.id}).`,
+        `Categoria: ${exercise.category}`,
+        `Tipo: ${exercise.type}`,
+        `Versione: Template standard`,
+        ``,
+        `## Contenuto Documento`,
+        scraped.content,
+      ].join('\n');
+
+      // Upload to client's PRIVATE store
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: contentWithReference,
+        displayName: displayName,
+        storeId: clientStore.storeId,
+        sourceType: 'exercise_external_doc',
+        sourceId: exercise.id,
+        clientId: clientId,
+        userId: clientId,
+        customMetadata: {
+          docType: 'external_exercise_doc',
+          category: exercise.category,
+        },
+      });
+
+      if (uploadResult.success) {
+        console.log(`   ✅ Synced to client private store`);
+      } else {
+        console.error(`   ❌ Upload failed: ${uploadResult.error}`);
+      }
+
+      return uploadResult.success
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing external doc by exerciseId:', error);
       return { success: false, error: error.message };
     }
   }

@@ -4030,6 +4030,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                               (client.assignedExercises?.missing?.length || 0) +
                                               (client.assignedLibrary?.missing?.length || 0) +
                                               (client.assignedUniversity?.missing?.length || 0) +
+                                              (client.externalDocs?.missing?.length || 0) +
                                               (client.goals?.missing?.length || 0) +
                                               (client.tasks?.missing?.length || 0) +
                                               (client.dailyReflections?.missing?.length || 0) +
@@ -4158,6 +4159,49 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           onClick={() => syncSingleMutation.mutate({ type: 'assigned_university', id: item.id, clientId: client.clientId })}
                                           disabled={syncSingleMutation.isPending}
                                           className="border-amber-300 hover:bg-amber-100"
+                                        >
+                                          {syncSingleMutation.isPending ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <>
+                                              <Plus className="h-3 w-3 mr-1" />
+                                              Sync
+                                            </>
+                                          )}
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+
+                              {client.externalDocs?.missing?.length > 0 && (
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-externalDocs`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'externalDocs')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-externalDocs`] ?? false) ? <ChevronDown className="h-3 w-3 text-red-600" /> : <ChevronRight className="h-3 w-3 text-red-600" />}
+                                    <FileText className="h-3 w-3 text-red-600" />
+                                    <span className="text-sm font-medium text-red-700">Documenti Esterni (Google Docs)</span>
+                                    <Badge className="ml-auto bg-red-200 text-red-800">{client.externalDocs.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.externalDocs.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <FileText className="h-3 w-3 text-red-500" />
+                                          <span className="text-sm">{item.title}</span>
+                                          {item.isPersonalized && (
+                                            <Badge variant="outline" className="text-xs bg-red-100">Personalizzato</Badge>
+                                          )}
+                                        </div>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => syncSingleMutation.mutate({ type: 'external_doc', id: item.id, clientId: client.clientId })}
+                                          disabled={syncSingleMutation.isPending}
+                                          className="border-red-300 hover:bg-red-100"
                                         >
                                           {syncSingleMutation.isPending ? (
                                             <Loader2 className="h-3 w-3 animate-spin" />

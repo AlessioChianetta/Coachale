@@ -1279,6 +1279,13 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
       case 'consultant_guide':
         result = await fileSearchSyncService.syncConsultantGuide(consultantId);
         break;
+      case 'external_doc':
+        // Sync external doc (Google Docs from workPlatform) for a specific exercise to client's store
+        if (!clientId) {
+          return res.status(400).json({ error: 'clientId is required for external_doc' });
+        }
+        result = await fileSearchSyncService.syncExerciseExternalDocToClient(id, clientId, consultantId);
+        break;
       default:
         return res.status(400).json({ error: `Unknown type: ${type}` });
     }
