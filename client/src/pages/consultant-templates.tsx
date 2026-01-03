@@ -1665,6 +1665,7 @@ export default function ConsultantTemplates() {
                                             size="sm"
                                             variant="ghost"
                                             className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex-shrink-0 ml-2"
+                                            disabled={removeCourseFromTemplateMutation.isPending}
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               if (managingTemplateId) {
@@ -1676,7 +1677,11 @@ export default function ConsultantTemplates() {
                                             }}
                                             title="Rimuovi corso dal template"
                                           >
-                                            <Trash2 className="h-3.5 w-3.5" />
+                                            {removeCourseFromTemplateMutation.isPending ? (
+                                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            ) : (
+                                              <Trash2 className="h-3.5 w-3.5" />
+                                            )}
                                           </Button>
                                         </div>
 
@@ -1701,6 +1706,7 @@ export default function ConsultantTemplates() {
                                                             size="sm"
                                                             variant="ghost"
                                                             className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
+                                                            disabled={updateLessonExerciseMutation.isPending}
                                                             onClick={() => {
                                                               updateLessonExerciseMutation.mutate({
                                                                 lessonId: lesson.id,
@@ -1709,7 +1715,11 @@ export default function ConsultantTemplates() {
                                                             }}
                                                             title="Scollega esercizio"
                                                           >
-                                                            <Unlink className="h-3 w-3" />
+                                                            {updateLessonExerciseMutation.isPending ? (
+                                                              <Loader2 className="h-3 w-3 animate-spin" />
+                                                            ) : (
+                                                              <Unlink className="h-3 w-3" />
+                                                            )}
                                                           </Button>
                                                         </>
                                                       ) : exercisePickerLessonId === lesson.id ? (
@@ -1826,6 +1836,7 @@ export default function ConsultantTemplates() {
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-cyan-500 hover:bg-cyan-600"
+              disabled={addCourseToTrimesterMutation.isPending}
               onClick={() => {
                 if (managingTemplateId && coursePickerTrimesterId && selectedCourse) {
                   addCourseToTrimesterMutation.mutate({
@@ -1839,7 +1850,14 @@ export default function ConsultantTemplates() {
                 }
               }}
             >
-              Aggiungi Corso
+              {addCourseToTrimesterMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Caricamento...
+                </>
+              ) : (
+                "Aggiungi Corso"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
