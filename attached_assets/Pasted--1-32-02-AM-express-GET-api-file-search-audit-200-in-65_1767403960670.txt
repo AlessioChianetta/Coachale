@@ -1,0 +1,67 @@
+
+1:32:02 AM [express] GET /api/file-search/audit 200 in 6503ms :: {"consultant":{"library":{"total":8…
+📊 [FileSearch Analytics] Found 21 stores for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [FileSearch Analytics] Owner IDs searched: [0c73bbe5-51e1-4108-866b-6be7a52fce3b, bc1dec4d-8a20-4d23-a109-b4de82a4b4e7, ad0f878c-55b5-48ea-af8d-58b4696e4cd3, 8a7f6b63-b41e-4071-bf44-28d71df1f4d8, 788725fc-f0dd-44ed-a466-2e74db417b5f...]
+[SHEETS POLLING] Completed import for job f33cfa03-2d1f-4b28-871b-84359e998576: 0 imported, 16 duplicates, 0 skipped, 0 errors
+[SHEETS POLLING] Polling cycle completed (ExecID: 031wgm)
+📊 [FileSearch Analytics] Total documents fetched: 1286
+📊 [FileSearch Analytics] Consultant docs: 363, Client docs: 923
+1:32:03 AM [express] GET /api/file-search/analytics 304 in 1806ms :: {"summary":{"totalCalls":0,"fil…
+📊 [FileSearch Analytics] Found 21 stores for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [FileSearch Analytics] Owner IDs searched: [0c73bbe5-51e1-4108-866b-6be7a52fce3b, bc1dec4d-8a20-4d23-a109-b4de82a4b4e7, ad0f878c-55b5-48ea-af8d-58b4696e4cd3, 8a7f6b63-b41e-4071-bf44-28d71df1f4d8, 788725fc-f0dd-44ed-a466-2e74db417b5f...]
+📊 [FileSearch Analytics] Total documents fetched: 1286
+📊 [FileSearch Analytics] Consultant docs: 363, Client docs: 923
+1:32:05 AM [express] GET /api/file-search/analytics 304 in 1396ms :: {"summary":{"totalCalls":0,"fil…
+1:32:07 AM [express] GET /api/file-search/external-docs/missing 304 in 10299ms :: {"totalMissing":96…
+1:32:16 AM [express] POST /api/activity/session/heartbeat 200 in 451ms :: {"success":true,"lastActiv…
+🔄 [MANUAL SYNC] Triggered by consultant 0c73bbe5 - type: assigned_exercise, id: 41b45c45, clientId: bc1dec4d
+📦 [FileSearch] Found existing client store for bc1dec4d-8a20-4d23-a109-b4de82a4b4e7: fileSearchStores/private-store-client-bc1dec-r426ef884pbg
+✅ [FileSearch] Using SuperAdmin Gemini key for user bc1dec4d-8a20-4d23-a109-b4de82a4b4e7 (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
+📤 [FileSearch] Uploading "[ESERCIZIO ASSEGNATO] Modulo 8 Lezione 4: Da Ignorato a Conquistato" (hash: 49bc536f6957950d) to store fileSearchStores/private-store-client-bc1dec-r426ef884pbg
+✅ [FileSearch] Document uploaded: esercizio-assegnato-modulo--8479o2c87gc6 (hash: 49bc536f6957950d)
+✅ [FileSync] Exercise synced to client bc1dec4d private store: Modulo 8 Lezione 4: Da Ignorato a Conquistato
+1:32:22 AM [express] POST /api/file-search/sync-single 200 in 5264ms :: {"success":true,"message":"E…
+
+════════════════════════════════════════════════════════════
+🔍 [FileSync] Running OPTIMIZED Comprehensive Audit for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+════════════════════════════════════════════════════════════
+
+📊 [Audit] Phase 1: Loading consultant source documents...
+📊 [FileSearch Analytics] Found 21 stores for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [FileSearch Analytics] Owner IDs searched: [0c73bbe5-51e1-4108-866b-6be7a52fce3b, bc1dec4d-8a20-4d23-a109-b4de82a4b4e7, ad0f878c-55b5-48ea-af8d-58b4696e4cd3, 8a7f6b63-b41e-4071-bf44-28d71df1f4d8, 788725fc-f0dd-44ed-a466-2e74db417b5f...]
+📚 [Audit] University deduplication: 473 total → 84 unique titles
+📊 [Audit] Phase 1 complete in 2283ms - Library: 86, Knowledge: 0, Exercises: 158, University: 84
+📊 [Audit] Phase 2: Loading indexed documents...
+📊 [FileSearch Analytics] Total documents fetched: 1286
+📊 [FileSearch Analytics] Consultant docs: 362, Client docs: 924
+1:32:25 AM [express] GET /api/file-search/analytics 200 in 2738ms :: {"summary":{"totalCalls":0,"fil…
+📊 [Audit] Phase 2 complete in 327ms - Found 362 indexed docs
+📊 [Audit] Phase 3: Calculating missing and outdated...
+📊 [Audit] Phase 3 complete in 2ms
+📊 [Audit] Phase 4: Bulk loading client data...
+📊 [Audit] Phase 4 complete in 3448ms
+📊 [Audit] Phase 5: Processing 14 clients...
+📊 [Audit] Phase 5 complete in 2ms
+📊 [Audit] Phase 6: Auditing WhatsApp agents...
+📊 [Audit] Phase 6 complete in 0ms
+
+════════════════════════════════════════════════════════════
+✅ [FileSync] OPTIMIZED Comprehensive Audit Complete in 7255ms
+   📖 Consultant Guide: 1/1 indexed, 1 outdated
+   📚 Library: 86/86 indexed, 0 outdated
+   📖 Knowledge Base: 0/0 indexed, 0 outdated
+   🏋️ Exercises: 94/158 indexed, 0 outdated
+   🎓 University: 84/84 indexed, 0 outdated
+   👥 Clients: 13 with data, 1177 missing
+      📝 Assigned Exercises: 424 missing
+      📖 Assigned Library: 570 missing
+      🎓 Assigned University: 183 missing
+      🎯 Goals: 0 missing
+      ✅ Tasks: 0 missing
+   📱 WhatsApp Agents: 0 agents, 0 missing
+   📊 Summary: 1241 missing, 1 outdated
+   🏥 Health Score: 37%
+════════════════════════════════════════════════════════════
+
+1:32:30 AM [express] GET /api/file-search/audit 200 in 7558ms :: {"consultant":{"library":{"total":8…

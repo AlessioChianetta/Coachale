@@ -642,12 +642,22 @@ export class FileSearchService {
       }
 
       if (params.sourceId) {
-        await db.delete(fileSearchDocuments).where(
-          and(
-            eq(fileSearchDocuments.sourceType, params.sourceType),
-            eq(fileSearchDocuments.sourceId, params.sourceId)
-          )
-        );
+        // CRITICAL FIX: Must include storeId to prevent cross-store deletion!
+        // Previously this was deleting documents from ALL stores with the same sourceId
+        const deleteConditions = [
+          eq(fileSearchDocuments.sourceType, params.sourceType),
+          eq(fileSearchDocuments.sourceId, params.sourceId),
+          eq(fileSearchDocuments.storeId, params.storeId), // CRITICAL: Only delete from THIS store
+        ];
+        
+        // If clientId is provided, also filter by clientId for extra safety
+        if (params.clientId) {
+          deleteConditions.push(eq(fileSearchDocuments.clientId, params.clientId));
+        }
+        
+        console.log(`🔍 [FileSearch] Removing old version from store ${params.storeId.substring(0, 8)} before re-upload: ${params.sourceType}/${params.sourceId?.substring(0, 8)}`);
+        
+        await db.delete(fileSearchDocuments).where(and(...deleteConditions));
       }
 
       console.log(`📤 [FileSearch] Uploading "${params.displayName}" (hash: ${params.contentHash}) to store ${store.googleStoreName}`);
