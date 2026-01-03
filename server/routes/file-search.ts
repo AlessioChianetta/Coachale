@@ -1211,12 +1211,18 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
         result = await fileSearchSyncService.syncExerciseToClient(id, clientId, consultantId);
         break;
       case 'assigned_library':
-        // Sync a library category to a specific client's private store
+        // Sync a single library document to a specific client's private store
         if (!clientId) {
           return res.status(400).json({ error: 'clientId is required for assigned_library' });
         }
+        result = await fileSearchSyncService.syncLibraryDocumentToClient(id, clientId, consultantId);
+        break;
+      case 'assigned_library_category':
+        // Sync all library documents from a category to a specific client's private store
+        if (!clientId) {
+          return res.status(400).json({ error: 'clientId is required for assigned_library_category' });
+        }
         const libResult = await fileSearchSyncService.syncLibraryCategoryToClient(id, clientId, consultantId);
-        // Handle partial failures: success only if synced > 0 OR (synced === 0 AND failed === 0)
         const libSuccess = libResult.success !== false && (libResult.synced > 0 || libResult.failed === 0);
         result = { 
           success: libSuccess, 
@@ -1224,12 +1230,18 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
         };
         break;
       case 'assigned_university':
-        // Sync a university year to a specific client's private store
+        // Sync a single university lesson to a specific client's private store
         if (!clientId) {
           return res.status(400).json({ error: 'clientId is required for assigned_university' });
         }
+        result = await fileSearchSyncService.syncUniversityLessonToClient(id, clientId, consultantId);
+        break;
+      case 'assigned_university_year':
+        // Sync all university lessons from a year to a specific client's private store
+        if (!clientId) {
+          return res.status(400).json({ error: 'clientId is required for assigned_university_year' });
+        }
         const uniResult = await fileSearchSyncService.syncUniversityYearToClient(id, clientId, consultantId);
-        // Handle partial failures: success only if synced > 0 OR (synced === 0 AND failed === 0)
         const uniSuccess = uniResult.success !== false && (uniResult.synced > 0 || uniResult.failed === 0);
         result = { 
           success: uniSuccess, 

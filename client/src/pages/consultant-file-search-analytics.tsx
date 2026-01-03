@@ -4066,6 +4066,22 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <Dumbbell className="h-3 w-3 text-blue-500" />
                                           <span className="text-sm">{item.title}</span>
                                         </div>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => syncSingleMutation.mutate({ type: 'assigned_exercise', id: item.id, clientId: client.clientId })}
+                                          disabled={syncSingleMutation.isPending}
+                                          className="border-blue-300 hover:bg-blue-100"
+                                        >
+                                          {syncSingleMutation.isPending ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <>
+                                              <Plus className="h-3 w-3 mr-1" />
+                                              Sync
+                                            </>
+                                          )}
+                                        </Button>
                                       </div>
                                     ))}
                                   </CollapsibleContent>
@@ -4093,6 +4109,22 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                             <Badge variant="outline" className="text-xs">{item.categoryName}</Badge>
                                           )}
                                         </div>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => syncSingleMutation.mutate({ type: 'assigned_library', id: item.id, clientId: client.clientId })}
+                                          disabled={syncSingleMutation.isPending}
+                                          className="border-indigo-300 hover:bg-indigo-100"
+                                        >
+                                          {syncSingleMutation.isPending ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <>
+                                              <Plus className="h-3 w-3 mr-1" />
+                                              Sync
+                                            </>
+                                          )}
+                                        </Button>
                                       </div>
                                     ))}
                                   </CollapsibleContent>
@@ -4120,6 +4152,22 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                             <Badge variant="outline" className="text-xs">{item.yearName}</Badge>
                                           )}
                                         </div>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => syncSingleMutation.mutate({ type: 'assigned_university', id: item.id, clientId: client.clientId })}
+                                          disabled={syncSingleMutation.isPending}
+                                          className="border-amber-300 hover:bg-amber-100"
+                                        >
+                                          {syncSingleMutation.isPending ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <>
+                                              <Plus className="h-3 w-3 mr-1" />
+                                              Sync
+                                            </>
+                                          )}
+                                        </Button>
                                       </div>
                                     ))}
                                   </CollapsibleContent>

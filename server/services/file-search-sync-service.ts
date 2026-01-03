@@ -6618,6 +6618,136 @@ export class FileSearchSyncService {
   }
 
   /**
+   * Sync a single library document to client's private store
+   * Called when manually syncing an assigned library document
+   */
+  static async syncLibraryDocumentToClient(
+    documentId: string,
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const doc = await db.query.libraryDocuments.findFirst({
+        where: eq(libraryDocuments.id, documentId),
+      });
+
+      if (!doc) {
+        return { success: false, error: 'Document not found' };
+      }
+
+      console.log(`\n🔍 [FileSync LIBRARY DOC→CLIENT] ══════════════════════════════════════════`);
+      console.log(`   📄 Document: "${doc.title}" (${documentId.substring(0, 8)})`);
+      console.log(`   👤 Client: ${clientId.substring(0, 8)}`);
+      console.log(`══════════════════════════════════════════════════════════════════════\n`);
+
+      const clientStore = await this.getOrCreateClientPrivateStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, error: 'Failed to get or create client private store' };
+      }
+
+      const existingDoc = await db.query.fileSearchDocuments.findFirst({
+        where: and(
+          eq(fileSearchDocuments.storeId, clientStore.storeId),
+          eq(fileSearchDocuments.sourceType, 'library'),
+          eq(fileSearchDocuments.sourceId, documentId),
+          eq(fileSearchDocuments.clientId, clientId),
+        ),
+      });
+
+      if (existingDoc) {
+        console.log(`   ℹ️ Already synced: "${doc.title}"`);
+        return { success: true };
+      }
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: doc.content || `${doc.title}\n\n${doc.description || ''}`,
+        displayName: `[LIBRERIA] ${doc.title}`,
+        storeId: clientStore.storeId,
+        sourceType: 'library',
+        sourceId: documentId,
+        clientId: clientId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`   ✅ Success: "${doc.title}"`);
+        return { success: true };
+      } else {
+        console.log(`   ❌ Failed: "${doc.title}" - ${uploadResult.error}`);
+        return { success: false, error: uploadResult.error };
+      }
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing library document to client:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Sync a single university lesson to client's private store
+   * Called when manually syncing an assigned university lesson
+   */
+  static async syncUniversityLessonToClient(
+    lessonId: string,
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const lesson = await db.query.universityLessons.findFirst({
+        where: eq(universityLessons.id, lessonId),
+      });
+
+      if (!lesson) {
+        return { success: false, error: 'Lesson not found' };
+      }
+
+      console.log(`\n🔍 [FileSync LESSON→CLIENT] ══════════════════════════════════════════`);
+      console.log(`   📖 Lesson: "${lesson.title}" (${lessonId.substring(0, 8)})`);
+      console.log(`   👤 Client: ${clientId.substring(0, 8)}`);
+      console.log(`══════════════════════════════════════════════════════════════════════\n`);
+
+      const clientStore = await this.getOrCreateClientPrivateStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, error: 'Failed to get or create client private store' };
+      }
+
+      const existingDoc = await db.query.fileSearchDocuments.findFirst({
+        where: and(
+          eq(fileSearchDocuments.storeId, clientStore.storeId),
+          eq(fileSearchDocuments.sourceType, 'university_lesson'),
+          eq(fileSearchDocuments.sourceId, lessonId),
+          eq(fileSearchDocuments.clientId, clientId),
+        ),
+      });
+
+      if (existingDoc) {
+        console.log(`   ℹ️ Already synced: "${lesson.title}"`);
+        return { success: true };
+      }
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: lesson.content || `${lesson.title}\n\n${lesson.description || ''}`,
+        displayName: `[UNIVERSITY] ${lesson.title}`,
+        storeId: clientStore.storeId,
+        sourceType: 'university_lesson',
+        sourceId: lessonId,
+        clientId: clientId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`   ✅ Success: "${lesson.title}"`);
+        return { success: true };
+      } else {
+        console.log(`   ❌ Failed: "${lesson.title}" - ${uploadResult.error}`);
+        return { success: false, error: uploadResult.error };
+      }
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing university lesson to client:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Sync all university lessons from a year to client's private store
    * Called when consultant assigns a university year to client
    */
