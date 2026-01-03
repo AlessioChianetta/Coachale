@@ -59,6 +59,8 @@ interface Message {
   content: string;
   thinking?: string;
   isThinking?: boolean;
+  modelName?: string;
+  thinkingLevel?: string;
 }
 
 interface AgentInfo {
@@ -833,10 +835,14 @@ export default function ManagerChat() {
         role: "user",
         content: message,
       };
+      const modelLabel = selectedModel === "gemini-3-pro-preview" ? "Pro 3" : "Flash 3";
+      const thinkingLabel = thinkingLevel === "none" ? "Nessuno" : thinkingLevel === "low" ? "Basso" : thinkingLevel === "medium" ? "Medio" : "Alto";
       const assistantPlaceholder: Message = {
         id: `temp-assistant-${Date.now()}`,
         role: "assistant",
         content: "",
+        modelName: modelLabel,
+        thinkingLevel: thinkingLabel,
       };
       tempAssistantIdRef.current = assistantPlaceholder.id;
       if (!selectedConversationId) {

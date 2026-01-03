@@ -69,6 +69,8 @@ interface Message {
   status?: "processing" | "completed" | "error";
   thinking?: string;
   isThinking?: boolean;
+  modelName?: string;
+  thinkingLevel?: string;
   suggestedActions?: Array<{
     type: string;
     label: string;
@@ -385,11 +387,15 @@ export default function ConsultantAIAssistant() {
         content: params.message,
       };
 
+      const modelLabel = selectedModel === "gemini-3-pro-preview" ? "Pro 3" : "Flash 3";
+      const thinkingLabel = thinkingLevel === "none" ? "Nessuno" : thinkingLevel === "low" ? "Basso" : thinkingLevel === "medium" ? "Medio" : "Alto";
       const assistantPlaceholder: Message = {
         id: `temp-assistant-${Date.now()}`,
         role: "assistant",
         content: "",
         status: "processing",
+        modelName: modelLabel,
+        thinkingLevel: thinkingLabel,
       };
 
       tempAssistantIdRef.current = assistantPlaceholder.id;

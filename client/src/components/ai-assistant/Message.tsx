@@ -11,6 +11,8 @@ interface MessageProps {
     status?: "processing" | "completed" | "error";
     thinking?: string;
     isThinking?: boolean;
+    modelName?: string;
+    thinkingLevel?: string;
     suggestedActions?: Array<{
       type: string;
       label: string;
@@ -870,7 +872,14 @@ export function Message({ message, onActionClick }: MessageProps) {
               <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
               <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
             </div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">Sto organizzando la risposta...</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Sto organizzando la risposta...
+              {(message.modelName || message.thinkingLevel) && (
+                <span className="ml-2 text-xs text-purple-500 dark:text-purple-400">
+                  ({message.modelName}{message.modelName && message.thinkingLevel && ' · '}{message.thinkingLevel})
+                </span>
+              )}
+            </span>
           </div>
         )}
         {!isPlaceholder && (
