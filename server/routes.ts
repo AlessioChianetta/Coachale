@@ -5286,6 +5286,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log(`📋 [CourseAssignment] Category "${category.name}" assigned. New clients: ${newClientIds.length}, Auto-assigned exercises: ${autoAssignedExercises}`);
+      
       res.json({ 
         message: "Category assignments updated successfully",
         autoAssignedExercises,
