@@ -5209,22 +5209,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🏋️ [ExerciseAutoAssign] Category slug: "${categorySlug}"`);
         
         // Find exercises by category slug (main source for course exercises)
+        // NOTE: Use schema.exercises (not exerciseTemplates) because exercise_assignments references exercises.id
         const categoryExercises = await db.select({
-          id: schema.exerciseTemplates.id,
-          workPlatform: schema.exerciseTemplates.workPlatform,
-          name: schema.exerciseTemplates.name,
+          id: schema.exercises.id,
+          workPlatform: schema.exercises.workPlatform,
+          title: schema.exercises.title,
         })
-          .from(schema.exerciseTemplates)
+          .from(schema.exercises)
           .where(
             and(
-              eq(schema.exerciseTemplates.category, categorySlug),
-              eq(schema.exerciseTemplates.createdBy, consultantId) // Only consultant's exercises
+              eq(schema.exercises.category, categorySlug),
+              eq(schema.exercises.createdBy, consultantId) // Only consultant's exercises
             )
           );
         
         console.log(`🏋️ [ExerciseAutoAssign] Found ${categoryExercises.length} exercises by category slug`);
         categoryExercises.forEach(ex => {
-          console.log(`   - "${ex.name}" (${ex.id.slice(0,8)})`);
+          console.log(`   - "${ex.title}" (${ex.id.slice(0,8)})`);
         });
         
         // Collect unique exercise IDs with their workPlatform
@@ -5246,13 +5247,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (documentIds.length > 0) {
           // Find all templateLessons that reference these documents and have exerciseId
+          // NOTE: Use schema.exercises (not exerciseTemplates) because exercise_assignments references exercises.id
           const templateLessonsWithExercises = await db.select({
             exerciseId: schema.templateLessons.exerciseId,
             libraryDocumentId: schema.templateLessons.libraryDocumentId,
-            workPlatform: schema.exerciseTemplates.workPlatform,
+            workPlatform: schema.exercises.workPlatform,
           })
             .from(schema.templateLessons)
-            .innerJoin(schema.exerciseTemplates, eq(schema.templateLessons.exerciseId, schema.exerciseTemplates.id))
+            .innerJoin(schema.exercises, eq(schema.templateLessons.exerciseId, schema.exercises.id))
             .where(
               and(
                 inArray(schema.templateLessons.libraryDocumentId, documentIds),
@@ -5262,11 +5264,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Also find exercises that directly reference library documents
           const directExercises = await db.select({
-            id: schema.exerciseTemplates.id,
-            workPlatform: schema.exerciseTemplates.workPlatform,
+            id: schema.exercises.id,
+            workPlatform: schema.exercises.workPlatform,
           })
-            .from(schema.exerciseTemplates)
-            .where(inArray(schema.exerciseTemplates.libraryDocumentId, documentIds));
+            .from(schema.exercises)
+            .where(inArray(schema.exercises.libraryDocumentId, documentIds));
           
           templateLessonsWithExercises.forEach(tl => {
             if (tl.exerciseId && !exercisesToAssign.has(tl.exerciseId)) {
