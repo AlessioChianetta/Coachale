@@ -357,11 +357,11 @@ export default function ClientAIAssistant() {
         suggestedActions 
       };
     },
-    onMutate: async (message) => {
+    onMutate: async (params) => {
       const userMessage: Message = {
         id: `temp-user-${Date.now()}`,
         role: "user",
-        content: message,
+        content: params.message,
       };
 
       const assistantPlaceholder: Message = {

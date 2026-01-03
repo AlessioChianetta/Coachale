@@ -1,0 +1,57 @@
+chunk-RPCDYKBN.js?v=f4727a25:9934 Uncaught Error: Objects are not valid as a React child (found: object with keys {message, model, thinkingLevel}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=f4727a25:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=f4727a25:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=f4727a25:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=f4727a25:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=f4727a25:15935:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=f4727a25:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=f4727a25:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=f4727a25:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=f4727a25:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=f4727a25:19198:20)Understand this error
+injected.js:37 The above error occurred in the <p> component:
+
+    at p
+    at div
+    at div
+    at div
+    at Message (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/src/components/ai-assistant/Message.tsx:338:27)
+    at div
+    at MotionComponent (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=f4727a25:945:40)
+    at div
+    at div
+    at MessageList (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/src/components/ai-assistant/MessageList.tsx:22:31)
+    at div
+    at div
+    at div
+    at div
+    at div
+    at ConsultantAIAssistant (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/src/pages/consultant-ai-assistant.tsx:62:20)
+    at AuthGuard (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f4727a25:226:16)
+    at Switch (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f4727a25:283:17)
+    at Suspense
+    at Router (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/src/App.tsx?v=b0obqDH-hzR-oGM7Mwbi4:266:35)
+    at Provider (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=f4727a25:44:15)
+    at TooltipProvider (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f4727a25:158:5)
+    at TourProvider (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=f4727a25:3096:3)
+    at V (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=f4727a25:44:25)
+    at J (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=f4727a25:42:18)
+    at App (https://252b4a40-abfd-403b-94a2-3ba82fef660e-00-2nfp441qjen4.kirk.replit.dev/src/App.tsx?v=b0obqDH-hzR-oGM7Mwbi4:1656:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonymous) @ injected.js:37Understand this error
+chunk-RPCDYKBN.js?v=f4727a25:9129 Uncaught Error: Objects are not valid as a React child (found: object with keys {message, model, thinkingLevel}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=f4727a25:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=f4727a25:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=f4727a25:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=f4727a25:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=f4727a25:15935:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=f4727a25:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=f4727a25:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=f4727a25:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=f4727a25:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=f4727a25:18736:28)

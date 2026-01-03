@@ -2770,7 +2770,7 @@ export interface FocusedDocument {
   category?: string;
 }
 
-export type AIModel = 'gemini-2.5-flash-preview-05-20' | 'gemini-2.5-pro-preview-05-06';
+export type AIModel = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'gemini-2.5-pro';
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high';
 
 export interface ConsultantChatRequest {
