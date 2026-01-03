@@ -774,13 +774,13 @@ function Router() {
         </Switch>
       </Suspense>
 
-      {isClient && (
+      {isClient && !location.startsWith('/agent/') && (
         <Suspense fallback={null}>
           <AIAssistant />
         </Suspense>
       )}
 
-      {isClient && <FloatingAlessiaChat />}
+      {isClient && !location.startsWith('/agent/') && <FloatingAlessiaChat />}
     </>
   );
 }
