@@ -1193,7 +1193,7 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
         break;
       case 'knowledge_base':
         // FIX: Parameters were inverted - documentId comes first, then consultantId
-        result = await fileSearchSyncService.syncKnowledgeDocument(id, consultantId);
+        result = await fileSearchSyncService.syncConsultantKnowledgeDocument(id, consultantId);
         break;
       case 'exercise':
         // FIX: Parameters were inverted - exerciseId comes first, then consultantId
