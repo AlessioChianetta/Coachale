@@ -137,10 +137,8 @@ export default function ConsultantTemplates() {
   const [managingTemplateId, setMananingTemplateId] = useState<string | null>(null);
   const [expandedTrimesters, setExpandedTrimesters] = useState<string[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
-  const [coursePickerOpen, setCoursePickerOpen] = useState(false);
-  const [coursePickerTrimesterId, setCoursePickerTrimesterId] = useState<string>("");
-  const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
-  const [exercisePickerLessonId, setExercisePickerLessonId] = useState<string>("");
+  const [coursePickerTrimesterId, setCoursePickerTrimesterId] = useState<string | null>(null);
+  const [exercisePickerLessonId, setExercisePickerLessonId] = useState<string | null>(null);
 
   const [templateFormData, setTemplateFormData] = useState({ name: "", description: "", isActive: true });
   const [trimesterFormData, setTrimesterFormData] = useState({ title: "", description: "", sortOrder: 0 });
@@ -1552,18 +1550,57 @@ export default function ConsultantTemplates() {
 
                           <CollapsibleContent>
                             <div className="p-4 space-y-3 border-t">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full justify-start gap-2"
-                                onClick={() => {
-                                  setCoursePickerTrimesterId(trimester.id);
-                                  setCoursePickerOpen(true);
-                                }}
-                              >
-                                <Plus className="h-4 w-4" />
-                                Aggiungi Corso
-                              </Button>
+                              {coursePickerTrimesterId === trimester.id ? (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-sm font-medium">Seleziona un corso</h5>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => setCoursePickerTrimesterId(null)}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  <div className="max-h-48 overflow-y-auto space-y-1 border rounded-lg p-2 bg-white dark:bg-slate-950">
+                                    {availableCourses.length === 0 ? (
+                                      <p className="text-xs text-muted-foreground text-center py-2">
+                                        Nessun corso disponibile
+                                      </p>
+                                    ) : (
+                                      availableCourses.map((course) => (
+                                        <div
+                                          key={course.id}
+                                          className="p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors text-sm"
+                                          onClick={() => {
+                                            if (managingTemplateId) {
+                                              addCourseToTrimesterMutation.mutate({
+                                                templateId: managingTemplateId,
+                                                trimesterId: trimester.id,
+                                                libraryCategoryId: course.id,
+                                              });
+                                              setCoursePickerTrimesterId(null);
+                                            }
+                                          }}
+                                        >
+                                          <span className="font-medium">{course.name}</span>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full justify-start gap-2"
+                                  onClick={() => setCoursePickerTrimesterId(trimester.id)}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  Aggiungi Corso
+                                </Button>
+                              )}
 
                               {trimester.modules && trimester.modules.length > 0 && (
                                 <div className="space-y-2">
@@ -1600,48 +1637,84 @@ export default function ConsultantTemplates() {
                                           <div className="p-3 space-y-2 border-t bg-white dark:bg-slate-950">
                                             {module.lessons && module.lessons.length > 0 ? (
                                               module.lessons.map((lesson) => (
-                                                <div key={lesson.id} className="flex items-center justify-between p-2 rounded-lg border bg-slate-50 dark:bg-slate-900/30">
-                                                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                                                    <span className="text-sm font-medium truncate">{lesson.title}</span>
-                                                  </div>
-                                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                                    {lesson.exerciseId ? (
-                                                      <>
-                                                        <Badge variant="secondary" className="text-xs gap-1">
-                                                          <Dumbbell className="h-3 w-3" />
-                                                          Esercizio
-                                                        </Badge>
+                                                <div key={lesson.id} className="space-y-2">
+                                                  <div className="flex items-center justify-between p-2 rounded-lg border bg-slate-50 dark:bg-slate-900/30">
+                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                                      <span className="text-sm font-medium truncate">{lesson.title}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                      {lesson.exerciseId ? (
+                                                        <>
+                                                          <Badge variant="secondary" className="text-xs gap-1">
+                                                            <Dumbbell className="h-3 w-3" />
+                                                            Esercizio
+                                                          </Badge>
+                                                          <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                                                            onClick={() => {
+                                                              updateLessonExerciseMutation.mutate({
+                                                                lessonId: lesson.id,
+                                                                exerciseId: null,
+                                                              });
+                                                            }}
+                                                            title="Scollega esercizio"
+                                                          >
+                                                            <Unlink className="h-3.5 w-3.5" />
+                                                          </Button>
+                                                        </>
+                                                      ) : exercisePickerLessonId === lesson.id ? (
                                                         <Button
                                                           size="sm"
                                                           variant="ghost"
-                                                          className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
-                                                          onClick={() => {
-                                                            updateLessonExerciseMutation.mutate({
-                                                              lessonId: lesson.id,
-                                                              exerciseId: null,
-                                                            });
-                                                          }}
-                                                          title="Scollega esercizio"
+                                                          className="h-7 w-7 p-0"
+                                                          onClick={() => setExercisePickerLessonId(null)}
                                                         >
-                                                          <Unlink className="h-3.5 w-3.5" />
+                                                          <X className="h-4 w-4" />
                                                         </Button>
-                                                      </>
-                                                    ) : (
-                                                      <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-7 text-xs gap-1"
-                                                        onClick={() => {
-                                                          setExercisePickerLessonId(lesson.id);
-                                                          setExercisePickerOpen(true);
-                                                        }}
-                                                      >
-                                                        <Dumbbell className="h-3 w-3" />
-                                                        Collega Esercizio
-                                                      </Button>
-                                                    )}
+                                                      ) : (
+                                                        <Button
+                                                          size="sm"
+                                                          variant="outline"
+                                                          className="h-7 text-xs gap-1"
+                                                          onClick={() => setExercisePickerLessonId(lesson.id)}
+                                                        >
+                                                          <Dumbbell className="h-3 w-3" />
+                                                          Collega Esercizio
+                                                        </Button>
+                                                      )}
+                                                    </div>
                                                   </div>
+                                                  {exercisePickerLessonId === lesson.id && (
+                                                    <div className="ml-6 p-2 border rounded-lg bg-white dark:bg-slate-950">
+                                                      <p className="text-xs font-medium mb-2">Seleziona esercizio:</p>
+                                                      <div className="max-h-32 overflow-y-auto space-y-1">
+                                                        {availableExercises.length === 0 ? (
+                                                          <p className="text-xs text-muted-foreground text-center py-2">
+                                                            Nessun esercizio disponibile
+                                                          </p>
+                                                        ) : (
+                                                          availableExercises.map((exercise) => (
+                                                            <div
+                                                              key={exercise.id}
+                                                              className="p-2 rounded hover:bg-muted/50 cursor-pointer transition-colors text-xs"
+                                                              onClick={() => {
+                                                                updateLessonExerciseMutation.mutate({
+                                                                  lessonId: lesson.id,
+                                                                  exerciseId: exercise.id,
+                                                                });
+                                                                setExercisePickerLessonId(null);
+                                                              }}
+                                                            >
+                                                              {exercise.title}
+                                                            </div>
+                                                          ))
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  )}
                                                 </div>
                                               ))
                                             ) : (
@@ -1674,96 +1747,6 @@ export default function ConsultantTemplates() {
         </SheetContent>
       </Sheet>
 
-      <Dialog open={coursePickerOpen} onOpenChange={setCoursePickerOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Seleziona Corso
-            </DialogTitle>
-            <DialogDescription>
-              Scegli un corso dalla libreria da aggiungere al trimestre
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[400px]">
-            <div className="space-y-2">
-              {availableCourses.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nessun corso disponibile
-                </p>
-              ) : (
-                availableCourses.map((course) => (
-                  <div
-                    key={course.id}
-                    className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                    onClick={() => {
-                      if (managingTemplateId && coursePickerTrimesterId) {
-                        addCourseToTrimesterMutation.mutate({
-                          templateId: managingTemplateId,
-                          trimesterId: coursePickerTrimesterId,
-                          libraryCategoryId: course.id,
-                        });
-                      }
-                    }}
-                  >
-                    <h4 className="font-medium text-sm">{course.name}</h4>
-                    {course.description && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                        {course.description}
-                      </p>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={exercisePickerOpen} onOpenChange={setExercisePickerOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Dumbbell className="h-5 w-5" />
-              Seleziona Esercizio
-            </DialogTitle>
-            <DialogDescription>
-              Scegli un esercizio da collegare alla lezione
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[400px]">
-            <div className="space-y-2">
-              {availableExercises.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nessun esercizio disponibile
-                </p>
-              ) : (
-                availableExercises.map((exercise) => (
-                  <div
-                    key={exercise.id}
-                    className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                    onClick={() => {
-                      if (exercisePickerLessonId) {
-                        updateLessonExerciseMutation.mutate({
-                          lessonId: exercisePickerLessonId,
-                          exerciseId: exercise.id,
-                        });
-                      }
-                    }}
-                  >
-                    <h4 className="font-medium text-sm">{exercise.title}</h4>
-                    {exercise.category && (
-                      <Badge variant="outline" className="text-xs mt-1">
-                        {exercise.category}
-                      </Badge>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
 
       <ConsultantAIAssistant />
     </div>
