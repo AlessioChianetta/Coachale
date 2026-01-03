@@ -63,8 +63,26 @@ import {
   FolderKanban,
   PlayCircle,
   Lock,
-  Unlock
+  Unlock,
+  Link,
+  Unlink,
+  Loader2,
+  Eye,
+  Dumbbell
 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -469,6 +487,14 @@ export default function ConsultantUniversity() {
   const [applyTemplateDialogOpen, setApplyTemplateDialogOpen] = useState(false);
   const [templateToApply, setTemplateToApply] = useState<string>("");
   const [aiWizardOpen, setAiWizardOpen] = useState(false);
+  const [viewingTemplateId, setViewingTemplateId] = useState<string>("");
+  const [expandedTemplateTrimesters, setExpandedTemplateTrimesters] = useState<string[]>([]);
+  const [expandedTemplateModules, setExpandedTemplateModules] = useState<string[]>([]);
+  const [coursePickerOpen, setCoursePickerOpen] = useState(false);
+  const [coursePickerTrimesterId, setCoursePickerTrimesterId] = useState<string>("");
+  const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
+  const [exercisePickerLessonId, setExercisePickerLessonId] = useState<string>("");
+  const [exerciseSearchQuery, setExerciseSearchQuery] = useState("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -572,6 +598,32 @@ export default function ConsultantUniversity() {
       if (!response.ok) throw new Error("Failed to fetch templates");
       return response.json();
     },
+  });
+
+  // Fetch full template details when viewing a template
+  const { data: templateDetails, isLoading: templateDetailsLoading } = useQuery<any>({
+    queryKey: ["/api/university/templates", viewingTemplateId, "full"],
+    queryFn: async () => {
+      const response = await fetch(`/api/university/templates/${viewingTemplateId}/full`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch template details");
+      return response.json();
+    },
+    enabled: !!viewingTemplateId,
+  });
+
+  // Fetch available courses for adding to trimesters
+  const { data: availableCourses = [], isLoading: coursesLoading } = useQuery<any[]>({
+    queryKey: ["/api/university/ai/courses"],
+    queryFn: async () => {
+      const response = await fetch("/api/university/ai/courses", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch courses");
+      return response.json();
+    },
+    enabled: coursePickerOpen,
   });
 
   // Fetch existing grades for selected client
@@ -1035,6 +1087,43 @@ export default function ConsultantUniversity() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/university/templates"] });
       toast({ title: "Template eliminato con successo" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Add course to template trimester
+  const addCourseToTrimesterMutation = useMutation({
+    mutationFn: async (data: { templateId: string; trimesterId: string; libraryCategoryId: string }) => {
+      return await apiRequest("POST", `/api/university/templates/${data.templateId}/trimesters/${data.trimesterId}/add-course`, {
+        libraryCategoryId: data.libraryCategoryId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/university/templates", viewingTemplateId, "full"] });
+      setCoursePickerOpen(false);
+      setCoursePickerTrimesterId("");
+      toast({ title: "Corso aggiunto con successo" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Link/unlink exercise to template lesson
+  const linkExerciseToLessonMutation = useMutation({
+    mutationFn: async (data: { lessonId: string; exerciseId: string | null }) => {
+      return await apiRequest("PATCH", `/api/university/templates/lessons/${data.lessonId}/exercise`, {
+        exerciseId: data.exerciseId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/university/templates", viewingTemplateId, "full"] });
+      setExercisePickerOpen(false);
+      setExercisePickerLessonId("");
+      setExerciseSearchQuery("");
+      toast({ title: "Esercizio aggiornato con successo" });
     },
     onError: (error: Error) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -2100,21 +2189,29 @@ return (
                 {/* Template Management Dialog */}
                 <Dialog open={templateDialogOpen} onOpenChange={(open) => {
                   setTemplateDialogOpen(open);
-                  if (!open) setEditingTemplate(null);
+                  if (!open) {
+                    setEditingTemplate(null);
+                    setViewingTemplateId("");
+                    setExpandedTemplateTrimesters([]);
+                    setExpandedTemplateModules([]);
+                  }
                 }}>
-                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>
-                        {editingTemplate ? "Modifica Template" : "Gestisci Template Universitari"}
+                        {editingTemplate ? "Modifica Template" : viewingTemplateId ? "Dettagli Template" : "Gestisci Template Universitari"}
                       </DialogTitle>
                       <DialogDescription>
                         {editingTemplate
                           ? "Modifica il template universitario"
-                          : "Crea e gestisci template per facilitare la creazione di anni accademici"}
+                          : viewingTemplateId 
+                            ? "Visualizza e gestisci la struttura del template"
+                            : "Crea e gestisci template per facilitare la creazione di anni accademici"}
                       </DialogDescription>
                     </DialogHeader>
 
-                    {!editingTemplate && (
+                    {/* Template List View */}
+                    {!editingTemplate && !viewingTemplateId && (
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-sm font-semibold">Template Disponibili</h3>
@@ -2141,7 +2238,8 @@ return (
                             {templates.map((template: any) => (
                               <div
                                 key={template.id}
-                                className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
+                                className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                                onClick={() => setViewingTemplateId(template.id)}
                               >
                                 <div className="flex-1">
                                   <div className="flex items-center gap-3">
@@ -2158,14 +2256,29 @@ return (
                                 </div>
                                 <div className="flex gap-2">
                                   <Button
-                                    onClick={() => setEditingTemplate(template)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setViewingTemplateId(template.id);
+                                    }}
+                                    size="sm"
+                                    variant="ghost"
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    Dettagli
+                                  </Button>
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingTemplate(template);
+                                    }}
                                     size="sm"
                                     variant="ghost"
                                   >
                                     Modifica
                                   </Button>
                                   <Button
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       if (confirm("Sei sicuro di voler eliminare questo template?")) {
                                         deleteTemplateMutation.mutate(template.id);
                                       }
@@ -2184,6 +2297,214 @@ return (
                       </div>
                     )}
 
+                    {/* Template Detail View with Expandable Structure */}
+                    {viewingTemplateId && !editingTemplate && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setViewingTemplateId("");
+                              setExpandedTemplateTrimesters([]);
+                              setExpandedTemplateModules([]);
+                            }}
+                          >
+                            <ChevronDown className="h-4 w-4 rotate-90" />
+                            Indietro
+                          </Button>
+                        </div>
+
+                        {templateDetailsLoading ? (
+                          <div className="flex items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          </div>
+                        ) : templateDetails ? (
+                          <div className="space-y-4">
+                            {/* Template Header */}
+                            <div className="p-4 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 rounded-lg border">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <GraduationCap className="h-6 w-6 text-cyan-600" />
+                                  <div>
+                                    <h3 className="text-lg font-semibold">{templateDetails?.name}</h3>
+                                    {templateDetails?.description && (
+                                      <p className="text-sm text-muted-foreground">{templateDetails?.description}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <Badge variant={templateDetails?.isActive ? "default" : "secondary"}>
+                                  {templateDetails?.isActive ? "Attivo" : "Inattivo"}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            {/* Trimesters */}
+                            <div className="space-y-3">
+                              <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Trimestri</h4>
+                              {templateDetails?.trimesters && templateDetails.trimesters.length > 0 ? (
+                                templateDetails.trimesters.map((trimester: any) => (
+                                  <Collapsible
+                                    key={trimester.id}
+                                    open={expandedTemplateTrimesters.includes(trimester.id)}
+                                    onOpenChange={(open) => {
+                                      setExpandedTemplateTrimesters(prev =>
+                                        open ? [...prev, trimester.id] : prev.filter(id => id !== trimester.id)
+                                      );
+                                    }}
+                                  >
+                                    <div className="border rounded-lg bg-card">
+                                      <CollapsibleTrigger asChild>
+                                        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50 transition-colors">
+                                          <div className="flex items-center gap-3">
+                                            {expandedTemplateTrimesters.includes(trimester.id) ? (
+                                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                            ) : (
+                                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                            )}
+                                            <Calendar className="h-5 w-5 text-blue-500" />
+                                            <span className="font-medium">{trimester.title}</span>
+                                            <Badge variant="outline" className="text-xs">
+                                              {trimester.modules?.length || 0} corsi
+                                            </Badge>
+                                          </div>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setCoursePickerTrimesterId(trimester.id);
+                                              setCoursePickerOpen(true);
+                                            }}
+                                          >
+                                            <Plus className="h-4 w-4 mr-1" />
+                                            Aggiungi Corso
+                                          </Button>
+                                        </div>
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent>
+                                        <div className="border-t px-4 pb-4">
+                                          {trimester.modules && trimester.modules.length > 0 ? (
+                                            <div className="space-y-2 mt-3">
+                                              {trimester.modules.map((module: any) => (
+                                                <Collapsible
+                                                  key={module.id}
+                                                  open={expandedTemplateModules.includes(module.id)}
+                                                  onOpenChange={(open) => {
+                                                    setExpandedTemplateModules(prev =>
+                                                      open ? [...prev, module.id] : prev.filter(id => id !== module.id)
+                                                    );
+                                                  }}
+                                                >
+                                                  <div className="border rounded-lg bg-muted/30">
+                                                    <CollapsibleTrigger asChild>
+                                                      <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-accent/30 transition-colors">
+                                                        <div className="flex items-center gap-2">
+                                                          {expandedTemplateModules.includes(module.id) ? (
+                                                            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                                          ) : (
+                                                            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                                          )}
+                                                          <BookOpen className="h-4 w-4 text-purple-500" />
+                                                          <span className="text-sm font-medium">{module.title}</span>
+                                                          <Badge variant="secondary" className="text-xs">
+                                                            {module.lessons?.length || 0} lezioni
+                                                          </Badge>
+                                                        </div>
+                                                      </div>
+                                                    </CollapsibleTrigger>
+                                                    <CollapsibleContent>
+                                                      <div className="border-t px-3 pb-3">
+                                                        {module.lessons && module.lessons.length > 0 ? (
+                                                          <div className="space-y-2 mt-2">
+                                                            {module.lessons.map((lesson: any) => (
+                                                              <div
+                                                                key={lesson.id}
+                                                                className="flex items-center justify-between p-2 bg-background rounded border"
+                                                              >
+                                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                  <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                                                  <span className="text-sm truncate">{lesson.title}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                                  {lesson.exerciseId && lesson.exercise ? (
+                                                                    <div className="flex items-center gap-1">
+                                                                      <Badge variant="default" className="bg-green-500 text-white text-xs flex items-center gap-1">
+                                                                        <Dumbbell className="h-3 w-3" />
+                                                                        {lesson.exercise.title.length > 20 
+                                                                          ? lesson.exercise.title.substring(0, 20) + "..." 
+                                                                          : lesson.exercise.title}
+                                                                      </Badge>
+                                                                      <Button
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                                        onClick={() => {
+                                                                          linkExerciseToLessonMutation.mutate({
+                                                                            lessonId: lesson.id,
+                                                                            exerciseId: null,
+                                                                          });
+                                                                        }}
+                                                                      >
+                                                                        <Unlink className="h-3 w-3" />
+                                                                      </Button>
+                                                                    </div>
+                                                                  ) : (
+                                                                    <Button
+                                                                      size="sm"
+                                                                      variant="outline"
+                                                                      className="h-7 text-xs"
+                                                                      onClick={() => {
+                                                                        setExercisePickerLessonId(lesson.id);
+                                                                        setExercisePickerOpen(true);
+                                                                      }}
+                                                                    >
+                                                                      <Link className="h-3 w-3 mr-1" />
+                                                                      Collega Esercizio
+                                                                    </Button>
+                                                                  )}
+                                                                </div>
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                        ) : (
+                                                          <p className="text-sm text-muted-foreground py-2">
+                                                            Nessuna lezione in questo modulo
+                                                          </p>
+                                                        )}
+                                                      </div>
+                                                    </CollapsibleContent>
+                                                  </div>
+                                                </Collapsible>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground py-4">
+                                              Nessun corso in questo trimestre. Usa il pulsante "Aggiungi Corso" per aggiungerne uno.
+                                            </p>
+                                          )}
+                                        </div>
+                                      </CollapsibleContent>
+                                    </div>
+                                  </Collapsible>
+                                ))
+                              ) : (
+                                <div className="text-center py-8 bg-muted/30 rounded-lg">
+                                  <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                                  <p className="text-muted-foreground">Nessun trimestre configurato</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            Impossibile caricare i dettagli del template
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Edit Template Form */}
                     {editingTemplate && (
                       <form
                         onSubmit={(e) => {
@@ -2256,6 +2577,152 @@ return (
                     )}
                   </DialogContent>
                 </Dialog>
+
+                {/* Course Picker Sheet */}
+                <Sheet open={coursePickerOpen} onOpenChange={setCoursePickerOpen}>
+                  <SheetContent className="w-full sm:max-w-lg">
+                    <SheetHeader>
+                      <SheetTitle className="flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                        Seleziona Corso
+                      </SheetTitle>
+                      <SheetDescription>
+                        Scegli un corso dalla libreria da aggiungere al trimestre
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6">
+                      {coursesLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : availableCourses.length === 0 ? (
+                        <div className="text-center py-8 bg-muted/30 rounded-lg">
+                          <BookOpen className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                          <p className="text-muted-foreground">Nessun corso disponibile</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Crea prima dei corsi nella libreria
+                          </p>
+                        </div>
+                      ) : (
+                        <ScrollArea className="h-[calc(100vh-200px)]">
+                          <div className="space-y-3 pr-4">
+                            {availableCourses.map((course: any) => (
+                              <div
+                                key={course.id}
+                                className="p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                                onClick={() => {
+                                  addCourseToTrimesterMutation.mutate({
+                                    templateId: viewingTemplateId,
+                                    trimesterId: coursePickerTrimesterId,
+                                    libraryCategoryId: course.id,
+                                  });
+                                }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <h4 className="font-medium">{course.name}</h4>
+                                    {course.description && (
+                                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                        {course.description}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Badge variant="secondary" className="text-xs">
+                                        {course.lessonCount} lezioni
+                                      </Badge>
+                                      {course.exerciseCount > 0 && (
+                                        <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">
+                                          {course.exerciseCount} esercizi
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Plus className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                {/* Exercise Picker Sheet */}
+                <Sheet open={exercisePickerOpen} onOpenChange={(open) => {
+                  setExercisePickerOpen(open);
+                  if (!open) {
+                    setExercisePickerLessonId("");
+                    setExerciseSearchQuery("");
+                  }
+                }}>
+                  <SheetContent className="w-full sm:max-w-lg">
+                    <SheetHeader>
+                      <SheetTitle className="flex items-center gap-2">
+                        <Dumbbell className="h-5 w-5 text-primary" />
+                        Collega Esercizio
+                      </SheetTitle>
+                      <SheetDescription>
+                        Cerca e seleziona un esercizio da collegare alla lezione
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Cerca esercizio..."
+                          value={exerciseSearchQuery}
+                          onChange={(e) => setExerciseSearchQuery(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                      <ScrollArea className="h-[calc(100vh-280px)]">
+                        <div className="space-y-2 pr-4">
+                          {allConsultantExercises
+                            .filter((ex) => 
+                              ex.title.toLowerCase().includes(exerciseSearchQuery.toLowerCase()) ||
+                              ex.category?.toLowerCase().includes(exerciseSearchQuery.toLowerCase())
+                            )
+                            .map((exercise) => (
+                              <div
+                                key={exercise.id}
+                                className="p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                                onClick={() => {
+                                  linkExerciseToLessonMutation.mutate({
+                                    lessonId: exercisePickerLessonId,
+                                    exerciseId: exercise.id,
+                                  });
+                                }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-medium text-sm truncate">{exercise.title}</h4>
+                                    {exercise.category && (
+                                      <Badge variant="outline" className="text-xs mt-1">
+                                        {exercise.category}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <Link className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                </div>
+                              </div>
+                            ))}
+                          {allConsultantExercises.filter((ex) => 
+                            ex.title.toLowerCase().includes(exerciseSearchQuery.toLowerCase()) ||
+                            ex.category?.toLowerCase().includes(exerciseSearchQuery.toLowerCase())
+                          ).length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground">
+                              {exerciseSearchQuery 
+                                ? `Nessun esercizio trovato per "${exerciseSearchQuery}"`
+                                : "Nessun esercizio disponibile"
+                              }
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </SheetContent>
+                </Sheet>
 
                 <Dialog open={trimesterDialogOpen} onOpenChange={setTrimesterDialogOpen}>
                   <DialogContent>

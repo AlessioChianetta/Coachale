@@ -7344,6 +7344,179 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
     }
   });
 
+  // Add Course to Trimester - creates a module from library category with all its documents as lessons
+  app.post("/api/university/templates/:templateId/trimesters/:trimesterId/add-course", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { templateId, trimesterId } = req.params;
+      const { libraryCategoryId } = req.body;
+
+      if (!libraryCategoryId) {
+        return res.status(400).json({ message: "libraryCategoryId is required" });
+      }
+
+      // Verify the template exists and consultant owns it
+      const [template] = await db.select()
+        .from(schema.universityTemplates)
+        .where(
+          and(
+            eq(schema.universityTemplates.id, templateId),
+            eq(schema.universityTemplates.createdBy, req.user!.id)
+          )
+        );
+
+      if (!template) {
+        return res.status(404).json({ message: "Template not found or access denied" });
+      }
+
+      // Verify the trimester belongs to this template
+      const [trimester] = await db.select()
+        .from(schema.templateTrimesters)
+        .where(
+          and(
+            eq(schema.templateTrimesters.id, trimesterId),
+            eq(schema.templateTrimesters.templateId, templateId)
+          )
+        );
+
+      if (!trimester) {
+        return res.status(404).json({ message: "Trimester not found or does not belong to this template" });
+      }
+
+      // Get the library category
+      const [category] = await db.select()
+        .from(schema.libraryCategories)
+        .where(eq(schema.libraryCategories.id, libraryCategoryId));
+
+      if (!category) {
+        return res.status(404).json({ message: "Library category not found" });
+      }
+
+      // Get all documents from this category
+      const documents = await db.select()
+        .from(schema.libraryDocuments)
+        .where(eq(schema.libraryDocuments.categoryId, libraryCategoryId))
+        .orderBy(schema.libraryDocuments.sortOrder);
+
+      // Get the current max sortOrder for modules in this trimester
+      const [maxSortResult] = await db.select({ maxSort: sql<number>`COALESCE(MAX(sort_order), -1)` })
+        .from(schema.templateModules)
+        .where(eq(schema.templateModules.templateTrimesterId, trimesterId));
+      const nextSortOrder = (maxSortResult?.maxSort ?? -1) + 1;
+
+      // Use a transaction for atomicity
+      const result = await db.transaction(async (tx) => {
+        // Create the module from the category
+        const [newModule] = await tx.insert(schema.templateModules)
+          .values({
+            templateTrimesterId: trimesterId,
+            title: category.name,
+            description: category.description,
+            libraryCategoryId: libraryCategoryId,
+            sortOrder: nextSortOrder,
+          })
+          .returning();
+
+        // Create lessons from all documents
+        const lessons = [];
+        for (let i = 0; i < documents.length; i++) {
+          const doc = documents[i];
+          const [lesson] = await tx.insert(schema.templateLessons)
+            .values({
+              templateModuleId: newModule.id,
+              title: doc.title,
+              description: doc.description,
+              resourceUrl: doc.videoUrl,
+              libraryDocumentId: doc.id,
+              sortOrder: i,
+            })
+            .returning();
+          lessons.push(lesson);
+        }
+
+        return { ...newModule, lessons };
+      });
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error adding course to template:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Update Lesson Exercise - set or clear exerciseId on a template lesson
+  app.patch("/api/university/templates/lessons/:lessonId/exercise", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { lessonId } = req.params;
+      const { exerciseId } = req.body;
+
+      // Get the lesson
+      const [lesson] = await db.select()
+        .from(schema.templateLessons)
+        .where(eq(schema.templateLessons.id, lessonId));
+
+      if (!lesson) {
+        return res.status(404).json({ message: "Template lesson not found" });
+      }
+
+      // Get the module
+      const [module] = await db.select()
+        .from(schema.templateModules)
+        .where(eq(schema.templateModules.id, lesson.templateModuleId));
+
+      if (!module) {
+        return res.status(404).json({ message: "Template module not found" });
+      }
+
+      // Get the trimester
+      const [trimester] = await db.select()
+        .from(schema.templateTrimesters)
+        .where(eq(schema.templateTrimesters.id, module.templateTrimesterId));
+
+      if (!trimester) {
+        return res.status(404).json({ message: "Template trimester not found" });
+      }
+
+      // Verify the consultant owns the template
+      const [template] = await db.select()
+        .from(schema.universityTemplates)
+        .where(
+          and(
+            eq(schema.universityTemplates.id, trimester.templateId),
+            eq(schema.universityTemplates.createdBy, req.user!.id)
+          )
+        );
+
+      if (!template) {
+        return res.status(403).json({ message: "Access denied - you do not own this template" });
+      }
+
+      // If exerciseId is provided, verify it exists
+      if (exerciseId) {
+        const [exercise] = await db.select()
+          .from(schema.exercises)
+          .where(eq(schema.exercises.id, exerciseId));
+
+        if (!exercise) {
+          return res.status(404).json({ message: "Exercise not found" });
+        }
+      }
+
+      // Update the lesson
+      const [updatedLesson] = await db.update(schema.templateLessons)
+        .set({ 
+          exerciseId: exerciseId || null,
+          updatedAt: new Date() 
+        })
+        .where(eq(schema.templateLessons.id, lessonId))
+        .returning();
+
+      res.json(updatedLesson);
+    } catch (error: any) {
+      console.error("Error updating lesson exercise:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get Full Template Structure
   app.get("/api/university/templates/:id/full", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
@@ -7370,10 +7543,23 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
       }
 
       const moduleIds = modules.map(m => m.id);
-      let lessons: any[] = [];
+      let lessonsWithExercises: any[] = [];
       if (moduleIds.length > 0) {
-        lessons = await db.select()
+        lessonsWithExercises = await db.select({
+          id: schema.templateLessons.id,
+          templateModuleId: schema.templateLessons.templateModuleId,
+          title: schema.templateLessons.title,
+          description: schema.templateLessons.description,
+          resourceUrl: schema.templateLessons.resourceUrl,
+          libraryDocumentId: schema.templateLessons.libraryDocumentId,
+          exerciseId: schema.templateLessons.exerciseId,
+          sortOrder: schema.templateLessons.sortOrder,
+          createdAt: schema.templateLessons.createdAt,
+          updatedAt: schema.templateLessons.updatedAt,
+          exerciseTitle: schema.exercises.title,
+        })
           .from(schema.templateLessons)
+          .leftJoin(schema.exercises, eq(schema.templateLessons.exerciseId, schema.exercises.id))
           .where(inArray(schema.templateLessons.templateModuleId, moduleIds))
           .orderBy(schema.templateLessons.sortOrder);
       }
@@ -7384,7 +7570,12 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
           .filter(m => m.templateTrimesterId === trimester.id)
           .map(module => ({
             ...module,
-            lessons: lessons.filter(l => l.templateModuleId === module.id)
+            lessons: lessonsWithExercises
+              .filter(l => l.templateModuleId === module.id)
+              .map(lesson => ({
+                ...lesson,
+                exercise: lesson.exerciseId ? { id: lesson.exerciseId, title: lesson.exerciseTitle } : null,
+              }))
           }))
       }));
 

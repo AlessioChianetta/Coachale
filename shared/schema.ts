@@ -1865,6 +1865,7 @@ export const templateModules = pgTable("template_modules", {
   templateTrimesterId: varchar("template_trimester_id").references(() => templateTrimesters.id, { onDelete: "cascade" }).notNull(),
   title: text("title").notNull(),
   description: text("description"),
+  libraryCategoryId: varchar("library_category_id").references(() => libraryCategories.id),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
