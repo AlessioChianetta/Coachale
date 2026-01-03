@@ -5933,11 +5933,18 @@ export class FileSearchSyncService {
     consultantId: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Delete existing financial data document
+      // Get or create client's private store FIRST (needed for store-scoped deletion)
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, error: 'Failed to get or create client private store' };
+      }
+
+      // Delete existing financial data document (CRITICAL: must include storeId to prevent cross-store deletion)
       // Pass consultantId for proper API credential resolution (client stores use consultant's keys)
       const existingDocs = await db.select()
         .from(fileSearchDocuments)
         .where(and(
+          eq(fileSearchDocuments.storeId, clientStore.storeId),
           eq(fileSearchDocuments.sourceType, 'financial_data'),
           eq(fileSearchDocuments.sourceId, clientId),
         ));
@@ -6437,9 +6444,16 @@ export class FileSearchSyncService {
         return { success: false, error: 'Exercise not found' };
       }
 
-      // Check if already synced to this client's store
+      // Get or create client's private store FIRST (needed for store-scoped check)
+      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
+      if (!clientStore) {
+        return { success: false, error: 'Failed to get or create client private store' };
+      }
+
+      // Check if already synced to this client's store (CRITICAL: must include storeId to prevent cross-store confusion)
       const existingDoc = await db.query.fileSearchDocuments.findFirst({
         where: and(
+          eq(fileSearchDocuments.storeId, clientStore.storeId),
           eq(fileSearchDocuments.sourceType, 'exercise'),
           eq(fileSearchDocuments.sourceId, exerciseId),
           eq(fileSearchDocuments.clientId, clientId),
@@ -6449,12 +6463,6 @@ export class FileSearchSyncService {
       if (existingDoc) {
         console.log(`📌 [FileSync] Exercise already synced to client ${clientId.substring(0, 8)}: ${exercise.title}`);
         return { success: true };
-      }
-
-      // Get or create client's private store (using cached context if available)
-      const clientStore = await this.getClientStoreFromContext(clientId, consultantId, context);
-      if (!clientStore) {
-        return { success: false, error: 'Failed to get or create client private store' };
       }
 
       // Build exercise content
@@ -6541,9 +6549,10 @@ export class FileSearchSyncService {
       let failed = 0;
 
       for (const doc of docs) {
-        // Check if already synced
+        // Check if already synced (CRITICAL: must include storeId to prevent cross-store confusion)
         const existingDoc = await db.query.fileSearchDocuments.findFirst({
           where: and(
+            eq(fileSearchDocuments.storeId, clientStore.storeId),
             eq(fileSearchDocuments.sourceType, 'library'),
             eq(fileSearchDocuments.sourceId, doc.id),
             eq(fileSearchDocuments.clientId, clientId),
@@ -6640,9 +6649,10 @@ export class FileSearchSyncService {
       let failed = 0;
 
       for (const lesson of allLessons) {
-        // Check if already synced
+        // Check if already synced (CRITICAL: must include storeId to prevent cross-store confusion)
         const existingDoc = await db.query.fileSearchDocuments.findFirst({
           where: and(
+            eq(fileSearchDocuments.storeId, clientStore.storeId),
             eq(fileSearchDocuments.sourceType, 'university_lesson'),
             eq(fileSearchDocuments.sourceId, lesson.id),
             eq(fileSearchDocuments.clientId, clientId),
