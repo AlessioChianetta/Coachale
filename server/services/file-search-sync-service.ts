@@ -2211,6 +2211,7 @@ export class FileSearchSyncService {
   /**
    * Bulk sync all university lessons for a consultant
    * ENHANCED: Relies on individual sync function for staleness detection
+   * FIX: Only sync ONE copy per unique lesson title (master copy) to avoid duplicates
    */
   static async syncAllUniversityLessons(consultantId: string): Promise<{
     total: number;
@@ -2224,14 +2225,15 @@ export class FileSearchSyncService {
       // CRITICAL FIX: Filter university lessons by consultantId using the proper chain
       // universityLessons -> modules -> trimesters -> years -> createdBy (consultantId)
       // Also exclude locked years (isLocked=true) - locked years should not be indexed
-      const consultantYears = await db.select({ id: universityYears.id })
+      const consultantYears = await db.select({ id: universityYears.id, createdAt: universityYears.createdAt })
         .from(universityYears).where(and(
           eq(universityYears.createdBy, consultantId),
           eq(universityYears.isLocked, false) // Only include unlocked years
-        ));
+        ))
+        .orderBy(universityYears.createdAt); // Order by creation date to get oldest first
       const yearIds = consultantYears.map(y => y.id);
       
-      let allLessons: { id: string; title: string }[] = [];
+      let allLessons: { id: string; title: string; createdAt: Date | null }[] = [];
       
       if (yearIds.length > 0) {
         const trimesters = await db.select({ id: universityTrimesters.id })
@@ -2244,11 +2246,35 @@ export class FileSearchSyncService {
           const moduleIds = modules.map(m => m.id);
           
           if (moduleIds.length > 0) {
-            allLessons = await db.select({ id: universityLessons.id, title: universityLessons.title })
-              .from(universityLessons).where(inArray(universityLessons.moduleId, moduleIds));
+            allLessons = await db.select({ 
+              id: universityLessons.id, 
+              title: universityLessons.title,
+              createdAt: universityLessons.createdAt
+            })
+              .from(universityLessons)
+              .where(inArray(universityLessons.moduleId, moduleIds))
+              .orderBy(universityLessons.createdAt); // Order by creation date
           }
         }
       }
+      
+      // CRITICAL: Deduplicate lessons by title - keep only ONE copy (the oldest/master)
+      // This prevents syncing 1000+ duplicate lessons when only ~200 unique titles exist
+      const seenTitles = new Set<string>();
+      const uniqueLessons: { id: string; title: string }[] = [];
+      
+      for (const lesson of allLessons) {
+        const normalizedTitle = lesson.title.trim().toLowerCase();
+        if (!seenTitles.has(normalizedTitle)) {
+          seenTitles.add(normalizedTitle);
+          uniqueLessons.push({ id: lesson.id, title: lesson.title });
+        }
+      }
+      
+      console.log(`📚 [FileSync] Deduplication: ${allLessons.length} total lessons → ${uniqueLessons.length} unique titles`);
+      
+      // Use deduplicated list
+      const lessonsToSync = uniqueLessons;
 
       let synced = 0;
       let updated = 0;
@@ -2258,26 +2284,26 @@ export class FileSearchSyncService {
       const errors: string[] = [];
 
       console.log(`\n${'═'.repeat(60)}`);
-      console.log(`🎓 [FileSync] Syncing ${allLessons.length} university lessons (PARALLEL)`);
+      console.log(`🎓 [FileSync] Syncing ${lessonsToSync.length} unique university lessons (PARALLEL)`);
       console.log(`${'═'.repeat(60)}\n`);
-      syncProgressEmitter.emitStart(consultantId, 'university', allLessons.length);
+      syncProgressEmitter.emitStart(consultantId, 'university', lessonsToSync.length);
 
       // Use ConcurrencyLimiter for parallel processing (max 5 concurrent uploads)
       const uploadLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_UPLOADS);
       let processedCount = 0;
-      // Emit progress every N items to avoid SSE overload (1097 lessons is a lot!)
-      const PROGRESS_INTERVAL = Math.max(10, Math.floor(allLessons.length / 50)); // Max ~50 progress events
+      // Emit progress every N items to avoid SSE overload
+      const PROGRESS_INTERVAL = Math.max(10, Math.floor(lessonsToSync.length / 50)); // Max ~50 progress events
       
       // Process all lessons in parallel with concurrency limit
       const results = await Promise.all(
-        allLessons.map(lesson => 
+        lessonsToSync.map(lesson => 
           uploadLimiter.run(async () => {
             const result = await this.syncUniversityLesson(lesson.id, consultantId);
             processedCount++;
             
             // Emit progress periodically
-            if (processedCount % PROGRESS_INTERVAL === 0 || processedCount === allLessons.length) {
-              syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processedCount, allLessons.length);
+            if (processedCount % PROGRESS_INTERVAL === 0 || processedCount === lessonsToSync.length) {
+              syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processedCount, lessonsToSync.length);
             }
             
             return { lesson, result };
@@ -2304,16 +2330,16 @@ export class FileSearchSyncService {
 
       console.log(`\n${'═'.repeat(60)}`);
       console.log(`✅ [FileSync] University lessons sync complete (PARALLEL)`);
-      console.log(`   📊 Total: ${allLessons.length}`);
+      console.log(`   📊 Total: ${lessonsToSync.length} (deduplicated from ${allLessons.length})`);
       console.log(`   ✅ Synced: ${synced}`);
       console.log(`   🔄 Updated: ${updated}`);
       console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
       console.log(`   ❌ Failed: ${failed}`);
       console.log(`${'═'.repeat(60)}\n`);
-      syncProgressEmitter.emitComplete(consultantId, 'university', allLessons.length);
+      syncProgressEmitter.emitComplete(consultantId, 'university', lessonsToSync.length);
 
       return {
-        total: allLessons.length,
+        total: lessonsToSync.length,
         synced,
         updated,
         failed,
@@ -6659,8 +6685,8 @@ export class FileSearchSyncService {
         content += '\n';
       }
 
-      // Delete old goals document if exists
-      await fileSearchService.deleteDocumentBySource('goal', clientId);
+      // Delete old goals document if exists (scoped to this client's store only)
+      await fileSearchService.deleteDocumentBySource('goal', clientId, clientStore.storeId, clientId);
 
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
@@ -6736,8 +6762,8 @@ export class FileSearchSyncService {
         }
       }
 
-      // Delete old tasks document if exists
-      await fileSearchService.deleteDocumentBySource('task', clientId);
+      // Delete old tasks document if exists (scoped to this client's store only)
+      await fileSearchService.deleteDocumentBySource('task', clientId, clientStore.storeId, clientId);
 
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
@@ -6817,7 +6843,8 @@ export class FileSearchSyncService {
         content += '---\n\n';
       }
 
-      await fileSearchService.deleteDocumentBySource('daily_reflection' as any, clientId);
+      // Delete old daily_reflection document if exists (scoped to this client's store only)
+      await fileSearchService.deleteDocumentBySource('daily_reflection' as any, clientId, clientStore.storeId, clientId);
 
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
@@ -6881,7 +6908,8 @@ export class FileSearchSyncService {
         content += '\n';
       }
 
-      await fileSearchService.deleteDocumentBySource('client_progress' as any, clientId);
+      // Delete old client_progress document if exists (scoped to this client's store only)
+      await fileSearchService.deleteDocumentBySource('client_progress' as any, clientId, clientStore.storeId, clientId);
 
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
@@ -6972,7 +7000,8 @@ export class FileSearchSyncService {
         }
       }
 
-      await fileSearchService.deleteDocumentBySource('library_progress' as any, clientId);
+      // Delete old library_progress document if exists (scoped to this client's store only)
+      await fileSearchService.deleteDocumentBySource('library_progress' as any, clientId, clientStore.storeId, clientId);
 
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,

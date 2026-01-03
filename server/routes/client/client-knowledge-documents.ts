@@ -8,6 +8,7 @@ import {
   updateClientKnowledgeDocumentSchema,
   vertexAiSettings,
   users,
+  fileSearchStores,
 } from "../../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { extractTextAndStructuredData, type VertexAICredentials, type StructuredTableData } from "../../services/document-processor";
@@ -441,15 +442,27 @@ router.delete(
 
       const credentialOwnerId = client?.consultantId || clientId;
 
-      // Delete from FileSearch first (pass consultantId for proper API credential resolution)
+      // Delete from FileSearch first (get client's private store and pass storeId)
       try {
-        const deleteResult = await fileSearchService.deleteDocumentBySource(
-          'client_knowledge',
-          id,
-          credentialOwnerId
-        );
-        if (deleteResult.deleted > 0) {
-          console.log(`🗑️ [CLIENT KNOWLEDGE DOCUMENTS] Deleted ${deleteResult.deleted} document(s) from FileSearch`);
+        const [clientStore] = await db
+          .select({ id: fileSearchStores.id })
+          .from(fileSearchStores)
+          .where(and(
+            eq(fileSearchStores.ownerId, clientId),
+            eq(fileSearchStores.ownerType, 'client')
+          ))
+          .limit(1);
+        
+        if (clientStore) {
+          const deleteResult = await fileSearchService.deleteDocumentBySource(
+            'client_knowledge',
+            id,
+            clientStore.id,
+            credentialOwnerId
+          );
+          if (deleteResult.deleted > 0) {
+            console.log(`🗑️ [CLIENT KNOWLEDGE DOCUMENTS] Deleted ${deleteResult.deleted} document(s) from FileSearch`);
+          }
         }
       } catch (fileSearchError: any) {
         console.warn(`⚠️ [CLIENT KNOWLEDGE DOCUMENTS] Could not delete from FileSearch:`, fileSearchError.message);

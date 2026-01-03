@@ -881,22 +881,32 @@ export class FileSearchService {
    * Delete a document by its source type and source ID
    * Useful when deleting the original source (e.g., KB document, lesson) and need to remove from FileSearch
    * 
+   * IMPORTANT: storeId is REQUIRED to prevent cross-store deletions!
+   * 
    * @param sourceType - The type of source (e.g., 'library', 'knowledge_base', 'university_lesson')
    * @param sourceId - The ID of the source document
+   * @param storeId - REQUIRED: The store ID to scope deletions to (prevents deleting from wrong store)
    * @param requestingUserId - Optional userId to use for API credentials
    * @returns Result with success status and optional error
    */
   async deleteDocumentBySource(
     sourceType: string,
     sourceId: string,
+    storeId: string,
     requestingUserId?: string
   ): Promise<{ success: boolean; deleted: number; errors: string[] }> {
     try {
-      // Find both exact match and chunked documents (sourceId_chunk_*)
+      if (!storeId) {
+        console.error(`❌ [FileSearch] deleteDocumentBySource called without storeId! This would delete from ALL stores. Aborting.`);
+        return { success: false, deleted: 0, errors: ['storeId is required to prevent cross-store deletions'] };
+      }
+      
+      // Find both exact match and chunked documents (sourceId_chunk_*) - SCOPED TO SPECIFIC STORE
       const docs = await db
         .select()
         .from(fileSearchDocuments)
         .where(and(
+          eq(fileSearchDocuments.storeId, storeId),
           eq(fileSearchDocuments.sourceType, sourceType as any),
           or(
             eq(fileSearchDocuments.sourceId, sourceId),
@@ -905,11 +915,11 @@ export class FileSearchService {
         ));
 
       if (docs.length === 0) {
-        console.log(`ℹ️ [FileSearch] No documents found for sourceType=${sourceType}, sourceId=${sourceId}`);
+        console.log(`ℹ️ [FileSearch] No documents found for sourceType=${sourceType}, sourceId=${sourceId} in store ${storeId.substring(0, 8)}`);
         return { success: true, deleted: 0, errors: [] };
       }
 
-      console.log(`🗑️ [FileSearch] Deleting ${docs.length} document(s) for sourceType=${sourceType}, sourceId=${sourceId}`);
+      console.log(`🗑️ [FileSearch] Deleting ${docs.length} document(s) for sourceType=${sourceType}, sourceId=${sourceId} in store ${storeId.substring(0, 8)}`);
 
       let deleted = 0;
       const errors: string[] = [];

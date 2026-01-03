@@ -441,15 +441,27 @@ router.delete(
         });
       }
 
-      // Delete from FileSearch first (pass consultantId for proper API credential resolution)
+      // Delete from FileSearch first (get consultant store and pass storeId)
       try {
-        const deleteResult = await fileSearchService.deleteDocumentBySource(
-          'whatsapp_agent_knowledge',
-          itemId,
-          consultantId
-        );
-        if (deleteResult.deleted > 0) {
-          console.log(`🗑️ [KNOWLEDGE ITEMS] Deleted ${deleteResult.deleted} document(s) from FileSearch`);
+        const [consultantStore] = await db
+          .select({ id: fileSearchStores.id })
+          .from(fileSearchStores)
+          .where(and(
+            eq(fileSearchStores.ownerId, consultantId),
+            eq(fileSearchStores.ownerType, 'consultant')
+          ))
+          .limit(1);
+        
+        if (consultantStore) {
+          const deleteResult = await fileSearchService.deleteDocumentBySource(
+            'whatsapp_agent_knowledge',
+            itemId,
+            consultantStore.id,
+            consultantId
+          );
+          if (deleteResult.deleted > 0) {
+            console.log(`🗑️ [KNOWLEDGE ITEMS] Deleted ${deleteResult.deleted} document(s) from FileSearch`);
+          }
         }
       } catch (fileSearchError: any) {
         console.warn(`⚠️ [KNOWLEDGE ITEMS] Could not delete from FileSearch:`, fileSearchError.message);
