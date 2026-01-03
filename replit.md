@@ -24,7 +24,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 ## AI Integration
 - **Percorso Capitale**: Personalized financial insights with graceful degradation and daily pre-fetch.
 - **AI Knowledge Base System**: Allows document uploads (PDF, DOCX, TXT) and external API integrations for AI context, featuring text extraction, indexing, priority-based ranking, and multi-tenant isolation.
-- **Gemini File Search Integration (RAG)**: Semantic document retrieval using Google's native File Search with per-client toggles, external document auto-sync, and automatic large file chunking.
+- **Gemini File Search Integration (RAG)**: Semantic document retrieval using Google's native File Search with per-client toggles, external document auto-sync, automatic large file chunking, and cross-store isolation. Architecture uses separate stores: one global "Knowledge Base Consulente" for consultant master documents and individual private stores per client. All sync queries include mandatory `storeId` filters to prevent cross-store deletion bugs when documents are duplicated across stores.
 - **Echo - AI Consultation Summary Agent**: Generates consultation summary emails and extracts actionable tasks from Fathom transcripts with approval workflows.
 - **AI System Prompt Architecture**: All AI endpoints use `buildSystemPrompt()` for comprehensive context.
 - **Token Optimization Strategy**: Hybrid approach using intent detection, conditional database queries, intent-scoped caching, dynamic exercise scraping limits, and File Search RAG to reduce AI token consumption.
