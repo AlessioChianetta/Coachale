@@ -6465,7 +6465,7 @@ export class FileSearchSyncService {
       const assignment = await db.query.exerciseAssignments.findFirst({
         where: and(
           eq(exerciseAssignments.exerciseId, exerciseId),
-          eq(exerciseAssignments.assignedTo, clientId),
+          eq(exerciseAssignments.clientId, clientId),
         ),
       });
 
@@ -7874,7 +7874,7 @@ export class FileSearchSyncService {
       const assignment = await db.query.exerciseAssignments.findFirst({
         where: and(
           eq(exerciseAssignments.exerciseId, exerciseId),
-          eq(exerciseAssignments.userId, clientId),
+          eq(exerciseAssignments.clientId, clientId),
         ),
       });
 
