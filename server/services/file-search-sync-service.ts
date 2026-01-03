@@ -304,28 +304,53 @@ export const syncProgressEmitter = SyncProgressEmitter.getInstance();
 export class FileSearchSyncService {
   /**
    * Generate a lookup key for the indexed docs map.
-   * Format: "sourceType:sourceId" for O(1) lookup.
+   * Format: "storeId:sourceType:sourceId" for O(1) lookup.
+   * CRITICAL: storeId is REQUIRED to prevent cross-store collisions!
+   * Without storeId, documents with same sourceId in different stores would overwrite each other.
    */
-  static getIndexedDocKey(sourceType: string, sourceId: string): string {
-    return `${sourceType}:${sourceId}`;
+  static getIndexedDocKey(storeId: string, sourceType: string, sourceId: string): string {
+    return `${storeId}:${sourceType}:${sourceId}`;
   }
 
   /**
    * Check if a document needs re-upload using the batch-loaded indexedDocsMap.
    * Returns true if document doesn't exist or content hash differs.
+   * CRITICAL: storeId is REQUIRED to look up the correct document in the correct store!
    */
   static needsReuploadFromContext(
+    storeId: string,
     sourceType: string,
     sourceId: string,
     contentHash: string,
     context: SyncContext,
-  ): boolean {
-    const key = this.getIndexedDocKey(sourceType, sourceId);
+  ): { needsUpload: boolean; existing?: IndexedDocInfo; reason?: string } {
+    const key = this.getIndexedDocKey(storeId, sourceType, sourceId);
     const existing = context.indexedDocsMap.get(key);
     
-    if (!existing) return true;
-    if (!existing.contentHash) return true;
-    return existing.contentHash !== contentHash;
+    if (!existing) {
+      return { needsUpload: true, reason: 'not_indexed' };
+    }
+    if (!existing.contentHash) {
+      return { needsUpload: true, existing, reason: 'no_hash' };
+    }
+    if (existing.contentHash !== contentHash) {
+      return { needsUpload: true, existing, reason: 'hash_mismatch' };
+    }
+    return { needsUpload: false, existing, reason: 'up_to_date' };
+  }
+
+  /**
+   * Get existing document info from context for a specific store.
+   * Use this when you need to delete/update a document and need its documentId.
+   */
+  static getExistingDocFromContext(
+    storeId: string,
+    sourceType: string,
+    sourceId: string,
+    context: SyncContext,
+  ): IndexedDocInfo | undefined {
+    const key = this.getIndexedDocKey(storeId, sourceType, sourceId);
+    return context.indexedDocsMap.get(key);
   }
 
   /**
@@ -409,19 +434,33 @@ export class FileSearchSyncService {
           eq(fileSearchDocuments.status, 'indexed')
         ));
       
+      // Track documents per store for logging
+      const docsPerStore = new Map<string, number>();
+      
       for (const doc of allIndexedDocs) {
-        if (doc.sourceId) {
-          const key = this.getIndexedDocKey(doc.sourceType, doc.sourceId);
+        if (doc.sourceId && doc.storeId) {
+          // CRITICAL: Include storeId in key to prevent cross-store collisions!
+          const key = this.getIndexedDocKey(doc.storeId, doc.sourceType, doc.sourceId);
           indexedDocsMap.set(key, {
             documentId: doc.id,
             contentHash: doc.contentHash,
             indexedAt: doc.indexedAt,
             storeId: doc.storeId,
           });
+          
+          // Track counts per store
+          docsPerStore.set(doc.storeId, (docsPerStore.get(doc.storeId) || 0) + 1);
         }
       }
       
-      console.log(`📄 [FileSync] Pre-loaded ${indexedDocsMap.size} indexed documents for batch hash checking`);
+      // Log breakdown by store for debugging
+      const storeBreakdown = Array.from(docsPerStore.entries())
+        .map(([storeId, count]) => `${storeId.substring(0, 8)}...: ${count}`)
+        .join(', ');
+      console.log(`📄 [FileSync] Pre-loaded ${indexedDocsMap.size} indexed documents (store-scoped keys to prevent cross-store collisions)`);
+      if (docsPerStore.size > 1) {
+        console.log(`   📊 Breakdown by store: ${storeBreakdown}`);
+      }
     }
 
     // Create a concurrency limiter for parallel uploads (respects Google's rate limits)

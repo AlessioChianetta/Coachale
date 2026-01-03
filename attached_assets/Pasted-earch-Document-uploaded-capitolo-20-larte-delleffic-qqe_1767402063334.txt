@@ -1,0 +1,40 @@
+earch] Document uploaded: capitolo-20-larte-delleffic-qqepofzkrdar (hash: cf0f24b3f9efeefc)
+🔗 [FileSync] Document linked to lesson "L'Arte dell'Efficienza - Strategie Fiscali per Massimizzare i Rendimenti Netti" - triggering cascade sync
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+✅ [FileSearch] Document uploaded: capitolo-25-leredit-pi-gran-4jho0sbr2jw5 (hash: 0b811d09edc8d2ab)
+🧹 [FileSearch] Document not on Google - cleaning up local record only
+🔗 [FileSync] Document linked to lesson "L'Eredità più Grande - Educazione Finanziaria per i Figli" - triggering cascade sync
+🗑️ [FileSearch] Document deleted: 3d6ee6b8-b355-49ab-b413-ac3a18d51ff1
+🔄 [FileSync] Deleting old lesson version from consultant store: ce5964fb-5694-4632-9288-40164a493483
+📚 [FileSync] Found linked library document for lesson "La Verità sul Mattone - L'Investimento Immobiliare tra Mito e Realtà": "Capitolo 18: La Verità sul Mattone - L'Investimento Immobiliare tra Mito e Realtà" (8881 chars)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
+🔄 [FileSync] Deleting old lesson version from consultant store: b38204d5-eb0f-48f2-a555-e118287642ec
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🧹 [FileSearch] Document not on Google - cleaning up local record only
+📤 [FileSearch] Uploading "[LESSON] La Verità sul Mattone - L'Investimento Immobiliare tra Mito e Realtà" (hash: 9c138287de91f2b2) to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+🗑️ [FileSearch] Document deleted: b46f0d6e-acc2-4c93-b57f-57aa67ccf395
+📚 [FileSync] Found linked library document for lesson "L'Eredità più Grande - Educazione Finanziaria per i Figli": "Capitolo 25: L'Eredità più Grande - Educazione Finanziaria per i Figli" (8947 chars)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+✅ [FileSearch] Document uploaded: capitolo-21-il-tuo-asset-da-61cgxh614q7y (hash: 2e60ba8ebc11a219)
+🧹 [FileSearch] Document not on Google - cleaning up local record only
+📚 [FileSync] Found linked library document for lesson "Il Tuo Socio Silenzioso - Capire le Tasse sugli Investimenti (senza mal di testa)": "Capitolo 19: Il Tuo Socio Silenzioso - Capire le Tasse sugli Investimenti (senza mal di testa)" (8973 chars)
+🔗 [FileSync] Document linked to lesson "Il Tuo Asset da un Milione di Euro - Massimizzare la Carriera" - triggering cascade sync
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
+🗑️ [FileSearch] Document deleted: b3d7b91c-541e-4c99-a50f-7cf0ae41451e
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
+📚 [FileSync] Found linked library document for lesson "L'Arte dell'Efficienza - Strategie Fiscali per Massimizzare i Rendimenti Netti": "Capitolo 20: L'Arte dell'Efficienza - Strategie Fiscali per Massimizzare i Rendimenti Netti" (8838 chars)
+📤 [FileSearch] Uploading "[LESSON] L'Eredità più Grande - Educazione Finanziaria per i Figli" (hash: 86f46734de5949fe) to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+📤 [FileSearch] Uploading "[LESSON] Il Tuo Socio Silenzioso - Capire le Tasse sugli Investimenti (senza mal di testa)" (hash: f6091f559abcc970) to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
+🔄 [FileSync] Deleting old lesson version from consultant store: 1bb3417c-7272-45f4-aa46-01bb9db8d22a
+📤 [FileSearch] Uploading "[LESSON] L'Arte dell'Efficienza - Strategie Fiscali per Massimizzare i Rendimenti Netti" (hash: b2d9eb99e2a994b5) to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🧹 [FileSearch] Document not on Google - cleaning up local record only
+🗑️ [FileSearch] Document deleted: 99b5a60d-7ce5-4a2d-b21c-9a28479ac354
+📚 [FileSync] Found linked library document for lesson "Il Tuo Asset da un Milione di Euro - Massimizzare la Carriera": "Capitolo 21: Il Tuo Asset da un Milione di Euro - Massimizzare la Carriera" (7595 chars)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
