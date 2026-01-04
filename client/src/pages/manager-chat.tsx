@@ -636,10 +636,6 @@ export default function ManagerChat() {
       });
       if (!response.ok) throw new Error("Failed to fetch conversation");
       const data = await response.json();
-      if (data.conversation && !selectedConversationId) {
-        setSelectedConversationId(data.conversation.id);
-        setMessages(data.messages || []);
-      }
       return data;
     },
     enabled: isAuthenticated,
