@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["ffmpeg", "yt-dlp", "deno"]
+packages = ["ffmpeg", "yt-dlp", "deno", "runit"]
 
 [deployment]
 deploymentTarget = "autoscale"
