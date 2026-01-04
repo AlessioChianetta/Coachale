@@ -94,6 +94,7 @@ export default function PublicAgentShare() {
     remaining: number;
   } | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  const [isAgentDisabled, setIsAgentDisabled] = useState(false);
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -245,18 +246,29 @@ export default function PublicAgentShare() {
   const { data: conversationResponse, isLoading: conversationLoading } = useQuery({
     queryKey: ['/public/whatsapp/shares', slug, 'conversation', visitorId],
     queryFn: async () => {
+      const headers: Record<string, string> = {};
+      if (bronzeToken) {
+        headers['Authorization'] = `Bearer ${bronzeToken}`;
+      }
+      
       const response = await fetch(
-        `/public/whatsapp/shares/${slug}/conversation?visitorId=${visitorId}`
+        `/public/whatsapp/shares/${slug}/conversation?visitorId=${visitorId}`,
+        { headers }
       );
       
       if (!response.ok) {
+        if (response.status === 403) {
+          setIsAgentDisabled(true);
+          throw new Error('AGENT_DISABLED');
+        }
         throw new Error('Errore nel caricamento della conversazione');
       }
       
       return response.json();
     },
-    enabled: !!slug && !!visitorId && !showPasswordGate,
+    enabled: !!slug && !!visitorId && !showPasswordGate && !isAgentDisabled,
     refetchInterval: isStreaming ? false : 10000, // Poll every 10s when not streaming
+    retry: false,
   });
   
   const rawMessages: Message[] = conversationResponse?.messages || [];
@@ -718,6 +730,56 @@ export default function PublicAgentShare() {
   
   if (!metadata) {
     return null;
+  }
+  
+  // Agent disabled for this user (403 from backend)
+  if (isAgentDisabled) {
+    return (
+      <div className={cn(
+        "flex items-center justify-center p-4",
+        embedMode ? "h-screen min-h-[100dvh] bg-background" : "min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/40 dark:from-slate-950 dark:via-purple-950/30 dark:to-pink-950/20"
+      )}>
+        <Card className="max-w-md w-full shadow-xl border-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-r from-orange-400 to-amber-500 flex items-center justify-center mb-4 shadow-lg">
+              <AlertCircle className="h-8 w-8 text-white" />
+            </div>
+            <CardTitle className="text-xl">Agente Non Disponibile</CardTitle>
+            <CardDescription className="text-base">
+              Non hai più accesso a questo agente. Il tuo accesso potrebbe essere stato disabilitato.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Contatta il consulente per ripristinare l'accesso oppure esegui il login con un altro account.
+            </p>
+            <div className="flex flex-col gap-2">
+              {metadata?.consultantSlug && (
+                <Button 
+                  onClick={() => navigate(`/c/${metadata.consultantSlug}/select-agent`)}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                >
+                  Vedi Altri Agenti
+                </Button>
+              )}
+              <Button 
+                onClick={() => {
+                  localStorage.removeItem('bronzeAuthToken');
+                  localStorage.removeItem('bronzeUserTier');
+                  localStorage.removeItem('bronzeUserName');
+                  localStorage.removeItem(`visitor_session_${slug}`);
+                  navigate(`/c/${metadata?.consultantSlug || ''}/pricing`);
+                }}
+                variant="outline"
+                className="w-full"
+              >
+                Accedi con un altro account
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
   
   // Check if share is accessible
