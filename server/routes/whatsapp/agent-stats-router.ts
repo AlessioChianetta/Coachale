@@ -251,7 +251,12 @@ router.get("/:agentId/analytics", authenticateToken, requireRole("consultant"), 
         createdAt: agent.createdAt,
         // AI Assistant Integration
         enableInAIAssistant: agent.enableInAIAssistant,
-        fileSearchCategories: agent.fileSearchCategories
+        fileSearchCategories: agent.fileSearchCategories,
+        // Dipendenti AI levels
+        level: agent.level,
+        levels: agent.levels,
+        publicSlug: agent.publicSlug,
+        dailyMessageLimit: agent.dailyMessageLimit
       },
       metrics: {
         score,
