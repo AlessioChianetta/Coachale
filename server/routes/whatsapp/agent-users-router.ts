@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireAnyRole, type AuthRequest } from "../../middleware/auth";
 import { db } from "../../db";
-import { bronzeUsers, bronzeUserAgentAccess, consultantWhatsappConfig, clientLevelSubscriptions } from "@shared/schema";
+import { bronzeUsers, bronzeUserAgentAccess, consultantWhatsappConfig, clientLevelSubscriptions, users } from "@shared/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
 
 const router = Router();
@@ -37,6 +37,15 @@ router.get("/:agentId/users", authenticateToken, requireAnyRole(["consultant", "
       ),
     });
 
+    // Gold users are clients of the consultant (from users table)
+    const allGoldUsers = await db.query.users.findMany({
+      where: and(
+        eq(users.consultantId, consultantId),
+        eq(users.role, "client"),
+        eq(users.isActive, true)
+      ),
+    });
+
     const accessRecords = await db.query.bronzeUserAgentAccess.findMany({
       where: eq(bronzeUserAgentAccess.agentConfigId, agentId),
     });
@@ -63,8 +72,18 @@ router.get("/:agentId/users", authenticateToken, requireAnyRole(["consultant", "
       createdAt: u.createdAt,
     }));
 
+    const goldList = allGoldUsers.map(u => ({
+      id: u.id,
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      tier: "gold" as const,
+      isEnabled: accessMap.get(u.id) ?? true,
+      createdAt: u.enrolledAt || null,
+    }));
+
     res.json({
-      users: [...bronzeList, ...silverList],
+      users: [...bronzeList, ...silverList, ...goldList],
       agentLevels: agent.levels || [],
     });
   } catch (error) {
@@ -111,6 +130,17 @@ router.post("/:agentId/users/:userId/toggle", authenticateToken, requireAnyRole(
       if (!silverUser) {
         return res.status(404).json({ error: "Silver user not found" });
       }
+    } else if (tier === "gold") {
+      const goldUser = await db.query.users.findFirst({
+        where: and(
+          eq(users.id, userId),
+          eq(users.consultantId, consultantId),
+          eq(users.role, "client")
+        ),
+      });
+      if (!goldUser) {
+        return res.status(404).json({ error: "Gold user not found" });
+      }
     } else {
       return res.status(400).json({ error: "Invalid tier" });
     }
@@ -124,13 +154,14 @@ router.post("/:agentId/users/:userId/toggle", authenticateToken, requireAnyRole(
 
     if (existing) {
       await db.update(bronzeUserAgentAccess)
-        .set({ isEnabled })
+        .set({ isEnabled, userType: tier as "bronze" | "silver" | "gold" })
         .where(eq(bronzeUserAgentAccess.id, existing.id));
     } else {
       await db.insert(bronzeUserAgentAccess).values({
         bronzeUserId: userId,
         agentConfigId: agentId,
         isEnabled,
+        userType: tier as "bronze" | "silver" | "gold",
       });
     }
 

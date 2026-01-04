@@ -273,12 +273,14 @@ export default function SelectAgent() {
     queryKey: ["/api/public/consultant", slug, "agents", userTier, isGoldClient],
     queryFn: async () => {
       const tier = userTier || "1";
-      // For Gold clients, use normal token; for Bronze/Silver, use bronzeAuthToken
+      // For Gold clients, use normal token; for Bronze/Silver, check all token locations
+      // Bronze can be saved as: bronzeAuthToken, manager_token, or token (from unified login)
       let token: string | null = null;
       if (isGoldClient) {
         token = localStorage.getItem("token");
       } else {
-        token = localStorage.getItem("bronzeAuthToken") || localStorage.getItem("manager_token");
+        // Bronze/Silver: try all possible token storage locations
+        token = localStorage.getItem("bronzeAuthToken") || localStorage.getItem("manager_token") || localStorage.getItem("token");
       }
       const headers: HeadersInit = {};
       if (token) {

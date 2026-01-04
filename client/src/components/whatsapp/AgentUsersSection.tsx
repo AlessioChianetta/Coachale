@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Users, Crown, Medal } from "lucide-react";
+import { Search, Users, Crown, Medal, Star } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -15,7 +15,7 @@ interface AgentUser {
   email: string;
   firstName: string | null;
   lastName: string | null;
-  tier: "bronze" | "silver";
+  tier: "bronze" | "silver" | "gold";
   isEnabled: boolean;
   createdAt: string | null;
 }
@@ -26,7 +26,7 @@ interface AgentUsersSectionProps {
 
 export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterTier, setFilterTier] = useState<"all" | "bronze" | "silver">("all");
+  const [filterTier, setFilterTier] = useState<"all" | "bronze" | "silver" | "gold">("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -43,7 +43,7 @@ export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ userId, isEnabled, tier }: { userId: string; isEnabled: boolean; tier: "bronze" | "silver" }) => {
+    mutationFn: async ({ userId, isEnabled, tier }: { userId: string; isEnabled: boolean; tier: "bronze" | "silver" | "gold" }) => {
       const res = await fetch(`/api/whatsapp/agents/${agentId}/users/${userId}/toggle`, {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
@@ -81,6 +81,7 @@ export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
 
   const bronzeCount = users.filter((u) => u.tier === "bronze").length;
   const silverCount = users.filter((u) => u.tier === "silver").length;
+  const goldCount = users.filter((u) => u.tier === "gold").length;
 
   if (isLoading) {
     return (
@@ -108,17 +109,21 @@ export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
       </div>
 
       <Tabs value={filterTier} onValueChange={(v) => setFilterTier(v as typeof filterTier)}>
-        <TabsList className="grid w-full grid-cols-3 h-9">
+        <TabsList className="grid w-full grid-cols-4 h-9">
           <TabsTrigger value="all" className="text-xs">
             Tutti ({users.length})
           </TabsTrigger>
           <TabsTrigger value="bronze" className="text-xs">
-            <Medal className="h-3 w-3 mr-1 text-amber-500" />
+            <Medal className="h-3 w-3 mr-1 text-amber-600" />
             Bronze ({bronzeCount})
           </TabsTrigger>
           <TabsTrigger value="silver" className="text-xs">
             <Crown className="h-3 w-3 mr-1 text-slate-400" />
             Silver ({silverCount})
+          </TabsTrigger>
+          <TabsTrigger value="gold" className="text-xs">
+            <Star className="h-3 w-3 mr-1 text-yellow-500" />
+            Gold ({goldCount})
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -131,7 +136,7 @@ export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
           <p className="text-sm font-medium text-slate-700">Nessun utente trovato</p>
           <p className="text-xs text-slate-500 mt-1">
             {users.length === 0
-              ? "Non ci sono ancora utenti Bronze o Silver"
+              ? "Non ci sono ancora utenti Bronze, Silver o Gold"
               : "Prova a modificare i filtri di ricerca"}
           </p>
         </div>
@@ -151,8 +156,10 @@ export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
                 className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0",
                   user.tier === "bronze"
-                    ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white"
-                    : "bg-gradient-to-br from-slate-300 to-slate-500 text-white"
+                    ? "bg-gradient-to-br from-amber-500 to-amber-700 text-white"
+                    : user.tier === "silver"
+                    ? "bg-gradient-to-br from-slate-300 to-slate-500 text-white"
+                    : "bg-gradient-to-br from-yellow-400 to-yellow-600 text-white"
                 )}
               >
                 {(user.firstName?.[0] || user.email[0]).toUpperCase()}
@@ -171,10 +178,12 @@ export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
                       "text-[10px] px-1.5 py-0 h-4 font-medium",
                       user.tier === "bronze"
                         ? "border-amber-300 bg-amber-50 text-amber-700"
-                        : "border-slate-300 bg-slate-100 text-slate-600"
+                        : user.tier === "silver"
+                        ? "border-slate-300 bg-slate-100 text-slate-600"
+                        : "border-yellow-400 bg-yellow-50 text-yellow-700"
                     )}
                   >
-                    {user.tier === "bronze" ? "Bronze" : "Silver"}
+                    {user.tier === "bronze" ? "Bronze" : user.tier === "silver" ? "Silver" : "Gold"}
                   </Badge>
                 </div>
                 {(user.firstName || user.lastName) && (
@@ -191,7 +200,9 @@ export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
                 className={cn(
                   user.tier === "bronze"
                     ? "data-[state=checked]:bg-amber-500"
-                    : "data-[state=checked]:bg-slate-500"
+                    : user.tier === "silver"
+                    ? "data-[state=checked]:bg-slate-500"
+                    : "data-[state=checked]:bg-yellow-500"
                 )}
               />
             </div>

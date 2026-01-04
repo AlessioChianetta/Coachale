@@ -871,11 +871,14 @@ export const bronzeUsers = pgTable("bronze_users", {
 export type BronzeUser = typeof bronzeUsers.$inferSelect;
 export type InsertBronzeUser = typeof bronzeUsers.$inferInsert;
 
-// Bronze User Agent Access - Track which bronze users have access to which employee agents
+// User Agent Access - Track which users (Bronze, Silver, Gold) have access to which employee agents
+// Note: bronzeUserId can store IDs from bronzeUsers, clientLevelSubscriptions, or users (for Gold clients)
+// The userType field indicates which table the ID refers to
 export const bronzeUserAgentAccess = pgTable("bronze_user_agent_access", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  bronzeUserId: varchar("bronze_user_id").references(() => bronzeUsers.id, { onDelete: "cascade" }).notNull(),
+  bronzeUserId: varchar("bronze_user_id").notNull(), // Can be bronzeUser.id, subscription.id, or user.id
   agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
+  userType: text("user_type").$type<"bronze" | "silver" | "gold">().default("bronze"), // Type of user
   isEnabled: boolean("is_enabled").default(true).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
 }, (table) => ({

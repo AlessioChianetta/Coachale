@@ -230,6 +230,54 @@ async function validateVisitorSession(
           return next();
         }
         
+        // Check for Gold client (normal client user from users table)
+        if (decoded.role === 'client' && decoded.userId) {
+          console.log(`🏆 [VALIDATE-SESSION] Gold client token detected, verifying user...`);
+          // Verify the client exists and is active
+          const [goldClient] = await db.select()
+            .from(schema.users)
+            .where(
+              and(
+                eq(schema.users.id, decoded.userId),
+                eq(schema.users.role, 'client'),
+                eq(schema.users.isActive, true)
+              )
+            )
+            .limit(1);
+          
+          console.log(`🏆 [VALIDATE-SESSION] Gold client found: ${!!goldClient}, isActive: ${goldClient?.isActive}`);
+          
+          if (goldClient) {
+            // Check if this agent is disabled for this Gold user
+            if (share.agentConfigId) {
+              const [disabledAccess] = await db.select()
+                .from(schema.bronzeUserAgentAccess)
+                .where(
+                  and(
+                    eq(schema.bronzeUserAgentAccess.bronzeUserId, decoded.userId),
+                    eq(schema.bronzeUserAgentAccess.agentConfigId, share.agentConfigId),
+                    eq(schema.bronzeUserAgentAccess.isEnabled, false)
+                  )
+                )
+                .limit(1);
+              
+              if (disabledAccess) {
+                console.log(`🚫 [VALIDATE-SESSION] Agent disabled for this Gold user, agentConfigId: ${share.agentConfigId}`);
+                return res.status(403).json({ 
+                  error: 'Accesso negato: questo agente non è disponibile per il tuo account',
+                  code: 'AGENT_DISABLED'
+                });
+              }
+            }
+            
+            req.managerId = decoded.userId; // Use userId as managerId for compatibility
+            console.log(`✅ [GOLD AUTH] Valid gold client token for share ${share.slug}, userId: ${decoded.userId}`);
+            return next();
+          } else {
+            console.log(`❌ [VALIDATE-SESSION] Gold client not found or inactive`);
+          }
+        }
+        
         console.log(`⚠️ [VALIDATE-SESSION] Token valid but no matching auth type. type=${decoded.type}, role=${decoded.role}, shareId=${decoded.shareId}, expectedShareId=${share.id}`);
       }
     }
