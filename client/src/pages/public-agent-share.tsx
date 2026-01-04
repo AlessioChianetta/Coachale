@@ -839,46 +839,45 @@ export default function PublicAgentShare() {
       "flex flex-col bg-background",
       embedMode ? "h-screen min-h-[100dvh]" : "min-h-screen min-h-[100dvh]"
     )}>
-      {/* Header - Manager Style */}
+      {/* Header - Mobile Optimized */}
       {!embedMode && (
-        <div className="border-b bg-white shadow-sm">
-          <div className="px-4 py-3 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold flex-shrink-0 shadow-lg">
+        <div className="border-b bg-white shadow-sm safe-area-top">
+          <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-base sm:text-lg font-bold flex-shrink-0 shadow-lg">
               {metadata.agentName.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg font-semibold text-slate-900 truncate">{metadata.agentName}</h1>
-                <Badge variant="outline" className="bg-green-100 text-green-700 text-xs">
-                  <span className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse mr-1" />
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h1 className="text-base sm:text-lg font-semibold text-slate-900 truncate max-w-[150px] sm:max-w-none">{metadata.agentName}</h1>
+                <Badge variant="outline" className="bg-green-100 text-green-700 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+                  <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 bg-green-500 rounded-full animate-pulse mr-0.5 sm:mr-1" />
                   Online
                 </Badge>
+              </div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-[10px] sm:text-xs text-slate-500">Assistente AI</p>
                 {metadata.level === "1" && bronzeUsageInfo && (
                   <Badge 
                     variant="outline" 
                     className={cn(
-                      "text-xs",
+                      "text-[10px] sm:text-xs px-1.5 py-0",
                       bronzeUsageInfo.remaining <= 3 
                         ? "bg-orange-100 text-orange-700 border-orange-300" 
                         : "bg-blue-100 text-blue-700 border-blue-300"
                     )}
                   >
-                    {bronzeUsageInfo.remaining}/{bronzeUsageInfo.dailyMessageLimit} messaggi
+                    {bronzeUsageInfo.remaining}/{bronzeUsageInfo.dailyMessageLimit}
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-slate-500">Assistente AI</p>
-              {metadata.businessInfo?.businessName && (
-                <p className="text-xs text-slate-400 truncate mt-0.5">{metadata.businessInfo.businessName}</p>
-              )}
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setShowInfoSheet(true)}
-              className="h-9 w-9 rounded-full hover:bg-slate-100"
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-full hover:bg-slate-100 flex-shrink-0"
             >
-              <Info className="h-5 w-5 text-slate-500" />
+              <Info className="h-4 w-4 sm:h-5 sm:w-5 text-slate-500" />
             </Button>
           </div>
         </div>
@@ -889,30 +888,30 @@ export default function PublicAgentShare() {
         {/* Messages - solo questa area scorre */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4">
           <div className="max-w-4xl mx-auto space-y-4 pb-4">
-            {/* Welcome message - Manager Style */}
+            {/* Welcome message - Mobile Optimized */}
             {messages.length === 0 && !optimisticMessage && !streamingMessage && (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 shadow-lg">
+              <div className="flex flex-col items-center justify-center py-8 sm:py-16 px-4">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl sm:text-2xl font-bold mx-auto mb-3 sm:mb-4 shadow-lg">
                   {metadata.agentName.charAt(0).toUpperCase()}
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-1 sm:mb-2 text-center">
                   Inizia una conversazione
                 </h3>
-                <p className="text-sm text-slate-500 max-w-xs text-center mb-4">
+                <p className="text-xs sm:text-sm text-slate-500 max-w-[250px] sm:max-w-xs text-center mb-3 sm:mb-4">
                   Scrivi un messaggio per parlare con {metadata.agentName}
                 </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs px-2 py-1">
-                    <MessageCircle className="h-3 w-3 mr-1" />
+                <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
+                    <MessageCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
                     Chat 24/7
                   </Badge>
-                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-xs px-2 py-1">
-                    <Mic className="h-3 w-3 mr-1" />
-                    Messaggi Vocali
+                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
+                    <Mic className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                    Vocali
                   </Badge>
-                  <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-xs px-2 py-1">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    AI Powered
+                  <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
+                    <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                    AI
                   </Badge>
                 </div>
               </div>
@@ -1064,43 +1063,43 @@ export default function PublicAgentShare() {
           </div>
         )}
         
-        {/* Input area - modern gradient style */}
+        {/* Input area - Mobile Optimized */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex-shrink-0 border-t bg-card/95 backdrop-blur-sm p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-lg sticky bottom-0"
+          className="flex-shrink-0 border-t bg-card/95 backdrop-blur-sm p-2 sm:p-3 pb-[max(8px,env(safe-area-inset-bottom))] sm:pb-[max(12px,env(safe-area-inset-bottom))] shadow-lg sticky bottom-0"
         >
           {isRecording ? (
-            // Recording UI with gradient
-            <div className="flex items-center gap-3 bg-red-50 rounded-3xl px-4 py-3 max-w-4xl mx-auto">
-              <div className="flex items-center gap-2 flex-1">
+            // Recording UI - Mobile Optimized
+            <div className="flex items-center gap-2 sm:gap-3 bg-red-50 rounded-2xl sm:rounded-3xl px-3 sm:px-4 py-2 sm:py-3 max-w-4xl mx-auto">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
                 <motion.div 
-                  className="h-3 w-3 bg-red-500 rounded-full"
+                  className="h-2.5 w-2.5 sm:h-3 sm:w-3 bg-red-500 rounded-full flex-shrink-0"
                   animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
                   transition={{ duration: 1, repeat: Infinity }}
                 />
-                <span className="text-red-600 font-medium">{formatRecordingTime(recordingTime)}</span>
-                <span className="text-gray-500 text-sm ml-2">Registrazione in corso...</span>
+                <span className="text-red-600 font-medium text-sm sm:text-base">{formatRecordingTime(recordingTime)}</span>
+                <span className="text-gray-500 text-xs sm:text-sm truncate hidden xs:inline">Registrazione...</span>
               </div>
               <Button
                 onClick={cancelRecording}
                 size="icon"
                 variant="ghost"
-                className="h-10 w-10 rounded-full text-red-600 hover:bg-red-100"
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full text-red-600 hover:bg-red-100 flex-shrink-0"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <Button
                 onClick={stopRecording}
                 size="icon"
-                className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
+                className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg flex-shrink-0"
               >
-                <Send className="h-5 w-5" />
+                <Send className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </div>
           ) : (
-            // Normal input UI with gradient styling
-            <div className="flex gap-2 items-end max-w-4xl mx-auto">
+            // Normal input UI - Mobile Optimized
+            <div className="flex gap-1.5 sm:gap-2 items-end max-w-4xl mx-auto">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1115,13 +1114,13 @@ export default function PublicAgentShare() {
                 size="icon"
                 variant="ghost"
                 disabled={isBusy || sendMessageMutation.isPending}
-                className="h-10 w-10 rounded-full text-gray-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 disabled:opacity-50"
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full text-gray-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 disabled:opacity-50 flex-shrink-0"
               >
-                <Camera className="h-5 w-5" />
+                <Camera className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               
               <div className={cn(
-                "flex-1 rounded-3xl px-4 py-2 flex items-center gap-2 transition-all duration-200 border",
+                "flex-1 min-w-0 rounded-2xl sm:rounded-3xl px-3 sm:px-4 py-2 flex items-center gap-2 transition-all duration-200 border",
                 isBusy || sendMessageMutation.isPending 
                   ? "bg-gray-100 border-gray-200" 
                   : "bg-gray-50 border-gray-200 focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100"
@@ -1129,9 +1128,9 @@ export default function PublicAgentShare() {
                 <Input
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder={limitReached ? "Limite giornaliero raggiunto" : (isBusy || sendMessageMutation.isPending ? "Attendere..." : "Scrivi un messaggio...")}
+                  placeholder={limitReached ? "Limite raggiunto" : (isBusy || sendMessageMutation.isPending ? "Attendi..." : "Scrivi...")}
                   disabled={isBusy || sendMessageMutation.isPending || limitReached}
-                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-gray-400 p-0 h-auto min-h-[28px] disabled:cursor-not-allowed"
+                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm sm:text-base placeholder:text-gray-400 p-0 h-auto min-h-[24px] sm:min-h-[28px] disabled:cursor-not-allowed"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && !isBusy && !sendMessageMutation.isPending && !limitReached) {
                       e.preventDefault();
@@ -1142,25 +1141,24 @@ export default function PublicAgentShare() {
               </div>
               
               {messageInput.trim() ? (
-                // Send button with gradient
-                <motion.div className="relative" whileTap={{ scale: 0.95 }}>
+                // Send button - Mobile Optimized
+                <motion.div className="relative flex-shrink-0" whileTap={{ scale: 0.95 }}>
                   <Button
                     onClick={handleSendMessage}
                     disabled={isBusy || sendMessageMutation.isPending || limitReached}
                     size="icon"
-                    className="rounded-full h-12 w-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-70"
+                    className="rounded-full h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-70"
                   >
                     {isBusy || sendMessageMutation.isPending ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                     ) : (
-                      <Send className="h-5 w-5" />
+                      <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                     )}
                   </Button>
                 </motion.div>
               ) : (
-                // Mic button with pulsing ring animation when idle
-                <div className="relative">
-                  {/* Pulsing ring effect */}
+                // Mic button - Mobile Optimized
+                <div className="relative flex-shrink-0">
                   {!isBusy && !sendMessageMutation.isPending && (
                     <motion.div
                       className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
@@ -1180,9 +1178,9 @@ export default function PublicAgentShare() {
                       onClick={startRecording}
                       disabled={isBusy || sendMessageMutation.isPending}
                       size="icon"
-                      className="relative rounded-full h-12 w-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-70"
+                      className="relative rounded-full h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-70"
                     >
-                      <Mic className="h-5 w-5" />
+                      <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
                     </Button>
                   </motion.div>
                 </div>
