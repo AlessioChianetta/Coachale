@@ -295,6 +295,8 @@ export default function ConsultantAIAssistant() {
                 setIsRetrying(false);
               } else if (data.type === 'thinking') {
                 fullThinking += data.content;
+                console.log(`🧠 [THINKING CHUNK] +${data.content.length} chars, total: ${fullThinking.length} chars`);
+                console.log(`   Preview: "${data.content.substring(0, 100)}..."`);
                 
                 if (tempAssistantIdRef.current) {
                   setMessages((prev) =>
@@ -306,6 +308,7 @@ export default function ConsultantAIAssistant() {
                   );
                 }
               } else if (data.type === 'delta') {
+                console.log(`📝 [DELTA CHUNK] +${data.content.length} chars`);
                 fullContent += data.content;
 
                 if (tempAssistantIdRef.current) {
