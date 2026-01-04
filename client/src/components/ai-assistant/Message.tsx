@@ -1,4 +1,4 @@
-import { Bot } from "lucide-react";
+import { Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { ThinkingBubble } from "./ThinkingBubble";
@@ -585,9 +585,12 @@ export function Message({ message, onActionClick }: MessageProps) {
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%]">
+        <div className="max-w-[85%] flex items-start gap-2">
           <div className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-2xl px-4 py-3">
             <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content || ''}</p>
+          </div>
+          <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-sm">
+            <User className="h-4 w-4 text-white" />
           </div>
         </div>
       </div>
