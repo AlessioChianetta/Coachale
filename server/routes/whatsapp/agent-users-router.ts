@@ -7,7 +7,6 @@ import { eq, and, ilike, or } from "drizzle-orm";
 const router = Router();
 
 router.get("/:agentId/users", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
-  console.log("[Agent Users] GET /:agentId/users hit, agentId:", req.params.agentId);
   try {
     const { agentId } = req.params;
     const consultantId = req.user!.id;
@@ -60,7 +59,7 @@ router.get("/:agentId/users", authenticateToken, requireAnyRole(["consultant", "
       firstName: u.clientName?.split(" ")[0] || null,
       lastName: u.clientName?.split(" ").slice(1).join(" ") || null,
       tier: "silver" as const,
-      isEnabled: true,
+      isEnabled: accessMap.get(u.id) ?? true,
       createdAt: u.createdAt,
     }));
 
@@ -77,7 +76,7 @@ router.get("/:agentId/users", authenticateToken, requireAnyRole(["consultant", "
 router.post("/:agentId/users/:userId/toggle", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
   try {
     const { agentId, userId } = req.params;
-    const { isEnabled } = req.body;
+    const { isEnabled, tier } = req.body;
     const consultantId = req.user!.id;
 
     const agent = await db.query.consultantWhatsappConfig.findFirst({
@@ -91,15 +90,29 @@ router.post("/:agentId/users/:userId/toggle", authenticateToken, requireAnyRole(
       return res.status(404).json({ error: "Agent not found" });
     }
 
-    const bronzeUser = await db.query.bronzeUsers.findFirst({
-      where: and(
-        eq(bronzeUsers.id, userId),
-        eq(bronzeUsers.consultantId, consultantId)
-      ),
-    });
-
-    if (!bronzeUser) {
-      return res.status(404).json({ error: "User not found" });
+    // Verify user exists based on tier
+    if (tier === "bronze") {
+      const bronzeUser = await db.query.bronzeUsers.findFirst({
+        where: and(
+          eq(bronzeUsers.id, userId),
+          eq(bronzeUsers.consultantId, consultantId)
+        ),
+      });
+      if (!bronzeUser) {
+        return res.status(404).json({ error: "Bronze user not found" });
+      }
+    } else if (tier === "silver") {
+      const silverUser = await db.query.clientLevelSubscriptions.findFirst({
+        where: and(
+          eq(clientLevelSubscriptions.id, userId),
+          eq(clientLevelSubscriptions.consultantId, consultantId)
+        ),
+      });
+      if (!silverUser) {
+        return res.status(404).json({ error: "Silver user not found" });
+      }
+    } else {
+      return res.status(400).json({ error: "Invalid tier" });
     }
 
     const existing = await db.query.bronzeUserAgentAccess.findFirst({

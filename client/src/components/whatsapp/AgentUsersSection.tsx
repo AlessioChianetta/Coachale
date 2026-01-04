@@ -43,11 +43,11 @@ export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ userId, isEnabled }: { userId: string; isEnabled: boolean }) => {
+    mutationFn: async ({ userId, isEnabled, tier }: { userId: string; isEnabled: boolean; tier: "bronze" | "silver" }) => {
       const res = await fetch(`/api/whatsapp/agents/${agentId}/users/${userId}/toggle`, {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ isEnabled }),
+        body: JSON.stringify({ isEnabled, tier }),
       });
       if (!res.ok) throw new Error("Failed to toggle access");
       return res.json();
@@ -182,28 +182,25 @@ export function AgentUsersSection({ agentId }: AgentUsersSectionProps) {
                 )}
               </div>
 
-              {user.tier === "bronze" && (
-                <Switch
-                  checked={user.isEnabled}
-                  onCheckedChange={(checked) =>
-                    toggleMutation.mutate({ userId: user.id, isEnabled: checked })
-                  }
-                  disabled={toggleMutation.isPending}
-                  className="data-[state=checked]:bg-amber-500"
-                />
-              )}
-              {user.tier === "silver" && (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">
-                  Sempre attivo
-                </Badge>
-              )}
+              <Switch
+                checked={user.isEnabled}
+                onCheckedChange={(checked) =>
+                  toggleMutation.mutate({ userId: user.id, isEnabled: checked, tier: user.tier })
+                }
+                disabled={toggleMutation.isPending}
+                className={cn(
+                  user.tier === "bronze"
+                    ? "data-[state=checked]:bg-amber-500"
+                    : "data-[state=checked]:bg-slate-500"
+                )}
+              />
             </div>
           ))}
         </div>
       )}
 
       <p className="text-xs text-slate-500 text-center pt-2 border-t">
-        Gli utenti Silver hanno sempre accesso. Puoi gestire l'accesso solo per gli utenti Bronze.
+        Disabilita l'accesso per impedire all'utente di usare questo agente.
       </p>
     </div>
   );
