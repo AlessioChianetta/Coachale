@@ -998,39 +998,37 @@ export default function ManagerChat() {
         )}
 
         <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 flex-shrink-0">
-            <div className="flex items-center gap-3">
+          {/* Header - Mobile Optimized */}
+          <div className="flex items-center justify-between px-2 sm:px-4 py-2 sm:py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               {isMobile && isAuthenticated && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                  className="h-8 w-8 sm:h-9 sm:w-9 text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 flex-shrink-0"
                   onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
                 >
-                  {chatSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                  {chatSidebarOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
                 </Button>
               )}
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md ring-2 ring-cyan-200/50 dark:ring-cyan-700/50">
-                <Bot className="h-4 w-4 text-white" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md ring-2 ring-cyan-200/50 dark:ring-cyan-700/50 flex-shrink-0">
+                <Bot className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
-              <div>
-                <span className="font-semibold text-slate-900 dark:text-white">
+              <div className="min-w-0">
+                <span className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate block max-w-[120px] sm:max-w-none">
                   {agentInfo?.agentName || "Assistente"}
                 </span>
                 {agentInfo?.businessName && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{agentInfo.businessName}</p>
+                  <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">{agentInfo.businessName}</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {bronzeUsage && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30">
-                  <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-amber-100 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30">
+                  <MessageSquare className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-600 dark:text-amber-400" />
+                  <span className="text-[10px] sm:text-xs font-medium text-amber-700 dark:text-amber-300">
                     {bronzeUsage.dailyMessagesUsed}/{bronzeUsage.dailyMessageLimit}
-                  </span>
-                  <span className="text-xs text-amber-600/70 dark:text-amber-400/70 hidden sm:inline">
-                    messaggi oggi
                   </span>
                 </div>
               )}
@@ -1044,11 +1042,11 @@ export default function ManagerChat() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                  className="h-8 w-8 sm:h-9 sm:w-9 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                   onClick={handleLogout}
                   title="Esci"
                 >
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               )}
             </div>
@@ -1068,7 +1066,8 @@ export default function ManagerChat() {
             )}
           </div>
 
-          <div className="pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0">
+          {/* Input Area - Mobile Optimized with safe-area */}
+          <div className="pt-3 sm:pt-6 px-2 sm:px-4 pb-2 sm:pb-4 pb-[max(8px,env(safe-area-inset-bottom))] sm:pb-[max(16px,env(safe-area-inset-bottom))] bg-white dark:bg-slate-900 flex-shrink-0">
             <div className="max-w-4xl mx-auto">
               <InputArea 
                 onSend={handleSendMessage} 
