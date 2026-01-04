@@ -10998,11 +10998,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // WhatsApp Agent Knowledge Base routes
   app.use("/api", agentKnowledgeRouter);
 
+  // WhatsApp Agent Users routes (Bronze/Silver access management) - MUST be before agentStatsRouter
+  app.use("/api/whatsapp/agents", agentUsersRouter);
+
   // WhatsApp Agent Stats & Analytics routes
   app.use("/api/whatsapp/agents", agentStatsRouter);
-
-  // WhatsApp Agent Users routes (Bronze/Silver access management)
-  app.use("/api/whatsapp", agentUsersRouter);
 
   // Instagram Integration routes
   app.use("/api/instagram", instagramWebhookRouter); // Public webhook endpoints

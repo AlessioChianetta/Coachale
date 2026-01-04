@@ -6,7 +6,7 @@ import { eq, and, ilike, or } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/agents/:agentId/users", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
+router.get("/:agentId/users", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
   try {
     const { agentId } = req.params;
     const consultantId = req.user!.id;
@@ -73,7 +73,7 @@ router.get("/agents/:agentId/users", authenticateToken, requireRole(["consultant
   }
 });
 
-router.post("/agents/:agentId/users/:userId/toggle", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
+router.post("/:agentId/users/:userId/toggle", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
   try {
     const { agentId, userId } = req.params;
     const { isEnabled } = req.body;
