@@ -261,12 +261,13 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
         console.log("[AGENT FILTER] Decoded token:", { type: decoded.type, bronzeUserId: decoded.bronzeUserId, tier });
         
         if (decoded.type === "bronze" && decoded.bronzeUserId) {
-          // Bronze user - check bronzeUserAgentAccess table (filter for any tier they have access to)
+          // Bronze user - check bronzeUserAgentAccess table with userType to avoid collisions
           const disabledAccess = await db.select({ agentConfigId: bronzeUserAgentAccess.agentConfigId })
             .from(bronzeUserAgentAccess)
             .where(
               and(
                 eq(bronzeUserAgentAccess.bronzeUserId, decoded.bronzeUserId),
+                eq(bronzeUserAgentAccess.userType, "bronze"),
                 eq(bronzeUserAgentAccess.isEnabled, false)
               )
             );
@@ -277,12 +278,13 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
           filteredAgents = filteredAgents.filter(agent => !disabledAgentIds.has(agent.id));
           console.log("[AGENT FILTER] Filtered agents:", beforeCount, "->", filteredAgents.length);
         } else if (decoded.type === "silver" && decoded.subscriptionId) {
-          // Silver user - check bronzeUserAgentAccess using subscription ID
+          // Silver user - check bronzeUserAgentAccess with userType to avoid collisions
           const disabledAccess = await db.select({ agentConfigId: bronzeUserAgentAccess.agentConfigId })
             .from(bronzeUserAgentAccess)
             .where(
               and(
                 eq(bronzeUserAgentAccess.bronzeUserId, decoded.subscriptionId),
+                eq(bronzeUserAgentAccess.userType, "silver"),
                 eq(bronzeUserAgentAccess.isEnabled, false)
               )
             );
@@ -291,12 +293,13 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
           const disabledAgentIds = new Set(disabledAccess.map(a => a.agentConfigId));
           filteredAgents = filteredAgents.filter(agent => !disabledAgentIds.has(agent.id));
         } else if (decoded.role === "client" && decoded.userId) {
-          // Gold client - check bronzeUserAgentAccess using userId
+          // Gold client - check bronzeUserAgentAccess with userType to avoid collisions
           const disabledAccess = await db.select({ agentConfigId: bronzeUserAgentAccess.agentConfigId })
             .from(bronzeUserAgentAccess)
             .where(
               and(
                 eq(bronzeUserAgentAccess.bronzeUserId, decoded.userId),
+                eq(bronzeUserAgentAccess.userType, "gold"),
                 eq(bronzeUserAgentAccess.isEnabled, false)
               )
             );

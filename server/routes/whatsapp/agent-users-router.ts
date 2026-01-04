@@ -145,16 +145,18 @@ router.post("/:agentId/users/:userId/toggle", authenticateToken, requireAnyRole(
       return res.status(400).json({ error: "Invalid tier" });
     }
 
+    // Use composite key: bronzeUserId + agentConfigId + userType to avoid tier collisions
     const existing = await db.query.bronzeUserAgentAccess.findFirst({
       where: and(
         eq(bronzeUserAgentAccess.bronzeUserId, userId),
-        eq(bronzeUserAgentAccess.agentConfigId, agentId)
+        eq(bronzeUserAgentAccess.agentConfigId, agentId),
+        eq(bronzeUserAgentAccess.userType, tier as "bronze" | "silver" | "gold")
       ),
     });
 
     if (existing) {
       await db.update(bronzeUserAgentAccess)
-        .set({ isEnabled, userType: tier as "bronze" | "silver" | "gold" })
+        .set({ isEnabled })
         .where(eq(bronzeUserAgentAccess.id, existing.id));
     } else {
       await db.insert(bronzeUserAgentAccess).values({

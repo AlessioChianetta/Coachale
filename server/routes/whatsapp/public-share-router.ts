@@ -144,7 +144,7 @@ async function validateVisitorSession(
           console.log(`🔶 [VALIDATE-SESSION] Bronze user found: ${!!bronzeUser}, isActive: ${bronzeUser?.isActive}`);
           
           if (bronzeUser && bronzeUser.isActive) {
-            // Check if this agent is disabled for this user
+            // Check if this agent is disabled for this user (with userType to avoid collisions)
             if (share.agentConfigId) {
               const [disabledAccess] = await db.select()
                 .from(schema.bronzeUserAgentAccess)
@@ -152,6 +152,7 @@ async function validateVisitorSession(
                   and(
                     eq(schema.bronzeUserAgentAccess.bronzeUserId, decoded.bronzeUserId),
                     eq(schema.bronzeUserAgentAccess.agentConfigId, share.agentConfigId),
+                    eq(schema.bronzeUserAgentAccess.userType, "bronze"),
                     eq(schema.bronzeUserAgentAccess.isEnabled, false)
                   )
                 )
@@ -192,7 +193,7 @@ async function validateVisitorSession(
           console.log(`🥈 [VALIDATE-SESSION] Silver subscription found: ${!!silverSubscription}, status: ${silverSubscription?.status}`);
           
           if (silverSubscription) {
-            // Check if this agent is disabled for this Silver user
+            // Check if this agent is disabled for this Silver user (with userType to avoid collisions)
             if (share.agentConfigId) {
               const [disabledAccess] = await db.select()
                 .from(schema.bronzeUserAgentAccess)
@@ -200,6 +201,7 @@ async function validateVisitorSession(
                   and(
                     eq(schema.bronzeUserAgentAccess.bronzeUserId, decoded.subscriptionId),
                     eq(schema.bronzeUserAgentAccess.agentConfigId, share.agentConfigId),
+                    eq(schema.bronzeUserAgentAccess.userType, "silver"),
                     eq(schema.bronzeUserAgentAccess.isEnabled, false)
                   )
                 )
@@ -248,7 +250,7 @@ async function validateVisitorSession(
           console.log(`🏆 [VALIDATE-SESSION] Gold client found: ${!!goldClient}, isActive: ${goldClient?.isActive}`);
           
           if (goldClient) {
-            // Check if this agent is disabled for this Gold user
+            // Check if this agent is disabled for this Gold user (with userType to avoid collisions)
             if (share.agentConfigId) {
               const [disabledAccess] = await db.select()
                 .from(schema.bronzeUserAgentAccess)
@@ -256,6 +258,7 @@ async function validateVisitorSession(
                   and(
                     eq(schema.bronzeUserAgentAccess.bronzeUserId, decoded.userId),
                     eq(schema.bronzeUserAgentAccess.agentConfigId, share.agentConfigId),
+                    eq(schema.bronzeUserAgentAccess.userType, "gold"),
                     eq(schema.bronzeUserAgentAccess.isEnabled, false)
                   )
                 )
