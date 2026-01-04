@@ -244,7 +244,12 @@ export default function SelectAgent() {
     queryKey: ["/api/public/consultant", slug, "agents", userTier],
     queryFn: async () => {
       const tier = userTier || "1";
-      const response = await fetch(`/api/public/consultant/${slug}/agents/${tier}`);
+      const token = localStorage.getItem("manager_token");
+      const headers: HeadersInit = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const response = await fetch(`/api/public/consultant/${slug}/agents/${tier}`, { headers });
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error("Consulente non trovato");
