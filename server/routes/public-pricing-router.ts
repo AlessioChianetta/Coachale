@@ -247,12 +247,14 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
 
     // Filter out disabled agents for authenticated Bronze/Silver users
     const token = req.headers.authorization?.replace("Bearer ", "") || (req as any).cookies?.bronzeToken;
+    console.log("[AGENT FILTER] Token present:", !!token, "Tier:", tier);
     if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
+        console.log("[AGENT FILTER] Decoded token:", { type: decoded.type, bronzeUserId: decoded.bronzeUserId, tier });
         
-        if (decoded.type === "bronze" && decoded.bronzeUserId && tier === "1") {
-          // Bronze user - check bronzeUserAgentAccess table
+        if (decoded.type === "bronze" && decoded.bronzeUserId) {
+          // Bronze user - check bronzeUserAgentAccess table (filter for any tier they have access to)
           const disabledAccess = await db.select({ agentConfigId: bronzeUserAgentAccess.agentConfigId })
             .from(bronzeUserAgentAccess)
             .where(
@@ -262,9 +264,12 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
               )
             );
           
+          console.log("[AGENT FILTER] Bronze disabled agents found:", disabledAccess.length, disabledAccess);
           const disabledAgentIds = new Set(disabledAccess.map(a => a.agentConfigId));
+          const beforeCount = filteredAgents.length;
           filteredAgents = filteredAgents.filter(agent => !disabledAgentIds.has(agent.id));
-        } else if (decoded.type === "silver" && decoded.subscriptionId && tier === "2") {
+          console.log("[AGENT FILTER] Filtered agents:", beforeCount, "->", filteredAgents.length);
+        } else if (decoded.type === "silver" && decoded.subscriptionId) {
           // Silver user - check bronzeUserAgentAccess using subscription ID
           const disabledAccess = await db.select({ agentConfigId: bronzeUserAgentAccess.agentConfigId })
             .from(bronzeUserAgentAccess)
@@ -275,10 +280,12 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
               )
             );
           
+          console.log("[AGENT FILTER] Silver disabled agents found:", disabledAccess.length);
           const disabledAgentIds = new Set(disabledAccess.map(a => a.agentConfigId));
           filteredAgents = filteredAgents.filter(agent => !disabledAgentIds.has(agent.id));
         }
       } catch (tokenError) {
+        console.log("[AGENT FILTER] Token error:", tokenError);
         // Invalid token - proceed without user-specific filtering
       }
     }

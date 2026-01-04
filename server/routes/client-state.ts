@@ -407,4 +407,56 @@ Rispondi SOLO con JSON valido:
   }
 });
 
+// GET /api/client/consultant-info - Get consultant info for Gold/Deluxe clients to access employee agents
+router.get("/client/consultant-info", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
+  try {
+    const clientId = req.user!.id;
+    const client = await storage.getUser(clientId);
+    
+    if (!client || !client.consultantId) {
+      return res.status(404).json({
+        success: false,
+        error: "Consultant not found for this client"
+      });
+    }
+    
+    // Get consultant's pricing page slug
+    const consultant = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      pricingPageSlug: users.pricingPageSlug,
+      username: users.username,
+    })
+    .from(users)
+    .where(eq(users.id, client.consultantId))
+    .limit(1);
+    
+    if (consultant.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Consultant not found"
+      });
+    }
+    
+    const c = consultant[0];
+    const slug = c.pricingPageSlug || c.username;
+    
+    res.json({
+      success: true,
+      data: {
+        consultantId: c.id,
+        consultantName: `${c.firstName} ${c.lastName}`.trim(),
+        slug: slug,
+      }
+    });
+  } catch (error: any) {
+    console.error("❌ [CLIENT CONSULTANT INFO] Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to get consultant info"
+    });
+  }
+});
+
 export default router;

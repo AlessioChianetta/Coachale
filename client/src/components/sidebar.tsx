@@ -283,6 +283,23 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
     staleTime: 5 * 60 * 1000,
   });
 
+  // Get consultant info for accessing employee agents (Gold/Deluxe clients)
+  const { data: consultantInfo } = useQuery<{ success: boolean; data: { consultantId: string; consultantName: string; slug: string } }>({
+    queryKey: ['/api/client/consultant-info'],
+    queryFn: async () => {
+      const token = getToken();
+      const res = await fetch('/api/client/consultant-info', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        throw new Error('Failed to fetch consultant info');
+      }
+      return res.json();
+    },
+    enabled: role === 'client',
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
     const fetchProfiles = async () => {
       const token = getToken();
@@ -810,6 +827,30 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                   </div>
                 </Link>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Dipendenti AI del Consulente - Link to consultant's employee agents for Gold/Deluxe clients */}
+        {role === "client" && consultantInfo?.success && consultantInfo.data?.slug && !isCollapsed && (
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+            <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              Dipendenti AI
+            </h3>
+            <div className="space-y-0.5">
+              <Link href={`/c/${consultantInfo.data.slug}/select-agent`}>
+                <div
+                  className={cn(
+                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                    "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                  data-testid="link-consultant-agents"
+                  onClick={handleLinkClick}
+                >
+                  <Users className="h-[18px] w-[18px] flex-shrink-0 text-emerald-500" />
+                  <span className="font-medium truncate">Dipendenti di {consultantInfo.data.consultantName}</span>
+                </div>
+              </Link>
             </div>
           </div>
         )}
