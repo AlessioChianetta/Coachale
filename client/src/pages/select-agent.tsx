@@ -236,20 +236,41 @@ export default function SelectAgent() {
     console.log("[SELECT-AGENT] Auth check - normalToken:", !!normalToken, "authUser:", !!authUserStr, "bronzeTier:", storedTier);
     
     // Gold/Deluxe client takes priority (they may have old Bronze data in storage)
-    if (normalToken && authUserStr) {
-      try {
-        const authUser = JSON.parse(authUserStr);
-        console.log("[SELECT-AGENT] AuthUser parsed:", authUser.role, authUser.firstName);
-        if (authUser.role === "client") {
-          setUserName(authUser.firstName || authUser.username || "Utente");
-          setUserTier("3"); // Gold/Deluxe tier
-          setIsAuthenticated(true);
-          setIsGoldClient(true);
-          console.log("[SELECT-AGENT] Gold client authenticated");
-          return; // Exit early, Gold takes priority
+    if (normalToken) {
+      // Try to get authUser from localStorage first
+      let authUser: any = null;
+      if (authUserStr) {
+        try {
+          authUser = JSON.parse(authUserStr);
+        } catch (e) {
+          console.error("[SELECT-AGENT] Failed to parse authUser:", e);
         }
-      } catch (e) {
-        console.error("[SELECT-AGENT] Failed to parse authUser:", e);
+      }
+      
+      // If no authUser in localStorage, try to decode the JWT token
+      if (!authUser) {
+        try {
+          const tokenParts = normalToken.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            console.log("[SELECT-AGENT] JWT payload decoded:", payload.role, payload.userId);
+            if (payload.role === "client") {
+              authUser = { role: payload.role, firstName: payload.firstName || "Utente", userId: payload.userId };
+            }
+          }
+        } catch (e) {
+          console.error("[SELECT-AGENT] Failed to decode JWT:", e);
+        }
+      }
+      
+      console.log("[SELECT-AGENT] AuthUser resolved:", authUser?.role, authUser?.firstName);
+      if (authUser && authUser.role === "client") {
+        setUserName(authUser.firstName || authUser.username || "Utente");
+        setUserTier("3"); // Gold/Deluxe tier
+        setIsAuthenticated(true);
+        setIsGoldClient(true);
+        console.log("[SELECT-AGENT] Gold client authenticated");
+        return; // Exit early, Gold takes priority
       }
     }
     
