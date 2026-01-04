@@ -375,10 +375,12 @@ export default function ConsultantAIAssistant() {
         }
       }
 
+      console.log(`✅ [STREAMING COMPLETE] thinking: ${fullThinking.length} chars, content: ${fullContent.length} chars`);
       return { 
         conversationId, 
         messageId, 
         message: fullContent, 
+        thinking: fullThinking,
         status: 'completed' as const, 
         suggestedActions 
       };
@@ -422,6 +424,8 @@ export default function ConsultantAIAssistant() {
                 ...msg,
                 id: data.messageId || `assistant-${Date.now()}`,
                 content: data.message,
+                thinking: data.thinking || msg.thinking,
+                isThinking: false,
                 status: data.status,
                 suggestedActions: data.suggestedActions,
               }

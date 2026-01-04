@@ -289,6 +289,7 @@ export default function ClientAIAssistant() {
                 setIsRetrying(false);
               } else if (data.type === 'thinking') {
                 fullThinking += data.content;
+                console.log(`🧠 [CLIENT THINKING] +${data.content.length} chars, total: ${fullThinking.length}`);
                 
                 if (tempAssistantIdRef.current) {
                   setMessages((prev) =>
@@ -300,6 +301,7 @@ export default function ClientAIAssistant() {
                   );
                 }
               } else if (data.type === 'delta') {
+                console.log(`📝 [CLIENT DELTA] +${data.content.length} chars`);
                 fullContent += data.content;
 
                 if (tempAssistantIdRef.current) {
@@ -366,10 +368,12 @@ export default function ClientAIAssistant() {
         }
       }
 
+      console.log(`✅ [CLIENT STREAMING COMPLETE] thinking: ${fullThinking.length} chars, content: ${fullContent.length} chars`);
       return { 
         conversationId, 
         messageId, 
         message: fullContent, 
+        thinking: fullThinking,
         status: 'completed' as const, 
         suggestedActions 
       };
@@ -414,6 +418,8 @@ export default function ClientAIAssistant() {
                 ...msg,
                 id: data.messageId || `assistant-${Date.now()}`,
                 content: data.message,
+                thinking: data.thinking || msg.thinking,
+                isThinking: false,
                 status: data.status,
                 suggestedActions: data.suggestedActions,
               }

@@ -779,6 +779,7 @@ export default function ManagerChat() {
 
               if (data.type === "thinking") {
                 fullThinking += data.content || "";
+                console.log(`🧠 [MANAGER THINKING] +${(data.content || "").length} chars, total: ${fullThinking.length}`);
                 if (tempAssistantIdRef.current) {
                   setMessages((prev) =>
                     prev.map((msg) =>
@@ -789,6 +790,7 @@ export default function ManagerChat() {
                   );
                 }
               } else if (data.type === "delta" || data.type === "chunk") {
+                console.log(`📝 [MANAGER DELTA] +${data.content.length} chars`);
                 if (tempAssistantIdRef.current && fullThinking) {
                   setMessages((prev) =>
                     prev.map((msg) =>
@@ -827,7 +829,8 @@ export default function ManagerChat() {
         }
       }
 
-      return { content: fullContent };
+      console.log(`✅ [MANAGER STREAMING COMPLETE] thinking: ${fullThinking.length} chars, content: ${fullContent.length} chars`);
+      return { content: fullContent, thinking: fullThinking };
     },
     onMutate: async (message) => {
       const userMessage: Message = {
@@ -855,7 +858,13 @@ export default function ManagerChat() {
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === tempAssistantIdRef.current
-            ? { ...msg, id: `assistant-${Date.now()}`, content: data.content }
+            ? { 
+                ...msg, 
+                id: `assistant-${Date.now()}`, 
+                content: data.content,
+                thinking: data.thinking || msg.thinking,
+                isThinking: false,
+              }
             : msg
         )
       );
