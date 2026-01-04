@@ -2387,9 +2387,10 @@ export async function getConversationMessages(conversationId: string, clientId: 
     .where(eq(aiMessages.conversationId, conversationId))
     .orderBy(aiMessages.createdAt);
 
-  // Map messages to include suggestedActions from metadata
+  // Map messages to include suggestedActions from metadata and thinking from thinkingContent
   const messagesWithActions = messages.map(msg => ({
     ...msg,
+    thinking: msg.thinkingContent || undefined,
     suggestedActions: (msg.metadata as any)?.suggestedActions || undefined,
   }));
 
@@ -4225,9 +4226,16 @@ export async function getConsultantConversationMessages(conversationId: string, 
     .where(eq(aiMessages.conversationId, conversationId))
     .orderBy(aiMessages.createdAt);
 
+  // Map messages to include thinking from thinkingContent and suggestedActions from metadata
+  const messagesWithThinking = messages.map(msg => ({
+    ...msg,
+    thinking: msg.thinkingContent || undefined,
+    suggestedActions: (msg.metadata as any)?.suggestedActions || undefined,
+  }));
+
   return {
     conversation,
-    messages,
+    messages: messagesWithThinking,
   };
 }
 

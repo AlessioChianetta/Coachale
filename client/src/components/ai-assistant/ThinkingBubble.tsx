@@ -9,6 +9,8 @@ interface ThinkingBubbleProps {
   thinking?: string;
   isThinking?: boolean;
   className?: string;
+  modelName?: string;
+  thinkingLevel?: string;
 }
 
 function extractDynamicTitle(thinking: string): string {
@@ -42,7 +44,7 @@ function extractDynamicTitle(thinking: string): string {
   return "Ragionamento";
 }
 
-export function ThinkingBubble({ thinking, isThinking = false, className }: ThinkingBubbleProps) {
+export function ThinkingBubble({ thinking, isThinking = false, className, modelName, thinkingLevel }: ThinkingBubbleProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
   const dynamicTitle = useMemo(() => {
@@ -59,7 +61,7 @@ export function ThinkingBubble({ thinking, isThinking = false, className }: Thin
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className={cn("max-w-3xl mx-auto mb-3", className)}
+      className={cn("max-w-3xl mb-3", className)}
     >
       <button
         onClick={() => thinking && setIsExpanded(!isExpanded)}
@@ -79,6 +81,11 @@ export function ThinkingBubble({ thinking, isThinking = false, className }: Thin
         
         <span className="text-slate-700 dark:text-slate-200 font-medium">
           {dynamicTitle}
+          {isThinking && (modelName || thinkingLevel) && (
+            <span className="ml-2 text-xs text-purple-500 dark:text-purple-400">
+              ({modelName}{modelName && thinkingLevel && ' · '}{thinkingLevel})
+            </span>
+          )}
         </span>
 
         {thinking && (

@@ -858,29 +858,14 @@ export function Message({ message, onActionClick }: MessageProps) {
       </div>
 
       <div className="flex-1 min-w-0 max-w-full overflow-hidden flex flex-col">
-        {(message.thinking || message.isThinking) && (
+        {(message.thinking || message.isThinking || isProcessing) && (
           <ThinkingBubble 
             thinking={message.thinking} 
-            isThinking={message.isThinking} 
+            isThinking={message.isThinking || (isProcessing && !message.thinking)}
+            modelName={message.modelName}
+            thinkingLevel={message.thinkingLevel}
             className="mb-3"
           />
-        )}
-        {isProcessing && !message.thinking && !message.isThinking && (
-          <div className="flex items-center gap-3 py-2">
-            <div className="flex gap-1.5">
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
-            </div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Sto organizzando la risposta...
-              {(message.modelName || message.thinkingLevel) && (
-                <span className="ml-2 text-xs text-purple-500 dark:text-purple-400">
-                  ({message.modelName}{message.modelName && message.thinkingLevel && ' · '}{message.thinkingLevel})
-                </span>
-              )}
-            </span>
-          </div>
         )}
         {!isPlaceholder && (
           <div 
