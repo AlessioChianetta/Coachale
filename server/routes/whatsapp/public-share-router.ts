@@ -9,7 +9,7 @@ import * as agentService from '../../whatsapp/agent-consultant-chat-service';
 import type { PendingModificationContext, BookingContext } from '../../whatsapp/agent-consultant-chat-service';
 import { db } from '../../db';
 import * as schema from '@shared/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, or, desc, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
@@ -820,6 +820,8 @@ router.delete(
       
       // Match any visitorId that starts with manager_{managerId} (includes timestamp suffix for new chats)
       const managerVisitorPattern = `manager_${managerId}%`;
+      
+      // For Silver/Bronze users, shareId may be NULL, so we need to handle both cases
       const [conversation] = await db
         .select()
         .from(schema.whatsappAgentConsultantConversations)
@@ -827,11 +829,16 @@ router.delete(
           and(
             eq(schema.whatsappAgentConsultantConversations.id, conversationId),
             eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-            eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
+            or(
+              eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
+              sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`
+            ),
             sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
           )
         )
         .limit(1);
+      
+      console.log(`   🔍 Query: conversationId=${conversationId}, agentConfigId=${share.agentConfigId}, managerPattern=${managerVisitorPattern}`);
       
       if (!conversation) {
         console.log(`   ❌ Conversation not found or access denied`);
