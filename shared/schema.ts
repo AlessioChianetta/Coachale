@@ -2003,6 +2003,7 @@ export const aiMessages = pgTable("ai_messages", {
   conversationId: varchar("conversation_id").references(() => aiConversations.id, { onDelete: "cascade" }).notNull(),
   role: text("role").notNull().$type<"user" | "assistant" | "system">(),
   content: text("content").notNull(),
+  thinkingContent: text("thinking_content"),
   status: text("status").notNull().default("completed").$type<"pending" | "processing" | "completed" | "error">(),
   tokensUsed: integer("tokens_used"),
   contextSnapshot: jsonb("context_snapshot"), // Snapshot of user context at message time
@@ -4012,6 +4013,7 @@ export const whatsappAgentConsultantMessages = pgTable("whatsapp_agent_consultan
   conversationId: varchar("conversation_id").references(() => whatsappAgentConsultantConversations.id, { onDelete: "cascade" }).notNull(),
   role: text("role").$type<"consultant" | "agent" | "visitor">().notNull(), // Added "visitor" role for external users
   content: text("content").notNull(),
+  thinkingContent: text("thinking_content"),
   status: text("status").$type<"sending" | "completed" | "error">().default("completed"),
   metadata: jsonb("metadata").$type<{
     vertexRequestId?: string;

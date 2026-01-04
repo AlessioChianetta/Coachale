@@ -336,6 +336,7 @@ export interface CitationData {
 
 export type AgentStreamEvent = 
   | { type: 'chunk'; content: string }
+  | { type: 'thinking'; content: string }
   | { type: 'promptBreakdown'; data: PromptBreakdownData }
   | { type: 'citations'; data: CitationData[] };
 
@@ -343,6 +344,8 @@ export interface ManagerPreferences {
   writingStyle?: string;
   responseLength?: string;
   customInstructions?: string;
+  aiModel?: string;
+  thinkingLevel?: string;
 }
 
 export async function* processConsultantAgentMessage(
@@ -659,7 +662,22 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
     console.log('\n🤖 [STEP 7] Generating AI response (streaming)...');
     console.log(`📊 Input - History: ${geminiMessages.length} messages, New message: "${messageContent.substring(0, 50)}..."`);
 
-    const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+    // Determine model and thinking level - prefer manager preferences over defaults
+    let model: string;
+    let useThinking: boolean;
+    let thinkingLevel: "minimal" | "low" | "medium" | "high" = "low";
+
+    if (managerPreferences?.aiModel) {
+      model = managerPreferences.aiModel;
+      thinkingLevel = (managerPreferences.thinkingLevel as "minimal" | "low" | "medium" | "high") || "low";
+      useThinking = !!managerPreferences.thinkingLevel || model.includes('thinking');
+      console.log(`   🎛️ [MANAGER PREFS] Using manager-selected model: ${model}, thinking: ${thinkingLevel}`);
+    } else {
+      const config = getModelWithThinking(aiProvider.metadata.name);
+      model = config.model;
+      useThinking = config.useThinking;
+      thinkingLevel = config.thinkingLevel;
+    }
     console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
 
     // Count knowledge base items from the loaded items
@@ -759,25 +777,55 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
 
     console.log('✅ Stream initialized, yielding chunks...');
 
-    // Step 8: Stream response chunks
+    // Step 8: Stream response chunks with thinking separation
     let chunkCount = 0;
+    let thinkingCount = 0;
     let totalChars = 0;
+    let totalThinkingChars = 0;
     let lastChunkWithMetadata: any = null;
 
     for await (const chunk of streamResult) {
-      if (chunk.text) {
+      // Priority 1: Check for direct thinking field (Google AI Studio SDK thoughtSummary)
+      const directThinking = (chunk as any).thinking;
+      if (directThinking) {
+        thinkingCount++;
+        totalThinkingChars += directThinking.length;
+        yield { type: 'thinking', content: directThinking };
+      }
+      
+      // Priority 2: Check candidates with parts for thinking separation
+      const parts = (chunk as any).candidates?.[0]?.content?.parts;
+      if (parts && parts.length > 0) {
+        for (const part of parts) {
+          if (part.text) {
+            if (part.thought === true) {
+              thinkingCount++;
+              totalThinkingChars += part.text.length;
+              yield { type: 'thinking', content: part.text };
+            } else {
+              chunkCount++;
+              totalChars += part.text.length;
+              yield { type: 'chunk', content: part.text };
+            }
+          }
+        }
+      } else if (!directThinking && chunk.text) {
+        // Priority 3: Fallback to legacy chunk.text format
         chunkCount++;
         totalChars += chunk.text.length;
         yield { type: 'chunk', content: chunk.text };
       }
+      
       // Store last chunk for citation extraction
       lastChunkWithMetadata = chunk;
     }
 
     console.log(`\n✅ [SUCCESS] Streaming complete`);
-    console.log(`   Chunks: ${chunkCount}`);
-    console.log(`   Total characters: ${totalChars}`);
-    console.log(`   Estimated tokens: ~${Math.ceil(totalChars / 4)}`);
+    console.log(`   Content chunks: ${chunkCount}`);
+    console.log(`   Thinking chunks: ${thinkingCount}`);
+    console.log(`   Total content chars: ${totalChars}`);
+    console.log(`   Total thinking chars: ${totalThinkingChars}`);
+    console.log(`   Estimated tokens: ~${Math.ceil((totalChars + totalThinkingChars) / 4)}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
     // Extract and yield citations if File Search was used

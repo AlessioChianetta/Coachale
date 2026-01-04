@@ -1262,6 +1262,15 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       console.log(`${'─'.repeat(70)}\n`);
     }
 
+    // Extract thinking content from response if available (non-streaming)
+    let thinkingContent: string | null = null;
+    if (response.candidates?.[0]?.content?.parts) {
+      const thinkingParts = response.candidates[0].content.parts.filter((part: any) => part.thought === true);
+      if (thinkingParts.length > 0) {
+        thinkingContent = thinkingParts.map((part: any) => part.text || '').join('\n');
+      }
+    }
+
     // Extract suggested actions before saving
     const suggestedActions = extractSuggestedActions(assistantMessage, userContext);
 
@@ -2042,6 +2051,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Call Gemini API with streaming + RETRY LOGIC for 503 errors
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
+    let accumulatedThinking = "";
 
     // Build FileSearch tool from stores already fetched above (only if stores have actual documents)
     const fileSearchTool = hasFileSearch ? fileSearchService.buildFileSearchTool(fileSearchStoreNames) : null;
@@ -2106,6 +2116,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       // Accumulate delta content for DB storage
       if (chunk.type === 'delta' && chunk.content) {
         accumulatedMessage += chunk.content;
+      }
+      
+      // Accumulate thinking content for DB storage
+      if (chunk.type === 'thinking' && chunk.content) {
+        accumulatedThinking += chunk.content;
       }
       
       // Capture usageMetadata from complete event
@@ -3075,6 +3090,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Call Gemini API with streaming + RETRY LOGIC for 503 errors
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
+    let accumulatedThinking = "";
 
     // Build FileSearch tool from stores already fetched above (only if stores have actual documents)
     const consultantFileSearchTool = hasConsultantFileSearch ? fileSearchService.buildFileSearchTool(consultantFileSearchStoreNames) : null;
@@ -3136,6 +3152,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       // Accumulate delta content for DB storage
       if (chunk.type === 'delta' && chunk.content) {
         accumulatedMessage += chunk.content;
+      }
+      
+      // Accumulate thinking content for DB storage
+      if (chunk.type === 'thinking' && chunk.content) {
+        accumulatedThinking += chunk.content;
       }
       
       // Capture usageMetadata from complete event

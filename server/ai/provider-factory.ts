@@ -123,6 +123,22 @@ export async function getSuperAdminGeminiKeys(): Promise<{ keys: string[]; enabl
 export type AiProviderSource = "superadmin" | "client" | "admin" | "google";
 
 /**
+ * Stream chunk with thinking support
+ */
+export interface GeminiStreamChunk {
+  text?: string;
+  thinking?: string;
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+        thought?: boolean;
+      }>;
+    };
+  }>;
+}
+
+/**
  * Gemini client interface wrapping AI operations
  */
 export interface GeminiClient {
@@ -138,7 +154,7 @@ export interface GeminiClient {
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
     tools?: any[];
-  }): Promise<AsyncIterable<{ text?: string }>>;
+  }): Promise<AsyncIterable<GeminiStreamChunk>>;
 }
 
 /**
@@ -247,7 +263,7 @@ class VertexAIClientAdapter implements GeminiClient {
     model: string;
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
-  }): Promise<AsyncIterable<{ text?: string }>> {
+  }): Promise<AsyncIterable<GeminiStreamChunk>> {
     // Extract systemInstruction from generationConfig if present
     const { systemInstruction, ...restConfig } = params.generationConfig || {};
 
@@ -269,8 +285,20 @@ class VertexAIClientAdapter implements GeminiClient {
     return {
       async *[Symbol.asyncIterator]() {
         for await (const chunk of streamResult.stream) {
+          // Pass full candidates structure for thinking separation
+          const candidates = chunk.candidates?.map((c: any) => ({
+            content: {
+              parts: c.content?.parts?.map((p: any) => ({
+                text: p.text,
+                thought: p.thought,
+              })),
+            },
+          }));
+          
+          // Also extract simple text for fallback
           const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
-          yield { text };
+          
+          yield { text, candidates };
         }
       }
     };
@@ -329,7 +357,7 @@ class GeminiClientAdapter implements GeminiClient {
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
     tools?: any[];
-  }): Promise<AsyncIterable<{ text?: string }>> {
+  }): Promise<AsyncIterable<GeminiStreamChunk>> {
     // NEW API: generateContentStream returns AsyncGenerator directly
     // Include tools for File Search support (Google AI Studio only)
     const streamGenerator = await this.ai.models.generateContentStream({
@@ -341,23 +369,46 @@ class GeminiClientAdapter implements GeminiClient {
       },
     });
 
-    // Normalize streaming response: yield {text: chunk} objects
+    // Normalize streaming response with thinking support
     return {
       async *[Symbol.asyncIterator]() {
         // Iterate directly on the AsyncGenerator
         for await (const chunk of streamGenerator) {
-          // Extract text from chunk and normalize to {text?: string} format
+          // Extract thinking from thoughtSummary (Google AI Studio SDK format)
+          const thinking = (chunk as any).thoughtSummary;
+          
+          // Extract candidates with parts structure if available
+          const candidates = (chunk as any).candidates?.map((c: any) => ({
+            content: {
+              parts: c.content?.parts?.map((p: any) => ({
+                text: p.text,
+                thought: p.thought,
+              })),
+            },
+          }));
+          
+          // Also check for parts directly on chunk (some SDK versions)
+          const chunkParts = (chunk as any).parts?.map((p: any) => ({
+            text: p.text,
+            thought: p.thought,
+          }));
+          
+          // Extract text from chunk for fallback
           let text: string | undefined;
-
           if (typeof chunk.text === 'function') {
             text = chunk.text();
           } else if (typeof chunk.text === 'string') {
             text = chunk.text;
-          } else if (chunk.candidates?.[0]?.content?.parts?.[0]?.text) {
-            text = chunk.candidates[0].content.parts[0].text;
+          } else if ((chunk as any).candidates?.[0]?.content?.parts?.[0]?.text) {
+            text = (chunk as any).candidates[0].content.parts[0].text;
           }
 
-          yield { text };
+          // Build candidates structure from chunkParts if no candidates
+          const finalCandidates = candidates || (chunkParts ? [{
+            content: { parts: chunkParts }
+          }] : undefined);
+
+          yield { text, thinking, candidates: finalCandidates };
         }
       }
     };

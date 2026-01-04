@@ -1,0 +1,52 @@
+✅ Built and cached consultant context (intent: client_specific)
+⏱️  [TIMING] Consultant context building: 2085ms
+❌ Errore nel processing Consultant AI streaming: error: column "thinking_content" of relation "ai_messages" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Module.sendConsultantChatMessageStream (/home/runner/workspace/server/ai-service.ts:3032:5)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:10566:26) {
+  length: 140,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '72',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1065',
+  routine: 'checkInsertTargets'
+}
+Error during consultant AI streaming: error: column "thinking_content" of relation "ai_messages" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async Module.sendConsultantChatMessageStream (/home/runner/workspace/server/ai-service.ts:3276:35)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:10566:26) {
+  length: 140,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '72',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1065',
+  routine: 'checkInsertTargets'
+}
+6:17:42 PM [express] POST /api/consultant/ai/chat 200 in 6716ms
+6:17:43 PM [express] GET /api/consultant/ai/conversations 200 in 566ms :: [{"id":"61845daf-c45e-4f5c…
+6:17:51 PM [express] POST /api/activity/session/heartbeat 200 in 340ms :: {"success":true,"lastActiv…

@@ -238,6 +238,7 @@ export interface GeminiPart {
  */
 export interface GeminiStreamChunk {
   text?: string;
+  thinking?: string;
   usageMetadata?: GeminiUsageMetadata;
   candidates?: Array<{
     content?: {
@@ -328,35 +329,19 @@ export async function* streamWithBackoff<TChunk extends GeminiStreamChunk>(
       }
 
       // Stream chunks to client
-      let chunkIndex = 0;
-      let thinkingChunksCount = 0;
-      let deltaChunksCount = 0;
-      let fallbackChunksCount = 0;
-      
       for await (const chunk of streamResponse) {
-        chunkIndex++;
-        
-        // DEBUG: Log chunk structure on first few chunks
-        if (chunkIndex <= 3) {
-          console.log(`🔍 [CHUNK DEBUG #${chunkIndex}] Keys:`, Object.keys(chunk));
-          console.log(`   - has candidates: ${!!chunk.candidates}`);
-          console.log(`   - has text(): ${typeof chunk.text === 'function'}`);
-          console.log(`   - has text (string): ${typeof chunk.text === 'string'}`);
-          if (chunk.candidates?.[0]) {
-            console.log(`   - candidate[0] keys:`, Object.keys(chunk.candidates[0]));
-            if (chunk.candidates[0].content) {
-              console.log(`   - content keys:`, Object.keys(chunk.candidates[0].content));
-              if (chunk.candidates[0].content.parts) {
-                console.log(`   - parts count:`, chunk.candidates[0].content.parts.length);
-                chunk.candidates[0].content.parts.forEach((p: any, i: number) => {
-                  console.log(`     - part[${i}]: thought=${p.thought}, hasText=${!!p.text}, textPreview="${(p.text || '').substring(0, 50)}..."`);
-                });
-              }
-            }
-          }
+        // Priority 1: Check for direct thinking field (Google AI Studio SDK thoughtSummary)
+        const directThinking = chunk.thinking;
+        if (directThinking) {
+          yield {
+            type: 'thinking',
+            conversationId: context.conversationId,
+            provider: context.provider,
+            content: directThinking,
+          };
         }
         
-        // Check if chunk has candidates with parts (Gemini thinking format)
+        // Priority 2: Check if chunk has candidates with parts (Gemini thinking format)
         const parts = chunk.candidates?.[0]?.content?.parts;
         
         if (parts && parts.length > 0) {
@@ -364,8 +349,6 @@ export async function* streamWithBackoff<TChunk extends GeminiStreamChunk>(
           for (const part of parts) {
             if (part.text) {
               if (part.thought === true) {
-                thinkingChunksCount++;
-                // This is a thinking/reasoning part
                 yield {
                   type: 'thinking',
                   conversationId: context.conversationId,
@@ -373,8 +356,6 @@ export async function* streamWithBackoff<TChunk extends GeminiStreamChunk>(
                   content: part.text,
                 };
               } else {
-                deltaChunksCount++;
-                // This is a regular response part
                 accumulatedMessage += part.text;
                 yield {
                   type: 'delta',
@@ -385,20 +366,16 @@ export async function* streamWithBackoff<TChunk extends GeminiStreamChunk>(
               }
             }
           }
-        } else {
-          // Fallback to legacy chunk.text format (backward compatibility)
+        } else if (!directThinking) {
+          // Priority 3: Fallback to legacy chunk.text format (backward compatibility)
           let chunkText = '';
           if (typeof chunk.text === 'function') {
-            chunkText = chunk.text();
+            chunkText = (chunk.text as () => string)();
           } else if (typeof chunk.text === 'string') {
             chunkText = chunk.text;
           }
           
           if (chunkText) {
-            fallbackChunksCount++;
-            if (fallbackChunksCount === 1) {
-              console.log(`⚠️ [FALLBACK MODE] Using legacy chunk.text - thinking separation NOT available`);
-            }
             accumulatedMessage += chunkText;
             yield {
               type: 'delta',
@@ -418,7 +395,6 @@ export async function* streamWithBackoff<TChunk extends GeminiStreamChunk>(
       // Success - streaming completed
       streamSuccess = true;
       console.log(`✅ AI streaming completed successfully on attempt ${attempt + 1}`);
-      console.log(`📊 [STREAM STATS] Total chunks: ${chunkIndex}, Thinking: ${thinkingChunksCount}, Delta: ${deltaChunksCount}, Fallback: ${fallbackChunksCount}`);
       break;
     } catch (error: any) {
       lastError = error;

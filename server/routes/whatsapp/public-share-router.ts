@@ -683,6 +683,7 @@ router.get(
               id: m.id,
               role: m.role,
               content: m.content,
+              thinking: m.thinkingContent,
               createdAt: m.createdAt,
               audioUrl: m.audioUrl,
               audioDuration: m.audioDuration,
@@ -723,6 +724,7 @@ router.get(
             id: m.id,
             role: m.role,
             content: m.content,
+            thinking: m.thinkingContent,
             createdAt: m.createdAt,
             audioUrl: m.audioUrl,
             audioDuration: m.audioDuration,
@@ -1607,6 +1609,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
           // Stream AI response (using consultant chat service)
           console.log(`\n🤖 Starting AI response stream...`);
           let chunkCount = 0;
+          let fullThinking = '';
           
           for await (const event of agentService.processConsultantAgentMessage(
             conversation.consultantId,
@@ -1621,6 +1624,10 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               // Send prompt breakdown info to client (always, for debugging/analytics)
               res.write(`data: ${JSON.stringify({ type: 'promptBreakdown', data: event.data })}\n\n`);
               console.log(`📋 [PROMPT BREAKDOWN] Sent to client - ${event.data.systemPromptLength} chars, ${event.data.hasFileSearch ? 'File Search ACTIVE' : 'No File Search'}`);
+            } else if (event.type === 'thinking') {
+              // Accumulate thinking content and send to client
+              fullThinking += event.content;
+              res.write(`data: ${JSON.stringify({ type: 'thinking', content: event.content })}\n\n`);
             } else if (event.type === 'chunk') {
               fullResponse += event.content;
               chunkCount++;
@@ -1633,6 +1640,10 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               res.write(`data: ${JSON.stringify({ type: 'citations', data: event.data })}\n\n`);
               console.log(`📚 [CITATIONS] Sent ${event.data.length} File Search citations to client`);
             }
+          }
+          
+          if (fullThinking) {
+            console.log(`🧠 Thinking content captured: ${fullThinking.length} chars`);
           }
           
           console.log(`✅ AI response complete - ${chunkCount} chunks, ${fullResponse.length} chars`);
@@ -1700,6 +1711,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             conversationId: conversation.id,
             role: 'agent',
             content: messageContent,
+            thinkingContent: fullThinking || null,
             messageType: audioUrl ? 'audio' : 'text',
             audioUrl: audioUrl,
             audioDuration: agentAudioDuration,

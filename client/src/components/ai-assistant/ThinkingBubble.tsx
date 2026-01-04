@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Brain, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,8 +11,44 @@ interface ThinkingBubbleProps {
   className?: string;
 }
 
+function extractDynamicTitle(thinking: string): string {
+  if (!thinking) return "Ragionamento";
+  
+  const lines = thinking.trim().split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    
+    const headingMatch = trimmed.match(/^#{1,3}\s*\*?\*?(.+?)\*?\*?\s*$/);
+    if (headingMatch) {
+      return headingMatch[1].trim().replace(/\*+/g, '');
+    }
+    
+    const boldMatch = trimmed.match(/^\*\*(.+?)\*\*/);
+    if (boldMatch) {
+      const title = boldMatch[1].trim();
+      if (title.length <= 50) return title;
+    }
+    
+    if (trimmed.length > 0 && !trimmed.startsWith('-') && !trimmed.startsWith('*')) {
+      const firstSentence = trimmed.split(/[.!?]/)[0].trim();
+      if (firstSentence.length <= 40) {
+        return firstSentence;
+      }
+      return firstSentence.substring(0, 35) + '...';
+    }
+  }
+  
+  return "Ragionamento";
+}
+
 export function ThinkingBubble({ thinking, isThinking = false, className }: ThinkingBubbleProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  const dynamicTitle = useMemo(() => {
+    if (isThinking) return "Sto pensando...";
+    return extractDynamicTitle(thinking || "");
+  }, [thinking, isThinking]);
 
   if (!isThinking && !thinking) {
     return null;
@@ -29,21 +65,20 @@ export function ThinkingBubble({ thinking, isThinking = false, className }: Thin
         onClick={() => thinking && setIsExpanded(!isExpanded)}
         disabled={!thinking}
         className={cn(
-          "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all",
-          "bg-slate-100 dark:bg-slate-800/70",
-          "border border-slate-200 dark:border-slate-700",
-          thinking && "cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700",
+          "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
+          "bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/50",
+          thinking && "cursor-pointer",
           !thinking && "cursor-default"
         )}
       >
         {isThinking ? (
-          <Loader2 className="w-4 h-4 text-cyan-500 animate-spin" />
+          <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
         ) : (
-          <Brain className="w-4 h-4 text-cyan-500" />
+          <Sparkles className="w-4 h-4 text-blue-500" />
         )}
         
-        <span className="text-slate-600 dark:text-slate-300 font-medium">
-          {isThinking ? "Sto pensando..." : "Ho ragionato su questo"}
+        <span className="text-slate-700 dark:text-slate-200 font-medium">
+          {dynamicTitle}
         </span>
 
         {thinking && (
@@ -66,13 +101,7 @@ export function ThinkingBubble({ thinking, isThinking = false, className }: Thin
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="mt-2 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-              <div className="flex items-start gap-2 mb-2">
-                <Brain className="w-4 h-4 text-cyan-500 mt-0.5 flex-shrink-0" />
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  Ragionamento
-                </span>
-              </div>
+            <div className="mt-2 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50">
               <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-slate-700 dark:prose-headings:text-slate-200 prose-headings:font-semibold prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-li:my-0.5">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {thinking}
