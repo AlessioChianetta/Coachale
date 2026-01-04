@@ -891,7 +891,13 @@ router.post(
       writingStyle: preferences.writingStyle as string | undefined,
       responseLength: preferences.responseLength as string | undefined,
       customInstructions: preferences.customInstructions as string | undefined,
+      aiModel: preferences.aiModel as string | undefined,
+      thinkingLevel: preferences.thinkingLevel as string | undefined,
     } : undefined;
+    
+    if (managerPreferences?.aiModel) {
+      console.log(`🎛️ [MANAGER PREFS] Model: ${managerPreferences.aiModel}, Thinking: ${managerPreferences.thinkingLevel || 'default'}`);
+    }
     
     const isManager = !!managerId;
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);

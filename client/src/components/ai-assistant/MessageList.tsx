@@ -10,6 +10,8 @@ interface MessageListProps {
     content: string;
     thinking?: string;
     isThinking?: boolean;
+    modelName?: string;
+    thinkingLevel?: string;
     suggestedActions?: Array<{
       type: string;
       label: string;
@@ -31,6 +33,17 @@ export function MessageList({ messages, isTyping, onActionClick }: MessageListPr
     scrollToBottom();
   }, [messages, isTyping]);
 
+  // Don't show TypingIndicator if there's an assistant placeholder (empty content) or active thinking
+  // This prevents flashing when streaming completes and isThinking flips to false before isTyping
+  const hasAssistantPlaceholder = messages.some(msg => 
+    msg.role === "assistant" && (
+      msg.isThinking || 
+      !msg.content?.trim() ||
+      msg.thinking !== undefined
+    )
+  );
+  const showTypingIndicator = isTyping && !hasAssistantPlaceholder;
+
   return (
     <div className="h-full overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
       <div className="space-y-4 sm:space-y-5 max-w-3xl mx-auto">
@@ -49,7 +62,7 @@ export function MessageList({ messages, isTyping, onActionClick }: MessageListPr
           </motion.div>
         ))}
 
-        {isTyping && (
+        {showTypingIndicator && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

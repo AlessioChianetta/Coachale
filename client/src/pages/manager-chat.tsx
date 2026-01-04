@@ -840,6 +840,7 @@ export default function ManagerChat() {
         id: `temp-assistant-${Date.now()}`,
         role: "assistant",
         content: "",
+        isThinking: true,
         modelName: modelLabel,
         thinkingLevel: thinkingLabel,
       };
