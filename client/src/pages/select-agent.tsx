@@ -244,11 +244,13 @@ export default function SelectAgent() {
     queryKey: ["/api/public/consultant", slug, "agents", userTier],
     queryFn: async () => {
       const tier = userTier || "1";
-      const token = localStorage.getItem("manager_token");
+      // Check multiple token storage locations (bronzeAuthToken for Bronze users, manager_token for managers, token for regular auth)
+      const token = localStorage.getItem("bronzeAuthToken") || localStorage.getItem("manager_token") || localStorage.getItem("token");
       const headers: HeadersInit = {};
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
+      console.log("[SELECT-AGENT] Fetching agents with token:", !!token, "tier:", tier);
       const response = await fetch(`/api/public/consultant/${slug}/agents/${tier}`, { headers });
       if (!response.ok) {
         if (response.status === 404) {
