@@ -746,6 +746,7 @@ export default function ManagerChat() {
             message: message,
             preferences: currentPreferences,
             newConversation: isNewConversation,
+            conversationId: selectedConversationId,
           }),
         }
       );

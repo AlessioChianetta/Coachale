@@ -878,7 +878,7 @@ router.post(
     const baseVisitorId = bronzeUser 
       ? `bronze_${bronzeUser.bronzeUserId}` 
       : (managerId ? `manager_${managerId}` : (req.query.visitorId as string));
-    const { message, preferences, newConversation } = req.body;
+    const { message, preferences, newConversation, conversationId: requestedConversationId } = req.body;
     const share = req.share!;
     
     // For new conversations, generate unique visitorId to allow multiple conversations per manager
@@ -1006,30 +1006,51 @@ router.post(
       const isBronzeShare = share.id.startsWith('bronze-');
       const actualShareId = isBronzeShare ? null : share.id;
       
-      // Query differently based on whether this is a Bronze share or regular share
-      let [conversation] = isBronzeShare
-        ? await db
-            .select()
-            .from(schema.whatsappAgentConsultantConversations)
-            .where(
-              and(
-                eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-                sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
-                eq(schema.whatsappAgentConsultantConversations.externalVisitorId, visitorId)
+      // If a specific conversationId is provided (manager continuing existing chat), use it directly
+      let conversation: typeof schema.whatsappAgentConsultantConversations.$inferSelect | undefined;
+      
+      if (requestedConversationId && !newConversation) {
+        console.log(`🔗 [MANAGER] Using provided conversationId: ${requestedConversationId}`);
+        [conversation] = await db
+          .select()
+          .from(schema.whatsappAgentConsultantConversations)
+          .where(eq(schema.whatsappAgentConsultantConversations.id, requestedConversationId))
+          .limit(1);
+        
+        if (conversation) {
+          console.log(`✅ Found conversation by ID: ${conversation.id}`);
+        } else {
+          console.log(`⚠️ Conversation not found by ID, falling back to visitorId lookup`);
+        }
+      }
+      
+      // Fall back to visitorId-based lookup if no conversation found
+      if (!conversation) {
+        // Query differently based on whether this is a Bronze share or regular share
+        [conversation] = isBronzeShare
+          ? await db
+              .select()
+              .from(schema.whatsappAgentConsultantConversations)
+              .where(
+                and(
+                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                  sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
+                  eq(schema.whatsappAgentConsultantConversations.externalVisitorId, visitorId)
+                )
               )
-            )
-            .limit(1)
-        : await db
-            .select()
-            .from(schema.whatsappAgentConsultantConversations)
-            .where(
-              and(
-                eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-                eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
-                eq(schema.whatsappAgentConsultantConversations.externalVisitorId, visitorId)
+              .limit(1)
+          : await db
+              .select()
+              .from(schema.whatsappAgentConsultantConversations)
+              .where(
+                and(
+                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                  eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
+                  eq(schema.whatsappAgentConsultantConversations.externalVisitorId, visitorId)
+                )
               )
-            )
-            .limit(1);
+              .limit(1);
+      }
       
       if (!conversation) {
         console.log(`📝 No existing conversation, creating new one...`);
