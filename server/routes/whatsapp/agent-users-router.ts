@@ -1,12 +1,13 @@
 import { Router } from "express";
-import { authenticateToken, requireRole, type AuthRequest } from "../../middleware/auth";
+import { authenticateToken, requireAnyRole, type AuthRequest } from "../../middleware/auth";
 import { db } from "../../db";
 import { bronzeUsers, bronzeUserAgentAccess, consultantWhatsappConfig, clientLevelSubscriptions } from "@shared/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/:agentId/users", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
+router.get("/:agentId/users", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
+  console.log("[Agent Users] GET /:agentId/users hit, agentId:", req.params.agentId);
   try {
     const { agentId } = req.params;
     const consultantId = req.user!.id;
@@ -73,7 +74,7 @@ router.get("/:agentId/users", authenticateToken, requireRole(["consultant", "sup
   }
 });
 
-router.post("/:agentId/users/:userId/toggle", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
+router.post("/:agentId/users/:userId/toggle", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res) => {
   try {
     const { agentId, userId } = req.params;
     const { isEnabled } = req.body;

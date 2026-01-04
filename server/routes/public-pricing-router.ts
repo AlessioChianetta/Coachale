@@ -1,7 +1,10 @@
 import { Router, Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import { db } from "../db";
-import { eq, and, isNotNull, or, sql } from "drizzle-orm";
-import { users, consultantWhatsappConfig } from "@shared/schema";
+import { eq, and, isNotNull, or, sql, inArray } from "drizzle-orm";
+import { users, consultantWhatsappConfig, bronzeUserAgentAccess, clientLevelSubscriptions } from "@shared/schema";
+
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 const router = Router();
 
@@ -240,6 +243,44 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
     let filteredAgents = allAgents;
     if (enabledAgentIds && Array.isArray(enabledAgentIds) && enabledAgentIds.length > 0) {
       filteredAgents = allAgents.filter(agent => enabledAgentIds.includes(agent.id));
+    }
+
+    // Filter out disabled agents for authenticated Bronze/Silver users
+    const token = req.headers.authorization?.replace("Bearer ", "") || (req as any).cookies?.bronzeToken;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        
+        if (decoded.type === "bronze" && decoded.bronzeUserId && tier === "1") {
+          // Bronze user - check bronzeUserAgentAccess table
+          const disabledAccess = await db.select({ agentConfigId: bronzeUserAgentAccess.agentConfigId })
+            .from(bronzeUserAgentAccess)
+            .where(
+              and(
+                eq(bronzeUserAgentAccess.bronzeUserId, decoded.bronzeUserId),
+                eq(bronzeUserAgentAccess.isEnabled, false)
+              )
+            );
+          
+          const disabledAgentIds = new Set(disabledAccess.map(a => a.agentConfigId));
+          filteredAgents = filteredAgents.filter(agent => !disabledAgentIds.has(agent.id));
+        } else if (decoded.type === "silver" && decoded.subscriptionId && tier === "2") {
+          // Silver user - check bronzeUserAgentAccess using subscription ID
+          const disabledAccess = await db.select({ agentConfigId: bronzeUserAgentAccess.agentConfigId })
+            .from(bronzeUserAgentAccess)
+            .where(
+              and(
+                eq(bronzeUserAgentAccess.bronzeUserId, decoded.subscriptionId),
+                eq(bronzeUserAgentAccess.isEnabled, false)
+              )
+            );
+          
+          const disabledAgentIds = new Set(disabledAccess.map(a => a.agentConfigId));
+          filteredAgents = filteredAgents.filter(agent => !disabledAgentIds.has(agent.id));
+        }
+      } catch (tokenError) {
+        // Invalid token - proceed without user-specific filtering
+      }
     }
 
     const tierName = tier === "1" 
