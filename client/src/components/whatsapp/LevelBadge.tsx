@@ -136,16 +136,17 @@ export function MultiLevelSelector({
   onChange,
   disabled = false
 }: { 
-  values: ("1" | "2")[]; 
-  onChange: (levels: ("1" | "2")[]) => void;
+  values: ("1" | "2" | "3")[]; 
+  onChange: (levels: ("1" | "2" | "3")[]) => void;
   disabled?: boolean;
 }) {
   const options = [
     { value: "1" as const, label: "Livello 1 - Bronzo", description: "Accesso pubblico con limite messaggi giornaliero" },
-    { value: "2" as const, label: "Livello 2 - Argento", description: "Accesso clienti con knowledge base (a pagamento)" }
+    { value: "2" as const, label: "Livello 2 - Argento", description: "Accesso clienti con knowledge base (a pagamento)" },
+    { value: "3" as const, label: "Livello 3 - Gold", description: "Accesso clienti consulente dalla sidebar" }
   ];
 
-  const toggleLevel = (level: "1" | "2") => {
+  const toggleLevel = (level: "1" | "2" | "3") => {
     if (values.includes(level)) {
       onChange(values.filter(v => v !== level));
     } else {
@@ -200,17 +201,17 @@ export function MultiLevelSelector({
           Nessun livello selezionato. L'agente non sarà accessibile tramite il sistema Dipendenti AI.
         </p>
       )}
-      {values.length === 2 && (
+      {values.length >= 2 && (
         <p className="text-xs text-green-600 bg-green-50 p-2 rounded flex items-center gap-1">
           <Check className="w-3 h-3" />
-          Perfetto! Gli utenti Bronze potranno fare upgrade a Silver mantenendo lo stesso agente.
+          Perfetto! Gli utenti potranno fare upgrade tra i livelli selezionati mantenendo lo stesso agente.
         </p>
       )}
     </div>
   );
 }
 
-export function LevelBadges({ levels }: { levels: ("1" | "2")[] }) {
+export function LevelBadges({ levels }: { levels: ("1" | "2" | "3")[] }) {
   if (!levels || levels.length === 0) return null;
   return (
     <div className="flex gap-1">

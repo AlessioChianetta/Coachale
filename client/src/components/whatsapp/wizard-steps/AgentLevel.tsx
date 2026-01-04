@@ -13,7 +13,8 @@ import {
   MessageSquare,
   Link as LinkIcon,
   Info,
-  ArrowUpCircle
+  ArrowUpCircle,
+  Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,12 +40,14 @@ function isValidSlug(slug: string): boolean {
 export default function AgentLevel({ formData, onChange, errors }: AgentLevelProps) {
   const [slugError, setSlugError] = useState<string | null>(null);
   
-  const levels: ("1" | "2")[] = formData.levels || [];
+  const levels: ("1" | "2" | "3")[] = formData.levels || [];
   const hasLevel1 = levels.includes("1");
   const hasLevel2 = levels.includes("2");
+  const hasLevel3 = levels.includes("3");
   const hasBothLevels = hasLevel1 && hasLevel2;
+  const hasMultipleLevels = levels.length >= 2;
   
-  const handleLevelsChange = (newLevels: ("1" | "2")[]) => {
+  const handleLevelsChange = (newLevels: ("1" | "2" | "3")[]) => {
     onChange("levels", newLevels);
     if (!newLevels.includes("1")) {
       onChange("publicSlug", "");
@@ -240,7 +243,63 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
         </Card>
       )}
 
-      {hasBothLevels && (
+      {hasLevel3 && (
+        <Card className="border-2 border-yellow-400/30 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-yellow-400/10 to-amber-400/10">
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-yellow-600" />
+              Informazioni Livello 3 - Gold
+            </CardTitle>
+            <CardDescription>
+              Accesso riservato ai clienti Gold del consulente
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="grid gap-4">
+              <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
+                <Crown className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">Clienti dalla Sidebar</p>
+                  <p className="text-sm text-slate-600">
+                    I clienti Gold accedono all'agente direttamente dalla loro sidebar
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
+                <BookOpen className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">Accesso Completo</p>
+                  <p className="text-sm text-slate-600">
+                    L'agente ha accesso alla knowledge base e a tutte le funzionalità
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
+                <Users className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">Gestione Accesso</p>
+                  <p className="text-sm text-slate-600">
+                    Puoi abilitare/disabilitare l'accesso per ogni cliente Gold individualmente
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Alert className="border-yellow-300 bg-yellow-50">
+              <Info className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                <strong>Nota:</strong> I clienti Gold sono i tuoi clienti esistenti 
+                (dalla tabella Clienti). Gestisci i loro accessi nella sezione Utenti 
+                dell'agente.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      )}
+
+      {hasMultipleLevels && (
         <Card className="border-2 border-green-400/30 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-green-400/10 to-emerald-400/10">
             <CardTitle className="flex items-center gap-2">
@@ -252,19 +311,34 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center gap-4 justify-center p-4 bg-gradient-to-r from-amber-50 to-slate-50 rounded-lg">
-              <div className="text-center">
-                <LevelBadges levels={["1"]} />
-                <p className="text-xs text-muted-foreground mt-1">Bronze</p>
-              </div>
-              <ArrowUpCircle className="h-6 w-6 text-green-500" />
-              <div className="text-center">
-                <LevelBadges levels={["2"]} />
-                <p className="text-xs text-muted-foreground mt-1">Silver</p>
-              </div>
+            <div className="flex items-center gap-4 justify-center p-4 bg-gradient-to-r from-amber-50 via-slate-50 to-yellow-50 rounded-lg flex-wrap">
+              {hasLevel1 && (
+                <>
+                  <div className="text-center">
+                    <LevelBadges levels={["1"]} />
+                    <p className="text-xs text-muted-foreground mt-1">Bronze</p>
+                  </div>
+                  {(hasLevel2 || hasLevel3) && <ArrowUpCircle className="h-6 w-6 text-green-500" />}
+                </>
+              )}
+              {hasLevel2 && (
+                <>
+                  <div className="text-center">
+                    <LevelBadges levels={["2"]} />
+                    <p className="text-xs text-muted-foreground mt-1">Silver</p>
+                  </div>
+                  {hasLevel3 && <ArrowUpCircle className="h-6 w-6 text-green-500" />}
+                </>
+              )}
+              {hasLevel3 && (
+                <div className="text-center">
+                  <LevelBadges levels={["3"]} />
+                  <p className="text-xs text-muted-foreground mt-1">Gold</p>
+                </div>
+              )}
             </div>
             <p className="text-sm text-center text-muted-foreground">
-              Gli utenti Bronze che fanno upgrade a Silver mantengono le stesse credenziali 
+              Gli utenti che fanno upgrade mantengono le stesse credenziali 
               e la cronologia delle conversazioni.
             </p>
           </CardContent>
