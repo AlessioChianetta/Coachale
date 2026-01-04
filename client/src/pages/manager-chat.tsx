@@ -808,6 +808,13 @@ export default function ManagerChat() {
                   );
                 }
               } else if (data.type === "complete" || data.type === "done") {
+                // Update selectedConversationId with the actual conversation ID from backend
+                // This ensures subsequent messages go to the same conversation
+                if (data.conversationId) {
+                  console.log(`🔗 [MANAGER] Received conversationId from backend: ${data.conversationId}`);
+                  setSelectedConversationId(data.conversationId);
+                  setIsNewConversation(false);
+                }
                 // Extract Bronze usage info if present
                 if (typeof data.dailyMessagesUsed === 'number' && typeof data.dailyMessageLimit === 'number') {
                   setBronzeUsage({

@@ -889,9 +889,15 @@ router.post(
     const share = req.share!;
     
     // For new conversations, generate unique visitorId to allow multiple conversations per manager
-    const visitorId = newConversation && managerId 
+    // BUT if a conversationId is provided, ignore newConversation flag (user is continuing existing chat)
+    const isActuallyNewConversation = newConversation && !requestedConversationId;
+    const visitorId = isActuallyNewConversation && managerId 
       ? `manager_${managerId}_${Date.now()}` 
       : baseVisitorId;
+    
+    if (requestedConversationId && newConversation) {
+      console.log(`⚠️ [MANAGER] newConversation=true but conversationId provided - ignoring newConversation flag`);
+    }
     
     // Extract manager preferences if provided
     const managerPreferences = preferences ? {
@@ -2010,9 +2016,10 @@ Ti aspettiamo! 🚀`;
           .set({ lastMessageAt: new Date() })
           .where(eq(schema.whatsappAgentConsultantConversations.id, conversation.id));
         
-        // Send completion signal with audio metadata, booking info, and Bronze usage info
+        // Send completion signal with audio metadata, booking info, Bronze usage info, and conversation ID
         res.write(`data: ${JSON.stringify({ 
           type: 'done', 
+          conversationId: conversation.id,
           audioUrl: audioUrl || undefined,
           audioDuration: agentAudioDuration || undefined,
           bookingCreated: bookingResult.created || undefined,
