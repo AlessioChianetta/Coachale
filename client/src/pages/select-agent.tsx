@@ -221,23 +221,48 @@ export default function SelectAgent() {
   const [userTier, setUserTier] = useState<string>(initialTier || "1");
   const [userSlug, setUserSlug] = useState<string>("");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!initialTier);
+  const [isGoldClient, setIsGoldClient] = useState<boolean>(false);
 
   useEffect(() => {
     const storedName = localStorage.getItem("bronzeUserName") || "";
     const storedTier = localStorage.getItem("bronzeUserTier") || "";
     const storedSlug = localStorage.getItem("bronzePublicSlug") || "";
     
-    // If no bronzeUserTier is stored, user is not authenticated - redirect to pricing/login
-    if (!storedTier) {
+    // Check if user is a Gold/Deluxe client (authenticated via normal token, not Bronze/Silver)
+    const normalToken = localStorage.getItem("token");
+    const authUserStr = localStorage.getItem("authUser");
+    
+    if (storedTier) {
+      // Bronze/Silver user
+      setUserName(storedName);
+      setUserTier(storedTier);
+      setUserSlug(storedSlug);
+      setIsAuthenticated(true);
+      setIsGoldClient(false);
+    } else if (normalToken && authUserStr) {
+      // Gold/Deluxe client accessing via sidebar
+      try {
+        const authUser = JSON.parse(authUserStr);
+        if (authUser.role === "client") {
+          setUserName(authUser.firstName || authUser.username || "Utente");
+          setUserTier("3"); // Gold/Deluxe tier
+          setIsAuthenticated(true);
+          setIsGoldClient(true);
+        } else {
+          // Not a client, redirect
+          setIsAuthenticated(false);
+          navigate(`/c/${slug}/pricing`);
+        }
+      } catch (e) {
+        console.error("Failed to parse authUser:", e);
+        setIsAuthenticated(false);
+        navigate(`/c/${slug}/pricing`);
+      }
+    } else {
+      // Not authenticated - redirect to pricing/login
       setIsAuthenticated(false);
       navigate(`/c/${slug}/pricing`);
-      return;
     }
-    
-    setUserName(storedName);
-    setUserTier(storedTier);
-    setUserSlug(storedSlug);
-    setIsAuthenticated(true);
   }, [slug, navigate]);
 
   const { data, isLoading, error } = useQuery<AgentsResponse>({

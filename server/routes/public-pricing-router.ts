@@ -185,8 +185,8 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Slug is required" });
     }
 
-    if (tier !== "1" && tier !== "2") {
-      return res.status(400).json({ error: "Tier must be '1' (Bronze) or '2' (Silver)" });
+    if (tier !== "1" && tier !== "2" && tier !== "3") {
+      return res.status(400).json({ error: "Tier must be '1' (Bronze), '2' (Silver) or '3' (Gold)" });
     }
 
     const [consultant] = await db.select({
@@ -213,6 +213,8 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Consulente non trovato" });
     }
 
+    // For tier "3" (Gold/Deluxe), show ALL active agents regardless of level
+    // For tier "1" or "2", filter by level
     const allAgents = await db.select({
       id: consultantWhatsappConfig.id,
       agentName: consultantWhatsappConfig.agentName,
@@ -225,14 +227,19 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
     })
       .from(consultantWhatsappConfig)
       .where(
-        and(
-          eq(consultantWhatsappConfig.consultantId, consultant.id),
-          eq(consultantWhatsappConfig.isActive, true),
-          or(
-            eq(consultantWhatsappConfig.level, tier),
-            sql`${consultantWhatsappConfig.levels} @> ARRAY[${tier}]::text[]`
-          )
-        )
+        tier === "3" 
+          ? and(
+              eq(consultantWhatsappConfig.consultantId, consultant.id),
+              eq(consultantWhatsappConfig.isActive, true)
+            )
+          : and(
+              eq(consultantWhatsappConfig.consultantId, consultant.id),
+              eq(consultantWhatsappConfig.isActive, true),
+              or(
+                eq(consultantWhatsappConfig.level, tier),
+                sql`${consultantWhatsappConfig.levels} @> ARRAY[${tier}]::text[]`
+              )
+            )
       );
 
     const config = consultant.pricingPageConfig as any || {};
@@ -292,7 +299,9 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
 
     const tierName = tier === "1" 
       ? (config.level1Name || "Bronze")
-      : (config.level2Name || "Argento");
+      : tier === "2" 
+        ? (config.level2Name || "Argento")
+        : (config.level3Name || "Gold");
 
     const agents = filteredAgents.map(agent => ({
       id: agent.id,
@@ -306,7 +315,7 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
     res.json({
       consultantName: `${consultant.firstName} ${consultant.lastName}`.trim(),
       consultantSlug: consultant.pricingPageSlug || consultant.username,
-      tier: tier as "1" | "2",
+      tier: tier as "1" | "2" | "3",
       tierName,
       agents,
     });

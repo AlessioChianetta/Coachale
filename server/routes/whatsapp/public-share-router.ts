@@ -144,6 +144,28 @@ async function validateVisitorSession(
           console.log(`🔶 [VALIDATE-SESSION] Bronze user found: ${!!bronzeUser}, isActive: ${bronzeUser?.isActive}`);
           
           if (bronzeUser && bronzeUser.isActive) {
+            // Check if this agent is disabled for this user
+            if (share.agentConfigId) {
+              const [disabledAccess] = await db.select()
+                .from(schema.bronzeUserAgentAccess)
+                .where(
+                  and(
+                    eq(schema.bronzeUserAgentAccess.bronzeUserId, decoded.bronzeUserId),
+                    eq(schema.bronzeUserAgentAccess.agentConfigId, share.agentConfigId),
+                    eq(schema.bronzeUserAgentAccess.isEnabled, false)
+                  )
+                )
+                .limit(1);
+              
+              if (disabledAccess) {
+                console.log(`🚫 [VALIDATE-SESSION] Agent disabled for this Bronze user, agentConfigId: ${share.agentConfigId}`);
+                return res.status(403).json({ 
+                  error: 'Accesso negato: questo agente non è disponibile per il tuo account',
+                  code: 'AGENT_DISABLED'
+                });
+              }
+            }
+            
             req.bronzeUserId = decoded.bronzeUserId;
             req.managerId = decoded.bronzeUserId; // Use bronzeUserId as managerId for compatibility
             console.log(`✅ [BRONZE AUTH] Valid bronze token for share ${share.slug}, bronzeUserId: ${decoded.bronzeUserId}`);
@@ -170,6 +192,28 @@ async function validateVisitorSession(
           console.log(`🥈 [VALIDATE-SESSION] Silver subscription found: ${!!silverSubscription}, status: ${silverSubscription?.status}`);
           
           if (silverSubscription) {
+            // Check if this agent is disabled for this Silver user
+            if (share.agentConfigId) {
+              const [disabledAccess] = await db.select()
+                .from(schema.bronzeUserAgentAccess)
+                .where(
+                  and(
+                    eq(schema.bronzeUserAgentAccess.bronzeUserId, decoded.subscriptionId),
+                    eq(schema.bronzeUserAgentAccess.agentConfigId, share.agentConfigId),
+                    eq(schema.bronzeUserAgentAccess.isEnabled, false)
+                  )
+                )
+                .limit(1);
+              
+              if (disabledAccess) {
+                console.log(`🚫 [VALIDATE-SESSION] Agent disabled for this Silver user, agentConfigId: ${share.agentConfigId}`);
+                return res.status(403).json({ 
+                  error: 'Accesso negato: questo agente non è disponibile per il tuo account',
+                  code: 'AGENT_DISABLED'
+                });
+              }
+            }
+            
             req.managerId = decoded.subscriptionId; // Use subscriptionId as managerId for compatibility
             console.log(`✅ [SILVER AUTH] Valid silver token for share ${share.slug}, subscriptionId: ${decoded.subscriptionId}`);
             return next();

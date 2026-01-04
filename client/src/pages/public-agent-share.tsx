@@ -1040,26 +1040,92 @@ export default function PublicAgentShare() {
           </div>
         </ScrollArea>
         
-        {/* Limit reached alert for Bronze users */}
+        {/* Limit reached - Full upgrade screen for Bronze users */}
         {limitReached && metadata.level === "1" && (
-          <div className="flex-shrink-0 px-4 pb-2">
-            <Alert className="bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 max-w-4xl mx-auto">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-orange-700">
-                <strong>Limite giornaliero raggiunto!</strong> Hai esaurito i tuoi {bronzeUsageInfo?.dailyMessageLimit || 15} messaggi giornalieri.
-                <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                  <span className="text-sm">Vuoi messaggi illimitati?</span>
+          <div className="flex-shrink-0 px-4 py-6 bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/40 dark:from-slate-900 dark:via-purple-950/30 dark:to-pink-950/20">
+            <div className="max-w-2xl mx-auto text-center space-y-6">
+              <div className="space-y-2">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-orange-400 to-amber-500 shadow-lg mb-2">
+                  <AlertCircle className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                  Limite Giornaliero Raggiunto
+                </h3>
+                <p className="text-slate-600 dark:text-slate-300">
+                  Hai esaurito i tuoi {bronzeUsageInfo?.dailyMessageLimit || 15} messaggi gratuiti di oggi.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                {/* Silver Plan */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-lg border border-slate-200 dark:border-slate-700 text-left">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-slate-400 to-slate-500 flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">S</span>
+                    </div>
+                    <span className="font-semibold text-slate-900 dark:text-white">Piano Silver</span>
+                  </div>
+                  <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300 mb-4">
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span> Messaggi illimitati
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span> Risposte più veloci
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span> Supporto prioritario
+                    </li>
+                  </ul>
                   {metadata.consultantSlug && (
                     <a
-                      href={`/c/${metadata.consultantSlug}/pricing`}
-                      className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 rounded-lg transition-all shadow-sm"
+                      href={`/c/${metadata.consultantSlug}/pricing?level=2`}
+                      className="block w-full text-center px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 rounded-xl transition-all shadow-md"
                     >
-                      Passa a Silver - Messaggi Illimitati
+                      Passa a Silver
                     </a>
                   )}
                 </div>
-              </AlertDescription>
-            </Alert>
+
+                {/* Gold Plan */}
+                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-2xl p-5 shadow-lg border-2 border-amber-300 dark:border-amber-600 text-left relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-400 to-yellow-400 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
+                    CONSIGLIATO
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">G</span>
+                    </div>
+                    <span className="font-semibold text-slate-900 dark:text-white">Piano Gold</span>
+                  </div>
+                  <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300 mb-4">
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span> Tutto di Silver +
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span> Accesso a tutti gli agenti
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span> Funzionalità avanzate
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span> Consulenze personali
+                    </li>
+                  </ul>
+                  {metadata.consultantSlug && (
+                    <a
+                      href={`/c/${metadata.consultantSlug}/pricing?level=3`}
+                      className="block w-full text-center px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 rounded-xl transition-all shadow-md"
+                    >
+                      Passa a Gold
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-4">
+                Oppure torna domani per altri {bronzeUsageInfo?.dailyMessageLimit || 15} messaggi gratuiti
+              </p>
+            </div>
           </div>
         )}
         
