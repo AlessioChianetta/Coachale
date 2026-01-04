@@ -167,9 +167,9 @@ export function EmployeeRoster({ onSelectAgent, selectedAgentId }: EmployeeRoste
   const [tierFilter, setTierFilter] = useState<string>("all");
 
   const { data, isLoading, isError } = useQuery<Agent[]>({
-    queryKey: ["/api/whatsapp/agents"],
+    queryKey: ["/api/whatsapp/agents/leaderboard"],
     queryFn: async () => {
-      const response = await fetch("/api/whatsapp/agents", {
+      const response = await fetch("/api/whatsapp/agents/leaderboard", {
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
