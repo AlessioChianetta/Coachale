@@ -65,6 +65,7 @@ router.get("/client/agents-for-assistant", authenticateToken, requireRole("clien
       aiPersonality: consultantWhatsappConfig.aiPersonality,
       fileSearchCategories: consultantWhatsappConfig.fileSearchCategories,
       consultantId: consultantWhatsappConfig.consultantId,
+      publicSlug: consultantWhatsappConfig.publicSlug,
     })
     .from(consultantWhatsappConfig)
     .where(inArray(consultantWhatsappConfig.id, agentIds));

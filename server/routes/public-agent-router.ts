@@ -203,6 +203,13 @@ router.get("/:slug", loadShareAndAgent, async (req: ManagerRequest, res: Respons
       requiresLogin: share.requiresLogin,
       businessName: agentConfig.businessName || null,
       consultantName: agentConfig.consultantDisplayName || null,
+      // Extended agent info for welcome screen
+      whoWeHelp: agentConfig.whoWeHelp || null,
+      whatWeDo: agentConfig.whatWeDo || null,
+      howWeDoIt: agentConfig.howWeDoIt || null,
+      usp: agentConfig.usp || null,
+      mission: agentConfig.mission || null,
+      vision: agentConfig.vision || null,
     });
   } catch (error: any) {
     console.error("[PUBLIC AGENT] Get info error:", error);

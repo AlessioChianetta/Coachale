@@ -69,6 +69,13 @@ interface AgentInfo {
   requiresLogin: boolean;
   businessName: string | null;
   consultantName: string | null;
+  // Extended agent info
+  whoWeHelp: string | null;
+  whatWeDo: string | null;
+  howWeDoIt: string | null;
+  usp: string | null;
+  mission: string | null;
+  vision: string | null;
 }
 
 interface ManagerInfo {
@@ -1060,6 +1067,13 @@ export default function ManagerChat() {
                 disabled={isTyping}
                 agentName={agentInfo?.agentName}
                 userName={managerInfo?.name}
+                agentInfo={agentInfo ? {
+                  whoWeHelp: agentInfo.whoWeHelp,
+                  whatWeDo: agentInfo.whatWeDo,
+                  howWeDoIt: agentInfo.howWeDoIt,
+                  usp: agentInfo.usp,
+                  mission: agentInfo.mission,
+                } : undefined}
               />
             ) : (
               <MessageList messages={messages} isTyping={isTyping} />

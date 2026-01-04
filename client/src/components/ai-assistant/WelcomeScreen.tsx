@@ -1,6 +1,15 @@
 import { motion } from "framer-motion";
 import { Sparkles, MessageSquare, Lightbulb, BookOpen, Target, TrendingUp, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AgentInfoSection } from "./AgentInfoSection";
+
+interface AgentInfoProps {
+  whoWeHelp?: string | null;
+  whatWeDo?: string | null;
+  howWeDoIt?: string | null;
+  usp?: string | null;
+  mission?: string | null;
+}
 
 interface WelcomeScreenProps {
   userName?: string;
@@ -8,6 +17,7 @@ interface WelcomeScreenProps {
   onSuggestionClick: (suggestion: string) => void;
   variant?: "consultant" | "client";
   disabled?: boolean;
+  agentInfo?: AgentInfoProps;
 }
 
 const consultantSuggestions = [
@@ -69,7 +79,8 @@ export function WelcomeScreen({
   agentName, 
   onSuggestionClick, 
   variant = "client",
-  disabled = false 
+  disabled = false,
+  agentInfo
 }: WelcomeScreenProps) {
   const suggestions = variant === "consultant" ? consultantSuggestions : clientSuggestions;
   
@@ -134,7 +145,7 @@ export function WelcomeScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="text-base md:text-lg text-slate-500 dark:text-slate-400 mb-8 text-center"
+          className="text-base md:text-lg text-slate-500 dark:text-slate-400 mb-6 text-center"
         >
           {agentName ? (
             <>Sono <span className="font-medium text-cyan-600 dark:text-cyan-400">{agentName}</span>, come posso aiutarti oggi?</>
@@ -142,6 +153,25 @@ export function WelcomeScreen({
             "Come posso aiutarti oggi?"
           )}
         </motion.p>
+
+        {/* Agent Info Section */}
+        {agentInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.5 }}
+            className="w-full"
+          >
+            <AgentInfoSection
+              agentName={agentName}
+              whatWeDo={agentInfo.whatWeDo}
+              whoWeHelp={agentInfo.whoWeHelp}
+              howWeDoIt={agentInfo.howWeDoIt}
+              usp={agentInfo.usp}
+              mission={agentInfo.mission}
+            />
+          </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 10 }}

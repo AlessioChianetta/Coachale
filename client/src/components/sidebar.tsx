@@ -21,6 +21,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Sparkles,
   Settings,
   Mail,
@@ -41,6 +42,7 @@ import {
   Database,
   Plug,
   FileSearch,
+  Star,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -55,6 +57,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getAuthUser, logout, getToken, setToken, setAuthUser } from "@/lib/auth";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 
 interface SidebarItem {
   name: string;
@@ -195,7 +198,6 @@ const clientItems: SidebarItemWithChildren[] = [
       { name: "Corsi", href: "/client/library", icon: BookOpen, color: "text-teal-600" },
     ]
   },
-
   { 
     name: "Il Mio Tempo", 
     href: "/client/calendar", 
@@ -208,7 +210,20 @@ const clientItems: SidebarItemWithChildren[] = [
       { name: "Consulenze", href: "/client/consultations", icon: Calendar, color: "text-orange-600" },
     ]
   },
-  
+  { 
+    name: "Base di Conoscenza", 
+    href: "/client/knowledge-documents", 
+    icon: BookOpen, 
+    color: "text-teal-600",
+    children: [
+      { name: "Documenti", href: "/client/knowledge-documents", icon: FileText, color: "text-teal-600" },
+      { name: "API Esterne", href: "/client/knowledge-apis", icon: Zap, color: "text-cyan-600" },
+      { name: "Documenti AI", href: "/client/documents", icon: FileSearch, color: "text-teal-500" },
+    ]
+  },
+];
+
+const proToolsItems: SidebarItemWithChildren[] = [
   { 
     name: "Dipendenti AI", 
     href: "/client/sales-agents", 
@@ -222,7 +237,6 @@ const clientItems: SidebarItemWithChildren[] = [
       { name: "AI Analytics", href: "/client/analytics/vertex-ai", icon: BarChart3, color: "text-teal-500" },
     ]
   },
- 
   { 
     name: "Venditori Umani", 
     href: "/client/human-sellers", 
@@ -232,17 +246,6 @@ const clientItems: SidebarItemWithChildren[] = [
       { name: "I Miei Venditori", href: "/client/human-sellers", icon: Users, color: "text-teal-600" },
       { name: "Video Meetings", href: "/client/human-sellers/meetings", icon: Video, color: "text-cyan-600" },
       { name: "Analytics Venditori", href: "/client/human-sellers/analytics", icon: BarChart3, color: "text-teal-500" },
-    ]
-  },
-  { 
-    name: "Base di Conoscenza", 
-    href: "/client/knowledge-documents", 
-    icon: BookOpen, 
-    color: "text-teal-600",
-    children: [
-      { name: "Documenti", href: "/client/knowledge-documents", icon: FileText, color: "text-teal-600" },
-      { name: "API Esterne", href: "/client/knowledge-apis", icon: Zap, color: "text-cyan-600" },
-      { name: "Documenti AI", href: "/client/documents", icon: FileSearch, color: "text-teal-500" },
     ]
   },
 ];
@@ -263,6 +266,22 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
   const [isSwitching, setIsSwitching] = useState(false);
+  
+  const [expandedProTools, setExpandedProTools] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sidebar-pro-tools-expanded');
+    return saved ? JSON.parse(saved) : false;
+  });
+  
+  const [expandedExternalServices, setExpandedExternalServices] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sidebar-external-services-expanded');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  const { data: assignedAgents = [] } = useQuery<Array<{ id: number; publicSlug: string; name: string; avatarUrl?: string }>>({
+    queryKey: ['/api/ai-assistant/client/agents-for-assistant'],
+    enabled: role === 'client',
+    staleTime: 5 * 60 * 1000,
+  });
 
   useEffect(() => {
     const fetchProfiles = async () => {
@@ -429,6 +448,16 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   useEffect(() => {
     localStorage.setItem('sidebar-expanded-categories', JSON.stringify(Array.from(expandedCategories)));
   }, [expandedCategories]);
+
+  // Save Pro Tools expansion state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebar-pro-tools-expanded', JSON.stringify(expandedProTools));
+  }, [expandedProTools]);
+
+  // Save External Services expansion state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebar-external-services-expanded', JSON.stringify(expandedExternalServices));
+  }, [expandedExternalServices]);
 
   // Auto-collapse sidebar when AI Assistant page opens
   useEffect(() => {
@@ -759,97 +788,272 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           );
         })}
 
-        {/* External Services Section - For both clients and consultants */}
+        {/* I Miei Agenti AI Section - Only for clients with assigned agents */}
+        {role === "client" && assignedAgents.length > 0 && !isCollapsed && (
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+            <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              I Miei Agenti AI
+            </h3>
+            <div className="space-y-0.5">
+              {assignedAgents.map((agent) => (
+                <Link key={agent.id} href={`/agent/${agent.publicSlug}/chat`}>
+                  <div
+                    className={cn(
+                      "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                      "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                    )}
+                    data-testid={`link-agent-${agent.publicSlug}`}
+                    onClick={handleLinkClick}
+                  >
+                    <Bot className="h-[18px] w-[18px] flex-shrink-0 text-violet-500" />
+                    <span className="font-medium truncate">{agent.name}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pro Tools Section - Collapsible premium section for clients */}
+        {role === "client" && !isCollapsed && (
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+            <button
+              onClick={() => setExpandedProTools(!expandedProTools)}
+              className="w-full flex items-center justify-between px-3 py-1.5 group"
+            >
+              <div className="flex items-center gap-1.5">
+                <Star className={cn(
+                  "h-3.5 w-3.5 text-amber-500 transition-transform duration-200",
+                  "group-hover:rotate-12 group-hover:scale-110"
+                )} />
+                <span className="text-[10px] font-semibold uppercase tracking-widest bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+                  Pro Tools
+                </span>
+              </div>
+              <ChevronRight className={cn(
+                "h-3 w-3 text-slate-400 transition-transform duration-200",
+                expandedProTools && "rotate-90"
+              )} />
+            </button>
+            
+            {expandedProTools && (
+              <div className="space-y-0.5 mt-1">
+                {proToolsItems.map((item) => {
+                  const Icon = item.icon;
+                  const hasChildren = 'children' in item && item.children && item.children.length > 0;
+                  const isActive = isRouteActive(item.href, location) || 
+                    (hasChildren && item.children!.some(child => isRouteActive(child.href, location)));
+                  const isExpanded = expandedItems.has(item.name);
+
+                  return (
+                    <div key={item.href}>
+                      <Link href={item.href}>
+                        <div
+                          className={cn(
+                            "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                            isActive
+                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
+                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                          )}
+                          data-testid={`link-${slugify(item.name)}`}
+                          onClick={(e) => {
+                            if (hasChildren) {
+                              e.preventDefault();
+                              setExpandedItems(prev => {
+                                const newSet = new Set(prev);
+                                if (newSet.has(item.name)) {
+                                  newSet.delete(item.name);
+                                } else {
+                                  newSet.add(item.name);
+                                }
+                                return newSet;
+                              });
+                            } else {
+                              handleLinkClick();
+                            }
+                          }}
+                        >
+                          {isActive && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full" />
+                          )}
+                          <Icon className={cn(
+                            "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
+                            isActive
+                              ? "text-cyan-500"
+                              : item.color || "text-slate-400 dark:text-slate-500"
+                          )} />
+                          <div className="flex-1 flex items-center justify-between min-w-0">
+                            <span className={cn(
+                              "font-medium truncate",
+                              isActive ? "font-semibold" : ""
+                            )}>
+                              {item.name}
+                            </span>
+                            {hasChildren && (
+                              <ChevronRight className={cn(
+                                "h-3.5 w-3.5 transition-transform duration-200 text-slate-400",
+                                isExpanded && "rotate-90"
+                              )} />
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+
+                      {hasChildren && isExpanded && (
+                        <div className="ml-6 mt-0.5 space-y-0.5 border-l border-slate-200 dark:border-slate-700 pl-3">
+                          {item.children!.map((child) => {
+                            const ChildIcon = child.icon;
+                            const isChildActive = isRouteActive(child.href, location);
+
+                            return (
+                              <Link key={child.href} href={child.href}>
+                                <div
+                                  className={cn(
+                                    "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-md transition-all duration-150 cursor-pointer",
+                                    isChildActive
+                                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
+                                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-300"
+                                  )}
+                                  data-testid={`link-${slugify(child.name)}`}
+                                  onClick={handleLinkClick}
+                                >
+                                  {isChildActive && (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-cyan-500 rounded-r-full" />
+                                  )}
+                                  <ChildIcon className={cn(
+                                    "h-4 w-4 flex-shrink-0",
+                                    isChildActive
+                                      ? "text-cyan-500"
+                                      : child.color || "text-slate-400"
+                                  )} />
+                                  <span className={cn(
+                                    "font-medium",
+                                    isChildActive && "font-semibold"
+                                  )}>{child.name}</span>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* External Services Section - Collapsible premium section */}
         <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
           {!isCollapsed && (
-            <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-              Servizi Esterni
-            </h3>
+            <button
+              onClick={() => setExpandedExternalServices(!expandedExternalServices)}
+              className="w-full flex items-center justify-between px-3 py-1.5 group"
+            >
+              <div className="flex items-center gap-1.5">
+                <Sparkles className={cn(
+                  "h-3.5 w-3.5 text-purple-500 transition-transform duration-200",
+                  "group-hover:rotate-12 group-hover:scale-110"
+                )} />
+                <span className="text-[10px] font-semibold uppercase tracking-widest bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                  Servizi Esterni
+                </span>
+              </div>
+              <ChevronRight className={cn(
+                "h-3 w-3 text-slate-400 transition-transform duration-200",
+                expandedExternalServices && "rotate-90"
+              )} />
+            </button>
           )}
           
-          {/* ConOrbitale - Gestione Finanziaria */}
-          <div
-            className={cn(
-              "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-              "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-              isLoadingFinancial && "bg-slate-50 dark:bg-slate-800 animate-pulse",
-              isCollapsed && "justify-center px-2"
-            )}
-            onClick={handleFinancialClick}
-            data-testid="link-gestione-finanziaria"
-            title={isCollapsed ? "ConOrbitale" : undefined}
-          >
-            <DollarSign 
-              className={cn(
-                "h-[18px] w-[18px] flex-shrink-0 text-emerald-500",
-                isLoadingFinancial && "animate-spin"
-              )} 
-            />
-            {!isCollapsed && (
-              <div className="flex-1 flex items-center justify-between min-w-0">
-                <span className="font-medium truncate">ConOrbitale</span>
-                <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+          {(expandedExternalServices || isCollapsed) && (
+            <div className={cn("space-y-0.5", !isCollapsed && "mt-1")}>
+              {/* ConOrbitale - Gestione Finanziaria */}
+              <div
+                className={cn(
+                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                  "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
+                  isLoadingFinancial && "bg-slate-50 dark:bg-slate-800 animate-pulse",
+                  isCollapsed && "justify-center px-2"
+                )}
+                onClick={handleFinancialClick}
+                data-testid="link-gestione-finanziaria"
+                title={isCollapsed ? "ConOrbitale" : undefined}
+              >
+                <DollarSign 
+                  className={cn(
+                    "h-[18px] w-[18px] flex-shrink-0 text-emerald-500",
+                    isLoadingFinancial && "animate-spin"
+                  )} 
+                />
+                {!isCollapsed && (
+                  <div className="flex-1 flex items-center justify-between min-w-0">
+                    <span className="font-medium truncate">ConOrbitale</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* ContractAle */}
-          <div
-            className={cn(
-              "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-              "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-              isCollapsed && "justify-center px-2"
-            )}
-            onClick={() => window.open('https://contractale.replit.app', '_blank')}
-            data-testid="link-contractale"
-            title={isCollapsed ? "ContractAle" : undefined}
-          >
-            <FileText className="h-[18px] w-[18px] flex-shrink-0 text-teal-500" />
-            {!isCollapsed && (
-              <div className="flex-1 flex items-center justify-between min-w-0">
-                <span className="font-medium truncate">ContractAle</span>
-                <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+              {/* ContractAle */}
+              <div
+                className={cn(
+                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                  "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
+                  isCollapsed && "justify-center px-2"
+                )}
+                onClick={() => window.open('https://contractale.replit.app', '_blank')}
+                data-testid="link-contractale"
+                title={isCollapsed ? "ContractAle" : undefined}
+              >
+                <FileText className="h-[18px] w-[18px] flex-shrink-0 text-teal-500" />
+                {!isCollapsed && (
+                  <div className="flex-1 flex items-center justify-between min-w-0">
+                    <span className="font-medium truncate">ContractAle</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* CrmAle */}
-          <div
-            className={cn(
-              "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-              "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-              isCollapsed && "justify-center px-2"
-            )}
-            onClick={() => window.open('https://crmale.replit.app', '_blank')}
-            data-testid="link-crmale"
-            title={isCollapsed ? "CrmAle" : undefined}
-          >
-            <Users className="h-[18px] w-[18px] flex-shrink-0 text-cyan-500" />
-            {!isCollapsed && (
-              <div className="flex-1 flex items-center justify-between min-w-0">
-                <span className="font-medium truncate">CrmAle</span>
-                <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+              {/* CrmAle */}
+              <div
+                className={cn(
+                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                  "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
+                  isCollapsed && "justify-center px-2"
+                )}
+                onClick={() => window.open('https://crmale.replit.app', '_blank')}
+                data-testid="link-crmale"
+                title={isCollapsed ? "CrmAle" : undefined}
+              >
+                <Users className="h-[18px] w-[18px] flex-shrink-0 text-cyan-500" />
+                {!isCollapsed && (
+                  <div className="flex-1 flex items-center justify-between min-w-0">
+                    <span className="font-medium truncate">CrmAle</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* SiteAle - Configurable site URL */}
-          {user?.siteUrl && (
-            <div
-              className={cn(
-                "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-                "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-                isCollapsed && "justify-center px-2"
-              )}
-              onClick={() => window.open(user.siteUrl!, '_blank')}
-              data-testid="link-siteale"
-              title={isCollapsed ? "SiteAle" : undefined}
-            >
-              <ExternalLink className="h-[18px] w-[18px] flex-shrink-0 text-orange-500" />
-              {!isCollapsed && (
-                <div className="flex-1 flex items-center justify-between min-w-0">
-                  <span className="font-medium truncate">SiteAle</span>
-                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+              {/* SiteAle - Configurable site URL */}
+              {user?.siteUrl && (
+                <div
+                  className={cn(
+                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                    "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
+                    isCollapsed && "justify-center px-2"
+                  )}
+                  onClick={() => window.open(user.siteUrl!, '_blank')}
+                  data-testid="link-siteale"
+                  title={isCollapsed ? "SiteAle" : undefined}
+                >
+                  <ExternalLink className="h-[18px] w-[18px] flex-shrink-0 text-orange-500" />
+                  {!isCollapsed && (
+                    <div className="flex-1 flex items-center justify-between min-w-0">
+                      <span className="font-medium truncate">SiteAle</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
