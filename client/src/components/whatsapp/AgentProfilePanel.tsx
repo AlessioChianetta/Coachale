@@ -66,6 +66,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AgentShareManager } from "./agent-share-manager";
+import { AgentUsersSection } from "./AgentUsersSection";
 import { LevelBadge } from "./LevelBadge";
 import {
   Dialog,
@@ -108,6 +109,7 @@ interface AgentAnalytics {
     enableInAIAssistant?: boolean;
     fileSearchCategories?: FileSearchCategories;
     level?: "1" | "2" | null;
+    levels?: string[] | null;
     publicSlug?: string;
     dailyMessageLimit?: number;
     features?: {
@@ -1037,7 +1039,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
           {/* Tabs */}
           <Tabs defaultValue="performance" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-9">
+            <TabsList className={cn("grid w-full h-9", agentData?.levels && agentData.levels.length > 0 ? "grid-cols-4" : "grid-cols-3")}>
               <TabsTrigger value="performance" className="text-xs gap-1">
                 <TrendingUp className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Performance</span>
@@ -1050,6 +1052,12 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                 <Bot className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">AI & Sharing</span>
               </TabsTrigger>
+              {agentData?.levels && agentData.levels.length > 0 && (
+                <TabsTrigger value="utenti" className="text-xs gap-1">
+                  <Users className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Utenti</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Performance Tab */}
@@ -2043,6 +2051,28 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                 )}
               </div>
             </TabsContent>
+
+            {/* Utenti Tab - Employee Agents Only */}
+            {agentData?.levels && agentData.levels.length > 0 && (
+              <TabsContent value="utenti" className="space-y-4 mt-4">
+                <div className="rounded-xl border border-amber-200 overflow-hidden">
+                  <div className="px-4 py-3 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-800">Gestione Utenti</h3>
+                        <p className="text-xs text-slate-500">Controlla l'accesso all'agente</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white">
+                    <AgentUsersSection agentId={selectedAgent.id} />
+                  </div>
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
 
         </CardContent>

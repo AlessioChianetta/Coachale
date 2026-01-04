@@ -871,6 +871,20 @@ export const bronzeUsers = pgTable("bronze_users", {
 export type BronzeUser = typeof bronzeUsers.$inferSelect;
 export type InsertBronzeUser = typeof bronzeUsers.$inferInsert;
 
+// Bronze User Agent Access - Track which bronze users have access to which employee agents
+export const bronzeUserAgentAccess = pgTable("bronze_user_agent_access", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bronzeUserId: varchar("bronze_user_id").references(() => bronzeUsers.id, { onDelete: "cascade" }).notNull(),
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
+  isEnabled: boolean("is_enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  uniqueBronzeUserAgent: unique().on(table.bronzeUserId, table.agentConfigId),
+}));
+
+export type BronzeUserAgentAccess = typeof bronzeUserAgentAccess.$inferSelect;
+export type InsertBronzeUserAgentAccess = typeof bronzeUserAgentAccess.$inferInsert;
+
 // Monthly Invoices - Track monthly billing and revenue share for each consultant
 export const monthlyInvoices = pgTable("monthly_invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

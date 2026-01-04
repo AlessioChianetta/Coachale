@@ -76,6 +76,7 @@ import templateApprovalRouter from "./routes/whatsapp/template-approval-router";
 import agentKnowledgeRouter from "./routes/whatsapp/agent-knowledge-router";
 import agentShareRouter from "./routes/whatsapp/agent-share-router";
 import agentStatsRouter from "./routes/whatsapp/agent-stats-router";
+import agentUsersRouter from "./routes/whatsapp/agent-users-router";
 import publicShareRouter from "./routes/whatsapp/public-share-router";
 import externalApiRouter from "./routes/external-api";
 import webhookRouter from "./routes/webhook";
@@ -10999,6 +11000,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // WhatsApp Agent Stats & Analytics routes
   app.use("/api/whatsapp/agents", agentStatsRouter);
+
+  // WhatsApp Agent Users routes (Bronze/Silver access management)
+  app.use("/api/whatsapp", agentUsersRouter);
 
   // Instagram Integration routes
   app.use("/api/instagram", instagramWebhookRouter); // Public webhook endpoints
