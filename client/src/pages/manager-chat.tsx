@@ -625,7 +625,7 @@ export default function ManagerChat() {
   }, [managerInfo]);
 
   const { data: conversationData, isLoading: conversationsLoading, refetch: refetchConversation } = useQuery<{
-    conversations?: { id: string; createdAt: string; lastMessageAt?: string }[];
+    conversations?: { id: string; title?: string; createdAt: string; lastMessageAt?: string }[];
     conversation: Conversation | null;
     messages: Message[];
   }>({
@@ -641,9 +641,9 @@ export default function ManagerChat() {
     enabled: isAuthenticated,
   });
 
-  const conversations: Conversation[] = (conversationData?.conversations || []).map((c, idx) => ({
+  const conversations: Conversation[] = (conversationData?.conversations || []).map((c) => ({
     id: c.id,
-    title: `Chat ${(conversationData?.conversations?.length || 0) - idx}`,
+    title: c.title || "Nuova conversazione",
     createdAt: c.createdAt,
     updatedAt: c.lastMessageAt || c.createdAt,
   }));

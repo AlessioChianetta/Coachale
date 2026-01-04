@@ -654,6 +654,7 @@ router.get(
               success: true,
               conversations: conversations.map(c => ({
                 id: c.id,
+                title: c.title,
                 createdAt: c.createdAt,
                 lastMessageAt: c.lastMessageAt,
               })),
@@ -672,6 +673,7 @@ router.get(
             success: true,
             conversations: conversations.map(c => ({
               id: c.id,
+              title: c.title,
               createdAt: c.createdAt,
               lastMessageAt: c.lastMessageAt,
             })),
@@ -713,6 +715,7 @@ router.get(
           success: true,
           conversations: conversations.map(c => ({
             id: c.id,
+            title: c.title,
             createdAt: c.createdAt,
             lastMessageAt: c.lastMessageAt,
           })),
