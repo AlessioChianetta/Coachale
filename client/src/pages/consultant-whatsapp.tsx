@@ -112,6 +112,7 @@ import { AgentInstructionsPanel } from "@/components/whatsapp/AgentInstructionsP
 import { whatsappAgentIdeas } from "@/data/whatsapp-agent-ideas";
 import { AgentDashboardHeader } from "@/components/whatsapp/AgentDashboardHeader";
 import { AgentRoster } from "@/components/whatsapp/AgentRoster";
+import { EmployeeRoster } from "@/components/whatsapp/EmployeeRoster";
 import { AgentProfilePanel } from "@/components/whatsapp/AgentProfilePanel";
 import { AgentLeaderboard } from "@/components/whatsapp/AgentLeaderboard";
 import { ActivityFeed } from "@/components/whatsapp/ActivityFeed";
@@ -1103,7 +1104,7 @@ export default function ConsultantWhatsAppPage() {
         {/* Category Tabs */}
         <Tabs defaultValue={initialTab} className="space-y-6">
           <div className="bg-white rounded-xl border shadow-sm p-1">
-            <TabsList className="grid w-full grid-cols-4 gap-1 bg-transparent h-auto p-0">
+            <TabsList className="grid w-full grid-cols-5 gap-1 bg-transparent h-auto p-0">
               <TabsTrigger 
                 value="custom" 
                 className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
@@ -1124,6 +1125,13 @@ export default function ConsultantWhatsAppPage() {
               >
                 <Lightbulb className="h-4 w-4 mr-2" />
                 Idee AI
+              </TabsTrigger>
+              <TabsTrigger 
+                value="employees" 
+                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+              >
+                <Crown className="h-4 w-4 mr-2" />
+                Dipendenti AI
               </TabsTrigger>
               <TabsTrigger 
                 value="licenses" 
@@ -2256,6 +2264,30 @@ export default function ConsultantWhatsAppPage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="employees" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-4">
+                <EmployeeRoster 
+                  onSelectAgent={(agent) => setSelectedAgent(agent)}
+                  selectedAgentId={selectedAgent?.id}
+                />
+              </div>
+              <div className="lg:col-span-8">
+                <AgentProfilePanel 
+                  selectedAgent={selectedAgent}
+                  onDeleteAgent={(agentId) => {
+                    const config = configs.find((c: WhatsAppConfig) => c.id === agentId);
+                    if (config) handleDelete(config);
+                  }}
+                  onDuplicateAgent={(agentId) => {
+                    const config = configs.find((c: WhatsAppConfig) => c.id === agentId);
+                    if (config) handleDuplicate(config);
+                  }}
+                />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="licenses" className="space-y-6">
