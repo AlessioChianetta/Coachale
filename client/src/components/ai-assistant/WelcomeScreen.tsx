@@ -92,12 +92,12 @@ export function WelcomeScreen({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full px-4 py-8 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+    <div className="flex flex-col items-center min-h-full px-4 py-8 overflow-y-auto bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex flex-col items-center max-w-2xl w-full"
+        className="flex flex-col items-center max-w-2xl w-full my-auto"
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
