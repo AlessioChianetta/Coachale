@@ -1286,6 +1286,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
         status: "completed",
         tokensUsed: null,
         metadata: suggestedActions.length > 0 ? { suggestedActions } : null,
+        thinkingContent: thinkingContent,
       })
       .returning();
 
@@ -2163,6 +2164,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         status: "completed",
         tokensUsed: null,
         metadata: suggestedActions.length > 0 ? { suggestedActions } : null,
+        thinkingContent: accumulatedThinking || null,
       })
       .returning();
 
@@ -3185,6 +3187,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     let assistantMessage = accumulatedMessage || "Mi dispiace, non sono riuscito a generare una risposta.";
 
     // Save assistant message with completed status
+    console.log(`🔍 [DB INSERT DEBUG] About to insert assistant message...`);
+    console.log(`   - conversationId: ${conversation.id}`);
+    console.log(`   - content length: ${assistantMessage.length} chars`);
+    console.log(`   - accumulatedThinking length: ${accumulatedThinking?.length || 0} chars`);
+    
     const [savedMessage] = await db.insert(aiMessages)
       .values({
         conversationId: conversation.id,
@@ -3192,8 +3199,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         content: assistantMessage,
         status: "completed",
         tokensUsed: null,
+        thinkingContent: accumulatedThinking || null,
       })
       .returning();
+    
+    console.log(`✅ [DB INSERT DEBUG] Message saved successfully: ${savedMessage.id}`);
 
     // Update conversation last message time
     await db.update(aiConversations)
