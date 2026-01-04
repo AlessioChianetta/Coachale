@@ -290,6 +290,20 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
           console.log("[AGENT FILTER] Silver disabled agents found:", disabledAccess.length);
           const disabledAgentIds = new Set(disabledAccess.map(a => a.agentConfigId));
           filteredAgents = filteredAgents.filter(agent => !disabledAgentIds.has(agent.id));
+        } else if (decoded.role === "client" && decoded.userId) {
+          // Gold client - check bronzeUserAgentAccess using userId
+          const disabledAccess = await db.select({ agentConfigId: bronzeUserAgentAccess.agentConfigId })
+            .from(bronzeUserAgentAccess)
+            .where(
+              and(
+                eq(bronzeUserAgentAccess.bronzeUserId, decoded.userId),
+                eq(bronzeUserAgentAccess.isEnabled, false)
+              )
+            );
+          
+          console.log("[AGENT FILTER] Gold disabled agents found:", disabledAccess.length);
+          const disabledAgentIds = new Set(disabledAccess.map(a => a.agentConfigId));
+          filteredAgents = filteredAgents.filter(agent => !disabledAgentIds.has(agent.id));
         }
       } catch (tokenError) {
         console.log("[AGENT FILTER] Token error:", tokenError);
