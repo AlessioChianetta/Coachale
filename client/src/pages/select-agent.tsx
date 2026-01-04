@@ -224,70 +224,77 @@ export default function SelectAgent() {
   const [isGoldClient, setIsGoldClient] = useState<boolean>(false);
 
   useEffect(() => {
-    const storedName = localStorage.getItem("bronzeUserName") || "";
-    const storedTier = localStorage.getItem("bronzeUserTier") || "";
-    const storedSlug = localStorage.getItem("bronzePublicSlug") || "";
-    
-    // Check if user is a Gold/Deluxe client (authenticated via normal token, not Bronze/Silver)
-    // PRIORITY: Check normal token FIRST - Gold clients take precedence over Bronze data
-    const normalToken = localStorage.getItem("token");
-    const authUserStr = localStorage.getItem("authUser");
-    
-    console.log("[SELECT-AGENT] Auth check - normalToken:", !!normalToken, "authUser:", !!authUserStr, "bronzeTier:", storedTier);
-    
-    // Gold/Deluxe client takes priority (they may have old Bronze data in storage)
-    if (normalToken) {
-      // Try to get authUser from localStorage first
-      let authUser: any = null;
-      if (authUserStr) {
-        try {
-          authUser = JSON.parse(authUserStr);
-        } catch (e) {
-          console.error("[SELECT-AGENT] Failed to parse authUser:", e);
-        }
-      }
+    const checkAuth = async () => {
+      const storedName = localStorage.getItem("bronzeUserName") || "";
+      const storedTier = localStorage.getItem("bronzeUserTier") || "";
+      const storedSlug = localStorage.getItem("bronzePublicSlug") || "";
       
-      // If no authUser in localStorage, try to decode the JWT token
-      if (!authUser) {
-        try {
-          const tokenParts = normalToken.split('.');
-          if (tokenParts.length === 3) {
-            const payload = JSON.parse(atob(tokenParts[1]));
-            console.log("[SELECT-AGENT] JWT payload decoded:", payload.role, payload.userId);
-            if (payload.role === "client") {
-              authUser = { role: payload.role, firstName: payload.firstName || "Utente", userId: payload.userId };
-            }
+      // Check if user is a Gold/Deluxe client (authenticated via normal token, not Bronze/Silver)
+      // PRIORITY: Check normal token FIRST - Gold clients take precedence over Bronze data
+      const normalToken = localStorage.getItem("token");
+      const authUserStr = localStorage.getItem("authUser");
+      
+      console.log("[SELECT-AGENT] Auth check - normalToken:", !!normalToken, "authUser:", !!authUserStr, "bronzeTier:", storedTier);
+      
+      // Gold/Deluxe client takes priority (they may have old Bronze data in storage)
+      if (normalToken) {
+        // Try to get authUser from localStorage first
+        let authUser: any = null;
+        if (authUserStr) {
+          try {
+            authUser = JSON.parse(authUserStr);
+          } catch (e) {
+            console.error("[SELECT-AGENT] Failed to parse authUser:", e);
           }
-        } catch (e) {
-          console.error("[SELECT-AGENT] Failed to decode JWT:", e);
+        }
+        
+        // If no authUser in localStorage, verify token via API
+        if (!authUser || !authUser.role) {
+          try {
+            console.log("[SELECT-AGENT] Verifying token via API...");
+            const response = await fetch("/api/auth/me", {
+              headers: { Authorization: `Bearer ${normalToken}` }
+            });
+            if (response.ok) {
+              const userData = await response.json();
+              console.log("[SELECT-AGENT] API user data:", userData.role, userData.firstName);
+              if (userData.role === "client") {
+                authUser = userData;
+              }
+            }
+          } catch (e) {
+            console.error("[SELECT-AGENT] Failed to verify token:", e);
+          }
+        }
+        
+        console.log("[SELECT-AGENT] AuthUser resolved:", authUser?.role, authUser?.firstName);
+        if (authUser && authUser.role === "client") {
+          setUserName(authUser.firstName || authUser.username || "Utente");
+          setUserTier("3"); // Gold/Deluxe tier
+          setIsAuthenticated(true);
+          setIsGoldClient(true);
+          console.log("[SELECT-AGENT] Gold client authenticated");
+          return; // Exit early, Gold takes priority
         }
       }
       
-      console.log("[SELECT-AGENT] AuthUser resolved:", authUser?.role, authUser?.firstName);
-      if (authUser && authUser.role === "client") {
-        setUserName(authUser.firstName || authUser.username || "Utente");
-        setUserTier("3"); // Gold/Deluxe tier
+      // Bronze/Silver user (only if not Gold)
+      if (storedTier) {
+        setUserName(storedName);
+        setUserTier(storedTier);
+        setUserSlug(storedSlug);
         setIsAuthenticated(true);
-        setIsGoldClient(true);
-        console.log("[SELECT-AGENT] Gold client authenticated");
-        return; // Exit early, Gold takes priority
+        setIsGoldClient(false);
+        console.log("[SELECT-AGENT] Bronze/Silver user authenticated, tier:", storedTier);
+      } else {
+        // Not authenticated - redirect to pricing/login
+        console.log("[SELECT-AGENT] Not authenticated, redirecting to pricing");
+        setIsAuthenticated(false);
+        navigate(`/c/${slug}/pricing`);
       }
-    }
+    };
     
-    // Bronze/Silver user (only if not Gold)
-    if (storedTier) {
-      setUserName(storedName);
-      setUserTier(storedTier);
-      setUserSlug(storedSlug);
-      setIsAuthenticated(true);
-      setIsGoldClient(false);
-      console.log("[SELECT-AGENT] Bronze/Silver user authenticated, tier:", storedTier);
-    } else {
-      // Not authenticated - redirect to pricing/login
-      console.log("[SELECT-AGENT] Not authenticated, redirecting to pricing");
-      setIsAuthenticated(false);
-      navigate(`/c/${slug}/pricing`);
-    }
+    checkAuth();
   }, [slug, navigate]);
 
   const { data, isLoading, error } = useQuery<AgentsResponse>({
