@@ -369,7 +369,7 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
     
     const [share] = await db.select()
       .from(whatsappAgentShares)
-      .where(eq(whatsappAgentShares.shareSlug, slugStr))
+      .where(eq(whatsappAgentShares.slug, slugStr))
       .limit(1);
     
     if (!share) {

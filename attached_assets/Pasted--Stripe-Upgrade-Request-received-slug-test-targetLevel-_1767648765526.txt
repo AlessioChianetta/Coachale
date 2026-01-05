@@ -1,0 +1,73 @@
+[Stripe Upgrade] Request received: { slug: 'test', targetLevel: '2' }
+[Stripe Upgrade] Token decoded: {
+  type: 'bronze',
+  role: undefined,
+  bronzeUserId: '35f86c26-7ef5-4871-8105-e9041f37e8fc',
+  managerId: undefined
+}
+[Stripe Upgrade] Error: error: syntax error at or near "="
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async <anonymous> (/home/runner/workspace/server/routes/stripe-connect-router.ts:370:21) {
+  length: 91,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '385',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+[Stripe Upgrade] Error details: {
+  code: '42601',
+  severity: 'ERROR',
+  position: '385',
+  message: 'syntax error at or near "="'
+}
+9:33:02 PM [express] POST /api/stripe/upgrade-subscription 500 in 123ms :: {"error":"syntax error at…
+[Stripe Upgrade] Request received: { slug: 'test', targetLevel: '3' }
+[Stripe Upgrade] Token decoded: {
+  type: 'bronze',
+  role: undefined,
+  bronzeUserId: '35f86c26-7ef5-4871-8105-e9041f37e8fc',
+  managerId: undefined
+}
+[Stripe Upgrade] Error: error: syntax error at or near "="
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async <anonymous> (/home/runner/workspace/server/routes/stripe-connect-router.ts:370:21) {
+  length: 91,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '385',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+[Stripe Upgrade] Error details: {
+  code: '42601',
+  severity: 'ERROR',
+  position: '385',
+  message: 'syntax error at or near "="'
+}
