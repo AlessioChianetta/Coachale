@@ -1,0 +1,89 @@
+Activity tracker init: {isLoginSuccess: 'true', existingSessionId: '5fdeff02-2a72-4809-9849-715a58c4ee8b', sessionId: null, userId: 'ae70e0ac-4df6-41d8-a12b-745ee2601eae'}
+injected.js:37 Fresh login detected, starting new session
+injected.js:37 🔄 Starting session attempt 1 - token exists: true - user ID: ae70e0ac-4df6-41d8-a12b-745ee2601eae
+injected.js:37 Making request to start session...
+injected.js:37 Session start response status: 201
+injected.js:37 ✅ Session started successfully: 6e8ae7a0-389d-4e56-b593-d8c240abed3a
+injected.js:214  GET https://0b9bdd40-128f-4463-9bcc-883660ad7044-00-fb7v4kj3do0t.riker.replit.dev/api/badges/client 403 (Forbidden)
+apply @ injected.js:214
+queryFn @ client-dashboard.tsx:142
+fetchFn @ @tanstack_react-query.js?v=f4727a25:1101
+run @ @tanstack_react-query.js?v=f4727a25:800
+start @ @tanstack_react-query.js?v=f4727a25:843
+fetch @ @tanstack_react-query.js?v=f4727a25:1148
+executeFetch_fn @ @tanstack_react-query.js?v=f4727a25:1651
+onSubscribe @ @tanstack_react-query.js?v=f4727a25:1344
+subscribe @ @tanstack_react-query.js?v=f4727a25:24
+(anonymous) @ @tanstack_react-query.js?v=f4727a25:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=f4727a25:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f4727a25:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f4727a25:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f4727a25:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f4727a25:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f4727a25:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f4727a25:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f4727a25:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f4727a25:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f4727a25:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=f4727a25:19432
+commitRoot @ chunk-RPCDYKBN.js?v=f4727a25:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=f4727a25:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=f4727a25:18718
+workLoop @ chunk-RPCDYKBN.js?v=f4727a25:197
+flushWork @ chunk-RPCDYKBN.js?v=f4727a25:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=f4727a25:384Understand this error
+injected.js:37 [SELECT-AGENT] Auth check - normalToken: true authUser: false bronzeTier: 
+injected.js:37 [SELECT-AGENT] Verifying token via API...
+injected.js:37 [SELECT-AGENT] API user data: client robert
+injected.js:37 [SELECT-AGENT] AuthUser resolved: client robert
+injected.js:37 [SELECT-AGENT] Gold client authenticated
+injected.js:37 [SELECT-AGENT] Fetching agents - isGold: true token: true tier: 3
+injected.js:214  GET https://0b9bdd40-128f-4463-9bcc-883660ad7044-00-fb7v4kj3do0t.riker.replit.dev/api/public/agent/test/manager/preferences 403 (Forbidden)
+apply @ injected.js:214
+queryFn @ manager-chat.tsx:191
+fetchFn @ @tanstack_react-query.js?v=f4727a25:1101
+run @ @tanstack_react-query.js?v=f4727a25:800
+start @ @tanstack_react-query.js?v=f4727a25:843
+fetch @ @tanstack_react-query.js?v=f4727a25:1148
+executeFetch_fn @ @tanstack_react-query.js?v=f4727a25:1651
+onSubscribe @ @tanstack_react-query.js?v=f4727a25:1344
+subscribe @ @tanstack_react-query.js?v=f4727a25:24
+(anonymous) @ @tanstack_react-query.js?v=f4727a25:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=f4727a25:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f4727a25:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f4727a25:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f4727a25:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f4727a25:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f4727a25:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f4727a25:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f4727a25:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=f4727a25:19416
+commitRoot @ chunk-RPCDYKBN.js?v=f4727a25:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f4727a25:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f4727a25:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f4727a25:18627
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=f4727a25:103
+flush @ @tanstack_react-query.js?v=f4727a25:615
+batch @ @tanstack_react-query.js?v=f4727a25:633
+dispatch_fn @ @tanstack_react-query.js?v=f4727a25:1260
+setData @ @tanstack_react-query.js?v=f4727a25:935
+fetch @ @tanstack_react-query.js?v=f4727a25:1157
+await in fetch
+executeFetch_fn @ @tanstack_react-query.js?v=f4727a25:1651
+onSubscribe @ @tanstack_react-query.js?v=f4727a25:1344
+subscribe @ @tanstack_react-query.js?v=f4727a25:24
+(anonymous) @ @tanstack_react-query.js?v=f4727a25:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=f4727a25:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f4727a25:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f4727a25:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f4727a25:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f4727a25:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f4727a25:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f4727a25:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f4727a25:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=f4727a25:19328
+workLoop @ chunk-RPCDYKBN.js?v=f4727a25:197
+flushWork @ chunk-RPCDYKBN.js?v=f4727a25:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=f4727a25:384Understand this error
+injected.js:214  GET https://0b9bdd40-128f-4463-9bcc-883660ad7044-00-fb7v4kj3do0t.riker.replit.dev/api/public/agent/test/manager/me 403 (Forbidden)
