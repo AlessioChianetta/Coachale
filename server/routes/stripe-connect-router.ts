@@ -1,6 +1,6 @@
 import express, { Router, Request, Response } from "express";
 import { db } from "../db";
-import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig } from "@shared/schema";
+import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig, managerConversations, managerMessages } from "@shared/schema";
 import { eq, sql, isNotNull, desc, and } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 import { decrypt } from "../encryption";
@@ -806,6 +806,32 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
         const tempPassword = userProvidedPassword ? null : generateRandomPassword(8);
         const hashedPassword = metaHashedPassword || await bcrypt.hash(tempPassword!, 10);
         
+        // Check if Bronze user exists to migrate preferences and conversations
+        const [existingBronzeUser] = await db.select()
+          .from(bronzeUsers)
+          .where(and(
+            eq(bronzeUsers.email, clientEmail),
+            eq(bronzeUsers.consultantId, consultantId)
+          ))
+          .limit(1);
+        
+        // Migrate Bronze preferences if user is upgrading
+        const migratedPreferences = existingBronzeUser ? {
+          hasCompletedOnboarding: existingBronzeUser.hasCompletedOnboarding || false,
+          writingStyle: existingBronzeUser.writingStyle || null,
+          responseLength: existingBronzeUser.responseLength || null,
+          customInstructions: existingBronzeUser.customInstructions || null,
+        } : {
+          hasCompletedOnboarding: false,
+          writingStyle: null,
+          responseLength: null,
+          customInstructions: null,
+        };
+        
+        if (existingBronzeUser) {
+          console.log(`[Stripe Webhook] Migrating Bronze preferences for ${clientEmail}: onboarding=${migratedPreferences.hasCompletedOnboarding}, style=${migratedPreferences.writingStyle}`);
+        }
+        
         const [subscription] = await db.insert(clientLevelSubscriptions).values({
           consultantId,
           clientEmail,
@@ -818,12 +844,23 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           stripeSubscriptionId: session.subscription || null,
           tempPassword,
           passwordHash: hashedPassword,
-          // Initialize onboarding state for new subscriptions
-          hasCompletedOnboarding: false,
-          writingStyle: null,
-          responseLength: null,
-          customInstructions: null,
+          // Migrate onboarding state from Bronze or initialize fresh
+          ...migratedPreferences,
         }).returning();
+        
+        // Migrate Bronze conversations to new subscription ID
+        if (existingBronzeUser) {
+          try {
+            const migratedConversations = await db.update(managerConversations)
+              .set({ managerId: subscription.id })
+              .where(eq(managerConversations.managerId, existingBronzeUser.id))
+              .returning({ id: managerConversations.id });
+            
+            console.log(`[Stripe Webhook] Migrated ${migratedConversations.length} conversations from Bronze ${existingBronzeUser.id} to Silver/Gold ${subscription.id}`);
+          } catch (migrationError: any) {
+            console.error(`[Stripe Webhook] Failed to migrate conversations:`, migrationError.message);
+          }
+        }
         
         // Welcome email is now sent after account creation (see below)
         

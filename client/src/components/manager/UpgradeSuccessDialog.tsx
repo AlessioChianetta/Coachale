@@ -21,6 +21,8 @@ interface UpgradeSuccessDialogProps {
     level3MonthlyPrice?: number;
     level2Name?: string;
     level3Name?: string;
+    level2Features?: string[];
+    level3Features?: string[];
   };
 }
 
@@ -55,6 +57,20 @@ export function UpgradeSuccessDialog({
   const goldName = pricing?.level3Name || "Oro";
   const silverPrice = pricing?.level2MonthlyPrice ?? 29;
   const goldPrice = pricing?.level3MonthlyPrice ?? 59;
+  
+  const silverFeatures = pricing?.level2Features || [
+    "Messaggi illimitati",
+    "Risposte più veloci",
+    "Supporto prioritario",
+  ];
+  const goldFeatures = pricing?.level3Features || [
+    "Messaggi illimitati",
+    "Priorità premium",
+    "Funzionalità esclusive",
+    "Accesso anticipato novità",
+  ];
+  
+  const featureIcons = [MessageSquare, Zap, Star, Sparkles, Crown];
 
   const tierConfig = {
     silver: {
@@ -64,11 +80,10 @@ export function UpgradeSuccessDialog({
       gradient: "from-slate-400 to-slate-600",
       bgGradient: "from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50",
       borderColor: "border-slate-200 dark:border-slate-700",
-      benefits: [
-        { icon: MessageSquare, text: "Messaggi illimitati" },
-        { icon: Zap, text: "Risposte più veloci" },
-        { icon: Star, text: "Supporto prioritario" },
-      ],
+      benefits: silverFeatures.slice(0, 4).map((text, i) => ({
+        icon: featureIcons[i % featureIcons.length],
+        text,
+      })),
     },
     gold: {
       name: goldName,
@@ -77,12 +92,10 @@ export function UpgradeSuccessDialog({
       gradient: "from-yellow-400 to-amber-500",
       bgGradient: "from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20",
       borderColor: "border-yellow-200 dark:border-yellow-700",
-      benefits: [
-        { icon: MessageSquare, text: "Messaggi illimitati" },
-        { icon: Zap, text: "Priorità premium" },
-        { icon: Sparkles, text: "Funzionalità esclusive" },
-        { icon: Star, text: "Accesso anticipato novità" },
-      ],
+      benefits: goldFeatures.slice(0, 4).map((text, i) => ({
+        icon: featureIcons[i % featureIcons.length],
+        text,
+      })),
     },
   };
 

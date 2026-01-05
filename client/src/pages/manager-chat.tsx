@@ -1317,6 +1317,8 @@ export default function ManagerChat() {
           level3MonthlyPrice: pricingData.pricing.level3MonthlyPrice,
           level2Name: pricingData.pricing.level2Name,
           level3Name: pricingData.pricing.level3Name,
+          level2Features: pricingData.pricing.level2Features,
+          level3Features: pricingData.pricing.level3Features,
         } : undefined}
       />
 
