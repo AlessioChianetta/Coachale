@@ -1,0 +1,88 @@
+onzeUserId: '35f86c26-7ef5-4871-8105-e9041f37e8fc',
+  managerId: undefined
+}
+🔶 [VALIDATE-SESSION] Bronze token detected, verifying user...
+🔶 [VALIDATE-SESSION] Bronze user found: true, isActive: true
+✅ [BRONZE AUTH] Valid bronze token for share test, bronzeUserId: 35f86c26-7ef5-4871-8105-e9041f37e8fc
+
+🗑️ [DELETE CONVERSATION] Manager 35f86c26-7ef5-4871-8105-e9041f37e8fc deleting conversation 56cc450f-1f08-4033-b811-a234d0187378
+   🔍 Query: conversationId=56cc450f-1f08-4033-b811-a234d0187378, agentConfigId=c59f71bc-e0fa-48ba-8786-75e4f565fdb3, managerPattern=manager_35f86c26-7ef5-4871-8105-e9041f37e8fc%
+   ✅ Conversation verified, deleting messages...
+   ✅ Messages deleted, deleting conversation...
+   ✅ Conversation deleted successfully
+
+🔍 [VALIDATE-SESSION] Share: test, accessType: public
+🔑 [VALIDATE-SESSION] Auth header present: true, starts with Bearer: true
+🔐 [VALIDATE-SESSION] JWT_SECRET available: true, SESSION_SECRET available: true
+📜 [VALIDATE-SESSION] Token decoded with JWT_SECRET: {
+  type: 'bronze',
+  role: undefined,
+  bronzeUserId: '35f86c26-7ef5-4871-8105-e9041f37e8fc',
+  managerId: undefined
+}
+🔶 [VALIDATE-SESSION] Bronze token detected, verifying user...
+🔶 [VALIDATE-SESSION] Bronze user found: true, isActive: true
+✅ [BRONZE AUTH] Valid bronze token for share test, bronzeUserId: 35f86c26-7ef5-4871-8105-e9041f37e8fc
+
+🔍 [VALIDATE-SESSION] Share: test, accessType: public
+🔑 [VALIDATE-SESSION] Auth header present: true, starts with Bearer: true
+🔐 [VALIDATE-SESSION] JWT_SECRET available: true, SESSION_SECRET available: true
+📜 [VALIDATE-SESSION] Token decoded with JWT_SECRET: {
+  type: 'bronze',
+  role: undefined,
+  bronzeUserId: '35f86c26-7ef5-4871-8105-e9041f37e8fc',
+  managerId: undefined
+}
+🔶 [VALIDATE-SESSION] Bronze token detected, verifying user...
+🔶 [VALIDATE-SESSION] Bronze user found: true, isActive: true
+✅ [BRONZE AUTH] Valid bronze token for share test, bronzeUserId: 35f86c26-7ef5-4871-8105-e9041f37e8fc
+
+🔍 [VALIDATE-SESSION] Share: test, accessType: public
+🔑 [VALIDATE-SESSION] Auth header present: true, starts with Bearer: true
+🔐 [VALIDATE-SESSION] JWT_SECRET available: true, SESSION_SECRET available: true
+📜 [VALIDATE-SESSION] Token decoded with JWT_SECRET: {
+  type: 'bronze',
+  role: undefined,
+  bronzeUserId: '35f86c26-7ef5-4871-8105-e9041f37e8fc',
+  managerId: undefined
+}
+🔶 [VALIDATE-SESSION] Bronze token detected, verifying user...
+🔶 [VALIDATE-SESSION] Bronze user found: true, isActive: true
+✅ [BRONZE AUTH] Valid bronze token for share test, bronzeUserId: 35f86c26-7ef5-4871-8105-e9041f37e8fc
+
+🗑️ [DELETE CONVERSATION] Manager 35f86c26-7ef5-4871-8105-e9041f37e8fc deleting conversation 795b03ed-d629-4c04-8525-5f061636e4fb
+   🔍 Query: conversationId=795b03ed-d629-4c04-8525-5f061636e4fb, agentConfigId=c59f71bc-e0fa-48ba-8786-75e4f565fdb3, managerPattern=manager_35f86c26-7ef5-4871-8105-e9041f37e8fc%
+   ✅ Conversation verified, deleting messages...
+   ✅ Messages deleted, deleting conversation...
+   ✅ Conversation deleted successfully
+[SHEETS POLLING] Completed import for job f33cfa03-2d1f-4b28-871b-84359e998576: 0 imported, 32 duplicates, 0 skipped, 0 errors
+[SHEETS POLLING] Polling cycle completed (ExecID: 4eyf1q)
+
+🔍 [VALIDATE-SESSION] Share: test, accessType: public
+🔑 [VALIDATE-SESSION] Auth header present: true, starts with Bearer: true
+🔐 [VALIDATE-SESSION] JWT_SECRET available: true, SESSION_SECRET available: true
+📜 [VALIDATE-SESSION] Token decoded with JWT_SECRET: {
+  type: 'bronze',
+  role: undefined,
+  bronzeUserId: '35f86c26-7ef5-4871-8105-e9041f37e8fc',
+  managerId: undefined
+}
+🔶 [VALIDATE-SESSION] Bronze token detected, verifying user...
+🔶 [VALIDATE-SESSION] Bronze user found: true, isActive: true
+✅ [BRONZE AUTH] Valid bronze token for share test, bronzeUserId: 35f86c26-7ef5-4871-8105-e9041f37e8fc
+[Stripe Upgrade] Request received: { slug: 'test', targetLevel: '2' }
+[Stripe Upgrade] Token decoded: {
+  type: 'bronze',
+  role: undefined,
+  bronzeUserId: '35f86c26-7ef5-4871-8105-e9041f37e8fc',
+  managerId: undefined
+}
+9:36:19 PM [express] POST /api/stripe/upgrade-subscription 404 in 780ms :: {"error":"Agent not found…
+[Stripe Upgrade] Request received: { slug: 'test', targetLevel: '2' }
+[Stripe Upgrade] Token decoded: {
+  type: 'bronze',
+  role: undefined,
+  bronzeUserId: '35f86c26-7ef5-4871-8105-e9041f37e8fc',
+  managerId: undefined
+}
+9:36:25 PM [express] POST /api/stripe/upgrade-subscription 404 in 112ms :: {"error":"Agent not found…

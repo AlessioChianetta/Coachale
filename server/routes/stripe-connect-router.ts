@@ -1,6 +1,6 @@
 import express, { Router, Request, Response } from "express";
 import { db } from "../db";
-import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers } from "@shared/schema";
+import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig } from "@shared/schema";
 import { eq, sql, isNotNull, desc, and } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 import { decrypt } from "../encryption";
@@ -367,16 +367,32 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       return res.status(400).json({ error: "Invalid slug" });
     }
     
+    // First try whatsappAgentShares (Manager system)
+    let consultantId: string | null = null;
+    
     const [share] = await db.select()
       .from(whatsappAgentShares)
       .where(eq(whatsappAgentShares.slug, slugStr))
       .limit(1);
     
-    if (!share) {
-      return res.status(404).json({ error: "Agent not found" });
+    if (share) {
+      consultantId = share.consultantId;
+    } else {
+      // Try consultantWhatsappConfig (Bronze/Level 1 system) with public_slug
+      const [agentConfig] = await db.select()
+        .from(consultantWhatsappConfig)
+        .where(eq(consultantWhatsappConfig.publicSlug, slugStr))
+        .limit(1);
+      
+      if (agentConfig) {
+        consultantId = agentConfig.consultantId;
+        console.log("[Stripe Upgrade] Found agent via Bronze public_slug:", slugStr);
+      }
     }
     
-    const consultantId = share.consultantId;
+    if (!consultantId) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
     
     // Validate consultantId is a valid string
     if (!consultantId || typeof consultantId !== "string") {
