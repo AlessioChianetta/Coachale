@@ -413,7 +413,7 @@ async function validateBronzeAuth(
       });
     }
     
-    console.log(`📜 [VALIDATE-BRONZE-AUTH] Token decoded:`, { type: decoded.type, bronzeUserId: decoded.bronzeUserId, subscriptionId: decoded.subscriptionId, consultantId: decoded.consultantId, agentConsultantId: agentConfig.consultantId });
+    console.log(`📜 [VALIDATE-BRONZE-AUTH] Token decoded:`, { type: decoded.type, bronzeUserId: decoded.bronzeUserId, subscriptionId: decoded.subscriptionId, userId: decoded.userId, consultantId: decoded.consultantId, agentConsultantId: agentConfig.consultantId });
     
     // Silver users have unlimited messages - skip Bronze limits check
     if (decoded.type === 'silver') {
@@ -421,9 +421,40 @@ async function validateBronzeAuth(
       return next();
     }
     
-    // Verify token type is "bronze" for non-Silver users
+    // Gold users (regular clients from users table) - check by userId without type field
+    if (!decoded.type && decoded.userId) {
+      console.log(`🥇 [VALIDATE-BRONZE-AUTH] Checking if userId is a Gold client...`);
+      const [goldUser] = await db
+        .select()
+        .from(schema.users)
+        .where(
+          and(
+            eq(schema.users.id, decoded.userId),
+            eq(schema.users.role, 'client'),
+            eq(schema.users.isActive, true)
+          )
+        )
+        .limit(1);
+      
+      if (goldUser) {
+        // Verify Gold user belongs to this agent's consultant
+        if (goldUser.consultantId === agentConfig.consultantId) {
+          console.log(`✅ [GOLD AUTH] Valid Gold client: ${goldUser.email}`);
+          return next();
+        } else {
+          console.log(`❌ [GOLD AUTH] Gold client ${goldUser.email} does not belong to agent's consultant`);
+          return res.status(403).json({ 
+            error: 'Token Gold non valido per questo agente',
+            requiresBronzeAuth: true,
+          });
+        }
+      }
+      console.log(`⚠️ [VALIDATE-BRONZE-AUTH] userId present but not a valid Gold client`);
+    }
+    
+    // Verify token type is "bronze" for non-Silver/non-Gold users
     if (decoded.type !== 'bronze') {
-      console.log(`❌ [VALIDATE-BRONZE-AUTH] Token type is not 'bronze' or 'silver': ${decoded.type}`);
+      console.log(`❌ [VALIDATE-BRONZE-AUTH] Token type is not 'bronze', 'silver', or Gold: ${decoded.type}`);
       return res.status(401).json({ 
         error: 'Token non valido per utenti Bronze',
         requiresBronzeAuth: true,

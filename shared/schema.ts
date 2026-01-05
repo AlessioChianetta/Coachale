@@ -882,7 +882,8 @@ export const bronzeUserAgentAccess = pgTable("bronze_user_agent_access", {
   isEnabled: boolean("is_enabled").default(true).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
 }, (table) => ({
-  uniqueBronzeUserAgent: unique().on(table.bronzeUserId, table.agentConfigId),
+  // Composite unique constraint: same user can exist in different tiers with separate access records
+  uniqueUserAgentType: unique().on(table.bronzeUserId, table.agentConfigId, table.userType),
 }));
 
 export type BronzeUserAgentAccess = typeof bronzeUserAgentAccess.$inferSelect;
