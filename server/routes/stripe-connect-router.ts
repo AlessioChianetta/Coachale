@@ -1596,4 +1596,92 @@ router.get("/admin/stripe-stats", authenticateToken, requireRole("super_admin"),
   }
 });
 
+// Verify upgrade session - fallback when webhook doesn't work (dev environment)
+router.post("/verify-upgrade-session", async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.body;
+    const authHeader = req.headers.authorization;
+    
+    if (!sessionId) {
+      return res.status(400).json({ error: "Session ID required" });
+    }
+    
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    const token = authHeader.split(" ")[1];
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    
+    console.log(`[Verify Session] Checking session ${sessionId}`);
+    
+    const stripe = await getStripeInstance();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    
+    if (session.payment_status !== "paid") {
+      return res.json({ success: false, message: "Payment not completed" });
+    }
+    
+    const clientEmail = session.metadata?.clientEmail;
+    const level = session.metadata?.level;
+    const consultantId = session.metadata?.consultantId;
+    
+    if (!clientEmail || !level || !consultantId) {
+      return res.status(400).json({ error: "Missing session metadata" });
+    }
+    
+    // Check if subscription already exists
+    const existing = await db.select().from(clientLevelSubscriptions)
+      .where(and(
+        eq(clientLevelSubscriptions.clientEmail, clientEmail),
+        eq(clientLevelSubscriptions.consultantId, consultantId),
+        eq(clientLevelSubscriptions.status, "active")
+      ));
+    
+    if (existing.length > 0) {
+      console.log(`[Verify Session] Subscription already exists for ${clientEmail}`);
+      return res.json({ success: true, alreadyExists: true });
+    }
+    
+    // Create subscription record
+    const clientName = session.metadata?.clientName || clientEmail.split("@")[0];
+    const stripeSubscriptionId = session.subscription as string;
+    const stripeCustomerId = session.customer as string;
+    
+    console.log(`[Verify Session] Creating subscription for ${clientEmail}, level ${level}`);
+    
+    await db.insert(clientLevelSubscriptions).values({
+      id: crypto.randomUUID(),
+      consultantId,
+      level,
+      clientEmail,
+      clientName,
+      stripeSubscriptionId,
+      stripeCustomerId,
+      status: "active",
+      startDate: new Date(),
+    });
+    
+    // Update bronze user to inactive if this was an upgrade
+    if (decoded.type === "bronze" && decoded.bronzeUserId) {
+      await db.update(bronzeUsers)
+        .set({ isActive: false })
+        .where(eq(bronzeUsers.id, decoded.bronzeUserId));
+      console.log(`[Verify Session] Deactivated bronze user ${decoded.bronzeUserId}`);
+    }
+    
+    console.log(`[Verify Session] Successfully created subscription for ${clientEmail}`);
+    res.json({ success: true, created: true });
+    
+  } catch (error) {
+    console.error("[Verify Session] Error:", error);
+    res.status(500).json({ error: "Failed to verify session" });
+  }
+});
+
 export default router;

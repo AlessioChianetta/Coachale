@@ -184,6 +184,9 @@ function Router() {
 
           {/* Manager Chat - uses manager_token auth */}
           <Route path="/agent/:slug/chat" component={ManagerChat} />
+          
+          {/* Manager Chat base route (for Stripe redirect) */}
+          <Route path="/agent/:slug" component={ManagerChat} />
 
           {/* Public AI Chat - no auth required (Level 1 agents) */}
           <Route path="/ai/:slug" component={PublicAIChat} />
