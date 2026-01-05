@@ -1,0 +1,117 @@
+Analisi Situazione Attuale
+1. Contatore Messaggi Bronze
+Il contatore esiste già nell'header di manager-chat.tsx (righe 1034-1041):
+
+<div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3...">
+  {bronzeUsage.dailyMessagesUsed}/{bronzeUsage.dailyMessageLimit}
+</div>
+Problema: Quando i messaggi finiscono, non c'è nessun feedback o CTA upgrade.
+
+2. Sistema Stripe
+stripe-connect-router.ts crea SEMPRE una nuova subscription via checkout, non supporta upgrade.
+
+3. Tabella clientLevelSubscriptions
+level: text("level").$type<"2" | "3">()  // Può essere aggiornato!
+stripeSubscriptionId: text("stripe_subscription_id")  // ID per Stripe
+Piano UI Dettagliato
+1. Prompt Upgrade in Chat (quando messaggi esauriti)
+Posizione: Sopra InputArea, sotto i messaggi
+
+Design:
+
+┌──────────────────────────────────────────────────────────────┐
+│  ⚠️  Hai esaurito i 15 messaggi giornalieri                 │
+│                                                              │
+│  Passa ad Argento per messaggi illimitati e risposte più    │
+│  veloci, oppure torna domani per altri messaggi gratis.      │
+│                                                              │
+│  [🚀 Passa ad Argento]  [Scopri tutti i piani →]            │
+└──────────────────────────────────────────────────────────────┘
+Colori: Gradiente amber->orange con bordo
+Icone: Medal per Argento, Crown per Oro
+Condizione: bronzeUsage.remaining <= 0
+2. Pagina/Sheet Impostazioni Profilo
+Accesso: Nuovo pulsante icona User nel header di manager-chat + voce nel menu utente
+
+Design Sheet (drawer laterale):
+
+┌─────────────────────────────────────────────┐
+│  Il Tuo Profilo                        [X]  │
+├─────────────────────────────────────────────┤
+│                                             │
+│  [🥉] Piano Bronze                          │
+│  ─────────────────────────────────          │
+│                                             │
+│  👤 Dati Personali                          │
+│  ┌─────────────────────────────────────┐    │
+│  │ Nome:      Mario                    │    │
+│  │ Cognome:   Rossi                    │    │
+│  │ Email:     mario@email.com          │    │
+│  │ Telefono:  +39 333 1234567          │    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+│  💳 Abbonamento                             │
+│  ┌─────────────────────────────────────┐    │
+│  │ Piano attuale: Bronze (Gratuito)    │    │
+│  │ Messaggi: 8/15 usati oggi           │    │
+│  │                                     │    │
+│  │ [⬆️ Passa ad Argento - €29/mese]    │    │
+│  │ [👑 Passa a Oro - €59/mese]         │    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+│  [🚪 Esci]                                  │
+└─────────────────────────────────────────────┘
+Per utenti già Silver:
+
+│  💳 Abbonamento                             │
+│  ┌─────────────────────────────────────┐    │
+│  │ Piano attuale: Argento (€29/mese)   │    │
+│  │ Prossimo rinnovo: 15 Febbraio 2026  │    │
+│  │ Messaggi: Illimitati ✓              │    │
+│  │                                     │    │
+│  │ [👑 Passa a Oro - €30/mese extra]   │    │
+│  └─────────────────────────────────────┘    │
+3. Sistema Upgrade Backend
+Nuovo endpoint: POST /stripe/upgrade-subscription
+
+Logica:
+
+Trova subscription esistente in clientLevelSubscriptions
+Se ha stripeSubscriptionId:
+Usa Stripe API per modificare subscription (prorate)
+Aggiorna level nel database
+Se non ha subscription (Bronze):
+Redirect a checkout normale
+MAI crea duplicati
+Flusso upgrade Bronze → Silver:
+
+Bronze (gratis) → Checkout Stripe → Silver (nuovo record)
+Flusso upgrade Silver → Gold:
+
+Silver (abbonamento attivo) → Stripe prorate → Gold (aggiorna record esistente)
+4. Link Impostazioni nell'Header
+Prima (attuale):
+
+[Bot] Assistente  |  8/15  [Preferenze] [Logout]
+Dopo:
+
+[Bot] Assistente  |  8/15  [User ▼] [Preferenze] [Logout]
+                            ├─ Profilo
+                            ├─ Abbonamento
+                            └─ Esci
+Oppure più semplice, un'icona User che apre direttamente lo Sheet profilo.
+
+Flusso Completo Upgrade
+Bronze esaurisce messaggi
+       ↓
+Banner "Passa ad Argento" in chat
+       ↓
+Click → Apre Sheet Profilo (tab Abbonamento)
+       ↓
+Click "Passa ad Argento"
+       ↓
+Stripe Checkout
+       ↓
+Webhook crea/aggiorna record in clientLevelSubscriptions
+       ↓
+Utente ha messaggi illimitati
