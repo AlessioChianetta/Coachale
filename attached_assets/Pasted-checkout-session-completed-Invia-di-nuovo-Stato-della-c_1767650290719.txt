@@ -1,0 +1,263 @@
+checkout.session.completed
+Invia di nuovo
+Stato della consegna
+Non riuscito
+Prossimo tentativo tra 59 minuti
+Data del tentativo
+05 gen 2026, 22:56:24
+ID evento
+evt_1SmLlEJdVgQ319PiEg8YERXc
+Dati origine
+05 gen 2026, 22:56:24 CET
+Origine
+Automatico
+Versione API
+2023-08-16
+Descrizione
+È stata completata una sessione di Checkout
+Risposta
+Codice stato HTTP
+502
+<!DOCTYPE html> <html lang="en"> <head> <title>Hmm... We couldn&#39;t reach this app</title> <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=IBM+Plex+Sans"> <style> body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background: #1c2333; font-family: "IBM Plex Sans", "sans"; color: #f5f9fc; } .title-box { font-size: 12px; inline-size: max-content; max-width: 100%; } .description-box { font-size: 10px; inline-size: max-content; max-width: 100%; } .err-box { padding: 1em; width: 100vw; max-width: 100vw; overflow: hidden; } .message { display: flex; flex-direction: column; align-items: center; } .ascii { font-size: 6px; text-align: center; opacity: .8; } .eval-bot { margin: 4em; } @media (max-width: 500px) { .title-box { font-size: 10px; } .description-box { font-size: 8px; } .eval-bot { margin: 1em; } .eval-bot svg { width: 200px; } .message { flex-direction: column; align-items: center; } .repl-links { font-size: 14px; } } .console { background-color: #0e1628; color: #fff; font-family: "IBM Plex Sans", "sans"; padding: 1em; margin: 1em; } .footer-item { margin: 1em; display: flex; justify-content: center; align-items: center; } .link-icon { margin-right: 8px; margin-top: 4px; } a { color: #c2c8cc; } </style> <script> var reload_timeout = setTimeout(function () { window.location.reload(); }, 60000); </script> </head> <body> <div class="err-box"> <div class="message"> <div class="eval-bot"> <pre class="ascii"> :::. :+++***++:.. :-=+=..:-=+**=======---: -+++****+====-::-=====-::. .. .. :: .=++++++=::----------::-::::::--------===--:.:::::. :--==+++=-::----------======----------:-===-:::::::. ::--==+++-----=+++=+++++====----======--==------:: ::::-====+++++++*************+==========---------::.. ..:::---==++*****************+++++++++=------------:::::.. ....:::-=+**********************++++++=--==========--:..... ..:::-++*********+**************+++++++--+***++++==: .::.. :=+*+=+++****++==+++*+++++++***+++++++++***********+=. .::-====-::--: .:-=++=====+++*++====++++++++++++++++++=+++*************+=======++++==--. .--==-----=====++=============+=+++=====++++****************+=+=========--:. . . :--====------=======--==========+++=====++++****+*****+****++===------====-. ...::::::::---====----------::::::-----========++++++++++***++++++++===--:::::-----. ...::::::..:::::---::::::::::...::::::::-----=++++++++++****+++++++===-:::::::::---: .::::.....:::::::::::................:::::=++++++++++*****++++++=====---:::::---::. ...... ......... ...............::=+==++++++++++++++============-----::...: ........::---===-===============------=---:::::::::... .......................::::::::---------:. .. ....................::::::--:::::. ........... </pre> </div> <div class="title-box"> <h1>Hmm... We couldn&#39;t reach this app</h1> </div> <div class="description-box"> <h2>Make sure this app has a port open and is ready to receive HTTP traffic.</h2> </div> </div> <div> <div class="footer-item"> <div class="link-icon"> <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M6.66668 8.66666C6.95298 9.04942 7.31825 9.36612 7.73771 9.59529C8.15717 9.82446 8.62102 9.96074 9.09778 9.99489C9.57454 10.029 10.0531 9.96024 10.5009 9.79319C10.9487 9.62613 11.3554 9.36471 11.6933 9.02666L13.6933 7.02666C14.3005 6.39799 14.6365 5.55598 14.6289 4.68199C14.6213 3.808 14.2708 2.97196 13.6527 2.35394C13.0347 1.73591 12.1987 1.38535 11.3247 1.37775C10.4507 1.37016 9.60869 1.70614 8.98001 2.31333L7.83334 3.45333M9.33334 7.33333C9.04704 6.95058 8.68177 6.63388 8.26231 6.4047C7.84285 6.17553 7.37901 6.03925 6.90224 6.00511C6.42548 5.97096 5.94695 6.03975 5.49911 6.20681C5.05128 6.37387 4.6446 6.63528 4.30668 6.97333L2.30668 8.97333C1.69948 9.602 1.3635 10.444 1.3711 11.318C1.37869 12.192 1.72926 13.028 2.34728 13.6461C2.96531 14.2641 3.80135 14.6147 4.67534 14.6222C5.54933 14.6298 6.39134 14.2939 7.02001 13.6867L8.16001 12.5467" stroke="#C2C8CC" stroke-linecap="round" stroke-linejoin="round" /> </svg> </div> <div class="repl-links"> <a href="https://replit.com">Go to Replit</a> </div> </div> <div class="footer-item"> <div class="link-icon"> <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M6.66668 8.66666C6.95298 9.04942 7.31825 9.36612 7.73771 9.59529C8.15717 9.82446 8.62102 9.96074 9.09778 9.99489C9.57454 10.029 10.0531 9.96024 10.5009 9.79319C10.9487 9.62613 11.3554 9.36471 11.6933 9.02666L13.6933 7.02666C14.3005 6.39799 14.6365 5.55598 14.6289 4.68199C14.6213 3.808 14.2708 2.97196 13.6527 2.35394C13.0347 1.73591 12.1987 1.38535 11.3247 1.37775C10.4507 1.37016 9.60869 1.70614 8.98001 2.31333L7.83334 3.45333M9.33334 7.33333C9.04704 6.95058 8.68177 6.63388 8.26231 6.4047C7.84285 6.17553 7.37901 6.03925 6.90224 6.00511C6.42548 5.97096 5.94695 6.03975 5.49911 6.20681C5.05128 6.37387 4.6446 6.63528 4.30668 6.97333L2.30668 8.97333C1.69948 9.602 1.3635 10.444 1.3711 11.318C1.37869 12.192 1.72926 13.028 2.34728 13.6461C2.96531 14.2641 3.80135 14.6147 4.67534 14.6222C5.54933 14.6298 6.39134 14.2939 7.02001 13.6867L8.16001 12.5467" stroke="#C2C8CC" stroke-linecap="round" stroke-linejoin="round" /> </svg> </div> <div class="repl-links"> <a href="https://replit.com/site/hosting">Learn more about hosting on Replit</a> </div> </div> </div> </div> </body> </html>
+Richiesta
+{
+"id": 
+"evt_1SmLlEJdVgQ319PiEg8YERXc"
+,
+"object": 
+"event",
+"api_version": 
+"2023-08-16",
+"created": 
+1767650184
+,
+"data": {
+"object": {
+"id": 
+"cs_test_a1aiKeNt7vXEleQXHOn9KoHGKYvFHmZIaWCsQegZfNJFlTrxRLVsHhCuiJ"
+,
+"object": 
+"checkout.session",
+"adaptive_pricing": {
+"enabled": 
+false,
+},
+"after_expiration": 
+null,
+"allow_promotion_codes": 
+null,
+"amount_subtotal": 
+4900,
+"amount_total": 
+4900,
+"automatic_tax": {
+"enabled": 
+false,
+"liability": 
+null,
+"provider": 
+null,
+"status": 
+null,
+},
+"billing_address_collection": 
+null,
+"branding_settings": {
+"background_color": 
+"#ffffff",
+"border_style": 
+"rounded",
+"button_color": 
+"#0074d4",
+"display_name": 
+"Orbitale",
+"font_family": 
+"default",
+"icon": 
+null,
+"logo": 
+null,
+},
+"cancel_url": 
+"https://0b9bdd40-128f-4463-9bcc-883660ad7044-00-fb7v4kj3do0t.riker.replit.dev/agent/test?upgrade=canceled",
+"client_reference_id": 
+null,
+"client_secret": 
+null,
+"collected_information": {
+"business_name": 
+null,
+"individual_name": 
+null,
+"shipping_details": 
+null,
+},
+"consent": 
+null,
+"consent_collection": 
+null,
+"created": 
+1767650168
+,
+"currency": 
+"eur",
+"currency_conversion": 
+null,
+"custom_fields": [],
+"custom_text": {
+"after_submit": 
+null,
+"shipping_address": 
+null,
+"submit": 
+null,
+"terms_of_service_acceptance": 
+null,
+},
+"customer": 
+"cus_TjpPnNEKmB2d7P"
+,
+"customer_account": 
+null,
+"customer_creation": 
+"always",
+"customer_details": {
+"address": {
+"city": 
+null,
+"country": 
+"IT",
+"line1": 
+null,
+"line2": 
+null,
+"postal_code": 
+null,
+"state": 
+null,
+},
+"business_name": 
+null,
+"email": 
+"rosita2323@gmail.con",
+"individual_name": 
+null,
+"name": 
+"zczczc",
+"phone": 
+null,
+"tax_exempt": 
+"none",
+"tax_ids": [],
+},
+"customer_email": 
+"rosita2323@gmail.con",
+"discounts": [],
+"expires_at": 
+1767736568
+,
+"invoice": 
+"in_1SmLl9JdVgQ319PiWvQUu4SS"
+,
+"invoice_creation": 
+null,
+"livemode": 
+false,
+"locale": 
+null,
+"metadata": {
+"level": 
+"2",
+"upgradeFromBronze": 
+"true",
+"consultantId": 
+"0c73bbe5-51e1-4108-866b-6be7a52fce3b",
+"clientEmail": 
+"rosita2323@gmail.con",
+},
+"mode": 
+"subscription",
+"origin_context": 
+null,
+"payment_intent": 
+null,
+"payment_link": 
+null,
+"payment_method_collection": 
+"always",
+"payment_method_configuration_details": 
+null,
+"payment_method_options": {
+"card": {
+"request_three_d_secure": 
+"automatic",
+},
+},
+"payment_method_types": [
+"card",
+],
+"payment_status": 
+"paid",
+"permissions": 
+null,
+"phone_number_collection": {
+"enabled": 
+false,
+},
+"recovered_from": 
+null,
+"saved_payment_method_options": {
+"allow_redisplay_filters": [
+"always",
+],
+"payment_method_remove": 
+"disabled",
+"payment_method_save": 
+null,
+},
+"setup_intent": 
+null,
+"shipping_address_collection": 
+null,
+"shipping_cost": 
+null,
+"shipping_details": 
+null,
+"shipping_options": [],
+"status": 
+"complete",
+"submit_type": 
+null,
+"subscription": 
+"sub_1SmLl9JdVgQ319PiLYGc7xG0"
+,
+"success_url": 
+"https://0b9bdd40-128f-4463-9bcc-883660ad7044-00-fb7v4kj3do0t.riker.replit.dev/agent/test?upgrade=success&session_id={CHECKOUT_SESSION_ID}",
+"total_details": {
+"amount_discount": 
+0,
+"amount_shipping": 
+0,
+"amount_tax": 
+0,
+},
+"ui_mode": 
+"hosted",
+"url": 
+null,
+"wallet_options": 
+null,
+},
+},
+"livemode": 
+false,
+"pending_webhooks": 
+1,
+"request": {
+"id": 
+null,
+"idempotency_key": 
+null,
+},
+"type": 
+"checkout.session.completed",

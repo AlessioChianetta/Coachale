@@ -842,6 +842,12 @@ export const clientLevelSubscriptions = pgTable("client_level_subscriptions", {
   phone: text("phone"), // Phone number collected during checkout
   tempPassword: text("temp_password"), // Temporary password for auto-created accounts
   passwordHash: text("password_hash"), // Hashed password for login
+  // Onboarding & AI Preferences
+  hasCompletedOnboarding: boolean("has_completed_onboarding").default(false),
+  onboardingExplanation: text("onboarding_explanation"), // AI-generated explanation cached
+  writingStyle: text("writing_style").$type<"formale" | "amichevole" | "tecnico" | "casual">(),
+  responseLength: text("response_length").$type<"breve" | "media" | "dettagliata">(),
+  customInstructions: text("custom_instructions"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -862,6 +868,12 @@ export const bronzeUsers = pgTable("bronze_users", {
   dailyMessageLimit: integer("daily_message_limit").default(15).notNull(), // Customizable limit per user
   lastMessageResetAt: timestamp("last_message_reset_at").default(sql`now()`),
   isActive: boolean("is_active").default(true).notNull(),
+  // Onboarding & AI Preferences
+  hasCompletedOnboarding: boolean("has_completed_onboarding").default(false),
+  onboardingExplanation: text("onboarding_explanation"), // AI-generated explanation cached
+  writingStyle: text("writing_style").$type<"formale" | "amichevole" | "tecnico" | "casual">(),
+  responseLength: text("response_length").$type<"breve" | "media" | "dettagliata">(),
+  customInstructions: text("custom_instructions"),
   createdAt: timestamp("created_at").default(sql`now()`),
   lastLoginAt: timestamp("last_login_at"),
 }, (table) => ({
