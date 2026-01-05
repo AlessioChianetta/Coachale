@@ -707,11 +707,11 @@ ${share.agentInstructions}
       if (newMessageCount === 2) {
         const titlePrompt = `Genera un titolo breve (max 5 parole) per questa conversazione basandoti sul primo messaggio dell'utente: "${content.trim()}"`;
         try {
+          // Use Gemini Flash Lite for title generation (fast and cheap)
           const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-          const { model: modelName } = getModelWithThinking(aiProvider.metadata.name);
           
           const titleResult = await aiProvider.client.generateContent({
-            model: modelName,
+            model: "gemini-2.0-flash-lite",
             contents: [{ role: "user", parts: [{ text: titlePrompt }] }],
             generationConfig: { 
               systemInstruction: "Rispondi solo con il titolo, senza virgolette o altro testo.",
@@ -725,6 +725,7 @@ ${share.agentInstructions}
             await db.update(managerConversations)
               .set({ title: generatedTitle })
               .where(eq(managerConversations.id, conversationId));
+            console.log(`[PUBLIC AGENT] Title generated with Flash Lite: "${generatedTitle}"`);
           }
         } catch (titleError) {
           console.error("[PUBLIC AGENT] Title generation error:", titleError);
