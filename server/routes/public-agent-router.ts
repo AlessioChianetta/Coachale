@@ -136,8 +136,9 @@ async function verifyManagerToken(
     }
     
     // Handle Gold client token (users table with role: "client")
-    if (decoded.userId && decoded.role === "client") {
-      console.log(`[PUBLIC AGENT] Gold client token detected - userId: ${decoded.userId}`);
+    // Gold client tokens have userId but NO type, bronzeUserId, subscriptionId, or managerId
+    if (decoded.userId && !decoded.type && !decoded.bronzeUserId && !decoded.subscriptionId && !decoded.managerId) {
+      console.log(`[PUBLIC AGENT] Potential Gold client token detected - userId: ${decoded.userId}`);
       
       const [goldUser] = await db.select()
         .from(users)
@@ -148,31 +149,31 @@ async function verifyManagerToken(
         ))
         .limit(1);
 
-      if (!goldUser) {
-        console.log(`[PUBLIC AGENT] Gold client not found or inactive: ${decoded.userId}`);
-        return res.status(403).json({ message: "Gold account not active" });
+      if (goldUser) {
+        console.log(`[PUBLIC AGENT] Gold client auth successful - email: ${goldUser.email}`);
+
+        // Set silverGoldUser on request (treating Gold clients as level 3)
+        req.silverGoldUser = {
+          subscriptionId: decoded.userId, // Use userId as subscriptionId for compatibility
+          consultantId: goldUser.consultantId!,
+          email: goldUser.email,
+          level: "3",
+          type: "gold",
+        };
+        
+        // Also set a compatible manager object for shared endpoints
+        req.manager = {
+          managerId: decoded.userId,
+          consultantId: goldUser.consultantId!,
+          shareId: `gold-${decoded.userId}`,
+          role: "gold",
+        };
+        
+        return next();
       }
-
-      console.log(`[PUBLIC AGENT] Gold client auth successful - email: ${goldUser.email}`);
-
-      // Set silverGoldUser on request (treating Gold clients as level 3)
-      req.silverGoldUser = {
-        subscriptionId: decoded.userId, // Use userId as subscriptionId for compatibility
-        consultantId: goldUser.consultantId!,
-        email: goldUser.email,
-        level: "3",
-        type: "gold",
-      };
       
-      // Also set a compatible manager object for shared endpoints
-      req.manager = {
-        managerId: decoded.userId,
-        consultantId: goldUser.consultantId!,
-        shareId: `gold-${decoded.userId}`,
-        role: "gold",
-      };
-      
-      return next();
+      // Not a Gold client - could be a consultant or other user type, let it fall through
+      console.log(`[PUBLIC AGENT] userId ${decoded.userId} is not a Gold client, checking other auth types...`);
     }
     
     // Handle Manager token (role: "manager")
