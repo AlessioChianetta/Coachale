@@ -135,6 +135,46 @@ async function verifyManagerToken(
       return next();
     }
     
+    // Handle Gold client token (users table with role: "client")
+    if (decoded.userId && decoded.role === "client") {
+      console.log(`[PUBLIC AGENT] Gold client token detected - userId: ${decoded.userId}`);
+      
+      const [goldUser] = await db.select()
+        .from(users)
+        .where(and(
+          eq(users.id, decoded.userId),
+          eq(users.role, "client"),
+          eq(users.isActive, true)
+        ))
+        .limit(1);
+
+      if (!goldUser) {
+        console.log(`[PUBLIC AGENT] Gold client not found or inactive: ${decoded.userId}`);
+        return res.status(403).json({ message: "Gold account not active" });
+      }
+
+      console.log(`[PUBLIC AGENT] Gold client auth successful - email: ${goldUser.email}`);
+
+      // Set silverGoldUser on request (treating Gold clients as level 3)
+      req.silverGoldUser = {
+        subscriptionId: decoded.userId, // Use userId as subscriptionId for compatibility
+        consultantId: goldUser.consultantId!,
+        email: goldUser.email,
+        level: "3",
+        type: "gold",
+      };
+      
+      // Also set a compatible manager object for shared endpoints
+      req.manager = {
+        managerId: decoded.userId,
+        consultantId: goldUser.consultantId!,
+        shareId: `gold-${decoded.userId}`,
+        role: "gold",
+      };
+      
+      return next();
+    }
+    
     // Handle Manager token (role: "manager")
     if (decoded.role !== "manager") {
       return res.status(403).json({ message: "Invalid token role" });
@@ -336,8 +376,76 @@ router.get(
 
       // Handle Silver/Gold users
       if (req.silverGoldUser) {
-        console.log(`[PUBLIC AGENT] GET /manager/me - Silver/Gold user: ${req.silverGoldUser.email}, subscriptionId: ${req.silverGoldUser.subscriptionId}`);
+        console.log(`[PUBLIC AGENT] GET /manager/me - Silver/Gold user: ${req.silverGoldUser.email}, subscriptionId: ${req.silverGoldUser.subscriptionId}, type: ${req.silverGoldUser.type}`);
         
+        // Check if this is a Gold client from users table (type came from verifyManagerToken)
+        if (req.silverGoldUser.type === "gold" && req.silverGoldUser.level === "3") {
+          // First try to find in clientLevelSubscriptions
+          const [subscription] = await db.select()
+            .from(clientLevelSubscriptions)
+            .where(eq(clientLevelSubscriptions.id, req.silverGoldUser.subscriptionId))
+            .limit(1);
+          
+          if (subscription) {
+            // Found in subscriptions table
+            const [consultant] = await db.select({
+              pricingPageSlug: users.pricingPageSlug,
+            })
+              .from(users)
+              .where(eq(users.id, req.silverGoldUser.consultantId))
+              .limit(1);
+
+            console.log(`[PUBLIC AGENT] Returning Gold subscription user data - hasCompletedOnboarding: ${subscription.hasCompletedOnboarding}`);
+
+            return res.json({
+              id: subscription.id,
+              name: subscription.clientName || subscription.clientEmail.split("@")[0],
+              email: subscription.clientEmail,
+              status: subscription.status,
+              isBronze: false,
+              tier: "gold",
+              level: "3",
+              hasCompletedOnboarding: subscription.hasCompletedOnboarding || false,
+              consultantSlug: consultant?.pricingPageSlug || null,
+            });
+          }
+          
+          // Not in subscriptions - must be a Gold client from users table
+          const [goldClient] = await db.select()
+            .from(users)
+            .where(and(
+              eq(users.id, req.silverGoldUser.subscriptionId),
+              eq(users.role, "client")
+            ))
+            .limit(1);
+          
+          if (goldClient) {
+            const [consultant] = await db.select({
+              pricingPageSlug: users.pricingPageSlug,
+            })
+              .from(users)
+              .where(eq(users.id, goldClient.consultantId!))
+              .limit(1);
+
+            console.log(`[PUBLIC AGENT] Returning Gold client user data - email: ${goldClient.email}`);
+
+            return res.json({
+              id: goldClient.id,
+              name: `${goldClient.firstName || ""} ${goldClient.lastName || ""}`.trim() || goldClient.email.split("@")[0],
+              email: goldClient.email,
+              status: goldClient.isActive ? "active" : "inactive",
+              isBronze: false,
+              tier: "gold",
+              level: "3",
+              hasCompletedOnboarding: true, // Gold clients are always onboarded
+              consultantSlug: consultant?.pricingPageSlug || null,
+            });
+          }
+          
+          return res.status(404).json({ message: "Gold user not found" });
+        }
+        
+        // Standard Silver/Gold from subscriptions table
         const [subscription] = await db.select()
           .from(clientLevelSubscriptions)
           .where(eq(clientLevelSubscriptions.id, req.silverGoldUser.subscriptionId))
