@@ -570,7 +570,7 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
           upgradeFromBronze: isBronzeUser ? "true" : "false",
         },
         success_url: `${baseUrl}/agent/${slug}?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/agent/${slug}`,
+        cancel_url: `${baseUrl}/agent/${slug}?upgrade=canceled`,
       });
       
       console.log(`[Stripe Upgrade] New checkout session for ${userEmail} (Level ${targetLevel})`);

@@ -599,16 +599,26 @@ export default function ManagerChat() {
     }
   }, [agentInfo, slug, setLocation, isBronzeSilver]);
 
-  // Handle upgrade success from Stripe checkout
+  // Handle upgrade success/cancel from Stripe checkout
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("upgrade") === "success") {
+    const upgradeStatus = params.get("upgrade");
+    
+    if (upgradeStatus === "success") {
       // Refresh manager info to get updated subscription status
       queryClient.invalidateQueries({ queryKey: ["manager-info", slug] });
       queryClient.invalidateQueries({ queryKey: ["pricing-data", slug] });
       toast({
         title: "Upgrade completato!",
         description: "Il tuo abbonamento è stato attivato con successo. Goditi i nuovi vantaggi!",
+      });
+      // Clean URL without reload
+      window.history.replaceState({}, "", `/agent/${slug}`);
+    } else if (upgradeStatus === "canceled") {
+      toast({
+        title: "Upgrade annullato",
+        description: "Hai annullato il processo di upgrade. Puoi riprovare quando vuoi.",
+        variant: "default",
       });
       // Clean URL without reload
       window.history.replaceState({}, "", `/agent/${slug}`);

@@ -124,11 +124,38 @@ export function ProfileSettingsSheet({
 
       if (data.checkoutUrl) {
         // Open Stripe checkout in new tab to preserve chat state
-        window.open(data.checkoutUrl, '_blank', 'noopener');
+        const checkoutWindow = window.open(data.checkoutUrl, '_blank', 'noopener');
         toast({
           title: "Checkout aperto",
           description: "Completa il pagamento nella nuova scheda. Questa pagina si aggiornerà automaticamente.",
         });
+        
+        // Start polling to detect when upgrade is completed
+        const pollInterval = setInterval(async () => {
+          try {
+            const checkResponse = await fetch(`/api/public/agent/${slug}/manager/me`, {
+              headers: { Authorization: `Bearer ${getToken()}` },
+            });
+            if (checkResponse.ok) {
+              const userData = await checkResponse.json();
+              // If user is no longer Bronze, upgrade succeeded
+              if (!userData.isBronze) {
+                clearInterval(pollInterval);
+                toast({
+                  title: "Upgrade completato!",
+                  description: `Benvenuto nel piano ${targetLevel === "silver" ? "Argento" : "Oro"}! Goditi i nuovi vantaggi.`,
+                });
+                // Reload to refresh UI with new subscription status
+                window.location.reload();
+              }
+            }
+          } catch {
+            // Ignore polling errors
+          }
+        }, 3000); // Poll every 3 seconds
+        
+        // Stop polling after 10 minutes (timeout)
+        setTimeout(() => clearInterval(pollInterval), 600000);
       } else if (data.success) {
         toast({
           title: "Upgrade completato!",
