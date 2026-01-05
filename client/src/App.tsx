@@ -791,7 +791,7 @@ function Router() {
 function App() {
   const [location] = useLocation();
   const user = getAuthUser();
-  const isPublicRoute = location.startsWith('/share/') || location.startsWith('/s/') || location.startsWith('/meet/') || location.startsWith('/live-consultation') || location === '/login' || location === '/register' || location === '/' || location === '/consulenti';
+  const isPublicRoute = location.startsWith('/share/') || location.startsWith('/s/') || location.startsWith('/meet/') || location.startsWith('/live-consultation') || location.startsWith('/agent/') || location === '/login' || location === '/register' || location === '/' || location === '/consulenti';
 
   // Only track activity for authenticated users on non-public routes
   const { logPageView } = useActivityTracker({ disabled: !user || isPublicRoute });
