@@ -599,6 +599,22 @@ export default function ManagerChat() {
     }
   }, [agentInfo, slug, setLocation, isBronzeSilver]);
 
+  // Handle upgrade success from Stripe checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgrade") === "success") {
+      // Refresh manager info to get updated subscription status
+      queryClient.invalidateQueries({ queryKey: ["manager-info", slug] });
+      queryClient.invalidateQueries({ queryKey: ["pricing-data", slug] });
+      toast({
+        title: "Upgrade completato!",
+        description: "Il tuo abbonamento è stato attivato con successo. Goditi i nuovi vantaggi!",
+      });
+      // Clean URL without reload
+      window.history.replaceState({}, "", `/agent/${slug}`);
+    }
+  }, [slug, queryClient, toast]);
+
   const { data: managerInfo } = useQuery<ManagerInfo>({
     queryKey: ["manager-info", slug],
     queryFn: async () => {
