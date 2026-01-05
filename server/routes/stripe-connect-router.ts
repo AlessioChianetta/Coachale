@@ -1596,7 +1596,7 @@ router.get("/admin/stripe-stats", authenticateToken, requireRole("super_admin"),
   }
 });
 
-// Verify upgrade session - fallback when webhook doesn't work (dev environment)
+// Verify upgrade session and generate new token - works as fallback or primary verification
 router.post("/verify-upgrade-session", async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.body;
@@ -1628,46 +1628,47 @@ router.post("/verify-upgrade-session", async (req: Request, res: Response) => {
     }
     
     const clientEmail = session.metadata?.clientEmail;
-    const level = session.metadata?.level;
+    const level = session.metadata?.level as "2" | "3";
     const consultantId = session.metadata?.consultantId;
     
     if (!clientEmail || !level || !consultantId) {
       return res.status(400).json({ error: "Missing session metadata" });
     }
     
-    // Check if subscription already exists
-    const existing = await db.select().from(clientLevelSubscriptions)
+    // Check if subscription already exists (created by webhook)
+    let subscription = await db.select().from(clientLevelSubscriptions)
       .where(and(
         eq(clientLevelSubscriptions.clientEmail, clientEmail),
         eq(clientLevelSubscriptions.consultantId, consultantId),
         eq(clientLevelSubscriptions.status, "active")
-      ));
+      ))
+      .then(rows => rows[0]);
     
-    if (existing.length > 0) {
-      console.log(`[Verify Session] Subscription already exists for ${clientEmail}`);
-      return res.json({ success: true, alreadyExists: true });
+    if (!subscription) {
+      // Create subscription if webhook didn't (fallback)
+      const clientName = session.metadata?.clientName || clientEmail.split("@")[0];
+      const stripeSubscriptionId = session.subscription as string;
+      const stripeCustomerId = session.customer as string;
+      const subscriptionId = crypto.randomUUID();
+      
+      console.log(`[Verify Session] Creating subscription for ${clientEmail}, level ${level}`);
+      
+      await db.insert(clientLevelSubscriptions).values({
+        id: subscriptionId,
+        consultantId,
+        level,
+        clientEmail,
+        clientName,
+        stripeSubscriptionId,
+        stripeCustomerId,
+        status: "active",
+        startDate: new Date(),
+      });
+      
+      subscription = { id: subscriptionId, level, clientEmail, clientName, consultantId } as any;
     }
     
-    // Create subscription record
-    const clientName = session.metadata?.clientName || clientEmail.split("@")[0];
-    const stripeSubscriptionId = session.subscription as string;
-    const stripeCustomerId = session.customer as string;
-    
-    console.log(`[Verify Session] Creating subscription for ${clientEmail}, level ${level}`);
-    
-    await db.insert(clientLevelSubscriptions).values({
-      id: crypto.randomUUID(),
-      consultantId,
-      level,
-      clientEmail,
-      clientName,
-      stripeSubscriptionId,
-      stripeCustomerId,
-      status: "active",
-      startDate: new Date(),
-    });
-    
-    // Update bronze user to inactive if this was an upgrade
+    // Update bronze user to inactive if this was an upgrade from Bronze
     if (decoded.type === "bronze" && decoded.bronzeUserId) {
       await db.update(bronzeUsers)
         .set({ isActive: false })
@@ -1675,8 +1676,26 @@ router.post("/verify-upgrade-session", async (req: Request, res: Response) => {
       console.log(`[Verify Session] Deactivated bronze user ${decoded.bronzeUserId}`);
     }
     
-    console.log(`[Verify Session] Successfully created subscription for ${clientEmail}`);
-    res.json({ success: true, created: true });
+    // Generate new Silver/Gold token
+    const tierType = level === "2" ? "silver" : "gold";
+    const newToken = jwt.sign({
+      type: tierType,
+      subscriptionId: subscription.id,
+      email: clientEmail,
+      consultantId,
+      level,
+    }, JWT_SECRET, { expiresIn: "30d" });
+    
+    console.log(`[Verify Session] Successfully verified upgrade for ${clientEmail} to ${tierType}`);
+    
+    res.json({ 
+      success: true, 
+      upgraded: true,
+      newToken,
+      level,
+      tierType,
+      subscriptionId: subscription.id,
+    });
     
   } catch (error) {
     console.error("[Verify Session] Error:", error);
