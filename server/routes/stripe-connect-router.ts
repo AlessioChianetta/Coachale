@@ -747,12 +747,30 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           phone: metaPhone
         } = metadata;
         
-        if (!consultantId || !clientEmail || !level) {
-          console.error("[Stripe Webhook] Missing metadata in checkout session");
+        // Log full metadata for debugging
+        console.log(`[Stripe Webhook] Checkout metadata:`, JSON.stringify({
+          consultantId,
+          clientEmail,
+          level,
+          agentId,
+          billingPeriod,
+          sessionId: session.id,
+          subscriptionId: session.subscription
+        }));
+        
+        if (!consultantId || !clientEmail) {
+          console.error("[Stripe Webhook] Missing consultantId or clientEmail in checkout session");
           break;
         }
         
-        // Idempotency check: skip if subscription already exists for this Stripe session
+        // CRITICAL: Validate level is explicitly set - never default to Gold
+        if (!level || !["2", "3"].includes(level)) {
+          console.error(`[Stripe Webhook] CRITICAL: Invalid or missing level in metadata: "${level}". Rejecting webhook to prevent wrong tier assignment.`);
+          break;
+        }
+        
+        // Idempotency check: skip if subscription already exists for this Stripe subscription ID
+        // This is the primary idempotency mechanism - Stripe subscription IDs are unique
         const stripeSubscriptionId = session.subscription || null;
         if (stripeSubscriptionId) {
           const [existingSubscription] = await db.select()
@@ -761,20 +779,25 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             .limit(1);
           
           if (existingSubscription) {
-            console.log(`[Stripe Webhook] Subscription already processed: ${stripeSubscriptionId}`);
+            console.log(`[Stripe Webhook] Subscription already processed: ${stripeSubscriptionId}. Acknowledging to prevent retry.`);
             break;
           }
         }
         
-        // Also check by session ID to prevent duplicate one-time payments
-        const stripeSessionId = session.id;
-        const [existingBySession] = await db.select()
+        // Secondary check: prevent duplicate active subscriptions for same email+consultant
+        // This catches edge cases where user opens multiple checkout sessions before first completes
+        const [existingActive] = await db.select()
           .from(clientLevelSubscriptions)
-          .where(eq(clientLevelSubscriptions.stripeCustomerId, stripeSessionId))
+          .where(and(
+            eq(clientLevelSubscriptions.clientEmail, clientEmail),
+            eq(clientLevelSubscriptions.consultantId, consultantId),
+            eq(clientLevelSubscriptions.status, "active")
+          ))
           .limit(1);
         
-        if (existingBySession) {
-          console.log(`[Stripe Webhook] Session already processed: ${stripeSessionId}`);
+        if (existingActive) {
+          console.log(`[Stripe Webhook] Active subscription already exists for ${clientEmail}. Processing as duplicate - consider refunding extra Stripe subscription.`);
+          // Log but don't create duplicate - the user should get a refund for the extra charge
           break;
         }
         
@@ -942,6 +965,20 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
         }
         
         console.log(`[Stripe Webhook] Subscription created for ${clientEmail} (Level ${level}, ${billingPeriod || 'monthly'}) - Consultant: ${consultantId}`);
+        
+        // Deactivate Bronze user after successful upgrade to prevent dual access
+        try {
+          const deactivateResult = await db.update(bronzeUsers)
+            .set({ isActive: false })
+            .where(and(
+              eq(bronzeUsers.email, clientEmail),
+              eq(bronzeUsers.consultantId, consultantId)
+            ));
+          console.log(`[Stripe Webhook] Bronze user deactivated for ${clientEmail} after upgrade to level ${level}`);
+        } catch (bronzeError: any) {
+          console.log(`[Stripe Webhook] No Bronze user to deactivate for ${clientEmail} (or already inactive):`, bronzeError?.message);
+        }
+        
         break;
       }
       
