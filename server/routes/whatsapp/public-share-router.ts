@@ -422,8 +422,10 @@ async function validateBronzeAuth(
     }
     
     // Gold users (regular clients from users table) - check by userId without type field
-    if (!decoded.type && decoded.userId) {
-      console.log(`🥇 [VALIDATE-BRONZE-AUTH] Checking if userId is a Gold client...`);
+    // SECURITY: Only tokens without type, subscriptionId, bronzeUserId AND without profileId (consultant marker) can be Gold
+    // This prevents consultants from bypassing Bronze restrictions with their own tokens
+    if (!decoded.type && decoded.userId && !decoded.subscriptionId && !decoded.bronzeUserId && !decoded.profileId) {
+      console.log(`🥇 [VALIDATE-BRONZE-AUTH] Checking if userId is a Gold client (no consultant markers)...`);
       const [goldUser] = await db
         .select()
         .from(schema.users)
