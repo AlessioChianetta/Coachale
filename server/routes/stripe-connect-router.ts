@@ -1,12 +1,15 @@
 import express, { Router, Request, Response } from "express";
 import { db } from "../db";
-import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares } from "@shared/schema";
+import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers } from "@shared/schema";
 import { eq, sql, isNotNull, desc, and } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 import { decrypt } from "../encryption";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import { sendEmail } from "../services/email-scheduler";
 import { sendWelcomeEmail } from "../services/welcome-email-service";
+
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 function generateRandomPassword(length: number = 8): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -327,6 +330,245 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[Stripe Checkout] Error:", error);
     res.status(500).json({ error: "Failed to create checkout" });
+  }
+});
+
+router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) => {
+  try {
+    const { slug, targetLevel } = req.body;
+    
+    if (!slug || !targetLevel) {
+      return res.status(400).json({ error: "Missing required fields: slug, targetLevel" });
+    }
+    
+    if (targetLevel !== "2" && targetLevel !== "3") {
+      return res.status(400).json({ error: "Invalid targetLevel. Must be '2' or '3'" });
+    }
+    
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    if (!token) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+    
+    const [share] = await db.select()
+      .from(whatsappAgentShares)
+      .where(eq(whatsappAgentShares.shareSlug, slug))
+      .limit(1);
+    
+    if (!share) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    const consultantId = share.consultantId;
+    
+    const [consultant] = await db.select().from(users)
+      .where(eq(users.id, consultantId));
+    
+    if (!consultant) {
+      return res.status(404).json({ error: "Consultant not found" });
+    }
+    
+    const [license] = await db.select().from(consultantLicenses)
+      .where(eq(consultantLicenses.consultantId, consultantId));
+    
+    if (!license?.stripeConnectAccountId || !license.stripeConnectOnboarded) {
+      return res.status(400).json({ error: "Consultant Stripe account not configured" });
+    }
+    
+    let userEmail: string | null = null;
+    let existingSubscription: typeof clientLevelSubscriptions.$inferSelect | null = null;
+    let isBronzeUser = false;
+    
+    if (decoded.type === "bronze" && decoded.bronzeUserId) {
+      const [bronzeUser] = await db.select()
+        .from(bronzeUsers)
+        .where(eq(bronzeUsers.id, decoded.bronzeUserId))
+        .limit(1);
+      
+      if (!bronzeUser) {
+        return res.status(404).json({ error: "Bronze user not found" });
+      }
+      
+      if (bronzeUser.consultantId !== consultantId) {
+        return res.status(403).json({ error: "User does not belong to this consultant" });
+      }
+      
+      userEmail = bronzeUser.email;
+      isBronzeUser = true;
+      
+      const [existingSub] = await db.select()
+        .from(clientLevelSubscriptions)
+        .where(and(
+          eq(clientLevelSubscriptions.clientEmail, bronzeUser.email.toLowerCase()),
+          eq(clientLevelSubscriptions.consultantId, consultantId),
+          eq(clientLevelSubscriptions.status, "active")
+        ))
+        .limit(1);
+      
+      existingSubscription = existingSub || null;
+    } else if (decoded.role === "manager" && decoded.managerId) {
+      const [manager] = await db.select()
+        .from(managerUsers)
+        .where(eq(managerUsers.id, decoded.managerId))
+        .limit(1);
+      
+      if (!manager) {
+        return res.status(404).json({ error: "Manager not found" });
+      }
+      
+      if (decoded.consultantId && decoded.consultantId !== consultantId) {
+        return res.status(403).json({ error: "Manager does not belong to this consultant" });
+      }
+      
+      userEmail = manager.email;
+      
+      const [existingSub] = await db.select()
+        .from(clientLevelSubscriptions)
+        .where(and(
+          eq(clientLevelSubscriptions.clientEmail, manager.email.toLowerCase()),
+          eq(clientLevelSubscriptions.consultantId, consultantId),
+          eq(clientLevelSubscriptions.status, "active")
+        ))
+        .limit(1);
+      
+      existingSubscription = existingSub || null;
+    } else {
+      return res.status(401).json({ error: "Invalid token type" });
+    }
+    
+    const pricingConfig = consultant.pricingPageConfig as {
+      level2MonthlyPriceCents?: number;
+      level3MonthlyPriceCents?: number;
+      level2PriceCents?: number;
+      level3PriceCents?: number;
+      level2Name?: string;
+      level3Name?: string;
+    } | null;
+    
+    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "http://localhost:5000";
+    
+    if (!existingSubscription || !existingSubscription.stripeSubscriptionId) {
+      const price = targetLevel === "2" 
+        ? (pricingConfig?.level2MonthlyPriceCents || pricingConfig?.level2PriceCents || 2900)
+        : (pricingConfig?.level3MonthlyPriceCents || pricingConfig?.level3PriceCents || 5900);
+      
+      const productName = targetLevel === "2" 
+        ? (pricingConfig?.level2Name || "Licenza Argento")
+        : (pricingConfig?.level3Name || "Licenza Oro");
+      
+      const stripe = await getStripeInstance();
+      
+      const revenueSharePercentage = license.revenueSharePercentage || 50;
+      
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "eur",
+            product_data: {
+              name: productName,
+              description: `Abbonamento ${targetLevel === "2" ? "Argento" : "Oro"} ai servizi AI`,
+            },
+            unit_amount: price,
+            recurring: { interval: "month" },
+          },
+          quantity: 1,
+        }],
+        subscription_data: {
+          application_fee_percent: revenueSharePercentage,
+          transfer_data: {
+            destination: license.stripeConnectAccountId,
+          },
+          metadata: {
+            consultantId,
+            clientEmail: userEmail,
+            level: targetLevel,
+            upgradeFromBronze: isBronzeUser ? "true" : "false",
+          },
+        },
+        customer_email: userEmail || undefined,
+        metadata: {
+          consultantId,
+          clientEmail: userEmail,
+          level: targetLevel,
+          upgradeFromBronze: isBronzeUser ? "true" : "false",
+        },
+        success_url: `${baseUrl}/agent/${slug}?upgrade=success`,
+        cancel_url: `${baseUrl}/agent/${slug}?upgrade=canceled`,
+      });
+      
+      console.log(`[Stripe Upgrade] New checkout session for ${userEmail} (Level ${targetLevel})`);
+      return res.json({ checkoutUrl: session.url });
+    }
+    
+    if (existingSubscription.level === "3") {
+      return res.status(400).json({ error: "Already at the highest level" });
+    }
+    
+    if (existingSubscription.level === "2" && targetLevel === "2") {
+      return res.status(400).json({ error: "Already at Silver level" });
+    }
+    
+    const stripe = await getStripeInstance();
+    const stripeSubscription = await stripe.subscriptions.retrieve(existingSubscription.stripeSubscriptionId);
+    
+    if (stripeSubscription.status !== "active") {
+      return res.status(400).json({ error: "Current subscription is not active" });
+    }
+    
+    const newPrice = targetLevel === "2"
+      ? (pricingConfig?.level2MonthlyPriceCents || pricingConfig?.level2PriceCents || 2900)
+      : (pricingConfig?.level3MonthlyPriceCents || pricingConfig?.level3PriceCents || 5900);
+    
+    const productName = targetLevel === "2" 
+      ? (pricingConfig?.level2Name || "Licenza Argento")
+      : (pricingConfig?.level3Name || "Licenza Oro");
+    
+    const newPriceObj = await stripe.prices.create({
+      currency: "eur",
+      unit_amount: newPrice,
+      recurring: { interval: "month" },
+      product_data: {
+        name: productName,
+      },
+    });
+    
+    await stripe.subscriptions.update(existingSubscription.stripeSubscriptionId, {
+      items: [{
+        id: stripeSubscription.items.data[0].id,
+        price: newPriceObj.id,
+      }],
+      proration_behavior: "create_prorations",
+      metadata: {
+        level: targetLevel,
+        upgradedAt: new Date().toISOString(),
+      },
+    });
+    
+    await db.update(clientLevelSubscriptions)
+      .set({
+        level: targetLevel as "2" | "3",
+        updatedAt: new Date(),
+      })
+      .where(eq(clientLevelSubscriptions.id, existingSubscription.id));
+    
+    console.log(`[Stripe Upgrade] Subscription ${existingSubscription.stripeSubscriptionId} upgraded from ${existingSubscription.level} to ${targetLevel} with proration`);
+    
+    return res.json({ success: true, message: `Upgraded to level ${targetLevel}` });
+    
+  } catch (error: any) {
+    console.error("[Stripe Upgrade] Error:", error);
+    res.status(500).json({ error: error.message || "Failed to upgrade subscription" });
   }
 });
 

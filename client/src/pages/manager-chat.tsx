@@ -26,7 +26,8 @@ import {
   MessageSquare,
   FileText,
   Brain,
-  Cpu
+  Cpu,
+  UserCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -45,6 +46,8 @@ import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea, AIModel, ThinkingLevel } from "@/components/ai-assistant/InputArea";
 import { WelcomeScreen } from "@/components/ai-assistant/WelcomeScreen";
 import { ConversationSidebar } from "@/components/ai-assistant/ConversationSidebar";
+import { UpgradeBanner } from "@/components/ai-assistant/UpgradeBanner";
+import { ProfileSettingsSheet } from "@/components/ai-assistant/ProfileSettingsSheet";
 
 interface Conversation {
   id: string;
@@ -564,6 +567,8 @@ export default function ManagerChat() {
     dailyMessageLimit: number;
     remaining: number;
   } | null>(null);
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
+  const [profileSheetTab, setProfileSheetTab] = useState<"profile" | "subscription">("profile");
 
   const tempAssistantIdRef = useRef<string | null>(null);
 
@@ -1046,15 +1051,26 @@ export default function ManagerChat() {
               )}
               <ManagerAIPreferencesSheet slug={slug!} />
               {agentInfo?.requiresLogin && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 sm:h-9 sm:w-9 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
-                  onClick={handleLogout}
-                  title="Esci"
-                >
-                  <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
+                <ProfileSettingsSheet
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 sm:h-9 sm:w-9 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                      title="Profilo"
+                    >
+                      <UserCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
+                  }
+                  managerInfo={managerInfo ? { name: managerInfo.name, email: managerInfo.email } : null}
+                  bronzeUsage={bronzeUsage}
+                  subscriptionLevel={managerInfo?.isBronze ? "bronze" : "silver"}
+                  onLogout={handleLogout}
+                  slug={slug!}
+                  open={profileSheetOpen}
+                  onOpenChange={setProfileSheetOpen}
+                  defaultTab={profileSheetTab}
+                />
               )}
             </div>
           </div>
@@ -1079,6 +1095,19 @@ export default function ManagerChat() {
               <MessageList messages={messages} isTyping={isTyping} />
             )}
           </div>
+
+          {/* Upgrade Banner - quando messaggi Bronze esauriti */}
+          {bronzeUsage && bronzeUsage.remaining <= 0 && (
+            <UpgradeBanner
+              onUpgradeClick={() => {
+                setProfileSheetTab("subscription");
+                setProfileSheetOpen(true);
+              }}
+              onViewPlansClick={() => {
+                window.open("/pricing", "_blank");
+              }}
+            />
+          )}
 
           {/* Input Area - Mobile Optimized with safe-area */}
           <div className="pt-3 sm:pt-6 px-2 sm:px-4 pb-2 sm:pb-4 pb-[max(8px,env(safe-area-inset-bottom))] sm:pb-[max(16px,env(safe-area-inset-bottom))] bg-white dark:bg-slate-900 flex-shrink-0">
