@@ -52,6 +52,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Stripe Subscription Flow**: Complete subscription checkout with monthly/yearly billing, automatic account provisioning, welcome emails, idempotent webhook handling, and proper price display.
 - **Stripe Connect Integration**: Complete payment flow with Express accounts for Italian consultants via OAuth onboarding, destination charges model, application fee based on `revenueSharePercentage`, and webhook handling.
 - **Employee License System**: Separate licensing model for consultant team members with `isEmployee` flag, employee license tracking, purchase history, and platform Stripe checkout.
+- **Bronze→Silver/Gold Upgrade Flow**: Complete subscription upgrade system with Stripe Connect checkout, automatic token refresh (no logout required), UpgradeSuccessDialog with tier-specific celebration, OnboardingWizard with AI-generated personalized welcome message (via Gemini using agent template + brand voice), user preference configuration (writing style, response length, custom instructions), and seamless preference integration into AI chat prompts.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
