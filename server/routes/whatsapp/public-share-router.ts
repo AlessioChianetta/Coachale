@@ -233,8 +233,9 @@ async function validateVisitorSession(
         }
         
         // Check for Gold client (normal client user from users table)
-        if (decoded.role === 'client' && decoded.userId) {
-          console.log(`🏆 [VALIDATE-SESSION] Gold client token detected, verifying user...`);
+        // Gold clients have tokens with just userId (no type, role may or may not be present)
+        if (decoded.userId && !decoded.type && !decoded.bronzeUserId && !decoded.subscriptionId) {
+          console.log(`🏆 [VALIDATE-SESSION] Potential Gold client token, verifying user...`, { userId: decoded.userId, role: decoded.role });
           // Verify the client exists and is active
           const [goldClient] = await db.select()
             .from(schema.users)
@@ -422,10 +423,10 @@ async function validateBronzeAuth(
     }
     
     // Gold users (regular clients from users table) - check by userId without type field
-    // SECURITY: Only tokens without type, subscriptionId, bronzeUserId AND without profileId (consultant marker) can be Gold
-    // This prevents consultants from bypassing Bronze restrictions with their own tokens
-    if (!decoded.type && decoded.userId && !decoded.subscriptionId && !decoded.bronzeUserId && !decoded.profileId) {
-      console.log(`🥇 [VALIDATE-BRONZE-AUTH] Checking if userId is a Gold client (no consultant markers)...`);
+    // SECURITY: Only tokens without type, subscriptionId, bronzeUserId can be Gold
+    // The database query verifies role='client' to prevent consultant bypass
+    if (!decoded.type && decoded.userId && !decoded.subscriptionId && !decoded.bronzeUserId) {
+      console.log(`🥇 [VALIDATE-BRONZE-AUTH] Checking if userId is a Gold client...`, { userId: decoded.userId, profileId: decoded.profileId });
       const [goldUser] = await db
         .select()
         .from(schema.users)
