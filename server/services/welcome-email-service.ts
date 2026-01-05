@@ -83,27 +83,8 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams): Promise<{ su
       : "https://app.example.com";
     const finalLoginUrl = loginUrl || `${baseUrl}/login`;
 
-    // Build credentials section based on whether password is provided
-    const credentialsSection = password ? `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin: 24px 0;">
-        <h3 style="color: #1e293b; margin: 0 0 16px 0; font-size: 18px;">Le tue credenziali di accesso</h3>
-        <table cellpadding="0" cellspacing="0" width="100%">
-          <tr>
-            <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Email:</td>
-            <td style="padding: 8px 0; color: #1e293b; font-size: 14px; font-weight: 600;">${recipientEmail}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Password:</td>
-            <td style="padding: 8px 0; color: #1e293b; font-size: 14px; font-weight: 600; font-family: monospace; background-color: #fef3c7; padding: 4px 8px; border-radius: 4px;">${password}</td>
-          </tr>
-        </table>
-      </div>
-      <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 0 8px 8px 0; margin: 24px 0;">
-        <p style="color: #92400e; margin: 0; font-size: 14px;">
-          <strong>⚠️ Importante:</strong> Ti consigliamo di cambiare la password al primo accesso per maggiore sicurezza.
-        </p>
-      </div>
-    ` : `
+    // Build credentials section - NEVER show passwords in email for security
+    const credentialsSection = `
       <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin: 24px 0;">
         <h3 style="color: #1e293b; margin: 0 0 16px 0; font-size: 18px;">Il tuo account</h3>
         <table cellpadding="0" cellspacing="0" width="100%">

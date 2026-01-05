@@ -801,11 +801,6 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           break;
         }
         
-        // Use password from registration form if available, otherwise generate temp password
-        const userProvidedPassword = !!metaHashedPassword;
-        const tempPassword = userProvidedPassword ? null : generateRandomPassword(8);
-        const hashedPassword = metaHashedPassword || await bcrypt.hash(tempPassword!, 10);
-        
         // Check if Bronze user exists to migrate preferences and conversations
         const [existingBronzeUser] = await db.select()
           .from(bronzeUsers)
@@ -814,6 +809,13 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             eq(bronzeUsers.consultantId, consultantId)
           ))
           .limit(1);
+        
+        // Use password from registration form if available, 
+        // OR use existing Bronze user password if upgrading,
+        // otherwise generate temp password (but NEVER send it in email)
+        const isUpgrade = !!existingBronzeUser;
+        const userProvidedPassword = !!metaHashedPassword;
+        const hashedPassword = metaHashedPassword || existingBronzeUser?.passwordHash || await bcrypt.hash(generateRandomPassword(8), 10);
         
         // Migrate Bronze preferences if user is upgrading
         const migratedPreferences = existingBronzeUser ? {
@@ -829,7 +831,7 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
         };
         
         if (existingBronzeUser) {
-          console.log(`[Stripe Webhook] Migrating Bronze preferences for ${clientEmail}: onboarding=${migratedPreferences.hasCompletedOnboarding}, style=${migratedPreferences.writingStyle}`);
+          console.log(`[Stripe Webhook] Bronze->Silver/Gold UPGRADE for ${clientEmail}: using existing password, migrating preferences`);
         }
         
         const [subscription] = await db.insert(clientLevelSubscriptions).values({
@@ -842,7 +844,7 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           startDate: new Date(),
           stripeCustomerId: session.customer || null,
           stripeSubscriptionId: session.subscription || null,
-          tempPassword,
+          tempPassword: null, // NEVER store or send plain text passwords
           passwordHash: hashedPassword,
           // Migrate onboarding state from Bronze or initialize fresh
           ...migratedPreferences,
@@ -936,18 +938,15 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
               console.log(`[Stripe Webhook] Manager created for ${clientEmail}`);
             }
             
-            const loginUrl = `${baseUrl}/manager-chat`;
+            const loginUrl = `${baseUrl}/login`;
             
             // Send Silver welcome email using centralized service
-            // Note: If user provided their own password (metaHashedPassword), we only have the hash,
-            // so we can't include it in the email. The template handles this by showing
-            // "Usa la password che hai scelto durante la registrazione."
-            console.log(`[Stripe Webhook] Sending Silver welcome email to ${clientEmail} (temp password: ${!!tempPassword})`);
+            // SECURITY: Never send passwords in email - user uses their existing password (from Bronze) or the one they set during registration
+            console.log(`[Stripe Webhook] Sending Silver welcome email to ${clientEmail} (upgrade: ${isUpgrade})`);
             sendWelcomeEmail({
               consultantId,
               recipientEmail: clientEmail,
               recipientName: fullDisplayName,
-              password: tempPassword || undefined,
               tier: "silver",
               loginUrl,
             }).catch(err => {
@@ -982,15 +981,12 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
             const loginUrl = `${baseUrl}/login`;
             
             // Send Gold welcome email using centralized service
-            // Note: If user provided their own password (metaHashedPassword), we only have the hash,
-            // so we can't include it in the email. The template handles this by showing
-            // "Usa la password che hai scelto durante la registrazione."
-            console.log(`[Stripe Webhook] Sending Gold welcome email to ${clientEmail} (temp password: ${!!tempPassword})`);
+            // SECURITY: Never send passwords in email - user uses their existing password (from Bronze) or the one they set during registration
+            console.log(`[Stripe Webhook] Sending Gold welcome email to ${clientEmail} (upgrade: ${isUpgrade})`);
             sendWelcomeEmail({
               consultantId,
               recipientEmail: clientEmail,
               recipientName: fullDisplayName,
-              password: tempPassword || undefined,
               tier: "gold",
               loginUrl,
             }).catch(err => {
