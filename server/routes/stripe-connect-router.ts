@@ -795,6 +795,11 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           stripeSubscriptionId: session.subscription || null,
           tempPassword,
           passwordHash: hashedPassword,
+          // Initialize onboarding state for new subscriptions
+          hasCompletedOnboarding: false,
+          writingStyle: null,
+          responseLength: null,
+          customInstructions: null,
         }).returning();
         
         // Welcome email is now sent after account creation (see below)
@@ -1663,9 +1668,14 @@ router.post("/verify-upgrade-session", async (req: Request, res: Response) => {
         stripeCustomerId,
         status: "active",
         startDate: new Date(),
+        // Initialize onboarding state for new subscriptions
+        hasCompletedOnboarding: false,
+        writingStyle: null,
+        responseLength: null,
+        customInstructions: null,
       });
       
-      subscription = { id: subscriptionId, level, clientEmail, clientName, consultantId } as any;
+      subscription = { id: subscriptionId, level, clientEmail, clientName, consultantId, hasCompletedOnboarding: false } as any;
     }
     
     // Update bronze user to inactive if this was an upgrade from Bronze

@@ -11,6 +11,7 @@ import {
   consultantWhatsappConfig,
   bronzeUsers,
   users,
+  clientLevelSubscriptions,
 } from "@shared/schema";
 import { getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
@@ -34,9 +35,18 @@ interface BronzeTokenPayload {
   type: "bronze";
 }
 
+interface SilverGoldTokenPayload {
+  subscriptionId: string;
+  consultantId: string;
+  email: string;
+  level: "2" | "3";
+  type: "silver" | "gold";
+}
+
 interface ManagerRequest extends Request {
   manager?: ManagerTokenPayload;
   bronzeUser?: BronzeTokenPayload;
+  silverGoldUser?: SilverGoldTokenPayload;
   share?: typeof whatsappAgentShares.$inferSelect;
   agentConfig?: typeof consultantWhatsappConfig.$inferSelect;
 }
@@ -84,6 +94,42 @@ async function verifyManagerToken(
         consultantId: decoded.consultantId,
         shareId: `bronze-${decoded.bronzeUserId}`,
         role: "bronze",
+      };
+      
+      return next();
+    }
+    
+    // Handle Silver/Gold token (type: "silver" or "gold")
+    if ((decoded.type === "silver" || decoded.type === "gold") && decoded.subscriptionId) {
+      console.log(`[PUBLIC AGENT] Silver/Gold token detected - type: ${decoded.type}, subscriptionId: ${decoded.subscriptionId}, email: ${decoded.email}`);
+      
+      const [subscription] = await db.select()
+        .from(clientLevelSubscriptions)
+        .where(eq(clientLevelSubscriptions.id, decoded.subscriptionId))
+        .limit(1);
+
+      if (!subscription || subscription.status !== "active") {
+        console.log(`[PUBLIC AGENT] Silver/Gold subscription not active or not found: ${decoded.subscriptionId}`);
+        return res.status(403).json({ message: "Subscription not active" });
+      }
+
+      console.log(`[PUBLIC AGENT] Silver/Gold auth successful - level: ${subscription.level}, hasCompletedOnboarding: ${subscription.hasCompletedOnboarding}`);
+
+      // Set silverGoldUser on request
+      req.silverGoldUser = {
+        subscriptionId: decoded.subscriptionId,
+        consultantId: decoded.consultantId,
+        email: decoded.email,
+        level: decoded.level,
+        type: decoded.type,
+      };
+      
+      // Also set a compatible manager object for shared endpoints
+      req.manager = {
+        managerId: decoded.subscriptionId,
+        consultantId: decoded.consultantId,
+        shareId: `${decoded.type}-${decoded.subscriptionId}`,
+        role: decoded.type,
       };
       
       return next();
@@ -281,6 +327,44 @@ router.get(
           dailyMessagesUsed: dailyUsed,
           dailyMessageLimit: dailyLimit,
           remaining: Math.max(0, dailyLimit - dailyUsed),
+          consultantSlug: consultant?.pricingPageSlug || null,
+        });
+      }
+
+      // Handle Silver/Gold users
+      if (req.silverGoldUser) {
+        console.log(`[PUBLIC AGENT] GET /manager/me - Silver/Gold user: ${req.silverGoldUser.email}, subscriptionId: ${req.silverGoldUser.subscriptionId}`);
+        
+        const [subscription] = await db.select()
+          .from(clientLevelSubscriptions)
+          .where(eq(clientLevelSubscriptions.id, req.silverGoldUser.subscriptionId))
+          .limit(1);
+
+        if (!subscription) {
+          return res.status(404).json({ message: "Subscription not found" });
+        }
+
+        // Get consultant's pricing page slug for logout redirect
+        const [consultant] = await db.select({
+          pricingPageSlug: users.pricingPageSlug,
+        })
+          .from(users)
+          .where(eq(users.id, req.silverGoldUser.consultantId))
+          .limit(1);
+
+        const tierType = subscription.level === "3" ? "gold" : "silver";
+
+        console.log(`[PUBLIC AGENT] Returning Silver/Gold user data - tier: ${tierType}, hasCompletedOnboarding: ${subscription.hasCompletedOnboarding}`);
+
+        return res.json({
+          id: subscription.id,
+          name: subscription.clientName || subscription.clientEmail.split("@")[0],
+          email: subscription.clientEmail,
+          status: subscription.status,
+          isBronze: false,
+          tier: tierType,
+          level: subscription.level,
+          hasCompletedOnboarding: subscription.hasCompletedOnboarding || false,
           consultantSlug: consultant?.pricingPageSlug || null,
         });
       }
@@ -512,7 +596,25 @@ router.post(
       const agentConfig = req.agentConfig!;
       const manager = req.manager!;
       const { conversationId } = req.params;
-      const { content, preferences } = req.body;
+      const { content, preferences: bodyPreferences } = req.body;
+      
+      // Load preferences from database for Silver/Gold users
+      let preferences = bodyPreferences;
+      if (req.silverGoldUser) {
+        const [subscription] = await db.select()
+          .from(clientLevelSubscriptions)
+          .where(eq(clientLevelSubscriptions.id, req.silverGoldUser.subscriptionId))
+          .limit(1);
+        
+        if (subscription) {
+          // Merge DB preferences with body preferences (body takes priority)
+          preferences = {
+            writingStyle: bodyPreferences?.writingStyle || subscription.writingStyle,
+            responseLength: bodyPreferences?.responseLength || subscription.responseLength,
+            customInstructions: bodyPreferences?.customInstructions || subscription.customInstructions,
+          };
+        }
+      }
 
       if (manager.shareId !== share.id) {
         return res.status(403).json({ message: "Access denied to this agent" });
@@ -582,27 +684,47 @@ ${share.agentInstructions}
           systemPrompt = basePrompt;
         }
         
-        // Append manager style preferences
+        // Append manager style preferences (supports both legacy and new values)
         let styleInstructions = "";
         if (preferences) {
           const { writingStyle, responseLength, customInstructions } = preferences;
           
-          if (writingStyle === 'conversational') {
-            styleInstructions += "\n\nStile di comunicazione: Usa un tono amichevole e informale, come se stessi parlando con un collega.";
-          } else if (writingStyle === 'professional') {
-            styleInstructions += "\n\nStile di comunicazione: Mantieni un tono formale e professionale, appropriato per contesti business.";
-          } else if (writingStyle === 'concise') {
-            styleInstructions += "\n\nStile di comunicazione: Sii breve e diretto. Vai subito al punto senza dilungarti.";
-          } else if (writingStyle === 'detailed') {
-            styleInstructions += "\n\nStile di comunicazione: Fornisci spiegazioni approfondite e dettagliate, con esempi quando utile.";
-          } else if (writingStyle === 'custom' && customInstructions) {
-            styleInstructions += `\n\nIstruzioni personalizzate dell'utente: ${customInstructions}`;
+          // Map writing style to instructions (support both legacy and new values)
+          const styleMap: Record<string, string> = {
+            // New values from onboarding wizard
+            'formale': "Mantieni un tono formale e professionale, appropriato per contesti business.",
+            'amichevole': "Usa un tono amichevole e caloroso, come se stessi parlando con un amico fidato.",
+            'tecnico': "Usa un linguaggio tecnico e preciso, con terminologia specifica del settore.",
+            'casual': "Usa un tono casual e rilassato, come una chat informale.",
+            // Legacy values (for backward compatibility)
+            'conversational': "Usa un tono amichevole e informale, come se stessi parlando con un collega.",
+            'professional': "Mantieni un tono formale e professionale, appropriato per contesti business.",
+            'concise': "Sii breve e diretto. Vai subito al punto senza dilungarti.",
+            'detailed': "Fornisci spiegazioni approfondite e dettagliate, con esempi quando utile.",
+          };
+          
+          if (writingStyle && styleMap[writingStyle]) {
+            styleInstructions += `\n\nStile di comunicazione: ${styleMap[writingStyle]}`;
           }
           
-          if (responseLength === 'brief') {
-            styleInstructions += "\nLunghezza risposta: Mantieni le risposte brevi, 1-2 paragrafi al massimo.";
-          } else if (responseLength === 'comprehensive') {
-            styleInstructions += "\nLunghezza risposta: Fornisci risposte complete ed esaustive, coprendo tutti gli aspetti rilevanti.";
+          // Map response length to instructions (support both legacy and new values)
+          const lengthMap: Record<string, string> = {
+            // New values from onboarding wizard
+            'breve': "Mantieni le risposte brevi e concise, 1-2 paragrafi al massimo.",
+            'media': "Fornisci risposte di lunghezza moderata, bilanciando completezza e concisione.",
+            'dettagliata': "Fornisci risposte complete ed esaustive, coprendo tutti gli aspetti rilevanti con esempi.",
+            // Legacy values (for backward compatibility)
+            'brief': "Mantieni le risposte brevi, 1-2 paragrafi al massimo.",
+            'comprehensive': "Fornisci risposte complete ed esaustive, coprendo tutti gli aspetti rilevanti.",
+          };
+          
+          if (responseLength && lengthMap[responseLength]) {
+            styleInstructions += `\nLunghezza risposta: ${lengthMap[responseLength]}`;
+          }
+          
+          // Add custom instructions if provided
+          if (customInstructions && customInstructions.trim()) {
+            styleInstructions += `\nIstruzioni personalizzate: ${customInstructions.trim()}`;
           }
         }
         
@@ -848,6 +970,190 @@ Rispondi in modo professionale e utile.`;
     } catch (error: any) {
       console.error("[PUBLIC AGENT] Anonymous chat error:", error);
       res.status(500).json({ message: "Failed to process message" });
+    }
+  }
+);
+
+router.post(
+  "/:slug/onboarding-explanation",
+  loadShareAndAgent,
+  verifyManagerToken,
+  async (req: ManagerRequest, res: Response) => {
+    try {
+      const agentConfig = req.agentConfig!;
+
+      // Only Silver/Gold users can access onboarding explanation
+      if (!req.silverGoldUser) {
+        return res.status(403).json({ message: "Only Silver/Gold users can access onboarding explanation" });
+      }
+
+      console.log(`[ONBOARDING] POST /onboarding-explanation - Silver/Gold user: ${req.silverGoldUser.email}, subscriptionId: ${req.silverGoldUser.subscriptionId}`);
+
+      // Use subscriptionId from verified token - more secure than clientEmail from body
+      const [subscription] = await db.select()
+        .from(clientLevelSubscriptions)
+        .where(eq(clientLevelSubscriptions.id, req.silverGoldUser.subscriptionId))
+        .limit(1);
+
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      console.log(`[ONBOARDING] Generating explanation for ${subscription.clientEmail} with agent ${agentConfig.agentName}`);
+      const clientEmail = subscription.clientEmail;
+
+      // Check if already cached
+      if (subscription.onboardingExplanation) {
+        console.log(`[ONBOARDING] Returning cached explanation for ${clientEmail}`);
+        return res.json({ 
+          explanation: subscription.onboardingExplanation,
+          cached: true 
+        });
+      }
+
+      // Build context from agent config
+      const agentName = agentConfig.agentName || "Assistente AI";
+      const businessName = agentConfig.businessName || "";
+      const whatWeDo = agentConfig.whatWeDo || "";
+      const howWeDoIt = agentConfig.howWeDoIt || "";
+      const usp = agentConfig.usp || "";
+      const mission = agentConfig.mission || "";
+      const businessDescription = agentConfig.businessDescription || "";
+      const aiPersonality = agentConfig.aiPersonality || "amico_fidato";
+
+      // Map personality to brand voice
+      const brandVoiceMap: Record<string, string> = {
+        "amico_fidato": "amichevole e disponibile, come un amico di fiducia",
+        "coach_motivazionale": "motivante e incoraggiante, come un coach personale",
+        "consulente_professionale": "professionale e competente, come un consulente esperto",
+        "mentore_paziente": "paziente e comprensivo, come un mentore saggio",
+        "venditore_energico": "entusiasta e dinamico, con energia positiva",
+        "consigliere_empatico": "empatico e attento, che capisce le tue esigenze",
+        "stratega_diretto": "diretto e strategico, che va dritto al punto",
+        "educatore_socratico": "educativo e stimolante, che ti fa riflettere",
+        "esperto_tecnico": "tecnico e preciso, con competenza approfondita",
+        "compagno_entusiasta": "entusiasta e coinvolgente, sempre pronto ad aiutare"
+      };
+      const brandVoice = brandVoiceMap[aiPersonality] || "professionale e disponibile";
+
+      // Level name
+      const levelName = subscription.level === "3" ? "Gold" : "Silver";
+
+      // Build the prompt
+      const prompt = `Genera un messaggio di benvenuto personalizzato in italiano per un utente che ha appena effettuato l'upgrade al livello ${levelName}.
+
+CONTESTO AGENTE:
+- Nome agente: ${agentName}
+- Brand voice: ${brandVoice}
+- Business: ${businessName}
+${businessDescription ? `- Descrizione: ${businessDescription}` : ""}
+${whatWeDo ? `- Cosa facciamo: ${whatWeDo}` : ""}
+${howWeDoIt ? `- Come lo facciamo: ${howWeDoIt}` : ""}
+${usp ? `- Proposta unica: ${usp}` : ""}
+${mission ? `- Missione: ${mission}` : ""}
+
+REQUISITI:
+1. Inizia con un benvenuto caloroso usando il nome dell'agente
+2. Spiega brevemente cosa l'assistente AI può fare per l'utente
+3. Mantieni il tono ${brandVoice}
+4. Sii accogliente verso un nuovo utente ${levelName}
+5. Lunghezza: 100-150 parole
+6. Scrivi SOLO il messaggio, senza virgolette o prefissi
+
+Genera il messaggio di benvenuto:`;
+
+      try {
+        const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+
+        const result = await aiProvider.client.generateContent({
+          model: "gemini-2.0-flash-lite",
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 500,
+          },
+        });
+
+        const explanation = (result.response.text() || "").trim();
+
+        if (!explanation) {
+          console.error("[ONBOARDING] Empty response from Gemini");
+          return res.status(500).json({ message: "Failed to generate explanation" });
+        }
+
+        // Cache the result
+        await db.update(clientLevelSubscriptions)
+          .set({ 
+            onboardingExplanation: explanation,
+            updatedAt: new Date(),
+          })
+          .where(eq(clientLevelSubscriptions.id, subscription.id));
+
+        console.log(`[ONBOARDING] Generated and cached explanation for ${clientEmail} (${explanation.length} chars)`);
+
+        res.json({ 
+          explanation,
+          cached: false 
+        });
+      } catch (aiError: any) {
+        console.error("[ONBOARDING] AI generation error:", aiError);
+        res.status(500).json({ message: "Failed to generate explanation" });
+      }
+    } catch (error: any) {
+      console.error("[ONBOARDING] Error:", error);
+      res.status(500).json({ message: "Failed to process onboarding explanation" });
+    }
+  }
+);
+
+router.put(
+  "/:slug/onboarding-preferences",
+  loadShareAndAgent,
+  verifyManagerToken,
+  async (req: ManagerRequest, res: Response) => {
+    try {
+      const { writingStyle, responseLength, customInstructions } = req.body;
+
+      // Only Silver/Gold users can save onboarding preferences
+      if (!req.silverGoldUser) {
+        return res.status(403).json({ message: "Only Silver/Gold users can save onboarding preferences" });
+      }
+
+      const validWritingStyles = ["formale", "amichevole", "tecnico", "casual"];
+      const validResponseLengths = ["breve", "media", "dettagliata"];
+
+      if (writingStyle && !validWritingStyles.includes(writingStyle)) {
+        return res.status(400).json({ message: "Invalid writingStyle" });
+      }
+
+      if (responseLength && !validResponseLengths.includes(responseLength)) {
+        return res.status(400).json({ message: "Invalid responseLength" });
+      }
+
+      console.log(`[ONBOARDING-PREFERENCES] Saving preferences for subscription ${req.silverGoldUser.subscriptionId}`);
+
+      await db.update(clientLevelSubscriptions)
+        .set({
+          writingStyle: writingStyle || null,
+          responseLength: responseLength || null,
+          customInstructions: customInstructions || null,
+          hasCompletedOnboarding: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(clientLevelSubscriptions.id, req.silverGoldUser.subscriptionId));
+
+      console.log(`[ONBOARDING-PREFERENCES] Preferences saved and onboarding marked complete for ${req.silverGoldUser.email}`);
+
+      res.json({
+        success: true,
+        writingStyle: writingStyle || null,
+        responseLength: responseLength || null,
+        customInstructions: customInstructions || null,
+        hasCompletedOnboarding: true,
+      });
+    } catch (error: any) {
+      console.error("[ONBOARDING-PREFERENCES] Error:", error);
+      res.status(500).json({ message: "Failed to save onboarding preferences" });
     }
   }
 );

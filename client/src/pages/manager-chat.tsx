@@ -48,6 +48,8 @@ import { WelcomeScreen } from "@/components/ai-assistant/WelcomeScreen";
 import { ConversationSidebar } from "@/components/ai-assistant/ConversationSidebar";
 import { UpgradeBanner } from "@/components/ai-assistant/UpgradeBanner";
 import { ProfileSettingsSheet } from "@/components/ai-assistant/ProfileSettingsSheet";
+import { UpgradeSuccessDialog } from "@/components/manager/UpgradeSuccessDialog";
+import { OnboardingWizard } from "@/components/manager/OnboardingWizard";
 
 interface Conversation {
   id: string;
@@ -90,6 +92,9 @@ interface ManagerInfo {
   dailyMessageLimit?: number;
   remaining?: number;
   consultantSlug?: string | null;
+  tier?: "bronze" | "silver" | "gold";
+  level?: "2" | "3";
+  hasCompletedOnboarding?: boolean;
 }
 
 interface ManagerPreferences {
@@ -569,8 +574,12 @@ export default function ManagerChat() {
   } | null>(null);
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const [profileSheetTab, setProfileSheetTab] = useState<"profile" | "subscription">("profile");
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [upgradeTier, setUpgradeTier] = useState<"silver" | "gold">("silver");
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
 
   const tempAssistantIdRef = useRef<string | null>(null);
+  const upgradePollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: agentInfo, isLoading: agentLoading } = useQuery<AgentInfo>({
     queryKey: ["public-agent", slug],
@@ -603,16 +612,89 @@ export default function ManagerChat() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const upgradeStatus = params.get("upgrade");
+    const sessionId = params.get("session_id");
     
-    if (upgradeStatus === "success") {
-      // Refresh manager info to get updated subscription status
+    if (upgradeStatus === "success" && sessionId) {
+      // Poll verify-upgrade-session to get new token
+      const verifyUpgrade = async () => {
+        try {
+          const token = getManagerToken();
+          if (!token) return;
+          
+          const response = await fetch("/api/verify-upgrade-session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ sessionId }),
+          });
+          
+          if (!response.ok) {
+            throw new Error("Verification failed");
+          }
+          
+          const data = await response.json();
+          
+          if (data.success && data.upgraded && data.newToken) {
+            // Update localStorage with new token
+            localStorage.setItem("manager_token", data.newToken);
+            
+            // Update user info in localStorage
+            const userStr = localStorage.getItem("manager_user");
+            if (userStr) {
+              try {
+                const user = JSON.parse(userStr);
+                user.tier = data.tierType;
+                user.level = data.level;
+                localStorage.setItem("manager_user", JSON.stringify(user));
+              } catch {
+                // Ignore parse errors
+              }
+            }
+            
+            // Dispatch custom event for UI refresh
+            window.dispatchEvent(new CustomEvent("manager-tier-updated", {
+              detail: { tier: data.tierType, level: data.level }
+            }));
+            
+            // Set tier and show dialog
+            setUpgradeTier(data.tierType as "silver" | "gold");
+            setUpgradeDialogOpen(true);
+            
+            // Refresh queries
+            queryClient.invalidateQueries({ queryKey: ["manager-info", slug] });
+            queryClient.invalidateQueries({ queryKey: ["pricing-data", slug] });
+            
+            // Clean URL without reload
+            window.history.replaceState({}, "", `/agent/${slug}`);
+            
+            // Clear polling if active
+            if (upgradePollingRef.current) {
+              clearInterval(upgradePollingRef.current);
+              upgradePollingRef.current = null;
+            }
+          }
+        } catch (error) {
+          console.error("[Upgrade Verify] Error:", error);
+          // Fallback to simple toast
+          toast({
+            title: "Upgrade completato!",
+            description: "Il tuo abbonamento è stato attivato. Ricarica la pagina per vedere i nuovi vantaggi.",
+          });
+          window.history.replaceState({}, "", `/agent/${slug}`);
+        }
+      };
+      
+      verifyUpgrade();
+    } else if (upgradeStatus === "success" && !sessionId) {
+      // Legacy fallback without session_id
       queryClient.invalidateQueries({ queryKey: ["manager-info", slug] });
       queryClient.invalidateQueries({ queryKey: ["pricing-data", slug] });
       toast({
         title: "Upgrade completato!",
         description: "Il tuo abbonamento è stato attivato con successo. Goditi i nuovi vantaggi!",
       });
-      // Clean URL without reload
       window.history.replaceState({}, "", `/agent/${slug}`);
     } else if (upgradeStatus === "canceled") {
       toast({
@@ -623,6 +705,14 @@ export default function ManagerChat() {
       // Clean URL without reload
       window.history.replaceState({}, "", `/agent/${slug}`);
     }
+    
+    // Cleanup polling on unmount
+    return () => {
+      if (upgradePollingRef.current) {
+        clearInterval(upgradePollingRef.current);
+        upgradePollingRef.current = null;
+      }
+    };
   }, [slug, queryClient, toast]);
 
   const { data: managerInfo } = useQuery<ManagerInfo>({
@@ -659,6 +749,13 @@ export default function ManagerChat() {
         dailyMessageLimit: managerInfo.dailyMessageLimit || 15,
         remaining: managerInfo.remaining || 0,
       });
+    }
+  }, [managerInfo]);
+
+  // Show onboarding wizard for Silver/Gold users who haven't completed onboarding
+  useEffect(() => {
+    if (managerInfo && !managerInfo.isBronze && managerInfo.tier && managerInfo.hasCompletedOnboarding === false) {
+      setShowOnboardingWizard(true);
     }
   }, [managerInfo]);
 
@@ -1207,6 +1304,37 @@ export default function ManagerChat() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <UpgradeSuccessDialog
+        open={upgradeDialogOpen}
+        onOpenChange={setUpgradeDialogOpen}
+        tier={upgradeTier}
+        onStartNow={() => {
+          setUpgradeDialogOpen(false);
+        }}
+        pricing={pricingData?.pricing ? {
+          level2MonthlyPrice: pricingData.pricing.level2MonthlyPrice,
+          level3MonthlyPrice: pricingData.pricing.level3MonthlyPrice,
+          level2Name: pricingData.pricing.level2Name,
+          level3Name: pricingData.pricing.level3Name,
+        } : undefined}
+      />
+
+      {showOnboardingWizard && managerInfo && managerInfo.tier && slug && (
+        <OnboardingWizard
+          slug={slug}
+          clientEmail={managerInfo.email}
+          agentName={agentInfo?.agentName}
+          tier={managerInfo.tier === "gold" ? "gold" : "silver"}
+          onComplete={() => {
+            setShowOnboardingWizard(false);
+            queryClient.invalidateQueries({ queryKey: ["manager-info", slug] });
+          }}
+          onSkip={() => {
+            setShowOnboardingWizard(false);
+          }}
+        />
+      )}
     </div>
   );
 }
