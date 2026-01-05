@@ -283,6 +283,7 @@ router.get(
           dailyMessagesUsed: bronzeUsers.dailyMessagesUsed,
           dailyMessageLimit: bronzeUsers.dailyMessageLimit,
           lastMessageResetAt: bronzeUsers.lastMessageResetAt,
+          hasCompletedOnboarding: bronzeUsers.hasCompletedOnboarding,
         })
           .from(bronzeUsers)
           .where(eq(bronzeUsers.id, req.bronzeUser.bronzeUserId))
@@ -324,9 +325,11 @@ router.get(
           email: bronzeUser.email,
           status: bronzeUser.isActive ? "active" : "inactive",
           isBronze: true,
+          tier: "bronze",
           dailyMessagesUsed: dailyUsed,
           dailyMessageLimit: dailyLimit,
           remaining: Math.max(0, dailyLimit - dailyUsed),
+          hasCompletedOnboarding: bronzeUser.hasCompletedOnboarding || false,
           consultantSlug: consultant?.pricingPageSlug || null,
         });
       }
@@ -409,10 +412,51 @@ router.get(
         writingStyle: "default",
         responseLength: "balanced",
         customInstructions: null,
+        aiModel: null,
+        thinkingLevel: null,
       };
 
-      // Handle Bronze users - return default preferences
+      // Handle Bronze users - get preferences from bronze_users table
       if (req.bronzeUser) {
+        const [bronzeData] = await db.select({
+          writingStyle: bronzeUsers.writingStyle,
+          responseLength: bronzeUsers.responseLength,
+          customInstructions: bronzeUsers.customInstructions,
+        })
+          .from(bronzeUsers)
+          .where(eq(bronzeUsers.id, req.bronzeUser.bronzeUserId))
+          .limit(1);
+        
+        if (bronzeData) {
+          return res.json({
+            ...defaultPreferences,
+            writingStyle: bronzeData.writingStyle || "default",
+            responseLength: bronzeData.responseLength || "balanced",
+            customInstructions: bronzeData.customInstructions || null,
+          });
+        }
+        return res.json(defaultPreferences);
+      }
+
+      // Handle Silver/Gold users - get preferences from client_level_subscriptions
+      if (req.silverGoldUser) {
+        const [subscriptionData] = await db.select({
+          writingStyle: clientLevelSubscriptions.writingStyle,
+          responseLength: clientLevelSubscriptions.responseLength,
+          customInstructions: clientLevelSubscriptions.customInstructions,
+        })
+          .from(clientLevelSubscriptions)
+          .where(eq(clientLevelSubscriptions.id, req.silverGoldUser.subscriptionId))
+          .limit(1);
+        
+        if (subscriptionData) {
+          return res.json({
+            ...defaultPreferences,
+            writingStyle: subscriptionData.writingStyle || "default",
+            responseLength: subscriptionData.responseLength || "balanced",
+            customInstructions: subscriptionData.customInstructions || null,
+          });
+        }
         return res.json(defaultPreferences);
       }
 
@@ -450,15 +494,46 @@ router.put(
       const share = req.share!;
       const { writingStyle, responseLength, customInstructions } = req.body;
 
-      if (manager.shareId !== share.id) {
-        return res.status(403).json({ message: "Access denied to this agent" });
-      }
-
       const aiPreferences = {
         writingStyle: writingStyle || "default",
         responseLength: responseLength || "balanced",
         customInstructions: customInstructions || null,
       };
+
+      // Handle Bronze users - save to bronze_users table
+      if (req.bronzeUser) {
+        await db.update(bronzeUsers)
+          .set({
+            writingStyle: aiPreferences.writingStyle,
+            responseLength: aiPreferences.responseLength,
+            customInstructions: aiPreferences.customInstructions,
+            updatedAt: new Date(),
+          })
+          .where(eq(bronzeUsers.id, req.bronzeUser.bronzeUserId));
+        
+        console.log(`[PREFERENCES] Saved preferences for Bronze user ${req.bronzeUser.email}`);
+        return res.json(aiPreferences);
+      }
+
+      // Handle Silver/Gold users - save to client_level_subscriptions table
+      if (req.silverGoldUser) {
+        await db.update(clientLevelSubscriptions)
+          .set({
+            writingStyle: aiPreferences.writingStyle,
+            responseLength: aiPreferences.responseLength,
+            customInstructions: aiPreferences.customInstructions,
+            updatedAt: new Date(),
+          })
+          .where(eq(clientLevelSubscriptions.id, req.silverGoldUser.subscriptionId));
+        
+        console.log(`[PREFERENCES] Saved preferences for ${req.silverGoldUser.type} user ${req.silverGoldUser.email}`);
+        return res.json(aiPreferences);
+      }
+
+      // Handle Manager users (legacy flow)
+      if (manager.shareId !== share.id) {
+        return res.status(403).json({ message: "Access denied to this agent" });
+      }
 
       await db.update(managerUsers)
         .set({ 
@@ -1114,13 +1189,8 @@ router.put(
     try {
       const { writingStyle, responseLength, customInstructions } = req.body;
 
-      // Only Silver/Gold users can save onboarding preferences
-      if (!req.silverGoldUser) {
-        return res.status(403).json({ message: "Only Silver/Gold users can save onboarding preferences" });
-      }
-
-      const validWritingStyles = ["formale", "amichevole", "tecnico", "casual"];
-      const validResponseLengths = ["breve", "media", "dettagliata"];
+      const validWritingStyles = ["default", "professional", "friendly", "direct", "eccentric", "efficient", "nerd", "cynical", "custom"];
+      const validResponseLengths = ["short", "balanced", "comprehensive"];
 
       if (writingStyle && !validWritingStyles.includes(writingStyle)) {
         return res.status(400).json({ message: "Invalid writingStyle" });
@@ -1128,6 +1198,35 @@ router.put(
 
       if (responseLength && !validResponseLengths.includes(responseLength)) {
         return res.status(400).json({ message: "Invalid responseLength" });
+      }
+
+      // Handle Bronze users
+      if (req.bronzeUser) {
+        console.log(`[ONBOARDING-PREFERENCES] Saving preferences for Bronze user ${req.bronzeUser.bronzeUserId}`);
+
+        await db.update(bronzeUsers)
+          .set({
+            writingStyle: writingStyle || null,
+            responseLength: responseLength || null,
+            customInstructions: customInstructions || null,
+            hasCompletedOnboarding: true,
+          })
+          .where(eq(bronzeUsers.id, req.bronzeUser.bronzeUserId));
+
+        console.log(`[ONBOARDING-PREFERENCES] Preferences saved and onboarding marked complete for Bronze user ${req.bronzeUser.email}`);
+
+        return res.json({
+          success: true,
+          writingStyle: writingStyle || null,
+          responseLength: responseLength || null,
+          customInstructions: customInstructions || null,
+          hasCompletedOnboarding: true,
+        });
+      }
+
+      // Handle Silver/Gold users
+      if (!req.silverGoldUser) {
+        return res.status(403).json({ message: "Not authorized to save onboarding preferences" });
       }
 
       console.log(`[ONBOARDING-PREFERENCES] Saving preferences for subscription ${req.silverGoldUser.subscriptionId}`);

@@ -17,22 +17,27 @@ interface OnboardingWizardProps {
   slug: string;
   clientEmail: string;
   agentName?: string;
-  tier: "silver" | "gold";
+  tier: "bronze" | "silver" | "gold";
   onComplete: () => void;
   onSkip?: () => void;
 }
 
 const WRITING_STYLES = [
-  { value: "formale", label: "Formale", description: "Professionale e cortese" },
-  { value: "amichevole", label: "Amichevole", description: "Caldo e accogliente" },
-  { value: "tecnico", label: "Tecnico", description: "Preciso e dettagliato" },
-  { value: "casual", label: "Casual", description: "Rilassato e informale" },
+  { value: "default", label: "Predefinito", description: "Stile e tono predefiniti" },
+  { value: "professional", label: "Professionale", description: "Cortese e preciso" },
+  { value: "friendly", label: "Amichevole", description: "Espansivo e loquace" },
+  { value: "direct", label: "Schietto", description: "Diretto e incoraggiante" },
+  { value: "eccentric", label: "Eccentrico", description: "Vivace e fantasioso" },
+  { value: "efficient", label: "Efficiente", description: "Essenziale e semplice" },
+  { value: "nerd", label: "Nerd", description: "Curioso e appassionato" },
+  { value: "cynical", label: "Cinico", description: "Critico e sarcastico" },
+  { value: "custom", label: "Personalizzato", description: "Usa istruzioni personalizzate" },
 ];
 
 const RESPONSE_LENGTHS = [
-  { value: "breve", label: "Breve", description: "Risposte concise e dirette" },
-  { value: "media", label: "Media", description: "Bilanciata tra sintesi e dettaglio" },
-  { value: "dettagliata", label: "Dettagliata", description: "Risposte complete e approfondite" },
+  { value: "short", label: "Breve", description: "1-2 paragrafi" },
+  { value: "balanced", label: "Bilanciata", description: "Lunghezza moderata" },
+  { value: "comprehensive", label: "Completa", description: "Dettagliata e completa" },
 ];
 
 export function OnboardingWizard({
@@ -48,8 +53,8 @@ export function OnboardingWizard({
   const [isSaving, setIsSaving] = useState(false);
   const [explanation, setExplanation] = useState<string>("");
   const [preferences, setPreferences] = useState({
-    writingStyle: "amichevole" as "formale" | "amichevole" | "tecnico" | "casual",
-    responseLength: "media" as "breve" | "media" | "dettagliata",
+    writingStyle: "default" as "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom",
+    responseLength: "balanced" as "short" | "balanced" | "comprehensive",
     customInstructions: "",
   });
 
@@ -65,13 +70,16 @@ export function OnboardingWizard({
 
   useEffect(() => {
     if (currentStep === 3) {
+      const tierColors = {
+        bronze: ["#cd7f32", "#b87333", "#a0522d", "#8b4513"],
+        silver: ["#94a3b8", "#64748b", "#475569", "#6366f1"],
+        gold: ["#fbbf24", "#f59e0b", "#d97706", "#eab308"],
+      };
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: tier === "gold" 
-          ? ["#fbbf24", "#f59e0b", "#d97706", "#eab308"]
-          : ["#94a3b8", "#64748b", "#475569", "#6366f1"],
+        colors: tierColors[tier] || tierColors.bronze,
       });
     }
   }, [currentStep, tier]);
@@ -140,6 +148,12 @@ export function OnboardingWizard({
   };
 
   const tierConfig = {
+    bronze: {
+      gradient: "from-amber-600 to-amber-800",
+      bgGradient: "from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20",
+      borderColor: "border-amber-200 dark:border-amber-700",
+      name: "Bronze",
+    },
     silver: {
       gradient: "from-slate-400 to-slate-600",
       bgGradient: "from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50",

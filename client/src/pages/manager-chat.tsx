@@ -752,9 +752,9 @@ export default function ManagerChat() {
     }
   }, [managerInfo]);
 
-  // Show onboarding wizard for Silver/Gold users who haven't completed onboarding
+  // Show onboarding wizard for Bronze/Silver/Gold users who haven't completed onboarding
   useEffect(() => {
-    if (managerInfo && !managerInfo.isBronze && managerInfo.tier && managerInfo.hasCompletedOnboarding === false) {
+    if (managerInfo && managerInfo.hasCompletedOnboarding === false) {
       setShowOnboardingWizard(true);
     }
   }, [managerInfo]);
@@ -1320,12 +1320,12 @@ export default function ManagerChat() {
         } : undefined}
       />
 
-      {showOnboardingWizard && managerInfo && managerInfo.tier && slug && (
+      {showOnboardingWizard && managerInfo && slug && (
         <OnboardingWizard
           slug={slug}
           clientEmail={managerInfo.email}
           agentName={agentInfo?.agentName}
-          tier={managerInfo.tier === "gold" ? "gold" : "silver"}
+          tier={managerInfo.isBronze ? "bronze" : (managerInfo.tier === "gold" ? "gold" : "silver")}
           onComplete={() => {
             setShowOnboardingWizard(false);
             queryClient.invalidateQueries({ queryKey: ["manager-info", slug] });
