@@ -7,8 +7,137 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bot, Sparkles, ArrowRight, AlertCircle, ChevronLeft } from "lucide-react";
+import { Bot, Sparkles, ArrowRight, AlertCircle, ChevronLeft, Crown, Medal, Coins, MessageCircle, Infinity, Zap, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const TIER_CONFIG = {
+  "1": {
+    name: "Bronze",
+    icon: Coins,
+    gradient: "from-amber-600 to-orange-700",
+    bgGradient: "from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40",
+    textColor: "text-amber-700 dark:text-amber-300",
+    borderColor: "border-amber-400/50",
+    benefits: ["Accesso gratuito", "Messaggi limitati al giorno", "Supporto base"],
+    messageLimit: "10 messaggi/giorno",
+  },
+  "2": {
+    name: "Argento",
+    icon: Medal,
+    gradient: "from-slate-400 to-slate-600",
+    bgGradient: "from-slate-100 to-slate-200 dark:from-slate-800/60 dark:to-slate-700/40",
+    textColor: "text-slate-700 dark:text-slate-300",
+    borderColor: "border-slate-400/50",
+    benefits: ["Messaggi illimitati", "Priorità nelle risposte", "Supporto dedicato"],
+    messageLimit: "Messaggi illimitati",
+  },
+  "3": {
+    name: "Oro",
+    icon: Crown,
+    gradient: "from-yellow-500 to-amber-500",
+    bgGradient: "from-yellow-100 to-amber-100 dark:from-yellow-900/40 dark:to-amber-900/40",
+    textColor: "text-yellow-700 dark:text-yellow-300",
+    borderColor: "border-yellow-400/50",
+    benefits: ["Accesso completo a tutti gli agenti", "Messaggi illimitati", "Supporto prioritario", "Funzionalita' esclusive"],
+    messageLimit: "Messaggi illimitati",
+  },
+} as const;
+
+function TierBadge({ tier, tierName }: { tier: string; tierName?: string }) {
+  const config = TIER_CONFIG[tier as keyof typeof TIER_CONFIG] || TIER_CONFIG["1"];
+  const Icon = config.icon;
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.2, duration: 0.5 }}
+      className={cn(
+        "inline-flex items-center gap-2 px-4 py-2 rounded-full border",
+        `bg-gradient-to-r ${config.bgGradient}`,
+        config.borderColor
+      )}
+    >
+      <Icon className={cn("h-5 w-5", config.textColor)} />
+      <span className={cn("text-sm font-semibold", config.textColor)}>
+        Piano {tierName || config.name}
+      </span>
+    </motion.div>
+  );
+}
+
+function TierInfoBox({ tier, slug }: { tier: string; slug: string }) {
+  const config = TIER_CONFIG[tier as keyof typeof TIER_CONFIG] || TIER_CONFIG["1"];
+  const Icon = config.icon;
+  const [, navigate] = useLocation();
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5, duration: 0.5 }}
+      className={cn(
+        "max-w-2xl mx-auto mt-6 p-4 sm:p-6 rounded-2xl border backdrop-blur-sm",
+        `bg-gradient-to-r ${config.bgGradient}`,
+        config.borderColor
+      )}
+    >
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className={cn(
+          "flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center",
+          `bg-gradient-to-br ${config.gradient}`
+        )}>
+          <Icon className="h-6 w-6 text-white" />
+        </div>
+        
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            {tier === "1" && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-amber-200/50 dark:bg-amber-800/30 text-amber-800 dark:text-amber-200">
+                <MessageCircle className="h-3 w-3" />
+                {config.messageLimit}
+              </span>
+            )}
+            {(tier === "2" || tier === "3") && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-200/50 dark:bg-green-800/30 text-green-800 dark:text-green-200">
+                <Infinity className="h-3 w-3" />
+                {config.messageLimit}
+              </span>
+            )}
+            {tier === "3" && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-purple-200/50 dark:bg-purple-800/30 text-purple-800 dark:text-purple-200">
+                <Zap className="h-3 w-3" />
+                Accesso completo
+              </span>
+            )}
+          </div>
+          
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {tier === "1" && "Stai usando il piano gratuito. Hai accesso agli agenti base con un limite giornaliero di messaggi."}
+            {tier === "2" && "Hai messaggi illimitati e accesso prioritario agli agenti del tuo piano."}
+            {tier === "3" && "Hai accesso completo a tutti gli agenti disponibili senza limiti."}
+          </p>
+        </div>
+        
+        {(tier === "1" || tier === "2") && (
+          <Button
+            onClick={() => navigate(`/c/${slug}/pricing`)}
+            size="sm"
+            className={cn(
+              "flex-shrink-0 gap-1 font-semibold",
+              tier === "1" 
+                ? "bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700" 
+                : "bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600"
+            )}
+          >
+            {tier === "1" ? "Passa ad Argento" : "Passa a Oro"}
+            <ArrowUpRight className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 interface Agent {
   id: string;
@@ -402,17 +531,7 @@ export default function SelectAgent() {
             transition={{ duration: 0.6 }}
             className="text-center mb-10 sm:mb-14"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40"
-            >
-              <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-              <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                {data?.tierName || "Piano Selezionato"}
-              </span>
-            </motion.div>
+            <TierBadge tier={userTier} tierName={data?.tierName} />
 
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
@@ -436,6 +555,8 @@ export default function SelectAgent() {
               Seleziona l'assistente AI più adatto alle tue esigenze. 
               Ogni agente è specializzato per offrirti il massimo supporto.
             </motion.p>
+            
+            <TierInfoBox tier={userTier} slug={slug || ""} />
           </motion.div>
 
           {isLoading ? (

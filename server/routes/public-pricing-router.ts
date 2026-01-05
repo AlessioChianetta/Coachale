@@ -292,8 +292,8 @@ router.get("/:slug/agents/:tier", async (req: Request, res: Response) => {
           console.log("[AGENT FILTER] Silver disabled agents found:", disabledAccess.length);
           const disabledAgentIds = new Set(disabledAccess.map(a => a.agentConfigId));
           filteredAgents = filteredAgents.filter(agent => !disabledAgentIds.has(agent.id));
-        } else if (decoded.role === "client" && decoded.userId) {
-          // Gold client - check bronzeUserAgentAccess with userType to avoid collisions
+        } else if (decoded.userId && !decoded.type && !decoded.bronzeUserId && !decoded.subscriptionId) {
+          // Gold client (token has userId but no type/bronzeUserId/subscriptionId) - check bronzeUserAgentAccess with userType
           const disabledAccess = await db.select({ agentConfigId: bronzeUserAgentAccess.agentConfigId })
             .from(bronzeUserAgentAccess)
             .where(
