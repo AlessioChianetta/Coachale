@@ -123,7 +123,12 @@ export function ProfileSettingsSheet({
       const data = await response.json();
 
       if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+        // Open Stripe checkout in new tab to preserve chat state
+        window.open(data.checkoutUrl, '_blank', 'noopener');
+        toast({
+          title: "Checkout aperto",
+          description: "Completa il pagamento nella nuova scheda. Questa pagina si aggiornerà automaticamente.",
+        });
       } else if (data.success) {
         toast({
           title: "Upgrade completato!",
