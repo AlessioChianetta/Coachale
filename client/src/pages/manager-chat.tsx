@@ -693,6 +693,27 @@ export default function ManagerChat() {
     enabled: isAuthenticated,
   });
 
+  const { data: pricingData } = useQuery<{
+    pricing: {
+      level2MonthlyPrice: number;
+      level3MonthlyPrice: number;
+      level2Name: string;
+      level3Name: string;
+      level2Features?: string[];
+      level3Features?: string[];
+    };
+  }>({
+    queryKey: ["consultant-pricing", managerInfo?.consultantSlug],
+    queryFn: async () => {
+      const consultantSlug = managerInfo?.consultantSlug;
+      if (!consultantSlug) throw new Error("No consultant slug");
+      const response = await fetch(`/api/public/consultant/${consultantSlug}/pricing`);
+      if (!response.ok) throw new Error("Failed to fetch pricing");
+      return response.json();
+    },
+    enabled: !!managerInfo?.consultantSlug,
+  });
+
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: string) => {
       const response = await fetch(
@@ -834,6 +855,10 @@ export default function ManagerChat() {
                     dailyMessageLimit: data.dailyMessageLimit,
                     remaining: data.remaining ?? (data.dailyMessageLimit - data.dailyMessagesUsed),
                   });
+                }
+                // Handle limit reached case - message already shown via chunk event
+                if (data.limitReached) {
+                  console.log(`⚠️ [MANAGER] Bronze daily limit reached`);
                 }
               } else if (data.type === "error") {
                 throw new Error(data.error || "AI error");
@@ -1070,6 +1095,7 @@ export default function ManagerChat() {
                   open={profileSheetOpen}
                   onOpenChange={setProfileSheetOpen}
                   defaultTab={profileSheetTab}
+                  pricing={pricingData?.pricing}
                 />
               )}
             </div>

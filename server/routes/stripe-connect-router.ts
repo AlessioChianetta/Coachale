@@ -337,6 +337,8 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
   try {
     const { slug, targetLevel } = req.body;
     
+    console.log("[Stripe Upgrade] Request received:", { slug, targetLevel });
+    
     if (!slug || !targetLevel) {
       return res.status(400).json({ error: "Missing required fields: slug, targetLevel" });
     }
@@ -357,9 +359,17 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       return res.status(401).json({ error: "Invalid or expired token" });
     }
     
+    console.log("[Stripe Upgrade] Token decoded:", { type: decoded.type, role: decoded.role, bronzeUserId: decoded.bronzeUserId, managerId: decoded.managerId });
+    
+    // Validate slug is a string
+    const slugStr = String(slug || "").trim();
+    if (!slugStr) {
+      return res.status(400).json({ error: "Invalid slug" });
+    }
+    
     const [share] = await db.select()
       .from(whatsappAgentShares)
-      .where(eq(whatsappAgentShares.shareSlug, slug))
+      .where(eq(whatsappAgentShares.shareSlug, slugStr))
       .limit(1);
     
     if (!share) {
@@ -367,6 +377,14 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
     }
     
     const consultantId = share.consultantId;
+    
+    // Validate consultantId is a valid string
+    if (!consultantId || typeof consultantId !== "string") {
+      console.error("[Stripe Upgrade] Invalid consultantId from share:", consultantId);
+      return res.status(500).json({ error: "Invalid consultant configuration" });
+    }
+    
+    console.log("[Stripe Upgrade] Looking up consultant:", consultantId);
     
     const [consultant] = await db.select().from(users)
       .where(eq(users.id, consultantId));
@@ -387,9 +405,17 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
     let isBronzeUser = false;
     
     if (decoded.type === "bronze" && decoded.bronzeUserId) {
+      // Validate bronzeUserId is a valid string
+      const bronzeUserIdStr = String(decoded.bronzeUserId || "").trim();
+      if (!bronzeUserIdStr) {
+        return res.status(401).json({ error: "Invalid bronze user ID" });
+      }
+      
+      console.log("[Stripe Upgrade] Looking up bronze user:", bronzeUserIdStr);
+      
       const [bronzeUser] = await db.select()
         .from(bronzeUsers)
-        .where(eq(bronzeUsers.id, decoded.bronzeUserId))
+        .where(eq(bronzeUsers.id, bronzeUserIdStr))
         .limit(1);
       
       if (!bronzeUser) {
@@ -403,10 +429,18 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       userEmail = bronzeUser.email;
       isBronzeUser = true;
       
+      // Safely get lowercase email
+      const emailLower = (bronzeUser.email || "").toLowerCase().trim();
+      if (!emailLower) {
+        return res.status(500).json({ error: "Invalid user email" });
+      }
+      
+      console.log("[Stripe Upgrade] Checking existing subscription for:", { email: emailLower, consultantId });
+      
       const [existingSub] = await db.select()
         .from(clientLevelSubscriptions)
         .where(and(
-          eq(clientLevelSubscriptions.clientEmail, bronzeUser.email.toLowerCase()),
+          eq(clientLevelSubscriptions.clientEmail, emailLower),
           eq(clientLevelSubscriptions.consultantId, consultantId),
           eq(clientLevelSubscriptions.status, "active")
         ))
@@ -414,9 +448,17 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       
       existingSubscription = existingSub || null;
     } else if (decoded.role === "manager" && decoded.managerId) {
+      // Validate managerId is a valid string
+      const managerIdStr = String(decoded.managerId || "").trim();
+      if (!managerIdStr) {
+        return res.status(401).json({ error: "Invalid manager ID" });
+      }
+      
+      console.log("[Stripe Upgrade] Looking up manager:", managerIdStr);
+      
       const [manager] = await db.select()
         .from(managerUsers)
-        .where(eq(managerUsers.id, decoded.managerId))
+        .where(eq(managerUsers.id, managerIdStr))
         .limit(1);
       
       if (!manager) {
@@ -429,10 +471,18 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       
       userEmail = manager.email;
       
+      // Safely get lowercase email
+      const emailLower = (manager.email || "").toLowerCase().trim();
+      if (!emailLower) {
+        return res.status(500).json({ error: "Invalid manager email" });
+      }
+      
+      console.log("[Stripe Upgrade] Checking existing subscription for manager:", { email: emailLower, consultantId });
+      
       const [existingSub] = await db.select()
         .from(clientLevelSubscriptions)
         .where(and(
-          eq(clientLevelSubscriptions.clientEmail, manager.email.toLowerCase()),
+          eq(clientLevelSubscriptions.clientEmail, emailLower),
           eq(clientLevelSubscriptions.consultantId, consultantId),
           eq(clientLevelSubscriptions.status, "active")
         ))
@@ -543,6 +593,12 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       },
     });
     
+    console.log("[Stripe Upgrade] Updating Stripe subscription:", {
+      subscriptionId: existingSubscription.stripeSubscriptionId,
+      itemId: stripeSubscription.items.data[0]?.id,
+      newPriceId: newPriceObj.id,
+    });
+    
     await stripe.subscriptions.update(existingSubscription.stripeSubscriptionId, {
       items: [{
         id: stripeSubscription.items.data[0].id,
@@ -555,12 +611,21 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       },
     });
     
+    // Validate subscription ID before database update
+    const subscriptionIdStr = String(existingSubscription.id || "").trim();
+    if (!subscriptionIdStr) {
+      console.error("[Stripe Upgrade] Invalid subscription ID for database update:", existingSubscription.id);
+      return res.status(500).json({ error: "Invalid subscription ID" });
+    }
+    
+    console.log("[Stripe Upgrade] Updating database subscription:", { id: subscriptionIdStr, newLevel: targetLevel });
+    
     await db.update(clientLevelSubscriptions)
       .set({
         level: targetLevel as "2" | "3",
         updatedAt: new Date(),
       })
-      .where(eq(clientLevelSubscriptions.id, existingSubscription.id));
+      .where(eq(clientLevelSubscriptions.id, subscriptionIdStr));
     
     console.log(`[Stripe Upgrade] Subscription ${existingSubscription.stripeSubscriptionId} upgraded from ${existingSubscription.level} to ${targetLevel} with proration`);
     
@@ -568,6 +633,7 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
     
   } catch (error: any) {
     console.error("[Stripe Upgrade] Error:", error);
+    console.error("[Stripe Upgrade] Error details:", { code: error.code, severity: error.severity, position: error.position, message: error.message });
     res.status(500).json({ error: error.message || "Failed to upgrade subscription" });
   }
 });

@@ -15,7 +15,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { generateSpeech } from '../../ai/tts-service';
 import { shouldRespondWithAudio } from '../../whatsapp/audio-response-utils';
-import { getAIProvider, getModelWithThinking } from '../../ai/provider-factory';
+import { getAIProvider, getModelWithThinking, getSuperAdminGeminiKeys } from '../../ai/provider-factory';
 import { getAudioDurationInSeconds } from 'get-audio-duration';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -1111,16 +1111,27 @@ router.post(
             .where(eq(schema.bronzeUsers.id, bronzeUser.bronzeUserId));
         }
         
-        // Check if limit reached
+        // Check if limit reached - return SSE stream with friendly message instead of 429
         if (dailyUsed >= dailyLimit) {
           console.log(`   ⛔ Daily limit reached: ${dailyUsed}/${dailyLimit}`);
-          return res.status(429).json({
-            error: 'Limite giornaliero raggiunto',
-            message: `Hai raggiunto il limite di ${dailyLimit} messaggi giornalieri. Torna domani o considera un upgrade al piano Argento per messaggi illimitati.`,
+          
+          // Setup SSE headers for streaming response
+          res.setHeader('Content-Type', 'text/event-stream');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader('Connection', 'keep-alive');
+          
+          const limitMessage = `Hey! 😊 Hai raggiunto il limite di ${dailyLimit} messaggi giornalieri del piano Bronze gratuito.\n\nPuoi:\n• 🔄 **Tornare domani** per altri ${dailyLimit} messaggi gratis\n• ⬆️ **Passare al piano Argento** per messaggi illimitati e risposte più veloci\n\nClicca sull'icona del profilo in alto a destra per vedere le opzioni di upgrade! 🚀`;
+          
+          res.write(`data: ${JSON.stringify({ type: 'chunk', content: limitMessage })}\n\n`);
+          res.write(`data: ${JSON.stringify({ 
+            type: 'complete', 
+            conversationId: null,
             dailyMessagesUsed: dailyUsed,
             dailyMessageLimit: dailyLimit,
             remaining: 0,
-          });
+            limitReached: true
+          })}\n\n`);
+          return res.end();
         }
         
         // Increment usage counter
@@ -2144,6 +2155,87 @@ Ti aspettiamo! 🚀`;
           .update(schema.whatsappAgentConsultantConversations)
           .set({ lastMessageAt: new Date() })
           .where(eq(schema.whatsappAgentConsultantConversations.id, conversation.id));
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // TITLE GENERATION - Generate title after first exchange using Gemini Flash Lite
+        // ═══════════════════════════════════════════════════════════════════════
+        try {
+          // Count messages in conversation
+          const [messageCountResult] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(schema.whatsappAgentConsultantMessages)
+            .where(eq(schema.whatsappAgentConsultantMessages.conversationId, conversation.id));
+          
+          const messageCount = Number(messageCountResult?.count) || 0;
+          
+          // Generate title after exactly 2 messages (first user + first AI response)
+          if (messageCount === 2 && conversation.title === 'Nuova conversazione') {
+            console.log(`\n📝 [TITLE-GEN] Generating title for conversation ${conversation.id}...`);
+            
+            // Get first user message
+            const [firstUserMessage] = await db
+              .select()
+              .from(schema.whatsappAgentConsultantMessages)
+              .where(
+                and(
+                  eq(schema.whatsappAgentConsultantMessages.conversationId, conversation.id),
+                  eq(schema.whatsappAgentConsultantMessages.role, 'user')
+                )
+              )
+              .orderBy(schema.whatsappAgentConsultantMessages.createdAt)
+              .limit(1);
+            
+            if (firstUserMessage?.content) {
+              // Get API key: first try SuperAdmin keys, then fallback to env
+              let geminiApiKey: string | null = null;
+              
+              const superAdminKeys = await getSuperAdminGeminiKeys();
+              if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+                geminiApiKey = superAdminKeys.keys[0];
+                console.log(`   🔑 [TITLE-GEN] Using SuperAdmin Gemini key`);
+              } else if (process.env.GEMINI_API_KEY) {
+                geminiApiKey = process.env.GEMINI_API_KEY;
+                console.log(`   🔑 [TITLE-GEN] Using GEMINI_API_KEY from environment`);
+              }
+              
+              if (geminiApiKey) {
+                // Use Gemini Flash Lite for title generation (fast and cheap)
+                const { GoogleGenAI } = await import('@google/genai');
+                const genai = new GoogleGenAI({ apiKey: geminiApiKey });
+                
+                const titlePrompt = `Genera un titolo breve (massimo 5 parole) per questa conversazione basandoti sul primo messaggio dell'utente. Rispondi SOLO con il titolo, senza virgolette o punteggiatura finale.
+
+Messaggio utente: "${firstUserMessage.content.substring(0, 200)}"
+
+Titolo:`;
+
+                const result = await genai.models.generateContent({
+                  model: 'gemini-2.0-flash-lite',
+                  contents: titlePrompt,
+                });
+                
+                const generatedTitle = result.text?.trim().substring(0, 50) || 'Conversazione';
+                
+                // Update conversation title
+                await db
+                  .update(schema.whatsappAgentConsultantConversations)
+                  .set({ title: generatedTitle })
+                  .where(eq(schema.whatsappAgentConsultantConversations.id, conversation.id));
+                
+                console.log(`   ✅ [TITLE-GEN] Title generated: "${generatedTitle}"`);
+                
+                // Send title update via SSE
+                res.write(`data: ${JSON.stringify({ type: 'titleUpdate', title: generatedTitle })}\n\n`);
+              } else {
+                console.log(`   ⚠️ [TITLE-GEN] No Gemini API key available, skipping title generation`);
+              }
+            }
+          }
+        } catch (titleError: any) {
+          console.error(`   ⚠️ [TITLE-GEN] Error generating title:`, titleError.message);
+          // Non-critical error, don't fail the request
+        }
+        // ═══════════════════════════════════════════════════════════════════════
         
         // Send completion signal with audio metadata, booking info, Bronze usage info, and conversation ID
         res.write(`data: ${JSON.stringify({ 

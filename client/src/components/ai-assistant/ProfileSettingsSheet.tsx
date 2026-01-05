@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, CreditCard, LogOut, Medal, Crown, Loader2, Mail, Phone, Calendar } from "lucide-react";
+import { User, CreditCard, LogOut, Medal, Crown, Loader2, Mail, Phone, Calendar, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -31,6 +31,14 @@ interface ProfileSettingsSheetProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultTab?: "profile" | "subscription";
+  pricing?: {
+    level2MonthlyPrice: number;
+    level3MonthlyPrice: number;
+    level2Name?: string;
+    level3Name?: string;
+    level2Features?: string[];
+    level3Features?: string[];
+  };
 }
 
 export function ProfileSettingsSheet({
@@ -44,6 +52,7 @@ export function ProfileSettingsSheet({
   open,
   onOpenChange,
   defaultTab = "profile",
+  pricing,
 }: ProfileSettingsSheetProps) {
   const [isUpgrading, setIsUpgrading] = useState(false);
   const { toast } = useToast();
@@ -57,6 +66,11 @@ export function ProfileSettingsSheet({
     return localStorage.getItem("manager_token") || localStorage.getItem("token");
   };
 
+  const silverPrice = pricing?.level2MonthlyPrice ?? 29;
+  const goldPrice = pricing?.level3MonthlyPrice ?? 59;
+  const silverName = pricing?.level2Name || "Argento";
+  const goldName = pricing?.level3Name || "Oro";
+
   const levelConfig = {
     bronze: {
       label: "Bronze",
@@ -67,16 +81,16 @@ export function ProfileSettingsSheet({
       borderColor: "border-amber-200 dark:border-amber-500/30",
     },
     silver: {
-      label: "Argento",
-      price: "€29/mese",
+      label: silverName,
+      price: `€${silverPrice}/mese`,
       icon: <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-500/20 flex items-center justify-center text-lg">🥈</div>,
       color: "text-slate-600 dark:text-slate-400",
       bgColor: "bg-slate-50 dark:bg-slate-900/20",
       borderColor: "border-slate-200 dark:border-slate-500/30",
     },
     gold: {
-      label: "Oro",
-      price: "€59/mese",
+      label: goldName,
+      price: `€${goldPrice}/mese`,
       icon: <div className="w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-500/20 flex items-center justify-center text-lg">🥇</div>,
       color: "text-yellow-600 dark:text-yellow-400",
       bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
@@ -267,32 +281,74 @@ export function ProfileSettingsSheet({
             </div>
 
             {subscriptionLevel === "bronze" && (
-              <div className="space-y-3">
-                <Button
-                  onClick={() => handleUpgrade("silver")}
-                  disabled={isUpgrading}
-                  className="w-full bg-gradient-to-r from-slate-400 to-slate-500 hover:from-slate-500 hover:to-slate-600 text-white"
-                >
-                  {isUpgrading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Medal className="h-4 w-4 mr-2" />
-                  )}
-                  Passa ad Argento - €29/mese
-                </Button>
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Medal className="h-5 w-5 text-slate-500" />
+                    <span className="font-medium">{silverName}</span>
+                    <span className="text-sm text-muted-foreground">- €{silverPrice}/mese</span>
+                  </div>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span>Messaggi illimitati</span>
+                    </li>
+                    {pricing?.level2Features?.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
                 
-                <Button
-                  onClick={() => handleUpgrade("gold")}
-                  disabled={isUpgrading}
-                  className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
-                >
-                  {isUpgrading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Crown className="h-4 w-4 mr-2" />
-                  )}
-                  Passa a Oro - €59/mese
-                </Button>
+                <div className="p-4 rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-900/10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Crown className="h-5 w-5 text-yellow-500" />
+                    <span className="font-medium">{goldName}</span>
+                    <span className="text-sm text-muted-foreground">- €{goldPrice}/mese</span>
+                  </div>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span>Tutto di {silverName} +</span>
+                    </li>
+                    {pricing?.level3Features?.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => handleUpgrade("silver")}
+                    disabled={isUpgrading}
+                    className="w-full bg-gradient-to-r from-slate-400 to-slate-500 hover:from-slate-500 hover:to-slate-600 text-white"
+                  >
+                    {isUpgrading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Medal className="h-4 w-4 mr-2" />
+                    )}
+                    Passa a {silverName} - €{silverPrice}/mese
+                  </Button>
+                  
+                  <Button
+                    onClick={() => handleUpgrade("gold")}
+                    disabled={isUpgrading}
+                    className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
+                  >
+                    {isUpgrading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Crown className="h-4 w-4 mr-2" />
+                    )}
+                    Passa a {goldName} - €{goldPrice}/mese
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -307,7 +363,7 @@ export function ProfileSettingsSheet({
                 ) : (
                   <Crown className="h-4 w-4 mr-2" />
                 )}
-                Passa a Oro - €30/mese extra
+                Passa a {goldName} - €{goldPrice - silverPrice}/mese extra
               </Button>
             )}
 
