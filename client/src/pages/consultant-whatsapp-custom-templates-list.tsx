@@ -315,6 +315,10 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const [filterMode, setFilterMode] = useState<FilterMode>("category");
   const [selectedAgentType, setSelectedAgentType] = useState<string>("receptionist");
 
+  // Credential sync dialog state
+  const [syncCredentialsDialogOpen, setSyncCredentialsDialogOpen] = useState(false);
+  const [credentialSyncAgentId, setCredentialSyncAgentId] = useState<string>("");
+
   // Query for default templates availability
   const { data: defaultTemplatesData } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates/default-templates"],
@@ -413,6 +417,17 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     }
   });
   const agents = agentsData?.configs || [];
+
+  const { data: agentsByAccountData, refetch: refetchAgentsByAccount } = useQuery({
+    queryKey: ["/api/whatsapp/agents-by-account"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/agents-by-account", {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) return null;
+      return response.json();
+    }
+  });
 
   useEffect(() => {
     setCurrentPage(1);
@@ -703,6 +718,37 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
         throw new Error(errorData.error || "Failed to verify credentials");
       }
       return response.json();
+    },
+  });
+
+  const syncCredentialsMutation = useMutation({
+    mutationFn: async (agentId: string) => {
+      const response = await fetch(`/api/whatsapp/sync-credentials/${agentId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to sync credentials");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "✅ Credenziali Sincronizzate",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/agents-by-account"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/config"] });
+      setSyncCredentialsDialogOpen(false);
+      setCredentialSyncAgentId("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Errore Sincronizzazione",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -1303,6 +1349,18 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                         <RefreshCw className="h-5 w-5 mr-2" />
                       )}
                       Sincronizza Stato Twilio
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => {
+                        refetchAgentsByAccount();
+                        setSyncCredentialsDialogOpen(true);
+                      }}
+                      className="bg-white/10 border-white/30 text-white hover:bg-white/20 gap-2"
+                    >
+                      <RefreshCw className="h-5 w-5" />
+                      Sync Credenziali
                     </Button>
                     <Button
                       onClick={() => navigate("/consultant/whatsapp/custom-templates")}
@@ -2422,6 +2480,116 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setTwilioTemplatesDialogOpen(false)}>
                 Chiudi
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={syncCredentialsDialogOpen} onOpenChange={setSyncCredentialsDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5" />
+                Sincronizza Credenziali Twilio
+              </DialogTitle>
+              <DialogDescription>
+                Aggiorna le credenziali Twilio di un agente con quelle centrali configurate nelle Impostazioni API.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {agentsByAccountData && (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      <strong>Account Centrale:</strong> {agentsByAccountData.centralAccountSidMasked || "Non configurato"}
+                    </p>
+                  </div>
+                  
+                  {agentsByAccountData.accountGroups?.map((group: any) => (
+                    <div key={group.accountSid} className="border rounded-lg overflow-hidden">
+                      <div className={`px-4 py-2 flex items-center justify-between ${group.isCentralAccount ? 'bg-green-50 border-b border-green-200' : 'bg-amber-50 border-b border-amber-200'}`}>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-medium ${group.isCentralAccount ? 'text-green-700' : 'text-amber-700'}`}>
+                            {group.isCentralAccount ? '✅ Account Centrale' : '⚠️ Account Diverso'}
+                          </span>
+                          <code className="text-xs bg-white px-2 py-0.5 rounded border">{group.accountSidMasked}</code>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {group.agents.length} agenti
+                        </Badge>
+                      </div>
+                      <div className="divide-y">
+                        {group.agents.map((agent: any) => (
+                          <div key={agent.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                            <div>
+                              <p className="font-medium text-sm">{agent.agentName}</p>
+                              <p className="text-xs text-muted-foreground">{agent.twilioWhatsappNumber}</p>
+                            </div>
+                            {!group.isCentralAccount && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setCredentialSyncAgentId(agent.id);
+                                }}
+                                className={credentialSyncAgentId === agent.id ? 'ring-2 ring-blue-500' : ''}
+                              >
+                                {credentialSyncAgentId === agent.id ? 'Selezionato' : 'Seleziona'}
+                              </Button>
+                            )}
+                            {group.isCentralAccount && (
+                              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                                Già sincronizzato
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {agentsByAccountData.accountGroups?.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Nessun agente WhatsApp configurato</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {credentialSyncAgentId && (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800">
+                    L'agente selezionato verrà aggiornato con le credenziali Twilio centrali. I template esistenti rimarranno invariati ma dovranno essere ri-esportati sul nuovo account.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setSyncCredentialsDialogOpen(false);
+                setCredentialSyncAgentId("");
+              }}>
+                Annulla
+              </Button>
+              <Button
+                onClick={() => syncCredentialsMutation.mutate(credentialSyncAgentId)}
+                disabled={!credentialSyncAgentId || syncCredentialsMutation.isPending}
+              >
+                {syncCredentialsMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sincronizzazione...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Sincronizza Credenziali
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
