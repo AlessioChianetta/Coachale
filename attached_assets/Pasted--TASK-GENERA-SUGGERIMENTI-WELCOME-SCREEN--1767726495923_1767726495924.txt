@@ -1,0 +1,28 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 TASK: GENERA SUGGERIMENTI WELCOME SCREEN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Basandoti sul contesto sopra, genera ESATTAMENTE 4 suggerimenti per pulsanti della welcome screen.
+
+REGOLE RIGIDE:
+- Rispondi SOLO con JSON valido, NESSUN testo prima o dopo
+- 4 oggetti nel JSON array
+- label: max 4 parole
+- prompt: max 60 caratteri
+- Suggerimenti pertinenti al business e target descritti sopra
+
+FORMATO ESATTO (copia questa struttura):
+[{"icon":"target","label":"Titolo breve","prompt":"Domanda che farebbe un cliente","gradient":"from-cyan-500 to-teal-500"},{"icon":"book","label":"Secondo titolo","prompt":"Altra domanda pertinente","gradient":"from-teal-500 to-emerald-500"},{"icon":"lightbulb","label":"Terzo titolo","prompt":"Terza domanda","gradient":"from-slate-500 to-cyan-500"},{"icon":"sparkles","label":"Quarto titolo","prompt":"Quarta domanda","gradient":"from-cyan-600 to-teal-600"}]
+
+ICONE VALIDE: target, book, message, lightbulb, trending, sparkles
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7:08:21 PM [express] GET /api/public/consultant/orbitale/pricing 304 in 290ms :: {"consultantName":"…
+[AI SUGGESTIONS] Attempting to parse: [{"icon":"target","label":"Definisci obiettivi strategici","prompt":"Aiutami a definire i miei obiettivi di
+[AI SUGGESTIONS] Failed to parse AI response: SyntaxError: Unterminated string in JSON at position 107
+    at parse (<anonymous>)
+    at JSON.parse (/home/runner/workspace/node_modules/pdf-parse/node_modules/pdfjs-dist/legacy/build/pdf.mjs:4852:56)
+    at <anonymous> (/home/runner/workspace/server/routes/ai-assistant-router.ts:756:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[AI SUGGESTIONS] Raw response was: [{"icon":"target","label":"Definisci obiettivi strategici","prompt":"Aiutami a definire i miei obiettivi di
+7:08:26 PM [express] GET /api/ai-assistant/agent/c59f71bc-e0fa-48ba-8786-75e4f565fdb3/suggestions 30…

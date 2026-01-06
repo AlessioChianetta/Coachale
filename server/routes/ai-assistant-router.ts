@@ -656,29 +656,34 @@ router.get("/agent/:agentId/suggestions", authenticateToken, async (req: AuthReq
       return res.json({ suggestions: defaultSuggestions, source: "default" });
     }
 
-    // Use the same system prompt builder used for agent chat (includes all brand voice, knowledge base, etc.)
-    const agentFullContext = await buildWhatsAppAgentPrompt(agent);
-    console.log(`[AI SUGGESTIONS] Agent context length: ${agentFullContext.length} chars`);
+    // Build a COMPACT context for suggestions (not the full WhatsApp sales prompt)
+    const buildSuggestionsContext = () => {
+      const parts: string[] = [];
+      parts.push(`Business: ${agent.businessName || 'Non specificato'}`);
+      if (agent.businessDescription) parts.push(`Descrizione: ${agent.businessDescription}`);
+      if (agent.mission) parts.push(`Mission: ${agent.mission}`);
+      if (agent.vision) parts.push(`Vision: ${agent.vision}`);
+      if (agent.usp) parts.push(`USP: ${agent.usp}`);
+      if (agent.whoWeHelp) parts.push(`Chi aiutiamo: ${agent.whoWeHelp}`);
+      if (agent.whatWeDo) parts.push(`Cosa facciamo: ${agent.whatWeDo}`);
+      if (agent.howWeDoIt) parts.push(`Come lo facciamo: ${agent.howWeDoIt}`);
+      if (agent.services && Array.isArray(agent.services) && agent.services.length > 0) {
+        const serviceNames = agent.services.map((s: any) => s.name || s).filter(Boolean).slice(0, 3);
+        if (serviceNames.length > 0) parts.push(`Servizi principali: ${serviceNames.join(', ')}`);
+      }
+      return parts.join('\n');
+    };
 
-    const systemPrompt = `${agentFullContext}
+    const agentContext = buildSuggestionsContext();
+    console.log(`[AI SUGGESTIONS] Compact context length: ${agentContext.length} chars`);
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 TASK: GENERA SUGGERIMENTI WELCOME SCREEN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const systemPrompt = `Sei un assistente AI che genera suggerimenti per pulsanti di una welcome screen.
 
-Basandoti sul contesto sopra, genera ESATTAMENTE 4 suggerimenti per pulsanti della welcome screen.
+CONTESTO BUSINESS:
+${agentContext}
 
-REGOLE RIGIDE:
-- Rispondi SOLO con JSON valido, NESSUN testo prima o dopo
-- 4 oggetti nel JSON array
-- label: max 4 parole
-- prompt: max 60 caratteri
-- Suggerimenti pertinenti al business e target descritti sopra
-
-FORMATO ESATTO (copia questa struttura):
-[{"icon":"target","label":"Titolo breve","prompt":"Domanda che farebbe un cliente","gradient":"from-cyan-500 to-teal-500"},{"icon":"book","label":"Secondo titolo","prompt":"Altra domanda pertinente","gradient":"from-teal-500 to-emerald-500"},{"icon":"lightbulb","label":"Terzo titolo","prompt":"Terza domanda","gradient":"from-slate-500 to-cyan-500"},{"icon":"sparkles","label":"Quarto titolo","prompt":"Quarta domanda","gradient":"from-cyan-600 to-teal-600"}]
-
-ICONE VALIDE: target, book, message, lightbulb, trending, sparkles`;
+TASK: Genera 4 suggerimenti pertinenti al business sopra.
+Ogni suggerimento deve essere una domanda che un potenziale cliente farebbe.`;
 
     const { model } = getModelWithThinking(providerResult.metadata.name);
 
@@ -723,7 +728,7 @@ ICONE VALIDE: target, book, message, lightbulb, trending, sparkles`;
       systemInstruction: systemPrompt,
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 1000,
+        maxOutputTokens: 2000,
         responseMimeType: "application/json",
         responseSchema: responseSchema as any,
       },
