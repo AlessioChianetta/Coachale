@@ -1217,7 +1217,7 @@ export default function ManagerChat() {
                   }
                   managerInfo={managerInfo ? { name: managerInfo.name, email: managerInfo.email } : null}
                   bronzeUsage={bronzeUsage}
-                  subscriptionLevel={managerInfo?.isBronze ? "bronze" : "silver"}
+                  subscriptionLevel={managerInfo?.isBronze ? "bronze" : (managerInfo?.tier === "gold" || managerInfo?.level === "3" ? "gold" : "silver")}
                   onLogout={handleLogout}
                   slug={slug!}
                   open={profileSheetOpen}
