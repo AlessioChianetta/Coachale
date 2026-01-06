@@ -10811,6 +10811,34 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // Get AI memory context for debugging/visualization
+  app.get("/api/consultant/ai/memory-context", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { ConversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const memoryService = new ConversationMemoryService();
+      
+      const conversations = await memoryService.getRecentConversations(
+        req.user!.id,
+        "consultant"
+      );
+
+      const totalMessages = conversations.reduce((sum, c) => sum + c.messageCount, 0);
+
+      res.json({
+        conversations,
+        totalMessages,
+        config: {
+          maxConversations: 5,
+          maxMessagesPerConversation: 10,
+          daysToLookBack: 30,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error fetching memory context:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ========================================
   // CONSULTANT PROFILE ROUTES
   // ========================================

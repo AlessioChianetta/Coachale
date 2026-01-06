@@ -6,12 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot, Settings2, Filter } from "lucide-react";
+import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot, Settings2, Filter, Brain } from "lucide-react";
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea, AIModel, ThinkingLevel, AttachedFile } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
 import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
 import { ClientAIPreferencesManager } from "@/components/ai-assistant/ClientAIPreferencesManager";
+import { ConversationMemoryPopover } from "@/components/ai-assistant/ConversationMemoryPopover";
 import { WelcomeScreen } from "@/components/ai-assistant/WelcomeScreen";
 import { ConversationSidebar } from "@/components/ai-assistant/ConversationSidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -609,8 +610,11 @@ export default function ConsultantAIAssistant() {
                     </span>
                   )}
                 </div>
-                <AIPreferencesSheet />
-                <ClientAIPreferencesManager />
+                <div className="flex items-center gap-2">
+                  <ConversationMemoryPopover />
+                  <AIPreferencesSheet />
+                  <ClientAIPreferencesManager />
+                </div>
               </div>
             </div>
 
