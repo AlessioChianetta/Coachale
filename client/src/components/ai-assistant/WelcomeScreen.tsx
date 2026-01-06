@@ -104,7 +104,7 @@ export function WelcomeScreen({
   const { data: apiSuggestions, isLoading: suggestionsLoading } = useQuery({
     queryKey: ["agent-suggestions", agentId],
     queryFn: async () => {
-      const token = localStorage.getItem("token") || localStorage.getItem("bronzeToken") || localStorage.getItem("goldToken");
+      const token = localStorage.getItem("token") || localStorage.getItem("bronzeToken") || localStorage.getItem("silverToken") || localStorage.getItem("goldToken");
       const res = await fetch(`/api/ai-assistant/agent/${agentId}/suggestions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
