@@ -994,6 +994,15 @@ export default function ConsultantSetupWizard() {
                     Completa tutti i 17 step per sbloccare le funzionalità complete ✨
                   </motion.p>
                 </div>
+                <Button
+                  size="sm"
+                  variant={isOnboardingMode ? "default" : "outline"}
+                  onClick={() => setIsOnboardingMode(!isOnboardingMode)}
+                  className="ml-4 gap-2"
+                >
+                  <Bot className="h-4 w-4" />
+                  {isOnboardingMode ? "Onboarding Attivo" : "Assistente Onboarding"}
+                </Button>
               </div>
               <motion.div 
                 className="flex items-center gap-6"
@@ -1579,19 +1588,6 @@ export default function ConsultantSetupWizard() {
         </div>
       </main>
       <ConsultantAIAssistant isOnboardingMode={isOnboardingMode} />
-      
-      {/* Onboarding Assistant Button */}
-      <div className="fixed bottom-28 right-6 z-[55]">
-        <Button
-          size="sm"
-          variant={isOnboardingMode ? "default" : "outline"}
-          onClick={() => setIsOnboardingMode(!isOnboardingMode)}
-          className="shadow-lg gap-2"
-        >
-          <Bot className="h-4 w-4" />
-          {isOnboardingMode ? "Modalità Onboarding Attiva" : "Assistente Onboarding"}
-        </Button>
-      </div>
     </div>
   );
 }
