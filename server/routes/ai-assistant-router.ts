@@ -9,6 +9,7 @@ import {
 } from "../../shared/schema";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole } from "../middleware/auth";
+import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
 
 const router = Router();
 
@@ -655,27 +656,29 @@ router.get("/agent/:agentId/suggestions", authenticateToken, async (req: AuthReq
       return res.json({ suggestions: defaultSuggestions, source: "default" });
     }
 
-    // Use agent's system prompt and brand voice directly
-    const agentSystemPrompt = agent.agentInstructions || "";
-    const brandContext = buildBrandContext(agent);
+    // Use the same system prompt builder used for agent chat (includes all brand voice, knowledge base, etc.)
+    const agentFullContext = await buildWhatsAppAgentPrompt(agent);
+    console.log(`[AI SUGGESTIONS] Agent context length: ${agentFullContext.length} chars`);
 
-    const systemPrompt = `OUTPUT SOLO JSON. Genera esattamente 4 suggerimenti per pulsanti di una welcome screen.
+    const systemPrompt = `${agentFullContext}
 
-CONTEXT DELL'AGENTE:
-${agentSystemPrompt ? `System Prompt: ${agentSystemPrompt}` : ""}
-${brandContext}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 TASK: GENERA SUGGERIMENTI WELCOME SCREEN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-REGOLE:
-- 4 suggerimenti totali
+Basandoti sul contesto sopra, genera ESATTAMENTE 4 suggerimenti per pulsanti della welcome screen.
+
+REGOLE RIGIDE:
+- Rispondi SOLO con JSON valido, NESSUN testo prima o dopo
+- 4 oggetti nel JSON array
 - label: max 4 parole
 - prompt: max 60 caratteri
-- Domande tipiche che farebbe un cliente di questo business
+- Suggerimenti pertinenti al business e target descritti sopra
 
-OUTPUT (solo questo JSON, niente altro testo prima o dopo):
-[{"icon":"target","label":"Esempio","prompt":"Domanda esempio","gradient":"from-cyan-500 to-teal-500"},{"icon":"book","label":"Esempio 2","prompt":"Altra domanda","gradient":"from-teal-500 to-emerald-500"},{"icon":"lightbulb","label":"Esempio 3","prompt":"Terza domanda","gradient":"from-slate-500 to-cyan-500"},{"icon":"sparkles","label":"Esempio 4","prompt":"Quarta domanda","gradient":"from-cyan-600 to-teal-600"}]
+FORMATO ESATTO (copia questa struttura):
+[{"icon":"target","label":"Titolo breve","prompt":"Domanda che farebbe un cliente","gradient":"from-cyan-500 to-teal-500"},{"icon":"book","label":"Secondo titolo","prompt":"Altra domanda pertinente","gradient":"from-teal-500 to-emerald-500"},{"icon":"lightbulb","label":"Terzo titolo","prompt":"Terza domanda","gradient":"from-slate-500 to-cyan-500"},{"icon":"sparkles","label":"Quarto titolo","prompt":"Quarta domanda","gradient":"from-cyan-600 to-teal-600"}]
 
-ICONE: target, book, message, lightbulb, trending, sparkles
-GRADIENTI: from-cyan-500 to-teal-500, from-teal-500 to-emerald-500, from-slate-500 to-cyan-500, from-cyan-600 to-teal-600`;
+ICONE VALIDE: target, book, message, lightbulb, trending, sparkles`;
 
     const { model } = getModelWithThinking(providerResult.metadata.name);
 
