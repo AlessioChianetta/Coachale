@@ -274,6 +274,9 @@ export function ChatPanel({
       // Use different endpoint based on mode
       const endpoint = isConsultantMode ? "/api/consultant/ai/chat" : "/api/ai/chat";
 
+      // Log onboarding mode status
+      console.log(`🚀 [ChatPanel] Sending message - isConsultantMode: ${isConsultantMode}, isOnboardingMode: ${isOnboardingMode}`);
+      
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
