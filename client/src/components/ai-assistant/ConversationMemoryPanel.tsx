@@ -32,7 +32,7 @@ interface MemoryResponse {
 }
 
 interface GenerationProgress {
-  type: "start" | "processing" | "generated" | "skipped" | "complete" | "error";
+  type: "connecting" | "scanning" | "start" | "processing" | "generated" | "skipped" | "complete" | "error";
   date?: string;
   current?: number;
   total?: number;

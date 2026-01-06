@@ -10845,7 +10845,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       const { ConversationMemoryService } = await import("./services/conversation-memory/memory-service");
       const memoryService = new ConversationMemoryService();
       
-      const dailySummaries = await memoryService.getDailySummaries(req.user!.id, 30);
+      const dailySummaries = await memoryService.getDailySummaries(req.user!.id, 90);
 
       res.json({ dailySummaries });
     } catch (error: any) {

@@ -362,13 +362,17 @@ ${conversationText}`,
     userId: string,
     apiKey: string,
     onProgress: (progress: {
-      type: "start" | "processing" | "generated" | "skipped";
+      type: "connecting" | "scanning" | "start" | "processing" | "generated" | "skipped";
       date?: string;
       current?: number;
       total?: number;
       message?: string;
     }) => void
   ): Promise<{ generated: number; total: number }> {
+    // Send immediate feedback
+    onProgress({ type: "connecting", message: "Connessione stabilita..." });
+    onProgress({ type: "scanning", message: "Analisi delle conversazioni..." });
+    
     // Find all distinct days with conversations for this user
     const daysWithConversations = await db
       .selectDistinct({
