@@ -3270,10 +3270,14 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     const systemPromptTokens = estimateTokens(systemPrompt);
     const userMessageTokens = estimateTokens(message);
     const historyTokens = conversationHistory.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
+    const memoryContextTokens = conversationMemoryContext ? estimateTokens(conversationMemoryContext) : 0;
     const totalEstimatedTokens = systemPromptTokens + userMessageTokens + historyTokens;
 
     console.log(`\n📊 Token Usage Estimation:`);
     console.log(`  - System Prompt: ~${systemPromptTokens.toLocaleString()} tokens`);
+    if (memoryContextTokens > 0) {
+      console.log(`  - 🧠 Conversation Memory: ~${memoryContextTokens.toLocaleString()} tokens (included in System Prompt)`);
+    }
     console.log(`  - User Message: ~${userMessageTokens.toLocaleString()} tokens`);
     console.log(`  - Conversation History: ~${historyTokens.toLocaleString()} tokens`);
     console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens\n`);
