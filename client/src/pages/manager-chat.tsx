@@ -154,8 +154,8 @@ const INSTRUCTION_PRESETS = [
 ];
 
 function getManagerToken(): string | null {
-  // Check manager_token first, then fallback to unified login token (for Bronze/Silver users)
-  return localStorage.getItem("manager_token") || localStorage.getItem("token");
+  // Check manager_token first, then bronzeAuthToken, then fallback to unified login token (for Bronze/Silver users)
+  return localStorage.getItem("manager_token") || localStorage.getItem("bronzeAuthToken") || localStorage.getItem("token");
 }
 
 function getManagerAuthHeaders(): Record<string, string> {
@@ -591,13 +591,33 @@ export default function ManagerChat() {
     enabled: !!slug,
   });
 
-  // Check if user is Bronze/Silver from unified login
+  // Check if user is Bronze/Silver from unified login or localStorage tier
   const isBronzeSilver = isBronzeSilverUser();
+  const hasBronzeTier = typeof window !== 'undefined' && localStorage.getItem("bronzeUserTier") === "1";
   
   useEffect(() => {
     if (agentInfo && agentInfo.requiresLogin) {
       const token = getManagerToken();
-      if (!token) {
+      const bronzeToken = localStorage.getItem("bronzeAuthToken") || localStorage.getItem("manager_token");
+      
+      console.log("[MANAGER-CHAT] Auth check - token:", !!token, "bronzeToken:", !!bronzeToken, "hasBronzeTier:", hasBronzeTier);
+      
+      if (!token && !bronzeToken) {
+        // No token at all - redirect to appropriate login
+        // Check if user has Bronze tier info (just registered)
+        if (hasBronzeTier) {
+          console.log("[MANAGER-CHAT] Has Bronze tier but no token - might be timing issue, waiting...");
+          // Small delay to allow localStorage sync
+          setTimeout(() => {
+            const retryToken = getManagerToken();
+            if (!retryToken) {
+              console.log("[MANAGER-CHAT] Still no token after delay, redirecting to login");
+              setLocation(`/agent/${slug}/login`);
+            }
+          }, 500);
+          return;
+        }
+        
         // Bronze/Silver users without token go to main login, managers go to agent login
         if (isBronzeSilver) {
           setLocation('/login');
@@ -606,7 +626,7 @@ export default function ManagerChat() {
         }
       }
     }
-  }, [agentInfo, slug, setLocation, isBronzeSilver]);
+  }, [agentInfo, slug, setLocation, isBronzeSilver, hasBronzeTier]);
 
   // Handle upgrade success/cancel from Stripe checkout
   useEffect(() => {

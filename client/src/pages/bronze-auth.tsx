@@ -122,13 +122,19 @@ export default function BronzeAuth() {
   }, [pendingNavigation, data, isLoading, slug, navigate, toast]);
 
   const handleAuthSuccess = async (token: string, userName?: string) => {
+    // Save token in multiple locations for compatibility with different auth systems
     localStorage.setItem(BRONZE_TOKEN_KEY, token);
+    localStorage.setItem("bronzeAuthToken", token); // For select-agent compatibility
     // Set tier info for select-agent page
     localStorage.setItem("bronzeUserTier", "1");
+    localStorage.setItem("bronzePublicSlug", slug || "");
     if (userName) {
       localStorage.setItem("bronzeUserName", userName);
       pendingUserNameRef.current = userName;
     }
+    
+    // Small delay to ensure localStorage is synced before navigation
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Refetch agents data to ensure we have the latest list, then navigate
     setPendingNavigation(true);

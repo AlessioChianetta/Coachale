@@ -474,7 +474,15 @@ export default function SelectAgent() {
     if (agent.publicSlug) {
       // Store agent slug for auth-guard routing
       localStorage.setItem('agentSlug', agent.publicSlug);
-      navigate(`/agent/${agent.publicSlug}/chat`);
+      
+      // Gold clients (tier 3) go to /client dashboard, Bronze/Silver go to agent chat
+      if (userTier === "3" || isGoldClient) {
+        console.log("[SELECT-AGENT] Gold client - redirecting to /client");
+        navigate('/client');
+      } else {
+        console.log("[SELECT-AGENT] Bronze/Silver user - redirecting to agent chat");
+        navigate(`/agent/${agent.publicSlug}/chat`);
+      }
     }
   };
 

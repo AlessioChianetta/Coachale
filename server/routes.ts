@@ -479,6 +479,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (bronzeUser) {
         if (!bronzeUser.isActive) {
+          // Check if Bronze user was upgraded to Silver or Gold
+          // First check Silver (clientLevelSubscriptions)
+          const [upgradedToSilver] = await db
+            .select({ id: schema.clientLevelSubscriptions.id, level: schema.clientLevelSubscriptions.level })
+            .from(schema.clientLevelSubscriptions)
+            .where(
+              and(
+                eq(schema.clientLevelSubscriptions.clientEmail, emailLower),
+                eq(schema.clientLevelSubscriptions.status, "active")
+              )
+            )
+            .limit(1);
+          
+          if (upgradedToSilver) {
+            // User was upgraded - redirect them to try again (password should work for Silver/Gold)
+            const tierName = upgradedToSilver.level === "3" ? "Gold" : "Argento";
+            return res.status(403).json({ 
+              message: `Il tuo account Bronze è stato aggiornato al piano ${tierName}. Riprova il login con le stesse credenziali.`,
+              upgraded: true,
+              upgradedTier: upgradedToSilver.level === "3" ? "gold" : "silver"
+            });
+          }
+          
+          // Check if upgraded to Gold (users table)
+          const [upgradedToGold] = await db
+            .select({ id: schema.users.id })
+            .from(schema.users)
+            .where(
+              and(
+                eq(schema.users.email, emailLower),
+                eq(schema.users.role, "client")
+              )
+            )
+            .limit(1);
+          
+          if (upgradedToGold) {
+            return res.status(403).json({ 
+              message: "Il tuo account Bronze è stato aggiornato al piano Gold. Riprova il login con le stesse credenziali.",
+              upgraded: true,
+              upgradedTier: "gold"
+            });
+          }
+          
           return res.status(403).json({ message: "Account disattivato" });
         }
 

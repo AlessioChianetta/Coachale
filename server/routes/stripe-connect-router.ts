@@ -919,12 +919,24 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
         // Migrate Bronze conversations to new subscription ID
         if (existingBronzeUser) {
           try {
+            // Find the agent's share to update shareId as well (needed for conversation queries)
+            // Silver/Gold users use the actual share, not virtual bronze share
+            const [agentShare] = agentId ? await db.select({ id: whatsappAgentShares.id })
+              .from(whatsappAgentShares)
+              .where(eq(whatsappAgentShares.agentConfigId, agentId))
+              .limit(1) : [];
+            
+            const updateData: { managerId: string; shareId?: string } = { managerId: subscription.id };
+            if (agentShare) {
+              updateData.shareId = agentShare.id;
+            }
+            
             const migratedConversations = await db.update(managerConversations)
-              .set({ managerId: subscription.id })
+              .set(updateData)
               .where(eq(managerConversations.managerId, existingBronzeUser.id))
               .returning({ id: managerConversations.id });
             
-            console.log(`[Stripe Webhook] Migrated ${migratedConversations.length} conversations from Bronze ${existingBronzeUser.id} to Silver/Gold ${subscription.id}`);
+            console.log(`[Stripe Webhook] Migrated ${migratedConversations.length} conversations from Bronze ${existingBronzeUser.id} to Silver/Gold ${subscription.id}${agentShare ? ` with shareId ${agentShare.id}` : ''}`);
           } catch (migrationError: any) {
             console.error(`[Stripe Webhook] Failed to migrate conversations:`, migrationError.message);
           }
