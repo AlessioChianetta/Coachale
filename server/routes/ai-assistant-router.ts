@@ -694,13 +694,14 @@ ICONE VALIDE: target, book, message, lightbulb, trending, sparkles`;
       contents: [
         {
           role: "user",
-          parts: [{ text: "Genera 4 suggerimenti personalizzati per la welcome screen basandoti sulle informazioni del brand fornite." }],
+          parts: [{ text: "Genera 4 suggerimenti JSON per la welcome screen. Rispondi SOLO con l'array JSON, nessun testo." }],
         },
       ],
       systemInstruction: systemPrompt,
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 1000,
+        responseMimeType: "application/json",
       },
     });
 
