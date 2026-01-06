@@ -35,6 +35,7 @@ import {
 import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch } from "./ai/provider-factory";
 import { fileSearchService } from "./ai/file-search-service";
 import { conversationContextBuilder } from "./services/conversation-memory";
+import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboarding-guide";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -2932,10 +2933,13 @@ export interface ConsultantChatRequest {
   // Model and thinking level for dynamic AI config
   model?: AIModel;
   thinkingLevel?: ThinkingLevel;
+  // Onboarding mode: specialized prompt for setup wizard assistance
+  isOnboardingMode?: boolean;
+  onboardingStatuses?: OnboardingStatus[];
 }
 
 export async function* sendConsultantChatMessageStream(request: ConsultantChatRequest) {
-  const { consultantId, message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel } = request;
+  const { consultantId, message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel, isOnboardingMode, onboardingStatuses } = request;
 
   // ========================================
   // AGENT CONTEXT: Fetch agent persona if agentId is provided
@@ -3197,7 +3201,16 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
 
     // Build consultant-specific system prompt
     timings.promptBuildStart = performance.now();
-    let systemPrompt = buildConsultantSystemPrompt(consultantContext);
+    let systemPrompt: string;
+    
+    if (isOnboardingMode) {
+      // Use specialized onboarding agent prompt with dynamic status
+      console.log(`🚀 [Onboarding Mode] Building specialized onboarding assistant prompt`);
+      const onboardingGuide = buildOnboardingAgentPrompt(onboardingStatuses);
+      systemPrompt = onboardingGuide + '\n\n## Contesto Piattaforma\n' + buildConsultantSystemPrompt(consultantContext);
+    } else {
+      systemPrompt = buildConsultantSystemPrompt(consultantContext);
+    }
     
     // Append agent context if available
     if (agentContext) {
