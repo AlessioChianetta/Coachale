@@ -358,18 +358,51 @@ ${conversationText}`,
 
   async generateMissingDailySummaries(
     userId: string,
-    apiKey: string,
-    daysBack: number = 7
+    apiKey: string
   ): Promise<number> {
     let generated = 0;
 
-    for (let i = 1; i <= daysBack; i++) {
-      const targetDate = subDays(new Date(), i);
-      const dayStart = startOfDay(targetDate);
+    // Find all distinct days with conversations for this user
+    const daysWithConversations = await db
+      .selectDistinct({
+        day: sql<Date>`DATE(${aiConversations.createdAt})`.as("day"),
+      })
+      .from(aiConversations)
+      .where(eq(aiConversations.clientId, userId))
+      .orderBy(desc(sql`DATE(${aiConversations.createdAt})`));
 
-      // Check if summary already exists
+    for (const { day } of daysWithConversations) {
+      if (!day) continue;
+      
+      const dayStart = startOfDay(new Date(day));
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      // Get current message count for this day
+      const conversations = await db
+        .select({ id: aiConversations.id })
+        .from(aiConversations)
+        .where(and(
+          eq(aiConversations.clientId, userId),
+          gte(aiConversations.createdAt, dayStart),
+          lt(aiConversations.createdAt, dayEnd)
+        ));
+
+      let currentMessageCount = 0;
+      for (const conv of conversations) {
+        const [msgCount] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(aiMessages)
+          .where(eq(aiMessages.conversationId, conv.id));
+        currentMessageCount += Number(msgCount?.count || 0);
+      }
+
+      // Check if summary exists and compare message count
       const [existing] = await db
-        .select({ id: aiDailySummaries.id })
+        .select({ 
+          id: aiDailySummaries.id,
+          messageCount: aiDailySummaries.messageCount 
+        })
         .from(aiDailySummaries)
         .where(and(
           eq(aiDailySummaries.userId, userId),
@@ -377,8 +410,11 @@ ${conversationText}`,
         ))
         .limit(1);
 
-      if (!existing) {
-        const summary = await this.generateDailySummary(userId, targetDate, apiKey);
+      // Generate if: no summary exists OR message count increased (new activity)
+      const needsGeneration = !existing || (existing.messageCount || 0) < currentMessageCount;
+
+      if (needsGeneration && currentMessageCount >= 2) {
+        const summary = await this.generateDailySummary(userId, new Date(day), apiKey);
         if (summary) generated++;
       }
     }

@@ -10890,8 +10890,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
       const generated = await memoryService.generateMissingDailySummaries(
         req.user!.id,
-        apiKey,
-        7 // Last 7 days
+        apiKey
       );
 
       res.json({ 
