@@ -1,0 +1,71 @@
+{isLoginSuccess: null, existingSessionId: '7b956956-3f2f-4187-9663-f057727148b9', sessionId: null, userId: '0c73bbe5-51e1-4108-866b-6be7a52fce3b'}
+injected.js:37 ✅ Restoring existing session: 7b956956-3f2f-4187-9663-f057727148b9
+injected.js:37 You are trying to animate color from "#10b981" to "inherit". #10b981 is not an animatable value - to enable this animation set #10b981 to a value animatable to inherit via the `style` property.
+(anonymous) @ injected.js:37
+warning @ framer-motion.js?v=f4727a25:313
+canAnimate @ framer-motion.js?v=f4727a25:3267
+onKeyframesResolved @ framer-motion.js?v=f4727a25:3335
+onResolved @ framer-motion.js?v=f4727a25:4004
+complete @ framer-motion.js?v=f4727a25:3084
+(anonymous) @ framer-motion.js?v=f4727a25:3005
+measureAllKeyframes @ framer-motion.js?v=f4727a25:3005
+triggerCallback @ framer-motion.js?v=f4727a25:366
+process @ framer-motion.js?v=f4727a25:399
+processBatch @ framer-motion.js?v=f4727a25:448
+requestAnimationFrame
+wake @ framer-motion.js?v=f4727a25:463
+acc.<computed> @ framer-motion.js?v=f4727a25:470
+scheduleResolve @ framer-motion.js?v=f4727a25:3039
+AcceleratedAnimation @ framer-motion.js?v=f4727a25:4313
+(anonymous) @ framer-motion.js?v=f4727a25:4598
+(anonymous) @ framer-motion.js?v=f4727a25:2512
+start @ framer-motion.js?v=f4727a25:2510
+animateTarget @ framer-motion.js?v=f4727a25:4639
+animateVisualElement @ framer-motion.js?v=f4727a25:4704
+(anonymous) @ framer-motion.js?v=f4727a25:4738
+(anonymous) @ framer-motion.js?v=f4727a25:4738
+animateChanges @ framer-motion.js?v=f4727a25:4865
+(anonymous) @ framer-motion.js?v=f4727a25:899
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f4727a25:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f4727a25:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f4727a25:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f4727a25:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f4727a25:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f4727a25:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f4727a25:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=f4727a25:19416
+commitRoot @ chunk-RPCDYKBN.js?v=f4727a25:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f4727a25:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f4727a25:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f4727a25:18627
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=f4727a25:103
+flush @ @tanstack_react-query.js?v=f4727a25:615
+batch @ @tanstack_react-query.js?v=f4727a25:633
+dispatch_fn @ @tanstack_react-query.js?v=f4727a25:1260
+setData @ @tanstack_react-query.js?v=f4727a25:935
+fetch @ @tanstack_react-query.js?v=f4727a25:1157
+await in fetch
+executeFetch_fn @ @tanstack_react-query.js?v=f4727a25:1651
+onSubscribe @ @tanstack_react-query.js?v=f4727a25:1344
+subscribe @ @tanstack_react-query.js?v=f4727a25:24
+(anonymous) @ @tanstack_react-query.js?v=f4727a25:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=f4727a25:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f4727a25:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f4727a25:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f4727a25:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f4727a25:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f4727a25:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f4727a25:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f4727a25:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=f4727a25:19328
+workLoop @ chunk-RPCDYKBN.js?v=f4727a25:197
+flushWork @ chunk-RPCDYKBN.js?v=f4727a25:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=f4727a25:384Understand this warning
+injected.js:37 📊 Stima token per il messaggio: {messaggioUtente: 4, contestoERisposta: 1000, totaleStimato: 1004, tokenGiaUsati: 0, tokenDopoInvio: 1004, …}
+injected.js:37 🚀 [ChatPanel] Sending message - isConsultantMode: true, isOnboardingMode: true
+injected.js:37 Heartbeat sent successfully
+injected.js:37 ✅ Risposta AI completata - Stima token: {rispostaAI: 641, tokenPrecedenti: 0, nuovoTotale: 1645, limite: 250000, percentualeUsata: '1%'}
+injected.js:37 📝 [TITLE] Received title from complete event: "cosa puoi fare"
+injected.js:37 📝 [TITLE] Invalidating conversations query to refresh sidebar...
+injected.js:37 ✅ Risposta AI completata - Stima token: {rispostaAI: 641, tokenPrecedenti: 0, nuovoTotale: 1645, limite: 250000, percentualeUsata: '1%'}

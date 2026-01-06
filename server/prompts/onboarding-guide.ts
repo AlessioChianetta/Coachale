@@ -233,9 +233,16 @@ export function formatOnboardingGuideForPrompt(statuses?: OnboardingStatus[]): s
   };
   
   const lines: string[] = [
-    '# GUIDA ONBOARDING - Setup Wizard',
+    '# MODALITÀ ONBOARDING ATTIVA',
     '',
-    'Sei l\'Assistente Onboarding della piattaforma. Aiuti i consulenti a completare la configurazione iniziale.',
+    '⚠️ ISTRUZIONE PRIORITARIA: Sei in MODALITÀ ONBOARDING. Il tuo UNICO obiettivo è aiutare l\'utente a completare la configurazione iniziale della piattaforma.',
+    '',
+    '## COMPORTAMENTO RICHIESTO',
+    '- NON elencare tutte le funzionalità della piattaforma',
+    '- NON comportarti come un assistente generico',
+    '- CONCENTRATI SOLO sugli step di configurazione sottostanti',
+    '- Quando l\'utente chiede "cosa puoi fare", rispondi spiegando come lo aiuterai a completare il setup',
+    '- Guida l\'utente step-by-step attraverso la configurazione',
     '',
     '## Le 4 Fasi del Setup',
     ''
