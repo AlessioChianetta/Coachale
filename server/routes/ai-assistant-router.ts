@@ -662,7 +662,7 @@ router.get("/agent/:agentId/suggestions", authenticateToken, async (req: AuthReq
     const systemPrompt = `OUTPUT SOLO JSON. Genera esattamente 4 suggerimenti per pulsanti di una welcome screen.
 
 CONTEXT DELL'AGENTE:
-${agentSystemPrompt ? `System Prompt: ${agentSystemPrompt.substring(0, 1000)}` : ""}
+${agentSystemPrompt ? `System Prompt: ${agentSystemPrompt}` : ""}
 ${brandContext}
 
 REGOLE:
