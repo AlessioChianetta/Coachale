@@ -2215,6 +2215,97 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
 
     console.log(`✅ AI streaming completed for message ${savedMessage.id}`);
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // TITLE GENERATION - Generate title after first exchange using Gemini Flash Lite
+    // ═══════════════════════════════════════════════════════════════════════
+    try {
+      // Count messages in conversation
+      const [clientMsgCountResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(aiMessages)
+        .where(eq(aiMessages.conversationId, conversation.id));
+      
+      const clientMessageCount = Number(clientMsgCountResult?.count) || 0;
+      console.log(`📊 [TITLE-GEN] Client conversation ${conversation.id}: ${clientMessageCount} messages, current title: "${conversation.title}"`);
+      
+      // Check if title needs generation (null, empty, or default)
+      const clientNeedsTitleGen = !conversation.title || 
+        conversation.title === 'Nuova conversazione' ||
+        conversation.title === message.substring(0, 50) ||  // Default title
+        conversation.title.length <= 50;
+      
+      // Generate title after exactly 2 messages (first user + first AI response)
+      if (clientMessageCount === 2 && clientNeedsTitleGen) {
+        console.log(`\n📝 [TITLE-GEN] Generating title for client conversation ${conversation.id}...`);
+        console.log(`   📨 User message: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`);
+        console.log(`   🤖 AI response: "${accumulatedMessage.substring(0, 100)}${accumulatedMessage.length > 100 ? '...' : ''}"`);
+        
+        // Get API key: first try SuperAdmin keys, then fallback to env
+        let clientTitleGeminiApiKey: string | null = null;
+        
+        const { getSuperAdminGeminiKeys } = await import('./super-admin-gemini');
+        const clientSuperAdminKeys = await getSuperAdminGeminiKeys();
+        if (clientSuperAdminKeys && clientSuperAdminKeys.enabled && clientSuperAdminKeys.keys.length > 0) {
+          clientTitleGeminiApiKey = clientSuperAdminKeys.keys[0];
+          console.log(`   🔑 [TITLE-GEN] Using SuperAdmin Gemini key`);
+        } else if (process.env.GEMINI_API_KEY) {
+          clientTitleGeminiApiKey = process.env.GEMINI_API_KEY;
+          console.log(`   🔑 [TITLE-GEN] Using GEMINI_API_KEY from environment`);
+        }
+        
+        if (clientTitleGeminiApiKey) {
+          const { GoogleGenAI } = await import('@google/genai');
+          const clientTitleGenai = new GoogleGenAI({ apiKey: clientTitleGeminiApiKey });
+          
+          const clientAiResponseSnippet = accumulatedMessage.substring(0, 300);
+          const clientTitlePrompt = `Genera un titolo breve e descrittivo (3-6 parole) per questa conversazione. Il titolo deve descrivere L'ARGOMENTO PRINCIPALE della discussione, non ripetere la domanda dell'utente.
+
+Rispondi SOLO con il titolo, senza virgolette o punteggiatura finale.
+
+Domanda utente: "${message.substring(0, 200)}"
+${clientAiResponseSnippet ? `Risposta AI: "${clientAiResponseSnippet}"` : ''}
+
+Esempi di buoni titoli:
+- "Analisi esercizi settimanali"
+- "Progressi finanziari recenti"
+- "Domande sul percorso"
+- "Supporto per obiettivi"
+- "Revisione compiti assegnati"
+
+Titolo:`;
+
+          console.log(`   🤖 [TITLE-GEN] Calling Gemini API...`);
+          const clientTitleResult = await clientTitleGenai.models.generateContent({
+            model: 'gemini-2.0-flash-lite',
+            contents: clientTitlePrompt,
+          });
+          
+          const generatedClientTitle = clientTitleResult.text?.trim().replace(/^["']|["']$/g, '').substring(0, 50) || 'Conversazione';
+          
+          // Update conversation title
+          await db
+            .update(aiConversations)
+            .set({ title: generatedClientTitle })
+            .where(eq(aiConversations.id, conversation.id));
+          
+          // Update local conversation object for the complete event
+          conversation.title = generatedClientTitle;
+          
+          console.log(`   ✅ [TITLE-GEN] Title generated and saved: "${generatedClientTitle}"`);
+        } else {
+          console.log(`   ⚠️ [TITLE-GEN] No Gemini API key available, skipping title generation`);
+        }
+      } else if (clientMessageCount !== 2) {
+        console.log(`   ℹ️ [TITLE-GEN] Skipping - messageCount is ${clientMessageCount}, not 2`);
+      } else {
+        console.log(`   ℹ️ [TITLE-GEN] Skipping - title doesn't need regeneration`);
+      }
+    } catch (clientTitleError: any) {
+      console.error(`   ⚠️ [TITLE-GEN] Error generating title:`, clientTitleError.message);
+      // Non-critical error, don't fail the request
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+
     // 📊 LOG FILE SEARCH STREAMING SUMMARY (CLIENT)
     if (hasFileSearch) {
       console.log(`\n${'─'.repeat(70)}`);
@@ -2251,12 +2342,13 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`   ⏱️  TOTAL: ${(totalTime / 1000).toFixed(2)}s (${totalTime}ms)`);
     console.log('━'.repeat(70) + '\n');
 
-    // Yield complete event
+    // Yield complete event with title if generated
     yield {
       type: "complete",
       conversationId: conversation.id,
       messageId: savedMessage.id,
       suggestedActions,
+      title: conversation.title,  // Include title for frontend to update sidebar
     };
 
   } catch (error: any) {
@@ -3216,6 +3308,97 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
 
     console.log(`✅ Consultant AI streaming completed for message ${savedMessage.id}`);
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // TITLE GENERATION - Generate title after first exchange using Gemini Flash Lite
+    // ═══════════════════════════════════════════════════════════════════════
+    try {
+      // Count messages in conversation
+      const [messageCountResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(aiMessages)
+        .where(eq(aiMessages.conversationId, conversation.id));
+      
+      const consultantMessageCount = Number(messageCountResult?.count) || 0;
+      console.log(`📊 [TITLE-GEN] Conversation ${conversation.id}: ${consultantMessageCount} messages, current title: "${conversation.title}"`);
+      
+      // Check if title needs generation (null, empty, or just first chars of message)
+      const needsTitleGen = !conversation.title || 
+        conversation.title === 'Nuova conversazione' ||
+        conversation.title === message.substring(0, 50) ||  // Default title
+        conversation.title.length <= 50;
+      
+      // Generate title after exactly 2 messages (first user + first AI response)
+      if (consultantMessageCount === 2 && needsTitleGen) {
+        console.log(`\n📝 [TITLE-GEN] Generating title for consultant conversation ${conversation.id}...`);
+        console.log(`   📨 User message: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`);
+        console.log(`   🤖 AI response: "${assistantMessage.substring(0, 100)}${assistantMessage.length > 100 ? '...' : ''}"`);
+        
+        // Get API key: first try SuperAdmin keys, then fallback to env
+        let titleGeminiApiKey: string | null = null;
+        
+        const { getSuperAdminGeminiKeys } = await import('./super-admin-gemini');
+        const superAdminKeys = await getSuperAdminGeminiKeys();
+        if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+          titleGeminiApiKey = superAdminKeys.keys[0];
+          console.log(`   🔑 [TITLE-GEN] Using SuperAdmin Gemini key`);
+        } else if (process.env.GEMINI_API_KEY) {
+          titleGeminiApiKey = process.env.GEMINI_API_KEY;
+          console.log(`   🔑 [TITLE-GEN] Using GEMINI_API_KEY from environment`);
+        }
+        
+        if (titleGeminiApiKey) {
+          const { GoogleGenAI } = await import('@google/genai');
+          const titleGenai = new GoogleGenAI({ apiKey: titleGeminiApiKey });
+          
+          const aiResponseSnippet = assistantMessage.substring(0, 300);
+          const titlePrompt = `Genera un titolo breve e descrittivo (3-6 parole) per questa conversazione. Il titolo deve descrivere L'ARGOMENTO PRINCIPALE della discussione, non ripetere la domanda dell'utente.
+
+Rispondi SOLO con il titolo, senza virgolette o punteggiatura finale.
+
+Domanda utente: "${message.substring(0, 200)}"
+${aiResponseSnippet ? `Risposta AI: "${aiResponseSnippet}"` : ''}
+
+Esempi di buoni titoli:
+- "Analisi clienti attivi"
+- "Gestione esercizi pendenti"
+- "Report performance mensile"
+- "Configurazione AI Assistant"
+- "Supporto tecnico piattaforma"
+
+Titolo:`;
+
+          console.log(`   🤖 [TITLE-GEN] Calling Gemini API...`);
+          const titleResult = await titleGenai.models.generateContent({
+            model: 'gemini-2.0-flash-lite',
+            contents: titlePrompt,
+          });
+          
+          const generatedConsultantTitle = titleResult.text?.trim().replace(/^["']|["']$/g, '').substring(0, 50) || 'Conversazione';
+          
+          // Update conversation title
+          await db
+            .update(aiConversations)
+            .set({ title: generatedConsultantTitle })
+            .where(eq(aiConversations.id, conversation.id));
+          
+          // Update local conversation object for the complete event
+          conversation.title = generatedConsultantTitle;
+          
+          console.log(`   ✅ [TITLE-GEN] Title generated and saved: "${generatedConsultantTitle}"`);
+        } else {
+          console.log(`   ⚠️ [TITLE-GEN] No Gemini API key available, skipping title generation`);
+        }
+      } else if (consultantMessageCount !== 2) {
+        console.log(`   ℹ️ [TITLE-GEN] Skipping - messageCount is ${consultantMessageCount}, not 2`);
+      } else {
+        console.log(`   ℹ️ [TITLE-GEN] Skipping - title doesn't need regeneration`);
+      }
+    } catch (titleError: any) {
+      console.error(`   ⚠️ [TITLE-GEN] Error generating title:`, titleError.message);
+      // Non-critical error, don't fail the request
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+
     // 📊 LOG FILE SEARCH STREAMING SUMMARY (CONSULTANT)
     if (hasConsultantFileSearch) {
       console.log(`\n${'─'.repeat(70)}`);
@@ -3267,11 +3450,12 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`   ⏱️  TOTAL: ${(totalTime / 1000).toFixed(2)}s (${totalTime}ms)`);
     console.log('━'.repeat(70) + '\n');
 
-    // Yield complete event
+    // Yield complete event with title if generated
     yield {
       type: "complete",
       conversationId: conversation.id,
       messageId: savedMessage.id,
+      title: conversation.title,  // Include title for frontend to update sidebar
     };
 
   } catch (error: any) {

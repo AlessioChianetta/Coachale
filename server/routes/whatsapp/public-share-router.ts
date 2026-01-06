@@ -2170,7 +2170,13 @@ Ti aspettiamo! 🚀`;
           console.log(`📊 [TITLE-GEN] Conversation ${conversation.id}: ${messageCount} messages, current title: "${conversation.title}"`);
           
           // Generate title after exactly 2 messages (first user + first AI response)
-          if (messageCount === 2 && conversation.title === 'Nuova conversazione') {
+          // Check for null, undefined, empty string, or default title
+          const needsTitleGeneration = !conversation.title || 
+            conversation.title === 'Nuova conversazione' || 
+            conversation.title === 'null' ||
+            conversation.title.trim() === '';
+          
+          if (messageCount === 2 && needsTitleGeneration) {
             console.log(`\n📝 [TITLE-GEN] Generating title for conversation ${conversation.id}...`);
             
             // Get first user message and first AI response

@@ -391,6 +391,13 @@ export function ChatPanel({
                 finalMessageId = data.messageId;
                 finalSuggestedActions = data.suggestedActions || [];
 
+                // Handle title update if present
+                if (data.title) {
+                  console.log(`📝 [TITLE] Received title from complete event: "${data.title}"`);
+                  console.log(`📝 [TITLE] Invalidating conversations query to refresh sidebar...`);
+                  queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
+                }
+
                 if (safetyTimeoutRef.current) {
                   clearTimeout(safetyTimeoutRef.current);
                 }
