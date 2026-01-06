@@ -2033,6 +2033,7 @@ export const aiConversations = pgTable("ai_conversations", {
   mode: text("mode").notNull().$type<"assistenza" | "consulente" | "live_voice">(),
   consultantType: text("consultant_type").$type<"finanziario" | "business" | "vendita">(),
   title: text("title"), // Auto-generated or user-defined
+  summary: text("summary"), // AI-generated summary of conversation for memory system
   isActive: boolean("is_active").default(true).notNull(),
   lastMessageAt: timestamp("last_message_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
