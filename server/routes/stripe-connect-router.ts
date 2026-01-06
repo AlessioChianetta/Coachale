@@ -463,6 +463,36 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
         .limit(1);
       
       existingSubscription = existingSub || null;
+    } else if ((decoded.type === "silver" || decoded.type === "gold") && decoded.subscriptionId) {
+      // Handle Silver/Gold subscription upgrades
+      const subscriptionIdStr = String(decoded.subscriptionId || "").trim();
+      if (!subscriptionIdStr) {
+        return res.status(401).json({ error: "Invalid subscription ID" });
+      }
+      
+      console.log("[Stripe Upgrade] Looking up Silver/Gold subscription:", subscriptionIdStr);
+      
+      const [subscription] = await db.select()
+        .from(clientLevelSubscriptions)
+        .where(eq(clientLevelSubscriptions.id, subscriptionIdStr))
+        .limit(1);
+      
+      if (!subscription) {
+        return res.status(404).json({ error: "Subscription not found" });
+      }
+      
+      if (subscription.consultantId !== consultantId) {
+        return res.status(403).json({ error: "Subscription does not belong to this consultant" });
+      }
+      
+      userEmail = subscription.clientEmail;
+      existingSubscription = subscription;
+      
+      console.log("[Stripe Upgrade] Found Silver/Gold subscription:", { 
+        email: userEmail, 
+        level: subscription.level,
+        status: subscription.status 
+      });
     } else if (decoded.role === "manager" && decoded.managerId) {
       // Validate managerId is a valid string
       const managerIdStr = String(decoded.managerId || "").trim();
