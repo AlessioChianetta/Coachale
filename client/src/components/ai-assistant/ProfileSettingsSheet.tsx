@@ -385,18 +385,52 @@ export function ProfileSettingsSheet({
             )}
 
             {subscriptionLevel === "silver" && (
-              <Button
-                onClick={() => handleUpgrade("gold")}
-                disabled={isUpgrading}
-                className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
-              >
-                {isUpgrading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Crown className="h-4 w-4 mr-2" />
-                )}
-                Passa a {goldName} - €{goldPrice - silverPrice}/mese extra
-              </Button>
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-900/10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Crown className="h-5 w-5 text-yellow-500" />
+                    <span className="font-medium">{goldName}</span>
+                    <span className="text-sm text-muted-foreground">- €{goldPrice}/mese</span>
+                  </div>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span>Tutto di {silverName} +</span>
+                    </li>
+                    {pricing?.level3Features?.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                    {(!pricing?.level3Features || pricing.level3Features.length === 0) && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span>Supporto prioritario</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span>Funzionalità premium esclusive</span>
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+                
+                <Button
+                  onClick={() => handleUpgrade("gold")}
+                  disabled={isUpgrading}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
+                >
+                  {isUpgrading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Crown className="h-4 w-4 mr-2" />
+                  )}
+                  Passa a {goldName} - €{goldPrice - silverPrice}/mese extra
+                </Button>
+              </div>
             )}
 
             {subscriptionLevel === "gold" && (
