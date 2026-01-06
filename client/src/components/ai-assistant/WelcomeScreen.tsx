@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { Sparkles, MessageSquare, Lightbulb, BookOpen, Target, TrendingUp, Bot } from "lucide-react";
+import { Sparkles, MessageSquare, Lightbulb, BookOpen, Target, TrendingUp, Bot, LucideIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AgentInfoSection } from "./AgentInfoSection";
+import { useQuery } from "@tanstack/react-query";
 
 interface AgentInfoProps {
   whoWeHelp?: string | null;
@@ -11,14 +12,31 @@ interface AgentInfoProps {
   mission?: string | null;
 }
 
+interface SuggestionFromAPI {
+  icon: "target" | "book" | "message" | "lightbulb" | "trending" | "sparkles";
+  label: string;
+  prompt: string;
+  gradient: string;
+}
+
 interface WelcomeScreenProps {
   userName?: string;
   agentName?: string;
+  agentId?: string | null;
   onSuggestionClick: (suggestion: string) => void;
   variant?: "consultant" | "client";
   disabled?: boolean;
   agentInfo?: AgentInfoProps;
 }
+
+const iconMap: Record<string, LucideIcon> = {
+  target: Target,
+  book: BookOpen,
+  message: MessageSquare,
+  lightbulb: Lightbulb,
+  trending: TrendingUp,
+  sparkles: Sparkles,
+};
 
 const consultantSuggestions = [
   {
@@ -77,12 +95,39 @@ const clientSuggestions = [
 export function WelcomeScreen({ 
   userName, 
   agentName, 
+  agentId,
   onSuggestionClick, 
   variant = "client",
   disabled = false,
   agentInfo
 }: WelcomeScreenProps) {
-  const suggestions = variant === "consultant" ? consultantSuggestions : clientSuggestions;
+  const { data: apiSuggestions, isLoading: suggestionsLoading } = useQuery({
+    queryKey: ["agent-suggestions", agentId],
+    queryFn: async () => {
+      const token = localStorage.getItem("token") || localStorage.getItem("bronzeToken") || localStorage.getItem("goldToken");
+      const res = await fetch(`/api/ai-assistant/agent/${agentId}/suggestions`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error("Failed to fetch suggestions");
+      const data = await res.json();
+      return data.suggestions as SuggestionFromAPI[];
+    },
+    enabled: !!agentId,
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour
+    retry: 1,
+  });
+
+  const defaultSuggestions = variant === "consultant" ? consultantSuggestions : clientSuggestions;
+  
+  // Use API suggestions if available, otherwise use default
+  const suggestions = apiSuggestions && apiSuggestions.length > 0
+    ? apiSuggestions.map(s => ({
+        icon: iconMap[s.icon] || Target,
+        label: s.label,
+        prompt: s.prompt,
+        gradient: s.gradient,
+      }))
+    : defaultSuggestions;
   
   const getGreeting = () => {
     const hour = new Date().getHours();

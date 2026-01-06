@@ -620,6 +620,7 @@ export default function ConsultantAIAssistant() {
                   variant="consultant" 
                   onSuggestionClick={handleQuickAction} 
                   disabled={isTyping} 
+                  agentId={selectedAgentId}
                   agentName={selectedAgentId ? availableAgents.find(a => a.id === selectedAgentId)?.name : undefined} 
                 />
               ) : (

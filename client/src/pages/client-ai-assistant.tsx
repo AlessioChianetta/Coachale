@@ -629,6 +629,7 @@ export default function ClientAIAssistant() {
                   variant="client" 
                   onSuggestionClick={handleQuickAction} 
                   disabled={isTyping} 
+                  agentId={selectedAgentId}
                   agentName={selectedAgentId ? availableAgents.find(a => a.id === selectedAgentId)?.name : undefined} 
                 />
               ) : (
