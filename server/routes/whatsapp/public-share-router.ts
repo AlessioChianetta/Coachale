@@ -106,7 +106,7 @@ async function validateVisitorSession(
       const token = authHeader.slice(7);
       // Try JWT_SECRET first (used by unified login), then SESSION_SECRET (used by manager login)
       // Note: routes.ts uses "your-secret-key" as fallback when JWT_SECRET is not set
-      const jwtSecret = process.env.JWT_SECRET || "your-secret-key";
+      const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
       const sessionSecret = process.env.SESSION_SECRET;
       console.log(`🔐 [VALIDATE-SESSION] JWT_SECRET available: ${!!jwtSecret}, SESSION_SECRET available: ${!!sessionSecret}`);
       

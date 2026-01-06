@@ -142,7 +142,7 @@ import {
 import { encrypt, decrypt, encryptForConsultant, decryptForConsultant, generateEncryptionSalt } from "./encryption";
 import { getTurnCredentialsForMeeting } from "./services/turn-config-service";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Ensure uploads directory exists

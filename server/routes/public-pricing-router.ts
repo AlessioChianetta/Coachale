@@ -4,7 +4,7 @@ import { db } from "../db";
 import { eq, and, isNotNull, or, sql, inArray } from "drizzle-orm";
 import { users, consultantWhatsappConfig, bronzeUserAgentAccess, clientLevelSubscriptions } from "@shared/schema";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
 
 const router = Router();
 

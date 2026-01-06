@@ -9,7 +9,7 @@ import jwt from "jsonwebtoken";
 import { sendEmail } from "../services/email-scheduler";
 import { sendWelcomeEmail } from "../services/welcome-email-service";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
 
 function generateRandomPassword(length: number = 8): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
