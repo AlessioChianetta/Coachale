@@ -713,14 +713,26 @@ Rispondi SOLO con il JSON valido, nessun testo aggiuntivo.`;
     
     let suggestions;
     try {
-      // Extract JSON from response (handle markdown code blocks)
+      // Extract JSON from response (handle various formats)
       let jsonText = responseText;
+      
+      // Handle markdown code blocks
       if (responseText.includes("```")) {
         const match = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (match) {
           jsonText = match[1].trim();
         }
       }
+      
+      // Try to find JSON array in the response if not valid JSON
+      if (!jsonText.startsWith("[")) {
+        const arrayMatch = responseText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (arrayMatch) {
+          jsonText = arrayMatch[0];
+        }
+      }
+      
+      console.log("[AI SUGGESTIONS] Attempting to parse:", jsonText.substring(0, 200));
       suggestions = JSON.parse(jsonText);
       
       // Validate structure
@@ -729,6 +741,7 @@ Rispondi SOLO con il JSON valido, nessun testo aggiuntivo.`;
       }
     } catch (parseError) {
       console.error("[AI SUGGESTIONS] Failed to parse AI response:", parseError);
+      console.error("[AI SUGGESTIONS] Raw response was:", responseText.substring(0, 500));
       suggestions = getDefaultSuggestions();
       return res.json({ suggestions, source: "default" });
     }
