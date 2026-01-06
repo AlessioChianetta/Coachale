@@ -731,10 +731,22 @@ ICONE VALIDE: target, book, message, lightbulb, trending, sparkles`;
       console.log("[AI SUGGESTIONS] Attempting to parse:", jsonText.substring(0, 200));
       suggestions = JSON.parse(jsonText);
       
-      // Validate structure
+      // Validate structure - must have exactly 4 items with correct keys
       if (!Array.isArray(suggestions) || suggestions.length !== 4) {
-        throw new Error("Invalid suggestions format");
+        throw new Error("Invalid suggestions format: expected array of 4");
       }
+      
+      // Validate each suggestion has required keys
+      const validIcons = ["target", "book", "message", "lightbulb", "trending", "sparkles"];
+      for (const s of suggestions) {
+        if (!s.icon || !s.label || !s.prompt || !s.gradient) {
+          throw new Error(`Missing required keys. Got: ${Object.keys(s).join(", ")}`);
+        }
+        if (!validIcons.includes(s.icon)) {
+          s.icon = "target"; // Default to target if invalid icon
+        }
+      }
+      console.log("[AI SUGGESTIONS] Validation passed:", suggestions.map(s => s.label).join(", "));
     } catch (parseError) {
       console.error("[AI SUGGESTIONS] Failed to parse AI response:", parseError);
       console.error("[AI SUGGESTIONS] Raw response was:", responseText.substring(0, 500));
