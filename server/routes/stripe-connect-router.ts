@@ -961,19 +961,24 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
               );
             
             if (bronzeConversations.length > 0 && agentShare) {
-              // Update shareId to link conversations to the new Silver/Gold share
-              await db.update(whatsappAgentConsultantConversations)
-                .set({ shareId: agentShare.id })
-                .where(
-                  and(
-                    sql`${whatsappAgentConsultantConversations.externalVisitorId} LIKE ${'manager_' + existingBronzeUser.id + '_%'}`,
-                    sql`${whatsappAgentConsultantConversations.shareId} IS NULL`
-                  )
+              // Update shareId AND externalVisitorId to link conversations to the new Silver/Gold subscription
+              // The externalVisitorId must be updated because the conversation query uses the new subscriptionId
+              for (const conv of bronzeConversations) {
+                const newExternalVisitorId = conv.externalVisitorId.replace(
+                  `manager_${existingBronzeUser.id}`,
+                  `manager_${subscription.id}`
                 );
+                await db.update(whatsappAgentConsultantConversations)
+                  .set({ 
+                    shareId: agentShare.id,
+                    externalVisitorId: newExternalVisitorId
+                  })
+                  .where(eq(whatsappAgentConsultantConversations.id, conv.id));
+              }
               
-              console.log(`[Stripe Webhook] Migrated ${bronzeConversations.length} whatsapp_conversations from Bronze ${existingBronzeUser.id} with shareId ${agentShare.id}`);
+              console.log(`[Stripe Webhook] Migrated ${bronzeConversations.length} whatsapp_conversations from Bronze ${existingBronzeUser.id} to Silver/Gold ${subscription.id} with shareId ${agentShare.id}`);
             } else {
-              console.log(`[Stripe Webhook] No Bronze whatsapp_conversations found for ${existingBronzeUser.id} (or no agentShare)`);
+              console.log(`[Stripe Webhook] No Bronze whatsapp_conversations found for ${existingBronzeUser.id} (agentShare: ${!!agentShare}, conversations: ${bronzeConversations.length})`);
             }
           } catch (migrationError: any) {
             console.error(`[Stripe Webhook] Failed to migrate conversations:`, migrationError.message);
