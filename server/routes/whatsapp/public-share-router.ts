@@ -2167,23 +2167,25 @@ Ti aspettiamo! 🚀`;
             .where(eq(schema.whatsappAgentConsultantMessages.conversationId, conversation.id));
           
           const messageCount = Number(messageCountResult?.count) || 0;
+          console.log(`📊 [TITLE-GEN] Conversation ${conversation.id}: ${messageCount} messages, current title: "${conversation.title}"`);
           
           // Generate title after exactly 2 messages (first user + first AI response)
           if (messageCount === 2 && conversation.title === 'Nuova conversazione') {
             console.log(`\n📝 [TITLE-GEN] Generating title for conversation ${conversation.id}...`);
             
-            // Get first user message
-            const [firstUserMessage] = await db
+            // Get first user message and first AI response
+            const firstMessages = await db
               .select()
               .from(schema.whatsappAgentConsultantMessages)
-              .where(
-                and(
-                  eq(schema.whatsappAgentConsultantMessages.conversationId, conversation.id),
-                  eq(schema.whatsappAgentConsultantMessages.role, 'user')
-                )
-              )
+              .where(eq(schema.whatsappAgentConsultantMessages.conversationId, conversation.id))
               .orderBy(schema.whatsappAgentConsultantMessages.createdAt)
-              .limit(1);
+              .limit(2);
+            
+            const firstUserMessage = firstMessages.find(m => m.role === 'user');
+            const firstAIResponse = firstMessages.find(m => m.role === 'assistant');
+            
+            console.log(`   📨 User message: "${firstUserMessage?.content?.substring(0, 100) || 'N/A'}..."`);
+            console.log(`   🤖 AI response: "${firstAIResponse?.content?.substring(0, 100) || 'N/A'}..."`);
             
             if (firstUserMessage?.content) {
               // Get API key: first try SuperAdmin keys, then fallback to env
@@ -2203,18 +2205,31 @@ Ti aspettiamo! 🚀`;
                 const { GoogleGenAI } = await import('@google/genai');
                 const genai = new GoogleGenAI({ apiKey: geminiApiKey });
                 
-                const titlePrompt = `Genera un titolo breve (massimo 5 parole) per questa conversazione basandoti sul primo messaggio dell'utente. Rispondi SOLO con il titolo, senza virgolette o punteggiatura finale.
+                // Include both user message and AI response for better context
+                const aiResponseSnippet = firstAIResponse?.content?.substring(0, 300) || '';
+                const titlePrompt = `Genera un titolo breve e descrittivo (3-6 parole) per questa conversazione. Il titolo deve descrivere L'ARGOMENTO PRINCIPALE della discussione, non ripetere la domanda dell'utente.
 
-Messaggio utente: "${firstUserMessage.content.substring(0, 200)}"
+Rispondi SOLO con il titolo, senza virgolette o punteggiatura finale.
+
+Domanda utente: "${firstUserMessage.content.substring(0, 200)}"
+${aiResponseSnippet ? `Risposta AI: "${aiResponseSnippet}"` : ''}
+
+Esempi di buoni titoli:
+- "Informazioni sui servizi"
+- "Richiesta appuntamento"
+- "Consulenza finanziaria"
+- "Domande sul piano Gold"
+- "Supporto tecnico account"
 
 Titolo:`;
 
+                console.log(`   🤖 [TITLE-GEN] Calling Gemini API...`);
                 const result = await genai.models.generateContent({
                   model: 'gemini-2.0-flash-lite',
                   contents: titlePrompt,
                 });
                 
-                const generatedTitle = result.text?.trim().substring(0, 50) || 'Conversazione';
+                const generatedTitle = result.text?.trim().replace(/^["']|["']$/g, '').substring(0, 50) || 'Conversazione';
                 
                 // Update conversation title
                 await db
@@ -2222,14 +2237,21 @@ Titolo:`;
                   .set({ title: generatedTitle })
                   .where(eq(schema.whatsappAgentConsultantConversations.id, conversation.id));
                 
-                console.log(`   ✅ [TITLE-GEN] Title generated: "${generatedTitle}"`);
+                console.log(`   ✅ [TITLE-GEN] Title generated and saved: "${generatedTitle}"`);
                 
                 // Send title update via SSE
-                res.write(`data: ${JSON.stringify({ type: 'titleUpdate', title: generatedTitle })}\n\n`);
+                res.write(`data: ${JSON.stringify({ type: 'titleUpdate', title: generatedTitle, conversationId: conversation.id })}\n\n`);
+                console.log(`   📤 [TITLE-GEN] Sent titleUpdate SSE event to client`);
               } else {
                 console.log(`   ⚠️ [TITLE-GEN] No Gemini API key available, skipping title generation`);
               }
+            } else {
+              console.log(`   ⚠️ [TITLE-GEN] No first user message found`);
             }
+          } else if (messageCount !== 2) {
+            console.log(`   ℹ️ [TITLE-GEN] Skipping - messageCount is ${messageCount}, not 2`);
+          } else {
+            console.log(`   ℹ️ [TITLE-GEN] Skipping - title already set to "${conversation.title}"`);
           }
         } catch (titleError: any) {
           console.error(`   ⚠️ [TITLE-GEN] Error generating title:`, titleError.message);

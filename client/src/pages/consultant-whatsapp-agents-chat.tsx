@@ -583,6 +583,20 @@ export default function ConsultantWhatsAppAgentsChat() {
                   });
                 }
 
+                // Handle title update from server
+                if (data.type === 'titleUpdate' && data.title) {
+                  console.log(`📝 [CONSULTANT TITLE] ═══════════════════════════════════`);
+                  console.log(`📝 [CONSULTANT TITLE] Received title update from server!`);
+                  console.log(`📝 [CONSULTANT TITLE] New title: "${data.title}"`);
+                  console.log(`📝 [CONSULTANT TITLE] Conversation ID: ${data.conversationId || 'N/A'}`);
+                  console.log(`📝 [CONSULTANT TITLE] Invalidating conversation queries to refresh sidebar...`);
+                  console.log(`📝 [CONSULTANT TITLE] ═══════════════════════════════════`);
+                  // Invalidate conversations query to refresh sidebar with new title
+                  queryClient.invalidateQueries({
+                    queryKey: ["/api/whatsapp/agent-chat/conversations", selectedAgentId],
+                  });
+                }
+
                 if (data.done) {
                   setStreamingMessage(null);
                   setIsStreaming(false);

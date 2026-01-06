@@ -864,21 +864,26 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
 }
 
 /**
- * Generate a short conversation title from the first message
- * Uses Vertex AI to create a concise 3-5 word title
+ * Generate a short conversation title from the first message and optional AI response
+ * Uses Vertex AI to create a concise 3-6 word title
  * 
  * @param firstMessage - The first message in the conversation
  * @param consultantId - ID of the consultant (for AI provider)
+ * @param aiResponse - Optional AI response for better context
  * @returns Promise<string> - Generated title
  */
 export async function generateConversationTitle(
   firstMessage: string,
-  consultantId: string
+  consultantId: string,
+  aiResponse?: string
 ): Promise<string> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🏷️  [TITLE GENERATION] Creating conversation title');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`📝 First message: "${firstMessage.substring(0, 100)}${firstMessage.length > 100 ? '...' : ''}"`);
+  if (aiResponse) {
+    console.log(`🤖 AI response: "${aiResponse.substring(0, 100)}${aiResponse.length > 100 ? '...' : ''}"`);
+  }
 
   try {
     // Get AI provider
@@ -887,26 +892,32 @@ export async function generateConversationTitle(
     console.log(`✅ AI Provider: ${aiProvider.source}`);
 
     // Generate title
-    console.log('🤖 Generating title...');
+    console.log('🤖 Generating title with Gemini...');
     const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
     console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
 
+    const aiContextSnippet = aiResponse ? aiResponse.substring(0, 300) : '';
+    
     const response = await aiProvider.client.generateContent({
       model,
       contents: [
         {
           role: 'user',
           parts: [{
-            text: `Genera un titolo breve di 3-5 parole per questa conversazione basato sul primo messaggio.
-Rispondi SOLO con il titolo, niente altro.
+            text: `Genera un titolo breve e descrittivo (3-6 parole) per questa conversazione. Il titolo deve descrivere L'ARGOMENTO PRINCIPALE della discussione, non ripetere la domanda dell'utente.
 
-Primo messaggio: "${firstMessage}"
+Rispondi SOLO con il titolo, senza virgolette o punteggiatura finale.
+
+Domanda utente: "${firstMessage.substring(0, 200)}"
+${aiContextSnippet ? `Risposta AI: "${aiContextSnippet}"` : ''}
 
 Esempi di buoni titoli:
-- "Test risposta lead"
-- "Verifica tono empatico"
-- "Simulazione cliente difficile"
-- "Prova presa appuntamento"
+- "Informazioni sui servizi"
+- "Richiesta appuntamento"
+- "Test risposta agente"
+- "Consulenza finanziaria"
+- "Domande funzionalità prodotto"
+- "Supporto tecnico account"
 
 Titolo:`
           }],
@@ -914,7 +925,7 @@ Titolo:`
       ],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 20,
+        maxOutputTokens: 30,
         ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       },
     });
@@ -933,7 +944,8 @@ Titolo:`
       throw new Error('Failed to extract text from Vertex AI response');
     }
     
-    title = title.trim();
+    // Clean up title - remove quotes and trim
+    title = title.trim().replace(/^["']|["']$/g, '').substring(0, 50);
     console.log(`✅ Title generated: "${title}"`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
@@ -950,7 +962,7 @@ Titolo:`
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
     // Fallback to truncated first message
-    const fallbackTitle = firstMessage.substring(0, 30).trim() + '...';
+    const fallbackTitle = firstMessage.substring(0, 30).trim() + (firstMessage.length > 30 ? '...' : '');
     console.log(`⚠️  Using fallback title: "${fallbackTitle}"`);
     return fallbackTitle;
   }

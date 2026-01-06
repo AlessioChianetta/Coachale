@@ -16655,13 +16655,19 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         // BUG FIX: Generate title ONLY on first exchange (messageCount was 0, now is 2)
         if (isFirstExchange) {
           console.log(`\n🏷️  [STREAMING-ENDPOINT] First exchange detected - generating conversation title...`);
+          console.log(`   📨 User message: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`);
+          console.log(`   🤖 AI response: "${fullResponse.substring(0, 100)}${fullResponse.length > 100 ? '...' : ''}"`);
           try {
-            const title = await generateConversationTitle(content, consultantId);
+            // Pass both user message and AI response for better title generation
+            const title = await generateConversationTitle(content, consultantId, fullResponse);
             console.log(`✅ [STREAMING-ENDPOINT] Title generated: "${title}"`);
             
             const updated = await storage.updateConsultantAgentConversationTitle(conversationId, title, consultantId);
             if (updated) {
               console.log(`✅ [STREAMING-ENDPOINT] Title saved successfully`);
+              // Send title update to frontend via SSE
+              res.write(`data: ${JSON.stringify({ type: 'titleUpdate', title: title, conversationId: conversationId })}\n\n`);
+              console.log(`📤 [STREAMING-ENDPOINT] Sent titleUpdate SSE event to client`);
             } else {
               console.error(`❌ [STREAMING-ENDPOINT] Failed to save title - update returned null`);
             }
