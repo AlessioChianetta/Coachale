@@ -1,5 +1,5 @@
 import { ConversationSummary, ConversationMemoryService, ConversationScope } from "./memory-service";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
 
 export interface MemoryContext {
@@ -129,6 +129,49 @@ export class ConversationContextBuilder {
       hasHistory: true,
       contextText: contextParts.join("\n"),
       conversationCount: limitedConversations.length,
+    };
+  }
+
+  async buildDailySummaryContext(
+    userId: string,
+    maxDays: number = 7
+  ): Promise<MemoryContext> {
+    const dailySummaries = await this.memoryService.getDailySummaries(userId, maxDays);
+
+    if (dailySummaries.length === 0) {
+      return {
+        hasHistory: false,
+        contextText: "",
+        conversationCount: 0,
+      };
+    }
+
+    const contextParts: string[] = [
+      "=== MEMORIA CONVERSAZIONI (Riassunti Giornalieri) ===",
+      "",
+    ];
+
+    for (const summary of dailySummaries) {
+      const dateStr = format(new Date(summary.date), "EEEE d MMMM yyyy", { locale: it });
+      
+      contextParts.push(`📅 ${dateStr}:`);
+      contextParts.push(`   ${summary.summary}`);
+      contextParts.push(`   (${summary.conversationCount} conversazioni, ${summary.messageCount} messaggi)`);
+      contextParts.push("");
+    }
+
+    contextParts.push("=== FINE MEMORIA ===");
+    contextParts.push("");
+    contextParts.push("Usa questa memoria per:");
+    contextParts.push("- Ricordare argomenti discussi nei giorni precedenti");
+    contextParts.push("- Mantenere continuità tra sessioni diverse");
+    contextParts.push("- Evitare di ripetere informazioni già fornite");
+    contextParts.push("");
+
+    return {
+      hasHistory: true,
+      contextText: contextParts.join("\n"),
+      conversationCount: dailySummaries.reduce((sum, s) => sum + s.conversationCount, 0),
     };
   }
 }

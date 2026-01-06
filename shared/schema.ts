@@ -2070,6 +2070,23 @@ export const aiUserPreferences = pgTable("ai_user_preferences", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// Daily Conversation Summaries - Riassunti giornalieri delle conversazioni AI
+export const aiDailySummaries = pgTable("ai_daily_summaries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  summaryDate: timestamp("summary_date").notNull(), // Data del giorno (a mezzanotte)
+  summary: text("summary").notNull(), // Riassunto generato dall'AI
+  conversationCount: integer("conversation_count").default(0), // Numero di conversazioni nel giorno
+  messageCount: integer("message_count").default(0), // Numero totale di messaggi nel giorno
+  topics: jsonb("topics").$type<string[]>(), // Argomenti principali estratti
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => {
+  return {
+    uniqueUserDate: unique().on(table.userId, table.summaryDate),
+  }
+});
+
 export const customLivePrompts = pgTable("custom_live_prompts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),

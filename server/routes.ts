@@ -10839,6 +10839,48 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // Get daily summaries
+  app.get("/api/consultant/ai/daily-summaries", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { ConversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const memoryService = new ConversationMemoryService();
+      
+      const dailySummaries = await memoryService.getDailySummaries(req.user!.id, 30);
+
+      res.json({ dailySummaries });
+    } catch (error: any) {
+      console.error("Error fetching daily summaries:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Generate daily summaries for missing days
+  app.post("/api/consultant/ai/generate-daily-summaries", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { ConversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const memoryService = new ConversationMemoryService();
+      
+      const apiKey = await aiService.getGeminiApiKey(req.user!.id);
+      if (!apiKey) {
+        return res.status(400).json({ message: "Nessuna API key Gemini configurata" });
+      }
+
+      const generated = await memoryService.generateMissingDailySummaries(
+        req.user!.id,
+        apiKey,
+        7 // Last 7 days
+      );
+
+      res.json({ 
+        message: generated > 0 ? `Generati ${generated} riassunti giornalieri` : "Nessun riassunto da generare",
+        generated 
+      });
+    } catch (error: any) {
+      console.error("Error generating daily summaries:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ========================================
   // CONSULTANT PROFILE ROUTES
   // ========================================
