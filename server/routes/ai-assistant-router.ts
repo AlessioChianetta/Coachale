@@ -655,42 +655,27 @@ router.get("/agent/:agentId/suggestions", authenticateToken, async (req: AuthReq
       return res.json({ suggestions: defaultSuggestions, source: "default" });
     }
 
-    // Build context from agent's brand voice
+    // Use agent's system prompt and brand voice directly
+    const agentSystemPrompt = agent.agentInstructions || "";
     const brandContext = buildBrandContext(agent);
 
-    const systemPrompt = `Sei un esperto di UX design e copywriting. Il tuo compito è creare 4 suggerimenti personalizzati per la schermata di benvenuto di un assistente AI.
+    const systemPrompt = `OUTPUT SOLO JSON. Genera esattamente 4 suggerimenti per pulsanti di una welcome screen.
 
-Questi suggerimenti appariranno come pulsanti cliccabili che l'utente può selezionare per iniziare una conversazione con l'assistente.
-
-INFORMAZIONI SUL BRAND E AGENTE:
+CONTEXT DELL'AGENTE:
+${agentSystemPrompt ? `System Prompt: ${agentSystemPrompt.substring(0, 1000)}` : ""}
 ${brandContext}
 
-REGOLE CRITICHE:
-1. Crea ESATTAMENTE 4 suggerimenti
-2. Ogni suggerimento deve essere rilevante per il tipo di business e target del brand
-3. I suggerimenti devono essere domande o richieste che un cliente tipico farebbe
-4. Usa un tono coerente con la personalità dell'agente
-5. Label: max 3-4 parole (es: "I miei obiettivi")
-6. Prompt: una frase completa che sarà inviata all'AI (max 60 caratteri)
+REGOLE:
+- 4 suggerimenti totali
+- label: max 4 parole
+- prompt: max 60 caratteri
+- Domande tipiche che farebbe un cliente di questo business
 
-FORMATO OUTPUT (JSON valido, nessun altro testo):
-[
-  {
-    "icon": "target",
-    "label": "Titolo breve",
-    "prompt": "Frase completa da inviare all'AI",
-    "gradient": "from-cyan-500 to-teal-500"
-  }
-]
+OUTPUT (solo questo JSON, niente altro testo prima o dopo):
+[{"icon":"target","label":"Esempio","prompt":"Domanda esempio","gradient":"from-cyan-500 to-teal-500"},{"icon":"book","label":"Esempio 2","prompt":"Altra domanda","gradient":"from-teal-500 to-emerald-500"},{"icon":"lightbulb","label":"Esempio 3","prompt":"Terza domanda","gradient":"from-slate-500 to-cyan-500"},{"icon":"sparkles","label":"Esempio 4","prompt":"Quarta domanda","gradient":"from-cyan-600 to-teal-600"}]
 
-ICONE DISPONIBILI: "target", "book", "message", "lightbulb", "trending", "sparkles"
-GRADIENTI DISPONIBILI: 
-- "from-cyan-500 to-teal-500"
-- "from-teal-500 to-emerald-500"  
-- "from-slate-500 to-cyan-500"
-- "from-cyan-600 to-teal-600"
-
-Rispondi SOLO con il JSON valido, nessun testo aggiuntivo.`;
+ICONE: target, book, message, lightbulb, trending, sparkles
+GRADIENTI: from-cyan-500 to-teal-500, from-teal-500 to-emerald-500, from-slate-500 to-cyan-500, from-cyan-600 to-teal-600`;
 
     const { model } = getModelWithThinking(providerResult.metadata.name);
 

@@ -224,44 +224,78 @@ export function WelcomeScreen({
           transition={{ delay: 0.4, duration: 0.5 }}
           className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl"
         >
-          {suggestions.map((suggestion, index) => (
-            <motion.button
-              key={suggestion.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 + index * 0.1, duration: 0.3 }}
-              onClick={() => !disabled && onSuggestionClick(suggestion.prompt)}
-              disabled={disabled}
-              className={cn(
-                "group relative flex items-center gap-3 p-4 rounded-xl",
-                "bg-white dark:bg-slate-800/50",
-                "border border-slate-200 dark:border-slate-700/50",
-                "hover:border-cyan-300 dark:hover:border-cyan-600/50",
-                "hover:shadow-md hover:shadow-cyan-500/5",
-                "transition-all duration-200",
-                "text-left",
-                disabled && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <div className={cn(
-                "flex-shrink-0 w-10 h-10 rounded-lg",
-                "bg-gradient-to-br",
-                suggestion.gradient,
-                "flex items-center justify-center",
-                "group-hover:scale-105 transition-transform duration-200"
-              )}>
-                <suggestion.icon className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 block truncate">
-                  {suggestion.label}
-                </span>
-                <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">
-                  {suggestion.prompt}
-                </span>
-              </div>
-            </motion.button>
-          ))}
+          {suggestionsLoading && agentId ? (
+            // Loading skeleton with shimmer effect
+            <>
+              {[0, 1, 2, 3].map((i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 + i * 0.1, duration: 0.3 }}
+                  className={cn(
+                    "flex items-center gap-3 p-4 rounded-xl",
+                    "bg-white dark:bg-slate-800/50",
+                    "border border-slate-200 dark:border-slate-700/50"
+                  )}
+                >
+                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                    <div className="h-3 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                  </div>
+                </motion.div>
+              ))}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.9 }}
+                className="col-span-full flex items-center justify-center gap-2 text-xs text-slate-400 dark:text-slate-500 mt-2"
+              >
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Generazione suggerimenti personalizzati...</span>
+              </motion.div>
+            </>
+          ) : (
+            suggestions.map((suggestion, index) => (
+              <motion.button
+                key={suggestion.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + index * 0.1, duration: 0.3 }}
+                onClick={() => !disabled && onSuggestionClick(suggestion.prompt)}
+                disabled={disabled}
+                className={cn(
+                  "group relative flex items-center gap-3 p-4 rounded-xl",
+                  "bg-white dark:bg-slate-800/50",
+                  "border border-slate-200 dark:border-slate-700/50",
+                  "hover:border-cyan-300 dark:hover:border-cyan-600/50",
+                  "hover:shadow-md hover:shadow-cyan-500/5",
+                  "transition-all duration-200",
+                  "text-left",
+                  disabled && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <div className={cn(
+                  "flex-shrink-0 w-10 h-10 rounded-lg",
+                  "bg-gradient-to-br",
+                  suggestion.gradient,
+                  "flex items-center justify-center",
+                  "group-hover:scale-105 transition-transform duration-200"
+                )}>
+                  <suggestion.icon className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200 block truncate">
+                    {suggestion.label}
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">
+                    {suggestion.prompt}
+                  </span>
+                </div>
+              </motion.button>
+            ))
+          )}
         </motion.div>
 
         <motion.p
