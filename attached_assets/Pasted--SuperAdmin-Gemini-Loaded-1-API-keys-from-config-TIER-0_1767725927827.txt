@@ -1,0 +1,35 @@
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[PUBLIC AGENT] Returning Gold client user data - email: giusy.dattilo@gmail.com
+6:58:52 PM [express] GET /api/public/agent/test/manager/me 304 in 1929ms :: {"id":"7e40b56c-2cc8-451…
+[CONV DEBUG] Found 1 conversations
+[AI SUGGESTIONS] Agent context length: 21566 chars
+6:58:52 PM [express] GET /api/public/consultant/orbitale/pricing 304 in 289ms :: {"consultantName":"…
+[AI SUGGESTIONS] Attempting to parse: Per poterti fornire dei suggerimenti davvero efficaci e su misura, **avrei bisogno che mi fornissi alcune informazioni sul brand**, come:
+1.  **Settore** (es. e-commerce di abbigliamento, app di medit
+[AI SUGGESTIONS] Failed to parse AI response: SyntaxError: Unexpected token 'P', "Per potert"... is not valid JSON
+    at parse (<anonymous>)
+    at JSON.parse (/home/runner/workspace/node_modules/pdf-parse/node_modules/pdfjs-dist/legacy/build/pdf.mjs:4852:56)
+    at <anonymous> (/home/runner/workspace/server/routes/ai-assistant-router.ts:724:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[AI SUGGESTIONS] Raw response was: Per poterti fornire dei suggerimenti davvero efficaci e su misura, **avrei bisogno che mi fornissi alcune informazioni sul brand**, come:
+1.  **Settore** (es. e-commerce di abbigliamento, app di meditazione, software B2B).
+2.  **Target** (es. giovani professionisti, neo-mamme, appassionati di tech).
+3.  **Tone of Voice** (es. amichevole, formale, energico, minimale).
+4.  **Obiettivo della welcome screen** (es. far completare il profilo, offrire un codice sconto, spiegare il valore del prodotto).
+6:58:58 PM [express] GET /api/ai-assistant/agent/c59f71bc-e0fa-48ba-8786-75e4f565fdb3/suggestions 30…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-06T18:59:00.025Z
+
+[SHEETS POLLING] Starting polling cycle (ExecID: 0wu1ys)...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Processing job f33cfa03-2d1f-4b28-871b-84359e998576 (test)
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+[SHEETS POLLING] Date filter applied: 193 -> 36 rows (from 2025-12-30)
+[SHEETS POLLING] Processing 36 rows for job f33cfa03-2d1f-4b28-871b-84359e9985

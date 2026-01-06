@@ -682,6 +682,13 @@ ICONE VALIDE: target, book, message, lightbulb, trending, sparkles`;
 
     const { model } = getModelWithThinking(providerResult.metadata.name);
 
+    // Log the full prompt for debugging
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`📋 [AI SUGGESTIONS] FULL SYSTEM PROMPT:`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(systemPrompt);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
     const result = await providerResult.client.generateContent({
       model,
       contents: [
