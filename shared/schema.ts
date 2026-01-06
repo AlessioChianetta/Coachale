@@ -804,9 +804,20 @@ export const consultantLicenses = pgTable("consultant_licenses", {
   aiCreditsCostUsd: real("ai_credits_cost_usd").default(0), // Cost in USD of AI credits used
   aiCreditsLastReset: timestamp("ai_credits_last_reset").default(sql`now()`), // Last billing cycle reset
   
+  // Default onboarding preferences - pre-fill for new clients during onboarding
+  // Contains: { writingStyle?: string, responseLength?: string, customInstructions?: string }
+  defaultOnboardingPreferences: jsonb("default_onboarding_preferences"),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
+
+// Type for default onboarding preferences
+export interface DefaultOnboardingPreferences {
+  writingStyle?: string; // e.g., "Professionale", "Amichevole", "Formale"
+  responseLength?: string; // e.g., "Breve", "Media", "Dettagliata"
+  customInstructions?: string; // Free text instructions for AI
+}
 
 export type ConsultantLicenses = typeof consultantLicenses.$inferSelect;
 export type InsertConsultantLicenses = typeof consultantLicenses.$inferInsert;

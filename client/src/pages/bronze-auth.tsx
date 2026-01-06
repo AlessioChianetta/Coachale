@@ -94,13 +94,27 @@ export default function BronzeAuth() {
     retry: false,
   });
 
-  const level1Agent = data?.agents.find(a => a.level === "1");
-  const agentSlug = level1Agent?.publicSlug;
+  // Get all level 1 agents for Bronze tier
+  const level1Agents = data?.agents.filter(a => a.level === "1") || [];
 
-  const handleAuthSuccess = (token: string) => {
+  const handleAuthSuccess = (token: string, userName?: string) => {
     localStorage.setItem(BRONZE_TOKEN_KEY, token);
-    if (agentSlug) {
-      navigate(`/agent/${agentSlug}/chat`);
+    // Set tier info for select-agent page
+    localStorage.setItem("bronzeUserTier", "1");
+    if (userName) {
+      localStorage.setItem("bronzeUserName", userName);
+    }
+    
+    // Navigate based on agent count:
+    // - Multiple agents: go to selection page
+    // - Single agent: go directly to that agent
+    // - No agents: show message
+    if (level1Agents.length > 1) {
+      // Multiple agents available - go to selection page
+      navigate(`/c/${slug}/select-agent`);
+    } else if (level1Agents.length === 1 && level1Agents[0].publicSlug) {
+      // Single agent - go directly
+      navigate(`/agent/${level1Agents[0].publicSlug}/chat`);
     } else {
       toast({
         title: "Accesso completato",
@@ -132,7 +146,8 @@ export default function BronzeAuth() {
         title: "Registrazione completata!",
         description: "Benvenuto nel piano Bronze.",
       });
-      handleAuthSuccess(result.token);
+      // Pass firstName for the select-agent page greeting
+      handleAuthSuccess(result.token, registerForm.firstName || result.firstName);
     },
     onError: (error: Error) => {
       toast({
@@ -161,7 +176,8 @@ export default function BronzeAuth() {
         title: "Accesso effettuato!",
         description: "Bentornato.",
       });
-      handleAuthSuccess(result.token);
+      // Pass firstName from API response if available
+      handleAuthSuccess(result.token, result.user?.firstName);
     },
     onError: (error: Error) => {
       toast({

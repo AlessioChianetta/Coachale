@@ -34,21 +34,45 @@ function parseClientName(fullName: string): { firstName: string; lastName: strin
 const router: Router = express.Router();
 
 async function getStripeInstance() {
+  console.log("[getStripeInstance] Fetching Stripe configuration from superadmin_stripe_config...");
   const [config] = await db.select().from(superadminStripeConfig).limit(1);
-  if (!config?.stripeSecretKey) {
-    throw new Error("Stripe not configured");
+  
+  if (!config) {
+    console.error("[getStripeInstance] No Stripe configuration found in database");
+    throw new Error("Stripe not configured - no config record found");
   }
+  
+  if (!config.stripeSecretKey) {
+    console.error("[getStripeInstance] Stripe config found but stripeSecretKey is empty");
+    throw new Error("Stripe not configured - secret key is empty");
+  }
+  
+  console.log("[getStripeInstance] Stripe config found, key length:", config.stripeSecretKey.length);
   
   let secretKey = config.stripeSecretKey;
   if (secretKey.includes(':')) {
+    console.log("[getStripeInstance] Key appears encrypted, attempting decryption...");
     try {
       secretKey = decrypt(secretKey);
-    } catch (e) {
-      console.log("[Stripe Connect] Using plain text key");
+      console.log("[getStripeInstance] Decryption successful, decrypted key length:", secretKey.length);
+    } catch (e: any) {
+      console.error("[getStripeInstance] Decryption failed:", e?.message);
+      console.log("[getStripeInstance] Falling back to plain text key");
     }
+  } else {
+    console.log("[getStripeInstance] Key appears to be plain text");
+  }
+  
+  // Verify key format (Stripe keys start with sk_test_ or sk_live_)
+  const keyPrefix = secretKey.substring(0, 8);
+  console.log("[getStripeInstance] Key prefix:", keyPrefix);
+  
+  if (!secretKey.startsWith('sk_test_') && !secretKey.startsWith('sk_live_')) {
+    console.warn("[getStripeInstance] Warning: Key doesn't have expected Stripe prefix");
   }
   
   const Stripe = (await import("stripe")).default;
+  console.log("[getStripeInstance] Stripe instance created successfully");
   return new Stripe(secretKey, { apiVersion: "2024-12-18.acacia" as any });
 }
 
@@ -296,6 +320,7 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
         },
         metadata: {
           consultantId: consultant.id,
+          consultantSlug,
           clientEmail,
           clientName: clientName || "",
           level,
@@ -310,6 +335,7 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
       customer_email: clientEmail || undefined,
       metadata: {
         consultantId: consultant.id,
+        consultantSlug,
         clientEmail,
         clientName: clientName || "",
         level,
@@ -1324,6 +1350,7 @@ router.get("/stripe/checkout-success/:sessionId", async (req: Request, res: Resp
     const billingPeriod = metadata.billingPeriod || 'monthly';
     const clientEmail = metadata.clientEmail;
     const clientName = metadata.clientName;
+    const consultantSlug = metadata.consultantSlug;
     
     let userType: 'manager' | 'client' | null = null;
     if (level === "2") {
@@ -1335,6 +1362,16 @@ router.get("/stripe/checkout-success/:sessionId", async (req: Request, res: Resp
     const subscription = session.subscription as any;
     const subscriptionStatus = subscription?.status || 'active';
     
+    // Build loginUrl that goes to agent selection page for the consultant
+    let loginUrl: string | null = null;
+    if (consultantSlug) {
+      // Direct to Bronze auth with the consultant's slug - will redirect to agent selection after login
+      loginUrl = `/c/${consultantSlug}/auth`;
+    } else {
+      // Fallback to old behavior if no slug available
+      loginUrl = userType === 'manager' ? '/manager-chat' : userType === 'client' ? '/login' : null;
+    }
+    
     res.json({
       success: true,
       level,
@@ -1343,11 +1380,8 @@ router.get("/stripe/checkout-success/:sessionId", async (req: Request, res: Resp
       clientEmail,
       clientName,
       subscriptionStatus,
-      loginUrl: userType === 'manager' 
-        ? '/manager-chat'
-        : userType === 'client' 
-          ? '/login'
-          : null,
+      consultantSlug,
+      loginUrl,
     });
   } catch (error: any) {
     console.error("[Stripe Checkout Success] Error:", error);
@@ -1820,6 +1854,154 @@ router.post("/verify-upgrade-session", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[Verify Session] Error:", error);
     res.status(500).json({ error: "Failed to verify session" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Default Onboarding Preferences - Consultant sets default preferences for new clients
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/consultant/default-onboarding-preferences", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const [license] = await db.select()
+      .from(consultantLicenses)
+      .where(eq(consultantLicenses.consultantId, consultantId))
+      .limit(1);
+    
+    if (!license) {
+      return res.json({ 
+        success: true, 
+        preferences: null 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      preferences: license.defaultOnboardingPreferences || null 
+    });
+  } catch (error: any) {
+    console.error("[Default Onboarding Preferences] GET Error:", error);
+    res.status(500).json({ error: "Failed to get preferences", details: error?.message });
+  }
+});
+
+router.put("/consultant/default-onboarding-preferences", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { writingStyle, responseLength, customInstructions } = req.body;
+    
+    const preferences = {
+      writingStyle: writingStyle || null,
+      responseLength: responseLength || null,
+      customInstructions: customInstructions || null,
+    };
+    
+    // Check if license exists
+    const [existingLicense] = await db.select({ id: consultantLicenses.id })
+      .from(consultantLicenses)
+      .where(eq(consultantLicenses.consultantId, consultantId))
+      .limit(1);
+    
+    if (existingLicense) {
+      await db.update(consultantLicenses)
+        .set({ 
+          defaultOnboardingPreferences: preferences,
+          updatedAt: new Date()
+        })
+        .where(eq(consultantLicenses.consultantId, consultantId));
+    } else {
+      await db.insert(consultantLicenses).values({
+        consultantId,
+        level2Total: 20,
+        level2Used: 0,
+        level3Total: 10,
+        level3Used: 0,
+        defaultOnboardingPreferences: preferences,
+      });
+    }
+    
+    console.log(`[Default Onboarding Preferences] Updated for consultant ${consultantId}`);
+    
+    res.json({ 
+      success: true, 
+      message: "Preferences saved successfully",
+      preferences 
+    });
+  } catch (error: any) {
+    console.error("[Default Onboarding Preferences] PUT Error:", error);
+    res.status(500).json({ error: "Failed to save preferences", details: error?.message });
+  }
+});
+
+// Bulk apply preferences to all clients
+router.post("/consultant/bulk-apply-preferences", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { writingStyle, responseLength, customInstructions, targetTiers } = req.body;
+    
+    if (!targetTiers || !Array.isArray(targetTiers) || targetTiers.length === 0) {
+      return res.status(400).json({ error: "targetTiers must be a non-empty array" });
+    }
+    
+    let updatedCount = 0;
+    
+    // Update Silver/Gold subscriptions
+    if (targetTiers.includes("2") || targetTiers.includes("3")) {
+      const levels = targetTiers.filter((t: string) => t === "2" || t === "3");
+      
+      for (const level of levels) {
+        const result = await db.update(clientLevelSubscriptions)
+          .set({
+            writingStyle: writingStyle || null,
+            responseLength: responseLength || null,
+            customInstructions: customInstructions || null,
+          })
+          .where(and(
+            eq(clientLevelSubscriptions.consultantId, consultantId),
+            eq(clientLevelSubscriptions.level, level as "2" | "3"),
+            eq(clientLevelSubscriptions.status, "active")
+          ));
+        
+        updatedCount += (result as any).rowCount || 0;
+      }
+    }
+    
+    // Update Bronze users
+    if (targetTiers.includes("1")) {
+      // Get consultant's whatsapp config to find associated bronze users
+      const [config] = await db.select()
+        .from(consultantWhatsappConfig)
+        .where(eq(consultantWhatsappConfig.consultantId, consultantId))
+        .limit(1);
+      
+      if (config) {
+        const result = await db.update(bronzeUsers)
+          .set({
+            writingStyle: writingStyle || null,
+            responseLength: responseLength || null,
+            customInstructions: customInstructions || null,
+          })
+          .where(and(
+            eq(bronzeUsers.consultantId, consultantId),
+            eq(bronzeUsers.isActive, true)
+          ));
+        
+        updatedCount += (result as any).rowCount || 0;
+      }
+    }
+    
+    console.log(`[Bulk Apply Preferences] Updated ${updatedCount} clients for consultant ${consultantId}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Preferences applied to ${updatedCount} clients`,
+      updatedCount 
+    });
+  } catch (error: any) {
+    console.error("[Bulk Apply Preferences] Error:", error);
+    res.status(500).json({ error: "Failed to apply preferences", details: error?.message });
   }
 });
 
