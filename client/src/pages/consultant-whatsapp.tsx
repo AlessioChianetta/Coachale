@@ -350,8 +350,8 @@ export default function ConsultantWhatsAppPage() {
 
   // Popola i campi quando i dati vengono caricati
   useEffect(() => {
-    if (defaultOnboardingPrefsQuery.data) {
-      const prefs = defaultOnboardingPrefsQuery.data;
+    if (defaultOnboardingPrefsQuery.data?.preferences) {
+      const prefs = defaultOnboardingPrefsQuery.data.preferences;
       setOnboardingWritingStyle(prefs.writingStyle || "");
       setOnboardingResponseLength(prefs.responseLength || "");
       setOnboardingCustomInstructions(prefs.customInstructions || "");
@@ -3421,6 +3421,22 @@ export default function ConsultantWhatsAppPage() {
                   >
                     <Users className="mr-2 h-4 w-4" />
                     Applica a Tutti i Clienti
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setOnboardingWritingStyle("");
+                      setOnboardingResponseLength("");
+                      setOnboardingCustomInstructions("");
+                      toast({
+                        title: "Preferenze resettate",
+                        description: "I campi sono stati svuotati. Clicca 'Salva Preferenze' per confermare.",
+                      });
+                    }}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Resetta
                   </Button>
                 </div>
               </CardContent>
