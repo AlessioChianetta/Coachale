@@ -4444,7 +4444,21 @@ Rispondi sempre considerando il contesto dell'utente e il suo percorso formativo
 
 export async function getConsultantConversations(consultantId: string) {
   const conversations = await db
-    .select()
+    .select({
+      id: aiConversations.id,
+      clientId: aiConversations.clientId,
+      consultantId: aiConversations.consultantId,
+      mode: aiConversations.mode,
+      consultantType: aiConversations.consultantType,
+      title: aiConversations.title,
+      isActive: aiConversations.isActive,
+      lastMessageAt: aiConversations.lastMessageAt,
+      createdAt: aiConversations.createdAt,
+      updatedAt: aiConversations.updatedAt,
+      agentId: aiConversations.agentId,
+      managerId: aiConversations.managerId,
+      shareId: aiConversations.shareId,
+    })
     .from(aiConversations)
     .where(and(
       eq(aiConversations.clientId, consultantId),
@@ -4458,7 +4472,21 @@ export async function getConsultantConversations(consultantId: string) {
 export async function getConsultantConversationMessages(conversationId: string, consultantId: string) {
   // Verify conversation belongs to consultant
   const [conversation] = await db
-    .select()
+    .select({
+      id: aiConversations.id,
+      clientId: aiConversations.clientId,
+      consultantId: aiConversations.consultantId,
+      mode: aiConversations.mode,
+      consultantType: aiConversations.consultantType,
+      title: aiConversations.title,
+      isActive: aiConversations.isActive,
+      lastMessageAt: aiConversations.lastMessageAt,
+      createdAt: aiConversations.createdAt,
+      updatedAt: aiConversations.updatedAt,
+      agentId: aiConversations.agentId,
+      managerId: aiConversations.managerId,
+      shareId: aiConversations.shareId,
+    })
     .from(aiConversations)
     .where(and(
       eq(aiConversations.id, conversationId),

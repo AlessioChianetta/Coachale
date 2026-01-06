@@ -41,23 +41,31 @@ export class ConversationMemoryService {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - this.config.daysToLookBack);
 
+    // Determina quale colonna di ID usare in base allo scope
+    const idFilter = scope === "consultant" 
+      ? eq(aiConversations.consultantId, userId)
+      : eq(aiConversations.clientId, userId);
+
+    // Build conditions array, filtering out undefined values
+    const conditions = [
+      idFilter,
+      isNotNull(aiConversations.lastMessageAt),
+      sql`${aiConversations.lastMessageAt} > ${cutoffDate}`,
+    ];
+    
+    if (excludeConversationId) {
+      conditions.push(sql`${aiConversations.id}::text != ${excludeConversationId}`);
+    }
+
     let baseQuery = db.select({
       id: aiConversations.id,
       title: aiConversations.title,
-      summary: aiConversations.summary,
       lastMessageAt: aiConversations.lastMessageAt,
       mode: aiConversations.mode,
       agentId: aiConversations.agentId,
     })
     .from(aiConversations)
-    .where(
-      and(
-        eq(aiConversations.clientId, userId),
-        isNotNull(aiConversations.lastMessageAt),
-        sql`${aiConversations.lastMessageAt} > ${cutoffDate}`,
-        excludeConversationId ? sql`${aiConversations.id} != ${excludeConversationId}` : undefined
-      )
-    )
+    .where(and(...conditions))
     .orderBy(desc(aiConversations.lastMessageAt))
     .limit(this.config.maxConversations);
 
@@ -74,7 +82,7 @@ export class ConversationMemoryService {
         return {
           conversationId: conv.id,
           title: conv.title,
-          summary: conv.summary,
+          summary: null, // Summary column will be used when database is synced
           lastMessageAt: conv.lastMessageAt,
           messageCount: messageCountResult[0]?.count || 0,
           mode: conv.mode,
