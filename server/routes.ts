@@ -386,7 +386,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Single profile: use that profile's role
         const activeProfile = profiles[0];
-        const token = jwt.sign({ userId: user.id, profileId: activeProfile.id }, JWT_SECRET, { expiresIn: '7d' });
+        
+        // For Gold clients, look up their subscription to include subscriptionId for conversation/preference compatibility
+        let subscriptionId: string | null = null;
+        let tierType: "gold" | null = null;
+        if (user.role === "client" && user.consultantId) {
+          const [goldSub] = await db.select({ id: schema.clientLevelSubscriptions.id })
+            .from(schema.clientLevelSubscriptions)
+            .where(
+              and(
+                eq(schema.clientLevelSubscriptions.clientEmail, emailLower),
+                eq(schema.clientLevelSubscriptions.status, "active"),
+                eq(schema.clientLevelSubscriptions.level, "3")
+              )
+            )
+            .limit(1);
+          
+          if (goldSub) {
+            subscriptionId = goldSub.id;
+            tierType = "gold";
+          }
+        }
+        
+        const tokenPayload: any = { userId: user.id, profileId: activeProfile.id };
+        if (subscriptionId) {
+          tokenPayload.subscriptionId = subscriptionId;
+          tokenPayload.consultantId = user.consultantId;
+          tokenPayload.email = user.email;
+          tokenPayload.type = "gold";
+        }
+        
+        const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
 
         return res.json({
           message: "Login successful",
@@ -403,8 +433,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isActive: user.isActive,
             profileId: activeProfile.id,
             consultantId: activeProfile.consultantId || user.consultantId,
+            subscriptionId: subscriptionId,
             siteUrl: user.siteUrl,
-            tier: "gold",
+            tier: tierType || (user.role === "client" ? "gold" : undefined),
           },
         });
       }
