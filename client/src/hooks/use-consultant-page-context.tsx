@@ -30,6 +30,7 @@ export type ConsultantPageType =
   | "ai_agents"
   | "ai_settings"
   | "dashboard"
+  | "setup_wizard"
   | "other";
 
 export interface ConsultantPageContext {
@@ -163,8 +164,13 @@ export function useConsultantPageContext(options: UseConsultantPageContextOption
       pageType: "other"
     };
 
+    // Setup Wizard
+    if (location === '/consultant/setup-wizard' || location.startsWith('/consultant/setup-wizard?')) {
+      newContext.pageType = "setup_wizard";
+      newContext.resourceTitle = "Setup Iniziale Piattaforma";
+    }
     // WhatsApp Configuration
-    if (location === '/consultant/whatsapp' || location.startsWith('/consultant/whatsapp?')) {
+    else if (location === '/consultant/whatsapp' || location.startsWith('/consultant/whatsapp?')) {
       newContext.pageType = "whatsapp_config";
       if (whatsappStats) {
         newContext.additionalContext = {
