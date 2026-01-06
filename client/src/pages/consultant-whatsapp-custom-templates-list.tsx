@@ -307,6 +307,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const [approvedSectionOpen, setApprovedSectionOpen] = useState(true);
   const [pendingSectionOpen, setPendingSectionOpen] = useState(true);
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(true);
+  const [staleSectionOpen, setStaleSectionOpen] = useState(true);
   const [localDraftsSectionOpen, setLocalDraftsSectionOpen] = useState(true);
   const [twilioOnlySectionOpen, setTwilioOnlySectionOpen] = useState(true);
   const [twilioRemoteSectionOpen, setTwilioRemoteSectionOpen] = useState(true);
@@ -544,7 +545,8 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     const approved = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'approved');
     const pending = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'pending_approval');
     const rejected = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'rejected');
-    return { openingTemplate, localDrafts, onTwilio, approved, pending, rejected };
+    const stale = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'draft' || t.activeVersion?.twilioStatus === 'not_synced');
+    return { openingTemplate, localDrafts, onTwilio, approved, pending, rejected, stale };
   }, [filteredAndSortedTemplates]);
 
   useEffect(() => {
@@ -2024,6 +2026,50 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                                   </TableHeader>
                                   <TableBody>
                                     {groupedTemplates.rejected.map(renderTemplateRow)}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+
+                      {groupedTemplates.stale.length > 0 && (
+                        <Collapsible open={staleSectionOpen} onOpenChange={setStaleSectionOpen}>
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer hover:bg-amber-100 transition-colors">
+                              <div className="flex items-center gap-2 text-amber-700">
+                                <RefreshCw className="h-5 w-5" />
+                                <h3 className="font-semibold">Da Ri-esportare</h3>
+                                <Badge className="bg-amber-100 text-amber-700 border-amber-200">
+                                  {groupedTemplates.stale.length}
+                                </Badge>
+                              </div>
+                              <ChevronDown className={`h-4 w-4 text-amber-600 transition-transform duration-200 ${staleSectionOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-3">
+                            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                              Questi template devono essere ri-esportati su Twilio. Clicca "Esporta a Twilio" per inviarli al nuovo account.
+                            </div>
+                            {viewMode === "grid" ? (
+                              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {groupedTemplates.stale.map(renderTemplateCard)}
+                              </div>
+                            ) : (
+                              <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Template</TableHead>
+                                      <TableHead>Categoria</TableHead>
+                                      <TableHead>Stato</TableHead>
+                                      <TableHead>Creato</TableHead>
+                                      <TableHead className="w-[100px]">Azioni</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {groupedTemplates.stale.map(renderTemplateRow)}
                                   </TableBody>
                                 </Table>
                               </div>
