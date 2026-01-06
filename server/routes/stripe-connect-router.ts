@@ -395,6 +395,7 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
     
     // First try whatsappAgentShares (Manager system)
     let consultantId: string | null = null;
+    let agentConfigId: string | null = null;
     
     const [share] = await db.select()
       .from(whatsappAgentShares)
@@ -403,6 +404,7 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
     
     if (share) {
       consultantId = share.consultantId;
+      agentConfigId = share.agentConfigId;
     } else {
       // Try consultantWhatsappConfig (Bronze/Level 1 system) with public_slug
       const [agentConfig] = await db.select()
@@ -412,7 +414,8 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       
       if (agentConfig) {
         consultantId = agentConfig.consultantId;
-        console.log("[Stripe Upgrade] Found agent via Bronze public_slug:", slugStr);
+        agentConfigId = agentConfig.id;
+        console.log("[Stripe Upgrade] Found agent via Bronze public_slug:", slugStr, "agentConfigId:", agentConfigId);
       }
     }
     
@@ -624,6 +627,7 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
           clientEmail: userEmail,
           level: targetLevel,
           upgradeFromBronze: isBronzeUser ? "true" : "false",
+          agentConfigId: agentConfigId || "",
         },
         success_url: `${baseUrl}/agent/${slug}?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/agent/${slug}?upgrade=canceled`,
@@ -805,7 +809,8 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           clientEmail, 
           clientName, 
           level, 
-          agentId, 
+          agentId,
+          agentConfigId,
           billingPeriod,
           firstName: metaFirstName,
           lastName: metaLastName,
@@ -921,10 +926,14 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           try {
             // Find the agent's share to update shareId as well (needed for conversation queries)
             // Silver/Gold users use the actual share, not virtual bronze share
-            const [agentShare] = agentId ? await db.select({ id: whatsappAgentShares.id })
+            // Use agentConfigId from metadata, falling back to agentId for backwards compatibility
+            const effectiveAgentId = agentConfigId || agentId;
+            const [agentShare] = effectiveAgentId ? await db.select({ id: whatsappAgentShares.id })
               .from(whatsappAgentShares)
-              .where(eq(whatsappAgentShares.agentConfigId, agentId))
+              .where(eq(whatsappAgentShares.agentConfigId, effectiveAgentId))
               .limit(1) : [];
+            
+            console.log(`[Stripe Webhook] Migration lookup - agentConfigId: ${agentConfigId}, agentId: ${agentId}, effectiveAgentId: ${effectiveAgentId}, agentShare found: ${!!agentShare}`);
             
             // MIGRATION 1: Migrate from managerConversations (legacy)
             const updateData: { managerId: string; shareId?: string } = { managerId: subscription.id };
