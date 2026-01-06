@@ -253,6 +253,170 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
   }
 });
 
+router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const vertexSettings = await db.query.vertexAiSettings.findFirst({
+      where: eq(vertexAiSettings.userId, consultantId),
+    });
+    
+    const consultant = await db.query.users.findFirst({
+      where: eq(users.id, consultantId),
+      columns: { useSuperadminVertex: true },
+    });
+    
+    const smtpSettings = await db.query.consultantSmtpSettings.findFirst({
+      where: eq(consultantSmtpSettings.consultantId, consultantId),
+    });
+    
+    const turnConfig = await db.query.consultantTurnConfig.findFirst({
+      where: eq(consultantTurnConfig.consultantId, consultantId),
+    });
+    
+    const docsResult = await db.select({ count: count() })
+      .from(consultantKnowledgeDocuments)
+      .where(eq(consultantKnowledgeDocuments.consultantId, consultantId));
+    const documentsCount = Number(docsResult[0]?.count || 0);
+    
+    const agentsByType = await db.select({ 
+      agentType: consultantWhatsappConfig.agentType,
+      count: count()
+    })
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.consultantId, consultantId))
+      .groupBy(consultantWhatsappConfig.agentType);
+    
+    const agentTypeMap = new Map(agentsByType.map(a => [a.agentType, Number(a.count)]));
+    
+    const twilioAgentResult = await db.select({ count: count() })
+      .from(consultantWhatsappConfig)
+      .where(and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        sql`twilio_account_sid IS NOT NULL AND twilio_account_sid != ''`
+      ));
+    const hasTwilio = Number(twilioAgentResult[0]?.count || 0) > 0;
+    
+    const publicLinksResult = await db.select({ count: count() })
+      .from(whatsappAgentShares)
+      .where(and(
+        eq(whatsappAgentShares.consultantId, consultantId),
+        eq(whatsappAgentShares.isActive, true)
+      ));
+    const hasPublicLink = Number(publicLinksResult[0]?.count || 0) > 0;
+    
+    const ideasResult = await db.select({ count: count() })
+      .from(consultantAiIdeas)
+      .where(eq(consultantAiIdeas.consultantId, consultantId));
+    const hasIdeas = Number(ideasResult[0]?.count || 0) > 0;
+    
+    const coursesResult = await db.select({ count: count() })
+      .from(universityYears)
+      .where(eq(universityYears.createdBy, consultantId));
+    const hasCourse = Number(coursesResult[0]?.count || 0) > 0;
+    
+    const exercisesResult = await db.select({ count: count() })
+      .from(exercises)
+      .where(eq(exercises.createdBy, consultantId));
+    const hasExercise = Number(exercisesResult[0]?.count || 0) > 0;
+    
+    const summaryEmailResult = await db.select({ count: count() })
+      .from(emailDrafts)
+      .where(and(
+        eq(emailDrafts.consultantId, consultantId),
+        eq(emailDrafts.emailType, 'consultation_summary'),
+        eq(emailDrafts.status, 'sent')
+      ));
+    const hasSummaryEmail = Number(summaryEmailResult[0]?.count || 0) > 0;
+    
+    const approvedTemplatesResult = await db
+      .selectDistinct({ templateId: whatsappCustomTemplates.id })
+      .from(whatsappCustomTemplates)
+      .innerJoin(
+        whatsappTemplateVersions,
+        eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id)
+      )
+      .where(and(
+        eq(whatsappCustomTemplates.consultantId, consultantId),
+        eq(whatsappTemplateVersions.twilioStatus, 'approved')
+      ));
+    const hasApprovedTemplate = approvedTemplatesResult.length > 0;
+    
+    const moreTemplatesResult = await db.select({ count: count() })
+      .from(whatsappCustomTemplates)
+      .where(eq(whatsappCustomTemplates.consultantId, consultantId));
+    const hasMoreTemplates = Number(moreTemplatesResult[0]?.count || 0) > 1;
+    
+    const campaignsResult = await db.select({ count: count() })
+      .from(marketingCampaigns)
+      .where(eq(marketingCampaigns.consultantId, consultantId));
+    const hasCampaign = Number(campaignsResult[0]?.count || 0) > 0;
+    
+    const leadImportConfig = await db.query.externalApiConfigs.findFirst({
+      where: and(
+        eq(externalApiConfigs.consultantId, consultantId),
+        eq(externalApiConfigs.apiType, 'lead_import')
+      ),
+    });
+    const hasLeadImport = !!(leadImportConfig?.apiKey);
+    
+    const agentCalendarResult = await db.select({ 
+      id: consultantWhatsappConfig.id,
+      hasCalendar: sql`CASE WHEN google_access_token IS NOT NULL AND google_access_token != '' THEN true ELSE false END`
+    })
+      .from(consultantWhatsappConfig)
+      .where(and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        sql`google_access_token IS NOT NULL AND google_access_token != ''`
+      ));
+    const hasCalendar = agentCalendarResult.length > 0;
+    
+    type OnboardingStepStatus = 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
+    type OnboardingStepId = 
+      | 'vertex_ai' | 'smtp' | 'google_calendar' | 'twilio' | 'whatsapp_template' | 'first_campaign'
+      | 'agent_inbound' | 'agent_outbound' | 'agent_consultative' | 'agent_public_link' | 'agent_ideas' | 'more_templates'
+      | 'first_course' | 'first_exercise' | 'knowledge_base'
+      | 'summary_email' | 'turn_config' | 'lead_import';
+    
+    interface OnboardingStatus {
+      stepId: OnboardingStepId;
+      status: OnboardingStepStatus;
+    }
+    
+    const statuses: OnboardingStatus[] = [
+      { stepId: 'vertex_ai', status: (!!vertexSettings?.projectId || consultant?.useSuperadminVertex) ? 'configured' : 'pending' },
+      { stepId: 'smtp', status: !!smtpSettings?.smtpHost ? 'configured' : 'pending' },
+      { stepId: 'google_calendar', status: hasCalendar ? 'configured' : 'pending' },
+      { stepId: 'twilio', status: hasTwilio ? 'configured' : 'pending' },
+      { stepId: 'whatsapp_template', status: hasApprovedTemplate ? 'verified' : 'pending' },
+      { stepId: 'first_campaign', status: hasCampaign ? 'configured' : 'pending' },
+      { stepId: 'agent_inbound', status: (agentTypeMap.get('reactive_lead') || 0) > 0 ? 'configured' : 'pending' },
+      { stepId: 'agent_outbound', status: (agentTypeMap.get('proactive_setter') || 0) > 0 ? 'configured' : 'pending' },
+      { stepId: 'agent_consultative', status: (agentTypeMap.get('informative_advisor') || 0) > 0 ? 'configured' : 'pending' },
+      { stepId: 'agent_public_link', status: hasPublicLink ? 'configured' : 'pending' },
+      { stepId: 'agent_ideas', status: hasIdeas ? 'configured' : 'pending' },
+      { stepId: 'more_templates', status: hasMoreTemplates ? 'configured' : 'pending' },
+      { stepId: 'first_course', status: hasCourse ? 'configured' : 'pending' },
+      { stepId: 'first_exercise', status: hasExercise ? 'configured' : 'pending' },
+      { stepId: 'knowledge_base', status: documentsCount > 0 ? 'configured' : 'pending' },
+      { stepId: 'summary_email', status: hasSummaryEmail ? 'verified' : 'pending' },
+      { stepId: 'turn_config', status: !!turnConfig?.usernameEncrypted ? 'configured' : 'pending' },
+      { stepId: 'lead_import', status: hasLeadImport ? 'configured' : 'pending' },
+    ];
+    
+    res.json({
+      success: true,
+      data: statuses,
+    });
+  } catch (error: any) {
+    console.error('Error fetching onboarding status for AI:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch onboarding status for AI',
+    });
+  }
+});
+
 router.put('/status/:step', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
