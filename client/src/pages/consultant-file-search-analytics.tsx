@@ -88,6 +88,8 @@ import {
   Pie,
   Cell
 } from "recharts";
+import { format, formatDistanceToNow } from "date-fns";
+import { it } from "date-fns/locale";
 
 interface FileSearchSettings {
   id: string;
@@ -828,6 +830,68 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
+  const { data: memoryStats } = useQuery<{
+    totalSummaries: number;
+    usersWithMemory: number;
+    totalUsers: number;
+    averageTokensPerUser: number;
+    coveragePercent: number;
+  }>({
+    queryKey: ["/api/consultant/ai/memory-stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/ai/memory-stats", {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch memory stats");
+      return res.json();
+    },
+  });
+
+  const { data: memoryAudit } = useQuery<Array<{
+    userId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    totalDays: number;
+    coveredDays: number;
+    missingDays: number;
+    lastSummaryDate: string | null;
+    status: 'complete' | 'partial' | 'missing';
+  }>>({
+    queryKey: ["/api/consultant/ai/memory-audit"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/ai/memory-audit", {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch memory audit");
+      return res.json();
+    },
+  });
+
+  const { data: memoryLogs } = useQuery<Array<{
+    id: number;
+    userId: string;
+    targetUserId: string | null;
+    generationType: string;
+    summariesGenerated: number;
+    conversationsAnalyzed: number;
+    tokensUsed: number;
+    durationMs: number;
+    errors: string[];
+    createdAt: string | null;
+    targetUserName?: string;
+  }>>({
+    queryKey: ["/api/consultant/ai/memory-generation-logs"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/ai/memory-generation-logs", {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch memory logs");
+      return res.json();
+    },
+  });
+
   const updateClientFileSearchMutation = useMutation({
     mutationFn: async ({ clientId, fileSearchEnabled }: { clientId: string; fileSearchEnabled: boolean }) => {
       const response = await fetch(`/api/file-search/clients/${clientId}`, {
@@ -1055,6 +1119,27 @@ export default function ConsultantFileSearchAnalyticsPage() {
         variant: "destructive",
       });
     },
+  });
+
+  const generateUserMemoryMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch("/api/consultant/ai/memory-audit/generate", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ userId })
+      });
+      if (!res.ok) throw new Error("Failed to generate memory");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Memoria generata", description: data.message });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-generation-logs"] });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile generare memoria", variant: "destructive" });
+    }
   });
 
   const resetStoresMutation = useMutation({
@@ -1442,6 +1527,10 @@ export default function ConsultantFileSearchAnalyticsPage() {
                 <TabsTrigger value="history">
                   <History className="h-4 w-4 mr-1" />
                   Storico
+                </TabsTrigger>
+                <TabsTrigger value="memory">
+                  <Brain className="h-4 w-4 mr-1" />
+                  Memoria AI
                 </TabsTrigger>
               </TabsList>
 
@@ -5426,6 +5515,273 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="memory" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-500">Riassunti Totali</p>
+                          <p className="text-2xl font-bold text-purple-600">
+                            {memoryStats?.totalSummaries || 0}
+                          </p>
+                        </div>
+                        <div className="bg-purple-100 p-3 rounded-lg">
+                          <Brain className="h-6 w-6 text-purple-600" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-500">Utenti con Memoria</p>
+                          <p className="text-2xl font-bold text-emerald-600">
+                            {memoryStats?.usersWithMemory || 0}/{memoryStats?.totalUsers || 0}
+                          </p>
+                        </div>
+                        <div className="bg-emerald-100 p-3 rounded-lg">
+                          <Users className="h-6 w-6 text-emerald-600" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-500">Token Medi/Utente</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {(memoryStats?.averageTokensPerUser || 0).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="bg-blue-100 p-3 rounded-lg">
+                          <Zap className="h-6 w-6 text-blue-600" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-500">Copertura</p>
+                          <p className="text-2xl font-bold text-amber-600">
+                            {memoryStats?.coveragePercent || 0}%
+                          </p>
+                        </div>
+                        <div className="bg-amber-100 p-3 rounded-lg">
+                          <TrendingUp className="h-6 w-6 text-amber-600" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-blue-100 p-2 rounded-lg">
+                        <CalendarClock className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-blue-800">Generazione Automatica</h3>
+                        <p className="text-blue-700 text-sm mt-1">
+                          La memoria AI viene generata automaticamente ogni notte alle 03:00. 
+                          I riassunti delle conversazioni vengono memorizzati nel system prompt 
+                          per fornire contesto personalizzato all'assistente AI di ogni utente.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-gray-600" />
+                      Audit Memoria Utenti
+                    </CardTitle>
+                    <CardDescription>
+                      Stato della memoria AI per ogni utente
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left p-3 font-medium">Nome</th>
+                            <th className="text-left p-3 font-medium">Ruolo</th>
+                            <th className="text-center p-3 font-medium">Giorni Totali</th>
+                            <th className="text-center p-3 font-medium">Coperti</th>
+                            <th className="text-center p-3 font-medium">Mancanti</th>
+                            <th className="text-left p-3 font-medium">Ultimo Riassunto</th>
+                            <th className="text-center p-3 font-medium">Status</th>
+                            <th className="text-center p-3 font-medium">Azioni</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {memoryAudit?.map((user) => (
+                            <tr key={user.userId} className="border-b hover:bg-gray-50">
+                              <td className="p-3">
+                                <div className="font-medium">{user.firstName} {user.lastName}</div>
+                                <div className="text-xs text-gray-500">{user.email}</div>
+                              </td>
+                              <td className="p-3 capitalize">{user.role}</td>
+                              <td className="p-3 text-center">{user.totalDays}</td>
+                              <td className="p-3 text-center text-emerald-600 font-medium">{user.coveredDays}</td>
+                              <td className="p-3 text-center text-red-600 font-medium">{user.missingDays}</td>
+                              <td className="p-3">
+                                {user.lastSummaryDate ? (
+                                  <span className="text-gray-600">
+                                    {formatDistanceToNow(new Date(user.lastSummaryDate), { addSuffix: true, locale: it })}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">Mai</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-center">
+                                {user.status === 'complete' && (
+                                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                                    Completo
+                                  </Badge>
+                                )}
+                                {user.status === 'partial' && (
+                                  <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
+                                    Parziale
+                                  </Badge>
+                                )}
+                                {user.status === 'missing' && (
+                                  <Badge className="bg-red-100 text-red-700 border-red-200">
+                                    Mancante
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="p-3 text-center">
+                                {user.missingDays > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => generateUserMemoryMutation.mutate(user.userId)}
+                                    disabled={generateUserMemoryMutation.isPending}
+                                  >
+                                    {generateUserMemoryMutation.isPending ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <RefreshCw className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                          {(!memoryAudit || memoryAudit.length === 0) && (
+                            <tr>
+                              <td colSpan={8} className="p-6 text-center text-gray-500">
+                                Nessun utente trovato
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Collapsible>
+                  <Card>
+                    <CardHeader>
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <History className="h-5 w-5 text-gray-600" />
+                            <CardTitle className="text-lg">Log Generazione</CardTitle>
+                          </div>
+                          <ChevronDown className="h-5 w-5 text-gray-400" />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CardDescription>
+                        Storico delle generazioni automatiche e manuali
+                      </CardDescription>
+                    </CardHeader>
+                    <CollapsibleContent>
+                      <CardContent>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b bg-gray-50">
+                                <th className="text-left p-3 font-medium">Data</th>
+                                <th className="text-center p-3 font-medium">Tipo</th>
+                                <th className="text-left p-3 font-medium">Utente Target</th>
+                                <th className="text-center p-3 font-medium">Riassunti Generati</th>
+                                <th className="text-center p-3 font-medium">Durata</th>
+                                <th className="text-left p-3 font-medium">Errori</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {memoryLogs?.map((log) => (
+                                <tr key={log.id} className="border-b hover:bg-gray-50">
+                                  <td className="p-3">
+                                    {log.createdAt ? (
+                                      format(new Date(log.createdAt), "dd MMM yyyy HH:mm", { locale: it })
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    {log.generationType === 'automatic' ? (
+                                      <Badge variant="secondary" className="bg-gray-100 text-gray-700">
+                                        Automatico
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                                        Manuale
+                                      </Badge>
+                                    )}
+                                  </td>
+                                  <td className="p-3">
+                                    {log.targetUserName || log.targetUserId || (
+                                      <span className="text-gray-400 italic">Tutti gli utenti</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-center font-medium text-emerald-600">
+                                    {log.summariesGenerated}
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    {(log.durationMs / 1000).toFixed(1)}s
+                                  </td>
+                                  <td className="p-3">
+                                    {log.errors && log.errors.length > 0 ? (
+                                      <Badge variant="destructive" className="text-xs">
+                                        {log.errors.length} errori
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-emerald-600">✓</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                              {(!memoryLogs || memoryLogs.length === 0) && (
+                                <tr>
+                                  <td colSpan={6} className="p-6 text-center text-gray-500">
+                                    Nessun log di generazione trovato
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               </TabsContent>
             </Tabs>
           </div>
