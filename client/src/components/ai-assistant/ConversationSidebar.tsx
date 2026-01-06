@@ -180,11 +180,6 @@ export function ConversationSidebar({
                 )}
               >
                 <Filter className="h-3.5 w-3.5" />
-                {activeFiltersCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-cyan-500 text-white text-[9px] font-bold flex items-center justify-center">
-                    {activeFiltersCount}
-                  </span>
-                )}
               </Button>
               {!isMobile && (
                 <Button
