@@ -50,6 +50,18 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
       return next();
     }
     
+    // Handle Gold tier tokens
+    if (decoded.type === "gold" && decoded.subscriptionId) {
+      console.log(`[AUTH] Gold token detected for subscription: ${decoded.subscriptionId}`);
+      req.user = {
+        id: decoded.subscriptionId,
+        email: decoded.email || "",
+        role: "client" as const,
+        consultantId: decoded.consultantId,
+      };
+      return next();
+    }
+    
     // Handle Manager tokens
     if (decoded.role === "manager" && decoded.managerId) {
       console.log(`[AUTH] Manager token detected for manager: ${decoded.managerId}`);

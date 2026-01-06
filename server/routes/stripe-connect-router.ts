@@ -1,6 +1,6 @@
 import express, { Router, Request, Response } from "express";
 import { db } from "../db";
-import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig, managerConversations, managerMessages } from "@shared/schema";
+import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig, managerConversations, managerMessages, whatsappAgentConsultantConversations } from "@shared/schema";
 import { eq, sql, isNotNull, desc, and } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 import { decrypt } from "../encryption";
@@ -926,17 +926,46 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
               .where(eq(whatsappAgentShares.agentConfigId, agentId))
               .limit(1) : [];
             
+            // MIGRATION 1: Migrate from managerConversations (legacy)
             const updateData: { managerId: string; shareId?: string } = { managerId: subscription.id };
             if (agentShare) {
               updateData.shareId = agentShare.id;
             }
             
-            const migratedConversations = await db.update(managerConversations)
+            const migratedManagerConversations = await db.update(managerConversations)
               .set(updateData)
               .where(eq(managerConversations.managerId, existingBronzeUser.id))
               .returning({ id: managerConversations.id });
             
-            console.log(`[Stripe Webhook] Migrated ${migratedConversations.length} conversations from Bronze ${existingBronzeUser.id} to Silver/Gold ${subscription.id}${agentShare ? ` with shareId ${agentShare.id}` : ''}`);
+            console.log(`[Stripe Webhook] Migrated ${migratedManagerConversations.length} manager_conversations from Bronze ${existingBronzeUser.id} to Silver/Gold ${subscription.id}`);
+            
+            // MIGRATION 2: Migrate from whatsappAgentConsultantConversations (actual Bronze conversations)
+            // Bronze conversations have externalVisitorId format: manager_${bronzeUserId}_${timestamp}
+            // and shareId is NULL
+            const bronzeConversations = await db.select({ id: whatsappAgentConsultantConversations.id, externalVisitorId: whatsappAgentConsultantConversations.externalVisitorId })
+              .from(whatsappAgentConsultantConversations)
+              .where(
+                and(
+                  sql`${whatsappAgentConsultantConversations.externalVisitorId} LIKE ${'manager_' + existingBronzeUser.id + '_%'}`,
+                  sql`${whatsappAgentConsultantConversations.shareId} IS NULL`
+                )
+              );
+            
+            if (bronzeConversations.length > 0 && agentShare) {
+              // Update shareId to link conversations to the new Silver/Gold share
+              await db.update(whatsappAgentConsultantConversations)
+                .set({ shareId: agentShare.id })
+                .where(
+                  and(
+                    sql`${whatsappAgentConsultantConversations.externalVisitorId} LIKE ${'manager_' + existingBronzeUser.id + '_%'}`,
+                    sql`${whatsappAgentConsultantConversations.shareId} IS NULL`
+                  )
+                );
+              
+              console.log(`[Stripe Webhook] Migrated ${bronzeConversations.length} whatsapp_conversations from Bronze ${existingBronzeUser.id} with shareId ${agentShare.id}`);
+            } else {
+              console.log(`[Stripe Webhook] No Bronze whatsapp_conversations found for ${existingBronzeUser.id} (or no agentShare)`);
+            }
           } catch (migrationError: any) {
             console.error(`[Stripe Webhook] Failed to migrate conversations:`, migrationError.message);
           }
