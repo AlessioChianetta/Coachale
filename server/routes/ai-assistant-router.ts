@@ -615,4 +615,232 @@ ${instructions}`;
   }
 });
 
+/**
+ * GET /api/ai-assistant/agent/:agentId/suggestions
+ * Get AI-generated personalized suggestions for an agent's welcome screen
+ * If suggestions don't exist, generate them using Gemini based on agent's brand voice
+ */
+router.get("/agent/:agentId/suggestions", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { agentId } = req.params;
+    const userId = req.user!.id;
+
+    // Get the agent configuration
+    const [agent] = await db.select()
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.id, agentId))
+      .limit(1);
+
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    // If suggestions already exist, return them
+    if (agent.aiAssistantSuggestions && Array.isArray(agent.aiAssistantSuggestions) && agent.aiAssistantSuggestions.length > 0) {
+      console.log(`✅ [AI SUGGESTIONS] Returning cached suggestions for agent ${agentId}`);
+      return res.json({ suggestions: agent.aiAssistantSuggestions, source: "cached" });
+    }
+
+    // Generate new suggestions using AI
+    console.log(`🔄 [AI SUGGESTIONS] Generating new suggestions for agent ${agentId}`);
+
+    const { getAIProvider, getModelWithThinking } = await import("../ai/provider-factory");
+    
+    // Use consultant's AI provider
+    const providerResult = await getAIProvider(agent.consultantId, agent.consultantId);
+    
+    if (!providerResult || !providerResult.client) {
+      // Return default suggestions if AI not available
+      const defaultSuggestions = getDefaultSuggestions();
+      return res.json({ suggestions: defaultSuggestions, source: "default" });
+    }
+
+    // Build context from agent's brand voice
+    const brandContext = buildBrandContext(agent);
+
+    const systemPrompt = `Sei un esperto di UX design e copywriting. Il tuo compito è creare 4 suggerimenti personalizzati per la schermata di benvenuto di un assistente AI.
+
+Questi suggerimenti appariranno come pulsanti cliccabili che l'utente può selezionare per iniziare una conversazione con l'assistente.
+
+INFORMAZIONI SUL BRAND E AGENTE:
+${brandContext}
+
+REGOLE CRITICHE:
+1. Crea ESATTAMENTE 4 suggerimenti
+2. Ogni suggerimento deve essere rilevante per il tipo di business e target del brand
+3. I suggerimenti devono essere domande o richieste che un cliente tipico farebbe
+4. Usa un tono coerente con la personalità dell'agente
+5. Label: max 3-4 parole (es: "I miei obiettivi")
+6. Prompt: una frase completa che sarà inviata all'AI (max 60 caratteri)
+
+FORMATO OUTPUT (JSON valido, nessun altro testo):
+[
+  {
+    "icon": "target",
+    "label": "Titolo breve",
+    "prompt": "Frase completa da inviare all'AI",
+    "gradient": "from-cyan-500 to-teal-500"
+  }
+]
+
+ICONE DISPONIBILI: "target", "book", "message", "lightbulb", "trending", "sparkles"
+GRADIENTI DISPONIBILI: 
+- "from-cyan-500 to-teal-500"
+- "from-teal-500 to-emerald-500"  
+- "from-slate-500 to-cyan-500"
+- "from-cyan-600 to-teal-600"
+
+Rispondi SOLO con il JSON valido, nessun testo aggiuntivo.`;
+
+    const { model } = getModelWithThinking(providerResult.metadata.name);
+
+    const result = await providerResult.client.generateContent({
+      model,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: "Genera 4 suggerimenti personalizzati per la welcome screen basandoti sulle informazioni del brand fornite." }],
+        },
+      ],
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1000,
+      },
+    });
+
+    const responseText = result.response.text()?.trim() || "";
+    
+    let suggestions;
+    try {
+      // Extract JSON from response (handle markdown code blocks)
+      let jsonText = responseText;
+      if (responseText.includes("```")) {
+        const match = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (match) {
+          jsonText = match[1].trim();
+        }
+      }
+      suggestions = JSON.parse(jsonText);
+      
+      // Validate structure
+      if (!Array.isArray(suggestions) || suggestions.length !== 4) {
+        throw new Error("Invalid suggestions format");
+      }
+    } catch (parseError) {
+      console.error("[AI SUGGESTIONS] Failed to parse AI response:", parseError);
+      suggestions = getDefaultSuggestions();
+      return res.json({ suggestions, source: "default" });
+    }
+
+    // Save suggestions to database
+    await db.update(consultantWhatsappConfig)
+      .set({ 
+        aiAssistantSuggestions: suggestions,
+        updatedAt: new Date()
+      })
+      .where(eq(consultantWhatsappConfig.id, agentId));
+
+    console.log(`✅ [AI SUGGESTIONS] Generated and saved ${suggestions.length} suggestions for agent ${agentId}`);
+
+    res.json({ suggestions, source: "generated" });
+  } catch (error: any) {
+    console.error("[AI Assistant] Error getting suggestions:", error);
+    res.status(500).json({ error: error.message || "Errore nel recupero dei suggerimenti" });
+  }
+});
+
+/**
+ * DELETE /api/ai-assistant/agent/:agentId/suggestions
+ * Clear cached suggestions to force regeneration
+ */
+router.delete("/agent/:agentId/suggestions", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const { agentId } = req.params;
+    const consultantId = req.user!.id;
+
+    // Verify ownership
+    const [agent] = await db.select()
+      .from(consultantWhatsappConfig)
+      .where(and(
+        eq(consultantWhatsappConfig.id, agentId),
+        eq(consultantWhatsappConfig.consultantId, consultantId)
+      ))
+      .limit(1);
+
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found or not owned by you" });
+    }
+
+    await db.update(consultantWhatsappConfig)
+      .set({ 
+        aiAssistantSuggestions: null,
+        updatedAt: new Date()
+      })
+      .where(eq(consultantWhatsappConfig.id, agentId));
+
+    console.log(`🗑️ [AI SUGGESTIONS] Cleared suggestions for agent ${agentId}`);
+
+    res.json({ success: true, message: "Suggestions cleared, will regenerate on next visit" });
+  } catch (error: any) {
+    console.error("[AI Assistant] Error clearing suggestions:", error);
+    res.status(500).json({ error: error.message || "Errore nella cancellazione dei suggerimenti" });
+  }
+});
+
+// Helper function to build brand context from agent config
+function buildBrandContext(agent: any): string {
+  const parts: string[] = [];
+  
+  if (agent.agentName) parts.push(`Nome Agente: ${agent.agentName}`);
+  if (agent.businessName) parts.push(`Business: ${agent.businessName}`);
+  if (agent.businessDescription) parts.push(`Descrizione: ${agent.businessDescription}`);
+  if (agent.mission) parts.push(`Mission: ${agent.mission}`);
+  if (agent.vision) parts.push(`Vision: ${agent.vision}`);
+  if (agent.usp) parts.push(`USP: ${agent.usp}`);
+  if (agent.whoWeHelp) parts.push(`Chi aiutiamo: ${agent.whoWeHelp}`);
+  if (agent.whatWeDo) parts.push(`Cosa facciamo: ${agent.whatWeDo}`);
+  if (agent.howWeDoIt) parts.push(`Come lo facciamo: ${agent.howWeDoIt}`);
+  if (agent.aiPersonality) parts.push(`Personalità AI: ${agent.aiPersonality}`);
+  if (agent.selectedTemplate) parts.push(`Template: ${agent.selectedTemplate}`);
+  if (agent.agentType) parts.push(`Tipo agente: ${agent.agentType}`);
+  
+  if (agent.servicesOffered && Array.isArray(agent.servicesOffered)) {
+    const services = agent.servicesOffered.map((s: any) => s.name).join(", ");
+    if (services) parts.push(`Servizi offerti: ${services}`);
+  }
+
+  return parts.length > 0 ? parts.join("\n") : "Assistente AI generico per consulenza";
+}
+
+// Default suggestions fallback
+function getDefaultSuggestions() {
+  return [
+    {
+      icon: "target" as const,
+      label: "I miei obiettivi",
+      prompt: "Mostrami un riepilogo dei miei obiettivi e progressi",
+      gradient: "from-cyan-500 to-teal-500",
+    },
+    {
+      icon: "book" as const,
+      label: "Cosa studiare oggi",
+      prompt: "Quale lezione dovrei studiare oggi?",
+      gradient: "from-teal-500 to-emerald-500",
+    },
+    {
+      icon: "trending" as const,
+      label: "I miei progressi",
+      prompt: "Analizza i miei progressi nelle ultime settimane",
+      gradient: "from-slate-500 to-cyan-500",
+    },
+    {
+      icon: "lightbulb" as const,
+      label: "Esercizi pendenti",
+      prompt: "Quali esercizi ho ancora da completare?",
+      gradient: "from-cyan-600 to-teal-600",
+    },
+  ];
+}
+
 export default router;
