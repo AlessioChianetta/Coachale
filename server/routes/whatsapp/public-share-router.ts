@@ -749,10 +749,23 @@ router.get(
         // Check if this is a Bronze virtual share (ID starts with "bronze-")
         const isBronzeShare = share.id.startsWith('bronze-');
         
-        console.log(`[CONV DEBUG] managerId: ${managerId}, shareId: ${share.id}, agentConfigId: ${share.agentConfigId}, isBronzeShare: ${isBronzeShare}, pattern: ${managerVisitorPattern}`);
+        // For Silver/Gold users accessing via Bronze slug, we need to find the real share
+        // and search for conversations with either NULL shareId (old Bronze) or the real shareId (migrated)
+        let realShareId: string | null = null;
+        if (isBronzeShare) {
+          const [realShare] = await db
+            .select({ id: schema.whatsappAgentShares.id })
+            .from(schema.whatsappAgentShares)
+            .where(eq(schema.whatsappAgentShares.agentConfigId, share.agentConfigId))
+            .limit(1);
+          realShareId = realShare?.id || null;
+        }
+        
+        console.log(`[CONV DEBUG] managerId: ${managerId}, shareId: ${share.id}, agentConfigId: ${share.agentConfigId}, isBronzeShare: ${isBronzeShare}, realShareId: ${realShareId}, pattern: ${managerVisitorPattern}`);
         
         // Get all conversations for this manager
-        // Bronze shares use NULL shareId in the database
+        // For Bronze virtual shares: search both NULL shareId (old) and real shareId (migrated)
+        // For real shares: search only by that shareId
         const conversations = isBronzeShare
           ? await db
               .select()
@@ -760,7 +773,9 @@ router.get(
               .where(
                 and(
                   eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-                  sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
+                  realShareId 
+                    ? sql`(${schema.whatsappAgentConsultantConversations.shareId} IS NULL OR ${schema.whatsappAgentConsultantConversations.shareId} = ${realShareId})`
+                    : sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
                   sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
                 )
               )
@@ -776,6 +791,8 @@ router.get(
                 )
               )
               .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+        
+        console.log(`[CONV DEBUG] Found ${conversations.length} conversations`);
         
         // If conversationId is specified, get messages for that conversation
         if (conversationId) {
