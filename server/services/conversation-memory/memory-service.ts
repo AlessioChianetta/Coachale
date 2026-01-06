@@ -41,10 +41,9 @@ export class ConversationMemoryService {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - this.config.daysToLookBack);
 
-    // Determina quale colonna di ID usare in base allo scope
-    const idFilter = scope === "consultant" 
-      ? eq(aiConversations.consultantId, userId)
-      : eq(aiConversations.clientId, userId);
+    // aiConversations uses clientId for both consultants and clients
+    // The scope parameter helps with context but the filter is always on clientId
+    const idFilter = eq(aiConversations.clientId, userId);
 
     // Build conditions array, filtering out undefined values
     const conditions = [
@@ -60,6 +59,7 @@ export class ConversationMemoryService {
     let baseQuery = db.select({
       id: aiConversations.id,
       title: aiConversations.title,
+      summary: aiConversations.summary,
       lastMessageAt: aiConversations.lastMessageAt,
       mode: aiConversations.mode,
       agentId: aiConversations.agentId,
@@ -82,7 +82,7 @@ export class ConversationMemoryService {
         return {
           conversationId: conv.id,
           title: conv.title,
-          summary: null, // Summary column will be used when database is synced
+          summary: conv.summary,
           lastMessageAt: conv.lastMessageAt,
           messageCount: messageCountResult[0]?.count || 0,
           mode: conv.mode,
