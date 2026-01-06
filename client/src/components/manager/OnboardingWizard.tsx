@@ -52,6 +52,7 @@ export function OnboardingWizard({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [explanation, setExplanation] = useState<string>("");
+  const [defaultsLoaded, setDefaultsLoaded] = useState(false);
   const [preferences, setPreferences] = useState({
     writingStyle: "default" as "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom",
     responseLength: "balanced" as "short" | "balanced" | "comprehensive",
@@ -61,6 +62,45 @@ export function OnboardingWizard({
   const getToken = () => {
     return localStorage.getItem("manager_token") || localStorage.getItem("token");
   };
+
+  useEffect(() => {
+    const fetchDefaultPreferences = async () => {
+      try {
+        const response = await fetch(`/api/public/agent/${slug}/default-preferences`, {
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.preferences) {
+            const defaults = data.preferences;
+            setPreferences(prev => ({
+              writingStyle: prev.writingStyle === "default" && defaults.writingStyle 
+                ? defaults.writingStyle 
+                : prev.writingStyle,
+              responseLength: prev.responseLength === "balanced" && defaults.responseLength 
+                ? defaults.responseLength 
+                : prev.responseLength,
+              customInstructions: !prev.customInstructions && defaults.customInstructions 
+                ? defaults.customInstructions 
+                : prev.customInstructions,
+            }));
+            console.log("[OnboardingWizard] Pre-filled defaults:", defaults);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch default preferences:", error);
+      } finally {
+        setDefaultsLoaded(true);
+      }
+    };
+
+    if (!defaultsLoaded && (tier === "silver" || tier === "gold")) {
+      fetchDefaultPreferences();
+    }
+  }, [slug, tier, defaultsLoaded]);
 
   useEffect(() => {
     if (currentStep === 1) {

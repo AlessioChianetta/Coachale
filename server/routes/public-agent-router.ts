@@ -12,6 +12,7 @@ import {
   bronzeUsers,
   users,
   clientLevelSubscriptions,
+  consultantLicenses,
 } from "@shared/schema";
 import { getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
@@ -1362,6 +1363,53 @@ router.put(
     } catch (error: any) {
       console.error("[ONBOARDING-PREFERENCES] Error:", error);
       res.status(500).json({ message: "Failed to save onboarding preferences" });
+    }
+  }
+);
+
+router.get(
+  "/:slug/default-preferences",
+  loadShareAndAgent,
+  async (req: ManagerRequest, res: Response) => {
+    try {
+      const agentConfig = req.agentConfig;
+      const share = req.share;
+
+      let consultantId: string | null = null;
+
+      if (share) {
+        consultantId = share.consultantId;
+      } else if (agentConfig) {
+        consultantId = agentConfig.consultantId;
+      }
+
+      if (!consultantId) {
+        return res.json({
+          success: true,
+          preferences: null,
+        });
+      }
+
+      const [license] = await db.select()
+        .from(consultantLicenses)
+        .where(eq(consultantLicenses.consultantId, consultantId))
+        .limit(1);
+
+      const preferences = license?.defaultOnboardingPreferences as {
+        writingStyle?: string;
+        responseLength?: string;
+        customInstructions?: string;
+      } | null;
+
+      console.log(`[DEFAULT-PREFERENCES] Fetched default preferences for consultant ${consultantId}:`, preferences ? "found" : "not set");
+
+      res.json({
+        success: true,
+        preferences: preferences || null,
+      });
+    } catch (error: any) {
+      console.error("[DEFAULT-PREFERENCES] Error:", error);
+      res.status(500).json({ message: "Failed to fetch default preferences" });
     }
   }
 );

@@ -270,6 +270,13 @@ export default function ConsultantWhatsAppPage() {
   const [newPasswordInput, setNewPasswordInput] = useState("");
   const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
 
+  // Stati per Default Onboarding Preferences
+  const [onboardingWritingStyle, setOnboardingWritingStyle] = useState("");
+  const [onboardingResponseLength, setOnboardingResponseLength] = useState("");
+  const [onboardingCustomInstructions, setOnboardingCustomInstructions] = useState("");
+  const [isBulkApplyDialogOpen, setIsBulkApplyDialogOpen] = useState(false);
+  const [bulkApplyTiers, setBulkApplyTiers] = useState<string[]>([]);
+
   // Query per caricare i documenti dalla knowledge base
   const knowledgeDocsQuery = useQuery({
     queryKey: ["/api/consultant/onboarding/knowledge-documents"],
@@ -326,6 +333,83 @@ export default function ConsultantWhatsAppPage() {
       const response = await fetch("/api/consultant/licenses/purchases", { headers: getAuthHeaders() });
       if (!response.ok) return [];
       return response.json();
+    },
+  });
+
+  // Query per caricare le preferenze onboarding predefinite
+  const defaultOnboardingPrefsQuery = useQuery({
+    queryKey: ["/api/consultant/default-onboarding-preferences"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/default-onboarding-preferences", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  // Popola i campi quando i dati vengono caricati
+  useEffect(() => {
+    if (defaultOnboardingPrefsQuery.data) {
+      const prefs = defaultOnboardingPrefsQuery.data;
+      setOnboardingWritingStyle(prefs.writingStyle || "");
+      setOnboardingResponseLength(prefs.responseLength || "");
+      setOnboardingCustomInstructions(prefs.customInstructions || "");
+    }
+  }, [defaultOnboardingPrefsQuery.data]);
+
+  // Mutation per salvare le preferenze onboarding predefinite
+  const saveOnboardingPrefsMutation = useMutation({
+    mutationFn: async (data: { writingStyle: string; responseLength: string; customInstructions: string }) => {
+      const res = await fetch("/api/consultant/default-onboarding-preferences", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to save preferences");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/default-onboarding-preferences"] });
+      toast({
+        title: "✅ Preferenze salvate",
+        description: "Le preferenze di onboarding predefinite sono state aggiornate.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare le preferenze",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation per applicare le preferenze a tutti i clienti
+  const bulkApplyPrefsMutation = useMutation({
+    mutationFn: async (data: { writingStyle: string; responseLength: string; customInstructions: string; targetTiers: string[] }) => {
+      const res = await fetch("/api/consultant/bulk-apply-preferences", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to apply preferences");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setIsBulkApplyDialogOpen(false);
+      setBulkApplyTiers([]);
+      toast({
+        title: "✅ Preferenze applicate",
+        description: `Le preferenze sono state applicate a ${data.updatedCount || 0} clienti.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile applicare le preferenze ai clienti",
+        variant: "destructive",
+      });
     },
   });
 
@@ -3248,6 +3332,202 @@ export default function ConsultantWhatsAppPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Default Onboarding Preferences Card */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-violet-600" />
+                  Preferenze Onboarding Predefinite
+                </CardTitle>
+                <CardDescription>
+                  Imposta le preferenze predefinite che verranno applicate ai nuovi clienti durante l'onboarding
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="writingStyle">Stile di Scrittura</Label>
+                    <Select
+                      value={onboardingWritingStyle}
+                      onValueChange={setOnboardingWritingStyle}
+                    >
+                      <SelectTrigger id="writingStyle">
+                        <SelectValue placeholder="Seleziona stile" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Professionale">Professionale</SelectItem>
+                        <SelectItem value="Amichevole">Amichevole</SelectItem>
+                        <SelectItem value="Formale">Formale</SelectItem>
+                        <SelectItem value="Informale">Informale</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="responseLength">Lunghezza Risposte</Label>
+                    <Select
+                      value={onboardingResponseLength}
+                      onValueChange={setOnboardingResponseLength}
+                    >
+                      <SelectTrigger id="responseLength">
+                        <SelectValue placeholder="Seleziona lunghezza" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Breve">Breve</SelectItem>
+                        <SelectItem value="Media">Media</SelectItem>
+                        <SelectItem value="Dettagliata">Dettagliata</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="customInstructions">Istruzioni Personalizzate</Label>
+                  <Textarea
+                    id="customInstructions"
+                    placeholder="Inserisci istruzioni personalizzate per l'AI durante l'onboarding dei nuovi clienti..."
+                    value={onboardingCustomInstructions}
+                    onChange={(e) => setOnboardingCustomInstructions(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => saveOnboardingPrefsMutation.mutate({
+                      writingStyle: onboardingWritingStyle,
+                      responseLength: onboardingResponseLength,
+                      customInstructions: onboardingCustomInstructions,
+                    })}
+                    disabled={saveOnboardingPrefsMutation.isPending}
+                  >
+                    {saveOnboardingPrefsMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvataggio...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Salva Preferenze
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsBulkApplyDialogOpen(true)}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Applica a Tutti i Clienti
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bulk Apply Preferences Dialog */}
+            <Dialog open={isBulkApplyDialogOpen} onOpenChange={setIsBulkApplyDialogOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Applica Preferenze ai Clienti</DialogTitle>
+                  <DialogDescription>
+                    Seleziona i tier a cui applicare le preferenze di onboarding correnti
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="tier-bronze"
+                        checked={bulkApplyTiers.includes("bronze")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setBulkApplyTiers([...bulkApplyTiers, "bronze"]);
+                          } else {
+                            setBulkApplyTiers(bulkApplyTiers.filter(t => t !== "bronze"));
+                          }
+                        }}
+                      />
+                      <Label htmlFor="tier-bronze" className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-amber-600" />
+                        Bronze
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="tier-silver"
+                        checked={bulkApplyTiers.includes("silver")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setBulkApplyTiers([...bulkApplyTiers, "silver"]);
+                          } else {
+                            setBulkApplyTiers(bulkApplyTiers.filter(t => t !== "silver"));
+                          }
+                        }}
+                      />
+                      <Label htmlFor="tier-silver" className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-slate-600" />
+                        Silver
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="tier-gold"
+                        checked={bulkApplyTiers.includes("gold")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setBulkApplyTiers([...bulkApplyTiers, "gold"]);
+                          } else {
+                            setBulkApplyTiers(bulkApplyTiers.filter(t => t !== "gold"));
+                          }
+                        }}
+                      />
+                      <Label htmlFor="tier-gold" className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-yellow-600" />
+                        Gold
+                      </Label>
+                    </div>
+                  </div>
+                  
+                  {bulkApplyTiers.length > 0 && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Le preferenze verranno applicate a tutti i clienti dei tier selezionati.
+                        Questa azione sovrascriverà le preferenze esistenti.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsBulkApplyDialogOpen(false)}>
+                    Annulla
+                  </Button>
+                  <Button
+                    onClick={() => bulkApplyPrefsMutation.mutate({
+                      writingStyle: onboardingWritingStyle,
+                      responseLength: onboardingResponseLength,
+                      customInstructions: onboardingCustomInstructions,
+                      targetTiers: bulkApplyTiers,
+                    })}
+                    disabled={bulkApplyTiers.length === 0 || bulkApplyPrefsMutation.isPending}
+                  >
+                    {bulkApplyPrefsMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Applicazione...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Applica
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
       </div>
