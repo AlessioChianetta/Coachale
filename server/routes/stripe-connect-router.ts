@@ -645,17 +645,27 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       newPriceId: newPriceObj.id,
     });
     
-    await stripe.subscriptions.update(existingSubscription.stripeSubscriptionId, {
+    // Use always_invoice to charge the proration difference immediately
+    const updatedSubscription = await stripe.subscriptions.update(existingSubscription.stripeSubscriptionId, {
       items: [{
         id: stripeSubscription.items.data[0].id,
         price: newPriceObj.id,
       }],
-      proration_behavior: "create_prorations",
+      proration_behavior: "always_invoice",
+      payment_behavior: "error_if_incomplete",
       metadata: {
         level: targetLevel,
         upgradedAt: new Date().toISOString(),
       },
     });
+    
+    // Check if the invoice was paid successfully
+    if (updatedSubscription.status !== "active") {
+      console.error("[Stripe Upgrade] Subscription update failed, status:", updatedSubscription.status);
+      return res.status(400).json({ error: "Payment failed. Please check your payment method." });
+    }
+    
+    console.log("[Stripe Upgrade] Proration invoice created and paid, subscription status:", updatedSubscription.status);
     
     // Validate subscription ID before database update
     const subscriptionIdStr = String(existingSubscription.id || "").trim();
