@@ -12,6 +12,7 @@ interface ConsultantAIAssistantProps {
   conversationId?: string;
   templateId?: string;
   campaignId?: string;
+  isOnboardingMode?: boolean;
 }
 
 export function ConsultantAIAssistant(props: ConsultantAIAssistantProps) {
@@ -99,6 +100,7 @@ export function ConsultantAIAssistant(props: ConsultantAIAssistantProps) {
         isConsultantMode={true} // NEW: Flag to indicate consultant mode
         autoMessage={autoMessage}
         onAutoMessageSent={handleAutoMessageSent}
+        isOnboardingMode={props.isOnboardingMode}
       />
     </>
   );

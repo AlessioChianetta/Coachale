@@ -580,6 +580,7 @@ function CredentialNotesCard({ stepId }: { stepId: string }) {
 export default function ConsultantSetupWizard() {
   const [activeStep, setActiveStep] = useState<string>("vertex_ai");
   const [testingStep, setTestingStep] = useState<string | null>(null);
+  const [isOnboardingMode, setIsOnboardingMode] = useState<boolean>(false);
   const previousCompletedRef = useRef<number>(0);
   const { toast } = useToast();
 
@@ -1577,7 +1578,20 @@ export default function ConsultantSetupWizard() {
           </div>
         </div>
       </main>
-      <ConsultantAIAssistant />
+      <ConsultantAIAssistant isOnboardingMode={isOnboardingMode} />
+      
+      {/* Onboarding Assistant Button */}
+      <div className="fixed bottom-28 right-6 z-[55]">
+        <Button
+          size="sm"
+          variant={isOnboardingMode ? "default" : "outline"}
+          onClick={() => setIsOnboardingMode(!isOnboardingMode)}
+          className="shadow-lg gap-2"
+        >
+          <Bot className="h-4 w-4" />
+          {isOnboardingMode ? "Modalità Onboarding Attiva" : "Assistente Onboarding"}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -48,6 +48,7 @@ interface ChatPanelProps {
   autoMessage?: string | null; // Auto-send message when opening from document focus
   onAutoMessageSent?: () => void; // Callback after auto message is sent
   embedded?: boolean;
+  isOnboardingMode?: boolean; // Specialized mode for setup wizard assistance
 }
 
 // Funzione placeholder per stimare i token (da implementare o sostituire con una libreria)
@@ -75,7 +76,8 @@ export function ChatPanel({
   isConsultantMode = false,
   autoMessage = null,
   onAutoMessageSent,
-  embedded = false
+  embedded = false,
+  isOnboardingMode = false
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>();
@@ -291,6 +293,7 @@ export function ChatPanel({
                 title: focusedDocument.title,
                 category: focusedDocument.category,
               } : undefined,
+              isOnboardingMode: isOnboardingMode,
             }
             : {
               // Client endpoint payload
