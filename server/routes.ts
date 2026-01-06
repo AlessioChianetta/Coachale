@@ -10854,6 +10854,29 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // Delete all daily summaries for regeneration
+  app.delete("/api/consultant/ai/daily-summaries", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { aiDailySummaries } = await import("@shared/schema");
+      
+      const deleted = await db
+        .delete(aiDailySummaries)
+        .where(eq(aiDailySummaries.userId, req.user!.id))
+        .returning({ id: aiDailySummaries.id });
+
+      console.log(`🗑️ [Memory] Deleted ${deleted.length} daily summaries for user ${req.user!.id}`);
+
+      res.json({ 
+        success: true, 
+        deleted: deleted.length,
+        message: `Eliminati ${deleted.length} riassunti giornalieri`
+      });
+    } catch (error: any) {
+      console.error("Error deleting daily summaries:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Generate daily summaries with SSE streaming progress
   app.get("/api/consultant/ai/generate-daily-summaries-stream", async (req: AuthRequest, res) => {
     // Handle token from query parameter for SSE

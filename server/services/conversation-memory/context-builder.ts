@@ -168,9 +168,14 @@ export class ConversationContextBuilder {
     contextParts.push("- Evitare di ripetere informazioni già fornite");
     contextParts.push("");
 
+    const contextText = contextParts.join("\n");
+    const estimatedTokens = Math.ceil(contextText.length / 4);
+    
+    console.log(`🧠 [Memory Context] Daily summaries: ${dailySummaries.length} days, ${contextText.length} chars, ~${estimatedTokens} tokens`);
+
     return {
       hasHistory: true,
-      contextText: contextParts.join("\n"),
+      contextText,
       conversationCount: dailySummaries.reduce((sum, s) => sum + s.conversationCount, 0),
     };
   }

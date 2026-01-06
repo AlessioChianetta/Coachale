@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Brain, Calendar, MessageSquare, Loader2, RefreshCw, Sparkles, 
-  ChevronDown, ChevronUp, Hash, Tag, X, CalendarDays, CheckCircle2, Clock
+  ChevronDown, ChevronUp, Hash, Tag, X, CalendarDays, CheckCircle2, Clock, Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +90,7 @@ interface ConversationMemoryPanelProps {
 export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryPanelProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
   const [progressLog, setProgressLog] = useState<string[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -155,6 +156,53 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
       setIsGenerating(false);
       setProgress({ type: "error", message: "Connessione persa" });
     };
+  };
+
+  const deleteAllSummaries = async () => {
+    if (!confirm("Vuoi eliminare tutti i riassunti? Potrai rigenerarli dopo.")) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/consultant/ai/daily-summaries", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) throw new Error("Errore durante l'eliminazione");
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/daily-summaries"] });
+    } catch (error) {
+      console.error("Error deleting summaries:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const deleteAndRegenerate = async () => {
+    if (!confirm("Vuoi eliminare e rigenerare tutti i riassunti? Questa operazione potrebbe richiedere alcuni minuti.")) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/consultant/ai/daily-summaries", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) throw new Error("Errore durante l'eliminazione");
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/daily-summaries"] });
+      setIsDeleting(false);
+      
+      // Start regeneration
+      startGeneration();
+    } catch (error) {
+      console.error("Error deleting summaries:", error);
+      setIsDeleting(false);
+    }
   };
 
   const toggleExpanded = (id: string) => {
@@ -262,24 +310,53 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={startGeneration}
-            >
-              <Sparkles className="h-4 w-4 text-purple-500" />
-              Genera riassunti
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => refetch()}
-              disabled={isFetching}
-            >
-              <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={startGeneration}
+                disabled={isDeleting}
+              >
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                Genera
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                onClick={deleteAndRegenerate}
+                disabled={isDeleting || dailySummaries.length === 0}
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Rigenera
+              </Button>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                onClick={deleteAllSummaries}
+                disabled={isDeleting || dailySummaries.length === 0}
+                title="Elimina tutti i riassunti"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => refetch()}
+                disabled={isFetching}
+              >
+                <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
+              </Button>
+            </div>
           </div>
         )}
       </div>
