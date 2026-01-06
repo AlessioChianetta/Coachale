@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -78,7 +78,11 @@ export default function BronzeAuth() {
     password: "",
   });
 
-  const { data, isLoading, error } = useQuery<PricingData>({
+  // Track pending navigation after auth success
+  const [pendingNavigation, setPendingNavigation] = useState(false);
+  const pendingUserNameRef = useRef<string | undefined>(undefined);
+
+  const { data, isLoading, error, refetch } = useQuery<PricingData>({
     queryKey: ["/api/public/consultant", slug, "pricing"],
     queryFn: async () => {
       const response = await fetch(`/api/public/consultant/${slug}/pricing`);
@@ -97,30 +101,38 @@ export default function BronzeAuth() {
   // Get all level 1 agents for Bronze tier
   const level1Agents = data?.agents.filter(a => a.level === "1") || [];
 
-  const handleAuthSuccess = (token: string, userName?: string) => {
+  // Handle navigation after data is loaded when pendingNavigation is true
+  useEffect(() => {
+    if (pendingNavigation && data && !isLoading) {
+      const agents = data.agents.filter(a => a.level === "1");
+      
+      if (agents.length > 1) {
+        navigate(`/c/${slug}/select-agent`);
+      } else if (agents.length === 1 && agents[0].publicSlug) {
+        navigate(`/agent/${agents[0].publicSlug}/chat`);
+      } else {
+        toast({
+          title: "Accesso completato",
+          description: "Nessun agente disponibile al momento.",
+        });
+      }
+      
+      setPendingNavigation(false);
+    }
+  }, [pendingNavigation, data, isLoading, slug, navigate, toast]);
+
+  const handleAuthSuccess = async (token: string, userName?: string) => {
     localStorage.setItem(BRONZE_TOKEN_KEY, token);
     // Set tier info for select-agent page
     localStorage.setItem("bronzeUserTier", "1");
     if (userName) {
       localStorage.setItem("bronzeUserName", userName);
+      pendingUserNameRef.current = userName;
     }
     
-    // Navigate based on agent count:
-    // - Multiple agents: go to selection page
-    // - Single agent: go directly to that agent
-    // - No agents: show message
-    if (level1Agents.length > 1) {
-      // Multiple agents available - go to selection page
-      navigate(`/c/${slug}/select-agent`);
-    } else if (level1Agents.length === 1 && level1Agents[0].publicSlug) {
-      // Single agent - go directly
-      navigate(`/agent/${level1Agents[0].publicSlug}/chat`);
-    } else {
-      toast({
-        title: "Accesso completato",
-        description: "Nessun agente disponibile al momento.",
-      });
-    }
+    // Refetch agents data to ensure we have the latest list, then navigate
+    setPendingNavigation(true);
+    await refetch();
   };
 
   const registerMutation = useMutation({

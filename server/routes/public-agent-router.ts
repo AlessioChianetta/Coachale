@@ -1390,6 +1390,27 @@ router.get(
         });
       }
 
+      // Security: Require authentication and validate tenant ownership
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (!token) {
+        // No token provided - require authentication
+        console.log(`[DEFAULT-PREFERENCES] No token provided, returning 401`);
+        return res.status(401).json({ success: false, error: "Authentication required" });
+      }
+      
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        // Check if user's consultantId matches the agent's consultant
+        if (decoded.consultantId && decoded.consultantId !== consultantId) {
+          console.log(`[DEFAULT-PREFERENCES] Access denied: token consultantId ${decoded.consultantId} does not match agent consultantId ${consultantId}`);
+          return res.status(403).json({ success: false, error: "Access denied" });
+        }
+      } catch (tokenError) {
+        // Invalid token - require valid authentication
+        console.log(`[DEFAULT-PREFERENCES] Invalid or expired token, returning 401`);
+        return res.status(401).json({ success: false, error: "Invalid or expired token" });
+      }
+
       const [license] = await db.select()
         .from(consultantLicenses)
         .where(eq(consultantLicenses.consultantId, consultantId))
