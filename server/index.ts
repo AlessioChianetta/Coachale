@@ -19,6 +19,7 @@ import { setupVideoCopilotWebSocket } from "./websocket/video-ai-copilot";
 import { initFollowupScheduler } from "./cron/followup-scheduler";
 import { initInstagramWindowCleanup } from "./cron/instagram-window-cleanup";
 import { initFileSearchScheduler } from "./cron/file-search-scheduler";
+import { initMemorySummaryScheduler } from "./cron/memory-summary-scheduler";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -371,6 +372,17 @@ app.use((req, res, next) => {
     log("✅ File Search scheduled sync started");
   } else {
     log("📅 File Search scheduled sync is disabled (set FILE_SEARCH_SYNC_ENABLED=true to enable)");
+  }
+
+  // Setup Memory Summary Scheduler (Daily at 03:00 Italian time)
+  const memorySummaryEnabled = process.env.MEMORY_SUMMARY_ENABLED !== "false";
+  
+  if (memorySummaryEnabled) {
+    log("🧠 Memory summary scheduler enabled - starting scheduler (03:00 Europe/Rome)...");
+    initMemorySummaryScheduler();
+    log("✅ Memory summary scheduler started");
+  } else {
+    log("🧠 Memory summary scheduler is disabled (set MEMORY_SUMMARY_ENABLED=true to enable)");
   }
 
   // Setup Finance Data Pre-fetch Scheduler (Daily at 6:00 AM)
