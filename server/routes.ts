@@ -529,7 +529,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           const activeProfile = profiles[0];
-          const token = jwt.sign({ userId: goldUser.id, profileId: activeProfile.id }, JWT_SECRET, { expiresIn: '7d' });
+          
+          // Create JWT with subscriptionId for compatibility with Bronze/Silver conversation/preference system
+          const token = jwt.sign({ 
+            userId: goldUser.id, 
+            profileId: activeProfile.id,
+            subscriptionId: goldSubscription.id,
+            consultantId: goldSubscription.consultantId,
+            email: goldUser.email,
+            type: "gold"
+          }, JWT_SECRET, { expiresIn: '7d' });
 
           return res.json({
             message: "Login successful",
@@ -545,6 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               isActive: goldUser.isActive,
               profileId: activeProfile.id,
               consultantId: activeProfile.consultantId || goldUser.consultantId,
+              subscriptionId: goldSubscription.id,
               tier: "gold",
             },
           });
