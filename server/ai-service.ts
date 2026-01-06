@@ -4474,17 +4474,16 @@ export async function getConsultantConversationMessages(conversationId: string, 
     .select({
       id: aiConversations.id,
       clientId: aiConversations.clientId,
-      consultantId: aiConversations.consultantId,
+      salesConversationId: aiConversations.salesConversationId,
+      agentId: aiConversations.agentId,
       mode: aiConversations.mode,
       consultantType: aiConversations.consultantType,
       title: aiConversations.title,
+      summary: aiConversations.summary,
       isActive: aiConversations.isActive,
       lastMessageAt: aiConversations.lastMessageAt,
       createdAt: aiConversations.createdAt,
       updatedAt: aiConversations.updatedAt,
-      agentId: aiConversations.agentId,
-      managerId: aiConversations.managerId,
-      shareId: aiConversations.shareId,
     })
     .from(aiConversations)
     .where(and(
