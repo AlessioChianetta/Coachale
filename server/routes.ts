@@ -11147,6 +11147,116 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
   // ========================================
+  // MEMORY AUDIT ENDPOINTS
+  // ========================================
+
+  // Get memory audit (status per user)
+  app.get("/api/consultant/ai/memory-audit", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { conversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const daysBack = parseInt(req.query.daysBack as string) || 30;
+      const audit = await conversationMemoryService.getMemoryAudit(req.user!.id, daysBack);
+      res.json(audit);
+    } catch (error: any) {
+      console.error("Error fetching memory audit:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get global memory stats
+  app.get("/api/consultant/ai/memory-stats", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { conversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const stats = await conversationMemoryService.getMemoryStats(req.user!.id);
+      res.json(stats);
+    } catch (error: any) {
+      console.error("Error fetching memory stats:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get generation logs history
+  app.get("/api/consultant/ai/memory-generation-logs", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { conversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const limit = parseInt(req.query.limit as string) || 50;
+      const logs = await conversationMemoryService.getGenerationLogs(req.user!.id, limit);
+      res.json(logs);
+    } catch (error: any) {
+      console.error("Error fetching generation logs:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Generate memory for a specific user (with logging)
+  app.post("/api/consultant/ai/memory-audit/generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "userId is required" });
+      }
+
+      const startTime = Date.now();
+      const { ConversationMemoryService, conversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const { getSuperAdminGeminiKeys } = await import("./ai/provider-factory");
+      const memoryService = new ConversationMemoryService();
+      
+      let apiKey: string | null = null;
+      
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+        apiKey = superAdminKeys.keys[0];
+      }
+      
+      if (!apiKey) {
+        const { geminiApiSettings } = await import("@shared/schema");
+        const { decrypt } = await import("./encryption");
+        const settings = await db
+          .select()
+          .from(geminiApiSettings)
+          .where(eq(geminiApiSettings.userId, req.user!.id))
+          .limit(1);
+        
+        if (settings.length > 0 && settings[0].apiKeyEncrypted) {
+          apiKey = decrypt(settings[0].apiKeyEncrypted);
+        }
+      }
+      
+      if (!apiKey) {
+        return res.status(400).json({ message: "Nessuna API key Gemini configurata" });
+      }
+
+      const result = await memoryService.generateMissingDailySummariesWithProgress(
+        userId,
+        apiKey,
+        () => {}
+      );
+
+      const durationMs = Date.now() - startTime;
+      
+      // Log the generation
+      await conversationMemoryService.logGeneration({
+        userId: req.user!.id,
+        targetUserId: userId,
+        generationType: 'manual',
+        summariesGenerated: result.generated,
+        conversationsAnalyzed: result.total,
+        durationMs,
+      });
+
+      res.json({ 
+        message: result.generated > 0 ? `Generati ${result.generated} riassunti` : "Nessun riassunto da generare",
+        generated: result.generated,
+        total: result.total,
+        durationMs
+      });
+    } catch (error: any) {
+      console.error("Error generating memory for user:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ========================================
   // CONSULTANT PROFILE ROUTES
   // ========================================
 
