@@ -1,8 +1,8 @@
 import { db } from "../../db";
-import { aiConversations, aiMessages, aiDailySummaries } from "../../../shared/schema";
-import { eq, and, desc, lt, gte, isNotNull, sql } from "drizzle-orm";
+import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users } from "../../../shared/schema";
+import { eq, and, desc, lt, gte, isNotNull, sql, or, inArray } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
-import { startOfDay, subDays, format } from "date-fns";
+import { startOfDay, subDays, format, eachDayOfInterval } from "date-fns";
 import { it } from "date-fns/locale";
 
 export type ConversationScope = "consultant" | "client" | "manager" | "bronze" | "silver" | "gold";
@@ -484,6 +484,243 @@ ${conversationText}`,
     }
 
     return { generated, total };
+  }
+
+  // ============= MEMORY AUDIT METHODS =============
+
+  async getMemoryAudit(
+    consultantId: string,
+    daysBack: number = 30
+  ): Promise<Array<{
+    userId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    totalDays: number;
+    coveredDays: number;
+    missingDays: number;
+    lastSummaryDate: Date | null;
+    status: 'complete' | 'partial' | 'missing';
+  }>> {
+    // Get consultant + their clients
+    const allUsers = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        role: users.role,
+        managerId: users.managerId,
+      })
+      .from(users)
+      .where(or(
+        eq(users.id, consultantId),
+        eq(users.managerId, consultantId)
+      ));
+
+    const cutoffDate = subDays(new Date(), daysBack);
+    const results: Array<{
+      userId: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      role: string;
+      totalDays: number;
+      coveredDays: number;
+      missingDays: number;
+      lastSummaryDate: Date | null;
+      status: 'complete' | 'partial' | 'missing';
+    }> = [];
+
+    for (const user of allUsers) {
+      // Get days with conversations for this user
+      const daysWithConversations = await db
+        .selectDistinct({
+          day: sql<Date>`DATE(${aiConversations.createdAt})`.as("day"),
+        })
+        .from(aiConversations)
+        .where(and(
+          eq(aiConversations.clientId, user.id),
+          gte(aiConversations.createdAt, cutoffDate)
+        ));
+
+      const totalDays = daysWithConversations.length;
+
+      // Get existing summaries
+      const summaries = await db
+        .select({
+          summaryDate: aiDailySummaries.summaryDate,
+        })
+        .from(aiDailySummaries)
+        .where(and(
+          eq(aiDailySummaries.userId, user.id),
+          gte(aiDailySummaries.summaryDate, cutoffDate)
+        ))
+        .orderBy(desc(aiDailySummaries.summaryDate));
+
+      const coveredDays = summaries.length;
+      const missingDays = Math.max(0, totalDays - coveredDays);
+      const lastSummaryDate = summaries.length > 0 ? summaries[0].summaryDate : null;
+
+      let status: 'complete' | 'partial' | 'missing' = 'complete';
+      if (totalDays === 0) {
+        status = 'complete'; // No conversations = complete
+      } else if (coveredDays === 0) {
+        status = 'missing';
+      } else if (missingDays > 0) {
+        status = 'partial';
+      }
+
+      results.push({
+        userId: user.id,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email,
+        role: user.role,
+        totalDays,
+        coveredDays,
+        missingDays,
+        lastSummaryDate,
+        status,
+      });
+    }
+
+    return results;
+  }
+
+  async getMemoryStats(consultantId: string): Promise<{
+    totalSummaries: number;
+    usersWithMemory: number;
+    totalUsers: number;
+    averageTokensPerUser: number;
+    coveragePercent: number;
+  }> {
+    // Get all users (consultant + clients)
+    const allUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(or(
+        eq(users.id, consultantId),
+        eq(users.managerId, consultantId)
+      ));
+
+    const userIds = allUsers.map(u => u.id);
+    const totalUsers = userIds.length;
+
+    if (totalUsers === 0) {
+      return {
+        totalSummaries: 0,
+        usersWithMemory: 0,
+        totalUsers: 0,
+        averageTokensPerUser: 0,
+        coveragePercent: 100,
+      };
+    }
+
+    // Count total summaries
+    const [summaryCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(aiDailySummaries)
+      .where(inArray(aiDailySummaries.userId, userIds));
+
+    const totalSummaries = Number(summaryCount?.count || 0);
+
+    // Count users with at least one summary
+    const usersWithSummaries = await db
+      .selectDistinct({ userId: aiDailySummaries.userId })
+      .from(aiDailySummaries)
+      .where(inArray(aiDailySummaries.userId, userIds));
+
+    const usersWithMemory = usersWithSummaries.length;
+
+    // Estimate tokens (average ~40 tokens per summary)
+    const averageTokensPerUser = totalUsers > 0 
+      ? Math.round((totalSummaries * 40) / totalUsers) 
+      : 0;
+
+    // Coverage percent
+    const coveragePercent = totalUsers > 0 
+      ? Math.round((usersWithMemory / totalUsers) * 100) 
+      : 100;
+
+    return {
+      totalSummaries,
+      usersWithMemory,
+      totalUsers,
+      averageTokensPerUser,
+      coveragePercent,
+    };
+  }
+
+  async getGenerationLogs(
+    consultantId: string,
+    limit: number = 50
+  ): Promise<Array<{
+    id: number;
+    userId: string;
+    targetUserId: string | null;
+    generationType: string;
+    summariesGenerated: number;
+    conversationsAnalyzed: number;
+    tokensUsed: number;
+    durationMs: number;
+    errors: string[];
+    createdAt: Date | null;
+    targetUserName?: string;
+  }>> {
+    const logs = await db
+      .select()
+      .from(aiMemoryGenerationLogs)
+      .where(eq(aiMemoryGenerationLogs.userId, consultantId))
+      .orderBy(desc(aiMemoryGenerationLogs.createdAt))
+      .limit(limit);
+
+    // Enrich with user names
+    const enrichedLogs = await Promise.all(
+      logs.map(async (log) => {
+        let targetUserName: string | undefined;
+        if (log.targetUserId) {
+          const [targetUser] = await db
+            .select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users)
+            .where(eq(users.id, log.targetUserId))
+            .limit(1);
+          if (targetUser) {
+            targetUserName = `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim();
+          }
+        }
+        return {
+          ...log,
+          errors: (log.errors as string[]) || [],
+          targetUserName,
+        };
+      })
+    );
+
+    return enrichedLogs;
+  }
+
+  async logGeneration(data: {
+    userId: string;
+    targetUserId?: string | null;
+    generationType: 'automatic' | 'manual';
+    summariesGenerated: number;
+    conversationsAnalyzed: number;
+    tokensUsed?: number;
+    durationMs: number;
+    errors?: string[];
+  }): Promise<void> {
+    await db.insert(aiMemoryGenerationLogs).values({
+      userId: data.userId,
+      targetUserId: data.targetUserId || null,
+      generationType: data.generationType,
+      summariesGenerated: data.summariesGenerated,
+      conversationsAnalyzed: data.conversationsAnalyzed,
+      tokensUsed: data.tokensUsed || 0,
+      durationMs: data.durationMs,
+      errors: data.errors || [],
+    });
   }
 }
 

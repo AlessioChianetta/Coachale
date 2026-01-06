@@ -2096,6 +2096,20 @@ export const customLivePrompts = pgTable("custom_live_prompts", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// AI Memory Generation Logs - Log delle generazioni di memoria
+export const aiMemoryGenerationLogs = pgTable("ai_memory_generation_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(), // chi ha avviato (consultant o "system")
+  targetUserId: varchar("target_user_id"), // per chi è stata generata (null = tutti)
+  generationType: varchar("generation_type").notNull().default("manual"), // 'automatic' | 'manual'
+  summariesGenerated: integer("summaries_generated").notNull().default(0),
+  conversationsAnalyzed: integer("conversations_analyzed").notNull().default(0),
+  tokensUsed: integer("tokens_used").notNull().default(0),
+  durationMs: integer("duration_ms").notNull().default(0),
+  errors: jsonb("errors").$type<string[]>().default([]),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 // AI Weekly Consultations - Consulenze AI settimanali programmate
 export const aiWeeklyConsultations = pgTable("ai_weekly_consultations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
