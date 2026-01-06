@@ -1512,19 +1512,37 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
   }
 
   // ========================================
-  // CONVERSATION MEMORY CONTEXT: Load past conversation history for client
+  // CONVERSATION MEMORY CONTEXT: Load past conversation history + daily summaries for client
   // ========================================
   let conversationMemoryContext = '';
   try {
+    // Load recent conversations (last 5 detailed)
     const memoryResult = await conversationContextBuilder.buildHistoryContext(
       clientId,
       'client',
       conversationId // exclude current conversation
     );
     
+    // Load daily summaries (last 30 days for broader context)
+    const dailySummaryResult = await conversationContextBuilder.buildDailySummaryContext(
+      clientId,
+      30 // last 30 days
+    );
+    
+    const memoryParts: string[] = [];
+    
+    if (dailySummaryResult.hasHistory) {
+      memoryParts.push(dailySummaryResult.contextText);
+      console.log(`🧠 [Conversation Memory] Loaded daily summaries for client: ${dailySummaryResult.conversationCount} conversations across multiple days`);
+    }
+    
     if (memoryResult.hasHistory) {
-      conversationMemoryContext = memoryResult.contextText;
-      console.log(`🧠 [Conversation Memory] Loaded ${memoryResult.conversationCount} past conversations for client context`);
+      memoryParts.push(memoryResult.contextText);
+      console.log(`🧠 [Conversation Memory] Loaded ${memoryResult.conversationCount} recent detailed conversations for client`);
+    }
+    
+    if (memoryParts.length > 0) {
+      conversationMemoryContext = memoryParts.join('\n\n');
     } else {
       console.log(`🧠 [Conversation Memory] No past conversations found for client`);
     }
@@ -3035,19 +3053,37 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
   }
 
   // ========================================
-  // CONVERSATION MEMORY CONTEXT: Load past conversation history
+  // CONVERSATION MEMORY CONTEXT: Load past conversation history + daily summaries
   // ========================================
   let conversationMemoryContext = '';
   try {
+    // Load recent conversations (last 5 detailed)
     const memoryResult = await conversationContextBuilder.buildHistoryContext(
       consultantId,
       'consultant',
       conversationId // exclude current conversation
     );
     
+    // Load daily summaries (last 30 days for broader context)
+    const dailySummaryResult = await conversationContextBuilder.buildDailySummaryContext(
+      consultantId,
+      30 // last 30 days
+    );
+    
+    const memoryParts: string[] = [];
+    
+    if (dailySummaryResult.hasHistory) {
+      memoryParts.push(dailySummaryResult.contextText);
+      console.log(`🧠 [Conversation Memory] Loaded daily summaries: ${dailySummaryResult.conversationCount} conversations across multiple days`);
+    }
+    
     if (memoryResult.hasHistory) {
-      conversationMemoryContext = memoryResult.contextText;
-      console.log(`🧠 [Conversation Memory] Loaded ${memoryResult.conversationCount} past conversations for context`);
+      memoryParts.push(memoryResult.contextText);
+      console.log(`🧠 [Conversation Memory] Loaded ${memoryResult.conversationCount} recent detailed conversations`);
+    }
+    
+    if (memoryParts.length > 0) {
+      conversationMemoryContext = memoryParts.join('\n\n');
     } else {
       console.log(`🧠 [Conversation Memory] No past conversations found`);
     }
