@@ -1,0 +1,41 @@
+[AUTH] Silver token detected for subscription: f3394f85-499e-4b0d-b808-a03a31dab135
+Session start request - user: f3394f85-499e-4b0d-b808-a03a31dab135 type: undefined
+Creating session with data: {
+  userId: 'f3394f85-499e-4b0d-b808-a03a31dab135',
+  sessionId: '4c273411-bd91-47f0-805b-e00cbf61b97c',
+  ipAddress: '172.31.75.194',
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'
+}
+Session start error: error: insert or update on table "user_sessions" violates foreign key constraint "user_sessions_user_id_users_id_fk"
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async DatabaseStorage.createUserSession (/home/runner/workspace/server/storage.ts:2366:27)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:5165:23) {
+  length: 323,
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (user_id)=(f3394f85-499e-4b0d-b808-a03a31dab135) is not present in table "users".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'user_sessions',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'user_sessions_user_id_users_id_fk',
+  file: 'ri_triggers.c',
+  line: '2599',
+  routine: 'ri_ReportViolation'
+}
+5:12:29 PM [express] POST /api/activity/session/start 400 in 470ms :: {"message":"insert or update o…
+5:12:32 PM [express] GET /api/public/agent/test 304 in 297ms :: {"agentName":"Receptionist Principal…
+
+🔍 [VALIDATE-SESSION] Share: test, accessType: public
+🔑 [VALIDATE-SESSION] Auth header present: true, starts with Bearer: true
+🔐 [VALIDATE-SESSION] JWT_SECRET available: true, SESSION_SECRET available: true
+📜 [VALIDATE-SESSION] Token decoded with JWT_SECRET: {
+  type: 'silver',
+  role: undefined,

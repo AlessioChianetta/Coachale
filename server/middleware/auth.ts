@@ -12,6 +12,7 @@ export interface AuthRequest extends Request {
     consultantId?: string;
     profileId?: string; // Email Condivisa feature: active profile ID
     encryptionSalt?: string; // Per-consultant encryption salt
+    type?: "bronze" | "silver" | "gold" | "manager"; // Subscription tier type
   };
 }
 
@@ -34,6 +35,7 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
         email: decoded.email || "",
         role: "client" as const,
         consultantId: decoded.consultantId,
+        type: "bronze",
       };
       return next();
     }
@@ -46,6 +48,7 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
         email: decoded.email || "",
         role: "client" as const,
         consultantId: decoded.consultantId,
+        type: "silver",
       };
       return next();
     }
@@ -58,6 +61,7 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
         email: decoded.email || "",
         role: "client" as const,
         consultantId: decoded.consultantId,
+        type: "gold",
       };
       return next();
     }
@@ -70,6 +74,7 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
         email: "",
         role: "client" as const,
         consultantId: decoded.consultantId,
+        type: "manager",
       };
       return next();
     }
