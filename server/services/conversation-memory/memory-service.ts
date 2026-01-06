@@ -302,12 +302,14 @@ ${conversationText}`,
       const genai = new GoogleGenAI({ apiKey });
       const result = await genai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: `Genera un riassunto del giorno ${dateStr} delle conversazioni AI.
+        contents: `Genera un riassunto dettagliato del giorno ${dateStr} delle conversazioni AI.
 
 REGOLE:
-- Max 3 frasi, max 200 caratteri
-- Elenca gli argomenti principali discussi
-- Rispondi SOLO con il riassunto, senza prefissi
+- Scrivi 4-6 frasi complete e informative (400-600 caratteri circa)
+- Descrivi gli argomenti principali discussi e le richieste dell'utente
+- Includi eventuali decisioni prese, problemi risolti o task completati
+- Usa un tono professionale ma scorrevole
+- Rispondi SOLO con il riassunto, senza prefissi o intestazioni
 
 Conversazioni del giorno (${conversations.length} chat, ${totalMessageCount} messaggi):
 ${conversationText}`,

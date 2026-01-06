@@ -10864,7 +10864,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
     try {
       const jwt = await import("jsonwebtoken");
-      const decoded = jwt.default.verify(token, process.env.SESSION_SECRET || "your-super-secret-jwt-key-change-in-production") as any;
+      const jwtSecret = process.env.SESSION_SECRET;
+      if (!jwtSecret) {
+        return res.status(500).json({ message: "Server configuration error" });
+      }
+      const decoded = jwt.default.verify(token, jwtSecret) as any;
       
       if (decoded.role !== "consultant") {
         return res.status(403).json({ message: "Consultant role required" });
