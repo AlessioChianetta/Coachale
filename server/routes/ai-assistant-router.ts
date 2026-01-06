@@ -689,12 +689,35 @@ ICONE VALIDE: target, book, message, lightbulb, trending, sparkles`;
     console.log(systemPrompt);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
+    // Define strict JSON schema for Gemini to follow
+    const responseSchema = {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          icon: {
+            type: "string",
+            enum: ["target", "book", "message", "lightbulb", "trending", "sparkles"]
+          },
+          label: { type: "string" },
+          prompt: { type: "string" },
+          gradient: {
+            type: "string",
+            enum: ["from-cyan-500 to-teal-500", "from-teal-500 to-emerald-500", "from-slate-500 to-cyan-500", "from-cyan-600 to-teal-600"]
+          }
+        },
+        required: ["icon", "label", "prompt", "gradient"]
+      },
+      minItems: 4,
+      maxItems: 4
+    };
+
     const result = await providerResult.client.generateContent({
       model,
       contents: [
         {
           role: "user",
-          parts: [{ text: "Genera 4 suggerimenti JSON per la welcome screen. Rispondi SOLO con l'array JSON, nessun testo." }],
+          parts: [{ text: "Genera 4 suggerimenti per pulsanti della welcome screen, pertinenti al business descritto sopra. Ogni suggerimento deve avere icon, label (max 4 parole), prompt (max 60 caratteri), e gradient." }],
         },
       ],
       systemInstruction: systemPrompt,
@@ -702,6 +725,7 @@ ICONE VALIDE: target, book, message, lightbulb, trending, sparkles`;
         temperature: 0.7,
         maxOutputTokens: 1000,
         responseMimeType: "application/json",
+        responseSchema: responseSchema as any,
       },
     });
 
