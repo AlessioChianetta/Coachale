@@ -2706,6 +2706,14 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   publicSlug: text("public_slug").unique(), // Slug per accesso pubblico Level 1 (es: "silvia" -> /ai/silvia)
   dailyMessageLimit: integer("daily_message_limit").default(15), // Limite messaggi giornaliero per Level 1
 
+  // AI Assistant Suggestions - Generated personalized quick prompts based on agent brand voice
+  aiAssistantSuggestions: jsonb("ai_assistant_suggestions").$type<Array<{
+    icon: "target" | "book" | "message" | "lightbulb" | "trending" | "sparkles";
+    label: string;
+    prompt: string;
+    gradient: string;
+  }>>(),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
