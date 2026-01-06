@@ -992,14 +992,16 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => handleExportToTwilio(template.id)}
-                  disabled={!template.activeVersion || exportMutation.isPending || !!template.activeVersion?.twilioContentSid}
+                  disabled={!template.activeVersion || exportMutation.isPending || (!!template.activeVersion?.twilioContentSid && template.activeVersion?.twilioStatus !== 'draft' && template.activeVersion?.twilioStatus !== 'not_synced')}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  {template.activeVersion?.twilioContentSid
+                  {template.activeVersion?.twilioContentSid && template.activeVersion?.twilioStatus !== 'draft' && template.activeVersion?.twilioStatus !== 'not_synced'
                     ? "Già su Twilio"
-                    : exportMutation.isPending
-                      ? "Esportazione..."
-                      : "Esporta a Twilio"}
+                    : template.activeVersion?.twilioContentSid && (template.activeVersion?.twilioStatus === 'draft' || template.activeVersion?.twilioStatus === 'not_synced')
+                      ? "Ri-esporta a Twilio"
+                      : exportMutation.isPending
+                        ? "Esportazione..."
+                        : "Esporta a Twilio"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {template.archivedAt ? (
