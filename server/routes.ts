@@ -10850,7 +10850,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   app.post("/api/consultant/ai/chat", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel } = req.body;
+      const { message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel, isOnboardingMode, onboardingStatuses } = req.body;
       
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
@@ -10879,6 +10879,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           agentId,
           model,
           thinkingLevel,
+          isOnboardingMode,
+          onboardingStatuses,
         })) {
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);
           
