@@ -301,7 +301,7 @@ ${conversationText}`,
 
       const genai = new GoogleGenAI({ apiKey });
       const result = await genai.models.generateContent({
-        model: "gemini-2.5-flash-preview-05-20",
+        model: "gemini-2.5-flash",
         contents: `Genera un riassunto del giorno ${dateStr} delle conversazioni AI.
 
 REGOLE:
