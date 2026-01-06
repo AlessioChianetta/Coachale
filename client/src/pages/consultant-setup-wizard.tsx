@@ -6,6 +6,8 @@ import confetti from "canvas-confetti";
 import { getAuthHeaders } from "@/lib/auth";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
+import { ChatPanel } from "@/components/ai-assistant/ChatPanel";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -1077,8 +1079,8 @@ export default function ConsultantSetupWizard() {
             </div>
           </motion.header>
 
-          <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
-            <aside className="col-span-4 border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col">
+          <div className={`flex-1 grid gap-0 overflow-hidden ${isOnboardingMode ? 'grid-cols-12' : 'grid-cols-12'}`}>
+            <aside className={`${isOnboardingMode ? 'col-span-3' : 'col-span-4'} border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col transition-all duration-300`}>
               <div className="p-4 border-b">
                 <h2 className="font-semibold flex items-center gap-2">
                   <Settings className="h-4 w-4" />
@@ -1098,7 +1100,7 @@ export default function ConsultantSetupWizard() {
               </ScrollArea>
             </aside>
 
-            <section className="col-span-8 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50">
+            <section className={`${isOnboardingMode ? 'col-span-5' : 'col-span-8'} overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50 transition-all duration-300`}>
               <div className="p-6">
                 <AnimatePresence mode="wait">
                   {activeStepData && (
@@ -1584,10 +1586,51 @@ export default function ConsultantSetupWizard() {
                 </AnimatePresence>
               </div>
             </section>
+
+            {/* Onboarding AI Assistant Panel */}
+            <AnimatePresence>
+              {isOnboardingMode && (
+                <motion.aside
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: "auto", opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="col-span-4 border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col"
+                >
+                  <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-4 w-4 text-violet-600" />
+                      <span className="font-semibold text-sm">Assistente Onboarding</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setIsOnboardingMode(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <ChatPanel
+                      isOpen={true}
+                      onClose={() => setIsOnboardingMode(false)}
+                      mode="assistenza"
+                      setMode={() => {}}
+                      consultantType="finanziario"
+                      setConsultantType={() => {}}
+                      isConsultantMode={true}
+                      isOnboardingMode={true}
+                      embedded={true}
+                    />
+                  </div>
+                </motion.aside>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </main>
-      <ConsultantAIAssistant isOnboardingMode={isOnboardingMode} />
+      {!isOnboardingMode && <ConsultantAIAssistant isOnboardingMode={false} />}
     </div>
   );
 }
