@@ -10711,6 +10711,140 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
   // ========================================
+  // CLIENT AI MEMORY ROUTES
+  // ========================================
+
+  // Get daily summaries for client
+  app.get("/api/ai/daily-summaries", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
+    try {
+      const { ConversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const memoryService = new ConversationMemoryService();
+      
+      const dailySummaries = await memoryService.getDailySummaries(req.user!.id, 90);
+
+      res.json({ dailySummaries });
+    } catch (error: any) {
+      console.error("Error fetching client daily summaries:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Delete all daily summaries for client
+  app.delete("/api/ai/daily-summaries", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
+    try {
+      const { aiDailySummaries } = await import("@shared/schema");
+      
+      const deleted = await db
+        .delete(aiDailySummaries)
+        .where(eq(aiDailySummaries.userId, req.user!.id))
+        .returning({ id: aiDailySummaries.id });
+
+      console.log(`🗑️ [Memory] Deleted ${deleted.length} daily summaries for client ${req.user!.id}`);
+
+      res.json({ 
+        success: true, 
+        deleted: deleted.length,
+        message: `Eliminati ${deleted.length} riassunti giornalieri`
+      });
+    } catch (error: any) {
+      console.error("Error deleting client daily summaries:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Generate daily summaries with SSE streaming progress for client
+  app.get("/api/ai/generate-daily-summaries-stream", async (req: AuthRequest, res) => {
+    // Handle token from query parameter for SSE
+    const token = req.query.token as string;
+    if (!token) {
+      return res.status(401).json({ message: "Token required" });
+    }
+
+    try {
+      const jwt = await import("jsonwebtoken");
+      const jwtSecret = process.env.SESSION_SECRET;
+      if (!jwtSecret) {
+        return res.status(500).json({ message: "Server configuration error" });
+      }
+      const decoded = jwt.default.verify(token, jwtSecret) as any;
+      
+      // Get user from database to verify role
+      const user = await storage.getUser(decoded.userId);
+      if (!user || user.role !== "client") {
+        return res.status(403).json({ message: "Client role required" });
+      }
+
+      req.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      };
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    const sendEvent = (data: any) => {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const { ConversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const { getSuperAdminGeminiKeys } = await import("./ai/provider-factory");
+      const memoryService = new ConversationMemoryService();
+      
+      let apiKey: string | null = null;
+      
+      // For clients, use SuperAdmin Gemini keys or their manager's key
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+        apiKey = superAdminKeys.keys[0];
+      }
+      
+      if (!apiKey) {
+        // Try to get API key from client's manager
+        const client = await storage.getUser(req.user!.id);
+        if (client && client.managerId) {
+          const { geminiApiSettings } = await import("@shared/schema");
+          const { decrypt } = await import("./encryption");
+          const settings = await db
+            .select()
+            .from(geminiApiSettings)
+            .where(eq(geminiApiSettings.userId, client.managerId))
+            .limit(1);
+          
+          if (settings.length > 0 && settings[0].apiKeyEncrypted) {
+            apiKey = decrypt(settings[0].apiKeyEncrypted);
+          }
+        }
+      }
+      
+      if (!apiKey) {
+        sendEvent({ type: "error", message: "Nessuna API key Gemini configurata" });
+        res.end();
+        return;
+      }
+
+      const result = await memoryService.generateMissingDailySummariesWithProgress(
+        req.user!.id,
+        apiKey,
+        (progress) => sendEvent(progress)
+      );
+
+      sendEvent({ type: "complete", generated: result.generated, total: result.total });
+      res.end();
+    } catch (error: any) {
+      console.error("Error generating client daily summaries:", error);
+      sendEvent({ type: "error", message: error.message });
+      res.end();
+    }
+  });
+
+  // ========================================
   // CONSULTANT AI ASSISTANT ROUTES
   // ========================================
 

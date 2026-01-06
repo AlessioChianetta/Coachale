@@ -85,9 +85,10 @@ function groupSummariesByPeriod(summaries: DailySummary[]): Record<string, Daily
 interface ConversationMemoryPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  mode?: 'client' | 'consultant';
 }
 
-export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryPanelProps) {
+export function ConversationMemoryPanel({ isOpen, onClose, mode = 'consultant' }: ConversationMemoryPanelProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -96,10 +97,13 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
   const eventSourceRef = useRef<EventSource | null>(null);
   const queryClient = useQueryClient();
 
+  // Use different endpoints based on mode
+  const apiBase = mode === 'client' ? '/api/ai' : '/api/consultant/ai';
+
   const { data, isLoading, isError, refetch, isFetching } = useQuery<MemoryResponse>({
-    queryKey: ["/api/consultant/ai/daily-summaries"],
+    queryKey: [`${apiBase}/daily-summaries`],
     queryFn: async () => {
-      const response = await fetch("/api/consultant/ai/daily-summaries", {
+      const response = await fetch(`${apiBase}/daily-summaries`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch daily summaries");
@@ -127,7 +131,7 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
     setProgressLog([]);
 
     const token = localStorage.getItem("token");
-    const url = `/api/consultant/ai/generate-daily-summaries-stream?token=${token}`;
+    const url = `${apiBase}/generate-daily-summaries-stream?token=${token}`;
     
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
@@ -144,7 +148,7 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
         if (data.type === "complete" || data.type === "error") {
           eventSource.close();
           setIsGenerating(false);
-          queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/daily-summaries"] });
+          queryClient.invalidateQueries({ queryKey: [`${apiBase}/daily-summaries`] });
         }
       } catch (e) {
         console.error("Error parsing SSE event:", e);
@@ -165,14 +169,14 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
     
     setIsDeleting(true);
     try {
-      const response = await fetch("/api/consultant/ai/daily-summaries", {
+      const response = await fetch(`${apiBase}/daily-summaries`, {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
       
       if (!response.ok) throw new Error("Errore durante l'eliminazione");
       
-      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/daily-summaries"] });
+      queryClient.invalidateQueries({ queryKey: [`${apiBase}/daily-summaries`] });
     } catch (error) {
       console.error("Error deleting summaries:", error);
     } finally {
@@ -187,14 +191,14 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
     
     setIsDeleting(true);
     try {
-      const response = await fetch("/api/consultant/ai/daily-summaries", {
+      const response = await fetch(`${apiBase}/daily-summaries`, {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
       
       if (!response.ok) throw new Error("Errore durante l'eliminazione");
       
-      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/daily-summaries"] });
+      queryClient.invalidateQueries({ queryKey: [`${apiBase}/daily-summaries`] });
       setIsDeleting(false);
       
       // Start regeneration

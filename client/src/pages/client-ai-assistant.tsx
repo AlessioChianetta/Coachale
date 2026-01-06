@@ -23,6 +23,7 @@ import { LiveModeScreen } from "@/components/ai-assistant/live-mode/LiveModeScre
 import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
 import { WelcomeScreen } from "@/components/ai-assistant/WelcomeScreen";
 import { ConversationSidebar } from "@/components/ai-assistant/ConversationSidebar";
+import { ConversationMemoryPopover } from "@/components/ai-assistant/ConversationMemoryPopover";
 import { AIMode, ConsultantType } from "@/components/ai-assistant/AIAssistant";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -620,7 +621,10 @@ export default function ClientAIAssistant() {
                   </div>
                 )}
               </div>
-              <AIPreferencesSheet />
+              <div className="flex items-center gap-2">
+                <ConversationMemoryPopover mode="client" />
+                <AIPreferencesSheet />
+              </div>
             </div>
 
             <div className="flex-1 flex flex-col overflow-hidden">

@@ -19,13 +19,19 @@ interface MemoryResponse {
   dailySummaries: DailySummary[];
 }
 
-export function ConversationMemoryPopover() {
+interface ConversationMemoryPopoverProps {
+  mode?: 'client' | 'consultant';
+}
+
+export function ConversationMemoryPopover({ mode = 'consultant' }: ConversationMemoryPopoverProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
+  const apiBase = mode === 'client' ? '/api/ai' : '/api/consultant/ai';
+
   const { data } = useQuery<MemoryResponse>({
-    queryKey: ["/api/consultant/ai/daily-summaries"],
+    queryKey: [`${apiBase}/daily-summaries`],
     queryFn: async () => {
-      const response = await fetch("/api/consultant/ai/daily-summaries", {
+      const response = await fetch(`${apiBase}/daily-summaries`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch daily summaries");
@@ -56,6 +62,7 @@ export function ConversationMemoryPopover() {
       <ConversationMemoryPanel
         isOpen={isPanelOpen}
         onClose={() => setIsPanelOpen(false)}
+        mode={mode}
       />
     </>
   );
