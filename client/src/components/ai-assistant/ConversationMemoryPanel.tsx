@@ -1,12 +1,13 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Brain, Calendar, MessageSquare, Loader2, RefreshCw, Sparkles, 
-  ChevronDown, ChevronUp, Clock, Hash, Tag, X, CalendarDays 
+  ChevronDown, ChevronUp, Hash, Tag, X, CalendarDays, CheckCircle2, Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import {
   Collapsible,
   CollapsibleContent,
@@ -28,6 +29,15 @@ interface DailySummary {
 
 interface MemoryResponse {
   dailySummaries: DailySummary[];
+}
+
+interface GenerationProgress {
+  type: "start" | "processing" | "generated" | "skipped" | "complete" | "error";
+  date?: string;
+  current?: number;
+  total?: number;
+  message?: string;
+  generated?: number;
 }
 
 function formatDateLabel(dateStr: string): string {
@@ -79,6 +89,10 @@ interface ConversationMemoryPanelProps {
 
 export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryPanelProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState<GenerationProgress | null>(null);
+  const [progressLog, setProgressLog] = useState<string[]>([]);
+  const eventSourceRef = useRef<EventSource | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery<MemoryResponse>({
@@ -94,22 +108,54 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
     staleTime: 60000,
   });
 
-  const generateMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch("/api/consultant/ai/generate-daily-summaries", {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || "Failed to generate summaries");
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
       }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/daily-summaries"] });
-    },
-  });
+    };
+  }, []);
+
+  const startGeneration = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    setIsGenerating(true);
+    setProgress(null);
+    setProgressLog([]);
+
+    const token = localStorage.getItem("token");
+    const url = `/api/consultant/ai/generate-daily-summaries-stream?token=${token}`;
+    
+    const eventSource = new EventSource(url);
+    eventSourceRef.current = eventSource;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data) as GenerationProgress;
+        setProgress(data);
+        
+        if (data.message) {
+          setProgressLog(prev => [...prev.slice(-10), data.message!]);
+        }
+
+        if (data.type === "complete" || data.type === "error") {
+          eventSource.close();
+          setIsGenerating(false);
+          queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/daily-summaries"] });
+        }
+      } catch (e) {
+        console.error("Error parsing SSE event:", e);
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      setIsGenerating(false);
+      setProgress({ type: "error", message: "Connessione persa" });
+    };
+  };
 
   const toggleExpanded = (id: string) => {
     setExpandedIds(prev => {
@@ -128,6 +174,10 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
 
   const totalConversations = dailySummaries.reduce((sum, s) => sum + s.conversationCount, 0);
   const totalMessages = dailySummaries.reduce((sum, s) => sum + s.messageCount, 0);
+
+  const progressPercent = progress?.current && progress?.total 
+    ? Math.round((progress.current / progress.total) * 100) 
+    : 0;
 
   if (!isOpen) return null;
 
@@ -174,30 +224,64 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
         )}
       </div>
 
-      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => generateMutation.mutate()}
-          disabled={generateMutation.isPending}
-        >
-          {generateMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4 text-purple-500" />
-          )}
-          Genera riassunti
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => refetch()}
-          disabled={isFetching}
-        >
-          <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
-        </Button>
+      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+        {isGenerating ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Generazione in corso...
+                </span>
+              </div>
+              <span className="text-xs text-slate-500">
+                {progress?.current || 0}/{progress?.total || 0}
+              </span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+            {progress?.date && (
+              <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400">
+                <Clock className="h-3.5 w-3.5" />
+                <span>{progress.date}</span>
+              </div>
+            )}
+            {progressLog.length > 0 && (
+              <div className="max-h-24 overflow-y-auto bg-slate-100 dark:bg-slate-800 rounded-lg p-2 text-xs space-y-1">
+                {progressLog.map((log, i) => (
+                  <div key={i} className="flex items-start gap-2 text-slate-600 dark:text-slate-400">
+                    {log.includes("Generato") ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <Clock className="h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                    )}
+                    <span>{log}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={startGeneration}
+            >
+              <Sparkles className="h-4 w-4 text-purple-500" />
+              Genera riassunti
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
+            </Button>
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1">
@@ -321,15 +405,15 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
               Nessun riassunto
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-xs mx-auto">
-              Genera i riassunti delle tue conversazioni AI degli ultimi 7 giorni
+              Genera i riassunti delle tue conversazioni AI
             </p>
             <Button
               variant="default"
               className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-              onClick={() => generateMutation.mutate()}
-              disabled={generateMutation.isPending}
+              onClick={startGeneration}
+              disabled={isGenerating}
             >
-              {generateMutation.isPending ? (
+              {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="h-4 w-4" />
@@ -342,7 +426,7 @@ export function ConversationMemoryPanel({ isOpen, onClose }: ConversationMemoryP
 
       <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
         <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-          L'AI usa questi riassunti per ricordare le conversazioni passate e fornirti risposte contestuali
+          L'AI usa questi riassunti per ricordare le conversazioni passate
         </p>
       </div>
     </div>

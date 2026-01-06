@@ -356,12 +356,17 @@ ${conversationText}`,
     }
   }
 
-  async generateMissingDailySummaries(
+  async generateMissingDailySummariesWithProgress(
     userId: string,
-    apiKey: string
-  ): Promise<number> {
-    let generated = 0;
-
+    apiKey: string,
+    onProgress: (progress: {
+      type: "start" | "processing" | "generated" | "skipped";
+      date?: string;
+      current?: number;
+      total?: number;
+      message?: string;
+    }) => void
+  ): Promise<{ generated: number; total: number }> {
     // Find all distinct days with conversations for this user
     const daysWithConversations = await db
       .selectDistinct({
@@ -371,6 +376,9 @@ ${conversationText}`,
       .where(eq(aiConversations.clientId, userId))
       .orderBy(desc(sql`DATE(${aiConversations.createdAt})`));
 
+    const daysToProcess: { day: Date; messageCount: number }[] = [];
+
+    // First pass: identify which days need generation
     for (const { day } of daysWithConversations) {
       if (!day) continue;
       
@@ -378,7 +386,6 @@ ${conversationText}`,
       const dayEnd = new Date(dayStart);
       dayEnd.setDate(dayEnd.getDate() + 1);
 
-      // Get current message count for this day
       const conversations = await db
         .select({ id: aiConversations.id })
         .from(aiConversations)
@@ -397,7 +404,6 @@ ${conversationText}`,
         currentMessageCount += Number(msgCount?.count || 0);
       }
 
-      // Check if summary exists and compare message count
       const [existing] = await db
         .select({ 
           id: aiDailySummaries.id,
@@ -410,16 +416,68 @@ ${conversationText}`,
         ))
         .limit(1);
 
-      // Generate if: no summary exists OR message count increased (new activity)
       const needsGeneration = !existing || (existing.messageCount || 0) < currentMessageCount;
 
       if (needsGeneration && currentMessageCount >= 2) {
-        const summary = await this.generateDailySummary(userId, new Date(day), apiKey);
-        if (summary) generated++;
+        daysToProcess.push({ day: new Date(day), messageCount: currentMessageCount });
       }
     }
 
-    return generated;
+    const total = daysToProcess.length;
+    onProgress({ type: "start", total, message: `Trovati ${total} giorni da elaborare` });
+
+    if (total === 0) {
+      return { generated: 0, total: 0 };
+    }
+
+    let generated = 0;
+    const POOL_SIZE = 3; // Process 3 days in parallel
+
+    // Process in batches
+    for (let i = 0; i < daysToProcess.length; i += POOL_SIZE) {
+      const batch = daysToProcess.slice(i, i + POOL_SIZE);
+      
+      const results = await Promise.all(
+        batch.map(async ({ day }, batchIndex) => {
+          const current = i + batchIndex + 1;
+          const dateStr = format(day, "d MMMM yyyy", { locale: it });
+          
+          onProgress({ 
+            type: "processing", 
+            date: dateStr, 
+            current, 
+            total,
+            message: `Elaboro ${dateStr}...`
+          });
+
+          const summary = await this.generateDailySummary(userId, day, apiKey);
+          
+          if (summary) {
+            onProgress({ 
+              type: "generated", 
+              date: dateStr, 
+              current, 
+              total,
+              message: `Generato riassunto per ${dateStr}`
+            });
+            return true;
+          } else {
+            onProgress({ 
+              type: "skipped", 
+              date: dateStr, 
+              current, 
+              total,
+              message: `Saltato ${dateStr} (nessun contenuto)`
+            });
+            return false;
+          }
+        })
+      );
+
+      generated += results.filter(Boolean).length;
+    }
+
+    return { generated, total };
   }
 }
 

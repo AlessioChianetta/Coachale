@@ -10854,14 +10854,45 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
-  // Generate daily summaries for missing days
-  app.post("/api/consultant/ai/generate-daily-summaries", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  // Generate daily summaries with SSE streaming progress
+  app.get("/api/consultant/ai/generate-daily-summaries-stream", async (req: AuthRequest, res) => {
+    // Handle token from query parameter for SSE
+    const token = req.query.token as string;
+    if (!token) {
+      return res.status(401).json({ message: "Token required" });
+    }
+
+    try {
+      const jwt = await import("jsonwebtoken");
+      const decoded = jwt.default.verify(token, process.env.SESSION_SECRET || "your-super-secret-jwt-key-change-in-production") as any;
+      
+      if (decoded.role !== "consultant") {
+        return res.status(403).json({ message: "Consultant role required" });
+      }
+
+      req.user = {
+        id: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+      };
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    const sendEvent = (data: any) => {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
     try {
       const { ConversationMemoryService } = await import("./services/conversation-memory/memory-service");
       const { getSuperAdminGeminiKeys } = await import("./ai/provider-factory");
       const memoryService = new ConversationMemoryService();
       
-      // Get API key from SuperAdmin Gemini config or user's settings
       let apiKey: string | null = null;
       
       const superAdminKeys = await getSuperAdminGeminiKeys();
@@ -10870,7 +10901,55 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       }
       
       if (!apiKey) {
-        // Try to get from user's Gemini settings
+        const { geminiApiSettings } = await import("@shared/schema");
+        const { decrypt } = await import("./encryption");
+        const settings = await db
+          .select()
+          .from(geminiApiSettings)
+          .where(eq(geminiApiSettings.userId, req.user!.id))
+          .limit(1);
+        
+        if (settings.length > 0 && settings[0].apiKeyEncrypted) {
+          apiKey = decrypt(settings[0].apiKeyEncrypted);
+        }
+      }
+      
+      if (!apiKey) {
+        sendEvent({ type: "error", message: "Nessuna API key Gemini configurata" });
+        res.end();
+        return;
+      }
+
+      const result = await memoryService.generateMissingDailySummariesWithProgress(
+        req.user!.id,
+        apiKey,
+        (progress) => sendEvent(progress)
+      );
+
+      sendEvent({ type: "complete", generated: result.generated, total: result.total });
+      res.end();
+    } catch (error: any) {
+      console.error("Error generating daily summaries:", error);
+      sendEvent({ type: "error", message: error.message });
+      res.end();
+    }
+  });
+
+  // Legacy endpoint (non-streaming)
+  app.post("/api/consultant/ai/generate-daily-summaries", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { ConversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const { getSuperAdminGeminiKeys } = await import("./ai/provider-factory");
+      const memoryService = new ConversationMemoryService();
+      
+      let apiKey: string | null = null;
+      
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+        apiKey = superAdminKeys.keys[0];
+      }
+      
+      if (!apiKey) {
         const { geminiApiSettings } = await import("@shared/schema");
         const { decrypt } = await import("./encryption");
         const settings = await db
@@ -10888,14 +10967,15 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         return res.status(400).json({ message: "Nessuna API key Gemini configurata" });
       }
 
-      const generated = await memoryService.generateMissingDailySummaries(
+      const result = await memoryService.generateMissingDailySummariesWithProgress(
         req.user!.id,
-        apiKey
+        apiKey,
+        () => {} // No-op callback for legacy endpoint
       );
 
       res.json({ 
-        message: generated > 0 ? `Generati ${generated} riassunti giornalieri` : "Nessun riassunto da generare",
-        generated 
+        message: result.generated > 0 ? `Generati ${result.generated} riassunti giornalieri` : "Nessun riassunto da generare",
+        generated: result.generated 
       });
     } catch (error: any) {
       console.error("Error generating daily summaries:", error);
