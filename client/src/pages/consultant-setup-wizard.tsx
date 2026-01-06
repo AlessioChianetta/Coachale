@@ -50,6 +50,7 @@ import {
   MailCheck,
   Phone,
   Instagram,
+  CreditCard,
 } from "lucide-react";
 
 type StepStatus = "pending" | "configured" | "verified" | "error" | "skipped";
@@ -131,6 +132,8 @@ interface OnboardingStatus {
   instagramTestedAt?: string;
   instagramErrorMessage?: string;
   hasInstagramConfigured: boolean;
+  hasStripeAccount?: boolean;
+  stripeAccountStatus?: string | null;
 }
 
 const statusConfig = {
@@ -624,6 +627,13 @@ export default function ConsultantSetupWizard() {
 
   const status = onboardingData?.data;
 
+  const getStripeStatus = (stripeStatus: string | null | undefined, hasAccount: boolean | undefined): StepStatus => {
+    if (!hasAccount) return "pending";
+    if (stripeStatus === "active") return "verified";
+    if (stripeStatus === "restricted" || stripeStatus === "pending") return "configured";
+    return "pending";
+  };
+
   const phases: Phase[] = [
     {
       id: "infrastructure",
@@ -711,6 +721,15 @@ export default function ConsultantSetupWizard() {
           count: status?.campaignsCount,
           countLabel: "campagne",
         },
+        {
+          id: "stripe_connect",
+          stepNumber: 8,
+          title: "Stripe Connect",
+          description: "Collega il tuo account Stripe per ricevere pagamenti dagli abbonamenti dei clienti",
+          icon: <CreditCard className="h-4 w-4" />,
+          status: getStripeStatus(status?.stripeAccountStatus, status?.hasStripeAccount),
+          configLink: "/consultant/whatsapp?tab=licenses",
+        },
       ],
     },
     {
@@ -719,7 +738,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "inbound_agent",
-          stepNumber: 8,
+          stepNumber: 9,
           title: "Agente Inbound",
           description: "Crea un agente per gestire le richieste in entrata dei clienti",
           icon: <ArrowDownToLine className="h-4 w-4" />,
@@ -728,7 +747,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "outbound_agent",
-          stepNumber: 9,
+          stepNumber: 10,
           title: "Agente Outbound",
           description: "Crea un agente per le campagne di contatto proattivo",
           icon: <ArrowUpFromLine className="h-4 w-4" />,
@@ -737,7 +756,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "consultative_agent",
-          stepNumber: 10,
+          stepNumber: 11,
           title: "Agente Consulenziale",
           description: "Crea un agente specializzato per consulenze e supporto avanzato",
           icon: <Briefcase className="h-4 w-4" />,
@@ -746,7 +765,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "public_agent_link",
-          stepNumber: 11,
+          stepNumber: 12,
           title: "Link Pubblico Agente",
           description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
           icon: <LinkIcon className="h-4 w-4" />,
@@ -757,7 +776,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "ai_ideas",
-          stepNumber: 12,
+          stepNumber: 13,
           title: "Idee AI Generate",
           description: "Genera idee creative per gli agenti usando l'intelligenza artificiale",
           icon: <Lightbulb className="h-4 w-4" />,
@@ -768,7 +787,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "whatsapp_template",
-          stepNumber: 13,
+          stepNumber: 14,
           title: "Altri Template WhatsApp",
           description: "Crea altri template WhatsApp per diversi tipi di messaggi automatici",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -785,7 +804,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_course",
-          stepNumber: 14,
+          stepNumber: 15,
           title: "Primo Corso",
           description: "Crea il tuo primo corso formativo per i clienti",
           icon: <BookOpen className="h-4 w-4" />,
@@ -796,7 +815,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "first_exercise",
-          stepNumber: 15,
+          stepNumber: 16,
           title: "Primo Esercizio",
           description: "Crea il tuo primo esercizio pratico per i clienti",
           icon: <ClipboardList className="h-4 w-4" />,
@@ -807,7 +826,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "knowledge_base",
-          stepNumber: 16,
+          stepNumber: 17,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -825,7 +844,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_summary_email",
-          stepNumber: 17,
+          stepNumber: 18,
           title: "Prima Email Riassuntiva",
           description: "Invia la tua prima email riassuntiva dopo una consulenza",
           icon: <MailCheck className="h-4 w-4" />,
@@ -836,7 +855,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "video_meeting",
-          stepNumber: 18,
+          stepNumber: 19,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -848,7 +867,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "lead_import",
-          stepNumber: 19,
+          stepNumber: 20,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,

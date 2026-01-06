@@ -23,6 +23,7 @@ import {
   consultantVertexAccess,
   marketingCampaigns,
   consultantInstagramConfig,
+  consultantLicenses,
 } from '@shared/schema';
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
@@ -180,6 +181,13 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     });
     const hasInstagramConfigured = !!(instagramConfig?.instagramPageId && instagramConfig?.pageAccessToken);
     
+    // Check Stripe Connect status
+    const license = await db.query.consultantLicenses.findFirst({
+      where: eq(consultantLicenses.consultantId, consultantId),
+    });
+    const hasStripeAccount = !!license?.stripeAccountId;
+    const stripeAccountStatus = license?.stripeAccountStatus || null;
+    
     // Update the status record with calculated values
     await db.update(consultantOnboardingStatus)
       .set({
@@ -228,6 +236,8 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       campaignsCount,
       hasInstagramConfigured,
       instagramStatus: hasInstagramConfigured ? 'verified' : 'pending',
+      hasStripeAccount,
+      stripeAccountStatus,
     };
     
     res.json({

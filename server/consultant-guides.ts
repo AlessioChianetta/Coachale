@@ -10,7 +10,7 @@
  * - Ogni pagina ha: emoji, titolo, path, descrizione, sezioni con steps
  * - Sezione speciale ONBOARDING per tracciare setup wizard
  * 
- * ULTIMO AGGIORNAMENTO: 27 Dicembre 2025 - AI Assistant Agent Integration v2
+ * ULTIMO AGGIORNAMENTO: 6 Gennaio 2026 - Sistema Monetizzazione e Licenze
  */
 
 export interface GuideStep {
@@ -3481,6 +3481,378 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Campagne",
             content: "Invia messaggi proattivi a gruppi di lead."
+          }
+        ]
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEZIONE MONETIZZAZIONE - Sistema Stripe Connect e Pricing
+  // ═══════════════════════════════════════════════════════════════════
+
+  monetizzazione: {
+    emoji: "💰",
+    title: "Monetizzazione - Stripe Connect e Pricing",
+    path: "/consultant/pricing-settings",
+    navigation: "Sidebar → IMPOSTAZIONI → Pricing & Monetizzazione",
+    description: "Configura il sistema di monetizzazione con Stripe Connect per ricevere pagamenti dagli utenti dei tuoi agenti WhatsApp. Gestisci i piani Bronze, Silver e Gold.",
+    category: "settings",
+    sections: [
+      {
+        title: "SISTEMA STRIPE CONNECT",
+        icon: "💳",
+        description: "Come configurare il tuo account Stripe Connect per ricevere pagamenti.",
+        steps: [
+          {
+            title: "Cos'è Stripe Connect",
+            content: "Stripe Connect è il sistema che ti permette di ricevere pagamenti direttamente sul tuo conto bancario quando gli utenti dei tuoi agenti WhatsApp passano a piani a pagamento (Silver o Gold).",
+            tips: ["Non hai bisogno di un account Stripe esistente", "Stripe gestisce automaticamente fatturazione, PCI compliance e rimborsi"]
+          },
+          {
+            title: "Collegare Account Stripe",
+            content: "Vai su Impostazioni → Pricing & Monetizzazione → clicca 'Collega Stripe'. Verrai reindirizzato a Stripe per completare l'onboarding. Inserisci i dati della tua attività e il conto bancario.",
+            actionText: "Vai a Pricing Settings",
+            actionHref: "/consultant/pricing-settings",
+            tips: ["Il processo richiede circa 5-10 minuti", "Avrai bisogno di: documento identità, dati fiscali, IBAN"],
+            warnings: ["Senza Stripe collegato non puoi ricevere pagamenti"]
+          },
+          {
+            title: "Verificare Stato Account",
+            content: "Dopo il collegamento, lo stato mostrerà 'Attivo' con un badge verde. Se ci sono problemi, vedrai 'Azione Richiesta' - clicca per completare le verifiche richieste da Stripe.",
+            tips: ["Le verifiche Stripe possono richiedere 24-48 ore", "Puoi iniziare a configurare i prezzi mentre attendi la verifica"]
+          },
+          {
+            title: "Dashboard Stripe",
+            content: "Puoi accedere alla tua dashboard Stripe completa cliccando 'Vai a Dashboard Stripe'. Qui puoi vedere transazioni, pagamenti in arrivo, e gestire il tuo account.",
+            actionText: "Vai a Pricing Settings",
+            actionHref: "/consultant/pricing-settings"
+          }
+        ]
+      },
+      {
+        title: "CONFIGURAZIONE PRICING PAGE",
+        icon: "🏷️",
+        description: "Come personalizzare i piani Bronze, Silver e Gold per i tuoi utenti.",
+        steps: [
+          {
+            title: "Accedere alle Impostazioni Pricing",
+            content: "Vai su Impostazioni → Pricing & Monetizzazione. Qui puoi configurare i prezzi e le caratteristiche di ogni piano.",
+            actionText: "Vai a Pricing Settings",
+            actionHref: "/consultant/pricing-settings"
+          },
+          {
+            title: "Piano Bronze (Gratuito)",
+            content: "Il piano Bronze è sempre gratuito e include 15 messaggi al giorno. Non puoi modificare il prezzo (è fisso a €0), ma puoi personalizzare la descrizione e le feature mostrate.",
+            tips: ["Bronze è il piano di ingresso per tutti i nuovi utenti", "Usalo per far provare il servizio prima dell'upgrade"]
+          },
+          {
+            title: "Piano Silver (€29-49/mese)",
+            content: "Imposta il prezzo del piano Silver (range consigliato €29-49). Include messaggi illimitati e funzionalità avanzate. Personalizza il prezzo in base al valore che offri.",
+            tips: ["Il prezzo dovrebbe riflettere il valore delle tue automazioni", "Puoi modificare il prezzo in qualsiasi momento"],
+            warnings: ["Le modifiche al prezzo si applicano solo ai nuovi abbonati"]
+          },
+          {
+            title: "Piano Gold (€59-99/mese)",
+            content: "Il piano Gold è il tuo pacchetto premium. Imposta un prezzo che rifletta il massimo valore (range consigliato €59-99). Include tutte le funzionalità Silver più accesso prioritario e supporto dedicato.",
+            tips: ["Ideale per utenti che vogliono il massimo dal servizio", "Considera di offrire consulenze incluse nel Gold"]
+          },
+          {
+            title: "Preview Pricing Page",
+            content: "Usa 'Anteprima Pubblica' per vedere come apparirà la tua pagina prezzi agli utenti. Il link pubblico è /pricing/[tuo-slug].",
+            actionText: "Vai a Pricing Settings",
+            actionHref: "/consultant/pricing-settings",
+            tips: ["Condividi il link della pricing page per promuovere gli upgrade"]
+          }
+        ]
+      },
+      {
+        title: "REVENUE SHARING",
+        icon: "📊",
+        description: "Come funziona la condivisione dei ricavi con la piattaforma.",
+        steps: [
+          {
+            title: "Come Funziona il Revenue Share",
+            content: "La piattaforma trattiene una percentuale su ogni pagamento ricevuto. Questa percentuale copre i costi di infrastruttura, AI, WhatsApp Business API e sviluppo continuo.",
+            tips: ["La percentuale è visibile nelle impostazioni pricing", "Il resto va direttamente sul tuo conto Stripe"]
+          },
+          {
+            title: "Pagamenti e Tempistiche",
+            content: "Quando un utente paga, Stripe elabora il pagamento e trasferisce la tua quota sul conto collegato. I tempi standard sono 2-7 giorni lavorativi per i primi pagamenti, poi giornalieri.",
+            tips: ["Puoi vedere i pagamenti in arrivo sulla dashboard Stripe", "Stripe gestisce automaticamente tutti gli aspetti fiscali"]
+          },
+          {
+            title: "Calcolo Guadagni",
+            content: "Se imposti Silver a €39/mese e la fee piattaforma è 20%, ricevi €31.20 per ogni abbonato Silver. Per Gold a €79/mese ricevi €63.20. Moltiplica per il numero di abbonati per calcolare il tuo ricavo mensile.",
+            tips: ["Più utenti converti, più guadagni", "Investi in contenuti e automazioni di qualità per aumentare le conversioni"]
+          },
+          {
+            title: "Report Finanziari",
+            content: "Dalla sezione Analytics puoi vedere: utenti per tier, conversioni Bronze→Silver→Gold, revenue mensile, trend di crescita.",
+            actionText: "Vai a Dashboard",
+            actionHref: "/consultant"
+          }
+        ]
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEZIONE LICENZE - Gestione Licenze e Preferenze Default
+  // ═══════════════════════════════════════════════════════════════════
+
+  licenze: {
+    emoji: "📋",
+    title: "Licenze - Gestione Utenti e Preferenze",
+    path: "/consultant/whatsapp",
+    navigation: "Sidebar → WHATSAPP → I tuoi dipendenti → Tab Licenze",
+    description: "Gestisci le licenze dei tuoi utenti, configura le preferenze di default per i nuovi iscritti e visualizza gli utenti divisi per tier (Bronze, Silver, Gold).",
+    category: "settings",
+    sections: [
+      {
+        title: "TAB LICENZE NEL PANNELLO WHATSAPP",
+        icon: "🎫",
+        description: "Panoramica della gestione licenze accessibile dal pannello WhatsApp.",
+        steps: [
+          {
+            title: "Accedere al Tab Licenze",
+            content: "Vai su WhatsApp → I tuoi dipendenti. Nel pannello laterale dell'agente selezionato, clicca sulla tab 'Licenze'. Qui trovi la gestione completa degli utenti e delle preferenze.",
+            actionText: "Vai a I tuoi dipendenti",
+            actionHref: "/consultant/whatsapp",
+            tips: ["Il tab Licenze appare solo per agenti con link pubblico attivo", "Da qui gestisci tutti gli aspetti relativi agli utenti dell'agente"]
+          },
+          {
+            title: "Panoramica Dashboard Licenze",
+            content: "La dashboard mostra: numero totale utenti, suddivisione per tier (Bronze/Silver/Gold), utenti attivi oggi, revenue mensile stimata.",
+            tips: ["I contatori si aggiornano in tempo reale", "Usa questi dati per monitorare la crescita"]
+          },
+          {
+            title: "Navigazione Sezioni",
+            content: "Il tab Licenze è diviso in sotto-sezioni: Preferenze Default, Utenti Bronze, Utenti Silver, Utenti Gold. Clicca su ciascuna per espandere."
+          }
+        ]
+      },
+      {
+        title: "PREFERENZE DEFAULT ONBOARDING",
+        icon: "⚙️",
+        description: "Configura le preferenze AI che verranno applicate automaticamente a tutti i nuovi utenti.",
+        steps: [
+          {
+            title: "Cos'è il Default Onboarding",
+            content: "Quando un nuovo utente si registra tramite il link pubblico del tuo agente, riceve automaticamente le preferenze AI che hai configurato qui. Questo include stile di scrittura, lunghezza risposte e istruzioni personalizzate.",
+            tips: ["Configura queste preferenze prima di condividere il link pubblico", "Puoi sempre modificarle dopo"]
+          },
+          {
+            title: "Stile di Scrittura Default",
+            content: "Scegli lo stile di scrittura predefinito per i nuovi utenti: Predefinito, Professionale, Amichevole, Schietto, Efficiente, ecc. Questo influenza come l'AI comunica con loro.",
+            tips: ["Scegli uno stile che rifletta il tono del tuo brand", "'Amichevole' funziona bene per la maggior parte dei casi"]
+          },
+          {
+            title: "Lunghezza Risposte Default",
+            content: "Imposta la lunghezza predefinita delle risposte AI: Breve (risposte concise), Bilanciata (equilibrio), Completa (risposte dettagliate).",
+            tips: ["Per WhatsApp, 'Bilanciata' o 'Breve' sono spesso più efficaci", "Considera il contesto del tuo servizio"]
+          },
+          {
+            title: "Istruzioni Personalizzate Default",
+            content: "Scrivi istruzioni specifiche che l'AI seguirà per tutti i nuovi utenti. Es: 'Rispondi sempre in italiano', 'Menziona sempre il nostro sito web', 'Usa un tono motivazionale'.",
+            tips: ["Le istruzioni possono includere regole specifiche del tuo business", "Mantienile concise ma chiare"],
+            warnings: ["Istruzioni troppo lunghe possono confondere l'AI"]
+          },
+          {
+            title: "Salvare le Preferenze",
+            content: "Dopo aver configurato le preferenze, clicca 'Salva Preferenze Default'. Le nuove impostazioni si applicheranno solo ai futuri nuovi utenti.",
+            tips: ["Le preferenze esistenti degli utenti già registrati NON vengono modificate automaticamente"]
+          }
+        ]
+      },
+      {
+        title: "PULSANTE 'APPLICA A TUTTI I CLIENTI'",
+        icon: "🔄",
+        description: "Come applicare le preferenze default a tutti gli utenti esistenti.",
+        steps: [
+          {
+            title: "Quando Usare Questa Funzione",
+            content: "Usa 'Applica a Tutti i Clienti' quando vuoi che le preferenze default vengano applicate anche agli utenti già registrati. Utile quando cambi strategia o vuoi uniformare l'esperienza.",
+            warnings: ["Questa azione sovrascrive le preferenze personalizzate degli utenti", "Non può essere annullata"]
+          },
+          {
+            title: "Come Applicare",
+            content: "Clicca il pulsante 'Applica a Tutti i Clienti' nella sezione Preferenze Default. Conferma l'azione nella dialog di conferma.",
+            tips: ["Riceverai una notifica di conferma al completamento", "Gli utenti non ricevono notifica del cambiamento"]
+          },
+          {
+            title: "Cosa Viene Applicato",
+            content: "Vengono applicate tutte le preferenze: stile scrittura, lunghezza risposte, e istruzioni personalizzate. Le preferenze vengono copiate a TUTTI gli utenti dell'agente, indipendentemente dal loro tier."
+          },
+          {
+            title: "Best Practice",
+            content: "Prima di applicare a tutti, testa le preferenze con alcuni utenti o in una conversazione di prova. Comunica ai tuoi utenti se stai cambiando significativamente il modo in cui l'AI risponde.",
+            tips: ["Considera di informare gli utenti via email o messaggio", "Monitora il feedback dopo l'applicazione"]
+          }
+        ]
+      },
+      {
+        title: "GESTIONE UTENTI PER TIER",
+        icon: "👥",
+        description: "Visualizza e gestisci gli utenti divisi per livello di abbonamento.",
+        steps: [
+          {
+            title: "Lista Utenti Bronze",
+            content: "Espandi la sezione 'Utenti Bronze' per vedere tutti gli utenti con piano gratuito. Per ogni utente vedi: nome, telefono, data registrazione, messaggi inviati oggi, ultimo messaggio.",
+            tips: ["Gli utenti Bronze sono candidati per l'upgrade", "Monitora chi usa attivamente il servizio"],
+            actionText: "Vai a I tuoi dipendenti",
+            actionHref: "/consultant/whatsapp"
+          },
+          {
+            title: "Lista Utenti Silver",
+            content: "La sezione 'Utenti Silver' mostra gli abbonati al piano intermedio. Vedi: nome, telefono, data inizio abbonamento, prossimo rinnovo, stato pagamento.",
+            tips: ["Contatta gli utenti Silver soddisfatti per proporre upgrade a Gold", "Monitora i rinnovi in scadenza"]
+          },
+          {
+            title: "Lista Utenti Gold",
+            content: "I tuoi utenti premium sono nella sezione 'Utenti Gold'. Questi meritano attenzione speciale e supporto prioritario.",
+            tips: ["Gli utenti Gold sono i tuoi migliori clienti", "Considera di offrire contenuti esclusivi"]
+          },
+          {
+            title: "Azioni per Utente",
+            content: "Per ogni utente puoi: vedere il profilo completo, leggere la cronologia conversazioni, modificare le preferenze AI individuali, gestire manualmente il tier (solo admin).",
+            tips: ["Usa le preferenze individuali per personalizzare l'esperienza di utenti VIP"]
+          },
+          {
+            title: "Filtri e Ricerca",
+            content: "Usa la barra di ricerca per trovare utenti specifici per nome o telefono. Filtra per: attivi/inattivi, registrazione recente, prossimi rinnovi.",
+            tips: ["I filtri ti aiutano a identificare utenti che necessitano attenzione"]
+          }
+        ]
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEZIONE SUBSCRIPTION TIERS - Livelli Bronze, Silver, Gold
+  // ═══════════════════════════════════════════════════════════════════
+
+  subscriptionTiers: {
+    emoji: "🏆",
+    title: "Subscription Tiers - Bronze, Silver, Gold",
+    path: "/consultant/whatsapp",
+    navigation: "Sistema Abbonamenti → Gestione Tier Utenti",
+    description: "Guida completa ai tre livelli di abbonamento disponibili per gli utenti dei tuoi agenti WhatsApp: Bronze (gratuito), Silver (intermedio) e Gold (premium).",
+    category: "clients",
+    sections: [
+      {
+        title: "TIER BRONZE - PIANO GRATUITO",
+        icon: "🥉",
+        description: "Il piano di ingresso gratuito con limiti giornalieri sui messaggi.",
+        steps: [
+          {
+            title: "Caratteristiche Bronze",
+            content: "Il piano Bronze è completamente gratuito e include: 15 messaggi al giorno con l'agente AI, accesso alle funzionalità base, possibilità di upgrade in qualsiasi momento.",
+            tips: ["Bronze è il modo migliore per far provare il servizio", "Non richiede carta di credito per iniziare"]
+          },
+          {
+            title: "Limite 15 Messaggi/Giorno",
+            content: "Gli utenti Bronze possono inviare massimo 15 messaggi al giorno al tuo agente. Il contatore si resetta a mezzanotte (ora locale). Quando raggiungono il limite, ricevono un messaggio che invita all'upgrade.",
+            tips: ["Il limite è per conversazione con l'agente, non globale", "L'utente vede quanti messaggi gli restano"]
+          },
+          {
+            title: "Messaggio di Limite Raggiunto",
+            content: "Quando un utente Bronze esaurisce i messaggi, l'agente risponde automaticamente con un invito all'upgrade: 'Hai raggiunto il limite giornaliero. Passa a Silver per messaggi illimitati!'",
+            tips: ["Puoi personalizzare questo messaggio nelle impostazioni agente"]
+          },
+          {
+            title: "Conversione Bronze → Pagante",
+            content: "Gli utenti Bronze che usano attivamente il servizio sono i migliori candidati per l'upgrade. Monitora chi raggiunge spesso il limite - sono pronti per Silver/Gold.",
+            tips: ["Invia promozioni mirate agli utenti Bronze attivi", "Considera sconti per il primo mese"]
+          }
+        ]
+      },
+      {
+        title: "TIER SILVER - PIANO INTERMEDIO",
+        icon: "🥈",
+        description: "Il piano intermedio con messaggi illimitati e funzionalità avanzate.",
+        steps: [
+          {
+            title: "Caratteristiche Silver",
+            content: "Il piano Silver (€29-49/mese, prezzo configurabile) include: messaggi illimitati con l'agente AI, risposte prioritarie, accesso a tutte le funzionalità base e avanzate.",
+            tips: ["Silver è il piano più popolare", "Il prezzo ideale dipende dal valore che offri"]
+          },
+          {
+            title: "Messaggi Illimitati",
+            content: "Gli utenti Silver possono inviare messaggi illimitati, senza contatori né limiti giornalieri. Ideale per chi usa intensivamente il servizio.",
+            tips: ["Comunica chiaramente questo vantaggio rispetto a Bronze", "È il principale driver di upgrade"]
+          },
+          {
+            title: "Come si Attiva Silver",
+            content: "L'utente può passare a Silver: 1) Cliccando il link upgrade nel messaggio di limite raggiunto 2) Visitando la tua pricing page 3) Tramite link diretto che puoi condividere. Il pagamento avviene via Stripe.",
+            actionText: "Vai a Pricing Settings",
+            actionHref: "/consultant/pricing-settings",
+            tips: ["Condividi il link pricing page nei tuoi canali", "Offri promozioni per i primi abbonati"]
+          },
+          {
+            title: "Gestione Abbonamento Silver",
+            content: "Gli abbonamenti Silver si rinnovano automaticamente ogni mese. L'utente può: vedere la data di rinnovo, aggiornare metodo di pagamento, passare a Gold, annullare (con effetto a fine periodo).",
+            tips: ["Stripe gestisce automaticamente i rinnovi", "Ricevi notifica se un pagamento fallisce"]
+          }
+        ]
+      },
+      {
+        title: "TIER GOLD - PIANO PREMIUM",
+        icon: "🥇",
+        description: "Il piano premium con tutte le funzionalità e vantaggi esclusivi.",
+        steps: [
+          {
+            title: "Caratteristiche Gold",
+            content: "Il piano Gold (€59-99/mese, prezzo configurabile) include tutto Silver più: risposte prioritarie massime, supporto dedicato, accesso anticipato a nuove funzionalità, badge Gold visibile.",
+            tips: ["Gold è per i tuoi utenti più fedeli e coinvolti", "Considera di aggiungere vantaggi esclusivi"]
+          },
+          {
+            title: "Vantaggi Premium",
+            content: "Oltre ai messaggi illimitati, gli utenti Gold ricevono: tempi di risposta AI più rapidi, possibilità di istruzioni personalizzate avanzate, supporto prioritario via email/chat.",
+            tips: ["Valorizza Gold con contenuti e attenzione esclusivi", "Questi utenti sono i tuoi ambassador"]
+          },
+          {
+            title: "Come si Attiva Gold",
+            content: "L'utente può passare a Gold: 1) Direttamente dalla pricing page 2) Upgrade da Silver 3) Upgrade da Bronze. Se viene da Silver, Stripe gestisce il pro-rata automaticamente.",
+            tips: ["Promuovi Gold agli utenti Silver più attivi", "Offri trial Gold per convincere gli indecisi"]
+          },
+          {
+            title: "Gestione Utenti Gold",
+            content: "Gli utenti Gold meritano attenzione speciale. Monitora la loro soddisfazione, rispondi rapidamente a eventuali problemi, considera contatto personale periodico.",
+            tips: ["Un utente Gold soddisfatto porta referral", "Chiedi testimonial ai tuoi utenti Gold"]
+          }
+        ]
+      },
+      {
+        title: "FLUSSO UPGRADE",
+        icon: "⬆️",
+        description: "Come funziona il processo di upgrade da un tier all'altro.",
+        steps: [
+          {
+            title: "Da Bronze a Silver",
+            content: "L'utente Bronze può passare a Silver in qualsiasi momento. Il processo: 1) Clicca link upgrade (nel messaggio limite o pricing page) 2) Seleziona piano Silver 3) Inserisce dati pagamento 4) Conferma. L'upgrade è immediato.",
+            tips: ["Il trigger principale è raggiungere il limite messaggi", "Rendi il processo più semplice possibile"]
+          },
+          {
+            title: "Da Bronze a Gold",
+            content: "L'utente può saltare Silver e andare direttamente a Gold. Stesso processo: pricing page → seleziona Gold → pagamento → attivazione immediata.",
+            tips: ["Alcuni utenti preferiscono il massimo da subito", "Evidenzia i vantaggi Gold nella pricing page"]
+          },
+          {
+            title: "Da Silver a Gold",
+            content: "L'upgrade da Silver a Gold è gestito automaticamente da Stripe. L'utente paga la differenza pro-rata per il periodo rimanente, poi il prezzo Gold completo dal rinnovo successivo.",
+            tips: ["Comunica periodicamente i vantaggi Gold agli utenti Silver", "Offri upgrade scontato per il primo mese"]
+          },
+          {
+            title: "Downgrade",
+            content: "Gli utenti possono anche fare downgrade: Gold→Silver, Silver→Bronze. Il downgrade ha effetto alla fine del periodo di fatturazione corrente. L'utente mantiene l'accesso fino a quella data.",
+            tips: ["Monitora i downgrade per capire eventuali problemi", "Contatta chi fa downgrade per feedback"],
+            warnings: ["Non puoi impedire i downgrade, ma puoi renderli meno probabili con un servizio eccellente"]
+          },
+          {
+            title: "Email di Conferma",
+            content: "Ad ogni upgrade/downgrade, l'utente riceve email di conferma con: nuovo piano, prezzo, data prossimo addebito, istruzioni per gestire abbonamento.",
+            tips: ["Le email sono inviate automaticamente da Stripe", "Puoi personalizzare il branding nelle impostazioni Stripe"]
           }
         ]
       }
