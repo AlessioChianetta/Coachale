@@ -470,6 +470,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // 2.5. Try to find in Gold subscriptions (Level 3) - create users record if missing
+      const [goldSubscription] = await db
+        .select()
+        .from(schema.clientLevelSubscriptions)
+        .where(
+          and(
+            eq(schema.clientLevelSubscriptions.clientEmail, emailLower),
+            eq(schema.clientLevelSubscriptions.status, "active"),
+            eq(schema.clientLevelSubscriptions.level, "3")
+          )
+        )
+        .limit(1);
+
+      if (goldSubscription && goldSubscription.passwordHash) {
+        const isValidPassword = await bcrypt.compare(validatedData.password, goldSubscription.passwordHash);
+        if (isValidPassword) {
+          // Check if user already exists in users table
+          let [goldUser] = await db
+            .select()
+            .from(schema.users)
+            .where(eq(schema.users.email, emailLower))
+            .limit(1);
+
+          // If no user record exists, create one
+          if (!goldUser) {
+            const username = emailLower.split('@')[0] + '_' + Date.now();
+            const firstName = goldSubscription.clientName?.split(' ')[0] || 'Cliente';
+            const lastName = goldSubscription.clientName?.split(' ').slice(1).join(' ') || '';
+            
+            const [newUser] = await db.insert(schema.users).values({
+              username,
+              email: emailLower,
+              password: goldSubscription.passwordHash,
+              firstName,
+              lastName,
+              role: "client",
+              consultantId: goldSubscription.consultantId,
+              isActive: true,
+              enrolledAt: new Date(),
+            }).returning();
+            
+            goldUser = newUser;
+            console.log(`[Login] Created Gold user in users table: ${emailLower}`);
+          }
+
+          // Create default profile if needed
+          let profiles = await storage.getUserRoleProfiles(goldUser.id);
+          if (profiles.length === 0) {
+            const defaultProfile = await storage.createUserRoleProfile({
+              userId: goldUser.id,
+              role: "client",
+              consultantId: goldUser.consultantId,
+              isDefault: true,
+              isActive: true,
+            });
+            profiles = [defaultProfile];
+          }
+
+          const activeProfile = profiles[0];
+          const token = jwt.sign({ userId: goldUser.id, profileId: activeProfile.id }, JWT_SECRET, { expiresIn: '7d' });
+
+          return res.json({
+            message: "Login successful",
+            token,
+            user: {
+              id: goldUser.id,
+              username: goldUser.username,
+              email: goldUser.email,
+              firstName: goldUser.firstName,
+              lastName: goldUser.lastName,
+              role: activeProfile.role,
+              avatar: goldUser.avatar,
+              isActive: goldUser.isActive,
+              profileId: activeProfile.id,
+              consultantId: activeProfile.consultantId || goldUser.consultantId,
+              tier: "gold",
+            },
+          });
+        }
+      }
+
       // 3. Try to find in Bronze users (Level 1)
       const [bronzeUser] = await db
         .select()

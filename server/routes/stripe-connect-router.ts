@@ -629,7 +629,9 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
           upgradeFromBronze: isBronzeUser ? "true" : "false",
           agentConfigId: agentConfigId || "",
         },
-        success_url: `${baseUrl}/agent/${slug}?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
+        success_url: targetLevel === "3" 
+          ? `${baseUrl}/login?upgrade=gold&session_id={CHECKOUT_SESSION_ID}` 
+          : `${baseUrl}/agent/${slug}?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/agent/${slug}?upgrade=canceled`,
       });
       
@@ -714,6 +716,61 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
       .where(eq(clientLevelSubscriptions.id, subscriptionIdStr));
     
     console.log(`[Stripe Upgrade] Subscription ${existingSubscription.stripeSubscriptionId} upgraded from ${existingSubscription.level} to ${targetLevel} with proration`);
+    
+    // For Gold (level 3) upgrades, create a user record in the users table
+    if (targetLevel === "3" && userEmail) {
+      const emailLower = userEmail.toLowerCase().trim();
+      
+      // Check if user already exists
+      const [existingUser] = await db.select()
+        .from(users)
+        .where(eq(users.email, emailLower))
+        .limit(1);
+      
+      if (!existingUser) {
+        // Get password from subscription or bronze user
+        let passwordHash = existingSubscription?.passwordHash;
+        let firstName = existingSubscription?.clientName?.split(' ')[0] || 'Cliente';
+        let lastName = existingSubscription?.clientName?.split(' ').slice(1).join(' ') || '';
+        
+        // If no password in subscription, try bronze user
+        if (!passwordHash && isBronzeUser && decoded.bronzeUserId) {
+          const [bronzeUser] = await db.select()
+            .from(bronzeUsers)
+            .where(eq(bronzeUsers.id, decoded.bronzeUserId))
+            .limit(1);
+          
+          if (bronzeUser) {
+            passwordHash = bronzeUser.passwordHash;
+            firstName = bronzeUser.firstName || firstName;
+            lastName = bronzeUser.lastName || lastName;
+          }
+        }
+        
+        if (passwordHash) {
+          // Create the Gold user in users table
+          const username = emailLower.split('@')[0] + '_' + Date.now();
+          
+          await db.insert(users).values({
+            username,
+            email: emailLower,
+            password: passwordHash,
+            firstName,
+            lastName,
+            role: "client",
+            consultantId,
+            isActive: true,
+            enrolledAt: new Date(),
+          });
+          
+          console.log(`[Stripe Upgrade] Created Gold user in users table: ${emailLower}`);
+        } else {
+          console.warn(`[Stripe Upgrade] No password hash found for Gold user: ${emailLower}`);
+        }
+      } else {
+        console.log(`[Stripe Upgrade] User already exists in users table: ${emailLower}`);
+      }
+    }
     
     return res.json({ success: true, message: `Upgraded to level ${targetLevel}` });
     
