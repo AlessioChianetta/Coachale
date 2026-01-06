@@ -232,7 +232,55 @@ async function validateVisitorSession(
           return next();
         }
         
-        // Check for Gold client (normal client user from users table)
+        // Check for new Gold token format (with type: "gold" and subscriptionId)
+        if (decoded.type === 'gold' && decoded.subscriptionId && decoded.userId) {
+          console.log(`🏆 [VALIDATE-SESSION] Gold token with subscriptionId, verifying user...`, { userId: decoded.userId, subscriptionId: decoded.subscriptionId });
+          // Verify the client exists and is active
+          const [goldClient] = await db.select()
+            .from(schema.users)
+            .where(
+              and(
+                eq(schema.users.id, decoded.userId),
+                eq(schema.users.role, 'client'),
+                eq(schema.users.isActive, true)
+              )
+            )
+            .limit(1);
+          
+          if (goldClient) {
+            // Check if this agent is disabled for this Gold user
+            if (share.agentConfigId) {
+              const [disabledAccess] = await db.select()
+                .from(schema.bronzeUserAgentAccess)
+                .where(
+                  and(
+                    eq(schema.bronzeUserAgentAccess.bronzeUserId, decoded.userId),
+                    eq(schema.bronzeUserAgentAccess.agentConfigId, share.agentConfigId),
+                    eq(schema.bronzeUserAgentAccess.userType, "gold"),
+                    eq(schema.bronzeUserAgentAccess.isEnabled, false)
+                  )
+                )
+                .limit(1);
+              
+              if (disabledAccess) {
+                console.log(`🚫 [VALIDATE-SESSION] Agent disabled for this Gold user, agentConfigId: ${share.agentConfigId}`);
+                return res.status(403).json({ 
+                  error: 'Accesso negato: questo agente non è disponibile per il tuo account',
+                  code: 'AGENT_DISABLED'
+                });
+              }
+            }
+            
+            // Use subscriptionId as managerId for conversation queries (to find previous conversations)
+            req.managerId = decoded.subscriptionId;
+            console.log(`✅ [GOLD AUTH] Valid gold client token for share ${share.slug}, userId: ${decoded.userId}, subscriptionId: ${decoded.subscriptionId}`);
+            return next();
+          } else {
+            console.log(`❌ [VALIDATE-SESSION] Gold client not found or inactive`);
+          }
+        }
+        
+        // Check for legacy Gold client (normal client user from users table without subscriptionId)
         // Gold clients have tokens with just userId (no type, role may or may not be present)
         if (decoded.userId && !decoded.type && !decoded.bronzeUserId && !decoded.subscriptionId) {
           console.log(`🏆 [VALIDATE-SESSION] Potential Gold client token, verifying user...`, { userId: decoded.userId, role: decoded.role });

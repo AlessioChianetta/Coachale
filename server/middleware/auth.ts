@@ -13,6 +13,8 @@ export interface AuthRequest extends Request {
     profileId?: string; // Email Condivisa feature: active profile ID
     encryptionSalt?: string; // Per-consultant encryption salt
     type?: "bronze" | "silver" | "gold" | "manager"; // Subscription tier type
+    subscriptionId?: string; // For Gold tier: the clientLevelSubscriptions.id for conversation queries
+    userId?: string; // For Gold tier: the users.id for database queries
   };
 }
 
@@ -55,13 +57,15 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
     
     // Handle Gold tier tokens
     if (decoded.type === "gold" && decoded.subscriptionId) {
-      console.log(`[AUTH] Gold token detected for subscription: ${decoded.subscriptionId}`);
+      console.log(`[AUTH] Gold token detected for subscription: ${decoded.subscriptionId}, userId: ${decoded.userId}`);
       req.user = {
-        id: decoded.subscriptionId,
+        id: decoded.userId || decoded.subscriptionId, // Use userId for database queries if available
         email: decoded.email || "",
         role: "client" as const,
         consultantId: decoded.consultantId,
         type: "gold",
+        subscriptionId: decoded.subscriptionId, // Keep subscriptionId for conversation queries
+        userId: decoded.userId, // Keep userId for users table queries
       };
       return next();
     }
