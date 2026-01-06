@@ -5138,11 +5138,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/activity/session/start", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      console.log('Session start request - user:', req.user?.id);
+      console.log('Session start request - user:', req.user?.id, 'type:', req.user?.type);
 
       if (!req.user?.id) {
         console.error('Session start failed - no user ID');
         return res.status(400).json({ message: 'User ID is required' });
+      }
+
+      // Skip session tracking for Bronze/Silver/Gold users - they are not in the users table
+      // Their userId is actually a subscriptionId from manager_subscriptions
+      if (req.user.type === 'bronze' || req.user.type === 'silver' || req.user.type === 'gold') {
+        console.log('Skipping session tracking for tier user:', req.user.type);
+        return res.status(200).json({ sessionId: null, skipped: true });
       }
 
       const sessionId = randomUUID();
