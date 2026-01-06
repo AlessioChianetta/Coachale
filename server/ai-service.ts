@@ -34,6 +34,7 @@ import {
 } from "./ai/retry-manager";
 import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch } from "./ai/provider-factory";
 import { fileSearchService } from "./ai/file-search-service";
+import { conversationContextBuilder } from "./services/conversation-memory";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -3003,6 +3004,27 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`⚠️ [User Preferences] Could not fetch preferences:`, prefError);
   }
 
+  // ========================================
+  // CONVERSATION MEMORY CONTEXT: Load past conversation history
+  // ========================================
+  let conversationMemoryContext = '';
+  try {
+    const memoryResult = await conversationContextBuilder.buildHistoryContext(
+      consultantId,
+      'consultant',
+      conversationId // exclude current conversation
+    );
+    
+    if (memoryResult.hasHistory) {
+      conversationMemoryContext = memoryResult.contextText;
+      console.log(`🧠 [Conversation Memory] Loaded ${memoryResult.conversationCount} past conversations for context`);
+    } else {
+      console.log(`🧠 [Conversation Memory] No past conversations found`);
+    }
+  } catch (memoryError) {
+    console.log(`⚠️ [Conversation Memory] Could not fetch memory:`, memoryError);
+  }
+
   const timings = {
     requestStart: performance.now(),
     contextBuildStart: 0,
@@ -3159,6 +3181,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Append user preferences if available
     if (userPreferencesContext) {
       systemPrompt = systemPrompt + '\n\n' + userPreferencesContext;
+    }
+    
+    // Append conversation memory context if available
+    if (conversationMemoryContext) {
+      systemPrompt = systemPrompt + '\n\n' + conversationMemoryContext;
     }
     timings.promptBuildEnd = performance.now();
     promptBuildTime = Math.round(timings.promptBuildEnd - timings.promptBuildStart);
