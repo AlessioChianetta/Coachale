@@ -33,6 +33,7 @@ import {
   type AgentType as TemplateAgentType
 } from "../../data/default-templates-seed";
 import { getAIProvider, getModelWithThinking } from "../../ai/provider-factory";
+import { encryptForConsultant, decryptForConsultant, generateEncryptionSalt } from "../../encryption";
 
 const router = Router();
 
@@ -2063,6 +2064,184 @@ router.post(
 );
 
 // Note: DEFAULT TEMPLATES ENDPOINTS moved above /:id route to avoid route collision
+
+/**
+ * GET /api/whatsapp/agents-by-account
+ * Groups all WhatsApp agents by their Twilio Account SID
+ * Returns agents organized by account for UI display
+ */
+router.get(
+  "/whatsapp/agents-by-account",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const agents = await db
+        .select({
+          id: consultantWhatsappConfig.id,
+          agentName: consultantWhatsappConfig.agentName,
+          twilioAccountSid: consultantWhatsappConfig.twilioAccountSid,
+          twilioWhatsappNumber: consultantWhatsappConfig.twilioWhatsappNumber,
+          isActive: consultantWhatsappConfig.isActive,
+        })
+        .from(consultantWhatsappConfig)
+        .where(eq(consultantWhatsappConfig.consultantId, consultantId))
+        .orderBy(consultantWhatsappConfig.agentName);
+
+      const [centralCredentials] = await db
+        .select({
+          twilioAccountSid: users.twilioAccountSid,
+          twilioWhatsappNumber: users.twilioWhatsappNumber,
+        })
+        .from(users)
+        .where(eq(users.id, consultantId))
+        .limit(1);
+
+      const groupedByAccount: Record<string, {
+        accountSid: string;
+        accountSidMasked: string;
+        isCentralAccount: boolean;
+        agents: typeof agents;
+      }> = {};
+
+      for (const agent of agents) {
+        const accountSid = agent.twilioAccountSid || "NO_ACCOUNT";
+        const isCentral = centralCredentials?.twilioAccountSid === accountSid;
+        
+        if (!groupedByAccount[accountSid]) {
+          groupedByAccount[accountSid] = {
+            accountSid,
+            accountSidMasked: accountSid === "NO_ACCOUNT" 
+              ? "Nessun Account" 
+              : `${accountSid.substring(0, 6)}...${accountSid.substring(accountSid.length - 4)}`,
+            isCentralAccount: isCentral,
+            agents: [],
+          };
+        }
+        groupedByAccount[accountSid].agents.push(agent);
+      }
+
+      const accountGroups = Object.values(groupedByAccount).sort((a, b) => {
+        if (a.isCentralAccount && !b.isCentralAccount) return -1;
+        if (!a.isCentralAccount && b.isCentralAccount) return 1;
+        return a.accountSid.localeCompare(b.accountSid);
+      });
+
+      res.json({
+        success: true,
+        centralAccountSid: centralCredentials?.twilioAccountSid || null,
+        centralAccountSidMasked: centralCredentials?.twilioAccountSid 
+          ? `${centralCredentials.twilioAccountSid.substring(0, 6)}...${centralCredentials.twilioAccountSid.substring(centralCredentials.twilioAccountSid.length - 4)}`
+          : null,
+        accountGroups,
+        totalAgents: agents.length,
+      });
+    } catch (error: any) {
+      console.error("❌ [AGENTS BY ACCOUNT] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante il recupero degli agenti",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/sync-credentials/:agentId
+ * Syncs an agent's Twilio credentials from the central credentials (users table)
+ * This copies twilioAccountSid and twilioAuthToken from users to consultantWhatsappConfig
+ */
+router.post(
+  "/whatsapp/sync-credentials/:agentId",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { agentId } = req.params;
+
+      const [agent] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agent) {
+        return res.status(404).json({
+          success: false,
+          error: "Agente non trovato",
+        });
+      }
+
+      const [centralCredentials] = await db
+        .select({
+          twilioAccountSid: users.twilioAccountSid,
+          twilioAuthToken: users.twilioAuthToken,
+          encryptionSalt: users.encryptionSalt,
+        })
+        .from(users)
+        .where(eq(users.id, consultantId))
+        .limit(1);
+
+      if (!centralCredentials?.twilioAccountSid || !centralCredentials?.twilioAuthToken) {
+        return res.status(400).json({
+          success: false,
+          error: "Credenziali Twilio centrali non configurate. Vai nelle Impostazioni API per configurarle.",
+        });
+      }
+
+      if (!centralCredentials?.encryptionSalt) {
+        return res.status(400).json({
+          success: false,
+          error: "Encryption salt non configurato. Contatta il supporto.",
+        });
+      }
+
+      let decryptedAuthToken: string;
+      try {
+        decryptedAuthToken = decryptForConsultant(centralCredentials.twilioAuthToken, centralCredentials.encryptionSalt);
+      } catch (decryptError: any) {
+        console.error("❌ [SYNC CREDENTIALS] Failed to decrypt central auth token:", decryptError.message);
+        return res.status(400).json({
+          success: false,
+          error: "Impossibile decriptare le credenziali Twilio salvate. Riconfigura le credenziali nelle Impostazioni API.",
+        });
+      }
+
+      await db
+        .update(consultantWhatsappConfig)
+        .set({
+          twilioAccountSid: centralCredentials.twilioAccountSid,
+          twilioAuthToken: decryptedAuthToken,
+        })
+        .where(eq(consultantWhatsappConfig.id, agentId));
+
+      console.log(`✅ [SYNC CREDENTIALS] Agent ${agent.agentName} (${agentId}) synced to central credentials`);
+
+      res.json({
+        success: true,
+        message: `Credenziali sincronizzate con successo per l'agente "${agent.agentName}"`,
+        agentId,
+        agentName: agent.agentName,
+        newAccountSid: centralCredentials.twilioAccountSid,
+        newAccountSidMasked: `${centralCredentials.twilioAccountSid.substring(0, 6)}...${centralCredentials.twilioAccountSid.substring(centralCredentials.twilioAccountSid.length - 4)}`,
+      });
+    } catch (error: any) {
+      console.error("❌ [SYNC CREDENTIALS] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante la sincronizzazione delle credenziali",
+      });
+    }
+  }
+);
 
 export default router;
 
