@@ -10858,9 +10858,32 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   app.post("/api/consultant/ai/generate-daily-summaries", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { ConversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const { getSuperAdminGeminiKeys } = await import("./ai/provider-factory");
       const memoryService = new ConversationMemoryService();
       
-      const apiKey = await aiService.getGeminiApiKey(req.user!.id);
+      // Get API key from SuperAdmin Gemini config or user's settings
+      let apiKey: string | null = null;
+      
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+        apiKey = superAdminKeys.keys[0];
+      }
+      
+      if (!apiKey) {
+        // Try to get from user's Gemini settings
+        const { geminiApiSettings } = await import("@shared/schema");
+        const { decrypt } = await import("./encryption");
+        const settings = await db
+          .select()
+          .from(geminiApiSettings)
+          .where(eq(geminiApiSettings.userId, req.user!.id))
+          .limit(1);
+        
+        if (settings.length > 0 && settings[0].apiKeyEncrypted) {
+          apiKey = decrypt(settings[0].apiKeyEncrypted);
+        }
+      }
+      
       if (!apiKey) {
         return res.status(400).json({ message: "Nessuna API key Gemini configurata" });
       }
