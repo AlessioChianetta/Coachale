@@ -1511,6 +1511,27 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
   }
 
   // ========================================
+  // CONVERSATION MEMORY CONTEXT: Load past conversation history for client
+  // ========================================
+  let conversationMemoryContext = '';
+  try {
+    const memoryResult = await conversationContextBuilder.buildHistoryContext(
+      clientId,
+      'client',
+      conversationId // exclude current conversation
+    );
+    
+    if (memoryResult.hasHistory) {
+      conversationMemoryContext = memoryResult.contextText;
+      console.log(`🧠 [Conversation Memory] Loaded ${memoryResult.conversationCount} past conversations for client context`);
+    } else {
+      console.log(`🧠 [Conversation Memory] No past conversations found for client`);
+    }
+  } catch (memoryError) {
+    console.log(`⚠️ [Conversation Memory] Could not fetch client memory:`, memoryError);
+  }
+
+  // ========================================
   // PERFORMANCE TIMING TRACKING
   // ========================================
   const timings = {
@@ -2016,6 +2037,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Append user preferences if available
     if (userPreferencesContext) {
       systemPrompt = systemPrompt + '\n\n' + userPreferencesContext;
+    }
+    
+    // Append conversation memory context if available
+    if (conversationMemoryContext) {
+      systemPrompt = systemPrompt + '\n\n' + conversationMemoryContext;
     }
 
     // Calculate detailed token breakdown by section
