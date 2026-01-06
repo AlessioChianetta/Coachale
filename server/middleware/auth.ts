@@ -25,6 +25,44 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    // Handle Bronze tier tokens
+    if (decoded.type === "bronze" && decoded.bronzeUserId) {
+      console.log(`[AUTH] Bronze token detected for user: ${decoded.bronzeUserId}`);
+      req.user = {
+        id: decoded.bronzeUserId,
+        email: decoded.email || "",
+        role: "client" as const,
+        consultantId: decoded.consultantId,
+      };
+      return next();
+    }
+    
+    // Handle Silver tier tokens
+    if (decoded.type === "silver" && decoded.subscriptionId) {
+      console.log(`[AUTH] Silver token detected for subscription: ${decoded.subscriptionId}`);
+      req.user = {
+        id: decoded.subscriptionId,
+        email: decoded.email || "",
+        role: "client" as const,
+        consultantId: decoded.consultantId,
+      };
+      return next();
+    }
+    
+    // Handle Manager tokens
+    if (decoded.role === "manager" && decoded.managerId) {
+      console.log(`[AUTH] Manager token detected for manager: ${decoded.managerId}`);
+      req.user = {
+        id: decoded.managerId,
+        email: "",
+        role: "client" as const,
+        consultantId: decoded.consultantId,
+      };
+      return next();
+    }
+    
+    // Standard user token handling
     const user = await storage.getUser(decoded.userId);
     
     if (!user) {
