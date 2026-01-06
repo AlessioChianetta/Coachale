@@ -1,0 +1,111 @@
+Activity tracker init: {isLoginSuccess: 'true', existingSessionId: null, sessionId: null, userId: 'f3394f85-499e-4b0d-b808-a03a31dab135'}
+use-activity-tracker.ts:44 Fresh login detected, starting new session
+use-activity-tracker.ts:131 🔄 Starting session attempt 1 - token exists: true - user ID: f3394f85-499e-4b0d-b808-a03a31dab135
+use-activity-tracker.ts:160 Making request to start session...
+select-agent.tsx:366 [SELECT-AGENT] Auth check - normalToken: true authUser: false bronzeTier: 2
+select-agent.tsx:383 [SELECT-AGENT] Verifying token via API...
+select-agent.tsx:446 [SELECT-AGENT] Fetching agents - isGold: false token: true tier: 2
+use-activity-tracker.ts:161  POST https://5bdf15ee-2615-4d58-bf40-49602ae10d82-00-1pymofhhtwqrj.spock.replit.dev/api/activity/session/start 400 (Bad Request)
+startSession @ use-activity-tracker.ts:161
+(anonymous) @ use-activity-tracker.ts:48
+setTimeout
+(anonymous) @ use-activity-tracker.ts:47
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f4727a25:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f4727a25:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f4727a25:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f4727a25:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f4727a25:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f4727a25:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f4727a25:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=f4727a25:19416
+commitRoot @ chunk-RPCDYKBN.js?v=f4727a25:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f4727a25:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f4727a25:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f4727a25:18627
+setTimeout
+handleLoginSuccess @ login.tsx:64
+onSuccess @ login.tsx:113
+execute @ @tanstack_react-query.js?v=f4727a25:2060
+await in execute
+mutate @ @tanstack_react-query.js?v=f4727a25:2390
+(anonymous) @ @tanstack_react-query.js?v=f4727a25:3583
+onSubmit @ login.tsx:154
+(anonymous) @ chunk-KRCINPEB.js?v=f4727a25:1579
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=f4727a25:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=f4727a25:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=f4727a25:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=f4727a25:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=f4727a25:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=f4727a25:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=f4727a25:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=f4727a25:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=f4727a25:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=f4727a25:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=f4727a25:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=f4727a25:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=f4727a25:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=f4727a25:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=f4727a25:5449Understand this error
+use-activity-tracker.ts:169 Session start response status: 400
+use-activity-tracker.ts:184 Failed to start session - status: 400 response: {"message":"insert or update on table \"user_sessions\" violates foreign key constraint \"user_sessions_user_id_users_id_fk\""}
+startSession @ use-activity-tracker.ts:184
+await in startSession
+(anonymous) @ use-activity-tracker.ts:48
+setTimeout
+(anonymous) @ use-activity-tracker.ts:47
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f4727a25:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f4727a25:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f4727a25:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f4727a25:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f4727a25:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f4727a25:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f4727a25:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=f4727a25:19416
+commitRoot @ chunk-RPCDYKBN.js?v=f4727a25:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f4727a25:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f4727a25:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f4727a25:18627
+setTimeout
+handleLoginSuccess @ login.tsx:64
+onSuccess @ login.tsx:113
+execute @ @tanstack_react-query.js?v=f4727a25:2060
+await in execute
+mutate @ @tanstack_react-query.js?v=f4727a25:2390
+(anonymous) @ @tanstack_react-query.js?v=f4727a25:3583
+onSubmit @ login.tsx:154
+(anonymous) @ chunk-KRCINPEB.js?v=f4727a25:1579
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=f4727a25:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=f4727a25:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=f4727a25:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=f4727a25:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=f4727a25:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=f4727a25:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=f4727a25:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=f4727a25:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=f4727a25:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=f4727a25:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=f4727a25:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=f4727a25:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=f4727a25:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=f4727a25:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=f4727a25:5449Understand this error
+select-agent.tsx:384  GET https://5bdf15ee-2615-4d58-bf40-49602ae10d82-00-1pymofhhtwqrj.spock.replit.dev/api/auth/me 404 (Not Found)
+checkAuth @ select-agent.tsx:384
+(anonymous) @ select-agent.tsx:426
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f4727a25:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f4727a25:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f4727a25:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f4727a25:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f4727a25:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f4727a25:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f4727a25:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=f4727a25:19328
+workLoop @ chunk-RPCDYKBN.js?v=f4727a25:197
+flushWork @ chunk-RPCDYKBN.js?v=f4727a25:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=f4727a25:384Understand this error
+select-agent.tsx:399 [SELECT-AGENT] AuthUser resolved: undefined undefined
+select-agent.tsx:417 [SELECT-AGENT] Bronze/Silver user authenticated, tier: 2
+select-agent.tsx:483 [SELECT-AGENT] Bronze/Silver user - redirecting to agent chat
+manager-chat.tsx:603 [MANAGER-CHAT] Auth check - token: true bronzeToken: false hasBronzeTier: false

@@ -749,6 +749,8 @@ router.get(
         // Check if this is a Bronze virtual share (ID starts with "bronze-")
         const isBronzeShare = share.id.startsWith('bronze-');
         
+        console.log(`[CONV DEBUG] managerId: ${managerId}, shareId: ${share.id}, agentConfigId: ${share.agentConfigId}, isBronzeShare: ${isBronzeShare}, pattern: ${managerVisitorPattern}`);
+        
         // Get all conversations for this manager
         // Bronze shares use NULL shareId in the database
         const conversations = isBronzeShare
