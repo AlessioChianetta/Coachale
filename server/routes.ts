@@ -10870,14 +10870,16 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       }
       const decoded = jwt.default.verify(token, jwtSecret) as any;
       
-      if (decoded.role !== "consultant") {
+      // Get user from database to verify role
+      const user = await storage.getUser(decoded.userId);
+      if (!user || user.role !== "consultant") {
         return res.status(403).json({ message: "Consultant role required" });
       }
 
       req.user = {
-        id: decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
+        id: user.id,
+        email: user.email,
+        role: user.role,
       };
     } catch (err) {
       return res.status(401).json({ message: "Invalid token" });
