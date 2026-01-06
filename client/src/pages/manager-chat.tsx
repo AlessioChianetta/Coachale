@@ -69,6 +69,7 @@ interface Message {
 }
 
 interface AgentInfo {
+  id: string;
   agentName: string;
   description: string | null;
   requiresLogin: boolean;
@@ -1260,6 +1261,7 @@ export default function ManagerChat() {
                 variant="consultant"
                 onSuggestionClick={handleSendMessage}
                 disabled={isTyping}
+                agentId={agentInfo?.id}
                 agentName={agentInfo?.agentName}
                 userName={managerInfo?.name}
                 agentInfo={agentInfo ? {

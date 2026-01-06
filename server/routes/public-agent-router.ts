@@ -286,6 +286,7 @@ router.get("/:slug", loadShareAndAgent, async (req: ManagerRequest, res: Respons
     const agentConfig = req.agentConfig!;
 
     res.json({
+      id: agentConfig.id,
       agentName: share.agentName,
       description: agentConfig.businessDescription || null,
       requiresLogin: share.requiresLogin,
