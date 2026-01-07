@@ -550,6 +550,124 @@ function ManagerAIPreferencesSheet({ slug }: ManagerAIPreferencesSheetProps) {
   );
 }
 
+interface ManagerMemorySheetProps {
+  slug: string;
+}
+
+interface MemorySummary {
+  id: string;
+  date: string;
+  summary: string;
+  conversationCount: number;
+  messageCount: number;
+  topics?: string[];
+}
+
+function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const { data: memoryData, isLoading } = useQuery<{ summaries: MemorySummary[] }>({
+    queryKey: ["manager-memory", slug],
+    queryFn: async () => {
+      const response = await fetch(`/api/public/agent/${slug}/manager/memory`, {
+        headers: getManagerAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch memory summaries");
+      }
+      return response.json();
+    },
+    enabled: !!slug && !!getManagerToken() && isOpen,
+  });
+
+  const summaries = memoryData?.summaries || [];
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("it-IT", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  return (
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 sm:h-9 sm:w-9 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-100/50 dark:hover:bg-purple-900/30"
+          title="Memoria AI"
+        >
+          <Brain className="h-4 w-4 sm:h-5 sm:w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <Brain className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <SheetTitle className="text-lg">Memoria AI</SheetTitle>
+              <SheetDescription className="text-sm">
+                Riassunti giornalieri delle tue conversazioni
+              </SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+            </div>
+          ) : summaries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                <Brain className="h-8 w-8 text-slate-400" />
+              </div>
+              <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-1">
+                Nessun riassunto disponibile
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
+                I riassunti delle tue conversazioni appariranno qui man mano che interagisci con l'assistente AI.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {summaries.map((summary) => (
+                <div
+                  key={summary.id}
+                  className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100/50 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">
+                      {formatDate(summary.date)}
+                    </span>
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        {summary.conversationCount} chat
+                      </span>
+                      <span>•</span>
+                      <span>{summary.messageCount} messaggi</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {summary.summary}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export default function ManagerChat() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
@@ -1229,6 +1347,9 @@ export default function ManagerChat() {
                 </span>
               )}
               <ManagerAIPreferencesSheet slug={slug!} />
+              {(managerInfo?.tier === "gold" || managerInfo?.level === "3") && (
+                <ManagerMemorySheet slug={slug!} />
+              )}
               {agentInfo?.requiresLogin && (
                 <ProfileSettingsSheet
                   trigger={

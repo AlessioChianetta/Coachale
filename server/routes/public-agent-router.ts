@@ -18,7 +18,7 @@ import { getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
 import { fileSearchService } from "../ai/file-search-service";
-import { memoryContextBuilder } from "../services/conversation-memory";
+import { conversationMemoryService } from "../services/conversation-memory";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
@@ -592,6 +592,29 @@ router.get(
     } catch (error: any) {
       console.error("[PUBLIC AGENT] Get manager preferences error:", error);
       res.status(500).json({ message: "Failed to get manager preferences" });
+    }
+  }
+);
+
+router.get(
+  "/:slug/manager/memory",
+  loadShareAndAgent,
+  verifyManagerToken,
+  async (req: ManagerRequest, res: Response) => {
+    try {
+      if (!req.silverGoldUser || req.silverGoldUser.level !== "3") {
+        return res.status(403).json({ message: "Memory summaries are only available for Gold tier users" });
+      }
+
+      const summaries = await conversationMemoryService.getManagerDailySummaries(
+        req.silverGoldUser.subscriptionId,
+        30
+      );
+
+      res.json({ summaries });
+    } catch (error: any) {
+      console.error("[PUBLIC AGENT] Get manager memory error:", error);
+      res.status(500).json({ message: "Failed to get memory summaries" });
     }
   }
 );
