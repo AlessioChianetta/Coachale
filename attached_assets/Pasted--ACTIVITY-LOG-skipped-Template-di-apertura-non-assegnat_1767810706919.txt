@@ -1,0 +1,26 @@
+ [ACTIVITY LOG] skipped: Template di apertura non assegnato
+⚠️ [LOCK RELEASE] Lead 270d7995-9f72-4ed1-b1af-8cbc3c7ef229 still in 'processing' state - reverting to 'pending'
+⏭️ Skipping lead e3135303-5560-4e0c-84bb-823931c3f9ba - already claimed by another instance (status changed)
+
+✅ [PROACTIVE OUTREACH] Completed in 2746ms
+   📊 Results: 2 success, 0 errors, 2 skipped, 4 pending leads total
+[PUBLIC AGENT] Silver/Gold token detected - type: gold, subscriptionId: 1f6a3427-9af5-4673-9565-48c5aa89f53e, email: capcutale00@gmail.com
+[PUBLIC AGENT] Silver/Gold auth successful - level: 3, hasCompletedOnboarding: true
+📊 [ManagerMemory] Found 3 conversations for subscription 1f6a3427...
+📅 [ManagerMemory] Found 1 days with messages
+🔄 [ManagerMemory] 0 days need summaries, 1 skipped
+[MANAGER MEMORY] Generated 0 summaries for Gold user undefined in 336ms
+6:32:08 PM [express] POST /api/public/agent/test/manager/memory/generate 200 in 788ms :: {"message":…
+[PUBLIC AGENT] Silver/Gold token detected - type: gold, subscriptionId: 1f6a3427-9af5-4673-9565-48c5aa89f53e, email: capcutale00@gmail.com
+[PUBLIC AGENT] Silver/Gold auth successful - level: 3, hasCompletedOnboarding: true
+6:32:08 PM [express] GET /api/public/agent/test/manager/memory 304 in 451ms :: {"summaries":[{"id":"…
+[PUBLIC AGENT] Silver/Gold token detected - type: gold, subscriptionId: 1f6a3427-9af5-4673-9565-48c5aa89f53e, email: capcutale00@gmail.com
+[PUBLIC AGENT] Silver/Gold auth successful - level: 3, hasCompletedOnboarding: true
+📊 [ManagerMemory] Found 3 conversations for subscription 1f6a3427...
+📅 [ManagerMemory] Found 1 days with messages
+🔄 [ManagerMemory] 0 days need summaries, 1 skipped
+[MANAGER MEMORY] Generated 0 summaries for Gold user undefined in 335ms
+6:32:11 PM [express] POST /api/public/agent/test/manager/memory/generate 200 in 786ms :: {"message":…
+[PUBLIC AGENT] Silver/Gold token detected - type: gold, subscriptionId: 1f6a3427-9af5-4673-9565-48c5aa89f53e, email: capcutale00@gmail.com
+[PUBLIC AGENT] Silver/Gold auth successful - level: 3, hasCompletedOnboarding: true
+6:32:11 PM [express] GET /api/public/agent/test/manager/memory 304 in 453ms :: {"summaries":[{"id":"…

@@ -644,6 +644,13 @@ router.post(
       const apiKey = superAdminKeys.keys[0];
       const memoryService = new ConversationMemoryService();
       
+      // If force=true, delete existing summaries first to allow regeneration
+      const force = req.body?.force === true;
+      if (force) {
+        await memoryService.deleteManagerSummaries(req.silverGoldUser.subscriptionId);
+        console.log(`[MANAGER MEMORY] Force regenerate - deleted existing summaries for subscription ${req.silverGoldUser.subscriptionId.slice(0, 8)}...`);
+      }
+      
       const startTime = Date.now();
       const result = await memoryService.generateManagerMissingDailySummariesWithProgress(
         req.silverGoldUser.subscriptionId,

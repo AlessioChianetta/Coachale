@@ -806,6 +806,16 @@ ${conversationText}`,
     }));
   }
 
+  async deleteManagerSummaries(subscriptionId: string): Promise<number> {
+    const result = await db
+      .delete(managerDailySummaries)
+      .where(eq(managerDailySummaries.subscriptionId, subscriptionId))
+      .returning({ id: managerDailySummaries.id });
+    
+    console.log(`🗑️ [ManagerMemory] Deleted ${result.length} summaries for subscription ${subscriptionId.slice(0, 8)}...`);
+    return result.length;
+  }
+
   async getRecentManagerConversations(
     subscriptionId: string,
     excludeConversationId?: string

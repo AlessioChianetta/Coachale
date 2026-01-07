@@ -659,10 +659,14 @@ function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
   });
 
   const generateMemoryMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (force: boolean = false) => {
       const response = await fetch(`/api/public/agent/${slug}/manager/memory/generate`, {
         method: "POST",
-        headers: getManagerAuthHeaders(),
+        headers: {
+          ...getManagerAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ force }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -690,11 +694,12 @@ function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
 
   const startGeneration = () => {
     setIsGenerating(true);
-    generateMemoryMutation.mutate();
+    generateMemoryMutation.mutate(false);
   };
 
   const deleteAndRegenerate = () => {
-    startGeneration();
+    setIsGenerating(true);
+    generateMemoryMutation.mutate(true);
   };
 
   const toggleExpanded = (id: string) => {
