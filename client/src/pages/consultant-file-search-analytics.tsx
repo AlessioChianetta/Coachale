@@ -952,6 +952,31 @@ export default function ConsultantFileSearchAnalyticsPage() {
     enabled: !!expandedGoldUserId,
   });
 
+  const [viewingAgentMemory, setViewingAgentMemory] = useState<{
+    subscriptionId: string;
+    agentId: string;
+    agentName: string;
+  } | null>(null);
+
+  const { data: agentSummaries, isLoading: agentSummariesLoading } = useQuery<Array<{
+    id: string;
+    summaryDate: string;
+    summary: string;
+    conversationCount: number;
+    messageCount: number;
+    topics: string[];
+  }>>({
+    queryKey: ["/api/ai-assistant/memory/manager", viewingAgentMemory?.subscriptionId, "agents", viewingAgentMemory?.agentId, "summaries"],
+    queryFn: async () => {
+      const res = await fetch(`/api/ai-assistant/memory/manager/${viewingAgentMemory?.subscriptionId}/agents/${viewingAgentMemory?.agentId}/summaries`, {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch agent summaries");
+      return res.json();
+    },
+    enabled: !!viewingAgentMemory,
+  });
+
   const { data: memorySettings } = useQuery<{ memoryGenerationHour: number }>({
     queryKey: ["/api/consultant/ai/memory-settings"],
     queryFn: async () => {
@@ -6459,6 +6484,22 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                       <div className="text-lg font-semibold text-amber-600">{agent.messageCount}</div>
                                                       <div className="text-xs text-gray-500">messaggi</div>
                                                     </div>
+                                                    <Button
+                                                      size="sm"
+                                                      variant="outline"
+                                                      className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setViewingAgentMemory({
+                                                          subscriptionId: manager.subscriptionId,
+                                                          agentId: agent.agentId,
+                                                          agentName: agent.agentName
+                                                        });
+                                                      }}
+                                                    >
+                                                      <Eye className="h-4 w-4 mr-1" />
+                                                      Visualizza
+                                                    </Button>
                                                   </div>
                                                 </div>
                                               ))}
@@ -6607,6 +6648,67 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                           <Brain className="h-12 w-12 text-gray-300 mb-2" />
                           <p>Nessun riassunto disponibile</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            I riassunti vengono generati automaticamente dalle conversazioni
+                          </p>
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={!!viewingAgentMemory} onOpenChange={(open) => !open && setViewingAgentMemory(null)}>
+                  <DialogContent className="max-w-2xl max-h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Bot className="h-5 w-5 text-amber-600" />
+                        Memoria AI - {viewingAgentMemory?.agentName}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Riassunti giornalieri delle conversazioni con questo agente (ultimi 30 giorni)
+                      </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="h-[400px] pr-4">
+                      {agentSummariesLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
+                        </div>
+                      ) : agentSummaries && agentSummaries.length > 0 ? (
+                        <div className="space-y-4">
+                          {agentSummaries.map((summary) => (
+                            <div key={summary.id} className="border border-amber-200 rounded-lg p-4 bg-amber-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-amber-700">
+                                  {format(new Date(summary.summaryDate), "EEEE d MMMM yyyy", { locale: it })}
+                                </span>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
+                                    {summary.conversationCount} chat
+                                  </Badge>
+                                  <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
+                                    {summary.messageCount} msg
+                                  </Badge>
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                {summary.summary}
+                              </p>
+                              {summary.topics && summary.topics.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {summary.topics.slice(0, 5).map((topic, i) => (
+                                    <Badge key={i} variant="outline" className="text-xs bg-white border-amber-200 text-amber-700">
+                                      {topic}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                          <Bot className="h-12 w-12 text-amber-200 mb-2" />
+                          <p>Nessun riassunto disponibile per questo agente</p>
                           <p className="text-xs text-gray-400 mt-1">
                             I riassunti vengono generati automaticamente dalle conversazioni
                           </p>

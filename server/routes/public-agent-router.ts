@@ -1018,10 +1018,11 @@ ${share.agentInstructions}
               console.log(`[PUBLIC AGENT] Gold history injected: ${historyContext.conversationCount} recent conversations`);
             }
             
-            // 2. Inject daily summaries (last 7 days)
+            // 2. Inject daily summaries (last 7 days) - filtered to current agent
             const memoryContext = await memoryContextBuilder.buildManagerDailySummaryContext(
               req.silverGoldUser.subscriptionId,
-              7
+              7,
+              agentConfig.id
             );
             
             if (memoryContext.hasHistory) {
