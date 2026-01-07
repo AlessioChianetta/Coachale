@@ -994,6 +994,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
   const [memoryGenerationProgress, setMemoryGenerationProgress] = useState<{
     isRunning: boolean;
+    phase: 'users' | 'gold';
     totalUsers: number;
     currentIndex: number;
     currentUser: string;
@@ -1002,24 +1003,44 @@ export default function ConsultantFileSearchAnalyticsPage() {
     totalDays?: number;
     currentDate?: string;
     results: Array<{ userId: string; userName: string; status: 'processing' | 'generated' | 'skipped' | 'error'; generated?: number; error?: string }>;
-    finalResult?: { generated: number; usersProcessed: number; usersWithNewSummaries: number; durationMs: number; errors?: string[] };
+    totalGoldUsers: number;
+    currentGoldIndex: number;
+    goldResults: Array<{ userId: string; userName: string; status: 'processing' | 'generated' | 'skipped' | 'error'; generated?: number; error?: string }>;
+    finalResult?: { 
+      generated: number; 
+      usersProcessed: number; 
+      usersWithNewSummaries: number; 
+      goldGenerated: number;
+      goldUsersProcessed: number;
+      goldUsersWithNewSummaries: number;
+      durationMs: number; 
+      errors?: string[] 
+    };
   }>({
     isRunning: false,
+    phase: 'users',
     totalUsers: 0,
     currentIndex: 0,
     currentUser: '',
     currentRole: '',
-    results: []
+    results: [],
+    totalGoldUsers: 0,
+    currentGoldIndex: 0,
+    goldResults: []
   });
 
   const startMemoryGeneration = async () => {
     setMemoryGenerationProgress({
       isRunning: true,
+      phase: 'users',
       totalUsers: 0,
       currentIndex: 0,
       currentUser: '',
       currentRole: '',
-      results: []
+      results: [],
+      totalGoldUsers: 0,
+      currentGoldIndex: 0,
+      goldResults: []
     });
 
     try {
@@ -1053,6 +1074,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
           
           setMemoryGenerationProgress({
             isRunning: job.status === 'running',
+            phase: job.phase || 'users',
             totalUsers: job.totalUsers,
             currentIndex: job.currentIndex,
             currentUser: job.currentUser,
@@ -1060,7 +1082,10 @@ export default function ConsultantFileSearchAnalyticsPage() {
             currentDay: job.currentDay,
             totalDays: job.totalDays,
             currentDate: job.currentDate,
-            results: job.results,
+            results: job.results || [],
+            totalGoldUsers: job.totalGoldUsers || 0,
+            currentGoldIndex: job.currentGoldIndex || 0,
+            goldResults: job.goldResults || [],
             finalResult: job.finalResult
           });
           
@@ -1093,6 +1118,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
           generated: 0,
           usersProcessed: 0,
           usersWithNewSummaries: 0,
+          goldGenerated: 0,
+          goldUsersProcessed: 0,
+          goldUsersWithNewSummaries: 0,
           durationMs: 0,
           errors: [error.message || "Errore durante la generazione"]
         }
