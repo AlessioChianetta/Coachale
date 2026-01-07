@@ -5,6 +5,7 @@ export type OnboardingStepId =
   | 'smtp' 
   | 'google_calendar' 
   | 'twilio' 
+  | 'instagram'
   | 'whatsapp_template' 
   | 'first_campaign'
   | 'agent_inbound'
@@ -18,7 +19,8 @@ export type OnboardingStepId =
   | 'knowledge_base'
   | 'summary_email'
   | 'turn_config'
-  | 'lead_import';
+  | 'lead_import'
+  | 'stripe_connect';
 
 export type OnboardingStepStatus = 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
 
@@ -74,6 +76,15 @@ export const onboardingSteps: OnboardingStepInfo[] = [
     warnings: ['Processo di approvazione Meta può richiedere alcuni giorni', 'Senza Twilio non puoi usare WhatsApp']
   },
   {
+    id: 'instagram',
+    phase: 1,
+    title: '1.5 Instagram Direct Messaging (Opzionale)',
+    content: "Collega il tuo account Instagram Business per gestire i DM con AI. L'agente può rispondere automaticamente ai messaggi diretti.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp',
+    tips: ['Richiede un account Instagram Business collegato a una pagina Facebook', 'Configurazione separata per ogni agente WhatsApp'],
+  },
+  {
     id: 'whatsapp_template',
     phase: 1,
     title: '1.5 Template WhatsApp Approvato (ESSENZIALE)',
@@ -92,6 +103,15 @@ export const onboardingSteps: OnboardingStepInfo[] = [
     actionHref: '/consultant/campaigns',
     tips: ['Scegli un nome descrittivo per la campagna', "Seleziona l'agente WhatsApp che gestirà le conversazioni", 'Scegli il template approvato per il primo messaggio'],
     warnings: ['Richiede almeno un template approvato', "L'agente deve avere Twilio configurato"]
+  },
+  {
+    id: 'stripe_connect',
+    phase: 1,
+    title: '1.8 Stripe Connect (Opzionale)',
+    content: 'Collega il tuo account Stripe per ricevere pagamenti dai clienti direttamente sulla piattaforma.',
+    isRequired: false,
+    actionHref: '/consultant/licenze',
+    tips: ['Richiede un account Stripe verificato', 'I pagamenti vengono trasferiti automaticamente sul tuo conto'],
   },
   {
     id: 'agent_inbound',

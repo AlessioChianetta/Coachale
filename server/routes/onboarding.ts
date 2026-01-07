@@ -259,6 +259,7 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
     
     // Fetch all configuration statuses in parallel for efficiency
     const [
+      onboardingStatus,
       vertexSettings,
       consultant,
       smtpSettings,
@@ -275,8 +276,13 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
       moreTemplatesResult,
       campaignsResult,
       leadImportConfigResult,
-      agentCalendarResult
+      agentCalendarResult,
+      instagramConfig,
+      license
     ] = await Promise.all([
+      db.query.consultantOnboardingStatus.findFirst({
+        where: eq(consultantOnboardingStatus.consultantId, consultantId),
+      }),
       db.query.vertexAiSettings.findFirst({
         where: eq(vertexAiSettings.userId, consultantId),
       }),
@@ -355,7 +361,13 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
           eq(consultantWhatsappConfig.consultantId, consultantId),
           isNotNull(consultantWhatsappConfig.googleAccessToken),
           ne(consultantWhatsappConfig.googleAccessToken, '')
-        ))
+        )),
+      db.query.consultantInstagramConfig.findFirst({
+        where: eq(consultantInstagramConfig.consultantId, consultantId),
+      }),
+      db.query.consultantLicenses.findFirst({
+        where: eq(consultantLicenses.consultantId, consultantId),
+      })
     ]);
     
     const documentsCount = Number(docsResult[0]?.count || 0);
@@ -371,38 +383,63 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
     const hasCampaign = Number(campaignsResult[0]?.count || 0) > 0;
     const hasLeadImport = leadImportConfigResult.length > 0;
     const hasCalendar = agentCalendarResult.length > 0;
+    const hasInstagram = !!(instagramConfig?.instagramPageId && instagramConfig?.pageAccessToken);
+    const hasStripeAccount = !!license?.stripeAccountId;
+    const stripeAccountStatus = license?.stripeAccountStatus;
     
     type OnboardingStepStatus = 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
     type OnboardingStepId = 
-      | 'vertex_ai' | 'smtp' | 'google_calendar' | 'twilio' | 'whatsapp_template' | 'first_campaign'
+      | 'vertex_ai' | 'smtp' | 'google_calendar' | 'twilio' | 'instagram' | 'whatsapp_template' | 'first_campaign'
       | 'agent_inbound' | 'agent_outbound' | 'agent_consultative' | 'agent_public_link' | 'agent_ideas' | 'more_templates'
       | 'first_course' | 'first_exercise' | 'knowledge_base'
-      | 'summary_email' | 'turn_config' | 'lead_import';
+      | 'summary_email' | 'turn_config' | 'lead_import' | 'stripe_connect';
     
     interface OnboardingStatus {
       stepId: OnboardingStepId;
       status: OnboardingStepStatus;
     }
     
+    // Helper to determine status: prioritize verified status from onboardingStatus table,
+    // then fall back to checking if credentials exist (configured), otherwise pending
+    const getStepStatus = (
+      savedStatus: 'pending' | 'configured' | 'verified' | 'error' | undefined | null,
+      hasCredentials: boolean
+    ): OnboardingStepStatus => {
+      if (savedStatus === 'verified') return 'verified';
+      if (savedStatus === 'error') return 'error';
+      if (hasCredentials) return 'configured';
+      return 'pending';
+    };
+    
+    // Determine Stripe Connect status
+    const getStripeStatus = (): OnboardingStepStatus => {
+      if (!hasStripeAccount) return 'pending';
+      if (stripeAccountStatus === 'active') return 'verified';
+      if (stripeAccountStatus === 'restricted' || stripeAccountStatus === 'pending') return 'configured';
+      return 'pending';
+    };
+    
     const statuses: OnboardingStatus[] = [
-      { stepId: 'vertex_ai', status: (!!vertexSettings?.projectId || consultant?.useSuperadminVertex) ? 'configured' : 'pending' },
-      { stepId: 'smtp', status: !!smtpSettings?.smtpHost ? 'configured' : 'pending' },
-      { stepId: 'google_calendar', status: hasCalendar ? 'configured' : 'pending' },
-      { stepId: 'twilio', status: hasTwilio ? 'configured' : 'pending' },
+      { stepId: 'vertex_ai', status: getStepStatus(onboardingStatus?.vertexAiStatus, !!vertexSettings?.projectId || !!consultant?.useSuperadminVertex) },
+      { stepId: 'smtp', status: getStepStatus(onboardingStatus?.smtpStatus, !!smtpSettings?.smtpHost) },
+      { stepId: 'google_calendar', status: getStepStatus(onboardingStatus?.googleCalendarStatus, hasCalendar) },
+      { stepId: 'twilio', status: hasTwilio ? 'verified' : 'pending' },
+      { stepId: 'instagram', status: hasInstagram ? 'verified' : 'pending' },
       { stepId: 'whatsapp_template', status: hasApprovedTemplate ? 'verified' : 'pending' },
-      { stepId: 'first_campaign', status: hasCampaign ? 'configured' : 'pending' },
-      { stepId: 'agent_inbound', status: (agentTypeMap.get('reactive_lead') || 0) > 0 ? 'configured' : 'pending' },
-      { stepId: 'agent_outbound', status: (agentTypeMap.get('proactive_setter') || 0) > 0 ? 'configured' : 'pending' },
-      { stepId: 'agent_consultative', status: (agentTypeMap.get('informative_advisor') || 0) > 0 ? 'configured' : 'pending' },
-      { stepId: 'agent_public_link', status: hasPublicLink ? 'configured' : 'pending' },
-      { stepId: 'agent_ideas', status: hasIdeas ? 'configured' : 'pending' },
-      { stepId: 'more_templates', status: hasMoreTemplates ? 'configured' : 'pending' },
-      { stepId: 'first_course', status: hasCourse ? 'configured' : 'pending' },
-      { stepId: 'first_exercise', status: hasExercise ? 'configured' : 'pending' },
-      { stepId: 'knowledge_base', status: documentsCount > 0 ? 'configured' : 'pending' },
+      { stepId: 'first_campaign', status: hasCampaign ? 'verified' : 'pending' },
+      { stepId: 'agent_inbound', status: (agentTypeMap.get('reactive_lead') || 0) > 0 ? 'verified' : 'pending' },
+      { stepId: 'agent_outbound', status: (agentTypeMap.get('proactive_setter') || 0) > 0 ? 'verified' : 'pending' },
+      { stepId: 'agent_consultative', status: (agentTypeMap.get('informative_advisor') || 0) > 0 ? 'verified' : 'pending' },
+      { stepId: 'agent_public_link', status: hasPublicLink ? 'verified' : 'pending' },
+      { stepId: 'agent_ideas', status: hasIdeas ? 'verified' : 'pending' },
+      { stepId: 'more_templates', status: hasMoreTemplates ? 'verified' : 'pending' },
+      { stepId: 'first_course', status: hasCourse ? 'verified' : 'pending' },
+      { stepId: 'first_exercise', status: hasExercise ? 'verified' : 'pending' },
+      { stepId: 'knowledge_base', status: documentsCount > 0 ? 'verified' : 'pending' },
       { stepId: 'summary_email', status: hasSummaryEmail ? 'verified' : 'pending' },
-      { stepId: 'turn_config', status: !!turnConfig?.usernameEncrypted ? 'configured' : 'pending' },
-      { stepId: 'lead_import', status: hasLeadImport ? 'configured' : 'pending' },
+      { stepId: 'turn_config', status: getStepStatus(onboardingStatus?.videoMeetingStatus, !!turnConfig?.usernameEncrypted) },
+      { stepId: 'lead_import', status: hasLeadImport ? 'verified' : 'pending' },
+      { stepId: 'stripe_connect', status: getStripeStatus() },
     ];
     
     res.json({
