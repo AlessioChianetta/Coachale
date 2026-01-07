@@ -11487,6 +11487,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         const apiKey = superAdminKeys.keys[0];
         const memoryService = new ConversationMemoryService();
         
+        // OPTIMIZATION: First get audit data to identify users with missing days
+        const auditData = await conversationMemoryService.getMemoryAudit(consultantId);
+        const usersWithMissingDays = new Map(
+          auditData.map(u => [u.userId, { missingDays: u.missingDays, firstName: u.firstName, lastName: u.lastName, role: u.role }])
+        );
+        
         const allUsers = await db
           .select({ id: schema.users.id, role: schema.users.role, firstName: schema.users.firstName, lastName: schema.users.lastName })
           .from(schema.users)
@@ -11508,6 +11514,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         for (let i = 0; i < allUsers.length; i++) {
           const user = allUsers[i];
           const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Sconosciuto';
+          const userAudit = usersWithMissingDays.get(user.id);
           
           job.currentIndex = i + 1;
           job.currentUser = userName;
@@ -11515,6 +11522,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           job.currentDay = undefined;
           job.totalDays = undefined;
           job.currentDate = undefined;
+          
+          // OPTIMIZATION: Skip users with 0 missing days immediately
+          if (!userAudit || userAudit.missingDays === 0) {
+            job.results.push({ userId: user.id, userName, status: 'skipped', generated: 0 });
+            continue;
+          }
           
           // Add to results as processing
           job.results.push({ userId: user.id, userName, status: 'processing' });

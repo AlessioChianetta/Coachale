@@ -1,8 +1,7 @@
 import cron from 'node-cron';
 import { db } from '../db';
-import { users, aiConversations, aiDailySummaries } from '../../shared/schema';
-import { eq, and, isNull, or, desc, gte, lt, sql } from 'drizzle-orm';
-import { startOfDay, subDays } from 'date-fns';
+import { users } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
 import { formatInTimeZone } from 'date-fns-tz';
 
 let schedulerTask: cron.ScheduledTask | null = null;
@@ -75,49 +74,35 @@ async function runMemoryGenerationForHour(targetHour: number) {
       console.log(`   👤 Processing consultant: ${consultant.firstName || consultant.id}`);
       consultantsProcessed++;
 
-      const clientsAndSelf = await db
-        .select({ id: users.id, role: users.role, firstName: users.firstName })
-        .from(users)
-        .where(or(
-          eq(users.id, consultant.id),
-          and(
-            eq(users.consultantId, consultant.id),
-            eq(users.isActive, true)
-          )
-        ));
+      // OPTIMIZATION: Pre-audit to get only users with missing days
+      const auditData = await conversationMemoryService.getMemoryAudit(consultant.id);
+      const usersWithMissingDays = auditData.filter(u => u.missingDays > 0);
+      
+      if (usersWithMissingDays.length === 0) {
+        console.log(`      ⏭️ All users complete, skipping`);
+        continue;
+      }
+      
+      console.log(`      📊 ${usersWithMissingDays.length}/${auditData.length} users need summaries`);
 
-      for (const user of clientsAndSelf) {
+      for (const userData of usersWithMissingDays) {
         try {
-          const cutoffDate = subDays(new Date(), 30);
-          
-          const daysWithConversations = await db
-            .selectDistinct({
-              day: sql<Date>`DATE(${aiConversations.createdAt})`.as("day"),
-            })
-            .from(aiConversations)
-            .where(and(
-              eq(aiConversations.clientId, user.id),
-              gte(aiConversations.createdAt, cutoffDate)
-            ));
-
-          if (daysWithConversations.length === 0) continue;
-
           totalUsers++;
 
           const result = await memoryService.generateMissingDailySummariesWithProgress(
-            user.id,
+            userData.userId,
             apiKey,
             () => {}
           );
 
           if (result.generated > 0) {
             totalGenerated += result.generated;
-            console.log(`   ✅ ${user.firstName || user.id}: ${result.generated} summaries generated`);
+            console.log(`      ✅ ${userData.firstName || userData.userId}: ${result.generated} summaries generated`);
           }
         } catch (error: any) {
-          const errorMsg = `User ${user.id}: ${error.message}`;
+          const errorMsg = `User ${userData.userId}: ${error.message}`;
           errors.push(errorMsg);
-          console.error(`   ❌ ${errorMsg}`);
+          console.error(`      ❌ ${errorMsg}`);
         }
       }
     }
