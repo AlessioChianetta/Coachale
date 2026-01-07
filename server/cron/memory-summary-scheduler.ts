@@ -79,12 +79,12 @@ async function runMemoryGenerationForHour(targetHour: number) {
       const usersWithMissingDays = auditData.filter(u => u.missingDays > 0);
       
       if (usersWithMissingDays.length === 0) {
-        console.log(`      ⏭️ All users complete, skipping`);
-        continue;
+        console.log(`      ⏭️ All client users complete`);
+      } else {
+        console.log(`      📊 ${usersWithMissingDays.length}/${auditData.length} client users need summaries`);
       }
-      
-      console.log(`      📊 ${usersWithMissingDays.length}/${auditData.length} users need summaries`);
 
+      // Process client users with missing summaries
       for (const userData of usersWithMissingDays) {
         try {
           totalUsers++;
