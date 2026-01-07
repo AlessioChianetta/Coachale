@@ -958,8 +958,8 @@ export default function ConsultantSetupWizard() {
     <div className="min-h-screen flex bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <Sidebar role="consultant" />
       
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full flex flex-col">
+      <main className="flex-1 overflow-hidden min-h-0">
+        <div className="h-full flex flex-col min-h-0">
           <motion.header 
             className="relative overflow-hidden border-b px-6 py-5"
             initial={{ opacity: 0, y: -20 }}
@@ -1097,7 +1097,7 @@ export default function ConsultantSetupWizard() {
             </div>
           </motion.header>
 
-          <div className={`flex-1 grid gap-0 overflow-hidden ${isOnboardingMode ? 'grid-cols-12' : 'grid-cols-12'}`}>
+          <div className={`flex-1 grid gap-0 overflow-hidden min-h-0 ${isOnboardingMode ? 'grid-cols-12' : 'grid-cols-12'}`}>
             <aside className={`${isOnboardingMode ? 'col-span-3' : 'col-span-4'} border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col transition-all duration-300`}>
               <div className="p-4 border-b">
                 <h2 className="font-semibold flex items-center gap-2">
@@ -1613,7 +1613,7 @@ export default function ConsultantSetupWizard() {
                   animate={{ width: "auto", opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="col-span-4 border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col"
+                  className="col-span-4 border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col min-h-0"
                 >
                   <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20">
                     <div className="flex items-center gap-2">
@@ -1629,7 +1629,7 @@ export default function ConsultantSetupWizard() {
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-hidden min-h-0">
                     <ChatPanel
                       isOpen={true}
                       onClose={() => setIsOnboardingMode(false)}
