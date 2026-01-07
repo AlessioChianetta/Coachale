@@ -734,9 +734,11 @@ export function ChatPanel({
                   </div>
                 </ScrollArea>
               ) : (
-                <MessageList messages={messages} isTyping={isTyping} />
+                <div className="flex-1 overflow-hidden">
+                  <MessageList messages={messages} isTyping={isTyping} />
+                </div>
               )}
-              <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+              <div className="flex-shrink-0 p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
                 <InputArea
                   onSend={handleSendMessage}
                   isProcessing={isTyping}
