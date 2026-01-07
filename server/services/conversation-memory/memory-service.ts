@@ -1166,9 +1166,12 @@ ${conversationText}`,
       // with external_visitor_id pattern: manager_{subscriptionId}_%
       const visitorPattern = `manager_${subscriptionId}_%`;
 
-      // Find all conversations for this subscription
+      // Find all conversations for this subscription with their agentConfigId
       const subscriptionConversations = await db
-        .select({ id: whatsappAgentConsultantConversations.id })
+        .select({ 
+          id: whatsappAgentConsultantConversations.id,
+          agentConfigId: whatsappAgentConsultantConversations.agentConfigId,
+        })
         .from(whatsappAgentConsultantConversations)
         .where(like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern));
 
@@ -1178,80 +1181,93 @@ ${conversationText}`,
         return { generated: 0, skipped: 0 };
       }
 
+      // Build convId -> agentConfigId map
+      const convToAgentMap = new Map<string, string>();
+      for (const conv of subscriptionConversations) {
+        if (conv.agentConfigId) {
+          convToAgentMap.set(conv.id, conv.agentConfigId);
+        }
+      }
+
       const convIds = subscriptionConversations.map(c => c.id);
 
-      // Find all days with messages
-      const daysWithMessages = await db
-        .selectDistinct({
+      // Find all (day, conversationId) pairs with messages to determine (day, agent) pairs
+      const dayConvPairs = await db
+        .select({
           day: sql<Date>`DATE(${whatsappAgentConsultantMessages.createdAt})`.as("day"),
+          conversationId: whatsappAgentConsultantMessages.conversationId,
+          msgCount: sql<number>`count(*)::int`.as("msg_count"),
         })
         .from(whatsappAgentConsultantMessages)
-        .where(inArray(whatsappAgentConsultantMessages.conversationId, convIds));
+        .where(inArray(whatsappAgentConsultantMessages.conversationId, convIds))
+        .groupBy(sql`DATE(${whatsappAgentConsultantMessages.createdAt})`, whatsappAgentConsultantMessages.conversationId);
 
-      console.log(`📅 [ManagerMemory] Found ${daysWithMessages.length} days with messages`);
+      // Build (date|agentId) -> messageCount map
+      const dateAgentMsgCount = new Map<string, number>();
+      for (const row of dayConvPairs) {
+        const agentId = convToAgentMap.get(row.conversationId);
+        if (!agentId) continue; // Skip conversations without agent
+        const dateStr = format(row.day, "yyyy-MM-dd");
+        const key = `${dateStr}|${agentId}`;
+        dateAgentMsgCount.set(key, (dateAgentMsgCount.get(key) || 0) + row.msgCount);
+      }
 
-      if (daysWithMessages.length === 0) {
+      // Filter to (date, agent) pairs with >= 2 messages
+      const qualifyingPairs = Array.from(dateAgentMsgCount.entries())
+        .filter(([_, count]) => count >= 2)
+        .map(([key]) => {
+          const [dateStr, agentId] = key.split('|');
+          return { dateStr, agentId };
+        });
+
+      console.log(`📅 [ManagerMemory] Found ${qualifyingPairs.length} (date, agent) pairs needing potential summaries`);
+
+      if (qualifyingPairs.length === 0) {
         return { generated: 0, skipped: 0 };
       }
 
-      // Get existing summaries
+      // Get existing per-agent summaries
       const existingSummaries = await db
-        .select({ summaryDate: managerDailySummaries.summaryDate })
+        .select({ 
+          summaryDate: managerDailySummaries.summaryDate,
+          agentProfileId: managerDailySummaries.agentProfileId,
+        })
         .from(managerDailySummaries)
-        .where(eq(managerDailySummaries.subscriptionId, subscriptionId));
+        .where(and(
+          eq(managerDailySummaries.subscriptionId, subscriptionId),
+          isNotNull(managerDailySummaries.agentProfileId)
+        ));
 
-      const existingDates = new Set(
-        existingSummaries.map(s => format(s.summaryDate, "yyyy-MM-dd"))
+      // Build set of existing "date|agentId" keys
+      const existingKeys = new Set(
+        existingSummaries
+          .filter(s => s.agentProfileId)
+          .map(s => `${format(s.summaryDate, "yyyy-MM-dd")}|${s.agentProfileId}`)
       );
 
-      // Filter to days that need summaries (>= 2 messages and no existing summary)
-      const daysNeedingSummary: Date[] = [];
+      // Filter to pairs that need generation
+      const pairsNeedingSummary = qualifyingPairs.filter(
+        p => !existingKeys.has(`${p.dateStr}|${p.agentId}`)
+      );
+
+      console.log(`🔄 [ManagerMemory] ${pairsNeedingSummary.length} (date, agent) pairs need summaries, ${qualifyingPairs.length - pairsNeedingSummary.length} already exist`);
+      skipped = qualifyingPairs.length - pairsNeedingSummary.length;
+
+      const totalPairs = pairsNeedingSummary.length;
       
-      for (const dayRow of daysWithMessages) {
-        const day = new Date(dayRow.day);
-        const dayStr = format(day, "yyyy-MM-dd");
+      for (let i = 0; i < pairsNeedingSummary.length; i++) {
+        const pair = pairsNeedingSummary[i];
+        const day = new Date(pair.dateStr);
         
-        if (existingDates.has(dayStr)) {
-          skipped++;
-          continue;
-        }
+        onProgress?.({ current: i + 1, total: totalPairs, date: pair.dateStr });
 
-        // Check message count for this day
-        const dayStart = startOfDay(day);
-        const dayEnd = new Date(dayStart);
-        dayEnd.setDate(dayEnd.getDate() + 1);
-
-        const msgCount = await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(whatsappAgentConsultantMessages)
-          .where(and(
-            inArray(whatsappAgentConsultantMessages.conversationId, convIds),
-            gte(whatsappAgentConsultantMessages.createdAt, dayStart),
-            lt(whatsappAgentConsultantMessages.createdAt, dayEnd)
-          ));
-
-        if ((msgCount[0]?.count || 0) >= 2) {
-          daysNeedingSummary.push(day);
-        } else {
-          skipped++;
-        }
-      }
-
-      console.log(`🔄 [ManagerMemory] ${daysNeedingSummary.length} days need summaries, ${skipped} skipped`);
-
-      const totalDays = daysNeedingSummary.length;
-      
-      for (let i = 0; i < daysNeedingSummary.length; i++) {
-        const day = daysNeedingSummary[i];
-        const dateStr = format(day, "yyyy-MM-dd");
-        
-        onProgress?.({ current: i + 1, total: totalDays, date: dateStr });
-
+        // Generate summary for this specific (date, agent) pair
         const result = await this.generateManagerDailySummary(
           subscriptionId,
           consultantId,
           day,
-          apiKey
+          apiKey,
+          pair.agentId // Pass the agentProfileId
         );
 
         if (result) {

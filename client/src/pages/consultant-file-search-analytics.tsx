@@ -52,7 +52,8 @@ import {
   ListTodo,
   BookMarked,
   Eye,
-  Crown
+  Crown,
+  Info
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -958,14 +959,19 @@ export default function ConsultantFileSearchAnalyticsPage() {
     agentName: string;
   } | null>(null);
 
-  const { data: agentSummaries, isLoading: agentSummariesLoading } = useQuery<Array<{
-    id: string;
-    summaryDate: string;
-    summary: string;
-    conversationCount: number;
-    messageCount: number;
-    topics: string[];
-  }>>({
+  const { data: agentSummariesData, isLoading: agentSummariesLoading } = useQuery<{
+    summaries: Array<{
+      id: string;
+      summaryDate: string;
+      summary: string;
+      conversationCount: number;
+      messageCount: number;
+      topics: string[];
+      agentProfileId: string | null;
+      agentName: string | null;
+    }>;
+    usedFallback: boolean;
+  }>({
     queryKey: ["/api/ai-assistant/memory/manager", viewingAgentMemory?.subscriptionId, "agents", viewingAgentMemory?.agentId, "summaries"],
     queryFn: async () => {
       const res = await fetch(`/api/ai-assistant/memory/manager/${viewingAgentMemory?.subscriptionId}/agents/${viewingAgentMemory?.agentId}/summaries`, {
@@ -976,6 +982,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
     enabled: !!viewingAgentMemory,
   });
+  
+  const agentSummaries = agentSummariesData?.summaries;
+  const agentSummariesUsedFallback = agentSummariesData?.usedFallback;
 
   const { data: memorySettings } = useQuery<{ memoryGenerationHour: number }>({
     queryKey: ["/api/consultant/ai/memory-settings"],
@@ -6685,12 +6694,28 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         </div>
                       ) : agentSummaries && agentSummaries.length > 0 ? (
                         <div className="space-y-4">
+                          {agentSummariesUsedFallback && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                              <div className="flex items-center gap-2">
+                                <Info className="h-4 w-4" />
+                                <span>Mostrando riassunti globali - non ci sono ancora riassunti specifici per questo agente</span>
+                              </div>
+                            </div>
+                          )}
                           {agentSummaries.map((summary) => (
                             <div key={summary.id} className="border border-amber-200 rounded-lg p-4 bg-amber-50">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-amber-700">
-                                  {format(new Date(summary.summaryDate), "EEEE d MMMM yyyy", { locale: it })}
-                                </span>
+                                <div className="flex flex-col gap-1">
+                                  <span className="font-medium text-amber-700">
+                                    {format(new Date(summary.summaryDate), "EEEE d MMMM yyyy", { locale: it })}
+                                  </span>
+                                  {summary.agentName && !agentSummariesUsedFallback && (
+                                    <span className="text-xs text-amber-600 flex items-center gap-1">
+                                      <Bot className="h-3 w-3" />
+                                      Agente: {summary.agentName}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
                                   <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
                                     {summary.conversationCount} chat

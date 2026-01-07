@@ -921,9 +921,21 @@ router.get("/memory/manager/:subscriptionId/agents/:agentProfileId/summaries", a
   try {
     const { subscriptionId, agentProfileId } = req.params;
     console.log(`[AI Assistant] Fetching agent-specific summaries for subscription: ${subscriptionId}, agent: ${agentProfileId}`);
-    const summaries = await conversationMemoryService.getManagerDailySummaries(subscriptionId, 30, agentProfileId);
-    console.log(`[AI Assistant] Found ${summaries.length} summaries for agent ${agentProfileId.slice(0,8)}...`);
-    res.json(summaries);
+    
+    // First try to get agent-specific summaries
+    let summaries = await conversationMemoryService.getManagerDailySummaries(subscriptionId, 30, agentProfileId);
+    console.log(`[AI Assistant] Found ${summaries.length} per-agent summaries for agent ${agentProfileId.slice(0,8)}...`);
+    
+    // Fallback: if no per-agent summaries, get all summaries (including legacy ones without agentProfileId)
+    let usedFallback = false;
+    if (summaries.length === 0) {
+      console.log(`[AI Assistant] No per-agent summaries found, using fallback to global summaries`);
+      summaries = await conversationMemoryService.getManagerDailySummaries(subscriptionId, 30);
+      usedFallback = true;
+      console.log(`[AI Assistant] Fallback: Found ${summaries.length} global summaries`);
+    }
+    
+    res.json({ summaries, usedFallback });
   } catch (error: any) {
     console.error("[AI Assistant] Error fetching agent summaries:", error);
     res.status(500).json({ error: error.message || "Failed to fetch agent summaries" });
