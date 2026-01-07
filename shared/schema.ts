@@ -6657,6 +6657,7 @@ export const managerDailySummaries = pgTable("manager_daily_summaries", {
   consultantIdx: index("idx_manager_daily_summaries_consultant").on(table.consultantId),
   subscriptionIdx: index("idx_manager_daily_summaries_subscription").on(table.subscriptionId),
   agentIdx: index("idx_manager_daily_summaries_agent").on(table.agentProfileId),
+  subscriptionDateAgentUnique: unique("manager_daily_summaries_subscription_date_agent_key").on(table.subscriptionId, table.summaryDate, table.agentProfileId),
 }));
 
 export type ManagerDailySummary = typeof managerDailySummaries.$inferSelect;
