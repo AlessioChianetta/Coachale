@@ -779,6 +779,7 @@ ${conversationText}`,
     messageCount: number;
     topics: string[];
     agentProfileId: string | null;
+    agentName: string | null;
   }>> {
     const cutoffDate = subDays(new Date(), daysBack);
 
@@ -795,6 +796,7 @@ ${conversationText}`,
       }
     }
 
+    // Join with consultantWhatsappConfig to get agent names
     const summaries = await db
       .select({
         id: managerDailySummaries.id,
@@ -804,8 +806,13 @@ ${conversationText}`,
         messageCount: managerDailySummaries.messageCount,
         topics: managerDailySummaries.topics,
         agentProfileId: managerDailySummaries.agentProfileId,
+        agentName: consultantWhatsappConfig.agentName,
       })
       .from(managerDailySummaries)
+      .leftJoin(
+        consultantWhatsappConfig,
+        eq(managerDailySummaries.agentProfileId, consultantWhatsappConfig.id)
+      )
       .where(and(...conditions))
       .orderBy(desc(managerDailySummaries.summaryDate));
 
@@ -817,6 +824,7 @@ ${conversationText}`,
       messageCount: s.messageCount || 0,
       topics: (s.topics as string[]) || [],
       agentProfileId: s.agentProfileId || null,
+      agentName: s.agentName || null,
     }));
   }
 

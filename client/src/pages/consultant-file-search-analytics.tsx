@@ -1205,6 +1205,8 @@ export default function ConsultantFileSearchAnalyticsPage() {
     conversationCount: number;
     messageCount: number;
     topics: string[];
+    agentProfileId: string | null;
+    agentName: string | null;
   }>>({
     queryKey: ["/api/consultant/ai/memory/manager", viewingManagerSubscriptionId],
     queryFn: async () => {
@@ -6617,9 +6619,17 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           {managerSummaries.map((summary) => (
                             <div key={summary.id} className="border rounded-lg p-4 bg-amber-50">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-amber-700">
-                                  {format(new Date(summary.summaryDate), "EEEE d MMMM yyyy", { locale: it })}
-                                </span>
+                                <div className="flex flex-col gap-1">
+                                  <span className="font-medium text-amber-700">
+                                    {format(new Date(summary.summaryDate), "EEEE d MMMM yyyy", { locale: it })}
+                                  </span>
+                                  {summary.agentName && (
+                                    <span className="text-xs text-amber-600 flex items-center gap-1">
+                                      <Bot className="h-3 w-3" />
+                                      Agente: {summary.agentName}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
                                   <Badge variant="secondary" className="text-xs">
                                     {summary.conversationCount} chat
