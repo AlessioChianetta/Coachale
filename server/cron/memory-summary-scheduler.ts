@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { db } from '../db';
-import { users, clientLevelSubscriptions } from '../../shared/schema';
+import { users, clientLevelSubscriptions, bronzeUserAgentAccess } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { formatInTimeZone } from 'date-fns-tz';
 
@@ -111,20 +111,35 @@ async function runMemoryGenerationForHour(targetHour: number) {
         const goldSubscriptions = await db
           .select({
             id: clientLevelSubscriptions.id,
-            email: clientLevelSubscriptions.email,
-            firstName: clientLevelSubscriptions.firstName,
+            email: clientLevelSubscriptions.clientEmail,
+            firstName: clientLevelSubscriptions.clientName,
           })
           .from(clientLevelSubscriptions)
           .where(and(
             eq(clientLevelSubscriptions.consultantId, consultant.id),
             eq(clientLevelSubscriptions.level, "3"), // Gold only
-            eq(clientLevelSubscriptions.isActive, true)
+            eq(clientLevelSubscriptions.status, "active")
           ));
 
-        if (goldSubscriptions.length > 0) {
-          console.log(`      🥇 Processing ${goldSubscriptions.length} Gold managers`);
+        // Get agent access status for Gold subscriptions
+        const goldAccessRecords = await db
+          .select({
+            bronzeUserId: bronzeUserAgentAccess.bronzeUserId,
+            isEnabled: bronzeUserAgentAccess.isEnabled,
+          })
+          .from(bronzeUserAgentAccess)
+          .where(eq(bronzeUserAgentAccess.userType, "gold"));
+        
+        const accessMap = new Map(goldAccessRecords.map(r => [r.bronzeUserId, r.isEnabled]));
+
+        // Filter to only Gold managers with agent access enabled (default true if no record)
+        const activeGoldSubscriptions = goldSubscriptions.filter(sub => accessMap.get(sub.id) ?? true);
+        const disabledCount = goldSubscriptions.length - activeGoldSubscriptions.length;
+
+        if (activeGoldSubscriptions.length > 0) {
+          console.log(`      🥇 Processing ${activeGoldSubscriptions.length} Gold managers (${disabledCount} disabled, skipped)`);
           
-          for (const goldSub of goldSubscriptions) {
+          for (const goldSub of activeGoldSubscriptions) {
             try {
               const result = await memoryService.generateManagerMissingDailySummariesWithProgress(
                 goldSub.id,
@@ -143,6 +158,8 @@ async function runMemoryGenerationForHour(targetHour: number) {
               console.error(`         ❌ ${errorMsg}`);
             }
           }
+        } else if (disabledCount > 0) {
+          console.log(`      🥇 No active Gold managers (${disabledCount} disabled, skipped)`);
         }
       } catch (goldQueryError: any) {
         console.error(`      ⚠️ Failed to query Gold managers: ${goldQueryError.message}`);

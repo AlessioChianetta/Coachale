@@ -427,6 +427,7 @@ interface ManagerMemoryAudit {
   existingSummaries: number;
   missingDays: number;
   status: 'complete' | 'partial' | 'empty';
+  agentAccessEnabled: boolean;
 }
 
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
@@ -6149,38 +6150,47 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           </thead>
                           <tbody>
                             {managerMemoryAudit.map((manager) => (
-                              <tr key={manager.subscriptionId} className="border-b hover:bg-gray-50">
+                              <tr key={manager.subscriptionId} className={`border-b hover:bg-gray-50 ${!manager.agentAccessEnabled ? 'opacity-50' : ''}`}>
                                 <td className="p-3">
                                   <div className="font-medium">{manager.firstName || manager.email}</div>
                                   {manager.firstName && (
                                     <div className="text-xs text-gray-500">{manager.email}</div>
                                   )}
-                                  <Badge className="mt-1 bg-amber-100 text-amber-700 border-amber-200 text-xs">
-                                    {manager.tier}
-                                  </Badge>
+                                  <div className="flex gap-1 mt-1">
+                                    <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
+                                      {manager.tier}
+                                    </Badge>
+                                    {!manager.agentAccessEnabled && (
+                                      <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">
+                                        Disabilitato
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="p-3 text-center">{manager.totalDays}</td>
                                 <td className="p-3 text-center text-emerald-600 font-medium">{manager.existingSummaries}</td>
                                 <td className="p-3 text-center text-red-600 font-medium">{manager.missingDays}</td>
                                 <td className="p-3 text-center">
-                                  {manager.status === 'complete' && (
+                                  {!manager.agentAccessEnabled ? (
+                                    <Badge className="bg-gray-100 text-gray-600 border-gray-200">
+                                      Inattivo
+                                    </Badge>
+                                  ) : manager.status === 'complete' ? (
                                     <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
                                       Completo
                                     </Badge>
-                                  )}
-                                  {manager.status === 'partial' && (
+                                  ) : manager.status === 'partial' ? (
                                     <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
                                       Parziale
                                     </Badge>
-                                  )}
-                                  {manager.status === 'empty' && (
+                                  ) : (
                                     <Badge className="bg-red-100 text-red-700 border-red-200">
                                       Vuoto
                                     </Badge>
                                   )}
                                 </td>
                                 <td className="p-3 text-center">
-                                  {manager.missingDays > 0 && (
+                                  {manager.agentAccessEnabled && manager.missingDays > 0 && (
                                     <Button
                                       size="sm"
                                       variant="outline"

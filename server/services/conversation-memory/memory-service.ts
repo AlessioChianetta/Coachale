@@ -1,5 +1,5 @@
 import { db } from "../../db";
-import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users, managerDailySummaries, managerConversations, managerMessages, clientLevelSubscriptions, consultantWhatsappConfig, whatsappAgentConsultantConversations, whatsappAgentConsultantMessages } from "../../../shared/schema";
+import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users, managerDailySummaries, managerConversations, managerMessages, clientLevelSubscriptions, consultantWhatsappConfig, whatsappAgentConsultantConversations, whatsappAgentConsultantMessages, bronzeUserAgentAccess } from "../../../shared/schema";
 import { eq, and, desc, lt, gte, isNotNull, sql, or, inArray, like } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { startOfDay, subDays, format, eachDayOfInterval } from "date-fns";
@@ -1122,22 +1122,35 @@ ${conversationText}`,
     existingSummaries: number;
     missingDays: number;
     status: 'complete' | 'partial' | 'empty';
+    agentAccessEnabled: boolean;
   }>> {
     try {
-      // Get all Gold subscriptions for this consultant
+      // Get all Gold subscriptions for this consultant with status = 'active'
       const goldSubscriptions = await db
         .select({
           id: clientLevelSubscriptions.id,
-          email: clientLevelSubscriptions.email,
-          firstName: clientLevelSubscriptions.firstName,
+          email: clientLevelSubscriptions.clientEmail,
+          firstName: clientLevelSubscriptions.clientName,
           level: clientLevelSubscriptions.level,
         })
         .from(clientLevelSubscriptions)
         .where(and(
           eq(clientLevelSubscriptions.consultantId, consultantId),
           eq(clientLevelSubscriptions.level, "3"), // Gold only
-          eq(clientLevelSubscriptions.isActive, true)
+          eq(clientLevelSubscriptions.status, "active")
         ));
+      
+      // Get agent access status for each subscription
+      const accessRecords = await db
+        .select({
+          bronzeUserId: bronzeUserAgentAccess.bronzeUserId,
+          isEnabled: bronzeUserAgentAccess.isEnabled,
+        })
+        .from(bronzeUserAgentAccess)
+        .where(eq(bronzeUserAgentAccess.userType, "gold"));
+
+      // Build access map: subscriptionId -> isEnabled (default true if no record)
+      const accessMap = new Map(accessRecords.map(r => [r.bronzeUserId, r.isEnabled]));
 
       const auditResults: Array<{
         subscriptionId: string;
@@ -1148,9 +1161,13 @@ ${conversationText}`,
         existingSummaries: number;
         missingDays: number;
         status: 'complete' | 'partial' | 'empty';
+        agentAccessEnabled: boolean;
       }> = [];
 
       for (const sub of goldSubscriptions) {
+        // Check if this subscription has agent access enabled (default true if no record)
+        const agentAccessEnabled = accessMap.get(sub.id) ?? true;
+
         // Get conversations for this subscription
         const subscriptionConversations = await db
           .select({ id: managerConversations.id })
@@ -1167,6 +1184,7 @@ ${conversationText}`,
             existingSummaries: 0,
             missingDays: 0,
             status: 'complete',
+            agentAccessEnabled,
           });
           continue;
         }
@@ -1211,6 +1229,7 @@ ${conversationText}`,
           existingSummaries,
           missingDays,
           status,
+          agentAccessEnabled,
         });
       }
 
