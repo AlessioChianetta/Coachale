@@ -1,5 +1,5 @@
 import { db } from "../../db";
-import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users, managerDailySummaries, managerConversations, managerMessages, clientLevelSubscriptions, consultantWhatsappConfig, whatsappAgentConsultantConversations, whatsappAgentConsultantMessages, bronzeUserAgentAccess } from "../../../shared/schema";
+import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users, managerDailySummaries, clientLevelSubscriptions, consultantWhatsappConfig, whatsappAgentConsultantConversations, whatsappAgentConsultantMessages, bronzeUserAgentAccess } from "../../../shared/schema";
 import { eq, and, desc, lt, gte, isNotNull, sql, or, inArray, like } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { startOfDay, subDays, format, eachDayOfInterval } from "date-fns";
@@ -1168,11 +1168,14 @@ ${conversationText}`,
         // Check if this subscription has agent access enabled (default true if no record)
         const agentAccessEnabled = accessMap.get(sub.id) ?? true;
 
-        // Get conversations for this subscription
+        // Gold managers use whatsappAgentConsultantConversations with externalVisitorId pattern
+        const visitorPattern = `manager_${sub.id}_%`;
+        
+        // Get conversations for this subscription from the correct table
         const subscriptionConversations = await db
-          .select({ id: managerConversations.id })
-          .from(managerConversations)
-          .where(sql`${managerConversations.managerId} = ${sub.id}`);
+          .select({ id: whatsappAgentConsultantConversations.id })
+          .from(whatsappAgentConsultantConversations)
+          .where(like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern));
 
         if (subscriptionConversations.length === 0) {
           auditResults.push({
@@ -1191,15 +1194,15 @@ ${conversationText}`,
 
         const convIds = subscriptionConversations.map(c => c.id);
 
-        // Count days with >= 2 messages
+        // Count days with >= 2 messages from the correct messages table
         const daysWithMessages = await db
           .select({
-            day: sql<Date>`DATE(${managerMessages.createdAt})`.as("day"),
+            day: sql<Date>`DATE(${whatsappAgentConsultantMessages.createdAt})`.as("day"),
             msgCount: sql<number>`count(*)::int`.as("msg_count"),
           })
-          .from(managerMessages)
-          .where(inArray(managerMessages.conversationId, convIds))
-          .groupBy(sql`DATE(${managerMessages.createdAt})`);
+          .from(whatsappAgentConsultantMessages)
+          .where(inArray(whatsappAgentConsultantMessages.conversationId, convIds))
+          .groupBy(sql`DATE(${whatsappAgentConsultantMessages.createdAt})`);
 
         const qualifyingDays = daysWithMessages.filter(d => d.msgCount >= 2);
         const totalDays = qualifyingDays.length;
