@@ -200,7 +200,7 @@ export class ConversationContextBuilder {
     ];
 
     for (const summary of dailySummaries) {
-      const dateStr = format(new Date(summary.date), "EEEE d MMMM yyyy", { locale: it });
+      const dateStr = format(new Date(summary.summaryDate), "EEEE d MMMM yyyy", { locale: it });
       
       contextParts.push(`📅 ${dateStr}:`);
       contextParts.push(`   ${summary.summary}`);

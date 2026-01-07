@@ -772,7 +772,7 @@ ${conversationText}`,
     daysBack: number = 30
   ): Promise<Array<{
     id: string;
-    date: Date;
+    summaryDate: Date;
     summary: string;
     conversationCount: number;
     messageCount: number;
@@ -798,7 +798,7 @@ ${conversationText}`,
 
     return summaries.map(s => ({
       id: s.id,
-      date: s.summaryDate!,
+      summaryDate: s.summaryDate!,
       summary: s.summary,
       conversationCount: s.conversationCount || 0,
       messageCount: s.messageCount || 0,
