@@ -1,6 +1,6 @@
 import { db } from "../../db";
-import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users, managerDailySummaries, managerConversations, managerMessages, clientLevelSubscriptions, consultantWhatsappConfig } from "../../../shared/schema";
-import { eq, and, desc, lt, gte, isNotNull, sql, or, inArray } from "drizzle-orm";
+import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users, managerDailySummaries, managerConversations, managerMessages, clientLevelSubscriptions, consultantWhatsappConfig, whatsappAgentConsultantConversations, whatsappAgentConsultantMessages } from "../../../shared/schema";
+import { eq, and, desc, lt, gte, isNotNull, sql, or, inArray, like } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { startOfDay, subDays, format, eachDayOfInterval } from "date-fns";
 import { it } from "date-fns/locale";
@@ -817,79 +817,58 @@ ${conversationText}`,
       const dayEnd = new Date(dayStart);
       dayEnd.setDate(dayEnd.getDate() + 1);
 
-      // Get all manager conversations from that day
-      const conversations = await db
-        .select({
-          id: managerConversations.id,
-          title: managerConversations.title,
-        })
-        .from(managerConversations)
-        .innerJoin(clientLevelSubscriptions, eq(clientLevelSubscriptions.id, subscriptionId))
-        .where(and(
-          sql`${managerConversations.managerId} = ${subscriptionId} OR EXISTS (
-            SELECT 1 FROM manager_conversations mc2 
-            WHERE mc2.id = ${managerConversations.id}
-            AND mc2.created_at >= ${dayStart}
-            AND mc2.created_at < ${dayEnd}
-          )`,
-          gte(managerConversations.createdAt, dayStart),
-          lt(managerConversations.createdAt, dayEnd)
-        ));
+      // Gold/Silver users store conversations in whatsapp_agent_consultant_conversations
+      // with external_visitor_id pattern: manager_{subscriptionId}_%
+      const visitorPattern = `manager_${subscriptionId}_%`;
 
-      // Simpler query - get conversations directly by checking messages date
+      // Get conversations for this subscription that have messages on this day
       const conversationsWithMessages = await db
         .selectDistinct({
-          id: managerConversations.id,
-          title: managerConversations.title,
+          id: whatsappAgentConsultantConversations.id,
+          title: whatsappAgentConsultantConversations.title,
         })
-        .from(managerMessages)
-        .innerJoin(managerConversations, eq(managerMessages.conversationId, managerConversations.id))
-        .innerJoin(clientLevelSubscriptions, eq(clientLevelSubscriptions.id, subscriptionId))
+        .from(whatsappAgentConsultantMessages)
+        .innerJoin(
+          whatsappAgentConsultantConversations,
+          eq(whatsappAgentConsultantMessages.conversationId, whatsappAgentConsultantConversations.id)
+        )
         .where(and(
-          gte(managerMessages.createdAt, dayStart),
-          lt(managerMessages.createdAt, dayEnd)
+          like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern),
+          gte(whatsappAgentConsultantMessages.createdAt, dayStart),
+          lt(whatsappAgentConsultantMessages.createdAt, dayEnd)
         ));
 
-      // Get messages from manager_messages table for this subscription
-      const allMessages: { role: string; content: string }[] = [];
-      let totalMessageCount = 0;
-      let conversationCount = 0;
+      if (conversationsWithMessages.length === 0) {
+        return null;
+      }
 
-      // Get messages for this day from manager_messages
+      const convIds = conversationsWithMessages.map(c => c.id);
+
+      // Get messages for this day
       const dayMessages = await db
         .select({
-          role: managerMessages.role,
-          content: managerMessages.content,
-          conversationId: managerMessages.conversationId,
+          role: whatsappAgentConsultantMessages.role,
+          content: whatsappAgentConsultantMessages.content,
+          conversationId: whatsappAgentConsultantMessages.conversationId,
         })
-        .from(managerMessages)
-        .innerJoin(managerConversations, eq(managerMessages.conversationId, managerConversations.id))
+        .from(whatsappAgentConsultantMessages)
         .where(and(
-          gte(managerMessages.createdAt, dayStart),
-          lt(managerMessages.createdAt, dayEnd)
+          inArray(whatsappAgentConsultantMessages.conversationId, convIds),
+          gte(whatsappAgentConsultantMessages.createdAt, dayStart),
+          lt(whatsappAgentConsultantMessages.createdAt, dayEnd)
         ))
-        .orderBy(managerMessages.createdAt)
+        .orderBy(whatsappAgentConsultantMessages.createdAt)
         .limit(50);
 
-      // Filter to only this subscription's conversations
-      const subscriptionConversations = await db
-        .select({ id: managerConversations.id })
-        .from(managerConversations)
-        .where(sql`${managerConversations.managerId} = ${subscriptionId}`);
+      if (dayMessages.length < 2) return null;
 
-      const subscriptionConvIds = new Set(subscriptionConversations.map(c => c.id));
-      
-      const filteredMessages = dayMessages.filter(m => subscriptionConvIds.has(m.conversationId));
-      
-      if (filteredMessages.length < 2) return null;
+      const uniqueConvs = new Set(dayMessages.map(m => m.conversationId));
+      const conversationCount = uniqueConvs.size;
+      const totalMessageCount = dayMessages.length;
 
-      const uniqueConvs = new Set(filteredMessages.map(m => m.conversationId));
-      conversationCount = uniqueConvs.size;
-      totalMessageCount = filteredMessages.length;
-
-      const conversationText = filteredMessages
+      const conversationText = dayMessages
         .slice(0, 30)
-        .map(m => `${m.role === 'user' ? 'Utente' : 'AI'}: ${m.content.substring(0, 300)}`)
+        .map(m => `${m.role === 'user' ? 'Utente' : 'AI'}: ${(m.content || '').substring(0, 300)}`)
         .join('\n');
 
       const dateStr = format(targetDate, "d MMMM yyyy", { locale: it });
@@ -950,11 +929,17 @@ ${conversationText}`,
     let skipped = 0;
 
     try {
-      // Find all days with manager messages for this subscription
+      // Gold/Silver users store conversations in whatsapp_agent_consultant_conversations
+      // with external_visitor_id pattern: manager_{subscriptionId}_%
+      const visitorPattern = `manager_${subscriptionId}_%`;
+
+      // Find all conversations for this subscription
       const subscriptionConversations = await db
-        .select({ id: managerConversations.id })
-        .from(managerConversations)
-        .where(sql`${managerConversations.managerId} = ${subscriptionId}`);
+        .select({ id: whatsappAgentConsultantConversations.id })
+        .from(whatsappAgentConsultantConversations)
+        .where(like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern));
+
+      console.log(`📊 [ManagerMemory] Found ${subscriptionConversations.length} conversations for subscription ${subscriptionId.slice(0, 8)}...`);
 
       if (subscriptionConversations.length === 0) {
         return { generated: 0, skipped: 0 };
@@ -962,12 +947,15 @@ ${conversationText}`,
 
       const convIds = subscriptionConversations.map(c => c.id);
 
+      // Find all days with messages
       const daysWithMessages = await db
         .selectDistinct({
-          day: sql<Date>`DATE(${managerMessages.createdAt})`.as("day"),
+          day: sql<Date>`DATE(${whatsappAgentConsultantMessages.createdAt})`.as("day"),
         })
-        .from(managerMessages)
-        .where(inArray(managerMessages.conversationId, convIds));
+        .from(whatsappAgentConsultantMessages)
+        .where(inArray(whatsappAgentConsultantMessages.conversationId, convIds));
+
+      console.log(`📅 [ManagerMemory] Found ${daysWithMessages.length} days with messages`);
 
       if (daysWithMessages.length === 0) {
         return { generated: 0, skipped: 0 };
@@ -1002,11 +990,11 @@ ${conversationText}`,
 
         const msgCount = await db
           .select({ count: sql<number>`count(*)::int` })
-          .from(managerMessages)
+          .from(whatsappAgentConsultantMessages)
           .where(and(
-            inArray(managerMessages.conversationId, convIds),
-            gte(managerMessages.createdAt, dayStart),
-            lt(managerMessages.createdAt, dayEnd)
+            inArray(whatsappAgentConsultantMessages.conversationId, convIds),
+            gte(whatsappAgentConsultantMessages.createdAt, dayStart),
+            lt(whatsappAgentConsultantMessages.createdAt, dayEnd)
           ));
 
         if ((msgCount[0]?.count || 0) >= 2) {
@@ -1015,6 +1003,8 @@ ${conversationText}`,
           skipped++;
         }
       }
+
+      console.log(`🔄 [ManagerMemory] ${daysNeedingSummary.length} days need summaries, ${skipped} skipped`);
 
       const totalDays = daysNeedingSummary.length;
       
