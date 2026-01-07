@@ -490,7 +490,7 @@ ${conversationText}`,
 
   async getMemoryAudit(
     consultantId: string,
-    daysBack: number = 30
+    _daysBack: number = 0 // Deprecated - no longer used, kept for API compatibility
   ): Promise<Array<{
     userId: string;
     firstName: string;
@@ -529,7 +529,7 @@ ${conversationText}`,
         return [];
       }
 
-      const cutoffDate = subDays(new Date(), daysBack);
+      // No time limit - get ALL conversation days (same logic as generateMissingDailySummariesWithProgress)
       const results: Array<{
         userId: string;
         firstName: string;
@@ -544,29 +544,23 @@ ${conversationText}`,
       }> = [];
 
       for (const user of allUsers) {
-        // Get days with conversations for this user
+        // Get ALL days with conversations for this user (no time limit)
         const daysWithConversations = await db
           .selectDistinct({
             day: sql<Date>`DATE(${aiConversations.createdAt})`.as("day"),
           })
           .from(aiConversations)
-          .where(and(
-            eq(aiConversations.clientId, user.id),
-            gte(aiConversations.createdAt, cutoffDate)
-          ));
+          .where(eq(aiConversations.clientId, user.id));
 
         const totalDays = daysWithConversations.length;
 
-        // Get existing summaries
+        // Get ALL existing summaries (no time limit)
         const summaries = await db
           .select({
             summaryDate: aiDailySummaries.summaryDate,
           })
           .from(aiDailySummaries)
-          .where(and(
-            eq(aiDailySummaries.userId, user.id),
-            gte(aiDailySummaries.summaryDate, cutoffDate)
-          ))
+          .where(eq(aiDailySummaries.userId, user.id))
           .orderBy(desc(aiDailySummaries.summaryDate));
 
         const coveredDays = summaries.length;
