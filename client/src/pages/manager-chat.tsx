@@ -27,7 +27,8 @@ import {
   FileText,
   Brain,
   Cpu,
-  UserCircle
+  UserCircle,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -565,8 +566,10 @@ interface MemorySummary {
 
 function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data: memoryData, isLoading } = useQuery<{ summaries: MemorySummary[] }>({
+  const { data: memoryData, isLoading, refetch } = useQuery<{ summaries: MemorySummary[] }>({
     queryKey: ["manager-memory", slug],
     queryFn: async () => {
       const response = await fetch(`/api/public/agent/${slug}/manager/memory`, {
@@ -578,6 +581,34 @@ function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
       return response.json();
     },
     enabled: !!slug && !!getManagerToken() && isOpen,
+  });
+
+  const generateMemoryMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/public/agent/${slug}/manager/memory/generate`, {
+        method: "POST",
+        headers: getManagerAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to generate memory");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Riassunti generati",
+        description: data.message,
+      });
+      refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const summaries = memoryData?.summaries || [];
@@ -631,9 +662,26 @@ function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
               <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-1">
                 Nessun riassunto disponibile
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
-                I riassunti delle tue conversazioni appariranno qui man mano che interagisci con l'assistente AI.
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mb-4">
+                Genera i riassunti delle tue conversazioni per abilitare la memoria AI.
               </p>
+              <Button
+                onClick={() => generateMemoryMutation.mutate()}
+                disabled={generateMemoryMutation.isPending}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+              >
+                {generateMemoryMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generazione in corso...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Genera Riassunti
+                  </>
+                )}
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">

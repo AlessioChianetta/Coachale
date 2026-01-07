@@ -619,6 +619,51 @@ router.get(
   }
 );
 
+router.post(
+  "/:slug/manager/memory/generate",
+  loadShareAndAgent,
+  verifyManagerToken,
+  async (req: ManagerRequest, res: Response) => {
+    try {
+      if (!req.silverGoldUser || req.silverGoldUser.level !== "3") {
+        return res.status(403).json({ message: "Memory generation is only available for Gold tier users" });
+      }
+
+      const { getSuperAdminGeminiKeys } = await import("../ai/provider-factory");
+      const { ConversationMemoryService } = await import("../services/conversation-memory/memory-service");
+      
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (!superAdminKeys || !superAdminKeys.enabled || superAdminKeys.keys.length === 0) {
+        return res.status(400).json({ message: "AI service not available" });
+      }
+
+      const apiKey = superAdminKeys.keys[0];
+      const memoryService = new ConversationMemoryService();
+      
+      const startTime = Date.now();
+      const result = await memoryService.generateManagerMissingDailySummariesWithProgress(
+        req.silverGoldUser.subscriptionId,
+        req.silverGoldUser.consultantId,
+        apiKey,
+        () => {}
+      );
+      const durationMs = Date.now() - startTime;
+
+      console.log(`[MANAGER MEMORY] Generated ${result.generated} summaries for Gold user ${req.silverGoldUser.email} in ${durationMs}ms`);
+
+      res.json({ 
+        message: result.generated > 0 ? `Generati ${result.generated} riassunti` : "Nessun riassunto da generare",
+        generated: result.generated,
+        total: result.total,
+        durationMs
+      });
+    } catch (error: any) {
+      console.error("[PUBLIC AGENT] Generate manager memory error:", error);
+      res.status(500).json({ message: "Failed to generate memory summaries" });
+    }
+  }
+);
+
 router.put(
   "/:slug/manager/preferences",
   loadShareAndAgent,
