@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users, managerDailySummaries, clientLevelSubscriptions, consultantWhatsappConfig, whatsappAgentConsultantConversations, whatsappAgentConsultantMessages, bronzeUserAgentAccess } from "../../../shared/schema";
-import { eq, and, desc, lt, gte, isNotNull, sql, or, inArray, like } from "drizzle-orm";
+import { eq, and, desc, lt, gte, isNotNull, isNull, sql, or, inArray, like } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { startOfDay, subDays, format, eachDayOfInterval } from "date-fns";
 import { it } from "date-fns/locale";
@@ -1000,6 +1000,28 @@ ${conversationText}`,
           .filter(t => t.trim().length > 3 && t.trim().length < 50)
           .slice(0, 5)
           .map(t => t.trim());
+
+        // Check if summary already exists for this subscription/date/agent combination
+        const existingConditions: any[] = [
+          eq(managerDailySummaries.subscriptionId, subscriptionId),
+          eq(managerDailySummaries.summaryDate, dayStart),
+        ];
+        if (agentProfileId) {
+          existingConditions.push(eq(managerDailySummaries.agentProfileId, agentProfileId));
+        } else {
+          existingConditions.push(isNull(managerDailySummaries.agentProfileId));
+        }
+        
+        const existing = await db.select({ id: managerDailySummaries.id })
+          .from(managerDailySummaries)
+          .where(and(...existingConditions))
+          .limit(1);
+        
+        if (existing.length > 0) {
+          const agentLabel = agentProfileId ? ` for agent ${agentProfileId.slice(0, 8)}...` : '';
+          console.log(`⏭️ [ManagerMemory] Summary already exists for subscription ${subscriptionId.slice(0, 8)}...${agentLabel} on ${dateStr}, skipping`);
+          return summary; // Return the generated summary even if we didn't insert
+        }
 
         await db.insert(managerDailySummaries).values({
           subscriptionId,
