@@ -593,18 +593,47 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
               <div className="space-y-0.5">
                 {/* Category Header - hide for always visible sections */}
-                {!isAlwaysVisible && (
-                  <button
-                    onClick={() => handleCategoryToggle(category.name)}
-                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-slate-600 dark:hover:text-slate-400 transition-colors"
-                  >
-                    <span>{category.name}</span>
-                    <ChevronRight className={cn(
-                      "h-3 w-3 transition-transform duration-200",
-                      isCategoryExpanded && "rotate-90"
-                    )} />
-                  </button>
-                )}
+                {!isAlwaysVisible && (() => {
+                  const CategoryIcon = category.icon;
+                  const categoryThemes: Record<string, { iconColor: string; gradientFrom: string; gradientTo: string }> = {
+                    "LAVORO QUOTIDIANO": { iconColor: "text-teal-500", gradientFrom: "from-teal-500", gradientTo: "to-cyan-500" },
+                    "COMUNICAZIONE": { iconColor: "text-violet-500", gradientFrom: "from-violet-500", gradientTo: "to-purple-500" },
+                    "FORMAZIONE": { iconColor: "text-amber-500", gradientFrom: "from-amber-500", gradientTo: "to-orange-500" },
+                    "BASE DI CONOSCENZA": { iconColor: "text-indigo-500", gradientFrom: "from-indigo-500", gradientTo: "to-blue-500" },
+                    "IMPOSTAZIONI": { iconColor: "text-slate-500", gradientFrom: "from-slate-500", gradientTo: "to-gray-500" },
+                    "GUIDE": { iconColor: "text-rose-500", gradientFrom: "from-rose-500", gradientTo: "to-pink-500" },
+                    "AI AVANZATO": { iconColor: "text-emerald-500", gradientFrom: "from-emerald-500", gradientTo: "to-teal-500" },
+                  };
+                  const theme = categoryThemes[category.name] || { iconColor: "text-slate-400", gradientFrom: "from-slate-400", gradientTo: "to-slate-500" };
+                  
+                  return (
+                    <button
+                      onClick={() => handleCategoryToggle(category.name)}
+                      className="w-full flex items-center justify-between px-3 py-1.5 group"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {CategoryIcon && (
+                          <CategoryIcon className={cn(
+                            "h-3.5 w-3.5 transition-transform duration-200",
+                            theme.iconColor,
+                            "group-hover:rotate-12 group-hover:scale-110"
+                          )} />
+                        )}
+                        <span className={cn(
+                          "text-[10px] font-semibold uppercase tracking-widest bg-gradient-to-r bg-clip-text text-transparent",
+                          theme.gradientFrom,
+                          theme.gradientTo
+                        )}>
+                          {category.name}
+                        </span>
+                      </div>
+                      <ChevronRight className={cn(
+                        "h-3 w-3 text-slate-400 transition-transform duration-200",
+                        isCategoryExpanded && "rotate-90"
+                      )} />
+                    </button>
+                  );
+                })()}
 
                 {/* Category Items */}
                 {(isCategoryExpanded || isAlwaysVisible) && (
