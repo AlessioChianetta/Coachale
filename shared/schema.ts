@@ -6640,9 +6640,10 @@ export const insertManagerMessageSchema = createInsertSchema(managerMessages).om
 });
 
 // Manager Daily Summaries - AI-generated daily summaries for Gold managers
+// Note: subscriptionId references users.id (Gold user ID) for consistency with unified Gold user lookup
 export const managerDailySummaries = pgTable("manager_daily_summaries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  subscriptionId: varchar("subscription_id").references(() => clientLevelSubscriptions.id, { onDelete: "cascade" }).notNull(),
+  subscriptionId: varchar("subscription_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   summaryDate: timestamp("summary_date").notNull(),
   summary: text("summary").notNull(),
