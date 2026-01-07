@@ -921,9 +921,9 @@ ${conversationText}`,
         lt(whatsappAgentConsultantMessages.createdAt, dayEnd)
       ];
 
-      // Filter by agentProfileId if provided
+      // Filter by agentProfileId (stored as agentConfigId in conversations table) if provided
       if (agentProfileId) {
-        convConditions.push(eq(whatsappAgentConsultantConversations.agentProfileId, agentProfileId));
+        convConditions.push(eq(whatsappAgentConsultantConversations.agentConfigId, agentProfileId));
       }
 
       // Get conversations for this subscription that have messages on this day
@@ -1058,10 +1058,11 @@ ${conversationText}`,
       const dayEnd = new Date(dayStart);
       dayEnd.setDate(dayEnd.getDate() + 1);
 
-      // Query unique agentProfileIds for this user on this date
+      // Query unique agentConfigIds for this user on this date
+      // Note: agentConfigId in conversations table is stored as agentProfileId in summaries table
       const agentConversations = await db
         .selectDistinct({
-          agentProfileId: whatsappAgentConsultantConversations.agentProfileId,
+          agentProfileId: whatsappAgentConsultantConversations.agentConfigId,
         })
         .from(whatsappAgentConsultantMessages)
         .innerJoin(
@@ -1072,7 +1073,7 @@ ${conversationText}`,
           like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern),
           gte(whatsappAgentConsultantMessages.createdAt, dayStart),
           lt(whatsappAgentConsultantMessages.createdAt, dayEnd),
-          isNotNull(whatsappAgentConsultantConversations.agentProfileId)
+          isNotNull(whatsappAgentConsultantConversations.agentConfigId)
         ));
 
       const uniqueAgentIds = agentConversations
