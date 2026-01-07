@@ -15,6 +15,13 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { 
   Menu, 
   X, 
@@ -28,7 +35,12 @@ import {
   Brain,
   Cpu,
   UserCircle,
-  RefreshCw
+  RefreshCw,
+  Calendar,
+  Hash,
+  Tag,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -564,12 +576,75 @@ interface MemorySummary {
   topics?: string[];
 }
 
+function formatDateLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  if (date.toDateString() === today.toDateString()) return "Oggi";
+  if (date.toDateString() === yesterday.toDateString()) return "Ieri";
+  
+  return date.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+}
+
+function getDateBadgeStyle(dateStr: string): string {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  if (date.toDateString() === today.toDateString()) 
+    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800";
+  if (date.toDateString() === yesterday.toDateString()) 
+    return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800";
+  
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  if (date >= weekAgo) 
+    return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800";
+  
+  return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700";
+}
+
+function groupSummariesByPeriod(summaries: MemorySummary[]): Record<string, MemorySummary[]> {
+  const groups: Record<string, MemorySummary[]> = {
+    oggi: [],
+    ieri: [],
+    "questo mese": [],
+    precedenti: [],
+  };
+
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const thisMonth = today.getMonth();
+  const thisYear = today.getFullYear();
+
+  for (const summary of summaries) {
+    const date = new Date(summary.date);
+    if (date.toDateString() === today.toDateString()) {
+      groups["oggi"].push(summary);
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      groups["ieri"].push(summary);
+    } else if (date.getMonth() === thisMonth && date.getFullYear() === thisYear) {
+      groups["questo mese"].push(summary);
+    } else {
+      groups["precedenti"].push(summary);
+    }
+  }
+
+  return groups;
+}
+
 function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: memoryData, isLoading, refetch } = useQuery<{ summaries: MemorySummary[] }>({
+  const { data: memoryData, isLoading, isError, refetch, isFetching } = useQuery<{ summaries: MemorySummary[] }>({
     queryKey: ["manager-memory", slug],
     queryFn: async () => {
       const response = await fetch(`/api/public/agent/${slug}/manager/memory`, {
@@ -600,6 +675,7 @@ function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
         title: "Riassunti generati",
         description: data.message,
       });
+      setIsGenerating(false);
       refetch();
     },
     onError: (error: Error) => {
@@ -608,19 +684,35 @@ function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
         description: error.message,
         variant: "destructive",
       });
+      setIsGenerating(false);
     },
   });
 
-  const summaries = memoryData?.summaries || [];
+  const startGeneration = () => {
+    setIsGenerating(true);
+    generateMemoryMutation.mutate();
+  };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("it-IT", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
+  const deleteAndRegenerate = () => {
+    startGeneration();
+  };
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
     });
   };
+
+  const summaries = memoryData?.summaries || [];
+  const groupedSummaries = groupSummariesByPeriod(summaries);
+  const totalConversations = summaries.reduce((sum, s) => sum + s.conversationCount, 0);
+  const totalMessages = summaries.reduce((sum, s) => sum + s.messageCount, 0);
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -634,82 +726,229 @@ function ManagerMemorySheet({ slug }: ManagerMemorySheetProps) {
           <Brain className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <Brain className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <SheetTitle className="text-lg">Memoria AI</SheetTitle>
-              <SheetDescription className="text-sm">
-                Riassunti giornalieri delle tue conversazioni
-              </SheetDescription>
+      <SheetContent className="w-full sm:max-w-[420px] p-0 flex flex-col">
+        <div className="border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 px-4 py-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                <Brain className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg text-slate-800 dark:text-slate-200">Memoria AI</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Riassunti delle tue conversazioni
+                </p>
+              </div>
             </div>
           </div>
-        </SheetHeader>
 
-        <div className="mt-6 space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
-            </div>
-          ) : summaries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                <Brain className="h-8 w-8 text-slate-400" />
+          {summaries.length > 0 && (
+            <div className="flex items-center gap-4 mt-3 text-xs text-slate-600 dark:text-slate-400">
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>{summaries.length} giorni</span>
               </div>
-              <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-1">
-                Nessun riassunto disponibile
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mb-4">
-                Genera i riassunti delle tue conversazioni per abilitare la memoria AI.
-              </p>
-              <Button
-                onClick={() => generateMemoryMutation.mutate()}
-                disabled={generateMemoryMutation.isPending}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-              >
-                {generateMemoryMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generazione in corso...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Genera Riassunti
-                  </>
-                )}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {summaries.map((summary) => (
-                <div
-                  key={summary.id}
-                  className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100/50 dark:hover:bg-slate-700/50 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white">
-                      {formatDate(summary.date)}
-                    </span>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="h-3 w-3" />
-                        {summary.conversationCount} chat
-                      </span>
-                      <span>•</span>
-                      <span>{summary.messageCount} messaggi</span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                    {summary.summary}
-                  </p>
-                </div>
-              ))}
+              <div className="flex items-center gap-1">
+                <MessageSquare className="h-3.5 w-3.5" />
+                <span>{totalConversations} conversazioni</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Hash className="h-3.5 w-3.5" />
+                <span>{totalMessages} messaggi</span>
+              </div>
             </div>
           )}
+        </div>
+
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          {isGenerating ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Generazione in corso...
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={startGeneration}
+                  disabled={isGenerating}
+                >
+                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  Genera
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                  onClick={deleteAndRegenerate}
+                  disabled={isGenerating || summaries.length === 0}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Rigenera
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => refetch()}
+                disabled={isFetching}
+              >
+                <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <ScrollArea className="flex-1">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+            </div>
+          ) : isError ? (
+            <div className="p-6 text-center">
+              <Brain className="h-12 w-12 text-red-300 dark:text-red-600 mx-auto mb-3" />
+              <p className="text-sm text-red-600 dark:text-red-400 mb-4">
+                Errore nel caricamento della memoria
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Riprova
+              </Button>
+            </div>
+          ) : summaries.length > 0 ? (
+            <div className="p-4 space-y-6">
+              {Object.entries(groupedSummaries).map(([period, periodSummaries]) => {
+                if (periodSummaries.length === 0) return null;
+                
+                return (
+                  <div key={period}>
+                    <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                      {period}
+                    </h3>
+                    <div className="space-y-2">
+                      {periodSummaries.map((summary) => (
+                        <Collapsible
+                          key={summary.id}
+                          open={expandedIds.has(summary.id)}
+                          onOpenChange={() => toggleExpanded(summary.id)}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-all border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-sm">
+                              <div className="flex-shrink-0">
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 flex items-center justify-center">
+                                  <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <Badge className={cn("text-[10px] px-2 py-0.5 font-medium border", getDateBadgeStyle(summary.date))}>
+                                    {formatDateLabel(summary.date)}
+                                  </Badge>
+                                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                                    <MessageSquare className="h-3 w-3" />
+                                    {summary.conversationCount} chat
+                                  </span>
+                                </div>
+                                <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                                  {summary.summary}
+                                </p>
+                              </div>
+                              <div className="flex-shrink-0 pt-1">
+                                {expandedIds.has(summary.id) ? (
+                                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                                )}
+                              </div>
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="ml-13 mt-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                              <p className="text-sm text-slate-700 dark:text-slate-300 mb-4 leading-relaxed">
+                                {summary.summary}
+                              </p>
+                              
+                              <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 mb-3">
+                                <div className="flex items-center gap-1">
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  <span>{summary.conversationCount} conversazioni</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Hash className="h-3.5 w-3.5" />
+                                  <span>{summary.messageCount} messaggi</span>
+                                </div>
+                              </div>
+                              
+                              {summary.topics && summary.topics.length > 0 && (
+                                <div>
+                                  <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 mb-2">
+                                    <Tag className="h-3.5 w-3.5" />
+                                    <span>Argomenti</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {summary.topics.map((topic, i) => (
+                                      <Badge 
+                                        key={i} 
+                                        variant="secondary" 
+                                        className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                                      >
+                                        {topic}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center mx-auto mb-4">
+                <Brain className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                Nessun riassunto
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-xs mx-auto">
+                Genera i riassunti delle tue conversazioni AI
+              </p>
+              <Button
+                variant="default"
+                className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                onClick={startGeneration}
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Genera riassunti
+              </Button>
+            </div>
+          )}
+        </ScrollArea>
+
+        <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+            L'AI usa questi riassunti per ricordare le conversazioni passate
+          </p>
         </div>
       </SheetContent>
     </Sheet>
