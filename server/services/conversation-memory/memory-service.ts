@@ -554,7 +554,7 @@ ${conversationText}`,
 
         const totalDays = daysWithConversations.length;
 
-        // Get ALL existing summaries (no time limit)
+        // Get ALL existing summaries for this user
         const summaries = await db
           .select({
             summaryDate: aiDailySummaries.summaryDate,
@@ -563,9 +563,23 @@ ${conversationText}`,
           .where(eq(aiDailySummaries.userId, user.id))
           .orderBy(desc(aiDailySummaries.summaryDate));
 
-        const coveredDays = summaries.length;
-        const missingDays = Math.max(0, totalDays - coveredDays);
+        // Create a Set of summary dates for fast lookup
+        const summaryDates = new Set(
+          summaries.map(s => startOfDay(new Date(s.summaryDate)).getTime())
+        );
+
+        // Count covered days: days that have a summary
+        let coveredDays = 0;
+        for (const { day } of daysWithConversations) {
+          if (!day) continue;
+          const dayTime = startOfDay(new Date(day)).getTime();
+          if (summaryDates.has(dayTime)) {
+            coveredDays++;
+          }
+        }
+
         const lastSummaryDate = summaries.length > 0 ? summaries[0].summaryDate : null;
+        const missingDays = Math.max(0, totalDays - coveredDays);
 
         let status: 'complete' | 'partial' | 'missing' = 'complete';
         if (totalDays === 0) {
