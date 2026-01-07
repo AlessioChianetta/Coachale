@@ -1397,6 +1397,10 @@ ${conversationText}`,
     lastMessageAt: Date | null;
   }>> {
     try {
+      if (!userId) {
+        console.warn("⚠️ [ManagerMemory] getGoldUserAgentBreakdown called with empty userId");
+        return [];
+      }
       const visitorPattern = `manager_${userId}_%`;
 
       // Get all conversations for this Gold user with agent info
@@ -1445,7 +1449,9 @@ ${conversationText}`,
           .from(whatsappAgentProfiles)
           .where(inArray(whatsappAgentProfiles.id, agentIds));
         
-        agentNames = new Map(agents.map(a => [a.id, a.name || 'Agente senza nome']));
+        if (agents && Array.isArray(agents)) {
+          agentNames = new Map(agents.map(a => [a.id, a.name || 'Agente senza nome']));
+        }
       }
 
       // Get message counts for each agent
