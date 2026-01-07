@@ -37,6 +37,18 @@ import fs from 'fs/promises';
 
 const router = Router();
 
+// Helper function to ensure onboarding status row exists before updating
+async function ensureOnboardingStatusExists(consultantId: string): Promise<void> {
+  const existing = await db.query.consultantOnboardingStatus.findFirst({
+    where: eq(consultantOnboardingStatus.consultantId, consultantId),
+  });
+  if (!existing) {
+    await db.insert(consultantOnboardingStatus)
+      .values({ consultantId })
+      .onConflictDoNothing();
+  }
+}
+
 router.get('/status', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
@@ -438,7 +450,7 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
       { stepId: 'knowledge_base', status: documentsCount > 0 ? 'verified' : 'pending' },
       { stepId: 'summary_email', status: hasSummaryEmail ? 'verified' : 'pending' },
       { stepId: 'turn_config', status: getStepStatus(onboardingStatus?.videoMeetingStatus, !!turnConfig?.usernameEncrypted) },
-      { stepId: 'lead_import', status: hasLeadImport ? 'verified' : 'pending' },
+      { stepId: 'lead_import', status: getStepStatus(onboardingStatus?.leadImportStatus, hasLeadImport) },
       { stepId: 'stripe_connect', status: getStripeStatus() },
     ];
     
@@ -742,6 +754,9 @@ router.post('/test/google-calendar', authenticateToken, requireRole('consultant'
   try {
     const consultantId = req.user!.id;
     
+    // Ensure onboarding status row exists before updating
+    await ensureOnboardingStatusExists(consultantId);
+    
     // Check if any agent has Google Calendar connected (requires both tokens)
     const agentsWithCalendar = await db.query.consultantWhatsappConfig.findMany({
       where: and(
@@ -958,6 +973,9 @@ router.post('/test/video-meeting', authenticateToken, requireRole('consultant'),
 router.post('/test/lead-import', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
+    
+    // Ensure onboarding status row exists before updating
+    await ensureOnboardingStatusExists(consultantId);
     
     const apiConfig = await db.query.externalApiConfigs.findFirst({
       where: eq(externalApiConfigs.consultantId, consultantId),
