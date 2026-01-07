@@ -1900,9 +1900,9 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
     // Build the allowed types string for the prompt
     const allowedTypesEnum = selectedAgentTypes.map((t: string) => `"${t}"`).join(' | ');
     
-    const prompt = `Sei un esperto di automazione WhatsApp per business. Analizza il seguente contesto aziendale e genera ${numberOfIdeas || 3} idee per agenti AI WhatsApp.
+    const prompt = `Sei un esperto di automazione WhatsApp per business. Analizza APPROFONDITAMENTE il seguente contesto aziendale e genera ${numberOfIdeas || 3} idee per agenti AI WhatsApp.
 
-CONTESTO AZIENDALE:
+CONTESTO AZIENDALE (LEGGI E ANALIZZA OGNI DETTAGLIO):
 ${combinedContent}
 
 TIPI DI AGENTE SELEZIONATI DALL'UTENTE (GENERA SOLO TRA QUESTI):
@@ -1915,27 +1915,67 @@ Per ogni idea, genera un JSON con questa struttura ESATTA:
   "personality": "professionale" | "amichevole" | "empatico" | "diretto",
   "suggestedAgentType": ${allowedTypesEnum || '"reactive_lead"'},
   "integrations": ["booking"] e/o ["consultation"],
-  "useCases": ["Caso d'uso 1", "Caso d'uso 2", "Caso d'uso 3"],
-  "whoWeHelp": "Chi aiutiamo (target audience)",
-  "whoWeDontHelp": "Chi NON aiutiamo",
-  "whatWeDo": "Cosa facciamo per loro",
-  "howWeDoIt": "Come lo facciamo",
-  "usp": "Punto di forza unico",
-  "vision": "La visione a lungo termine del business (es: 'Rendere l'automazione accessibile a tutti')",
-  "mission": "La missione quotidiana del business (es: 'Aiutare le PMI a risparmiare tempo con l'AI')",
-  "businessName": "Nome del business/azienda estratto dal contesto (se disponibile, altrimenti suggerisci)",
-  "consultantDisplayName": "Nome del consulente/professionista estratto dal contesto (se disponibile, altrimenti suggerisci)",
-  "suggestedInstructions": "Istruzioni dettagliate per l'agente AI su come comportarsi, rispondere e gestire le conversazioni (min 200 parole). Includi: tono da usare, come presentarsi, come gestire obiezioni, come chiudere la conversazione."
+  "useCases": ["Caso d'uso 1", "Caso d'uso 2", "Caso d'uso 3", "Caso d'uso 4", "Caso d'uso 5"],
+  "whoWeHelp": "Chi aiutiamo (target audience) - estrai dettagli specifici dai documenti",
+  "whoWeDontHelp": "Chi NON aiutiamo - basato sul contesto fornito",
+  "whatWeDo": "Cosa facciamo per loro - usa i dettagli specifici dai documenti",
+  "howWeDoIt": "Come lo facciamo - descrivi la metodologia/processo dai documenti",
+  "usp": "Punto di forza unico estratto dal contesto",
+  "vision": "La visione a lungo termine del business estratta dai documenti",
+  "mission": "La missione quotidiana del business estratta dai documenti",
+  "businessName": "Nome del business/azienda estratto dal contesto",
+  "consultantDisplayName": "Nome del consulente/professionista estratto dal contesto",
+  "suggestedInstructions": "ISTRUZIONI COMPLETE PER L'AGENTE (vedi sotto)"
 }
+
+⚠️ ISTRUZIONI CRITICHE PER IL CAMPO "suggestedInstructions":
+Questo campo DEVE essere MOLTO DETTAGLIATO (minimo 500 parole, ideale 800-1000 parole).
+DEVI estrarre e incorporare TUTTI i dettagli specifici dai documenti forniti.
+
+STRUTTURA OBBLIGATORIA delle suggestedInstructions:
+
+1. IDENTITÀ E RUOLO (50-100 parole)
+   - Chi sei (es: "Sei l'assistente di [Nome], [Ruolo]")
+   - Il tuo scopo principale
+   - La tua relazione con il consulente
+
+2. TONO E PERSONALITÀ (50-100 parole)
+   - Come parli (formale/informale, tecnico/semplice)
+   - Caratteristiche del tuo stile comunicativo
+   - Esempi di frasi tipiche da usare
+
+3. FASI DEL SERVIZIO (100-200 parole) - ESTRAI DAI DOCUMENTI!
+   - Descrivi le fasi specifiche del servizio menzionate nei documenti
+   - Cosa succede in ogni fase
+   - Come l'agente supporta ogni fase
+
+4. METODOLOGIA/APPROCCIO (100-150 parole) - ESTRAI DAI DOCUMENTI!
+   - La filosofia o approccio unico del business
+   - I valori fondamentali da trasmettere
+   - Cosa rende questo servizio diverso
+
+5. GESTIONE OBIEZIONI SPECIFICHE (100-150 parole)
+   - Obiezioni comuni per QUESTO tipo di servizio
+   - Come rispondere a dubbi specifici (es: costi, tempi, paure)
+   - Esempi di risposte rassicuranti
+
+6. ESEMPI DI DIALOGO (50-100 parole)
+   - 2-3 esempi di come rispondere a domande tipiche
+   - Frasi di apertura e chiusura
+
+7. COSA NON FARE (50-100 parole)
+   - Comportamenti da evitare
+   - Limiti dell'agente
+   - Quando rimandare al consulente
 
 REGOLE OBBLIGATORIE:
 - GENERA SOLO agenti con suggestedAgentType tra quelli selezionati: [${selectedAgentTypes.join(', ')}]
 - NON generare MAI tipi di agente non selezionati dall'utente
 - Se sono selezionati più tipi, distribuisci le idee tra i tipi selezionati
 - Genera idee diverse tra loro
-- Per vision e mission, estrai dal contesto se possibile, altrimenti genera basandoti sul business
-- Per businessName e consultantDisplayName, estrai dal contesto se disponibili
-- Le suggestedInstructions devono essere dettagliate e specifiche per il tipo di agente
+- ESTRAI DETTAGLI SPECIFICI dai documenti - NON generalizzare!
+- Le suggestedInstructions DEVONO incorporare il contenuto specifico dei documenti forniti
+- Se i documenti parlano di fasi, metodologie, valori o target - INCLUDILI nelle istruzioni
 - Rispondi SOLO con un array JSON valido, senza altri commenti
 
 RISPOSTA (array JSON):`;

@@ -33,7 +33,7 @@ const updateInstructionsSchema = z.object({
   selectedTemplate: z.enum(["receptionist", "marco_setter", "informative_advisor", "customer_success", "intake_coordinator", "custom"]).optional(),
   businessHeaderMode: z.enum(["assistant", "direct_consultant", "direct_professional", "custom", "none"]).optional(),
   professionalRole: z.string().optional(),
-  customBusinessHeader: z.string().optional(),
+  customBusinessHeader: z.string().nullable().optional(),
   isProactiveAgent: z.boolean().optional(),
 });
 

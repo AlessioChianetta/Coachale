@@ -15010,7 +15010,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           defaultIdealState: null,
           isDryRun: false,
           isActive: true,
-          bookingEnabled: true,
+          // Disable booking for informative_advisor agents (they don't book appointments)
+          bookingEnabled: agentType !== "informative_advisor",
           objectionHandlingEnabled: true,
           disqualificationEnabled: true,
           upsellingEnabled: false,

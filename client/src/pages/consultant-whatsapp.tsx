@@ -689,7 +689,7 @@ export default function ConsultantWhatsAppPage() {
 
   // Mutation per salvare e creare agente subito (directly without wizard)
   const saveAndCreateAgentMutation = useMutation({
-    mutationFn: async ({ idea, filesToUpload }: { idea: any; filesToUpload: File[] }) => {
+    mutationFn: async ({ idea, filesToUpload, knowledgeDocIds }: { idea: any; filesToUpload: File[]; knowledgeDocIds: number[] }) => {
       // First save the idea
       const saveRes = await fetch("/api/consultant/onboarding/ai-ideas", {
         method: "POST",
@@ -774,7 +774,31 @@ export default function ConsultantWhatsAppPage() {
         }
       }
 
-      return { ...agentResult, uploadedDocsCount };
+      // Import Knowledge Base documents into the agent
+      let importedKbDocsCount = 0;
+      if (agentId && knowledgeDocIds && knowledgeDocIds.length > 0) {
+        try {
+          const importRes = await fetch(`/api/whatsapp/agent-config/${agentId}/knowledge/import`, {
+            method: "POST",
+            headers: {
+              ...getAuthHeaders(),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ documentIds: knowledgeDocIds }),
+          });
+          if (importRes.ok) {
+            const importData = await importRes.json();
+            importedKbDocsCount = importData.importedCount || knowledgeDocIds.length;
+            console.log(`✅ Imported ${importedKbDocsCount} KB documents into agent`);
+          } else {
+            console.warn(`Failed to import KB documents into agent`);
+          }
+        } catch (importError) {
+          console.error(`Error importing KB documents:`, importError);
+        }
+      }
+
+      return { ...agentResult, uploadedDocsCount, importedKbDocsCount };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/onboarding/ai-ideas"] });
@@ -782,16 +806,26 @@ export default function ConsultantWhatsAppPage() {
       const agentData = data.data || data;
       const agentName = agentData?.agentName || agentData?.name || "Nuovo agente";
       const agentId = agentData?.id;
-      const docsCount = data.uploadedDocsCount || 0;
+      const uploadedCount = data.uploadedDocsCount || 0;
+      const importedCount = data.importedKbDocsCount || 0;
+      const totalDocs = uploadedCount + importedCount;
 
-      // Clear uploaded files after successful agent creation
+      // Clear uploaded files and knowledge doc selection after successful agent creation
       setUploadedFiles([]);
+      setSelectedKnowledgeDocIds([]);
+
+      // Build description based on what was imported
+      let description = `L'agente "${agentName}" è stato creato con successo.`;
+      if (totalDocs > 0) {
+        const parts = [];
+        if (uploadedCount > 0) parts.push(`${uploadedCount} file caricati`);
+        if (importedCount > 0) parts.push(`${importedCount} dalla Knowledge Base`);
+        description = `Agente "${agentName}" creato! ${parts.join(' + ')} importati.`;
+      }
 
       toast({
         title: "🤖 Agente creato!",
-        description: docsCount > 0 
-          ? `Agente "${agentName}" creato! ${docsCount} document${docsCount === 1 ? 'o' : 'i'} salvat${docsCount === 1 ? 'o' : 'i'} nella Knowledge Base.`
-          : `L'agente "${agentName}" è stato creato con successo.`,
+        description,
       });
       // Navigate to the agent edit page if we have an ID, otherwise to list
       if (agentId) {
@@ -2110,7 +2144,7 @@ export default function ConsultantWhatsAppPage() {
                             variant="outline"
                             className="w-full border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
                             disabled={saveAndCreateAgentMutation.isPending}
-                            onClick={() => saveAndCreateAgentMutation.mutate({ idea, filesToUpload: uploadedFiles })}
+                            onClick={() => saveAndCreateAgentMutation.mutate({ idea, filesToUpload: uploadedFiles, knowledgeDocIds: selectedKnowledgeDocIds.map(id => parseInt(id, 10)) })}
                           >
                             {saveAndCreateAgentMutation.isPending ? (
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
