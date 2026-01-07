@@ -6,6 +6,11 @@ import { ConsultantContextPanel } from "./ConsultantContextPanel";
 import { ConsultantPageContext, useConsultantPageContext } from "@/hooks/use-consultant-page-context";
 import { OpenAndAskPayload } from "@/hooks/use-document-focus";
 
+interface OnboardingStepStatus {
+  stepId: string;
+  status: 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
+}
+
 interface ConsultantAIAssistantProps {
   clientId?: string;
   clientName?: string;
@@ -13,6 +18,7 @@ interface ConsultantAIAssistantProps {
   templateId?: string;
   campaignId?: string;
   isOnboardingMode?: boolean;
+  onboardingStatuses?: OnboardingStepStatus[];
 }
 
 export function ConsultantAIAssistant(props: ConsultantAIAssistantProps) {
@@ -101,6 +107,7 @@ export function ConsultantAIAssistant(props: ConsultantAIAssistantProps) {
         autoMessage={autoMessage}
         onAutoMessageSent={handleAutoMessageSent}
         isOnboardingMode={props.isOnboardingMode}
+        onboardingStatuses={props.onboardingStatuses}
       />
     </>
   );

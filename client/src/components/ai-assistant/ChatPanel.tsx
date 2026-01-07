@@ -34,6 +34,11 @@ interface Message {
   }>;
 }
 
+interface OnboardingStepStatus {
+  stepId: string;
+  status: 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
+}
+
 interface ChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -49,6 +54,7 @@ interface ChatPanelProps {
   onAutoMessageSent?: () => void; // Callback after auto message is sent
   embedded?: boolean;
   isOnboardingMode?: boolean; // Specialized mode for setup wizard assistance
+  onboardingStatuses?: OnboardingStepStatus[]; // Dynamic onboarding step statuses for AI context
 }
 
 // Funzione placeholder per stimare i token (da implementare o sostituire con una libreria)
@@ -77,7 +83,8 @@ export function ChatPanel({
   autoMessage = null,
   onAutoMessageSent,
   embedded = false,
-  isOnboardingMode = false
+  isOnboardingMode = false,
+  onboardingStatuses
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>();
@@ -275,7 +282,7 @@ export function ChatPanel({
       const endpoint = isConsultantMode ? "/api/consultant/ai/chat" : "/api/ai/chat";
 
       // Log onboarding mode status
-      console.log(`🚀 [ChatPanel] Sending message - isConsultantMode: ${isConsultantMode}, isOnboardingMode: ${isOnboardingMode}`);
+      console.log(`🚀 [ChatPanel] Sending message - isConsultantMode: ${isConsultantMode}, isOnboardingMode: ${isOnboardingMode}, hasOnboardingStatuses: ${!!onboardingStatuses}`);
       
       const response = await fetch(endpoint, {
         method: "POST",
@@ -297,6 +304,7 @@ export function ChatPanel({
                 category: focusedDocument.category,
               } : undefined,
               isOnboardingMode: isOnboardingMode,
+              onboardingStatuses: isOnboardingMode ? onboardingStatuses : undefined,
             }
             : {
               // Client endpoint payload

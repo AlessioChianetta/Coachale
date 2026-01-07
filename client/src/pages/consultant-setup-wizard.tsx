@@ -597,6 +597,24 @@ export default function ConsultantSetupWizard() {
     },
   });
 
+  // Query for AI onboarding statuses (used by the AI assistant to know what's configured)
+  interface OnboardingStepStatusForAI {
+    stepId: string;
+    status: 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
+  }
+  
+  const { data: onboardingStatusesForAI } = useQuery<{ success: boolean; data: OnboardingStepStatusForAI[] }>({
+    queryKey: ["/api/consultant/onboarding/status/for-ai"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/onboarding/status/for-ai", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch onboarding status for AI");
+      return res.json();
+    },
+    enabled: isOnboardingMode, // Only fetch when onboarding mode is active
+  });
+
   const testMutation = useMutation({
     mutationFn: async ({ endpoint, stepName }: { endpoint: string; stepName: string }) => {
       const res = await fetch(endpoint, {
@@ -1622,6 +1640,7 @@ export default function ConsultantSetupWizard() {
                       isConsultantMode={true}
                       isOnboardingMode={true}
                       embedded={true}
+                      onboardingStatuses={onboardingStatusesForAI?.data}
                     />
                   </div>
                 </motion.aside>
