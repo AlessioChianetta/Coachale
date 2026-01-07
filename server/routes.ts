@@ -11193,6 +11193,44 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // Get user memory (daily summaries for a specific user)
+  app.get("/api/consultant/ai/user-memory/:userId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { userId } = req.params;
+      const { aiDailySummaries } = await import("@shared/schema");
+      const summaries = await db
+        .select()
+        .from(aiDailySummaries)
+        .where(eq(aiDailySummaries.userId, userId))
+        .orderBy(desc(aiDailySummaries.summaryDate))
+        .limit(30);
+      
+      // Ensure topics is always an array (JSONB should parse automatically, but add safeguard)
+      const parsedSummaries = summaries.map(summary => {
+        let parsedTopics: string[] = [];
+        try {
+          if (Array.isArray(summary.topics)) {
+            parsedTopics = summary.topics;
+          } else if (typeof summary.topics === 'string' && summary.topics.trim()) {
+            parsedTopics = JSON.parse(summary.topics);
+          }
+        } catch {
+          // Legacy rows might have malformed topics - default to empty array
+          parsedTopics = [];
+        }
+        return {
+          ...summary,
+          topics: parsedTopics
+        };
+      });
+      
+      res.json(parsedSummaries);
+    } catch (error: any) {
+      console.error("Error fetching user memory:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Generate memory for a specific user (with logging)
   app.post("/api/consultant/ai/memory-audit/generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {

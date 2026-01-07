@@ -50,7 +50,8 @@ import {
   Share2,
   CheckSquare,
   ListTodo,
-  BookMarked
+  BookMarked,
+  Eye
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -64,6 +65,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -830,7 +839,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
-  const { data: memoryStats } = useQuery<{
+  const { data: memoryStats, isLoading: memoryStatsLoading } = useQuery<{
     totalSummaries: number;
     usersWithMemory: number;
     totalUsers: number;
@@ -847,12 +856,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
-  const { data: memoryAudit } = useQuery<Array<{
+  const { data: memoryAudit, isLoading: memoryAuditLoading } = useQuery<Array<{
     userId: string;
     firstName: string;
     lastName: string;
     email: string;
     role: string;
+    isActive: boolean;
     totalDays: number;
     coveredDays: number;
     missingDays: number;
@@ -869,7 +879,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
-  const { data: memoryLogs } = useQuery<Array<{
+  const { data: memoryLogs, isLoading: memoryLogsLoading } = useQuery<Array<{
     id: number;
     userId: string;
     targetUserId: string | null;
@@ -891,6 +901,30 @@ export default function ConsultantFileSearchAnalyticsPage() {
       return res.json();
     },
   });
+
+  const [viewingMemoryUserId, setViewingMemoryUserId] = useState<string | null>(null);
+  const viewingMemoryUser = memoryAudit?.find(u => u.userId === viewingMemoryUserId);
+
+  const { data: userSummaries, isLoading: summariesLoading } = useQuery<Array<{
+    id: string;
+    summaryDate: string;
+    summary: string;
+    conversationCount: number;
+    messageCount: number;
+    topics: string[];
+  }>>({
+    queryKey: ["/api/consultant/ai/user-memory", viewingMemoryUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/consultant/ai/user-memory/${viewingMemoryUserId}`, {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch user memory");
+      return res.json();
+    },
+    enabled: !!viewingMemoryUserId,
+  });
+
+  const memoryTabLoading = memoryStatsLoading || memoryAuditLoading || memoryLogsLoading;
 
   const updateClientFileSearchMutation = useMutation({
     mutationFn: async ({ clientId, fileSearchEnabled }: { clientId: string; fileSearchEnabled: boolean }) => {
@@ -5517,7 +5551,15 @@ export default function ConsultantFileSearchAnalyticsPage() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="memory" className="space-y-6">
+              <TabsContent value="memory" className="space-y-6 relative">
+                {memoryTabLoading && (
+                  <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center rounded-lg">
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                      <span className="text-sm text-gray-600">Caricamento dati memoria...</span>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card>
                     <CardContent className="pt-6">
@@ -5624,6 +5666,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <th className="text-center p-3 font-medium">Mancanti</th>
                             <th className="text-left p-3 font-medium">Ultimo Riassunto</th>
                             <th className="text-center p-3 font-medium">Status</th>
+                            <th className="text-center p-3 font-medium">Memoria</th>
                             <th className="text-center p-3 font-medium">Azioni</th>
                           </tr>
                         </thead>
@@ -5665,6 +5708,15 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 )}
                               </td>
                               <td className="p-3 text-center">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setViewingMemoryUserId(user.userId)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </td>
+                              <td className="p-3 text-center">
                                 {user.missingDays > 0 && (
                                   <Button
                                     size="sm"
@@ -5684,7 +5736,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           ))}
                           {(!memoryAudit || memoryAudit.length === 0) && (
                             <tr>
-                              <td colSpan={8} className="p-6 text-center text-gray-500">
+                              <td colSpan={9} className="p-6 text-center text-gray-500">
                                 Nessun utente trovato
                               </td>
                             </tr>
@@ -5694,6 +5746,67 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                <Dialog open={!!viewingMemoryUserId} onOpenChange={(open) => !open && setViewingMemoryUserId(null)}>
+                  <DialogContent className="max-w-2xl max-h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-600" />
+                        Memoria AI - {viewingMemoryUser?.firstName} {viewingMemoryUser?.lastName}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Riassunti giornalieri delle conversazioni (ultimi 30 giorni)
+                      </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="h-[400px] pr-4">
+                      {summariesLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                        </div>
+                      ) : userSummaries && userSummaries.length > 0 ? (
+                        <div className="space-y-4">
+                          {userSummaries.map((summary) => (
+                            <div key={summary.id} className="border rounded-lg p-4 bg-gray-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-purple-700">
+                                  {format(new Date(summary.summaryDate), "EEEE d MMMM yyyy", { locale: it })}
+                                </span>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {summary.conversationCount} chat
+                                  </Badge>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {summary.messageCount} msg
+                                  </Badge>
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                {summary.summary}
+                              </p>
+                              {summary.topics && summary.topics.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {summary.topics.slice(0, 5).map((topic, i) => (
+                                    <Badge key={i} variant="outline" className="text-xs bg-white">
+                                      {topic}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                          <Brain className="h-12 w-12 text-gray-300 mb-2" />
+                          <p>Nessun riassunto disponibile</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            I riassunti vengono generati automaticamente dalle conversazioni
+                          </p>
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
 
                 <Collapsible>
                   <Card>

@@ -497,6 +497,7 @@ ${conversationText}`,
     lastName: string;
     email: string;
     role: string;
+    isActive: boolean;
     totalDays: number;
     coveredDays: number;
     missingDays: number;
@@ -504,7 +505,7 @@ ${conversationText}`,
     status: 'complete' | 'partial' | 'missing';
   }>> {
     try {
-      // Get consultant + their clients
+      // Get consultant (always) + their active clients only
       const allUsers = await db
         .select({
           id: users.id,
@@ -512,11 +513,15 @@ ${conversationText}`,
           lastName: users.lastName,
           email: users.email,
           role: users.role,
+          isActive: users.isActive,
         })
         .from(users)
         .where(or(
-          eq(users.id, consultantId),
-          eq(users.consultantId, consultantId)
+          eq(users.id, consultantId),  // Always include consultant regardless of isActive
+          and(
+            eq(users.consultantId, consultantId),
+            eq(users.isActive, true)   // Only filter clients by isActive
+          )
         ));
 
       if (!allUsers || allUsers.length === 0) {
@@ -583,6 +588,7 @@ ${conversationText}`,
           lastName: user.lastName || '',
           email: user.email,
           role: user.role,
+          isActive: user.isActive ?? true,
           totalDays,
           coveredDays,
           missingDays,
@@ -606,13 +612,16 @@ ${conversationText}`,
     coveragePercent: number;
   }> {
     try {
-      // Get all users (consultant + clients)
+      // Get consultant (always) + active clients only
       const allUsers = await db
         .select({ id: users.id })
         .from(users)
         .where(or(
-          eq(users.id, consultantId),
-          eq(users.consultantId, consultantId)
+          eq(users.id, consultantId),  // Always include consultant regardless of isActive
+          and(
+            eq(users.consultantId, consultantId),
+            eq(users.isActive, true)   // Only filter clients by isActive
+          )
         ));
 
       const userIds = allUsers.map(u => u.id).filter(id => id != null);
