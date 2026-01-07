@@ -932,6 +932,26 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [viewingManagerSubscriptionId, setViewingManagerSubscriptionId] = useState<string | null>(null);
   const viewingManagerData = managerMemoryAudit?.find(m => m.subscriptionId === viewingManagerSubscriptionId);
 
+  const [expandedGoldUserId, setExpandedGoldUserId] = useState<string | null>(null);
+  
+  const { data: goldUserAgentBreakdown, isLoading: agentBreakdownLoading } = useQuery<Array<{
+    agentId: string;
+    agentName: string;
+    conversationCount: number;
+    messageCount: number;
+    lastMessageAt: string | null;
+  }>>({
+    queryKey: ["/api/ai-assistant/memory/manager", expandedGoldUserId, "agents"],
+    queryFn: async () => {
+      const res = await fetch(`/api/ai-assistant/memory/manager/${expandedGoldUserId}/agents`, {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch agent breakdown");
+      return res.json();
+    },
+    enabled: !!expandedGoldUserId,
+  });
+
   const { data: memorySettings } = useQuery<{ memoryGenerationHour: number }>({
     queryKey: ["/api/consultant/ai/memory-settings"],
     queryFn: async () => {
@@ -6296,8 +6316,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b bg-gray-50">
+                              <th className="text-left p-3 font-medium w-8"></th>
                               <th className="text-left p-3 font-medium">Email/Nome</th>
-                              <th className="text-center p-3 font-medium">Giorni Totali</th>
+                              <th className="text-center p-3 font-medium">Agenti</th>
                               <th className="text-center p-3 font-medium">Riassunti</th>
                               <th className="text-center p-3 font-medium">Mancanti</th>
                               <th className="text-center p-3 font-medium">Status</th>
@@ -6306,77 +6327,155 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           </thead>
                           <tbody>
                             {managerMemoryAudit.map((manager) => (
-                              <tr key={manager.subscriptionId} className={`border-b hover:bg-gray-50 ${!manager.agentAccessEnabled ? 'opacity-50' : ''}`}>
-                                <td className="p-3">
-                                  <div className="font-medium">{manager.firstName || manager.email}</div>
-                                  {manager.firstName && (
-                                    <div className="text-xs text-gray-500">{manager.email}</div>
-                                  )}
-                                  <div className="flex gap-1 mt-1">
-                                    <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
-                                      {manager.tier}
+                              <React.Fragment key={manager.subscriptionId}>
+                                <tr 
+                                  className={`border-b hover:bg-gray-50 cursor-pointer ${!manager.agentAccessEnabled ? 'opacity-50' : ''}`}
+                                  onClick={() => setExpandedGoldUserId(expandedGoldUserId === manager.subscriptionId ? null : manager.subscriptionId)}
+                                >
+                                  <td className="p-3">
+                                    {expandedGoldUserId === manager.subscriptionId ? (
+                                      <ChevronDown className="h-4 w-4 text-amber-600" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                                    )}
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="font-medium">{manager.firstName || manager.email}</div>
+                                    {manager.firstName && (
+                                      <div className="text-xs text-gray-500">{manager.email}</div>
+                                    )}
+                                    <div className="flex gap-1 mt-1">
+                                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
+                                        {manager.tier}
+                                      </Badge>
+                                      {!manager.agentAccessEnabled && (
+                                        <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">
+                                          Disabilitato
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <Badge variant="secondary" className="text-xs">
+                                      {expandedGoldUserId === manager.subscriptionId && goldUserAgentBreakdown 
+                                        ? `${goldUserAgentBreakdown.length} agenti` 
+                                        : '-'}
                                     </Badge>
-                                    {!manager.agentAccessEnabled && (
-                                      <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">
-                                        Disabilitato
+                                  </td>
+                                  <td className="p-3 text-center text-emerald-600 font-medium">{manager.existingSummaries}</td>
+                                  <td className="p-3 text-center text-red-600 font-medium">{manager.missingDays}</td>
+                                  <td className="p-3 text-center">
+                                    {!manager.agentAccessEnabled ? (
+                                      <Badge className="bg-gray-100 text-gray-600 border-gray-200">
+                                        Inattivo
+                                      </Badge>
+                                    ) : manager.status === 'complete' ? (
+                                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                                        Completo
+                                      </Badge>
+                                    ) : manager.status === 'partial' ? (
+                                      <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
+                                        Parziale
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-red-100 text-red-700 border-red-200">
+                                        Vuoto
                                       </Badge>
                                     )}
-                                  </div>
-                                </td>
-                                <td className="p-3 text-center">{manager.totalDays}</td>
-                                <td className="p-3 text-center text-emerald-600 font-medium">{manager.existingSummaries}</td>
-                                <td className="p-3 text-center text-red-600 font-medium">{manager.missingDays}</td>
-                                <td className="p-3 text-center">
-                                  {!manager.agentAccessEnabled ? (
-                                    <Badge className="bg-gray-100 text-gray-600 border-gray-200">
-                                      Inattivo
-                                    </Badge>
-                                  ) : manager.status === 'complete' ? (
-                                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-                                      Completo
-                                    </Badge>
-                                  ) : manager.status === 'partial' ? (
-                                    <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
-                                      Parziale
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="bg-red-100 text-red-700 border-red-200">
-                                      Vuoto
-                                    </Badge>
-                                  )}
-                                </td>
-                                <td className="p-3 text-center">
-                                  <div className="flex items-center justify-center gap-2">
-                                    {manager.existingSummaries > 0 && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setViewingManagerSubscriptionId(manager.subscriptionId)}
-                                      >
-                                        <Brain className="h-4 w-4 mr-1" />
-                                        Visualizza
-                                      </Button>
-                                    )}
-                                    {manager.agentAccessEnabled && manager.missingDays > 0 && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => generateManagerMemoryMutation.mutate(manager.subscriptionId)}
-                                        disabled={generateManagerMemoryMutation.isPending}
-                                      >
-                                        {generateManagerMemoryMutation.isPending ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                  </td>
+                                  <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center justify-center gap-2">
+                                      {manager.existingSummaries > 0 && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setViewingManagerSubscriptionId(manager.subscriptionId)}
+                                        >
+                                          <Brain className="h-4 w-4 mr-1" />
+                                          Visualizza
+                                        </Button>
+                                      )}
+                                      {manager.agentAccessEnabled && manager.missingDays > 0 && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => generateManagerMemoryMutation.mutate(manager.subscriptionId)}
+                                          disabled={generateManagerMemoryMutation.isPending}
+                                        >
+                                          {generateManagerMemoryMutation.isPending ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <>
+                                              <RefreshCw className="h-4 w-4 mr-1" />
+                                              Genera
+                                            </>
+                                          )}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                                {expandedGoldUserId === manager.subscriptionId && (
+                                  <tr>
+                                    <td colSpan={7} className="p-0">
+                                      <div className="bg-amber-50/50 border-l-4 border-amber-300 px-6 py-4">
+                                        {agentBreakdownLoading ? (
+                                          <div className="flex items-center gap-2 text-amber-600">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span className="text-sm">Caricamento agenti...</span>
+                                          </div>
+                                        ) : goldUserAgentBreakdown && goldUserAgentBreakdown.length > 0 ? (
+                                          <div className="space-y-3">
+                                            <div className="text-xs font-medium text-amber-700 uppercase tracking-wide">
+                                              Dettaglio per Agente
+                                            </div>
+                                            <div className="grid gap-2">
+                                              {goldUserAgentBreakdown.map((agent) => (
+                                                <div 
+                                                  key={agent.agentId}
+                                                  className="flex items-center justify-between bg-white rounded-lg p-3 border border-amber-200"
+                                                >
+                                                  <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                                                      <Bot className="h-4 w-4 text-amber-600" />
+                                                    </div>
+                                                    <div>
+                                                      <div className="font-medium text-gray-900">{agent.agentName}</div>
+                                                      <div className="text-xs text-gray-500">
+                                                        {agent.lastMessageAt 
+                                                          ? `Ultimo msg: ${format(new Date(agent.lastMessageAt), "d MMM", { locale: it })}`
+                                                          : 'Nessun messaggio'}
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex items-center gap-4">
+                                                    <div className="text-center">
+                                                      <div className="text-lg font-semibold text-gray-900">{agent.conversationCount}</div>
+                                                      <div className="text-xs text-gray-500">chat</div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                      <div className="text-lg font-semibold text-amber-600">{agent.messageCount}</div>
+                                                      <div className="text-xs text-gray-500">messaggi</div>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                            <div className="text-xs text-gray-500 pt-2 border-t border-amber-200">
+                                              Totale: {goldUserAgentBreakdown.reduce((sum, a) => sum + a.conversationCount, 0)} conversazioni, {goldUserAgentBreakdown.reduce((sum, a) => sum + a.messageCount, 0)} messaggi
+                                            </div>
+                                          </div>
                                         ) : (
-                                          <>
-                                            <RefreshCw className="h-4 w-4 mr-1" />
-                                            Genera
-                                          </>
+                                          <div className="text-sm text-gray-500 flex items-center gap-2">
+                                            <Bot className="h-4 w-4" />
+                                            Nessuna conversazione con agenti trovata
+                                          </div>
                                         )}
-                                      </Button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             ))}
                           </tbody>
                         </table>

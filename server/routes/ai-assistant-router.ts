@@ -906,6 +906,17 @@ router.get("/memory/manager-audit", authenticateToken, requireRole("consultant")
   }
 });
 
+router.get("/memory/manager/:userId/agents", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const agentBreakdown = await conversationMemoryService.getGoldUserAgentBreakdown(userId);
+    res.json(agentBreakdown);
+  } catch (error: any) {
+    console.error("[AI Assistant] Error fetching Gold user agent breakdown:", error);
+    res.status(500).json({ error: error.message || "Failed to fetch agent breakdown" });
+  }
+});
+
 router.get("/memory/manager/:subscriptionId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const { subscriptionId } = req.params;

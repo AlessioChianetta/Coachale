@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { db } from '../db';
-import { users, clientLevelSubscriptions, bronzeUserAgentAccess } from '../../shared/schema';
+import { users, bronzeUserAgentAccess } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { formatInTimeZone } from 'date-fns-tz';
 
@@ -106,22 +106,24 @@ async function runMemoryGenerationForHour(targetHour: number) {
         }
       }
 
-      // GOLD MANAGERS: Process Gold tier subscription users for this consultant
+      // GOLD MANAGERS: Process Gold tier users from users table (not clientLevelSubscriptions)
+      // Gold users are identified by: role="client", consultantId=consultant.id, isActive=true
+      // Their conversations use pattern manager_{users.id}_%
       try {
-        const goldSubscriptions = await db
+        const goldUsers = await db
           .select({
-            id: clientLevelSubscriptions.id,
-            email: clientLevelSubscriptions.clientEmail,
-            firstName: clientLevelSubscriptions.clientName,
+            id: users.id,
+            email: users.email,
+            firstName: users.firstName,
           })
-          .from(clientLevelSubscriptions)
+          .from(users)
           .where(and(
-            eq(clientLevelSubscriptions.consultantId, consultant.id),
-            eq(clientLevelSubscriptions.level, "3"), // Gold only
-            eq(clientLevelSubscriptions.status, "active")
+            eq(users.consultantId, consultant.id),
+            eq(users.role, "client"),
+            eq(users.isActive, true)
           ));
 
-        // Get agent access status for Gold subscriptions
+        // Get agent access status for Gold users (using users.id)
         const goldAccessRecords = await db
           .select({
             bronzeUserId: bronzeUserAgentAccess.bronzeUserId,
@@ -132,17 +134,18 @@ async function runMemoryGenerationForHour(targetHour: number) {
         
         const accessMap = new Map(goldAccessRecords.map(r => [r.bronzeUserId, r.isEnabled]));
 
-        // Filter to only Gold managers with agent access enabled (default true if no record)
-        const activeGoldSubscriptions = goldSubscriptions.filter(sub => accessMap.get(sub.id) ?? true);
-        const disabledCount = goldSubscriptions.length - activeGoldSubscriptions.length;
+        // Filter to only Gold users with agent access enabled (default true if no record)
+        const activeGoldUsers = goldUsers.filter(user => accessMap.get(user.id) ?? true);
+        const disabledCount = goldUsers.length - activeGoldUsers.length;
 
-        if (activeGoldSubscriptions.length > 0) {
-          console.log(`      🥇 Processing ${activeGoldSubscriptions.length} Gold managers (${disabledCount} disabled, skipped)`);
+        if (activeGoldUsers.length > 0) {
+          console.log(`      🥇 Processing ${activeGoldUsers.length} Gold users (${disabledCount} disabled, skipped)`);
           
-          for (const goldSub of activeGoldSubscriptions) {
+          for (const goldUser of activeGoldUsers) {
             try {
+              // Use users.id as subscriptionId - matches pattern manager_{userId}_%
               const result = await memoryService.generateManagerMissingDailySummariesWithProgress(
-                goldSub.id,
+                goldUser.id,
                 consultant.id,
                 apiKey,
                 () => {}
@@ -150,19 +153,19 @@ async function runMemoryGenerationForHour(targetHour: number) {
 
               if (result.generated > 0) {
                 totalGenerated += result.generated;
-                console.log(`         ✅ Gold ${goldSub.firstName || goldSub.email}: ${result.generated} summaries generated`);
+                console.log(`         ✅ Gold ${goldUser.firstName || goldUser.email}: ${result.generated} summaries generated`);
               }
             } catch (goldError: any) {
-              const errorMsg = `Gold ${goldSub.id}: ${goldError.message}`;
+              const errorMsg = `Gold ${goldUser.id}: ${goldError.message}`;
               errors.push(errorMsg);
               console.error(`         ❌ ${errorMsg}`);
             }
           }
         } else if (disabledCount > 0) {
-          console.log(`      🥇 No active Gold managers (${disabledCount} disabled, skipped)`);
+          console.log(`      🥇 No active Gold users (${disabledCount} disabled, skipped)`);
         }
       } catch (goldQueryError: any) {
-        console.error(`      ⚠️ Failed to query Gold managers: ${goldQueryError.message}`);
+        console.error(`      ⚠️ Failed to query Gold users: ${goldQueryError.message}`);
       }
     }
 

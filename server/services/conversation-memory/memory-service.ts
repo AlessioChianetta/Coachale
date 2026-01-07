@@ -1243,6 +1243,100 @@ ${conversationText}`,
       return [];
     }
   }
+  async getGoldUserAgentBreakdown(
+    userId: string
+  ): Promise<Array<{
+    agentId: string;
+    agentName: string;
+    conversationCount: number;
+    messageCount: number;
+    lastMessageAt: Date | null;
+  }>> {
+    try {
+      const visitorPattern = `manager_${userId}_%`;
+
+      // Get all conversations for this Gold user with agent info
+      const conversations = await db
+        .select({
+          id: whatsappAgentConsultantConversations.id,
+          agentProfileId: whatsappAgentConsultantConversations.agentProfileId,
+          updatedAt: whatsappAgentConsultantConversations.updatedAt,
+        })
+        .from(whatsappAgentConsultantConversations)
+        .where(like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern));
+
+      if (conversations.length === 0) {
+        return [];
+      }
+
+      // Group conversations by agent
+      const agentMap = new Map<string, {
+        conversationIds: string[];
+        lastMessageAt: Date | null;
+      }>();
+
+      for (const conv of conversations) {
+        const agentId = conv.agentProfileId || 'unknown';
+        if (!agentMap.has(agentId)) {
+          agentMap.set(agentId, { conversationIds: [], lastMessageAt: null });
+        }
+        const agentData = agentMap.get(agentId)!;
+        agentData.conversationIds.push(conv.id);
+        if (!agentData.lastMessageAt || (conv.updatedAt && conv.updatedAt > agentData.lastMessageAt)) {
+          agentData.lastMessageAt = conv.updatedAt;
+        }
+      }
+
+      // Get agent names from whatsapp_agent_profiles
+      const { whatsappAgentProfiles } = await import('../../../shared/schema');
+      const agentIds = Array.from(agentMap.keys()).filter(id => id !== 'unknown');
+      
+      let agentNames = new Map<string, string>();
+      if (agentIds.length > 0) {
+        const agents = await db
+          .select({
+            id: whatsappAgentProfiles.id,
+            name: whatsappAgentProfiles.name,
+          })
+          .from(whatsappAgentProfiles)
+          .where(inArray(whatsappAgentProfiles.id, agentIds));
+        
+        agentNames = new Map(agents.map(a => [a.id, a.name || 'Agente senza nome']));
+      }
+
+      // Get message counts for each agent
+      const results: Array<{
+        agentId: string;
+        agentName: string;
+        conversationCount: number;
+        messageCount: number;
+        lastMessageAt: Date | null;
+      }> = [];
+
+      for (const [agentId, data] of agentMap.entries()) {
+        const msgCountResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(whatsappAgentConsultantMessages)
+          .where(inArray(whatsappAgentConsultantMessages.conversationId, data.conversationIds));
+
+        results.push({
+          agentId,
+          agentName: agentNames.get(agentId) || 'Agente sconosciuto',
+          conversationCount: data.conversationIds.length,
+          messageCount: msgCountResult[0]?.count || 0,
+          lastMessageAt: data.lastMessageAt,
+        });
+      }
+
+      // Sort by message count descending
+      results.sort((a, b) => b.messageCount - a.messageCount);
+
+      return results;
+    } catch (error: any) {
+      console.error("❌ [ManagerMemory] Error getting agent breakdown:", error.message);
+      return [];
+    }
+  }
 }
 
 export const conversationMemoryService = new ConversationMemoryService();
