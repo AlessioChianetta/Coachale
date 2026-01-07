@@ -966,6 +966,189 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
+  const [memoryGenerationProgress, setMemoryGenerationProgress] = useState<{
+    isOpen: boolean;
+    isRunning: boolean;
+    totalUsers: number;
+    currentIndex: number;
+    currentUser: string;
+    currentRole: string;
+    currentDay?: number;
+    totalDays?: number;
+    currentDate?: string;
+    results: Array<{ userId: string; userName: string; status: 'processing' | 'generated' | 'skipped' | 'error'; generated?: number; error?: string }>;
+    finalResult?: { generated: number; usersProcessed: number; usersWithNewSummaries: number; durationMs: number; errors?: string[] };
+  }>({
+    isOpen: false,
+    isRunning: false,
+    totalUsers: 0,
+    currentIndex: 0,
+    currentUser: '',
+    currentRole: '',
+    results: []
+  });
+
+  const startMemoryGenerationWithSSE = async () => {
+    setMemoryGenerationProgress({
+      isOpen: true,
+      isRunning: true,
+      totalUsers: 0,
+      currentIndex: 0,
+      currentUser: '',
+      currentRole: '',
+      results: []
+    });
+
+    try {
+      const headers = getAuthHeaders();
+      const response = await fetch("/api/consultant/ai/generate-memory-now/stream", {
+        method: "GET",
+        headers: headers
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to start memory generation");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              switch (data.type) {
+                case 'start':
+                  setMemoryGenerationProgress(prev => ({
+                    ...prev,
+                    totalUsers: data.totalUsers
+                  }));
+                  break;
+
+                case 'processing':
+                  setMemoryGenerationProgress(prev => ({
+                    ...prev,
+                    currentIndex: data.currentIndex,
+                    currentUser: data.userName,
+                    currentRole: data.role,
+                    currentDay: undefined,
+                    totalDays: undefined,
+                    currentDate: undefined,
+                    results: prev.results.some(r => r.userId === data.userId)
+                      ? prev.results
+                      : [...prev.results, { userId: data.userId, userName: data.userName, status: 'processing' }]
+                  }));
+                  break;
+
+                case 'day_progress':
+                  setMemoryGenerationProgress(prev => ({
+                    ...prev,
+                    currentDay: data.currentDay,
+                    totalDays: data.totalDays,
+                    currentDate: data.date
+                  }));
+                  break;
+
+                case 'user_complete':
+                  setMemoryGenerationProgress(prev => ({
+                    ...prev,
+                    results: prev.results.map(r => 
+                      r.userId === data.userId 
+                        ? { ...r, status: data.status, generated: data.generated }
+                        : r
+                    )
+                  }));
+                  break;
+
+                case 'user_error':
+                  setMemoryGenerationProgress(prev => ({
+                    ...prev,
+                    results: prev.results.map(r => 
+                      r.userId === data.userId 
+                        ? { ...r, status: 'error', error: data.error }
+                        : r
+                    )
+                  }));
+                  break;
+
+                case 'complete':
+                  setMemoryGenerationProgress(prev => ({
+                    ...prev,
+                    isRunning: false,
+                    finalResult: {
+                      generated: data.generated,
+                      usersProcessed: data.usersProcessed,
+                      usersWithNewSummaries: data.usersWithNewSummaries,
+                      durationMs: data.durationMs,
+                      errors: data.errors
+                    }
+                  }));
+                  queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-stats"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-audit"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-generation-logs"] });
+                  break;
+
+                case 'error':
+                  setMemoryGenerationProgress(prev => ({
+                    ...prev,
+                    isRunning: false,
+                    finalResult: {
+                      generated: 0,
+                      usersProcessed: 0,
+                      usersWithNewSummaries: 0,
+                      durationMs: 0,
+                      errors: [data.message]
+                    }
+                  }));
+                  toast({
+                    title: "Errore",
+                    description: data.message,
+                    variant: "destructive"
+                  });
+                  break;
+              }
+            } catch (parseError) {
+              console.error("Failed to parse SSE data:", parseError);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("Memory generation SSE error:", error);
+      setMemoryGenerationProgress(prev => ({
+        ...prev,
+        isRunning: false,
+        finalResult: {
+          generated: 0,
+          usersProcessed: 0,
+          usersWithNewSummaries: 0,
+          durationMs: 0,
+          errors: [error.message || "Errore durante la generazione"]
+        }
+      }));
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la generazione",
+        variant: "destructive"
+      });
+    }
+  };
+
   const { data: userSummaries, isLoading: summariesLoading } = useQuery<Array<{
     id: string;
     summaryDate: string;
@@ -5726,18 +5909,18 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           )}
                         </div>
                         <Button
-                          onClick={() => generateMemoryNowMutation.mutate()}
-                          disabled={generateMemoryNowMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() => startMemoryGenerationWithSSE()}
+                          disabled={memoryGenerationProgress.isRunning}
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
                         >
-                          {generateMemoryNowMutation.isPending ? (
+                          {memoryGenerationProgress.isRunning ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
                               Generazione...
                             </>
                           ) : (
                             <>
-                              <RefreshCw className="h-4 w-4 mr-2" />
+                              <Brain className="h-4 w-4 mr-2" />
                               Genera Ora
                             </>
                           )}
@@ -6003,6 +6186,180 @@ export default function ConsultantFileSearchAnalyticsPage() {
           </div>
         </main>
       </div>
+
+      <Dialog open={memoryGenerationProgress.isOpen} onOpenChange={(open) => {
+        if (!memoryGenerationProgress.isRunning) {
+          setMemoryGenerationProgress(prev => ({ ...prev, isOpen: open }));
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-purple-700">
+              <div className="bg-purple-100 p-2 rounded-lg">
+                <Brain className="h-5 w-5 text-purple-600" />
+              </div>
+              Generazione Memoria AI
+            </DialogTitle>
+            <DialogDescription>
+              {memoryGenerationProgress.isRunning 
+                ? "Generazione riassunti in corso..." 
+                : memoryGenerationProgress.finalResult 
+                  ? "Generazione completata" 
+                  : "Preparazione..."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {memoryGenerationProgress.totalUsers > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Progresso utenti</span>
+                  <span className="font-medium text-purple-700">
+                    {memoryGenerationProgress.currentIndex} / {memoryGenerationProgress.totalUsers}
+                  </span>
+                </div>
+                <Progress 
+                  value={(memoryGenerationProgress.currentIndex / memoryGenerationProgress.totalUsers) * 100} 
+                  className="h-2 bg-purple-100"
+                />
+              </div>
+            )}
+
+            {memoryGenerationProgress.isRunning && memoryGenerationProgress.currentUser && (
+              <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                  <span className="text-sm text-purple-700">
+                    Elaborazione: <span className="font-medium">{memoryGenerationProgress.currentUser}</span>
+                    <Badge variant="secondary" className="ml-2 text-xs capitalize">
+                      {memoryGenerationProgress.currentRole}
+                    </Badge>
+                  </span>
+                </div>
+                {memoryGenerationProgress.currentDay !== undefined && memoryGenerationProgress.totalDays !== undefined && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-purple-600">
+                    <Clock className="h-3 w-3" />
+                    Giorno {memoryGenerationProgress.currentDay} di {memoryGenerationProgress.totalDays}
+                    {memoryGenerationProgress.currentDate && (
+                      <span className="text-purple-500">({memoryGenerationProgress.currentDate})</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {memoryGenerationProgress.results.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm text-gray-600">Utenti elaborati</Label>
+                <ScrollArea className="h-48 border rounded-lg p-2 bg-gray-50">
+                  <div className="space-y-2">
+                    {memoryGenerationProgress.results.map((result) => (
+                      <div 
+                        key={result.userId} 
+                        className={`flex items-center justify-between p-2 rounded-md ${
+                          result.status === 'processing' ? 'bg-purple-50 border border-purple-200' :
+                          result.status === 'generated' ? 'bg-emerald-50 border border-emerald-200' :
+                          result.status === 'skipped' ? 'bg-gray-100 border border-gray-200' :
+                          'bg-red-50 border border-red-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {result.status === 'processing' && (
+                            <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                          )}
+                          {result.status === 'generated' && (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                          )}
+                          {result.status === 'skipped' && (
+                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                          )}
+                          {result.status === 'error' && (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          )}
+                          <span className="text-sm">{result.userName}</span>
+                        </div>
+                        <div>
+                          {result.status === 'generated' && result.generated !== undefined && (
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
+                              +{result.generated} riassunti
+                            </Badge>
+                          )}
+                          {result.status === 'skipped' && (
+                            <Badge variant="secondary" className="text-xs">
+                              Nessun nuovo
+                            </Badge>
+                          )}
+                          {result.status === 'error' && (
+                            <Badge variant="destructive" className="text-xs">
+                              Errore
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {memoryGenerationProgress.finalResult && (
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-5 w-5 text-purple-600" />
+                  <span className="font-semibold text-purple-700">Riepilogo</span>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-emerald-600">
+                      {memoryGenerationProgress.finalResult.generated}
+                    </div>
+                    <div className="text-xs text-gray-600">Riassunti generati</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {memoryGenerationProgress.finalResult.usersWithNewSummaries}
+                    </div>
+                    <div className="text-xs text-gray-600">Utenti aggiornati</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {(memoryGenerationProgress.finalResult.durationMs / 1000).toFixed(1)}s
+                    </div>
+                    <div className="text-xs text-gray-600">Tempo totale</div>
+                  </div>
+                </div>
+                {memoryGenerationProgress.finalResult.errors && memoryGenerationProgress.finalResult.errors.length > 0 && (
+                  <div className="mt-3 p-2 bg-red-50 rounded-md border border-red-200">
+                    <div className="flex items-center gap-1 text-red-600 text-xs font-medium mb-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {memoryGenerationProgress.finalResult.errors.length} errori
+                    </div>
+                    <div className="text-xs text-red-600 max-h-20 overflow-auto">
+                      {memoryGenerationProgress.finalResult.errors.slice(0, 3).map((err, i) => (
+                        <div key={i} className="truncate">{err}</div>
+                      ))}
+                      {memoryGenerationProgress.finalResult.errors.length > 3 && (
+                        <div className="text-red-500 italic">+{memoryGenerationProgress.finalResult.errors.length - 3} altri errori</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {!memoryGenerationProgress.isRunning && memoryGenerationProgress.finalResult && (
+            <div className="flex justify-end">
+              <Button 
+                onClick={() => setMemoryGenerationProgress(prev => ({ ...prev, isOpen: false }))}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                Chiudi
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

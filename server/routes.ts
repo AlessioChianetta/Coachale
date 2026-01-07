@@ -11337,7 +11337,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
-  // Generate memory now for all consultant's users
+  // Generate memory now for all consultant's users (fallback POST endpoint)
   app.post("/api/consultant/ai/generate-memory-now", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const consultantId = req.user!.id;
@@ -11409,6 +11409,138 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       console.error("Error in manual memory generation:", error);
       res.status(500).json({ message: error.message });
     }
+  });
+
+  // Generate memory now with SSE streaming progress
+  app.get("/api/consultant/ai/generate-memory-now/stream", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    
+    const consultantId = req.user!.id;
+    
+    const sendEvent = (data: any) => {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+    
+    try {
+      const { ConversationMemoryService, conversationMemoryService } = await import('./services/conversation-memory/memory-service');
+      const { getSuperAdminGeminiKeys } = await import('./ai/provider-factory');
+      
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (!superAdminKeys || !superAdminKeys.enabled || superAdminKeys.keys.length === 0) {
+        sendEvent({ type: 'error', message: 'Nessuna chiave Gemini SuperAdmin disponibile' });
+        res.end();
+        return;
+      }
+      
+      const apiKey = superAdminKeys.keys[0];
+      const memoryService = new ConversationMemoryService();
+      
+      const allUsers = await db
+        .select({ id: schema.users.id, role: schema.users.role, firstName: schema.users.firstName, lastName: schema.users.lastName })
+        .from(schema.users)
+        .where(or(
+          eq(schema.users.id, consultantId),
+          and(
+            eq(schema.users.consultantId, consultantId),
+            eq(schema.users.isActive, true)
+          )
+        ));
+      
+      sendEvent({ 
+        type: 'start', 
+        totalUsers: allUsers.length,
+        users: allUsers.map(u => ({ id: u.id, name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Sconosciuto', role: u.role }))
+      });
+      
+      const startTime = Date.now();
+      let totalGenerated = 0;
+      let totalUsersWithSummaries = 0;
+      const errors: string[] = [];
+      
+      for (let i = 0; i < allUsers.length; i++) {
+        const user = allUsers[i];
+        const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Sconosciuto';
+        
+        sendEvent({ 
+          type: 'processing', 
+          currentIndex: i + 1,
+          totalUsers: allUsers.length,
+          userId: user.id,
+          userName: userName,
+          role: user.role
+        });
+        
+        try {
+          const result = await memoryService.generateMissingDailySummariesWithProgress(
+            user.id,
+            apiKey,
+            (progress) => {
+              if (progress.current !== undefined && progress.total !== undefined) {
+                sendEvent({
+                  type: 'day_progress',
+                  userId: user.id,
+                  userName: userName,
+                  currentDay: progress.current,
+                  totalDays: progress.total,
+                  date: progress.date
+                });
+              }
+            }
+          );
+          
+          if (result.generated > 0) {
+            totalGenerated += result.generated;
+            totalUsersWithSummaries++;
+          }
+          
+          sendEvent({
+            type: 'user_complete',
+            userId: user.id,
+            userName: userName,
+            generated: result.generated,
+            status: result.generated > 0 ? 'generated' : 'skipped'
+          });
+          
+        } catch (error: any) {
+          errors.push(`${userName}: ${error.message}`);
+          sendEvent({
+            type: 'user_error',
+            userId: user.id,
+            userName: userName,
+            error: error.message
+          });
+        }
+      }
+      
+      const durationMs = Date.now() - startTime;
+      
+      await conversationMemoryService.logGeneration({
+        userId: consultantId,
+        targetUserId: null,
+        generationType: 'manual',
+        summariesGenerated: totalGenerated,
+        conversationsAnalyzed: totalUsersWithSummaries,
+        durationMs,
+        errors,
+      });
+      
+      sendEvent({
+        type: 'complete',
+        generated: totalGenerated,
+        usersProcessed: allUsers.length,
+        usersWithNewSummaries: totalUsersWithSummaries,
+        durationMs,
+        errors: errors.length > 0 ? errors : undefined
+      });
+      
+    } catch (error: any) {
+      sendEvent({ type: 'error', message: error.message });
+    }
+    
+    res.end();
   });
 
   // ========================================
