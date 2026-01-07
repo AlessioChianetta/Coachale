@@ -11302,7 +11302,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // Get memory settings (generation hour)
   app.get("/api/consultant/ai/memory-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const consultantId = req.user!.userId;
+      const consultantId = req.user!.id;
       const [consultant] = await db
         .select({ memoryGenerationHour: schema.users.memoryGenerationHour })
         .from(schema.users)
@@ -11319,7 +11319,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // Update memory settings (generation hour)
   app.put("/api/consultant/ai/memory-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const consultantId = req.user!.userId;
+      const consultantId = req.user!.id;
       const { memoryGenerationHour } = req.body;
       
       if (typeof memoryGenerationHour !== 'number' || memoryGenerationHour < 0 || memoryGenerationHour > 23) {
@@ -11340,7 +11340,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // Generate memory now for all consultant's users
   app.post("/api/consultant/ai/generate-memory-now", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const consultantId = req.user!.userId;
+      const consultantId = req.user!.id;
       
       const { ConversationMemoryService, conversationMemoryService } = await import('./services/conversation-memory/memory-service');
       const { getSuperAdminGeminiKeys } = await import('./ai/provider-factory');
