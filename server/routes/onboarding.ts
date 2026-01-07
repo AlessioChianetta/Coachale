@@ -25,7 +25,7 @@ import {
   consultantInstagramConfig,
   consultantLicenses,
 } from '@shared/schema';
-import { eq, and, count, sql, inArray } from 'drizzle-orm';
+import { eq, and, count, sql, inArray, isNotNull, ne } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient, getAgentCalendarClient } from '../google-calendar-service';
 import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
@@ -293,7 +293,8 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
       .from(consultantWhatsappConfig)
       .where(and(
         eq(consultantWhatsappConfig.consultantId, consultantId),
-        sql`twilio_account_sid IS NOT NULL AND twilio_account_sid != ''`
+        isNotNull(consultantWhatsappConfig.twilioAccountSid),
+        ne(consultantWhatsappConfig.twilioAccountSid, '')
       ));
     const hasTwilio = Number(twilioAgentResult[0]?.count || 0) > 0;
     
@@ -361,13 +362,13 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
     const hasLeadImport = !!(leadImportConfig?.apiKey);
     
     const agentCalendarResult = await db.select({ 
-      id: consultantWhatsappConfig.id,
-      hasCalendar: sql`CASE WHEN google_access_token IS NOT NULL AND google_access_token != '' THEN true ELSE false END`
+      id: consultantWhatsappConfig.id
     })
       .from(consultantWhatsappConfig)
       .where(and(
         eq(consultantWhatsappConfig.consultantId, consultantId),
-        sql`google_access_token IS NOT NULL AND google_access_token != ''`
+        isNotNull(consultantWhatsappConfig.googleAccessToken),
+        ne(consultantWhatsappConfig.googleAccessToken, '')
       ));
     const hasCalendar = agentCalendarResult.length > 0;
     

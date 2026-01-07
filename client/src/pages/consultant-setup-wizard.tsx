@@ -612,7 +612,7 @@ export default function ConsultantSetupWizard() {
       if (!res.ok) throw new Error("Failed to fetch onboarding status for AI");
       return res.json();
     },
-    // Always fetch on setup wizard page so data is ready when user toggles onboarding mode
+    enabled: isOnboardingMode, // Only fetch when onboarding mode is active (uses specific system prompt)
   });
 
   const testMutation = useMutation({
