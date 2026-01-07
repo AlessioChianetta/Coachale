@@ -944,16 +944,18 @@ ${conversationText}`,
       const genai = new GoogleGenAI({ apiKey });
       const result = await genai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: `Genera un riassunto dettagliato del giorno ${dateStr} delle conversazioni AI di questo dipendente.
+        contents: `Genera un riassunto del ${dateStr} delle nostre conversazioni.
 
-REGOLE:
-- Scrivi 4-6 frasi complete e informative (400-600 caratteri circa)
-- Descrivi gli argomenti principali discussi e le richieste dell'utente
-- Includi eventuali decisioni prese, problemi risolti o task completati
-- Usa un tono professionale ma scorrevole
-- Rispondi SOLO con il riassunto, senza prefissi o intestazioni
+REGOLE FONDAMENTALI:
+- Scrivi come se fossi tu (l'AI) a ricordare cosa avete discusso insieme
+- Usa "abbiamo parlato di...", "mi hai chiesto...", "ti ho spiegato...", "hai voluto sapere..."
+- NON usare MAI terza persona ("il dipendente ha...", "l'utente ha...")
+- Scrivi 3-5 frasi naturali e dirette (300-500 caratteri)
+- Evidenzia gli argomenti principali e cosa hai ottenuto/imparato
+- Tono amichevole e colloquiale, come un promemoria personale
+- Rispondi SOLO con il riassunto, senza prefissi
 
-Conversazioni del giorno (${conversationCount} chat, ${totalMessageCount} messaggi):
+Conversazioni del ${dateStr} (${conversationCount} chat, ${totalMessageCount} messaggi):
 ${conversationText}`,
       });
 
