@@ -11231,6 +11231,21 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // Get manager memory (daily summaries for a Gold manager by subscription ID)
+  app.get("/api/consultant/ai/memory/manager/:subscriptionId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { subscriptionId } = req.params;
+      console.log(`[Manager Memory] Fetching summaries for subscription: ${subscriptionId}`);
+      const { conversationMemoryService } = await import("./services/conversation-memory/memory-service");
+      const summaries = await conversationMemoryService.getManagerDailySummaries(subscriptionId, 30);
+      console.log(`[Manager Memory] Found ${summaries.length} summaries`);
+      res.json(summaries);
+    } catch (error: any) {
+      console.error("[Manager Memory] Error fetching manager summaries:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Generate memory for a specific user (with logging)
   app.post("/api/consultant/ai/memory-audit/generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
