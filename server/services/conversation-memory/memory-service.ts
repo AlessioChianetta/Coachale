@@ -412,8 +412,7 @@ ${conversationText}`,
 
       const [existing] = await db
         .select({ 
-          id: aiDailySummaries.id,
-          messageCount: aiDailySummaries.messageCount 
+          id: aiDailySummaries.id
         })
         .from(aiDailySummaries)
         .where(and(
@@ -422,7 +421,8 @@ ${conversationText}`,
         ))
         .limit(1);
 
-      const needsGeneration = !existing || (existing.messageCount || 0) < currentMessageCount;
+      // Generate only if summary doesn't exist (same logic as audit)
+      const needsGeneration = !existing;
 
       if (needsGeneration && currentMessageCount >= 2) {
         daysToProcess.push({ day: new Date(day), messageCount: currentMessageCount });
@@ -544,15 +544,20 @@ ${conversationText}`,
       }> = [];
 
       for (const user of allUsers) {
-        // Get ALL days with conversations for this user (no time limit)
-        const daysWithConversations = await db
-          .selectDistinct({
+        // Get days with >= 2 messages (same threshold as generation)
+        // Using aggregated query for performance
+        const daysWithEnoughMessages = await db
+          .select({
             day: sql<Date>`DATE(${aiConversations.createdAt})`.as("day"),
+            messageCount: sql<number>`COUNT(${aiMessages.id})`.as("messageCount"),
           })
           .from(aiConversations)
-          .where(eq(aiConversations.clientId, user.id));
+          .leftJoin(aiMessages, eq(aiMessages.conversationId, aiConversations.id))
+          .where(eq(aiConversations.clientId, user.id))
+          .groupBy(sql`DATE(${aiConversations.createdAt})`)
+          .having(sql`COUNT(${aiMessages.id}) >= 2`);
 
-        const totalDays = daysWithConversations.length;
+        const totalDays = daysWithEnoughMessages.length;
 
         // Get ALL existing summaries for this user
         const summaries = await db
@@ -570,7 +575,7 @@ ${conversationText}`,
 
         // Count covered days: days that have a summary
         let coveredDays = 0;
-        for (const { day } of daysWithConversations) {
+        for (const { day } of daysWithEnoughMessages) {
           if (!day) continue;
           const dayTime = startOfDay(new Date(day)).getTime();
           if (summaryDates.has(dayTime)) {
