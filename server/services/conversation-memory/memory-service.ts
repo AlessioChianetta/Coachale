@@ -1,5 +1,5 @@
 import { db } from "../../db";
-import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users } from "../../../shared/schema";
+import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users, managerDailySummaries, managerConversations, managerMessages, clientLevelSubscriptions, consultantWhatsappConfig } from "../../../shared/schema";
 import { eq, and, desc, lt, gte, isNotNull, sql, or, inArray } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { startOfDay, subDays, format, eachDayOfInterval } from "date-fns";
@@ -763,6 +763,392 @@ ${conversationText}`,
       durationMs: data.durationMs,
       errors: data.errors || [],
     });
+  }
+
+  // ============= MANAGER GOLD MEMORY =============
+
+  async getManagerDailySummaries(
+    subscriptionId: string,
+    daysBack: number = 30
+  ): Promise<Array<{
+    id: string;
+    date: Date;
+    summary: string;
+    conversationCount: number;
+    messageCount: number;
+    topics: string[];
+  }>> {
+    const cutoffDate = subDays(new Date(), daysBack);
+
+    const summaries = await db
+      .select({
+        id: managerDailySummaries.id,
+        summaryDate: managerDailySummaries.summaryDate,
+        summary: managerDailySummaries.summary,
+        conversationCount: managerDailySummaries.conversationCount,
+        messageCount: managerDailySummaries.messageCount,
+        topics: managerDailySummaries.topics,
+      })
+      .from(managerDailySummaries)
+      .where(and(
+        eq(managerDailySummaries.subscriptionId, subscriptionId),
+        gte(managerDailySummaries.summaryDate, cutoffDate)
+      ))
+      .orderBy(desc(managerDailySummaries.summaryDate));
+
+    return summaries.map(s => ({
+      id: s.id,
+      date: s.summaryDate!,
+      summary: s.summary,
+      conversationCount: s.conversationCount || 0,
+      messageCount: s.messageCount || 0,
+      topics: (s.topics as string[]) || [],
+    }));
+  }
+
+  async generateManagerDailySummary(
+    subscriptionId: string,
+    consultantId: string,
+    targetDate: Date,
+    apiKey: string
+  ): Promise<string | null> {
+    try {
+      const dayStart = startOfDay(targetDate);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      // Get all manager conversations from that day
+      const conversations = await db
+        .select({
+          id: managerConversations.id,
+          title: managerConversations.title,
+        })
+        .from(managerConversations)
+        .innerJoin(clientLevelSubscriptions, eq(clientLevelSubscriptions.id, subscriptionId))
+        .where(and(
+          sql`${managerConversations.managerId} = ${subscriptionId} OR EXISTS (
+            SELECT 1 FROM manager_conversations mc2 
+            WHERE mc2.id = ${managerConversations.id}
+            AND mc2.created_at >= ${dayStart}
+            AND mc2.created_at < ${dayEnd}
+          )`,
+          gte(managerConversations.createdAt, dayStart),
+          lt(managerConversations.createdAt, dayEnd)
+        ));
+
+      // Simpler query - get conversations directly by checking messages date
+      const conversationsWithMessages = await db
+        .selectDistinct({
+          id: managerConversations.id,
+          title: managerConversations.title,
+        })
+        .from(managerMessages)
+        .innerJoin(managerConversations, eq(managerMessages.conversationId, managerConversations.id))
+        .innerJoin(clientLevelSubscriptions, eq(clientLevelSubscriptions.id, subscriptionId))
+        .where(and(
+          gte(managerMessages.createdAt, dayStart),
+          lt(managerMessages.createdAt, dayEnd)
+        ));
+
+      // Get messages from manager_messages table for this subscription
+      const allMessages: { role: string; content: string }[] = [];
+      let totalMessageCount = 0;
+      let conversationCount = 0;
+
+      // Get messages for this day from manager_messages
+      const dayMessages = await db
+        .select({
+          role: managerMessages.role,
+          content: managerMessages.content,
+          conversationId: managerMessages.conversationId,
+        })
+        .from(managerMessages)
+        .innerJoin(managerConversations, eq(managerMessages.conversationId, managerConversations.id))
+        .where(and(
+          gte(managerMessages.createdAt, dayStart),
+          lt(managerMessages.createdAt, dayEnd)
+        ))
+        .orderBy(managerMessages.createdAt)
+        .limit(50);
+
+      // Filter to only this subscription's conversations
+      const subscriptionConversations = await db
+        .select({ id: managerConversations.id })
+        .from(managerConversations)
+        .where(sql`${managerConversations.managerId} = ${subscriptionId}`);
+
+      const subscriptionConvIds = new Set(subscriptionConversations.map(c => c.id));
+      
+      const filteredMessages = dayMessages.filter(m => subscriptionConvIds.has(m.conversationId));
+      
+      if (filteredMessages.length < 2) return null;
+
+      const uniqueConvs = new Set(filteredMessages.map(m => m.conversationId));
+      conversationCount = uniqueConvs.size;
+      totalMessageCount = filteredMessages.length;
+
+      const conversationText = filteredMessages
+        .slice(0, 30)
+        .map(m => `${m.role === 'user' ? 'Utente' : 'AI'}: ${m.content.substring(0, 300)}`)
+        .join('\n');
+
+      const dateStr = format(targetDate, "d MMMM yyyy", { locale: it });
+
+      const genai = new GoogleGenAI({ apiKey });
+      const result = await genai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `Genera un riassunto dettagliato del giorno ${dateStr} delle conversazioni AI di questo dipendente.
+
+REGOLE:
+- Scrivi 4-6 frasi complete e informative (400-600 caratteri circa)
+- Descrivi gli argomenti principali discussi e le richieste dell'utente
+- Includi eventuali decisioni prese, problemi risolti o task completati
+- Usa un tono professionale ma scorrevole
+- Rispondi SOLO con il riassunto, senza prefissi o intestazioni
+
+Conversazioni del giorno (${conversationCount} chat, ${totalMessageCount} messaggi):
+${conversationText}`,
+      });
+
+      const summary = result.text?.trim() || "";
+
+      if (summary && summary.length > 0) {
+        const topics = summary
+          .split(/[,;.]/)
+          .filter(t => t.trim().length > 3 && t.trim().length < 50)
+          .slice(0, 5)
+          .map(t => t.trim());
+
+        await db.insert(managerDailySummaries).values({
+          subscriptionId,
+          consultantId,
+          summaryDate: dayStart,
+          summary,
+          conversationCount,
+          messageCount: totalMessageCount,
+          topics,
+        });
+
+        console.log(`📝 [ManagerMemory] Generated summary for subscription ${subscriptionId.slice(0, 8)}... on ${dateStr}`);
+        return summary;
+      }
+
+      return null;
+    } catch (error: any) {
+      console.error("❌ [ManagerMemory] Error generating daily summary:", error.message);
+      return null;
+    }
+  }
+
+  async generateManagerMissingDailySummariesWithProgress(
+    subscriptionId: string,
+    consultantId: string,
+    apiKey: string,
+    onProgress?: (progress: { current?: number; total?: number; date?: string }) => void
+  ): Promise<{ generated: number; skipped: number }> {
+    let generated = 0;
+    let skipped = 0;
+
+    try {
+      // Find all days with manager messages for this subscription
+      const subscriptionConversations = await db
+        .select({ id: managerConversations.id })
+        .from(managerConversations)
+        .where(sql`${managerConversations.managerId} = ${subscriptionId}`);
+
+      if (subscriptionConversations.length === 0) {
+        return { generated: 0, skipped: 0 };
+      }
+
+      const convIds = subscriptionConversations.map(c => c.id);
+
+      const daysWithMessages = await db
+        .selectDistinct({
+          day: sql<Date>`DATE(${managerMessages.createdAt})`.as("day"),
+        })
+        .from(managerMessages)
+        .where(inArray(managerMessages.conversationId, convIds));
+
+      if (daysWithMessages.length === 0) {
+        return { generated: 0, skipped: 0 };
+      }
+
+      // Get existing summaries
+      const existingSummaries = await db
+        .select({ summaryDate: managerDailySummaries.summaryDate })
+        .from(managerDailySummaries)
+        .where(eq(managerDailySummaries.subscriptionId, subscriptionId));
+
+      const existingDates = new Set(
+        existingSummaries.map(s => format(s.summaryDate, "yyyy-MM-dd"))
+      );
+
+      // Filter to days that need summaries (>= 2 messages and no existing summary)
+      const daysNeedingSummary: Date[] = [];
+      
+      for (const dayRow of daysWithMessages) {
+        const day = new Date(dayRow.day);
+        const dayStr = format(day, "yyyy-MM-dd");
+        
+        if (existingDates.has(dayStr)) {
+          skipped++;
+          continue;
+        }
+
+        // Check message count for this day
+        const dayStart = startOfDay(day);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+
+        const msgCount = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(managerMessages)
+          .where(and(
+            inArray(managerMessages.conversationId, convIds),
+            gte(managerMessages.createdAt, dayStart),
+            lt(managerMessages.createdAt, dayEnd)
+          ));
+
+        if ((msgCount[0]?.count || 0) >= 2) {
+          daysNeedingSummary.push(day);
+        } else {
+          skipped++;
+        }
+      }
+
+      const totalDays = daysNeedingSummary.length;
+      
+      for (let i = 0; i < daysNeedingSummary.length; i++) {
+        const day = daysNeedingSummary[i];
+        const dateStr = format(day, "yyyy-MM-dd");
+        
+        onProgress?.({ current: i + 1, total: totalDays, date: dateStr });
+
+        const result = await this.generateManagerDailySummary(
+          subscriptionId,
+          consultantId,
+          day,
+          apiKey
+        );
+
+        if (result) {
+          generated++;
+        }
+      }
+
+      return { generated, skipped };
+    } catch (error: any) {
+      console.error("❌ [ManagerMemory] Error generating missing summaries:", error.message);
+      return { generated, skipped };
+    }
+  }
+
+  async getManagerMemoryAudit(consultantId: string): Promise<Array<{
+    subscriptionId: string;
+    email: string;
+    firstName: string | null;
+    tier: string;
+    totalDays: number;
+    existingSummaries: number;
+    missingDays: number;
+    status: 'complete' | 'partial' | 'empty';
+  }>> {
+    try {
+      // Get all Gold subscriptions for this consultant
+      const goldSubscriptions = await db
+        .select({
+          id: clientLevelSubscriptions.id,
+          email: clientLevelSubscriptions.email,
+          firstName: clientLevelSubscriptions.firstName,
+          level: clientLevelSubscriptions.level,
+        })
+        .from(clientLevelSubscriptions)
+        .where(and(
+          eq(clientLevelSubscriptions.consultantId, consultantId),
+          eq(clientLevelSubscriptions.level, "3"), // Gold only
+          eq(clientLevelSubscriptions.isActive, true)
+        ));
+
+      const auditResults: Array<{
+        subscriptionId: string;
+        email: string;
+        firstName: string | null;
+        tier: string;
+        totalDays: number;
+        existingSummaries: number;
+        missingDays: number;
+        status: 'complete' | 'partial' | 'empty';
+      }> = [];
+
+      for (const sub of goldSubscriptions) {
+        // Get conversations for this subscription
+        const subscriptionConversations = await db
+          .select({ id: managerConversations.id })
+          .from(managerConversations)
+          .where(sql`${managerConversations.managerId} = ${sub.id}`);
+
+        if (subscriptionConversations.length === 0) {
+          auditResults.push({
+            subscriptionId: sub.id,
+            email: sub.email,
+            firstName: sub.firstName,
+            tier: 'gold',
+            totalDays: 0,
+            existingSummaries: 0,
+            missingDays: 0,
+            status: 'complete',
+          });
+          continue;
+        }
+
+        const convIds = subscriptionConversations.map(c => c.id);
+
+        // Count days with >= 2 messages
+        const daysWithMessages = await db
+          .select({
+            day: sql<Date>`DATE(${managerMessages.createdAt})`.as("day"),
+            msgCount: sql<number>`count(*)::int`.as("msg_count"),
+          })
+          .from(managerMessages)
+          .where(inArray(managerMessages.conversationId, convIds))
+          .groupBy(sql`DATE(${managerMessages.createdAt})`);
+
+        const qualifyingDays = daysWithMessages.filter(d => d.msgCount >= 2);
+        const totalDays = qualifyingDays.length;
+
+        // Count existing summaries
+        const existingSummariesResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(managerDailySummaries)
+          .where(eq(managerDailySummaries.subscriptionId, sub.id));
+
+        const existingSummaries = existingSummariesResult[0]?.count || 0;
+        const missingDays = Math.max(0, totalDays - existingSummaries);
+
+        let status: 'complete' | 'partial' | 'empty' = 'complete';
+        if (totalDays === 0) {
+          status = 'empty';
+        } else if (missingDays > 0) {
+          status = 'partial';
+        }
+
+        auditResults.push({
+          subscriptionId: sub.id,
+          email: sub.email,
+          firstName: sub.firstName,
+          tier: 'gold',
+          totalDays,
+          existingSummaries,
+          missingDays,
+          status,
+        });
+      }
+
+      return auditResults;
+    } catch (error: any) {
+      console.error("❌ [ManagerMemory] Error getting audit:", error.message);
+      return [];
+    }
   }
 }
 

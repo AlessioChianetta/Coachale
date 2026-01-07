@@ -6639,6 +6639,27 @@ export const insertManagerMessageSchema = createInsertSchema(managerMessages).om
   createdAt: true,
 });
 
+// Manager Daily Summaries - AI-generated daily summaries for Gold managers
+export const managerDailySummaries = pgTable("manager_daily_summaries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subscriptionId: varchar("subscription_id").references(() => clientLevelSubscriptions.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  summaryDate: timestamp("summary_date").notNull(),
+  summary: text("summary").notNull(),
+  conversationCount: integer("conversation_count").default(0),
+  messageCount: integer("message_count").default(0),
+  topics: jsonb("topics").$type<string[]>(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  uniqueSubscriptionDate: unique().on(table.subscriptionId, table.summaryDate),
+  consultantIdx: index("idx_manager_daily_summaries_consultant").on(table.consultantId),
+  subscriptionIdx: index("idx_manager_daily_summaries_subscription").on(table.subscriptionId),
+}));
+
+export type ManagerDailySummary = typeof managerDailySummaries.$inferSelect;
+export type InsertManagerDailySummary = typeof managerDailySummaries.$inferInsert;
+
 // =====================================================
 // INSTAGRAM INTEGRATION TABLES
 // Parallel structure to WhatsApp integration
