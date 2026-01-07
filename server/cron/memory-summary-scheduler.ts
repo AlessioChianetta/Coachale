@@ -1,8 +1,9 @@
 import cron from 'node-cron';
 import { db } from '../db';
-import { users, bronzeUserAgentAccess } from '../../shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { users, bronzeUserAgentAccess, whatsappAgentConsultantConversations, whatsappAgentConsultantMessages, managerDailySummaries } from '../../shared/schema';
+import { eq, and, like, gte, lt, sql, inArray } from 'drizzle-orm';
 import { formatInTimeZone } from 'date-fns-tz';
+import { startOfDay, format } from 'date-fns';
 
 let schedulerTask: cron.ScheduledTask | null = null;
 
@@ -144,16 +145,101 @@ async function runMemoryGenerationForHour(targetHour: number) {
           for (const goldUser of activeGoldUsers) {
             try {
               // Use users.id as subscriptionId - matches pattern manager_{userId}_%
-              const result = await memoryService.generateManagerMissingDailySummariesWithProgress(
-                goldUser.id,
-                consultant.id,
-                apiKey,
-                () => {}
+              const subscriptionId = goldUser.id;
+              const visitorPattern = `manager_${subscriptionId}_%`;
+              
+              // Find all conversations for this Gold user
+              const goldConversations = await db
+                .select({ id: whatsappAgentConsultantConversations.id })
+                .from(whatsappAgentConsultantConversations)
+                .where(like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern));
+
+              if (goldConversations.length === 0) {
+                continue;
+              }
+
+              const convIds = goldConversations.map(c => c.id);
+
+              // Find all days with messages
+              const daysWithMessages = await db
+                .selectDistinct({
+                  day: sql<Date>`DATE(${whatsappAgentConsultantMessages.createdAt})`.as("day"),
+                })
+                .from(whatsappAgentConsultantMessages)
+                .where(inArray(whatsappAgentConsultantMessages.conversationId, convIds));
+
+              if (daysWithMessages.length === 0) {
+                continue;
+              }
+
+              // Get existing per-agent summaries to avoid regenerating
+              const existingSummaries = await db
+                .select({ 
+                  summaryDate: managerDailySummaries.summaryDate,
+                  agentProfileId: managerDailySummaries.agentProfileId
+                })
+                .from(managerDailySummaries)
+                .where(eq(managerDailySummaries.subscriptionId, subscriptionId));
+
+              // Create a set of "date|agentId" keys for quick lookup
+              const existingKeys = new Set(
+                existingSummaries.map(s => `${format(s.summaryDate, "yyyy-MM-dd")}|${s.agentProfileId || ''}`)
               );
 
-              if (result.generated > 0) {
-                totalGenerated += result.generated;
-                console.log(`         ✅ Gold ${goldUser.firstName || goldUser.email}: ${result.generated} summaries generated`);
+              // Find days that need per-agent summaries
+              const daysNeedingSummary: Date[] = [];
+              
+              for (const dayRow of daysWithMessages) {
+                const day = new Date(dayRow.day);
+                const dayStart = startOfDay(day);
+                const dayEnd = new Date(dayStart);
+                dayEnd.setDate(dayEnd.getDate() + 1);
+
+                // Check message count for this day
+                const msgCount = await db
+                  .select({ count: sql<number>`count(*)::int` })
+                  .from(whatsappAgentConsultantMessages)
+                  .where(and(
+                    inArray(whatsappAgentConsultantMessages.conversationId, convIds),
+                    gte(whatsappAgentConsultantMessages.createdAt, dayStart),
+                    lt(whatsappAgentConsultantMessages.createdAt, dayEnd)
+                  ));
+
+                if ((msgCount[0]?.count || 0) >= 2) {
+                  daysNeedingSummary.push(day);
+                }
+              }
+
+              let userAgentSummaries = 0;
+              const agentsProcessed = new Set<string>();
+
+              // Generate per-agent summaries for each day
+              for (const day of daysNeedingSummary) {
+                const dateStr = format(day, "yyyy-MM-dd");
+                
+                const agentResults = await memoryService.generateAllAgentSummariesForManager(
+                  subscriptionId,
+                  consultant.id,
+                  day,
+                  apiKey
+                );
+
+                for (const result of agentResults) {
+                  const key = `${dateStr}|${result.agentProfileId}`;
+                  
+                  // Only count if this was a new summary (not already existing)
+                  if (!existingKeys.has(key) && result.summary !== null) {
+                    userAgentSummaries++;
+                    agentsProcessed.add(result.agentProfileId);
+                  }
+                }
+              }
+
+              if (userAgentSummaries > 0) {
+                totalGenerated += userAgentSummaries;
+                const agentList = Array.from(agentsProcessed).map(id => id.slice(0, 8)).join(', ');
+                console.log(`         ✅ Gold ${goldUser.firstName || goldUser.email}: ${userAgentSummaries} agent summaries generated`);
+                console.log(`            Agents: ${agentList}... (${agentsProcessed.size} agents)`);
               }
             } catch (goldError: any) {
               const errorMsg = `Gold ${goldUser.id}: ${goldError.message}`;

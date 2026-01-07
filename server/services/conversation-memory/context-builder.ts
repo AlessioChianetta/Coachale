@@ -182,9 +182,10 @@ export class ConversationContextBuilder {
 
   async buildManagerDailySummaryContext(
     subscriptionId: string,
-    maxDays: number = 7
+    maxDays: number = 7,
+    agentProfileId?: string
   ): Promise<MemoryContext> {
-    const dailySummaries = await this.memoryService.getManagerDailySummaries(subscriptionId, maxDays);
+    const dailySummaries = await this.memoryService.getManagerDailySummaries(subscriptionId, maxDays, agentProfileId);
 
     if (dailySummaries.length === 0) {
       return {
@@ -194,8 +195,12 @@ export class ConversationContextBuilder {
       };
     }
 
+    const headerText = agentProfileId 
+      ? "=== MEMORIA CONVERSAZIONI CON QUESTO AGENTE (Riassunti Giornalieri) ==="
+      : "=== MEMORIA CONVERSAZIONI (Riassunti Giornalieri) ===";
+
     const contextParts: string[] = [
-      "=== MEMORIA CONVERSAZIONI (Riassunti Giornalieri) ===",
+      headerText,
       "",
     ];
 
