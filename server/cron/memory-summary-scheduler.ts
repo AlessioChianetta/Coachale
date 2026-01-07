@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { db } from '../db';
-import { users } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
+import { users, clientLevelSubscriptions } from '../../shared/schema';
+import { eq, and } from 'drizzle-orm';
 import { formatInTimeZone } from 'date-fns-tz';
 
 let schedulerTask: cron.ScheduledTask | null = null;
@@ -104,6 +104,48 @@ async function runMemoryGenerationForHour(targetHour: number) {
           errors.push(errorMsg);
           console.error(`      ❌ ${errorMsg}`);
         }
+      }
+
+      // GOLD MANAGERS: Process Gold tier subscription users for this consultant
+      try {
+        const goldSubscriptions = await db
+          .select({
+            id: clientLevelSubscriptions.id,
+            email: clientLevelSubscriptions.email,
+            firstName: clientLevelSubscriptions.firstName,
+          })
+          .from(clientLevelSubscriptions)
+          .where(and(
+            eq(clientLevelSubscriptions.consultantId, consultant.id),
+            eq(clientLevelSubscriptions.level, "3"), // Gold only
+            eq(clientLevelSubscriptions.isActive, true)
+          ));
+
+        if (goldSubscriptions.length > 0) {
+          console.log(`      🥇 Processing ${goldSubscriptions.length} Gold managers`);
+          
+          for (const goldSub of goldSubscriptions) {
+            try {
+              const result = await memoryService.generateManagerMissingDailySummariesWithProgress(
+                goldSub.id,
+                consultant.id,
+                apiKey,
+                () => {}
+              );
+
+              if (result.generated > 0) {
+                totalGenerated += result.generated;
+                console.log(`         ✅ Gold ${goldSub.firstName || goldSub.email}: ${result.generated} summaries generated`);
+              }
+            } catch (goldError: any) {
+              const errorMsg = `Gold ${goldSub.id}: ${goldError.message}`;
+              errors.push(errorMsg);
+              console.error(`         ❌ ${errorMsg}`);
+            }
+          }
+        }
+      } catch (goldQueryError: any) {
+        console.error(`      ⚠️ Failed to query Gold managers: ${goldQueryError.message}`);
       }
     }
 
