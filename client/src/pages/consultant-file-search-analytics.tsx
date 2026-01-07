@@ -986,7 +986,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
     results: []
   });
 
-  const startMemoryGenerationWithSSE = async () => {
+  const startMemoryGeneration = async () => {
     setMemoryGenerationProgress({
       isRunning: true,
       totalUsers: 0,
@@ -998,135 +998,68 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
     try {
       const headers = getAuthHeaders();
-      const response = await fetch("/api/consultant/ai/generate-memory-now/stream", {
-        method: "GET",
+      
+      // Start the job
+      const startResponse = await fetch("/api/consultant/ai/memory-job/start", {
+        method: "POST",
         headers: headers
       });
 
-      if (!response.ok) {
+      if (!startResponse.ok) {
         throw new Error("Failed to start memory generation");
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error("No response body");
-      }
-
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              
-              switch (data.type) {
-                case 'start':
-                  setMemoryGenerationProgress(prev => ({
-                    ...prev,
-                    totalUsers: data.totalUsers
-                  }));
-                  break;
-
-                case 'processing':
-                  setMemoryGenerationProgress(prev => ({
-                    ...prev,
-                    currentIndex: data.currentIndex,
-                    currentUser: data.userName,
-                    currentRole: data.role,
-                    currentDay: undefined,
-                    totalDays: undefined,
-                    currentDate: undefined,
-                    results: prev.results.some(r => r.userId === data.userId)
-                      ? prev.results
-                      : [...prev.results, { userId: data.userId, userName: data.userName, status: 'processing' }]
-                  }));
-                  break;
-
-                case 'day_progress':
-                  setMemoryGenerationProgress(prev => ({
-                    ...prev,
-                    currentDay: data.currentDay,
-                    totalDays: data.totalDays,
-                    currentDate: data.date
-                  }));
-                  break;
-
-                case 'user_complete':
-                  setMemoryGenerationProgress(prev => ({
-                    ...prev,
-                    results: prev.results.map(r => 
-                      r.userId === data.userId 
-                        ? { ...r, status: data.status, generated: data.generated }
-                        : r
-                    )
-                  }));
-                  break;
-
-                case 'user_error':
-                  setMemoryGenerationProgress(prev => ({
-                    ...prev,
-                    results: prev.results.map(r => 
-                      r.userId === data.userId 
-                        ? { ...r, status: 'error', error: data.error }
-                        : r
-                    )
-                  }));
-                  break;
-
-                case 'complete':
-                  setMemoryGenerationProgress(prev => ({
-                    ...prev,
-                    isRunning: false,
-                    finalResult: {
-                      generated: data.generated,
-                      usersProcessed: data.usersProcessed,
-                      usersWithNewSummaries: data.usersWithNewSummaries,
-                      durationMs: data.durationMs,
-                      errors: data.errors
-                    }
-                  }));
-                  queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-stats"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-audit"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-generation-logs"] });
-                  break;
-
-                case 'error':
-                  setMemoryGenerationProgress(prev => ({
-                    ...prev,
-                    isRunning: false,
-                    finalResult: {
-                      generated: 0,
-                      usersProcessed: 0,
-                      usersWithNewSummaries: 0,
-                      durationMs: 0,
-                      errors: [data.message]
-                    }
-                  }));
-                  toast({
-                    title: "Errore",
-                    description: data.message,
-                    variant: "destructive"
-                  });
-                  break;
-              }
-            } catch (parseError) {
-              console.error("Failed to parse SSE data:", parseError);
+      const { jobId } = await startResponse.json();
+      
+      // Poll for status every 500ms
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResponse = await fetch(`/api/consultant/ai/memory-job/${jobId}`, {
+            headers: headers
+          });
+          
+          if (!statusResponse.ok) {
+            clearInterval(pollInterval);
+            throw new Error("Failed to get job status");
+          }
+          
+          const job = await statusResponse.json();
+          
+          setMemoryGenerationProgress({
+            isRunning: job.status === 'running',
+            totalUsers: job.totalUsers,
+            currentIndex: job.currentIndex,
+            currentUser: job.currentUser,
+            currentRole: job.currentRole,
+            currentDay: job.currentDay,
+            totalDays: job.totalDays,
+            currentDate: job.currentDate,
+            results: job.results,
+            finalResult: job.finalResult
+          });
+          
+          if (job.status === 'completed' || job.status === 'error') {
+            clearInterval(pollInterval);
+            queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-stats"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-audit"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-generation-logs"] });
+            
+            if (job.status === 'error') {
+              toast({
+                title: "Errore",
+                description: job.errorMessage || "Errore durante la generazione",
+                variant: "destructive"
+              });
             }
           }
+        } catch (pollError: any) {
+          console.error("Polling error:", pollError);
+          clearInterval(pollInterval);
         }
-      }
+      }, 500);
+      
     } catch (error: any) {
-      console.error("Memory generation SSE error:", error);
+      console.error("Memory generation error:", error);
       setMemoryGenerationProgress(prev => ({
         ...prev,
         isRunning: false,
@@ -5913,7 +5846,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           )}
                         </div>
                         <Button
-                          onClick={() => startMemoryGenerationWithSSE()}
+                          onClick={() => startMemoryGeneration()}
                           disabled={memoryGenerationProgress.isRunning}
                           className="bg-purple-600 hover:bg-purple-700 text-white"
                         >

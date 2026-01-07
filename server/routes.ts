@@ -11411,140 +11411,189 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
-  // Generate memory now with SSE streaming progress
-  app.get("/api/consultant/ai/generate-memory-now/stream", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
-    
-    const consultantId = req.user!.id;
-    
-    const sendEvent = (data: any) => {
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-      if (typeof (res as any).flush === 'function') {
-        (res as any).flush();
+  // Memory generation job store (in-memory)
+  interface MemoryJobResult {
+    userId: string;
+    userName: string;
+    status: 'processing' | 'generated' | 'skipped' | 'error';
+    generated?: number;
+    error?: string;
+  }
+  
+  interface MemoryJob {
+    id: string;
+    status: 'running' | 'completed' | 'error';
+    totalUsers: number;
+    currentIndex: number;
+    currentUser: string;
+    currentRole: string;
+    currentDay?: number;
+    totalDays?: number;
+    currentDate?: string;
+    results: MemoryJobResult[];
+    finalResult?: {
+      generated: number;
+      usersProcessed: number;
+      usersWithNewSummaries: number;
+      durationMs: number;
+      errors?: string[];
+    };
+    errorMessage?: string;
+  }
+  
+  const memoryJobs = new Map<string, MemoryJob>();
+  
+  // Cleanup old jobs after 10 minutes
+  setInterval(() => {
+    const now = Date.now();
+    for (const [jobId, job] of memoryJobs.entries()) {
+      const jobIdTime = parseInt(jobId.split('-')[1] || '0');
+      if (now - jobIdTime > 10 * 60 * 1000) {
+        memoryJobs.delete(jobId);
       }
+    }
+  }, 60 * 1000);
+  
+  // Start memory generation job
+  app.post("/api/consultant/ai/memory-job/start", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    const consultantId = req.user!.id;
+    const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const job: MemoryJob = {
+      id: jobId,
+      status: 'running',
+      totalUsers: 0,
+      currentIndex: 0,
+      currentUser: '',
+      currentRole: '',
+      results: []
     };
     
-    try {
-      const { ConversationMemoryService, conversationMemoryService } = await import('./services/conversation-memory/memory-service');
-      const { getSuperAdminGeminiKeys } = await import('./ai/provider-factory');
-      
-      const superAdminKeys = await getSuperAdminGeminiKeys();
-      if (!superAdminKeys || !superAdminKeys.enabled || superAdminKeys.keys.length === 0) {
-        sendEvent({ type: 'error', message: 'Nessuna chiave Gemini SuperAdmin disponibile' });
-        res.end();
-        return;
-      }
-      
-      const apiKey = superAdminKeys.keys[0];
-      const memoryService = new ConversationMemoryService();
-      
-      const allUsers = await db
-        .select({ id: schema.users.id, role: schema.users.role, firstName: schema.users.firstName, lastName: schema.users.lastName })
-        .from(schema.users)
-        .where(or(
-          eq(schema.users.id, consultantId),
-          and(
-            eq(schema.users.consultantId, consultantId),
-            eq(schema.users.isActive, true)
-          )
-        ));
-      
-      sendEvent({ 
-        type: 'start', 
-        totalUsers: allUsers.length,
-        users: allUsers.map(u => ({ id: u.id, name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Sconosciuto', role: u.role }))
-      });
-      
-      const startTime = Date.now();
-      let totalGenerated = 0;
-      let totalUsersWithSummaries = 0;
-      const errors: string[] = [];
-      
-      for (let i = 0; i < allUsers.length; i++) {
-        const user = allUsers[i];
-        const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Sconosciuto';
+    memoryJobs.set(jobId, job);
+    
+    // Start processing in background
+    (async () => {
+      try {
+        const { ConversationMemoryService, conversationMemoryService } = await import('./services/conversation-memory/memory-service');
+        const { getSuperAdminGeminiKeys } = await import('./ai/provider-factory');
         
-        sendEvent({ 
-          type: 'processing', 
-          currentIndex: i + 1,
-          totalUsers: allUsers.length,
-          userId: user.id,
-          userName: userName,
-          role: user.role
+        const superAdminKeys = await getSuperAdminGeminiKeys();
+        if (!superAdminKeys || !superAdminKeys.enabled || superAdminKeys.keys.length === 0) {
+          job.status = 'error';
+          job.errorMessage = 'Nessuna chiave Gemini SuperAdmin disponibile';
+          return;
+        }
+        
+        const apiKey = superAdminKeys.keys[0];
+        const memoryService = new ConversationMemoryService();
+        
+        const allUsers = await db
+          .select({ id: schema.users.id, role: schema.users.role, firstName: schema.users.firstName, lastName: schema.users.lastName })
+          .from(schema.users)
+          .where(or(
+            eq(schema.users.id, consultantId),
+            and(
+              eq(schema.users.consultantId, consultantId),
+              eq(schema.users.isActive, true)
+            )
+          ));
+        
+        job.totalUsers = allUsers.length;
+        
+        const startTime = Date.now();
+        let totalGenerated = 0;
+        let totalUsersWithSummaries = 0;
+        const errors: string[] = [];
+        
+        for (let i = 0; i < allUsers.length; i++) {
+          const user = allUsers[i];
+          const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Sconosciuto';
+          
+          job.currentIndex = i + 1;
+          job.currentUser = userName;
+          job.currentRole = user.role || 'client';
+          job.currentDay = undefined;
+          job.totalDays = undefined;
+          job.currentDate = undefined;
+          
+          // Add to results as processing
+          job.results.push({ userId: user.id, userName, status: 'processing' });
+          
+          try {
+            const result = await memoryService.generateMissingDailySummariesWithProgress(
+              user.id,
+              apiKey,
+              (progress) => {
+                if (progress.current !== undefined && progress.total !== undefined) {
+                  job.currentDay = progress.current;
+                  job.totalDays = progress.total;
+                  job.currentDate = progress.date;
+                }
+              }
+            );
+            
+            // Update result status
+            const resultEntry = job.results.find(r => r.userId === user.id);
+            if (resultEntry) {
+              resultEntry.status = result.generated > 0 ? 'generated' : 'skipped';
+              resultEntry.generated = result.generated;
+            }
+            
+            if (result.generated > 0) {
+              totalGenerated += result.generated;
+              totalUsersWithSummaries++;
+            }
+            
+          } catch (error: any) {
+            errors.push(`${userName}: ${error.message}`);
+            const resultEntry = job.results.find(r => r.userId === user.id);
+            if (resultEntry) {
+              resultEntry.status = 'error';
+              resultEntry.error = error.message;
+            }
+          }
+        }
+        
+        const durationMs = Date.now() - startTime;
+        
+        await conversationMemoryService.logGeneration({
+          userId: consultantId,
+          targetUserId: null,
+          generationType: 'manual',
+          summariesGenerated: totalGenerated,
+          conversationsAnalyzed: totalUsersWithSummaries,
+          durationMs,
+          errors,
         });
         
-        try {
-          const result = await memoryService.generateMissingDailySummariesWithProgress(
-            user.id,
-            apiKey,
-            (progress) => {
-              if (progress.current !== undefined && progress.total !== undefined) {
-                sendEvent({
-                  type: 'day_progress',
-                  userId: user.id,
-                  userName: userName,
-                  currentDay: progress.current,
-                  totalDays: progress.total,
-                  date: progress.date
-                });
-              }
-            }
-          );
-          
-          if (result.generated > 0) {
-            totalGenerated += result.generated;
-            totalUsersWithSummaries++;
-          }
-          
-          sendEvent({
-            type: 'user_complete',
-            userId: user.id,
-            userName: userName,
-            generated: result.generated,
-            status: result.generated > 0 ? 'generated' : 'skipped'
-          });
-          
-        } catch (error: any) {
-          errors.push(`${userName}: ${error.message}`);
-          sendEvent({
-            type: 'user_error',
-            userId: user.id,
-            userName: userName,
-            error: error.message
-          });
-        }
+        job.status = 'completed';
+        job.finalResult = {
+          generated: totalGenerated,
+          usersProcessed: allUsers.length,
+          usersWithNewSummaries: totalUsersWithSummaries,
+          durationMs,
+          errors: errors.length > 0 ? errors : undefined
+        };
+        
+      } catch (error: any) {
+        job.status = 'error';
+        job.errorMessage = error.message;
       }
-      
-      const durationMs = Date.now() - startTime;
-      
-      await conversationMemoryService.logGeneration({
-        userId: consultantId,
-        targetUserId: null,
-        generationType: 'manual',
-        summariesGenerated: totalGenerated,
-        conversationsAnalyzed: totalUsersWithSummaries,
-        durationMs,
-        errors,
-      });
-      
-      sendEvent({
-        type: 'complete',
-        generated: totalGenerated,
-        usersProcessed: allUsers.length,
-        usersWithNewSummaries: totalUsersWithSummaries,
-        durationMs,
-        errors: errors.length > 0 ? errors : undefined
-      });
-      
-    } catch (error: any) {
-      sendEvent({ type: 'error', message: error.message });
+    })();
+    
+    res.json({ jobId });
+  });
+  
+  // Get memory job status (polling endpoint)
+  app.get("/api/consultant/ai/memory-job/:jobId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    const { jobId } = req.params;
+    const job = memoryJobs.get(jobId);
+    
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
     }
     
-    res.end();
+    res.json(job);
   });
 
   // ========================================
