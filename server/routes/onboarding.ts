@@ -257,120 +257,119 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
   try {
     const consultantId = req.user!.id;
     
-    const vertexSettings = await db.query.vertexAiSettings.findFirst({
-      where: eq(vertexAiSettings.userId, consultantId),
-    });
+    // Fetch all configuration statuses in parallel for efficiency
+    const [
+      vertexSettings,
+      consultant,
+      smtpSettings,
+      turnConfig,
+      docsResult,
+      agentsByType,
+      twilioAgentResult,
+      publicLinksResult,
+      ideasResult,
+      coursesResult,
+      exercisesResult,
+      summaryEmailResult,
+      approvedTemplatesResult,
+      moreTemplatesResult,
+      campaignsResult,
+      leadImportConfigResult,
+      agentCalendarResult
+    ] = await Promise.all([
+      db.query.vertexAiSettings.findFirst({
+        where: eq(vertexAiSettings.userId, consultantId),
+      }),
+      db.query.users.findFirst({
+        where: eq(users.id, consultantId),
+        columns: { useSuperadminVertex: true },
+      }),
+      db.query.consultantSmtpSettings.findFirst({
+        where: eq(consultantSmtpSettings.consultantId, consultantId),
+      }),
+      db.query.consultantTurnConfig.findFirst({
+        where: eq(consultantTurnConfig.consultantId, consultantId),
+      }),
+      db.select({ count: count() })
+        .from(consultantKnowledgeDocuments)
+        .where(eq(consultantKnowledgeDocuments.consultantId, consultantId)),
+      db.select({ 
+        agentType: consultantWhatsappConfig.agentType,
+        count: count()
+      })
+        .from(consultantWhatsappConfig)
+        .where(eq(consultantWhatsappConfig.consultantId, consultantId))
+        .groupBy(consultantWhatsappConfig.agentType),
+      db.select({ count: count() })
+        .from(consultantWhatsappConfig)
+        .where(and(
+          eq(consultantWhatsappConfig.consultantId, consultantId),
+          isNotNull(consultantWhatsappConfig.twilioAccountSid),
+          ne(consultantWhatsappConfig.twilioAccountSid, '')
+        )),
+      db.select({ count: count() })
+        .from(whatsappAgentShares)
+        .where(and(
+          eq(whatsappAgentShares.consultantId, consultantId),
+          eq(whatsappAgentShares.isActive, true)
+        )),
+      db.select({ count: count() })
+        .from(consultantAiIdeas)
+        .where(eq(consultantAiIdeas.consultantId, consultantId)),
+      db.select({ count: count() })
+        .from(universityYears)
+        .where(eq(universityYears.createdBy, consultantId)),
+      db.select({ count: count() })
+        .from(exercises)
+        .where(eq(exercises.createdBy, consultantId)),
+      db.select({ count: count() })
+        .from(emailDrafts)
+        .where(and(
+          eq(emailDrafts.consultantId, consultantId),
+          eq(emailDrafts.emailType, 'consultation_summary'),
+          eq(emailDrafts.status, 'sent')
+        )),
+      db.selectDistinct({ templateId: whatsappCustomTemplates.id })
+        .from(whatsappCustomTemplates)
+        .innerJoin(
+          whatsappTemplateVersions,
+          eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id)
+        )
+        .where(and(
+          eq(whatsappCustomTemplates.consultantId, consultantId),
+          eq(whatsappTemplateVersions.twilioStatus, 'approved')
+        )),
+      db.select({ count: count() })
+        .from(whatsappCustomTemplates)
+        .where(eq(whatsappCustomTemplates.consultantId, consultantId)),
+      db.select({ count: count() })
+        .from(marketingCampaigns)
+        .where(eq(marketingCampaigns.consultantId, consultantId)),
+      db.select({ id: externalApiConfigs.id })
+        .from(externalApiConfigs)
+        .where(eq(externalApiConfigs.consultantId, consultantId))
+        .limit(1),
+      db.select({ id: consultantWhatsappConfig.id })
+        .from(consultantWhatsappConfig)
+        .where(and(
+          eq(consultantWhatsappConfig.consultantId, consultantId),
+          isNotNull(consultantWhatsappConfig.googleAccessToken),
+          ne(consultantWhatsappConfig.googleAccessToken, '')
+        ))
+    ]);
     
-    const consultant = await db.query.users.findFirst({
-      where: eq(users.id, consultantId),
-      columns: { useSuperadminVertex: true },
-    });
-    
-    const smtpSettings = await db.query.consultantSmtpSettings.findFirst({
-      where: eq(consultantSmtpSettings.consultantId, consultantId),
-    });
-    
-    const turnConfig = await db.query.consultantTurnConfig.findFirst({
-      where: eq(consultantTurnConfig.consultantId, consultantId),
-    });
-    
-    const docsResult = await db.select({ count: count() })
-      .from(consultantKnowledgeDocuments)
-      .where(eq(consultantKnowledgeDocuments.consultantId, consultantId));
     const documentsCount = Number(docsResult[0]?.count || 0);
-    
-    const agentsByType = await db.select({ 
-      agentType: consultantWhatsappConfig.agentType,
-      count: count()
-    })
-      .from(consultantWhatsappConfig)
-      .where(eq(consultantWhatsappConfig.consultantId, consultantId))
-      .groupBy(consultantWhatsappConfig.agentType);
-    
     const agentTypeMap = new Map(agentsByType.map(a => [a.agentType, Number(a.count)]));
-    
-    const twilioAgentResult = await db.select({ count: count() })
-      .from(consultantWhatsappConfig)
-      .where(and(
-        eq(consultantWhatsappConfig.consultantId, consultantId),
-        isNotNull(consultantWhatsappConfig.twilioAccountSid),
-        ne(consultantWhatsappConfig.twilioAccountSid, '')
-      ));
     const hasTwilio = Number(twilioAgentResult[0]?.count || 0) > 0;
-    
-    const publicLinksResult = await db.select({ count: count() })
-      .from(whatsappAgentShares)
-      .where(and(
-        eq(whatsappAgentShares.consultantId, consultantId),
-        eq(whatsappAgentShares.isActive, true)
-      ));
     const hasPublicLink = Number(publicLinksResult[0]?.count || 0) > 0;
-    
-    const ideasResult = await db.select({ count: count() })
-      .from(consultantAiIdeas)
-      .where(eq(consultantAiIdeas.consultantId, consultantId));
     const hasIdeas = Number(ideasResult[0]?.count || 0) > 0;
-    
-    const coursesResult = await db.select({ count: count() })
-      .from(universityYears)
-      .where(eq(universityYears.createdBy, consultantId));
     const hasCourse = Number(coursesResult[0]?.count || 0) > 0;
-    
-    const exercisesResult = await db.select({ count: count() })
-      .from(exercises)
-      .where(eq(exercises.createdBy, consultantId));
     const hasExercise = Number(exercisesResult[0]?.count || 0) > 0;
-    
-    const summaryEmailResult = await db.select({ count: count() })
-      .from(emailDrafts)
-      .where(and(
-        eq(emailDrafts.consultantId, consultantId),
-        eq(emailDrafts.emailType, 'consultation_summary'),
-        eq(emailDrafts.status, 'sent')
-      ));
     const hasSummaryEmail = Number(summaryEmailResult[0]?.count || 0) > 0;
-    
-    const approvedTemplatesResult = await db
-      .selectDistinct({ templateId: whatsappCustomTemplates.id })
-      .from(whatsappCustomTemplates)
-      .innerJoin(
-        whatsappTemplateVersions,
-        eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id)
-      )
-      .where(and(
-        eq(whatsappCustomTemplates.consultantId, consultantId),
-        eq(whatsappTemplateVersions.twilioStatus, 'approved')
-      ));
     const hasApprovedTemplate = approvedTemplatesResult.length > 0;
-    
-    const moreTemplatesResult = await db.select({ count: count() })
-      .from(whatsappCustomTemplates)
-      .where(eq(whatsappCustomTemplates.consultantId, consultantId));
     const hasMoreTemplates = Number(moreTemplatesResult[0]?.count || 0) > 1;
-    
-    const campaignsResult = await db.select({ count: count() })
-      .from(marketingCampaigns)
-      .where(eq(marketingCampaigns.consultantId, consultantId));
     const hasCampaign = Number(campaignsResult[0]?.count || 0) > 0;
-    
-    const leadImportConfigResult = await db.select({ apiKey: externalApiConfigs.apiKey })
-      .from(externalApiConfigs)
-      .where(and(
-        eq(externalApiConfigs.consultantId, consultantId),
-        eq(externalApiConfigs.apiType, 'lead_import')
-      ))
-      .limit(1);
-    const hasLeadImport = !!(leadImportConfigResult[0]?.apiKey);
-    
-    const agentCalendarResult = await db.select({ 
-      id: consultantWhatsappConfig.id
-    })
-      .from(consultantWhatsappConfig)
-      .where(and(
-        eq(consultantWhatsappConfig.consultantId, consultantId),
-        isNotNull(consultantWhatsappConfig.googleAccessToken),
-        ne(consultantWhatsappConfig.googleAccessToken, '')
-      ));
+    const hasLeadImport = leadImportConfigResult.length > 0;
     const hasCalendar = agentCalendarResult.length > 0;
     
     type OnboardingStepStatus = 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
