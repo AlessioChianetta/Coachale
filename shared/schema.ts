@@ -6645,6 +6645,7 @@ export const managerDailySummaries = pgTable("manager_daily_summaries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   subscriptionId: varchar("subscription_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  agentProfileId: varchar("agent_profile_id"),
   summaryDate: timestamp("summary_date").notNull(),
   summary: text("summary").notNull(),
   conversationCount: integer("conversation_count").default(0),
@@ -6656,6 +6657,7 @@ export const managerDailySummaries = pgTable("manager_daily_summaries", {
   uniqueSubscriptionDate: unique().on(table.subscriptionId, table.summaryDate),
   consultantIdx: index("idx_manager_daily_summaries_consultant").on(table.consultantId),
   subscriptionIdx: index("idx_manager_daily_summaries_subscription").on(table.subscriptionId),
+  agentIdx: index("idx_manager_daily_summaries_agent").on(table.agentProfileId),
 }));
 
 export type ManagerDailySummary = typeof managerDailySummaries.$inferSelect;
