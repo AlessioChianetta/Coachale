@@ -10,6 +10,8 @@ import {
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole } from "../middleware/auth";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
+import { conversationMemoryService } from "../services/conversation-memory/memory-service";
+import { getSuperAdminGeminiKeys } from "../ai/provider-factory";
 
 const router = Router();
 
@@ -892,5 +894,59 @@ function getDefaultSuggestions() {
     },
   ];
 }
+
+router.get("/memory/manager-audit", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const auditData = await conversationMemoryService.getManagerMemoryAudit(consultantId);
+    res.json(auditData);
+  } catch (error: any) {
+    console.error("[AI Assistant] Error fetching manager memory audit:", error);
+    res.status(500).json({ error: error.message || "Failed to fetch manager memory audit" });
+  }
+});
+
+router.post("/memory/manager/:subscriptionId/generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const { subscriptionId } = req.params;
+    const consultantId = req.user!.id;
+
+    let apiKey: string | null = null;
+
+    const superAdminKeys = await getSuperAdminGeminiKeys();
+    if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+      apiKey = superAdminKeys.keys[0];
+    }
+
+    if (!apiKey) {
+      const [consultant] = await db.select({ geminiApiKeys: users.geminiApiKeys })
+        .from(users)
+        .where(eq(users.id, consultantId));
+      
+      if (consultant?.geminiApiKeys && consultant.geminiApiKeys.length > 0) {
+        apiKey = consultant.geminiApiKeys[0];
+      }
+    }
+
+    if (!apiKey) {
+      return res.status(400).json({ error: "Gemini API key not configured" });
+    }
+
+    const result = await conversationMemoryService.generateManagerMissingDailySummariesWithProgress(
+      subscriptionId,
+      consultantId,
+      apiKey
+    );
+
+    res.json({
+      success: true,
+      generated: result.generated,
+      skipped: result.skipped
+    });
+  } catch (error: any) {
+    console.error("[AI Assistant] Error generating manager memory:", error);
+    res.status(500).json({ error: error.message || "Failed to generate manager memory" });
+  }
+});
 
 export default router;

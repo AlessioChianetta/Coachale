@@ -418,6 +418,17 @@ interface SyncReportsResponse {
   };
 }
 
+interface ManagerMemoryAudit {
+  subscriptionId: string;
+  email: string;
+  firstName: string | null;
+  tier: string;
+  totalDays: number;
+  existingSummaries: number;
+  missingDays: number;
+  status: 'complete' | 'partial' | 'empty';
+}
+
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
 
 interface SyncLogEntry {
@@ -902,6 +913,17 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
+  const { data: managerMemoryAudit, isLoading: managerMemoryAuditLoading } = useQuery<ManagerMemoryAudit[]>({
+    queryKey: ["/api/ai-assistant/memory/manager-audit"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-assistant/memory/manager-audit", {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch manager memory audit");
+      return res.json();
+    },
+  });
+
   const [viewingMemoryUserId, setViewingMemoryUserId] = useState<string | null>(null);
   const viewingMemoryUser = memoryAudit?.find(u => u.userId === viewingMemoryUserId);
 
@@ -1347,6 +1369,27 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
     onError: () => {
       toast({ title: "Errore", description: "Impossibile generare memoria", variant: "destructive" });
+    }
+  });
+
+  const generateManagerMemoryMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const res = await fetch(`/api/ai-assistant/memory/manager/${subscriptionId}/generate`, {
+        method: "POST",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to generate manager memory");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: "Memoria generata", 
+        description: `Generati ${data.generated} riassunti (${data.skipped} saltati)`
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-assistant/memory/manager-audit"] });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile generare memoria dipendente", variant: "destructive" });
     }
   });
 
@@ -6073,6 +6116,102 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         </tbody>
                       </table>
                     </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-amber-600" />
+                      Dipendenti Gold
+                    </CardTitle>
+                    <CardDescription>
+                      Stato della memoria AI per i dipendenti con abbonamento Gold
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {managerMemoryAuditLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
+                      </div>
+                    ) : managerMemoryAudit && managerMemoryAudit.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b bg-gray-50">
+                              <th className="text-left p-3 font-medium">Email/Nome</th>
+                              <th className="text-center p-3 font-medium">Giorni Totali</th>
+                              <th className="text-center p-3 font-medium">Riassunti</th>
+                              <th className="text-center p-3 font-medium">Mancanti</th>
+                              <th className="text-center p-3 font-medium">Status</th>
+                              <th className="text-center p-3 font-medium">Azioni</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {managerMemoryAudit.map((manager) => (
+                              <tr key={manager.subscriptionId} className="border-b hover:bg-gray-50">
+                                <td className="p-3">
+                                  <div className="font-medium">{manager.firstName || manager.email}</div>
+                                  {manager.firstName && (
+                                    <div className="text-xs text-gray-500">{manager.email}</div>
+                                  )}
+                                  <Badge className="mt-1 bg-amber-100 text-amber-700 border-amber-200 text-xs">
+                                    {manager.tier}
+                                  </Badge>
+                                </td>
+                                <td className="p-3 text-center">{manager.totalDays}</td>
+                                <td className="p-3 text-center text-emerald-600 font-medium">{manager.existingSummaries}</td>
+                                <td className="p-3 text-center text-red-600 font-medium">{manager.missingDays}</td>
+                                <td className="p-3 text-center">
+                                  {manager.status === 'complete' && (
+                                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                                      Completo
+                                    </Badge>
+                                  )}
+                                  {manager.status === 'partial' && (
+                                    <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
+                                      Parziale
+                                    </Badge>
+                                  )}
+                                  {manager.status === 'empty' && (
+                                    <Badge className="bg-red-100 text-red-700 border-red-200">
+                                      Vuoto
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="p-3 text-center">
+                                  {manager.missingDays > 0 && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => generateManagerMemoryMutation.mutate(manager.subscriptionId)}
+                                      disabled={generateManagerMemoryMutation.isPending}
+                                    >
+                                      {generateManagerMemoryMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <RefreshCw className="h-4 w-4 mr-1" />
+                                          Genera Riassunti
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p>Nessun dipendente Gold trovato</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          I dipendenti con abbonamento Gold appariranno qui
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
