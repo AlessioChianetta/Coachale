@@ -1325,13 +1325,16 @@ ${conversationText}`,
         // Pattern: manager_{userId}_% (using user.id from users table)
         const visitorPattern = `manager_${user.id}_%`;
         
-        // Get conversations for this user from the correct table
-        const userConversations = await db
-          .select({ id: whatsappAgentConsultantConversations.id })
+        // Get conversations with their agentConfigId in a single query
+        const userConversationsWithAgent = await db
+          .select({ 
+            id: whatsappAgentConsultantConversations.id,
+            agentConfigId: whatsappAgentConsultantConversations.agentConfigId,
+          })
           .from(whatsappAgentConsultantConversations)
           .where(like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern));
 
-        if (userConversations.length === 0) {
+        if (userConversationsWithAgent.length === 0) {
           auditResults.push({
             subscriptionId: user.id, // Using user.id as subscriptionId for consistency
             email: user.email,
@@ -1346,29 +1349,68 @@ ${conversationText}`,
           continue;
         }
 
-        const convIds = userConversations.map(c => c.id);
+        const convIds = userConversationsWithAgent.map(c => c.id);
 
-        // Count days with >= 2 messages from the correct messages table
-        const daysWithMessages = await db
+        // Build a map of conversationId -> agentConfigId
+        const convToAgentMap = new Map<string, string>();
+        for (const conv of userConversationsWithAgent) {
+          if (conv.agentConfigId) {
+            convToAgentMap.set(conv.id, conv.agentConfigId);
+          }
+        }
+
+        // Count distinct (day, agentConfigId) pairs with >= 2 messages per agent per day
+        // This is the correct per-agent audit logic
+        const daysWithMessagesByAgent = await db
           .select({
             day: sql<Date>`DATE(${whatsappAgentConsultantMessages.createdAt})`.as("day"),
+            conversationId: whatsappAgentConsultantMessages.conversationId,
             msgCount: sql<number>`count(*)::int`.as("msg_count"),
           })
           .from(whatsappAgentConsultantMessages)
           .where(inArray(whatsappAgentConsultantMessages.conversationId, convIds))
-          .groupBy(sql`DATE(${whatsappAgentConsultantMessages.createdAt})`);
+          .groupBy(sql`DATE(${whatsappAgentConsultantMessages.createdAt})`, whatsappAgentConsultantMessages.conversationId);
 
-        const qualifyingDays = daysWithMessages.filter(d => d.msgCount >= 2);
-        const totalDays = qualifyingDays.length;
+        // Group by (date, agentId) and sum messages
+        const dateAgentPairs = new Map<string, number>(); // "date|agentId" -> messageCount
+        for (const row of daysWithMessagesByAgent) {
+          const agentId = convToAgentMap.get(row.conversationId) || 'unknown';
+          const dateStr = format(row.day, "yyyy-MM-dd");
+          const key = `${dateStr}|${agentId}`;
+          dateAgentPairs.set(key, (dateAgentPairs.get(key) || 0) + row.msgCount);
+        }
 
-        // Count existing summaries (using user.id as subscriptionId)
+        // Count qualifying (date, agent) pairs with >= 2 messages
+        const qualifyingPairs = Array.from(dateAgentPairs.entries()).filter(([_, count]) => count >= 2);
+        const totalDays = qualifyingPairs.length; // This is now (date × agents) count
+
+        // Count existing summaries WITH agentProfileId set (per-agent summaries)
         const existingSummariesResult = await db
           .select({ count: sql<number>`count(*)::int` })
           .from(managerDailySummaries)
-          .where(eq(managerDailySummaries.subscriptionId, user.id));
+          .where(and(
+            eq(managerDailySummaries.subscriptionId, user.id),
+            isNotNull(managerDailySummaries.agentProfileId)
+          ));
 
-        const existingSummaries = existingSummariesResult[0]?.count || 0;
-        const missingDays = Math.max(0, totalDays - existingSummaries);
+        const perAgentSummaries = existingSummariesResult[0]?.count || 0;
+        
+        // Also count legacy summaries (without agentProfileId) for display
+        const legacySummariesResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(managerDailySummaries)
+          .where(and(
+            eq(managerDailySummaries.subscriptionId, user.id),
+            isNull(managerDailySummaries.agentProfileId)
+          ));
+        const legacySummaries = legacySummariesResult[0]?.count || 0;
+        
+        // Total summaries is per-agent + legacy
+        const existingSummaries = perAgentSummaries + legacySummaries;
+        
+        // For missing days, we compare against per-agent requirement
+        // If user has legacy summaries but no per-agent ones, they're still "missing"
+        const missingDays = Math.max(0, totalDays - perAgentSummaries);
 
         let status: 'complete' | 'partial' | 'empty' = 'complete';
         if (totalDays === 0) {
