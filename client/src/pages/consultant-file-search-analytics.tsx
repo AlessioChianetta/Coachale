@@ -967,7 +967,6 @@ export default function ConsultantFileSearchAnalyticsPage() {
   });
 
   const [memoryGenerationProgress, setMemoryGenerationProgress] = useState<{
-    isOpen: boolean;
     isRunning: boolean;
     totalUsers: number;
     currentIndex: number;
@@ -979,7 +978,6 @@ export default function ConsultantFileSearchAnalyticsPage() {
     results: Array<{ userId: string; userName: string; status: 'processing' | 'generated' | 'skipped' | 'error'; generated?: number; error?: string }>;
     finalResult?: { generated: number; usersProcessed: number; usersWithNewSummaries: number; durationMs: number; errors?: string[] };
   }>({
-    isOpen: false,
     isRunning: false,
     totalUsers: 0,
     currentIndex: 0,
@@ -990,7 +988,6 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
   const startMemoryGenerationWithSSE = async () => {
     setMemoryGenerationProgress({
-      isOpen: true,
       isRunning: true,
       totalUsers: 0,
       currentIndex: 0,
@@ -5870,18 +5867,25 @@ export default function ConsultantFileSearchAnalyticsPage() {
                   </Card>
                 </div>
 
-                <Card className="border-blue-200 bg-blue-50">
+                <Card className={`border-blue-200 ${memoryGenerationProgress.isRunning || memoryGenerationProgress.finalResult ? 'bg-purple-50 border-purple-200' : 'bg-blue-50'}`}>
                   <CardContent className="pt-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-start gap-4">
-                        <div className="bg-blue-100 p-2 rounded-lg">
-                          <CalendarClock className="h-6 w-6 text-blue-600" />
+                        <div className={`p-2 rounded-lg ${memoryGenerationProgress.isRunning ? 'bg-purple-100' : 'bg-blue-100'}`}>
+                          {memoryGenerationProgress.isRunning ? (
+                            <Brain className="h-6 w-6 text-purple-600 animate-pulse" />
+                          ) : (
+                            <CalendarClock className="h-6 w-6 text-blue-600" />
+                          )}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-blue-800">Generazione Automatica</h3>
-                          <p className="text-blue-700 text-sm mt-1">
-                            La memoria AI viene generata automaticamente ogni giorno all'ora impostata.
-                            I riassunti delle conversazioni vengono memorizzati per fornire contesto personalizzato.
+                          <h3 className={`font-semibold ${memoryGenerationProgress.isRunning ? 'text-purple-800' : 'text-blue-800'}`}>
+                            {memoryGenerationProgress.isRunning ? 'Generazione in corso...' : 'Generazione Automatica'}
+                          </h3>
+                          <p className={`text-sm mt-1 ${memoryGenerationProgress.isRunning ? 'text-purple-700' : 'text-blue-700'}`}>
+                            {memoryGenerationProgress.isRunning 
+                              ? `Elaborazione ${memoryGenerationProgress.currentIndex}/${memoryGenerationProgress.totalUsers} utenti`
+                              : 'La memoria AI viene generata automaticamente ogni giorno all\'ora impostata.'}
                           </p>
                         </div>
                       </div>
@@ -5891,7 +5895,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <Select
                             value={String(memorySettings?.memoryGenerationHour ?? 3)}
                             onValueChange={(value) => updateMemorySettingsMutation.mutate(parseInt(value))}
-                            disabled={updateMemorySettingsMutation.isPending}
+                            disabled={updateMemorySettingsMutation.isPending || memoryGenerationProgress.isRunning}
                           >
                             <SelectTrigger className="w-24 bg-white border-blue-300">
                               <SelectValue placeholder="Ora" />
@@ -5927,6 +5931,112 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         </Button>
                       </div>
                     </div>
+
+                    {(memoryGenerationProgress.isRunning || memoryGenerationProgress.finalResult) && (
+                      <div className="mt-4 pt-4 border-t border-purple-200 space-y-4">
+                        {memoryGenerationProgress.totalUsers > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-purple-600">Progresso</span>
+                              <span className="font-medium text-purple-700">
+                                {memoryGenerationProgress.currentIndex} / {memoryGenerationProgress.totalUsers} utenti
+                              </span>
+                            </div>
+                            <Progress 
+                              value={(memoryGenerationProgress.currentIndex / memoryGenerationProgress.totalUsers) * 100} 
+                              className="h-2 bg-purple-100"
+                            />
+                          </div>
+                        )}
+
+                        {memoryGenerationProgress.isRunning && memoryGenerationProgress.currentUser && (
+                          <div className="bg-white/70 p-3 rounded-lg border border-purple-200">
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                              <span className="text-sm text-purple-700">
+                                <span className="font-medium">{memoryGenerationProgress.currentUser}</span>
+                                <Badge variant="secondary" className="ml-2 text-xs capitalize">
+                                  {memoryGenerationProgress.currentRole}
+                                </Badge>
+                              </span>
+                            </div>
+                            {memoryGenerationProgress.currentDay !== undefined && memoryGenerationProgress.totalDays !== undefined && (
+                              <div className="mt-2 flex items-center gap-2 text-xs text-purple-600">
+                                <Clock className="h-3 w-3" />
+                                Giorno {memoryGenerationProgress.currentDay} di {memoryGenerationProgress.totalDays}
+                                {memoryGenerationProgress.currentDate && (
+                                  <span className="text-purple-500">({memoryGenerationProgress.currentDate})</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {memoryGenerationProgress.results.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                            {memoryGenerationProgress.results.map((result) => (
+                              <div 
+                                key={result.userId} 
+                                className={`flex items-center gap-1.5 p-2 rounded-md text-xs ${
+                                  result.status === 'processing' ? 'bg-purple-100 border border-purple-200' :
+                                  result.status === 'generated' ? 'bg-emerald-100 border border-emerald-200' :
+                                  result.status === 'skipped' ? 'bg-gray-100 border border-gray-200' :
+                                  'bg-red-100 border border-red-200'
+                                }`}
+                              >
+                                {result.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin text-purple-500 flex-shrink-0" />}
+                                {result.status === 'generated' && <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />}
+                                {result.status === 'skipped' && <ChevronRight className="h-3 w-3 text-gray-400 flex-shrink-0" />}
+                                {result.status === 'error' && <XCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                                <span className="truncate" title={result.userName}>{result.userName.split(' ')[0]}</span>
+                                {result.status === 'generated' && result.generated !== undefined && (
+                                  <span className="text-emerald-600 font-medium">+{result.generated}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {memoryGenerationProgress.finalResult && (
+                          <div className="bg-gradient-to-r from-emerald-50 to-purple-50 p-4 rounded-lg border border-emerald-200">
+                            <div className="flex items-center justify-between flex-wrap gap-4">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="h-5 w-5 text-emerald-600" />
+                                <span className="font-semibold text-emerald-700">Completato!</span>
+                              </div>
+                              <div className="flex gap-6">
+                                <div className="text-center">
+                                  <div className="text-xl font-bold text-emerald-600">
+                                    {memoryGenerationProgress.finalResult.generated}
+                                  </div>
+                                  <div className="text-xs text-gray-600">Riassunti</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-xl font-bold text-purple-600">
+                                    {memoryGenerationProgress.finalResult.usersWithNewSummaries}
+                                  </div>
+                                  <div className="text-xs text-gray-600">Utenti</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-xl font-bold text-blue-600">
+                                    {(memoryGenerationProgress.finalResult.durationMs / 1000).toFixed(1)}s
+                                  </div>
+                                  <div className="text-xs text-gray-600">Tempo</div>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setMemoryGenerationProgress(prev => ({ ...prev, finalResult: undefined, results: [] }))}
+                                className="text-gray-500 hover:text-gray-700"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -6186,180 +6296,6 @@ export default function ConsultantFileSearchAnalyticsPage() {
           </div>
         </main>
       </div>
-
-      <Dialog open={memoryGenerationProgress.isOpen} onOpenChange={(open) => {
-        if (!memoryGenerationProgress.isRunning) {
-          setMemoryGenerationProgress(prev => ({ ...prev, isOpen: open }));
-        }
-      }}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3 text-purple-700">
-              <div className="bg-purple-100 p-2 rounded-lg">
-                <Brain className="h-5 w-5 text-purple-600" />
-              </div>
-              Generazione Memoria AI
-            </DialogTitle>
-            <DialogDescription>
-              {memoryGenerationProgress.isRunning 
-                ? "Generazione riassunti in corso..." 
-                : memoryGenerationProgress.finalResult 
-                  ? "Generazione completata" 
-                  : "Preparazione..."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {memoryGenerationProgress.totalUsers > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Progresso utenti</span>
-                  <span className="font-medium text-purple-700">
-                    {memoryGenerationProgress.currentIndex} / {memoryGenerationProgress.totalUsers}
-                  </span>
-                </div>
-                <Progress 
-                  value={(memoryGenerationProgress.currentIndex / memoryGenerationProgress.totalUsers) * 100} 
-                  className="h-2 bg-purple-100"
-                />
-              </div>
-            )}
-
-            {memoryGenerationProgress.isRunning && memoryGenerationProgress.currentUser && (
-              <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-                  <span className="text-sm text-purple-700">
-                    Elaborazione: <span className="font-medium">{memoryGenerationProgress.currentUser}</span>
-                    <Badge variant="secondary" className="ml-2 text-xs capitalize">
-                      {memoryGenerationProgress.currentRole}
-                    </Badge>
-                  </span>
-                </div>
-                {memoryGenerationProgress.currentDay !== undefined && memoryGenerationProgress.totalDays !== undefined && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-purple-600">
-                    <Clock className="h-3 w-3" />
-                    Giorno {memoryGenerationProgress.currentDay} di {memoryGenerationProgress.totalDays}
-                    {memoryGenerationProgress.currentDate && (
-                      <span className="text-purple-500">({memoryGenerationProgress.currentDate})</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {memoryGenerationProgress.results.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-sm text-gray-600">Utenti elaborati</Label>
-                <ScrollArea className="h-48 border rounded-lg p-2 bg-gray-50">
-                  <div className="space-y-2">
-                    {memoryGenerationProgress.results.map((result) => (
-                      <div 
-                        key={result.userId} 
-                        className={`flex items-center justify-between p-2 rounded-md ${
-                          result.status === 'processing' ? 'bg-purple-50 border border-purple-200' :
-                          result.status === 'generated' ? 'bg-emerald-50 border border-emerald-200' :
-                          result.status === 'skipped' ? 'bg-gray-100 border border-gray-200' :
-                          'bg-red-50 border border-red-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {result.status === 'processing' && (
-                            <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
-                          )}
-                          {result.status === 'generated' && (
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          )}
-                          {result.status === 'skipped' && (
-                            <ChevronRight className="h-4 w-4 text-gray-400" />
-                          )}
-                          {result.status === 'error' && (
-                            <XCircle className="h-4 w-4 text-red-500" />
-                          )}
-                          <span className="text-sm">{result.userName}</span>
-                        </div>
-                        <div>
-                          {result.status === 'generated' && result.generated !== undefined && (
-                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
-                              +{result.generated} riassunti
-                            </Badge>
-                          )}
-                          {result.status === 'skipped' && (
-                            <Badge variant="secondary" className="text-xs">
-                              Nessun nuovo
-                            </Badge>
-                          )}
-                          {result.status === 'error' && (
-                            <Badge variant="destructive" className="text-xs">
-                              Errore
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            )}
-
-            {memoryGenerationProgress.finalResult && (
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  <span className="font-semibold text-purple-700">Riepilogo</span>
-                </div>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold text-emerald-600">
-                      {memoryGenerationProgress.finalResult.generated}
-                    </div>
-                    <div className="text-xs text-gray-600">Riassunti generati</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-purple-600">
-                      {memoryGenerationProgress.finalResult.usersWithNewSummaries}
-                    </div>
-                    <div className="text-xs text-gray-600">Utenti aggiornati</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {(memoryGenerationProgress.finalResult.durationMs / 1000).toFixed(1)}s
-                    </div>
-                    <div className="text-xs text-gray-600">Tempo totale</div>
-                  </div>
-                </div>
-                {memoryGenerationProgress.finalResult.errors && memoryGenerationProgress.finalResult.errors.length > 0 && (
-                  <div className="mt-3 p-2 bg-red-50 rounded-md border border-red-200">
-                    <div className="flex items-center gap-1 text-red-600 text-xs font-medium mb-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      {memoryGenerationProgress.finalResult.errors.length} errori
-                    </div>
-                    <div className="text-xs text-red-600 max-h-20 overflow-auto">
-                      {memoryGenerationProgress.finalResult.errors.slice(0, 3).map((err, i) => (
-                        <div key={i} className="truncate">{err}</div>
-                      ))}
-                      {memoryGenerationProgress.finalResult.errors.length > 3 && (
-                        <div className="text-red-500 italic">+{memoryGenerationProgress.finalResult.errors.length - 3} altri errori</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {!memoryGenerationProgress.isRunning && memoryGenerationProgress.finalResult && (
-            <div className="flex justify-end">
-              <Button 
-                onClick={() => setMemoryGenerationProgress(prev => ({ ...prev, isOpen: false }))}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
-              >
-                Chiudi
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
