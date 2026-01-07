@@ -11438,6 +11438,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   interface MemoryJob {
     id: string;
     status: 'running' | 'completed' | 'error';
+    phase: 'users' | 'gold';
     totalUsers: number;
     currentIndex: number;
     currentUser: string;
@@ -11446,10 +11447,16 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     totalDays?: number;
     currentDate?: string;
     results: MemoryJobResult[];
+    totalGoldUsers: number;
+    currentGoldIndex: number;
+    goldResults: MemoryJobResult[];
     finalResult?: {
       generated: number;
       usersProcessed: number;
       usersWithNewSummaries: number;
+      goldGenerated: number;
+      goldUsersProcessed: number;
+      goldUsersWithNewSummaries: number;
       durationMs: number;
       errors?: string[];
     };
@@ -11477,11 +11484,15 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     const job: MemoryJob = {
       id: jobId,
       status: 'running',
+      phase: 'users',
       totalUsers: 0,
       currentIndex: 0,
       currentUser: '',
       currentRole: '',
-      results: []
+      results: [],
+      totalGoldUsers: 0,
+      currentGoldIndex: 0,
+      goldResults: []
     };
     
     memoryJobs.set(jobId, job);
@@ -11582,14 +11593,89 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           }
         }
         
+        // ============================================
+        // PHASE 2: Gold Users (from users table with role=client)
+        // ============================================
+        job.phase = 'gold';
+        job.currentDay = undefined;
+        job.totalDays = undefined;
+        job.currentDate = undefined;
+        
+        // Get Gold users audit data
+        const goldAuditData = await conversationMemoryService.getManagerMemoryAudit(consultantId);
+        const goldUsersWithMissingDays = new Map(
+          goldAuditData.map(u => [u.subscriptionId, { missingDays: u.missingDays, firstName: u.firstName, email: u.email }])
+        );
+        
+        job.totalGoldUsers = goldAuditData.length;
+        
+        let totalGoldGenerated = 0;
+        let totalGoldUsersWithSummaries = 0;
+        
+        for (let i = 0; i < goldAuditData.length; i++) {
+          const goldUser = goldAuditData[i];
+          const userName = goldUser.firstName || goldUser.email;
+          
+          job.currentGoldIndex = i + 1;
+          job.currentUser = userName;
+          job.currentRole = 'gold';
+          job.currentDay = undefined;
+          job.totalDays = undefined;
+          job.currentDate = undefined;
+          
+          // Skip if no missing days
+          if (goldUser.missingDays === 0) {
+            job.goldResults.push({ userId: goldUser.subscriptionId, userName, status: 'skipped', generated: 0 });
+            continue;
+          }
+          
+          // Add to results as processing
+          job.goldResults.push({ userId: goldUser.subscriptionId, userName, status: 'processing' });
+          
+          try {
+            const result = await memoryService.generateManagerMissingDailySummariesWithProgress(
+              goldUser.subscriptionId,
+              consultantId,
+              apiKey,
+              (progress) => {
+                if (progress.current !== undefined && progress.total !== undefined) {
+                  job.currentDay = progress.current;
+                  job.totalDays = progress.total;
+                  job.currentDate = progress.date;
+                }
+              }
+            );
+            
+            // Update result status
+            const resultEntry = job.goldResults.find(r => r.userId === goldUser.subscriptionId);
+            if (resultEntry) {
+              resultEntry.status = result.generated > 0 ? 'generated' : 'skipped';
+              resultEntry.generated = result.generated;
+            }
+            
+            if (result.generated > 0) {
+              totalGoldGenerated += result.generated;
+              totalGoldUsersWithSummaries++;
+            }
+            
+          } catch (error: any) {
+            errors.push(`Gold ${userName}: ${error.message}`);
+            const resultEntry = job.goldResults.find(r => r.userId === goldUser.subscriptionId);
+            if (resultEntry) {
+              resultEntry.status = 'error';
+              resultEntry.error = error.message;
+            }
+          }
+        }
+        
         const durationMs = Date.now() - startTime;
         
         await conversationMemoryService.logGeneration({
           userId: consultantId,
           targetUserId: null,
           generationType: 'manual',
-          summariesGenerated: totalGenerated,
-          conversationsAnalyzed: totalUsersWithSummaries,
+          summariesGenerated: totalGenerated + totalGoldGenerated,
+          conversationsAnalyzed: totalUsersWithSummaries + totalGoldUsersWithSummaries,
           durationMs,
           errors,
         });
@@ -11599,6 +11685,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           generated: totalGenerated,
           usersProcessed: allUsers.length,
           usersWithNewSummaries: totalUsersWithSummaries,
+          goldGenerated: totalGoldGenerated,
+          goldUsersProcessed: goldAuditData.length,
+          goldUsersWithNewSummaries: totalGoldUsersWithSummaries,
           durationMs,
           errors: errors.length > 0 ? errors : undefined
         };
