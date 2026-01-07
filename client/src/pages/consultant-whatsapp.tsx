@@ -17,6 +17,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -100,7 +105,9 @@ import {
   Ban,
   Eye,
   FileDown,
-  RefreshCw
+  RefreshCw,
+  Target,
+  Heart
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -239,7 +246,7 @@ export default function ConsultantWhatsAppPage() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [urlInputs, setUrlInputs] = useState<string[]>([""]);
   const [textInput, setTextInput] = useState("");
-  const [selectedIntegrations, setSelectedIntegrations] = useState<string[]>([]);
+  const [selectedIntegrations, setSelectedIntegrations] = useState<string[]>(["reactive_lead"]);
   const [numberOfIdeas, setNumberOfIdeas] = useState(3);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1549,30 +1556,175 @@ export default function ConsultantWhatsAppPage() {
           </TabsContent>
 
           <TabsContent value="ideas" className="space-y-6">
-            <Alert className="bg-purple-50 border-purple-200 dark:bg-purple-950/20 dark:border-purple-800">
-              <Wand2 className="h-5 w-5 text-purple-600" />
-              <AlertDescription>
-                <strong>Generatore di Idee AI</strong><br />
-                Carica documenti, siti web o descrizioni testuali e lascia che l'AI generi idee personalizzate per i tuoi agenti WhatsApp.
-              </AlertDescription>
-            </Alert>
+            {/* Lovable-style Hero Section */}
+            <div className="max-w-3xl mx-auto space-y-8">
+              {/* Hero Header */}
+              <div className="text-center space-y-3">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/25">
+                  <Sparkles className="h-8 w-8 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  Crea il tuo Dipendente AI
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                  Descrivi cosa vuoi costruire e lascia che l'AI generi proposte personalizzate
+                </p>
+              </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Pannello Sinistra - Input */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Upload Documenti */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Upload className="h-5 w-5 text-purple-600" />
-                      Carica Documenti
-                    </CardTitle>
-                    <CardDescription>
-                      Carica file PDF, DOC, TXT o immagini che descrivono il tuo business
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center hover:border-purple-400 dark:hover:border-purple-600 transition-colors cursor-pointer">
+              {/* Main Hero Input */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl blur-xl" />
+                <div className="relative bg-white dark:bg-gray-900 rounded-2xl border-2 border-purple-200 dark:border-purple-800 shadow-xl p-6 space-y-4">
+                  <Textarea
+                    placeholder="Cosa vuoi creare? Descrivi il tuo dipendente AI ideale...&#10;&#10;Es: Voglio un assistente che risponda ai clienti su WhatsApp, prenda appuntamenti e risponda alle domande frequenti sul mio studio dentistico..."
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    rows={5}
+                    className="resize-none border-0 focus-visible:ring-0 text-lg placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-transparent"
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">{textInput.length} caratteri</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        if (!textInput.trim()) {
+                          toast({
+                            title: "Testo mancante",
+                            description: "Inserisci una descrizione da migliorare.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        setIsImprovingText(true);
+                        try {
+                          const res = await fetch("/api/consultant/onboarding/ai-ideas/improve-text", {
+                            method: "POST",
+                            headers: {
+                              ...getAuthHeaders(),
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({ text: textInput }),
+                          });
+                          if (!res.ok) throw new Error("Errore nel miglioramento del testo");
+                          const data = await res.json();
+                          if (data.improvedText) {
+                            setTextInput(data.improvedText);
+                            toast({
+                              title: "Testo migliorato!",
+                              description: "La descrizione è stata espansa dall'AI.",
+                            });
+                          }
+                        } catch (error: any) {
+                          toast({
+                            title: "Errore",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setIsImprovingText(false);
+                        }
+                      }}
+                      disabled={isImprovingText || !textInput.trim()}
+                      className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/50"
+                    >
+                      {isImprovingText ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-4 w-4 mr-2" />
+                      )}
+                      Migliora con AI
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Info Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm text-gray-500 flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Nome Business
+                  </Label>
+                  <Input
+                    placeholder="Es: Studio Rossi & Partners"
+                    value={businessNameInput}
+                    onChange={(e) => setBusinessNameInput(e.target.value)}
+                    className="bg-white dark:bg-gray-900"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-gray-500 flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Nome Consulente
+                  </Label>
+                  <Input
+                    placeholder="Es: Marco Rossi"
+                    value={consultantDisplayNameInput}
+                    onChange={(e) => setConsultantDisplayNameInput(e.target.value)}
+                    className="bg-white dark:bg-gray-900"
+                  />
+                </div>
+              </div>
+
+              {/* Agent Type Pills */}
+              <div className="space-y-3">
+                <Label className="text-sm text-gray-500">Tipo di Agente</Label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: "reactive_lead", label: "Inbound", icon: Phone, selectedClass: "bg-blue-100 text-blue-700 border-2 border-blue-400 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600" },
+                    { id: "proactive_setter", label: "Outbound", icon: Target, selectedClass: "bg-green-100 text-green-700 border-2 border-green-400 dark:bg-green-900/30 dark:text-green-300 dark:border-green-600" },
+                    { id: "informative_advisor", label: "Consulenziale", icon: MessageCircle, selectedClass: "bg-purple-100 text-purple-700 border-2 border-purple-400 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-600" },
+                    { id: "customer_success", label: "Customer Success", icon: Heart, selectedClass: "bg-pink-100 text-pink-700 border-2 border-pink-400 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-600" },
+                    { id: "intake_coordinator", label: "Intake", icon: ClipboardCheck, selectedClass: "bg-amber-100 text-amber-700 border-2 border-amber-400 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-600" },
+                  ].map((agent) => {
+                    const isSelected = selectedIntegrations.includes(agent.id);
+                    const Icon = agent.icon;
+                    return (
+                      <button
+                        key={agent.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== agent.id));
+                          } else {
+                            setSelectedIntegrations([...selectedIntegrations, agent.id]);
+                          }
+                        }}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                          isSelected
+                            ? agent.selectedClass
+                            : "bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3.5 w-3.5" />}
+                        <Icon className="h-4 w-4" />
+                        {agent.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Collapsible Context Section */}
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 text-sm text-gray-500 hover:text-purple-600 transition-colors group w-full">
+                  <Plus className="h-4 w-4 group-data-[state=open]:rotate-45 transition-transform" />
+                  <span>Aggiungi contesto (documenti, URL, knowledge base)</span>
+                  {(uploadedFiles.length > 0 || selectedKnowledgeDocIds.length > 0 || urlInputs.filter(u => u).length > 0) && (
+                    <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                      {uploadedFiles.length + selectedKnowledgeDocIds.length + urlInputs.filter(u => u).length} elementi
+                    </Badge>
+                  )}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-4 space-y-4">
+                  {/* Documents Upload */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <Upload className="h-4 w-4 text-purple-600" />
+                      Documenti
+                    </div>
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-purple-400 transition-colors cursor-pointer">
                       <input
                         type="file"
                         multiple
@@ -1586,430 +1738,133 @@ export default function ConsultantWhatsAppPage() {
                         }}
                       />
                       <label htmlFor="file-upload" className="cursor-pointer">
-                        <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Clicca per caricare o trascina i file qui
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          PDF, DOC, TXT, PNG, JPG (max 10MB per file)
+                        <p className="text-sm text-gray-500">
+                          Trascina file o <span className="text-purple-600 font-medium">sfoglia</span>
                         </p>
                       </label>
                     </div>
 
                     {uploadedFiles.length > 0 && (
-                      <div className="mt-4 space-y-2">
+                      <div className="flex flex-wrap gap-2 mt-2">
                         {uploadedFiles.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-purple-600" />
-                              <span className="text-sm font-medium">{file.name}</span>
-                              <span className="text-xs text-gray-500">
-                                ({(file.size / 1024).toFixed(1)} KB)
-                              </span>
-                            </div>
+                          <div key={index} className="inline-flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 px-3 py-1.5 rounded-full text-sm">
+                            <FileText className="h-3 w-3 text-purple-600" />
+                            <span className="truncate max-w-32">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setUploadedFiles(uploadedFiles.filter((_, i) => i !== index))}
+                              className="text-purple-600 hover:text-red-500"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Knowledge Base */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <Database className="h-4 w-4 text-purple-600" />
+                      Knowledge Base
+                    </div>
+                    {knowledgeDocsQuery.isLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Caricamento...
+                      </div>
+                    ) : knowledgeDocs.length === 0 ? (
+                      <p className="text-sm text-gray-500">Nessun documento disponibile</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                        {knowledgeDocs.map((doc: any) => (
+                          <button
+                            key={doc.id}
+                            type="button"
+                            onClick={() => {
+                              if (selectedKnowledgeDocIds.includes(doc.id)) {
+                                setSelectedKnowledgeDocIds(selectedKnowledgeDocIds.filter(id => id !== doc.id));
+                              } else {
+                                setSelectedKnowledgeDocIds([...selectedKnowledgeDocIds, doc.id]);
+                              }
+                            }}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-all ${
+                              selectedKnowledgeDocIds.includes(doc.id)
+                                ? "bg-purple-100 text-purple-700 border border-purple-300 dark:bg-purple-900/30 dark:text-purple-300"
+                                : "bg-white text-gray-600 border border-gray-200 hover:border-purple-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
+                            }`}
+                          >
+                            <FileText className="h-3 w-3" />
+                            <span className="truncate max-w-24">{doc.fileName}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* URLs */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <Link className="h-4 w-4 text-purple-600" />
+                      Siti Web
+                    </div>
+                    <div className="space-y-2">
+                      {urlInputs.map((url, index) => (
+                        <div key={index} className="flex gap-2">
+                          <Input
+                            placeholder="https://esempio.com"
+                            value={url}
+                            onChange={(e) => {
+                              const newUrls = [...urlInputs];
+                              newUrls[index] = e.target.value;
+                              setUrlInputs(newUrls);
+                            }}
+                            className="text-sm h-9"
+                          />
+                          {urlInputs.length > 1 && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setUploadedFiles(uploadedFiles.filter((_, i) => i !== index))}
+                              onClick={() => setUrlInputs(urlInputs.filter((_, i) => i !== index))}
+                              className="h-9 px-2"
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <Trash2 className="h-4 w-4 text-gray-400" />
                             </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Importa da Base di Conoscenza */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Database className="h-5 w-5 text-purple-600" />
-                      Importa da Base di Conoscenza
-                    </CardTitle>
-                    <CardDescription>
-                      Seleziona documenti già caricati nella tua knowledge base
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {knowledgeDocsQuery.isLoading ? (
-                      <div className="flex items-center justify-center p-4">
-                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                        <span className="ml-2 text-sm text-gray-500">Caricamento documenti...</span>
-                      </div>
-                    ) : knowledgeDocs.length === 0 ? (
-                      <div className="text-center p-4 text-gray-500">
-                        <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm">Nessun documento nella knowledge base</p>
-                        <Button
-                          variant="link"
-                          size="sm"
-                          onClick={() => navigate("/consultant/knowledge-documents")}
-                          className="mt-2 text-purple-600"
-                        >
-                          Carica documenti
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {knowledgeDocs.map((doc: any) => (
-                          <div key={doc.id} className="flex items-center space-x-3 p-2 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded-lg">
-                            <Checkbox
-                              id={`doc-${doc.id}`}
-                              checked={selectedKnowledgeDocIds.includes(doc.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedKnowledgeDocIds([...selectedKnowledgeDocIds, doc.id]);
-                                } else {
-                                  setSelectedKnowledgeDocIds(selectedKnowledgeDocIds.filter(id => id !== doc.id));
-                                }
-                              }}
-                            />
-                            <label
-                              htmlFor={`doc-${doc.id}`}
-                              className="flex-1 cursor-pointer"
-                            >
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-purple-600" />
-                                <span className="text-sm font-medium truncate">{doc.fileName}</span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-xs">
-                                  {doc.fileType?.toUpperCase() || 'DOC'}
-                                </Badge>
-                                <span className="text-xs text-gray-500">
-                                  {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : ''}
-                                </span>
-                              </div>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {selectedKnowledgeDocIds.length > 0 && (
-                      <div className="mt-3 pt-3 border-t">
-                        <p className="text-xs text-purple-600 font-medium">
-                          {selectedKnowledgeDocIds.length} documento/i selezionato/i
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* URL Siti Web */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Link className="h-5 w-5 text-purple-600" />
-                      Siti Web o Pagine
-                    </CardTitle>
-                    <CardDescription>
-                      Aggiungi URL di siti, landing page o risorse online
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {urlInputs.map((url, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input
-                          placeholder="https://esempio.com"
-                          value={url}
-                          onChange={(e) => {
-                            const newUrls = [...urlInputs];
-                            newUrls[index] = e.target.value;
-                            setUrlInputs(newUrls);
-                          }}
-                        />
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setUrlInputs(urlInputs.filter((_, i) => i !== index))}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setUrlInputs([...urlInputs, ""])}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Aggiungi URL
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* Testo Libero */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MessageCircle className="h-5 w-5 text-purple-600" />
-                      Descrizione Testuale
-                    </CardTitle>
-                    <CardDescription>
-                      Descrivi il tuo business, servizi, clienti tipo, etc.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="business-name-input" className="text-sm font-medium flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-purple-600" />
-                          Nome Business (opzionale)
-                        </Label>
-                        <Input
-                          id="business-name-input"
-                          placeholder="Es: Studio Rossi & Partners"
-                          value={businessNameInput}
-                          onChange={(e) => setBusinessNameInput(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="consultant-display-name-input" className="text-sm font-medium flex items-center gap-2">
-                          <User className="h-4 w-4 text-purple-600" />
-                          Nome Display Consulente (opzionale)
-                        </Label>
-                        <Input
-                          id="consultant-display-name-input"
-                          placeholder="Es: Marco Rossi"
-                          value={consultantDisplayNameInput}
-                          onChange={(e) => setConsultantDisplayNameInput(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">Descrizione del Business</Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            if (!textInput.trim()) {
-                              toast({
-                                title: "⚠️ Testo mancante",
-                                description: "Inserisci una descrizione da migliorare.",
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            setIsImprovingText(true);
-                            try {
-                              const res = await fetch("/api/consultant/onboarding/ai-ideas/improve-text", {
-                                method: "POST",
-                                headers: {
-                                  ...getAuthHeaders(),
-                                  "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({ text: textInput }),
-                              });
-                              if (!res.ok) throw new Error("Errore nel miglioramento del testo");
-                              const data = await res.json();
-                              if (data.improvedText) {
-                                setTextInput(data.improvedText);
-                                toast({
-                                  title: "✨ Testo migliorato!",
-                                  description: "La descrizione è stata espansa e migliorata dall'AI.",
-                                });
-                              }
-                            } catch (error: any) {
-                              toast({
-                                title: "❌ Errore",
-                                description: error.message,
-                                variant: "destructive",
-                              });
-                            } finally {
-                              setIsImprovingText(false);
-                            }
-                          }}
-                          disabled={isImprovingText || !textInput.trim()}
-                        >
-                          {isImprovingText ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Wand2 className="h-4 w-4 mr-2" />
                           )}
-                          Migliora con AI
-                        </Button>
-                      </div>
-                      <Textarea
-                        placeholder="Es: Siamo un'agenzia immobiliare che gestisce vendite e affitti di immobili residenziali e commerciali. I nostri clienti principali sono privati e aziende che cercano soluzioni personalizzate..."
-                        value={textInput}
-                        onChange={(e) => setTextInput(e.target.value)}
-                        rows={8}
-                        className="resize-none"
-                      />
-                      <p className="text-xs text-gray-500">
-                        {textInput.length} caratteri
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Pannello Destra - Configurazione */}
-              <div className="space-y-6">
-                {/* Tipo Agente */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Bot className="h-5 w-5 text-purple-600" />
-                      Tipo Agente
-                    </CardTitle>
-                    <CardDescription>
-                      Seleziona il tipo di agente da creare
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="agent-type-inbound"
-                        checked={selectedIntegrations.includes("reactive_lead")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedIntegrations([...selectedIntegrations.filter(i => !["reactive_lead", "proactive_setter", "informative_advisor"].includes(i)), "reactive_lead"]);
-                          } else {
-                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "reactive_lead"));
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor="agent-type-inbound"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                        </div>
+                      ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setUrlInputs([...urlInputs, ""])}
+                        className="text-purple-600 hover:text-purple-700"
                       >
-                        <Phone className="h-4 w-4 text-blue-600" />
-                        📞 Inbound (Ricevi lead)
-                      </label>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Aggiungi URL
+                      </Button>
                     </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
 
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="agent-type-outbound"
-                        checked={selectedIntegrations.includes("proactive_setter")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedIntegrations([...selectedIntegrations.filter(i => !["reactive_lead", "proactive_setter", "informative_advisor"].includes(i)), "proactive_setter"]);
-                          } else {
-                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "proactive_setter"));
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor="agent-type-outbound"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
-                      >
-                        <MessageSquare className="h-4 w-4 text-green-600" />
-                        🎯 Outbound (Contatta lead)
-                      </label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="agent-type-advisory"
-                        checked={selectedIntegrations.includes("informative_advisor")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedIntegrations([...selectedIntegrations, "informative_advisor"]);
-                          } else {
-                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "informative_advisor"));
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor="agent-type-advisory"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
-                      >
-                        <BookOpen className="h-4 w-4 text-purple-600" />
-                        💬 Consulenziale (Supporto clienti)
-                      </label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="agent-type-customer-success"
-                        checked={selectedIntegrations.includes("customer_success")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedIntegrations([...selectedIntegrations, "customer_success"]);
-                          } else {
-                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "customer_success"));
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor="agent-type-customer-success"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
-                      >
-                        <Users className="h-4 w-4 text-pink-600" />
-                        💜 Customer Success (Post-Vendita)
-                      </label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="agent-type-intake"
-                        checked={selectedIntegrations.includes("intake_coordinator")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedIntegrations([...selectedIntegrations, "intake_coordinator"]);
-                          } else {
-                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "intake_coordinator"));
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor="agent-type-intake"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
-                      >
-                        <ClipboardCheck className="h-4 w-4 text-amber-600" />
-                        📋 Intake Coordinator (Documenti)
-                      </label>
-                    </div>
-
-                    <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 mt-4">
-                      <Info className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-xs">
-                        Seleziona almeno un tipo di agente per generare idee mirate
-                      </AlertDescription>
-                    </Alert>
-                  </CardContent>
-                </Card>
-
-                {/* Numero di Idee */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Wand2 className="h-5 w-5 text-purple-600" />
-                      Quante Idee?
-                    </CardTitle>
-                    <CardDescription>
-                      Numero di proposte da generare
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-4">
-                        <Input
-                          type="number"
-                          min={1}
-                          max={10}
-                          value={numberOfIdeas}
-                          onChange={(e) => setNumberOfIdeas(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                          className="w-20"
-                        />
-                        <span className="text-sm text-gray-600">idee (1-10)</span>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Più idee generi, più tempo ci vorrà per l'elaborazione
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Genera Idee */}
+              {/* Number of Ideas + Generate Button */}
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex items-center gap-3 text-sm text-gray-500">
+                  <span>Genera</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={numberOfIdeas}
+                    onChange={(e) => setNumberOfIdeas(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                    className="w-16 h-9 text-center"
+                  />
+                  <span>idee</span>
+                </div>
                 <Button
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-6"
-                  disabled={isGenerating || (uploadedFiles.length === 0 && urlInputs.filter(u => u).length === 0 && !textInput && selectedKnowledgeDocIds.length === 0) || selectedIntegrations.length === 0}
+                  className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-6 px-8 rounded-xl shadow-lg shadow-purple-500/25 transition-all hover:shadow-xl hover:shadow-purple-500/30"
+                  disabled={isGenerating || (!textInput && uploadedFiles.length === 0 && urlInputs.filter(u => u).length === 0 && selectedKnowledgeDocIds.length === 0) || selectedIntegrations.length === 0}
                   onClick={async () => {
                     setIsGenerating(true);
                     try {
@@ -2017,7 +1872,7 @@ export default function ConsultantWhatsAppPage() {
 
                       if (uploadedFiles.length > 0) {
                         toast({
-                          title: "📄 Elaborazione file...",
+                          title: "Elaborazione file...",
                           description: `Estrazione testo da ${uploadedFiles.length} file...`,
                         });
 
@@ -2043,7 +1898,7 @@ export default function ConsultantWhatsAppPage() {
                         const successCount = uploadedFilesText.filter(f => f.text).length;
                         if (successCount > 0) {
                           toast({
-                            title: "✅ File elaborati",
+                            title: "File elaborati",
                             description: `Estratto testo da ${successCount} file`,
                           });
                         }
@@ -2074,14 +1929,13 @@ export default function ConsultantWhatsAppPage() {
 
                       const data = await res.json();
                       setGeneratedIdeas(data.data || data.ideas || []);
-                      // Note: uploadedFiles are kept until agent is created (they'll be uploaded to KB)
                       toast({
-                        title: "✨ Idee generate!",
+                        title: "Idee generate!",
                         description: `Sono state generate ${(data.data || data.ideas)?.length || 0} idee per i tuoi agenti.`,
                       });
                     } catch (error: any) {
                       toast({
-                        title: "❌ Errore",
+                        title: "Errore",
                         description: error.message || "Impossibile generare le idee. Riprova.",
                         variant: "destructive",
                       });
@@ -2093,16 +1947,23 @@ export default function ConsultantWhatsAppPage() {
                   {isGenerating ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      {uploadedFiles.length > 0 ? "Elaborazione file..." : "Generazione in corso..."}
+                      {uploadedFiles.length > 0 ? "Elaborazione..." : "Generazione..."}
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-5 w-5 mr-2" />
-                      Genera Idee AI
+                      Genera Idee
                     </>
                   )}
                 </Button>
               </div>
+
+              {/* Hint */}
+              {selectedIntegrations.length === 0 && (
+                <p className="text-center text-sm text-amber-600 dark:text-amber-400">
+                  Seleziona almeno un tipo di agente per generare idee
+                </p>
+              )}
             </div>
 
             {/* Idee Generate */}
