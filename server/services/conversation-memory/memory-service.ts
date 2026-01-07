@@ -769,7 +769,8 @@ ${conversationText}`,
 
   async getManagerDailySummaries(
     subscriptionId: string,
-    daysBack: number = 30
+    daysBack: number = 30,
+    agentProfileId?: string | null
   ): Promise<Array<{
     id: string;
     summaryDate: Date;
@@ -777,8 +778,22 @@ ${conversationText}`,
     conversationCount: number;
     messageCount: number;
     topics: string[];
+    agentProfileId: string | null;
   }>> {
     const cutoffDate = subDays(new Date(), daysBack);
+
+    const conditions = [
+      eq(managerDailySummaries.subscriptionId, subscriptionId),
+      gte(managerDailySummaries.summaryDate, cutoffDate)
+    ];
+
+    if (agentProfileId !== undefined) {
+      if (agentProfileId === null) {
+        conditions.push(sql`${managerDailySummaries.agentProfileId} IS NULL`);
+      } else {
+        conditions.push(eq(managerDailySummaries.agentProfileId, agentProfileId));
+      }
+    }
 
     const summaries = await db
       .select({
@@ -788,12 +803,10 @@ ${conversationText}`,
         conversationCount: managerDailySummaries.conversationCount,
         messageCount: managerDailySummaries.messageCount,
         topics: managerDailySummaries.topics,
+        agentProfileId: managerDailySummaries.agentProfileId,
       })
       .from(managerDailySummaries)
-      .where(and(
-        eq(managerDailySummaries.subscriptionId, subscriptionId),
-        gte(managerDailySummaries.summaryDate, cutoffDate)
-      ))
+      .where(and(...conditions))
       .orderBy(desc(managerDailySummaries.summaryDate));
 
     return summaries.map(s => ({
@@ -803,6 +816,7 @@ ${conversationText}`,
       conversationCount: s.conversationCount || 0,
       messageCount: s.messageCount || 0,
       topics: (s.topics as string[]) || [],
+      agentProfileId: s.agentProfileId || null,
     }));
   }
 
@@ -888,7 +902,8 @@ ${conversationText}`,
     subscriptionId: string,
     consultantId: string,
     targetDate: Date,
-    apiKey: string
+    apiKey: string,
+    agentProfileId?: string
   ): Promise<string | null> {
     try {
       const dayStart = startOfDay(targetDate);
@@ -898,6 +913,18 @@ ${conversationText}`,
       // Gold/Silver users store conversations in whatsapp_agent_consultant_conversations
       // with external_visitor_id pattern: manager_{subscriptionId}_%
       const visitorPattern = `manager_${subscriptionId}_%`;
+
+      // Build conditions for conversation query
+      const convConditions: any[] = [
+        like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern),
+        gte(whatsappAgentConsultantMessages.createdAt, dayStart),
+        lt(whatsappAgentConsultantMessages.createdAt, dayEnd)
+      ];
+
+      // Filter by agentProfileId if provided
+      if (agentProfileId) {
+        convConditions.push(eq(whatsappAgentConsultantConversations.agentProfileId, agentProfileId));
+      }
 
       // Get conversations for this subscription that have messages on this day
       const conversationsWithMessages = await db
@@ -910,11 +937,7 @@ ${conversationText}`,
           whatsappAgentConsultantConversations,
           eq(whatsappAgentConsultantMessages.conversationId, whatsappAgentConsultantConversations.id)
         )
-        .where(and(
-          like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern),
-          gte(whatsappAgentConsultantMessages.createdAt, dayStart),
-          lt(whatsappAgentConsultantMessages.createdAt, dayEnd)
-        ));
+        .where(and(...convConditions));
 
       if (conversationsWithMessages.length === 0) {
         return null;
@@ -986,9 +1009,11 @@ ${conversationText}`,
           conversationCount,
           messageCount: totalMessageCount,
           topics,
+          agentProfileId: agentProfileId || null,
         });
 
-        console.log(`📝 [ManagerMemory] Generated summary for subscription ${subscriptionId.slice(0, 8)}... on ${dateStr}`);
+        const agentLabel = agentProfileId ? ` for agent ${agentProfileId.slice(0, 8)}...` : '';
+        console.log(`📝 [ManagerMemory] Generated summary for subscription ${subscriptionId.slice(0, 8)}...${agentLabel} on ${dateStr}`);
         return summary;
       }
 
@@ -996,6 +1021,103 @@ ${conversationText}`,
     } catch (error: any) {
       console.error("❌ [ManagerMemory] Error generating daily summary:", error.message);
       return null;
+    }
+  }
+
+  async generateAllAgentSummariesForManager(
+    subscriptionId: string,
+    consultantId: string,
+    summaryDate: Date,
+    apiKey: string
+  ): Promise<{ agentProfileId: string; summary: string | null }[]> {
+    try {
+      const visitorPattern = `manager_${subscriptionId}_%`;
+      const dayStart = startOfDay(summaryDate);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      // Query unique agentProfileIds for this user on this date
+      const agentConversations = await db
+        .selectDistinct({
+          agentProfileId: whatsappAgentConsultantConversations.agentProfileId,
+        })
+        .from(whatsappAgentConsultantMessages)
+        .innerJoin(
+          whatsappAgentConsultantConversations,
+          eq(whatsappAgentConsultantMessages.conversationId, whatsappAgentConsultantConversations.id)
+        )
+        .where(and(
+          like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern),
+          gte(whatsappAgentConsultantMessages.createdAt, dayStart),
+          lt(whatsappAgentConsultantMessages.createdAt, dayEnd),
+          isNotNull(whatsappAgentConsultantConversations.agentProfileId)
+        ));
+
+      const uniqueAgentIds = agentConversations
+        .map(c => c.agentProfileId)
+        .filter((id): id is string => id !== null);
+
+      if (uniqueAgentIds.length === 0) {
+        console.log(`📭 [ManagerMemory] No agent conversations found for subscription ${subscriptionId.slice(0, 8)}... on ${format(summaryDate, "yyyy-MM-dd")}`);
+        return [];
+      }
+
+      console.log(`🔄 [ManagerMemory] Generating summaries for ${uniqueAgentIds.length} agents for subscription ${subscriptionId.slice(0, 8)}...`);
+
+      // Generate a summary for each agent
+      const results: { agentProfileId: string; summary: string | null }[] = [];
+
+      for (const agentProfileId of uniqueAgentIds) {
+        const summary = await this.generateManagerDailySummary(
+          subscriptionId,
+          consultantId,
+          summaryDate,
+          apiKey,
+          agentProfileId
+        );
+
+        results.push({ agentProfileId, summary });
+      }
+
+      const successCount = results.filter(r => r.summary !== null).length;
+      console.log(`✅ [ManagerMemory] Generated ${successCount}/${uniqueAgentIds.length} agent summaries for subscription ${subscriptionId.slice(0, 8)}...`);
+
+      return results;
+    } catch (error: any) {
+      console.error("❌ [ManagerMemory] Error generating all agent summaries:", error.message);
+      return [];
+    }
+  }
+
+  async getExistingManagerSummaryDates(
+    subscriptionId: string,
+    agentProfileId?: string | null
+  ): Promise<Date[]> {
+    try {
+      const conditions = [
+        eq(managerDailySummaries.subscriptionId, subscriptionId)
+      ];
+
+      if (agentProfileId !== undefined) {
+        if (agentProfileId === null) {
+          conditions.push(sql`${managerDailySummaries.agentProfileId} IS NULL`);
+        } else {
+          conditions.push(eq(managerDailySummaries.agentProfileId, agentProfileId));
+        }
+      }
+
+      const summaries = await db
+        .select({
+          summaryDate: managerDailySummaries.summaryDate,
+        })
+        .from(managerDailySummaries)
+        .where(and(...conditions))
+        .orderBy(desc(managerDailySummaries.summaryDate));
+
+      return summaries.map(s => s.summaryDate);
+    } catch (error: any) {
+      console.error("❌ [ManagerMemory] Error getting existing summary dates:", error.message);
+      return [];
     }
   }
 

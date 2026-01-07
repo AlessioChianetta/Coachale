@@ -6654,7 +6654,6 @@ export const managerDailySummaries = pgTable("manager_daily_summaries", {
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
-  uniqueSubscriptionDate: unique().on(table.subscriptionId, table.summaryDate),
   consultantIdx: index("idx_manager_daily_summaries_consultant").on(table.consultantId),
   subscriptionIdx: index("idx_manager_daily_summaries_subscription").on(table.subscriptionId),
   agentIdx: index("idx_manager_daily_summaries_agent").on(table.agentProfileId),
