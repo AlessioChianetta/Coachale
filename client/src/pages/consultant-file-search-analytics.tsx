@@ -6319,6 +6319,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                               <th className="text-left p-3 font-medium w-8"></th>
                               <th className="text-left p-3 font-medium">Email/Nome</th>
                               <th className="text-center p-3 font-medium">Agenti</th>
+                              <th className="text-center p-3 font-medium">Giorni Totali</th>
                               <th className="text-center p-3 font-medium">Riassunti</th>
                               <th className="text-center p-3 font-medium">Mancanti</th>
                               <th className="text-center p-3 font-medium">Status</th>
@@ -6362,6 +6363,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                         : '-'}
                                     </Badge>
                                   </td>
+                                  <td className="p-3 text-center">{manager.totalDays}</td>
                                   <td className="p-3 text-center text-emerald-600 font-medium">{manager.existingSummaries}</td>
                                   <td className="p-3 text-center text-red-600 font-medium">{manager.missingDays}</td>
                                   <td className="p-3 text-center">
@@ -6417,7 +6419,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 </tr>
                                 {expandedGoldUserId === manager.subscriptionId && (
                                   <tr>
-                                    <td colSpan={7} className="p-0">
+                                    <td colSpan={8} className="p-0">
                                       <div className="bg-amber-50/50 border-l-4 border-amber-300 px-6 py-4">
                                         {agentBreakdownLoading ? (
                                           <div className="flex items-center gap-2 text-amber-600">
