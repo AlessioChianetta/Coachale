@@ -353,13 +353,14 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
       .where(eq(marketingCampaigns.consultantId, consultantId));
     const hasCampaign = Number(campaignsResult[0]?.count || 0) > 0;
     
-    const leadImportConfig = await db.query.externalApiConfigs.findFirst({
-      where: and(
+    const leadImportConfigResult = await db.select({ apiKey: externalApiConfigs.apiKey })
+      .from(externalApiConfigs)
+      .where(and(
         eq(externalApiConfigs.consultantId, consultantId),
         eq(externalApiConfigs.apiType, 'lead_import')
-      ),
-    });
-    const hasLeadImport = !!(leadImportConfig?.apiKey);
+      ))
+      .limit(1);
+    const hasLeadImport = !!(leadImportConfigResult[0]?.apiKey);
     
     const agentCalendarResult = await db.select({ 
       id: consultantWhatsappConfig.id
