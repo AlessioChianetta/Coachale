@@ -18,6 +18,7 @@ import { getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
 import { fileSearchService } from "../ai/file-search-service";
+import { memoryContextBuilder } from "../services/conversation-memory";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
@@ -919,6 +920,27 @@ ${share.agentInstructions}
 👤 PREFERENZE MANAGER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${styleInstructions}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        }
+
+        // GOLD EXCLUSIVE: AI Memory injection for manager daily summaries
+        // Only Gold tier (level 3) gets access to conversation memory
+        if (req.silverGoldUser?.level === "3" && req.silverGoldUser?.subscriptionId) {
+          try {
+            console.log(`[PUBLIC AGENT] Gold manager detected - injecting AI memory for subscription ${req.silverGoldUser.subscriptionId.slice(0, 8)}...`);
+            const memoryContext = await memoryContextBuilder.buildManagerDailySummaryContext(
+              req.silverGoldUser.subscriptionId,
+              7 // Last 7 days of summaries
+            );
+            
+            if (memoryContext.hasHistory) {
+              systemPrompt += `\n\n${memoryContext.contextText}`;
+              console.log(`[PUBLIC AGENT] Gold memory injected: ${memoryContext.conversationCount} conversations from daily summaries`);
+            } else {
+              console.log(`[PUBLIC AGENT] Gold manager has no memory summaries yet`);
+            }
+          } catch (memoryError: any) {
+            console.warn(`[PUBLIC AGENT] Failed to inject Gold memory: ${memoryError.message}`);
+          }
         }
         
         console.log(`[PUBLIC AGENT] System prompt built: ${systemPrompt.length} characters`);
