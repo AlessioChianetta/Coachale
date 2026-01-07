@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { Message } from "./Message";
 import { motion } from "framer-motion";
 import { TypingIndicator } from "./TypingIndicator";
@@ -24,14 +24,41 @@ interface MessageListProps {
 
 export function MessageList({ messages, isTyping, onActionClick }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLengthRef = useRef(messages.length);
+  const userScrolledUpRef = useRef(false);
 
-  const scrollToBottom = () => {
+  const isNearBottom = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return true;
+    const threshold = 100;
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    userScrolledUpRef.current = !isNearBottom();
+  }, [isNearBottom]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping]);
+    const hasNewMessage = messages.length > prevMessagesLengthRef.current;
+    const lastMessage = messages[messages.length - 1];
+    const isUserMessage = lastMessage?.role === "user";
+    
+    if (hasNewMessage && isUserMessage) {
+      scrollToBottom();
+      userScrolledUpRef.current = false;
+    } else if (hasNewMessage && !userScrolledUpRef.current) {
+      scrollToBottom();
+    } else if (isTyping && !userScrolledUpRef.current) {
+      scrollToBottom();
+    }
+    
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages, isTyping, scrollToBottom]);
 
   // Don't show TypingIndicator if there's an assistant placeholder (empty content) or active thinking
   // This prevents flashing when streaming completes and isThinking flips to false before isTyping
@@ -45,7 +72,11 @@ export function MessageList({ messages, isTyping, onActionClick }: MessageListPr
   const showTypingIndicator = isTyping && !hasAssistantPlaceholder;
 
   return (
-    <div className="h-full overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
+    <div 
+      ref={containerRef}
+      onScroll={handleScroll}
+      className="h-full overflow-y-auto px-4 sm:px-6 py-4 sm:py-6"
+    >
       <div className="space-y-4 sm:space-y-5 max-w-3xl mx-auto">
         {messages.map((message, index) => (
           <motion.div
