@@ -117,13 +117,17 @@ async function verifyManagerToken(
 
       console.log(`[PUBLIC AGENT] Silver/Gold auth successful - level: ${subscription.level}, hasCompletedOnboarding: ${subscription.hasCompletedOnboarding}`);
 
-      // Set silverGoldUser on request
+      // Set silverGoldUser on request - use subscription.level from DB (not decoded.level from token)
+      // This ensures upgrades are reflected immediately without requiring token refresh
+      const actualLevel = subscription.level as "2" | "3";
+      const actualType = actualLevel === "3" ? "gold" : "silver";
+      
       req.silverGoldUser = {
         subscriptionId: decoded.subscriptionId,
-        consultantId: decoded.consultantId,
-        email: decoded.email,
-        level: decoded.level,
-        type: decoded.type,
+        consultantId: subscription.consultantId,
+        email: subscription.email,
+        level: actualLevel,
+        type: actualType,
       };
       
       // Also set a compatible manager object for shared endpoints
