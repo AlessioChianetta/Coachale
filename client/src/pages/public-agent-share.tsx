@@ -9,13 +9,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { WhatsAppMessageBubble } from "@/components/whatsapp/WhatsAppMessageBubble";
-import { PublicAgentMessage } from "@/components/whatsapp/PublicAgentMessage";
-import { TypingIndicator } from "@/components/whatsapp/TypingIndicator";
 import { PromptBreakdownViewer, type PromptBreakdownData, type CitationData } from "@/components/whatsapp/PromptBreakdownViewer";
-import { ThinkingBubble } from "@/components/ai-assistant/ThinkingBubble";
+import { MessageList } from "@/components/ai-assistant/MessageList";
+import { InputArea, type AIModel, type ThinkingLevel, type AttachedFile } from "@/components/ai-assistant/InputArea";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Send, Loader2, Lock, AlertCircle, MessageCircle, Info, Building2, User, Mic, Camera, X, Sparkles } from "lucide-react";
+import { Loader2, Lock, AlertCircle, MessageCircle, Info, Mic, X, Sparkles, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ShareMetadata {
@@ -69,7 +67,6 @@ export default function PublicAgentShare() {
   const [visitorId, setVisitorId] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [showPasswordGate, setShowPasswordGate] = useState(false);
-  const [messageInput, setMessageInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState<StreamingMessage | null>(null);
   const [optimisticMessage, setOptimisticMessage] = useState<Message | null>(null);
@@ -82,6 +79,10 @@ export default function PublicAgentShare() {
   // Prompt breakdown state for AI transparency
   const [promptBreakdown, setPromptBreakdown] = useState<PromptBreakdownData | null>(null);
   const [citations, setCitations] = useState<CitationData[]>([]);
+  
+  // AI model and thinking level state for InputArea
+  const [selectedModel, setSelectedModel] = useState<AIModel>("gemini-3-flash-preview");
+  const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("low");
   
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -103,7 +104,6 @@ export default function PublicAgentShare() {
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Variabile unica per bloccare l'input durante qualsiasi elaborazione
@@ -306,6 +306,50 @@ export default function PublicAgentShare() {
     }
   }, [rawMessages, optimisticMessage]);
   
+  // Map messages for MessageList component (role: 'agent' -> 'assistant')
+  const messagesForList = useMemo(() => {
+    const result: Array<{
+      id: string;
+      role: "user" | "assistant";
+      content: string;
+      thinking?: string;
+      isThinking?: boolean;
+    }> = [];
+    
+    // Add history messages (filtering system messages)
+    messages
+      .filter(msg => !isSystemMessage(msg.content))
+      .forEach(msg => {
+        result.push({
+          id: msg.id,
+          role: msg.role === 'agent' ? 'assistant' : 'user',
+          content: msg.content,
+        });
+      });
+    
+    // Add optimistic user message
+    if (optimisticMessage) {
+      result.push({
+        id: optimisticMessage.id,
+        role: 'user',
+        content: optimisticMessage.content,
+      });
+    }
+    
+    // Add streaming assistant message with thinking state
+    if (streamingMessage || isThinking) {
+      result.push({
+        id: streamingMessage?.id || `thinking_${Date.now()}`,
+        role: 'assistant',
+        content: streamingMessage?.content || '',
+        thinking: streamingThinking || undefined,
+        isThinking: isThinking,
+      });
+    }
+    
+    return result;
+  }, [messages, optimisticMessage, streamingMessage, isThinking, streamingThinking]);
+  
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -482,7 +526,6 @@ export default function PublicAgentShare() {
         createdAt: new Date(),
       };
       setOptimisticMessage(optimistic);
-      setMessageInput("");
     },
     onError: (error: Error) => {
       setIsStreaming(false);
@@ -519,18 +562,6 @@ export default function PublicAgentShare() {
   // Handle public access (no password)
   const handlePublicAccess = () => {
     validateMutation.mutate("");
-  };
-  
-  // Handle send message
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Blocca invio se input è occupato, vuoto, o limite raggiunto
-    if (!messageInput.trim() || isBusy || sendMessageMutation.isPending || limitReached) {
-      return;
-    }
-    
-    sendMessageMutation.mutate(messageInput.trim());
   };
   
   // Audio recording functions
@@ -678,26 +709,6 @@ export default function PublicAgentShare() {
       setIsUploadingAudio(false);
       setUploadingAudioPreview(null);
       setIsStreaming(false);
-    }
-  };
-  
-  const handlePhotoCapture = () => {
-    fileInputRef.current?.click();
-  };
-  
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    // For now, just show a toast - photo endpoint will be implemented in Task 3
-    toast({
-      title: "📸 Foto selezionata",
-      description: "Funzionalità in arrivo...",
-    });
-    
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
     }
   };
   
@@ -980,168 +991,66 @@ export default function PublicAgentShare() {
       
       {/* Chat area - struttura migliorata per input sempre visibile */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Messages - solo questa area scorre */}
-        <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4">
-          <div className="max-w-4xl mx-auto space-y-4 pb-4">
-            {/* Welcome message - Mobile Optimized */}
-            {messages.length === 0 && !optimisticMessage && !streamingMessage && (
-              <div className="flex flex-col items-center justify-center py-8 sm:py-16 px-4">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl sm:text-2xl font-bold mx-auto mb-3 sm:mb-4 shadow-lg">
-                  {metadata.agentName.charAt(0).toUpperCase()}
-                </div>
-                <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-1 sm:mb-2 text-center">
-                  Inizia una conversazione
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 max-w-[250px] sm:max-w-xs text-center mb-3 sm:mb-4">
-                  Scrivi un messaggio per parlare con {metadata.agentName}
-                </p>
-                <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
-                    <MessageCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
-                    Chat 24/7
-                  </Badge>
-                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
-                    <Mic className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
-                    Vocali
-                  </Badge>
-                  <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
-                    <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
-                    AI
-                  </Badge>
-                </div>
+        {/* Messages - using MessageList for visual consistency with AI Assistant */}
+        <div ref={scrollAreaRef} className="flex-1 min-h-0 overflow-hidden">
+          {messagesForList.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center py-8 sm:py-16 px-4">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl sm:text-2xl font-bold mx-auto mb-3 sm:mb-4 shadow-lg">
+                {metadata.agentName.charAt(0).toUpperCase()}
               </div>
-            )}
-            
-            {/* Message list with animations - filtra messaggi di sistema */}
-            <AnimatePresence mode="popLayout">
-              {messages
-                .filter(msg => !isSystemMessage(msg.content))
-                .map((message, index) => {
-                  const direction = message.role === 'user' ? 'outbound' : 'inbound';
-                  
-                  return (
-                    <motion.div 
-                      key={message.id} 
-                      className="flex flex-col gap-1"
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ 
-                        duration: 0.3, 
-                        delay: index * 0.02,
-                        ease: "easeOut"
-                      }}
-                    >
-                      <PublicAgentMessage
-                        message={{
-                          id: message.id,
-                          role: message.role,
-                          content: message.content,
-                          createdAt: new Date(message.createdAt),
-                        }}
-                        agentName={metadata.agentName}
-                      />
-                      {message.audioUrl && (
-                        <motion.div 
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className={direction === 'inbound' ? 'flex justify-start ml-12' : 'flex justify-end mr-12'}
-                        >
-                          <audio
-                            controls
-                            className="w-64 h-10 rounded-lg"
-                            preload="metadata"
-                          >
-                            <source src={message.audioUrl} type={message.role === 'user' ? 'audio/webm' : 'audio/wav'} />
-                            Il tuo browser non supporta l'elemento audio.
-                          </audio>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  );
-                })}
-            </AnimatePresence>
-            
-            {/* Optimistic message with animation */}
-            <AnimatePresence>
-              {optimisticMessage && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <PublicAgentMessage
-                    message={{
-                      id: optimisticMessage.id,
-                      role: 'user',
-                      content: optimisticMessage.content,
-                      createdAt: optimisticMessage.createdAt,
-                    }}
-                    agentName={metadata.agentName}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-            
-            {/* Uploading audio preview */}
-            {isUploadingAudio && uploadingAudioPreview && (
-              <div className="flex justify-end">
-                <div className="bg-[#DCF8C6] rounded-lg px-3 py-2 max-w-xs shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-gray-600" />
-                    <span className="text-sm text-gray-600">Invio audio in corso...</span>
+              <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-1 sm:mb-2 text-center">
+                Inizia una conversazione
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-[250px] sm:max-w-xs text-center mb-3 sm:mb-4">
+                Scrivi un messaggio per parlare con {metadata.agentName}
+              </p>
+              <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
+                  <MessageCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                  Chat 24/7
+                </Badge>
+                <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
+                  <Mic className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                  Vocali
+                </Badge>
+                <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
+                  <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                  AI
+                </Badge>
+              </div>
+            </div>
+          ) : (
+            <>
+              <MessageList 
+                messages={messagesForList}
+                isTyping={(sendMessageMutation.isPending || isStreaming) && !streamingMessage?.content && !isUploadingAudio}
+              />
+              
+              {/* Uploading audio preview */}
+              {isUploadingAudio && uploadingAudioPreview && (
+                <div className="flex justify-end px-4 pb-4">
+                  <div className="bg-[#DCF8C6] rounded-lg px-3 py-2 max-w-xs shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-600" />
+                      <span className="text-sm text-gray-600">Invio audio in corso...</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            
-            {/* Typing indicator - shown when waiting for agent response */}
-            {(sendMessageMutation.isPending || isStreaming) && !streamingMessage?.content && !isUploadingAudio && (
-              <TypingIndicator />
-            )}
-            
-            {/* Prompt Breakdown Viewer - AI transparency */}
-            {isStreaming && promptBreakdown && (
-              <PromptBreakdownViewer 
-                breakdown={promptBreakdown} 
-                citations={citations}
-                className="max-w-md"
-              />
-            )}
-            
-            {/* Thinking Bubble - AI reasoning visualization */}
-            {isThinking && streamingThinking && (
-              <ThinkingBubble 
-                thinking={streamingThinking}
-                isThinking={true}
-              />
-            )}
-            
-            {/* Streaming message with animation */}
-            <AnimatePresence>
-              {streamingMessage?.content && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <PublicAgentMessage
-                    message={{
-                      id: streamingMessage.id,
-                      role: 'agent',
-                      content: streamingMessage.content,
-                      createdAt: streamingMessage.createdAt,
-                    }}
-                    agentName={metadata.agentName}
-                  />
-                </motion.div>
               )}
-            </AnimatePresence>
-            
-            {/* Scroll anchor - same as manager */}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
+              
+              {/* Prompt Breakdown Viewer - AI transparency */}
+              {isStreaming && promptBreakdown && (
+                <div className="px-4 pb-4">
+                  <PromptBreakdownViewer 
+                    breakdown={promptBreakdown} 
+                    citations={citations}
+                    className="max-w-md mx-auto"
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
         
         {/* Limit reached - Full upgrade screen for Bronze users */}
         {limitReached && metadata.level === "1" && (
@@ -1232,15 +1141,14 @@ export default function PublicAgentShare() {
           </div>
         )}
         
-        {/* Input area - Mobile Optimized */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex-shrink-0 border-t bg-card/95 backdrop-blur-sm p-2 sm:p-3 pb-[max(8px,env(safe-area-inset-bottom))] sm:pb-[max(12px,env(safe-area-inset-bottom))] shadow-lg sticky bottom-0"
-        >
+        {/* Input area - using InputArea for visual consistency with AI Assistant */}
+        <div className="flex-shrink-0 border-t bg-card/95 backdrop-blur-sm px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-lg sticky bottom-0">
           {isRecording ? (
-            // Recording UI - Mobile Optimized
-            <div className="flex items-center gap-2 sm:gap-3 bg-red-50 rounded-2xl sm:rounded-3xl px-3 sm:px-4 py-2 sm:py-3 max-w-4xl mx-auto">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 sm:gap-3 bg-red-50 rounded-2xl sm:rounded-3xl px-3 sm:px-4 py-2 sm:py-3 max-w-3xl mx-auto"
+            >
               <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
                 <motion.div 
                   className="h-2.5 w-2.5 sm:h-3 sm:w-3 bg-red-500 rounded-full flex-shrink-0"
@@ -1265,98 +1173,24 @@ export default function PublicAgentShare() {
               >
                 <Send className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
-            </div>
+            </motion.div>
           ) : (
-            // Normal input UI - Mobile Optimized
-            <div className="flex gap-1.5 sm:gap-2 items-end max-w-4xl mx-auto">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileSelected}
-                className="hidden"
-              />
-              
-              <Button
-                onClick={handlePhotoCapture}
-                size="icon"
-                variant="ghost"
-                disabled={isBusy || sendMessageMutation.isPending}
-                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full text-gray-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 disabled:opacity-50 flex-shrink-0"
-              >
-                <Camera className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-              
-              <div className={cn(
-                "flex-1 min-w-0 rounded-2xl sm:rounded-3xl px-3 sm:px-4 py-2 flex items-center gap-2 transition-all duration-200 border",
-                isBusy || sendMessageMutation.isPending 
-                  ? "bg-gray-100 border-gray-200" 
-                  : "bg-gray-50 border-gray-200 focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100"
-              )}>
-                <Input
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder={limitReached ? "Limite raggiunto" : (isBusy || sendMessageMutation.isPending ? "Attendi..." : "Scrivi...")}
-                  disabled={isBusy || sendMessageMutation.isPending || limitReached}
-                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm sm:text-base placeholder:text-gray-400 p-0 h-auto min-h-[24px] sm:min-h-[28px] disabled:cursor-not-allowed"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey && !isBusy && !sendMessageMutation.isPending && !limitReached) {
-                      e.preventDefault();
-                      handleSendMessage(e);
-                    }
-                  }}
-                />
-              </div>
-              
-              {messageInput.trim() ? (
-                // Send button - Mobile Optimized
-                <motion.div className="relative flex-shrink-0" whileTap={{ scale: 0.95 }}>
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={isBusy || sendMessageMutation.isPending || limitReached}
-                    size="icon"
-                    className="rounded-full h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-70"
-                  >
-                    {isBusy || sendMessageMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-                    )}
-                  </Button>
-                </motion.div>
-              ) : (
-                // Mic button - Mobile Optimized
-                <div className="relative flex-shrink-0">
-                  {!isBusy && !sendMessageMutation.isPending && (
-                    <motion.div
-                      className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
-                      animate={{
-                        scale: [1, 1.15, 1],
-                        opacity: [0.5, 0.2, 0.5],
-                      }}
-                      transition={{
-                        duration: 2.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                    />
-                  )}
-                  <motion.div whileTap={{ scale: 0.95 }}>
-                    <Button
-                      onClick={startRecording}
-                      disabled={isBusy || sendMessageMutation.isPending}
-                      size="icon"
-                      className="relative rounded-full h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-70"
-                    >
-                      <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </Button>
-                  </motion.div>
-                </div>
-              )}
-            </div>
+            <InputArea
+              onSend={(message, files, model, level) => {
+                if (message.trim() && !isBusy && !sendMessageMutation.isPending && !limitReached) {
+                  sendMessageMutation.mutate(message.trim());
+                }
+              }}
+              disabled={limitReached}
+              isProcessing={isBusy || sendMessageMutation.isPending}
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              thinkingLevel={thinkingLevel}
+              onThinkingLevelChange={setThinkingLevel}
+              onLiveModeClick={startRecording}
+            />
           )}
-        </motion.div>
+        </div>
       </div>
       
       {/* Info Sheet - Manager Style */}
