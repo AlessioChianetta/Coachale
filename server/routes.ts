@@ -11299,6 +11299,118 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // Get memory settings (generation hour)
+  app.get("/api/consultant/ai/memory-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.userId;
+      const [consultant] = await db
+        .select({ memoryGenerationHour: schema.users.memoryGenerationHour })
+        .from(schema.users)
+        .where(eq(schema.users.id, consultantId));
+      
+      res.json({
+        memoryGenerationHour: consultant?.memoryGenerationHour ?? 3
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Update memory settings (generation hour)
+  app.put("/api/consultant/ai/memory-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.userId;
+      const { memoryGenerationHour } = req.body;
+      
+      if (typeof memoryGenerationHour !== 'number' || memoryGenerationHour < 0 || memoryGenerationHour > 23) {
+        return res.status(400).json({ message: "L'ora deve essere un numero tra 0 e 23" });
+      }
+      
+      await db
+        .update(schema.users)
+        .set({ memoryGenerationHour })
+        .where(eq(schema.users.id, consultantId));
+      
+      res.json({ success: true, memoryGenerationHour });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Generate memory now for all consultant's users
+  app.post("/api/consultant/ai/generate-memory-now", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.userId;
+      
+      const { ConversationMemoryService, conversationMemoryService } = await import('./services/conversation-memory/memory-service');
+      const { getSuperAdminGeminiKeys } = await import('./ai/provider-factory');
+      
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (!superAdminKeys || !superAdminKeys.enabled || superAdminKeys.keys.length === 0) {
+        return res.status(400).json({ message: "Nessuna chiave Gemini SuperAdmin disponibile" });
+      }
+      
+      const apiKey = superAdminKeys.keys[0];
+      const memoryService = new ConversationMemoryService();
+      
+      const startTime = Date.now();
+      let totalGenerated = 0;
+      let totalUsers = 0;
+      const errors: string[] = [];
+      
+      const allUsers = await db
+        .select({ id: schema.users.id, role: schema.users.role, firstName: schema.users.firstName })
+        .from(schema.users)
+        .where(or(
+          eq(schema.users.id, consultantId),
+          and(
+            eq(schema.users.consultantId, consultantId),
+            eq(schema.users.isActive, true)
+          )
+        ));
+      
+      for (const user of allUsers) {
+        try {
+          const result = await memoryService.generateMissingDailySummariesWithProgress(
+            user.id,
+            apiKey,
+            () => {}
+          );
+          if (result.generated > 0) {
+            totalGenerated += result.generated;
+            totalUsers++;
+          }
+        } catch (error: any) {
+          errors.push(`${user.firstName || user.id}: ${error.message}`);
+        }
+      }
+      
+      const durationMs = Date.now() - startTime;
+      
+      await conversationMemoryService.logGeneration({
+        userId: consultantId,
+        targetUserId: null,
+        generationType: 'manual',
+        summariesGenerated: totalGenerated,
+        conversationsAnalyzed: totalUsers,
+        durationMs,
+        errors,
+      });
+      
+      res.json({
+        success: true,
+        generated: totalGenerated,
+        usersProcessed: allUsers.length,
+        usersWithNewSummaries: totalUsers,
+        durationMs,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (error: any) {
+      console.error("Error in manual memory generation:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ========================================
   // CONSULTANT PROFILE ROUTES
   // ========================================

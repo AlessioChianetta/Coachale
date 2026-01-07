@@ -2,10 +2,12 @@ import cron from 'node-cron';
 import { db } from '../db';
 import { users, aiConversations, aiDailySummaries } from '../../shared/schema';
 import { eq, and, isNull, or, desc, gte, lt, sql } from 'drizzle-orm';
-import { startOfDay, subDays, format } from 'date-fns';
-import { it } from 'date-fns/locale';
+import { startOfDay, subDays } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
 let schedulerTask: cron.ScheduledTask | null = null;
+
+const ITALIAN_TIMEZONE = 'Europe/Rome';
 
 export function initMemorySummaryScheduler() {
   if (schedulerTask) {
@@ -13,21 +15,25 @@ export function initMemorySummaryScheduler() {
     return;
   }
 
-  console.log('📅 [MemorySummaryScheduler] Initializing nightly summary generation');
-  console.log('   Schedule: 03:00 Italian time (Europe/Rome)');
+  console.log('📅 [MemorySummaryScheduler] Initializing hourly memory generation');
+  console.log('   Schedule: Every hour at :00 (Europe/Rome)');
   
-  schedulerTask = cron.schedule('0 3 * * *', async () => {
-    await runNightlyMemoryGeneration();
+  schedulerTask = cron.schedule('0 * * * *', async () => {
+    const now = new Date();
+    // Use formatInTimeZone to get the correct hour in Italian timezone
+    const currentHour = parseInt(formatInTimeZone(now, ITALIAN_TIMEZONE, 'H'));
+    console.log(`⏰ [MemorySummaryScheduler] Running for hour ${currentHour} (Italian time: ${formatInTimeZone(now, ITALIAN_TIMEZONE, 'HH:mm')})`);
+    await runMemoryGenerationForHour(currentHour);
   }, {
-    timezone: 'Europe/Rome'
+    timezone: ITALIAN_TIMEZONE
   });
 
-  console.log('✅ [MemorySummaryScheduler] Scheduled for 03:00 nightly');
+  console.log('✅ [MemorySummaryScheduler] Scheduled to run every hour at :00');
 }
 
-async function runNightlyMemoryGeneration() {
+async function runMemoryGenerationForHour(targetHour: number) {
   console.log(`\n${'═'.repeat(60)}`);
-  console.log(`🧠 [MemorySummaryScheduler] Starting nightly memory generation`);
+  console.log(`🧠 [MemorySummaryScheduler] Starting memory generation for hour ${targetHour}`);
   console.log(`   Time: ${new Date().toISOString()}`);
   console.log(`${'═'.repeat(60)}`);
 
@@ -35,6 +41,7 @@ async function runNightlyMemoryGeneration() {
   let totalGenerated = 0;
   let totalUsers = 0;
   let errors: string[] = [];
+  let consultantsProcessed = 0;
 
   try {
     const { getSuperAdminGeminiKeys } = await import('../ai/provider-factory');
@@ -48,53 +55,70 @@ async function runNightlyMemoryGeneration() {
 
     const apiKey = superAdminKeys.keys[0];
 
-    const allUsers = await db
-      .select({ id: users.id, role: users.role, firstName: users.firstName })
+    const consultants = await db
+      .select({ id: users.id, firstName: users.firstName, memoryGenerationHour: users.memoryGenerationHour })
       .from(users)
-      .where(or(
-        eq(users.role, 'consultant'),
-        eq(users.role, 'client'),
-        eq(users.role, 'bronze'),
-        eq(users.role, 'silver'),
-        eq(users.role, 'gold')
-      ));
+      .where(eq(users.role, 'consultant'));
 
-    console.log(`   📊 Found ${allUsers.length} users to check`);
+    const matchingConsultants = consultants.filter(c => (c.memoryGenerationHour ?? 3) === targetHour);
+
+    if (matchingConsultants.length === 0) {
+      console.log(`   📊 No consultants scheduled for hour ${targetHour}`);
+      return;
+    }
+
+    console.log(`   📊 Found ${matchingConsultants.length} consultants scheduled for hour ${targetHour}`);
 
     const memoryService = new ConversationMemoryService();
 
-    for (const user of allUsers) {
-      try {
-        const cutoffDate = subDays(new Date(), 30);
-        
-        const daysWithConversations = await db
-          .selectDistinct({
-            day: sql<Date>`DATE(${aiConversations.createdAt})`.as("day"),
-          })
-          .from(aiConversations)
-          .where(and(
-            eq(aiConversations.clientId, user.id),
-            gte(aiConversations.createdAt, cutoffDate)
-          ));
+    for (const consultant of matchingConsultants) {
+      console.log(`   👤 Processing consultant: ${consultant.firstName || consultant.id}`);
+      consultantsProcessed++;
 
-        if (daysWithConversations.length === 0) continue;
+      const clientsAndSelf = await db
+        .select({ id: users.id, role: users.role, firstName: users.firstName })
+        .from(users)
+        .where(or(
+          eq(users.id, consultant.id),
+          and(
+            eq(users.consultantId, consultant.id),
+            eq(users.isActive, true)
+          )
+        ));
 
-        totalUsers++;
+      for (const user of clientsAndSelf) {
+        try {
+          const cutoffDate = subDays(new Date(), 30);
+          
+          const daysWithConversations = await db
+            .selectDistinct({
+              day: sql<Date>`DATE(${aiConversations.createdAt})`.as("day"),
+            })
+            .from(aiConversations)
+            .where(and(
+              eq(aiConversations.clientId, user.id),
+              gte(aiConversations.createdAt, cutoffDate)
+            ));
 
-        const result = await memoryService.generateMissingDailySummariesWithProgress(
-          user.id,
-          apiKey,
-          () => {}
-        );
+          if (daysWithConversations.length === 0) continue;
 
-        if (result.generated > 0) {
-          totalGenerated += result.generated;
-          console.log(`   ✅ ${user.firstName || user.id}: ${result.generated} summaries generated`);
+          totalUsers++;
+
+          const result = await memoryService.generateMissingDailySummariesWithProgress(
+            user.id,
+            apiKey,
+            () => {}
+          );
+
+          if (result.generated > 0) {
+            totalGenerated += result.generated;
+            console.log(`   ✅ ${user.firstName || user.id}: ${result.generated} summaries generated`);
+          }
+        } catch (error: any) {
+          const errorMsg = `User ${user.id}: ${error.message}`;
+          errors.push(errorMsg);
+          console.error(`   ❌ ${errorMsg}`);
         }
-      } catch (error: any) {
-        const errorMsg = `User ${user.id}: ${error.message}`;
-        errors.push(errorMsg);
-        console.error(`   ❌ ${errorMsg}`);
       }
     }
 
@@ -111,7 +135,8 @@ async function runNightlyMemoryGeneration() {
     });
 
     console.log(`\n${'═'.repeat(60)}`);
-    console.log(`🧠 [MemorySummaryScheduler] Nightly generation complete`);
+    console.log(`🧠 [MemorySummaryScheduler] Hourly generation complete for hour ${targetHour}`);
+    console.log(`   Consultants processed: ${consultantsProcessed}`);
     console.log(`   Generated: ${totalGenerated} summaries`);
     console.log(`   Users processed: ${totalUsers}`);
     console.log(`   Duration: ${(durationMs / 1000).toFixed(1)}s`);
@@ -134,6 +159,8 @@ export function stopMemorySummaryScheduler() {
 }
 
 export async function triggerManualMemoryGeneration() {
-  console.log('🔧 [MemorySummaryScheduler] Manual trigger requested');
-  await runNightlyMemoryGeneration();
+  console.log('🔧 [MemorySummaryScheduler] Manual trigger requested - running for all hours');
+  for (let hour = 0; hour < 24; hour++) {
+    await runMemoryGenerationForHour(hour);
+  }
 }

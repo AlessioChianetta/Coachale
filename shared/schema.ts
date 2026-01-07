@@ -149,6 +149,8 @@ export const users = pgTable("users", {
 
   isEmployee: boolean("is_employee").default(false), // true = dipendente/collaboratore del consulente
 
+  memoryGenerationHour: integer("memory_generation_hour").default(3), // Hour (0-23) for automatic memory generation, defaults to 3 AM
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 

@@ -905,6 +905,67 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [viewingMemoryUserId, setViewingMemoryUserId] = useState<string | null>(null);
   const viewingMemoryUser = memoryAudit?.find(u => u.userId === viewingMemoryUserId);
 
+  const { data: memorySettings } = useQuery<{ memoryGenerationHour: number }>({
+    queryKey: ["/api/consultant/ai/memory-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/ai/memory-settings", {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch memory settings");
+      return res.json();
+    },
+  });
+
+  const updateMemorySettingsMutation = useMutation({
+    mutationFn: async (hour: number) => {
+      const res = await fetch("/api/consultant/ai/memory-settings", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ memoryGenerationHour: hour })
+      });
+      if (!res.ok) throw new Error("Failed to update settings");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-settings"] });
+      toast({ title: "Impostazioni salvate" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante il salvataggio",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generateMemoryNowMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/consultant/ai/generate-memory-now", {
+        method: "POST",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to generate memory");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/ai/memory-generation-logs"] });
+      toast({
+        title: "Generazione completata",
+        description: `${data.generated} riassunti generati per ${data.usersWithNewSummaries} utenti`
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la generazione",
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: userSummaries, isLoading: summariesLoading } = useQuery<Array<{
     id: string;
     summaryDate: string;
@@ -5628,17 +5689,59 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
                 <Card className="border-blue-200 bg-blue-50">
                   <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <div className="bg-blue-100 p-2 rounded-lg">
-                        <CalendarClock className="h-6 w-6 text-blue-600" />
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        <div className="bg-blue-100 p-2 rounded-lg">
+                          <CalendarClock className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-blue-800">Generazione Automatica</h3>
+                          <p className="text-blue-700 text-sm mt-1">
+                            La memoria AI viene generata automaticamente ogni giorno all'ora impostata.
+                            I riassunti delle conversazioni vengono memorizzati per fornire contesto personalizzato.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-blue-800">Generazione Automatica</h3>
-                        <p className="text-blue-700 text-sm mt-1">
-                          La memoria AI viene generata automaticamente ogni notte alle 03:00. 
-                          I riassunti delle conversazioni vengono memorizzati nel system prompt 
-                          per fornire contesto personalizzato all'assistente AI di ogni utente.
-                        </p>
+                      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-blue-700 text-sm whitespace-nowrap">Ora generazione:</Label>
+                          <Select
+                            value={String(memorySettings?.memoryGenerationHour ?? 3)}
+                            onValueChange={(value) => updateMemorySettingsMutation.mutate(parseInt(value))}
+                            disabled={updateMemorySettingsMutation.isPending}
+                          >
+                            <SelectTrigger className="w-24 bg-white border-blue-300">
+                              <SelectValue placeholder="Ora" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <SelectItem key={i} value={String(i)}>
+                                  {String(i).padStart(2, '0')}:00
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {updateMemorySettingsMutation.isPending && (
+                            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                          )}
+                        </div>
+                        <Button
+                          onClick={() => generateMemoryNowMutation.mutate()}
+                          disabled={generateMemoryNowMutation.isPending}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          {generateMemoryNowMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Generazione...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Genera Ora
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
