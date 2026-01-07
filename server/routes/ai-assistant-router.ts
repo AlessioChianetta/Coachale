@@ -909,7 +909,12 @@ router.get("/memory/manager-audit", authenticateToken, requireRole("consultant")
 router.get("/memory/manager/:subscriptionId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const { subscriptionId } = req.params;
+    console.log(`[AI Assistant] Fetching manager summaries for subscription: ${subscriptionId}`);
     const summaries = await conversationMemoryService.getManagerDailySummaries(subscriptionId, 30);
+    console.log(`[AI Assistant] Found ${summaries.length} summaries for subscription ${subscriptionId.slice(0,8)}...`);
+    if (summaries.length > 0) {
+      console.log(`[AI Assistant] First summary:`, JSON.stringify(summaries[0]).slice(0, 200));
+    }
     res.json(summaries);
   } catch (error: any) {
     console.error("[AI Assistant] Error fetching manager summaries:", error);
