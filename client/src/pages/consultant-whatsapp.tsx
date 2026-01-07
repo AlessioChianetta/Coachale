@@ -1639,37 +1639,196 @@ export default function ConsultantWhatsAppPage() {
                 </div>
               </div>
 
-              {/* Quick Info Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm text-gray-500 flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Nome Business
-                  </Label>
-                  <Input
-                    placeholder="Es: Studio Rossi & Partners"
-                    value={businessNameInput}
-                    onChange={(e) => setBusinessNameInput(e.target.value)}
-                    className="bg-white dark:bg-gray-900"
-                  />
+              {/* Context Section - Documents & Knowledge Base */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Documents Upload Card */}
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <Upload className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">Documenti</h4>
+                      <p className="text-xs text-gray-500">PDF, DOC, TXT, immagini</p>
+                    </div>
+                  </div>
+                  <div className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg p-4 text-center hover:border-purple-400 transition-colors cursor-pointer bg-gray-50/50 dark:bg-gray-800/30">
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                      className="hidden"
+                      id="file-upload"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setUploadedFiles([...uploadedFiles, ...Array.from(e.target.files)]);
+                        }
+                      }}
+                    />
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <p className="text-sm text-gray-500">
+                        Trascina o <span className="text-purple-600 font-medium">sfoglia</span>
+                      </p>
+                    </label>
+                  </div>
+                  {uploadedFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {uploadedFiles.map((file, index) => (
+                        <div key={index} className="inline-flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 px-3 py-1.5 rounded-full text-sm">
+                          <FileText className="h-3 w-3 text-purple-600" />
+                          <span className="truncate max-w-24">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setUploadedFiles(uploadedFiles.filter((_, i) => i !== index))}
+                            className="text-purple-600 hover:text-red-500"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Knowledge Base Card */}
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <Database className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">Knowledge Base</h4>
+                      <p className="text-xs text-gray-500">Documenti esistenti</p>
+                    </div>
+                  </div>
+                  {knowledgeDocsQuery.isLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Caricamento...
+                    </div>
+                  ) : knowledgeDocs.length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4 text-center">Nessun documento</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
+                      {knowledgeDocs.map((doc: any) => (
+                        <button
+                          key={doc.id}
+                          type="button"
+                          onClick={() => {
+                            if (selectedKnowledgeDocIds.includes(doc.id)) {
+                              setSelectedKnowledgeDocIds(selectedKnowledgeDocIds.filter(id => id !== doc.id));
+                            } else {
+                              setSelectedKnowledgeDocIds([...selectedKnowledgeDocIds, doc.id]);
+                            }
+                          }}
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-all ${
+                            selectedKnowledgeDocIds.includes(doc.id)
+                              ? "bg-purple-100 text-purple-700 border border-purple-400 dark:bg-purple-900/30 dark:text-purple-300"
+                              : "bg-gray-50 text-gray-600 border border-gray-200 hover:border-purple-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
+                          }`}
+                        >
+                          {selectedKnowledgeDocIds.includes(doc.id) && <Check className="h-3 w-3" />}
+                          <FileText className="h-3 w-3" />
+                          <span className="truncate max-w-20">{doc.fileName}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* URLs Card */}
+              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <Link className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">Siti Web</h4>
+                    <p className="text-xs text-gray-500">URL da analizzare (il contenuto viene estratto automaticamente)</p>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm text-gray-500 flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Nome Consulente
-                  </Label>
-                  <Input
-                    placeholder="Es: Marco Rossi"
-                    value={consultantDisplayNameInput}
-                    onChange={(e) => setConsultantDisplayNameInput(e.target.value)}
-                    className="bg-white dark:bg-gray-900"
-                  />
+                  {urlInputs.map((url, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder="https://esempio.com"
+                        value={url}
+                        onChange={(e) => {
+                          const newUrls = [...urlInputs];
+                          newUrls[index] = e.target.value;
+                          setUrlInputs(newUrls);
+                        }}
+                        className="text-sm h-10 bg-gray-50 dark:bg-gray-800"
+                      />
+                      {urlInputs.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setUrlInputs(urlInputs.filter((_, i) => i !== index))}
+                          className="h-10 px-3"
+                        >
+                          <Trash2 className="h-4 w-4 text-gray-400" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setUrlInputs([...urlInputs, ""])}
+                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Aggiungi URL
+                  </Button>
+                </div>
+              </div>
+
+              {/* Business Info Fields */}
+              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <Building2 className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">Informazioni Business</h4>
+                    <p className="text-xs text-gray-500">Opzionale - verranno estratte dal contesto se non fornite</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-gray-500">Nome Business</Label>
+                    <Input
+                      placeholder="Es: Studio Rossi & Partners"
+                      value={businessNameInput}
+                      onChange={(e) => setBusinessNameInput(e.target.value)}
+                      className="bg-gray-50 dark:bg-gray-800"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm text-gray-500">Nome Consulente</Label>
+                    <Input
+                      placeholder="Es: Marco Rossi"
+                      value={consultantDisplayNameInput}
+                      onChange={(e) => setConsultantDisplayNameInput(e.target.value)}
+                      className="bg-gray-50 dark:bg-gray-800"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Agent Type Pills */}
-              <div className="space-y-3">
-                <Label className="text-sm text-gray-500">Tipo di Agente</Label>
+              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <Bot className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">Tipo di Agente</h4>
+                    <p className="text-xs text-gray-500">Seleziona uno o più tipi di agente da generare</p>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { id: "reactive_lead", label: "Inbound", icon: Phone, selectedClass: "bg-blue-100 text-blue-700 border-2 border-blue-400 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600" },
@@ -1691,7 +1850,7 @@ export default function ConsultantWhatsAppPage() {
                             setSelectedIntegrations([...selectedIntegrations, agent.id]);
                           }
                         }}
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
                           isSelected
                             ? agent.selectedClass
                             : "bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
@@ -1705,148 +1864,6 @@ export default function ConsultantWhatsAppPage() {
                   })}
                 </div>
               </div>
-
-              {/* Collapsible Context Section */}
-              <Collapsible>
-                <CollapsibleTrigger className="flex items-center gap-2 text-sm text-gray-500 hover:text-purple-600 transition-colors group w-full">
-                  <Plus className="h-4 w-4 group-data-[state=open]:rotate-45 transition-transform" />
-                  <span>Aggiungi contesto (documenti, URL, knowledge base)</span>
-                  {(uploadedFiles.length > 0 || selectedKnowledgeDocIds.length > 0 || urlInputs.filter(u => u).length > 0) && (
-                    <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                      {uploadedFiles.length + selectedKnowledgeDocIds.length + urlInputs.filter(u => u).length} elementi
-                    </Badge>
-                  )}
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-4 space-y-4">
-                  {/* Documents Upload */}
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      <Upload className="h-4 w-4 text-purple-600" />
-                      Documenti
-                    </div>
-                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-purple-400 transition-colors cursor-pointer">
-                      <input
-                        type="file"
-                        multiple
-                        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
-                        className="hidden"
-                        id="file-upload"
-                        onChange={(e) => {
-                          if (e.target.files) {
-                            setUploadedFiles([...uploadedFiles, ...Array.from(e.target.files)]);
-                          }
-                        }}
-                      />
-                      <label htmlFor="file-upload" className="cursor-pointer">
-                        <p className="text-sm text-gray-500">
-                          Trascina file o <span className="text-purple-600 font-medium">sfoglia</span>
-                        </p>
-                      </label>
-                    </div>
-
-                    {uploadedFiles.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {uploadedFiles.map((file, index) => (
-                          <div key={index} className="inline-flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 px-3 py-1.5 rounded-full text-sm">
-                            <FileText className="h-3 w-3 text-purple-600" />
-                            <span className="truncate max-w-32">{file.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => setUploadedFiles(uploadedFiles.filter((_, i) => i !== index))}
-                              className="text-purple-600 hover:text-red-500"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Knowledge Base */}
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      <Database className="h-4 w-4 text-purple-600" />
-                      Knowledge Base
-                    </div>
-                    {knowledgeDocsQuery.isLoading ? (
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Caricamento...
-                      </div>
-                    ) : knowledgeDocs.length === 0 ? (
-                      <p className="text-sm text-gray-500">Nessun documento disponibile</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                        {knowledgeDocs.map((doc: any) => (
-                          <button
-                            key={doc.id}
-                            type="button"
-                            onClick={() => {
-                              if (selectedKnowledgeDocIds.includes(doc.id)) {
-                                setSelectedKnowledgeDocIds(selectedKnowledgeDocIds.filter(id => id !== doc.id));
-                              } else {
-                                setSelectedKnowledgeDocIds([...selectedKnowledgeDocIds, doc.id]);
-                              }
-                            }}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-all ${
-                              selectedKnowledgeDocIds.includes(doc.id)
-                                ? "bg-purple-100 text-purple-700 border border-purple-300 dark:bg-purple-900/30 dark:text-purple-300"
-                                : "bg-white text-gray-600 border border-gray-200 hover:border-purple-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
-                            }`}
-                          >
-                            <FileText className="h-3 w-3" />
-                            <span className="truncate max-w-24">{doc.fileName}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* URLs */}
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      <Link className="h-4 w-4 text-purple-600" />
-                      Siti Web
-                    </div>
-                    <div className="space-y-2">
-                      {urlInputs.map((url, index) => (
-                        <div key={index} className="flex gap-2">
-                          <Input
-                            placeholder="https://esempio.com"
-                            value={url}
-                            onChange={(e) => {
-                              const newUrls = [...urlInputs];
-                              newUrls[index] = e.target.value;
-                              setUrlInputs(newUrls);
-                            }}
-                            className="text-sm h-9"
-                          />
-                          {urlInputs.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setUrlInputs(urlInputs.filter((_, i) => i !== index))}
-                              className="h-9 px-2"
-                            >
-                              <Trash2 className="h-4 w-4 text-gray-400" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setUrlInputs([...urlInputs, ""])}
-                        className="text-purple-600 hover:text-purple-700"
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Aggiungi URL
-                      </Button>
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
 
               {/* Number of Ideas + Generate Button */}
               <div className="flex flex-col sm:flex-row items-center gap-4">

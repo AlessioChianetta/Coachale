@@ -1777,19 +1777,97 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
       
       for (const doc of docs) {
         if (doc.extractedContent) {
-          combinedContent += `\n\nDOCUMENTO "${doc.fileName}":\n${doc.extractedContent.substring(0, 5000)}`;
+          combinedContent += `\n\nDOCUMENTO "${doc.fileName}":\n${doc.extractedContent}`;
         }
       }
     }
     
     if (urls && urls.length > 0) {
-      combinedContent += `\n\nURL DA ANALIZZARE: ${urls.filter((u: string) => u).join(', ')}`;
+      const validUrls = urls.filter((u: string) => u && u.trim());
+      if (validUrls.length > 0) {
+        console.log(`🌐 [AI-IDEAS] Scraping ${validUrls.length} URLs...`);
+        const { scrapeGoogleDoc, isGoogleDocsUrl } = require('../web-scraper');
+        const cheerio = require('cheerio');
+        
+        // SSRF Protection: Validate URLs before fetching
+        const isUrlSafe = (urlString: string): boolean => {
+          try {
+            const parsed = new URL(urlString);
+            // Only allow HTTP/HTTPS
+            if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+            const hostname = parsed.hostname.toLowerCase();
+            // Block localhost and private IPs
+            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return false;
+            if (/^10\.\d+\.\d+\.\d+$/.test(hostname)) return false;
+            if (/^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(hostname)) return false;
+            if (/^192\.168\.\d+\.\d+$/.test(hostname)) return false;
+            if (/^169\.254\.\d+\.\d+$/.test(hostname)) return false;
+            if (/^0\.0\.0\.0$/.test(hostname)) return false;
+            // Block internal/cloud metadata endpoints
+            if (hostname.endsWith('.internal') || hostname.endsWith('.local')) return false;
+            if (hostname === 'metadata.google.internal' || hostname === '169.254.169.254') return false;
+            return true;
+          } catch { return false; }
+        };
+        
+        for (const url of validUrls) {
+          try {
+            if (!isUrlSafe(url)) {
+              console.warn(`   ⚠️ URL blocked (security): ${url}`);
+              combinedContent += `\n\nURL "${url}": [URL non consentito per sicurezza]`;
+              continue;
+            }
+            if (isGoogleDocsUrl(url)) {
+              const scraped = await scrapeGoogleDoc(url, 100000);
+              if (scraped.success && scraped.content) {
+                combinedContent += `\n\nCONTENUTO URL "${url}":\n${scraped.content}`;
+                console.log(`   ✅ Google Doc scraped: ${scraped.content.length} chars`);
+              } else {
+                combinedContent += `\n\nURL "${url}": [Errore scraping: ${scraped.error}]`;
+              }
+            } else {
+              const response = await fetch(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIAssistant/1.0)' },
+                signal: AbortSignal.timeout(10000),
+                redirect: 'manual' // Prevent open redirects
+              });
+              // Only follow safe redirects (same origin or known public sites)
+              if (response.status >= 300 && response.status < 400) {
+                const location = response.headers.get('location');
+                if (location && !isUrlSafe(location)) {
+                  combinedContent += `\n\nURL "${url}": [Redirect bloccato per sicurezza]`;
+                  continue;
+                }
+              }
+              if (response.ok) {
+                const html = await response.text();
+                const $ = cheerio.load(html);
+                $('script, style, nav, footer, header, aside, .sidebar, .menu, .navigation, .advertisement, .ad').remove();
+                const title = $('title').text().trim() || '';
+                const mainContent = $('main, article, .content, .post, .entry, body').first();
+                let text = mainContent.text()
+                  .replace(/\s+/g, ' ')
+                  .replace(/\n{3,}/g, '\n\n')
+                  .trim();
+                if (text.length > 50000) text = text.substring(0, 50000) + '... [troncato]';
+                combinedContent += `\n\nCONTENUTO URL "${url}"${title ? ` (${title})` : ''}:\n${text}`;
+                console.log(`   ✅ Web page scraped: ${text.length} chars`);
+              } else {
+                combinedContent += `\n\nURL "${url}": [Errore HTTP ${response.status}]`;
+              }
+            }
+          } catch (error: any) {
+            console.warn(`   ⚠️ Scraping failed for ${url}: ${error.message}`);
+            combinedContent += `\n\nURL "${url}": [Errore: ${error.message}]`;
+          }
+        }
+      }
     }
     
     if (uploadedFilesText && uploadedFilesText.length > 0) {
       for (const fileData of uploadedFilesText) {
         if (fileData.text) {
-          combinedContent += `\n\nFILE CARICATO "${fileData.fileName}":\n${fileData.text.substring(0, 5000)}`;
+          combinedContent += `\n\nFILE CARICATO "${fileData.fileName}":\n${fileData.text}`;
         }
       }
     }
