@@ -5912,7 +5912,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           </h3>
                           <p className={`text-sm mt-1 ${memoryGenerationProgress.isRunning ? 'text-purple-700' : 'text-blue-700'}`}>
                             {memoryGenerationProgress.isRunning 
-                              ? `Elaborazione ${memoryGenerationProgress.currentIndex}/${memoryGenerationProgress.totalUsers} utenti`
+                              ? (memoryGenerationProgress.phase === 'gold' 
+                                  ? `Elaborazione Dipendenti Gold ${memoryGenerationProgress.currentGoldIndex}/${memoryGenerationProgress.totalGoldUsers}`
+                                  : `Elaborazione Utenti ${memoryGenerationProgress.currentIndex}/${memoryGenerationProgress.totalUsers}`)
                               : 'La memoria AI viene generata automaticamente ogni giorno all\'ora impostata.'}
                           </p>
                         </div>
