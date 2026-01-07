@@ -75,7 +75,7 @@ export function MessageList({ messages, isTyping, onActionClick }: MessageListPr
     <div 
       ref={containerRef}
       onScroll={handleScroll}
-      className="h-full overflow-y-auto px-4 sm:px-6 py-4 sm:py-6"
+      className="h-full min-h-0 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6"
     >
       <div className="space-y-4 sm:space-y-5 max-w-3xl mx-auto">
         {messages.map((message, index) => (

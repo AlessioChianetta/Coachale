@@ -691,7 +691,7 @@ export function ChatPanel({
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-950">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-gray-50 dark:bg-gray-950">
           {activeTab === "chat" ? (
             <>
               {messages.length === 0 ? (
@@ -734,7 +734,7 @@ export function ChatPanel({
                   </div>
                 </ScrollArea>
               ) : (
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-hidden min-h-0">
                   <MessageList messages={messages} isTyping={isTyping} />
                 </div>
               )}
