@@ -1125,22 +1125,22 @@ ${conversationText}`,
     agentAccessEnabled: boolean;
   }>> {
     try {
-      // Get all Gold subscriptions for this consultant with status = 'active'
-      const goldSubscriptions = await db
+      // Gold users are clients of the consultant (from users table) - same as agent-users-router
+      const goldUsers = await db
         .select({
-          id: clientLevelSubscriptions.id,
-          email: clientLevelSubscriptions.clientEmail,
-          firstName: clientLevelSubscriptions.clientName,
-          level: clientLevelSubscriptions.level,
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
         })
-        .from(clientLevelSubscriptions)
+        .from(users)
         .where(and(
-          eq(clientLevelSubscriptions.consultantId, consultantId),
-          eq(clientLevelSubscriptions.level, "3"), // Gold only
-          eq(clientLevelSubscriptions.status, "active")
+          eq(users.consultantId, consultantId),
+          eq(users.role, "client"),
+          eq(users.isActive, true)
         ));
       
-      // Get agent access status for each subscription
+      // Get agent access status for each user
       const accessRecords = await db
         .select({
           bronzeUserId: bronzeUserAgentAccess.bronzeUserId,
@@ -1149,7 +1149,7 @@ ${conversationText}`,
         .from(bronzeUserAgentAccess)
         .where(eq(bronzeUserAgentAccess.userType, "gold"));
 
-      // Build access map: subscriptionId -> isEnabled (default true if no record)
+      // Build access map: userId -> isEnabled (default true if no record)
       const accessMap = new Map(accessRecords.map(r => [r.bronzeUserId, r.isEnabled]));
 
       const auditResults: Array<{
@@ -1164,24 +1164,25 @@ ${conversationText}`,
         agentAccessEnabled: boolean;
       }> = [];
 
-      for (const sub of goldSubscriptions) {
-        // Check if this subscription has agent access enabled (default true if no record)
-        const agentAccessEnabled = accessMap.get(sub.id) ?? true;
+      for (const user of goldUsers) {
+        // Check if this user has agent access enabled (default true if no record)
+        const agentAccessEnabled = accessMap.get(user.id) ?? true;
 
-        // Gold managers use whatsappAgentConsultantConversations with externalVisitorId pattern
-        const visitorPattern = `manager_${sub.id}_%`;
+        // Gold users use whatsappAgentConsultantConversations with externalVisitorId pattern
+        // Pattern: manager_{userId}_% (using user.id from users table)
+        const visitorPattern = `manager_${user.id}_%`;
         
-        // Get conversations for this subscription from the correct table
-        const subscriptionConversations = await db
+        // Get conversations for this user from the correct table
+        const userConversations = await db
           .select({ id: whatsappAgentConsultantConversations.id })
           .from(whatsappAgentConsultantConversations)
           .where(like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern));
 
-        if (subscriptionConversations.length === 0) {
+        if (userConversations.length === 0) {
           auditResults.push({
-            subscriptionId: sub.id,
-            email: sub.email,
-            firstName: sub.firstName,
+            subscriptionId: user.id, // Using user.id as subscriptionId for consistency
+            email: user.email,
+            firstName: user.firstName,
             tier: 'gold',
             totalDays: 0,
             existingSummaries: 0,
@@ -1192,7 +1193,7 @@ ${conversationText}`,
           continue;
         }
 
-        const convIds = subscriptionConversations.map(c => c.id);
+        const convIds = userConversations.map(c => c.id);
 
         // Count days with >= 2 messages from the correct messages table
         const daysWithMessages = await db
@@ -1207,11 +1208,11 @@ ${conversationText}`,
         const qualifyingDays = daysWithMessages.filter(d => d.msgCount >= 2);
         const totalDays = qualifyingDays.length;
 
-        // Count existing summaries
+        // Count existing summaries (using user.id as subscriptionId)
         const existingSummariesResult = await db
           .select({ count: sql<number>`count(*)::int` })
           .from(managerDailySummaries)
-          .where(eq(managerDailySummaries.subscriptionId, sub.id));
+          .where(eq(managerDailySummaries.subscriptionId, user.id));
 
         const existingSummaries = existingSummariesResult[0]?.count || 0;
         const missingDays = Math.max(0, totalDays - existingSummaries);
@@ -1224,9 +1225,9 @@ ${conversationText}`,
         }
 
         auditResults.push({
-          subscriptionId: sub.id,
-          email: sub.email,
-          firstName: sub.firstName,
+          subscriptionId: user.id,
+          email: user.email,
+          firstName: user.firstName,
           tier: 'gold',
           totalDays,
           existingSummaries,
