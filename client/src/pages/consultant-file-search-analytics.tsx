@@ -51,7 +51,8 @@ import {
   CheckSquare,
   ListTodo,
   BookMarked,
-  Eye
+  Eye,
+  Crown
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -5961,69 +5962,149 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
                     {(memoryGenerationProgress.isRunning || memoryGenerationProgress.finalResult) && (
                       <div className="mt-4 pt-4 border-t border-purple-200 space-y-4">
-                        {memoryGenerationProgress.totalUsers > 0 && (
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-purple-600">Progresso</span>
-                              <span className="font-medium text-purple-700">
-                                {memoryGenerationProgress.currentIndex} / {memoryGenerationProgress.totalUsers} utenti
-                              </span>
-                            </div>
-                            <Progress 
-                              value={(memoryGenerationProgress.currentIndex / memoryGenerationProgress.totalUsers) * 100} 
-                              className="h-2 bg-purple-100"
-                            />
+                        {/* SECTION 1: Users Progress */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-purple-600" />
+                            <span className="font-medium text-purple-700">Utenti</span>
                           </div>
-                        )}
-
-                        {memoryGenerationProgress.isRunning && memoryGenerationProgress.currentUser && (
-                          <div className="bg-white/70 p-3 rounded-lg border border-purple-200">
-                            <div className="flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-                              <span className="text-sm text-purple-700">
-                                <span className="font-medium">{memoryGenerationProgress.currentUser}</span>
-                                <Badge variant="secondary" className="ml-2 text-xs capitalize">
-                                  {memoryGenerationProgress.currentRole}
-                                </Badge>
-                              </span>
+                          {memoryGenerationProgress.totalUsers > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-purple-600">Progresso</span>
+                                <span className="font-medium text-purple-700">
+                                  {memoryGenerationProgress.currentIndex} / {memoryGenerationProgress.totalUsers}
+                                </span>
+                              </div>
+                              <Progress 
+                                value={(memoryGenerationProgress.currentIndex / memoryGenerationProgress.totalUsers) * 100} 
+                                className="h-2 bg-purple-100"
+                              />
                             </div>
-                            {memoryGenerationProgress.currentDay !== undefined && memoryGenerationProgress.totalDays !== undefined && (
-                              <div className="mt-2 flex items-center gap-2 text-xs text-purple-600">
-                                <Clock className="h-3 w-3" />
-                                Giorno {memoryGenerationProgress.currentDay} di {memoryGenerationProgress.totalDays}
-                                {memoryGenerationProgress.currentDate && (
-                                  <span className="text-purple-500">({memoryGenerationProgress.currentDate})</span>
+                          )}
+
+                          {memoryGenerationProgress.isRunning && memoryGenerationProgress.phase === 'users' && memoryGenerationProgress.currentUser && (
+                            <div className="bg-white/70 p-3 rounded-lg border border-purple-200">
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                                <span className="text-sm text-purple-700">
+                                  <span className="font-medium">{memoryGenerationProgress.currentUser}</span>
+                                  <Badge variant="secondary" className="ml-2 text-xs capitalize">
+                                    {memoryGenerationProgress.currentRole}
+                                  </Badge>
+                                </span>
+                              </div>
+                              {memoryGenerationProgress.currentDay !== undefined && memoryGenerationProgress.totalDays !== undefined && (
+                                <div className="mt-2 flex items-center gap-2 text-xs text-purple-600">
+                                  <Clock className="h-3 w-3" />
+                                  Giorno {memoryGenerationProgress.currentDay} di {memoryGenerationProgress.totalDays}
+                                  {memoryGenerationProgress.currentDate && (
+                                    <span className="text-purple-500">({memoryGenerationProgress.currentDate})</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {memoryGenerationProgress.results.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                              {memoryGenerationProgress.results.map((result) => (
+                                <div 
+                                  key={result.userId} 
+                                  className={`flex items-center gap-1.5 p-2 rounded-md text-xs ${
+                                    result.status === 'processing' ? 'bg-purple-100 border border-purple-200' :
+                                    result.status === 'generated' ? 'bg-emerald-100 border border-emerald-200' :
+                                    result.status === 'skipped' ? 'bg-gray-100 border border-gray-200' :
+                                    'bg-red-100 border border-red-200'
+                                  }`}
+                                >
+                                  {result.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin text-purple-500 flex-shrink-0" />}
+                                  {result.status === 'generated' && <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />}
+                                  {result.status === 'skipped' && <ChevronRight className="h-3 w-3 text-gray-400 flex-shrink-0" />}
+                                  {result.status === 'error' && <XCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                                  <span className="truncate" title={result.userName}>{result.userName.split(' ')[0]}</span>
+                                  {result.status === 'generated' && result.generated !== undefined && (
+                                    <span className="text-emerald-600 font-medium">+{result.generated}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* SECTION 2: Gold Users Progress */}
+                        {(memoryGenerationProgress.totalGoldUsers > 0 || memoryGenerationProgress.goldResults.length > 0) && (
+                          <div className="space-y-3 pt-3 border-t border-amber-200">
+                            <div className="flex items-center gap-2">
+                              <Crown className="h-4 w-4 text-amber-600" />
+                              <span className="font-medium text-amber-700">Dipendenti Gold</span>
+                            </div>
+                            {memoryGenerationProgress.totalGoldUsers > 0 && (
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-amber-600">Progresso</span>
+                                  <span className="font-medium text-amber-700">
+                                    {memoryGenerationProgress.currentGoldIndex} / {memoryGenerationProgress.totalGoldUsers}
+                                  </span>
+                                </div>
+                                <Progress 
+                                  value={(memoryGenerationProgress.currentGoldIndex / memoryGenerationProgress.totalGoldUsers) * 100} 
+                                  className="h-2 bg-amber-100"
+                                />
+                              </div>
+                            )}
+
+                            {memoryGenerationProgress.isRunning && memoryGenerationProgress.phase === 'gold' && memoryGenerationProgress.currentUser && (
+                              <div className="bg-white/70 p-3 rounded-lg border border-amber-200">
+                                <div className="flex items-center gap-2">
+                                  <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
+                                  <span className="text-sm text-amber-700">
+                                    <span className="font-medium">{memoryGenerationProgress.currentUser}</span>
+                                    <Badge className="ml-2 text-xs bg-amber-100 text-amber-700 border-amber-200">
+                                      Gold
+                                    </Badge>
+                                  </span>
+                                </div>
+                                {memoryGenerationProgress.currentDay !== undefined && memoryGenerationProgress.totalDays !== undefined && (
+                                  <div className="mt-2 flex items-center gap-2 text-xs text-amber-600">
+                                    <Clock className="h-3 w-3" />
+                                    Giorno {memoryGenerationProgress.currentDay} di {memoryGenerationProgress.totalDays}
+                                    {memoryGenerationProgress.currentDate && (
+                                      <span className="text-amber-500">({memoryGenerationProgress.currentDate})</span>
+                                    )}
+                                  </div>
                                 )}
+                              </div>
+                            )}
+
+                            {memoryGenerationProgress.goldResults.length > 0 && (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                                {memoryGenerationProgress.goldResults.map((result) => (
+                                  <div 
+                                    key={result.userId} 
+                                    className={`flex items-center gap-1.5 p-2 rounded-md text-xs ${
+                                      result.status === 'processing' ? 'bg-amber-100 border border-amber-200' :
+                                      result.status === 'generated' ? 'bg-emerald-100 border border-emerald-200' :
+                                      result.status === 'skipped' ? 'bg-gray-100 border border-gray-200' :
+                                      'bg-red-100 border border-red-200'
+                                    }`}
+                                  >
+                                    {result.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin text-amber-500 flex-shrink-0" />}
+                                    {result.status === 'generated' && <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />}
+                                    {result.status === 'skipped' && <ChevronRight className="h-3 w-3 text-gray-400 flex-shrink-0" />}
+                                    {result.status === 'error' && <XCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                                    <span className="truncate" title={result.userName}>{result.userName.split(' ')[0]}</span>
+                                    {result.status === 'generated' && result.generated !== undefined && (
+                                      <span className="text-emerald-600 font-medium">+{result.generated}</span>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
                         )}
 
-                        {memoryGenerationProgress.results.length > 0 && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                            {memoryGenerationProgress.results.map((result) => (
-                              <div 
-                                key={result.userId} 
-                                className={`flex items-center gap-1.5 p-2 rounded-md text-xs ${
-                                  result.status === 'processing' ? 'bg-purple-100 border border-purple-200' :
-                                  result.status === 'generated' ? 'bg-emerald-100 border border-emerald-200' :
-                                  result.status === 'skipped' ? 'bg-gray-100 border border-gray-200' :
-                                  'bg-red-100 border border-red-200'
-                                }`}
-                              >
-                                {result.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin text-purple-500 flex-shrink-0" />}
-                                {result.status === 'generated' && <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />}
-                                {result.status === 'skipped' && <ChevronRight className="h-3 w-3 text-gray-400 flex-shrink-0" />}
-                                {result.status === 'error' && <XCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
-                                <span className="truncate" title={result.userName}>{result.userName.split(' ')[0]}</span>
-                                {result.status === 'generated' && result.generated !== undefined && (
-                                  <span className="text-emerald-600 font-medium">+{result.generated}</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
+                        {/* Final Summary with separate counters */}
                         {memoryGenerationProgress.finalResult && (
                           <div className="bg-gradient-to-r from-emerald-50 to-purple-50 p-4 rounded-lg border border-emerald-200">
                             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -6031,21 +6112,44 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 <Sparkles className="h-5 w-5 text-emerald-600" />
                                 <span className="font-semibold text-emerald-700">Completato!</span>
                               </div>
-                              <div className="flex gap-6">
-                                <div className="text-center">
-                                  <div className="text-xl font-bold text-emerald-600">
-                                    {memoryGenerationProgress.finalResult.generated}
+                              <div className="flex gap-4 flex-wrap">
+                                {/* Users stats */}
+                                <div className="flex items-center gap-3 bg-purple-100/50 px-3 py-1 rounded-lg">
+                                  <Users className="h-4 w-4 text-purple-600" />
+                                  <div className="text-center">
+                                    <div className="text-lg font-bold text-purple-600">
+                                      {memoryGenerationProgress.finalResult.generated}
+                                    </div>
+                                    <div className="text-xs text-purple-600">riassunti</div>
                                   </div>
-                                  <div className="text-xs text-gray-600">Riassunti</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-xl font-bold text-purple-600">
-                                    {memoryGenerationProgress.finalResult.usersWithNewSummaries}
+                                  <div className="text-center">
+                                    <div className="text-lg font-bold text-purple-600">
+                                      {memoryGenerationProgress.finalResult.usersWithNewSummaries}
+                                    </div>
+                                    <div className="text-xs text-purple-600">utenti</div>
                                   </div>
-                                  <div className="text-xs text-gray-600">Utenti</div>
                                 </div>
+                                {/* Gold stats */}
+                                {(memoryGenerationProgress.finalResult.goldGenerated > 0 || memoryGenerationProgress.finalResult.goldUsersProcessed > 0) && (
+                                  <div className="flex items-center gap-3 bg-amber-100/50 px-3 py-1 rounded-lg">
+                                    <Crown className="h-4 w-4 text-amber-600" />
+                                    <div className="text-center">
+                                      <div className="text-lg font-bold text-amber-600">
+                                        {memoryGenerationProgress.finalResult.goldGenerated}
+                                      </div>
+                                      <div className="text-xs text-amber-600">riassunti</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-lg font-bold text-amber-600">
+                                        {memoryGenerationProgress.finalResult.goldUsersWithNewSummaries}
+                                      </div>
+                                      <div className="text-xs text-amber-600">gold</div>
+                                    </div>
+                                  </div>
+                                )}
+                                {/* Duration */}
                                 <div className="text-center">
-                                  <div className="text-xl font-bold text-blue-600">
+                                  <div className="text-lg font-bold text-blue-600">
                                     {(memoryGenerationProgress.finalResult.durationMs / 1000).toFixed(1)}s
                                   </div>
                                   <div className="text-xs text-gray-600">Tempo</div>
@@ -6054,7 +6158,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setMemoryGenerationProgress(prev => ({ ...prev, finalResult: undefined, results: [] }))}
+                                onClick={() => setMemoryGenerationProgress(prev => ({ ...prev, finalResult: undefined, results: [], goldResults: [] }))}
                                 className="text-gray-500 hover:text-gray-700"
                               >
                                 <XCircle className="h-4 w-4" />
