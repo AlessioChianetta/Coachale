@@ -994,21 +994,36 @@ ${share.agentInstructions}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
         }
 
-        // GOLD EXCLUSIVE: AI Memory injection for manager daily summaries
+        // GOLD EXCLUSIVE: AI Memory injection for manager
         // Only Gold tier (level 3) gets access to conversation memory
         if (req.silverGoldUser?.level === "3" && req.silverGoldUser?.subscriptionId) {
           try {
             console.log(`[PUBLIC AGENT] Gold manager detected - injecting AI memory for subscription ${req.silverGoldUser.subscriptionId.slice(0, 8)}...`);
+            
+            // 1. Inject recent conversations (last 5 detailed)
+            const historyContext = await memoryContextBuilder.buildManagerHistoryContext(
+              req.silverGoldUser.subscriptionId,
+              conversationId // exclude current conversation
+            );
+            
+            if (historyContext.hasHistory) {
+              systemPrompt += `\n\n${historyContext.contextText}`;
+              console.log(`[PUBLIC AGENT] Gold history injected: ${historyContext.conversationCount} recent conversations`);
+            }
+            
+            // 2. Inject daily summaries (last 7 days)
             const memoryContext = await memoryContextBuilder.buildManagerDailySummaryContext(
               req.silverGoldUser.subscriptionId,
-              7 // Last 7 days of summaries
+              7
             );
             
             if (memoryContext.hasHistory) {
               systemPrompt += `\n\n${memoryContext.contextText}`;
               console.log(`[PUBLIC AGENT] Gold memory injected: ${memoryContext.conversationCount} conversations from daily summaries`);
-            } else {
-              console.log(`[PUBLIC AGENT] Gold manager has no memory summaries yet`);
+            }
+            
+            if (!historyContext.hasHistory && !memoryContext.hasHistory) {
+              console.log(`[PUBLIC AGENT] Gold manager has no memory yet`);
             }
           } catch (memoryError: any) {
             console.warn(`[PUBLIC AGENT] Failed to inject Gold memory: ${memoryError.message}`);

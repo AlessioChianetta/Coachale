@@ -806,6 +806,74 @@ ${conversationText}`,
     }));
   }
 
+  async getRecentManagerConversations(
+    subscriptionId: string,
+    excludeConversationId?: string
+  ): Promise<ConversationSummary[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - this.config.daysToLookBack);
+
+    const visitorPattern = `manager_${subscriptionId}_%`;
+
+    const conditions: any[] = [
+      like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern),
+      gte(whatsappAgentConsultantConversations.updatedAt, cutoffDate),
+    ];
+
+    if (excludeConversationId) {
+      conditions.push(sql`${whatsappAgentConsultantConversations.id}::text != ${excludeConversationId}`);
+    }
+
+    const conversations = await db.select({
+      id: whatsappAgentConsultantConversations.id,
+      title: whatsappAgentConsultantConversations.title,
+      updatedAt: whatsappAgentConsultantConversations.updatedAt,
+    })
+    .from(whatsappAgentConsultantConversations)
+    .where(and(...conditions))
+    .orderBy(desc(whatsappAgentConsultantConversations.updatedAt))
+    .limit(this.config.maxConversations);
+
+    const conversationsWithCounts = await Promise.all(
+      conversations.map(async (conv) => {
+        const messageCountResult = await db.select({
+          count: sql<number>`count(*)::int`,
+        })
+        .from(whatsappAgentConsultantMessages)
+        .where(eq(whatsappAgentConsultantMessages.conversationId, conv.id));
+
+        return {
+          conversationId: conv.id,
+          title: conv.title,
+          summary: null,
+          lastMessageAt: conv.updatedAt,
+          messageCount: messageCountResult[0]?.count || 0,
+          mode: "manager",
+          agentId: null,
+        };
+      })
+    );
+
+    return conversationsWithCounts;
+  }
+
+  async getManagerConversationMessages(
+    conversationId: string,
+    limit: number = this.config.maxMessagesPerConversation
+  ): Promise<{ role: string; content: string; createdAt: Date | null }[]> {
+    const messages = await db.select({
+      role: whatsappAgentConsultantMessages.role,
+      content: whatsappAgentConsultantMessages.content,
+      createdAt: whatsappAgentConsultantMessages.createdAt,
+    })
+    .from(whatsappAgentConsultantMessages)
+    .where(eq(whatsappAgentConsultantMessages.conversationId, conversationId))
+    .orderBy(desc(whatsappAgentConsultantMessages.createdAt))
+    .limit(limit);
+
+    return messages.reverse();
+  }
+
   async generateManagerDailySummary(
     subscriptionId: string,
     consultantId: string,

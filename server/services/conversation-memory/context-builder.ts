@@ -227,4 +227,68 @@ export class ConversationContextBuilder {
       conversationCount: dailySummaries.reduce((sum, s) => sum + s.conversationCount, 0),
     };
   }
+
+  async buildManagerHistoryContext(
+    subscriptionId: string,
+    currentConversationId?: string
+  ): Promise<MemoryContext> {
+    const conversations = await this.memoryService.getRecentManagerConversations(
+      subscriptionId,
+      currentConversationId
+    );
+
+    if (conversations.length === 0) {
+      return {
+        hasHistory: false,
+        contextText: "",
+        conversationCount: 0,
+      };
+    }
+
+    const contextParts: string[] = [
+      "=== STORICO CONVERSAZIONI RECENTI ===",
+      `(${conversations.length} conversazioni recenti)`,
+      "",
+    ];
+
+    for (const conv of conversations) {
+      const timeAgo = conv.lastMessageAt
+        ? formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: true, locale: it })
+        : "data sconosciuta";
+
+      const title = conv.title || "Conversazione senza titolo";
+
+      contextParts.push(`--- "${title}" (${timeAgo}) ---`);
+
+      const messages = await this.memoryService.getManagerConversationMessages(
+        conv.conversationId,
+        5
+      );
+
+      for (const msg of messages) {
+        const roleLabel = msg.role === "user" ? "Utente" : "Assistente";
+        const content = msg.content || "";
+        const truncatedContent = content.length > 200
+          ? content.substring(0, 200) + "..."
+          : content;
+        contextParts.push(`${roleLabel}: ${truncatedContent}`);
+      }
+
+      contextParts.push("");
+    }
+
+    contextParts.push("=== FINE STORICO ===");
+    contextParts.push("");
+
+    const contextText = contextParts.join("\n");
+    const estimatedTokens = Math.ceil(contextText.length / 4);
+    
+    console.log(`🧠 [ManagerMemory Context] Recent conversations: ${conversations.length}, ${contextText.length} chars, ~${estimatedTokens} tokens`);
+
+    return {
+      hasHistory: true,
+      contextText,
+      conversationCount: conversations.length,
+    };
+  }
 }
