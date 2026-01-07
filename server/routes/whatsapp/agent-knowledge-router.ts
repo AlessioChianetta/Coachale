@@ -391,6 +391,152 @@ router.put(
 );
 
 /**
+ * POST /api/whatsapp/agent-config/:agentConfigId/knowledge/import
+ * Import documents from consultant's Knowledge Base into this agent
+ */
+router.post(
+  "/whatsapp/agent-config/:agentConfigId/knowledge/import",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { agentConfigId } = req.params;
+      const consultantId = req.user!.id;
+      const { documentIds } = req.body;
+
+      if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "documentIds array is required",
+        });
+      }
+
+      // Verify agent config belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentConfigId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Agent configuration not found",
+        });
+      }
+
+      // Fetch the consultant's KB documents to import
+      const kbDocuments = await db
+        .select()
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.consultantId, consultantId),
+            inArray(consultantKnowledgeDocuments.id, documentIds)
+          )
+        );
+
+      if (kbDocuments.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "No matching documents found in your Knowledge Base",
+        });
+      }
+
+      // Get existing knowledge items for this agent to check for duplicates and get max order
+      const existingItems = await db
+        .select({ contentHash: whatsappAgentKnowledgeItems.contentHash })
+        .from(whatsappAgentKnowledgeItems)
+        .where(eq(whatsappAgentKnowledgeItems.agentConfigId, agentConfigId));
+
+      const existingHashes = new Set(existingItems.map(item => item.contentHash).filter(Boolean));
+
+      // Get max order
+      const [maxOrderResult] = await db
+        .select({ maxOrder: sql<number>`COALESCE(MAX(${whatsappAgentKnowledgeItems.order}), 0)` })
+        .from(whatsappAgentKnowledgeItems)
+        .where(eq(whatsappAgentKnowledgeItems.agentConfigId, agentConfigId));
+
+      let nextOrder = (maxOrderResult?.maxOrder || 0) + 1;
+
+      // Import each document
+      let importedCount = 0;
+      let skippedCount = 0;
+      const importedItems: any[] = [];
+
+      for (const doc of kbDocuments) {
+        // Check for duplicate content using hash
+        const contentHash = doc.extractedText 
+          ? crypto.createHash('sha256').update(doc.extractedText).digest('hex')
+          : null;
+
+        if (contentHash && existingHashes.has(contentHash)) {
+          console.log(`⏭️ [KB IMPORT] Skipping duplicate: "${doc.fileName}"`);
+          skippedCount++;
+          continue;
+        }
+
+        // Map KB document type to agent knowledge type
+        let itemType: 'text' | 'pdf' | 'docx' | 'txt' = 'text';
+        if (doc.fileType === 'application/pdf' || doc.fileType === 'pdf') {
+          itemType = 'pdf';
+        } else if (doc.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || doc.fileType === 'docx') {
+          itemType = 'docx';
+        } else if (doc.fileType === 'text/plain' || doc.fileType === 'txt') {
+          itemType = 'txt';
+        }
+
+        // Create the knowledge item
+        const itemId = crypto.randomUUID();
+        const [newItem] = await db
+          .insert(whatsappAgentKnowledgeItems)
+          .values({
+            id: itemId,
+            agentConfigId,
+            title: doc.fileName?.replace(/\.[^/.]+$/, '') || `Documento ${importedCount + 1}`,
+            type: itemType,
+            content: doc.extractedText || '',
+            fileName: doc.fileName,
+            fileSize: doc.fileSize,
+            contentHash,
+            order: nextOrder++,
+          })
+          .returning();
+
+        if (contentHash) {
+          existingHashes.add(contentHash);
+        }
+
+        importedItems.push(newItem);
+        importedCount++;
+        console.log(`✅ [KB IMPORT] Imported: "${doc.fileName}" -> agent ${agentConfigId}`);
+      }
+
+      console.log(`📥 [KB IMPORT] Completed: ${importedCount} imported, ${skippedCount} skipped (duplicates)`);
+
+      res.status(201).json({
+        success: true,
+        importedCount,
+        skippedCount,
+        data: importedItems,
+        message: `Imported ${importedCount} document(s)${skippedCount > 0 ? `, skipped ${skippedCount} duplicate(s)` : ''}`,
+      });
+    } catch (error: any) {
+      console.error("❌ [KB IMPORT] Error importing documents:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to import documents",
+      });
+    }
+  }
+);
+
+/**
  * DELETE /api/whatsapp/agent-config/:agentConfigId/knowledge/:itemId
  * Delete a knowledge item (and associated file if exists)
  */

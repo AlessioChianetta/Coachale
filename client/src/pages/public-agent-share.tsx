@@ -13,6 +13,7 @@ import { WhatsAppMessageBubble } from "@/components/whatsapp/WhatsAppMessageBubb
 import { PublicAgentMessage } from "@/components/whatsapp/PublicAgentMessage";
 import { TypingIndicator } from "@/components/whatsapp/TypingIndicator";
 import { PromptBreakdownViewer, type PromptBreakdownData, type CitationData } from "@/components/whatsapp/PromptBreakdownViewer";
+import { ThinkingBubble } from "@/components/ai-assistant/ThinkingBubble";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, Send, Loader2, Lock, AlertCircle, MessageCircle, Info, Building2, User, Mic, Camera, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -73,6 +74,10 @@ export default function PublicAgentShare() {
   const [streamingMessage, setStreamingMessage] = useState<StreamingMessage | null>(null);
   const [optimisticMessage, setOptimisticMessage] = useState<Message | null>(null);
   const [showInfoSheet, setShowInfoSheet] = useState(false);
+  
+  // Thinking state for AI reasoning visualization
+  const [streamingThinking, setStreamingThinking] = useState<string>("");
+  const [isThinking, setIsThinking] = useState(false);
   
   // Prompt breakdown state for AI transparency
   const [promptBreakdown, setPromptBreakdown] = useState<PromptBreakdownData | null>(null);
@@ -359,6 +364,8 @@ export default function PublicAgentShare() {
       }
       
       setIsStreaming(true);
+      setIsThinking(false);
+      setStreamingThinking("");
       const streamId = `stream_${Date.now()}`;
       setStreamingMessage({
         id: streamId,
@@ -389,11 +396,31 @@ export default function PublicAgentShare() {
                 // Store prompt breakdown metadata for AI transparency
                 setPromptBreakdown(data.data);
                 setCitations([]); // Reset citations for new message
+              } else if (data.type === 'thinking') {
+                // AI reasoning/thinking content - display in ThinkingBubble
+                setIsThinking(true);
+                const thinkingContent = typeof data.content === 'string' ? data.content : '';
+                setStreamingThinking(prev => prev + thinkingContent);
+                
+                // Auto-scroll during thinking
+                if (scrollAreaRef.current) {
+                  const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+                  if (scrollContainer) {
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                  }
+                }
               } else if (data.type === 'chunk') {
                 // NON rimuovere optimisticMessage qui - lascialo visibile finché il refetch non completa
                 // La rimozione avviene in onSuccess o quando il messaggio reale arriva
                 
-                accumulatedContent += data.content;
+                // When content starts, thinking is done
+                if (isThinking) {
+                  setIsThinking(false);
+                }
+                
+                // Ensure content is always a string
+                const chunkContent = typeof data.content === 'string' ? data.content : '';
+                accumulatedContent += chunkContent;
                 setStreamingMessage(prev => prev ? {
                   ...prev,
                   content: accumulatedContent,
@@ -413,6 +440,8 @@ export default function PublicAgentShare() {
                 // FIX FLASH: Non pulire streamingMessage subito
                 // Aspetta che il refetch completi prima di rimuovere lo streaming
                 setIsStreaming(false);
+                setIsThinking(false);
+                setStreamingThinking("");
                 
                 // Update Bronze usage info if present
                 if (data.dailyMessagesUsed !== undefined && data.dailyMessageLimit !== undefined) {
@@ -459,6 +488,8 @@ export default function PublicAgentShare() {
       setIsStreaming(false);
       setStreamingMessage(null);
       setOptimisticMessage(null);
+      setIsThinking(false);
+      setStreamingThinking("");
       
       toast({
         title: "❌ Errore",
@@ -605,6 +636,8 @@ export default function PublicAgentShare() {
       setUploadingAudioPreview(audioUrl);
       setIsUploadingAudio(true);
       setIsStreaming(true);
+      setIsThinking(false);
+      setStreamingThinking("");
       
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
@@ -1073,6 +1106,14 @@ export default function PublicAgentShare() {
                 breakdown={promptBreakdown} 
                 citations={citations}
                 className="max-w-md"
+              />
+            )}
+            
+            {/* Thinking Bubble - AI reasoning visualization */}
+            {isThinking && streamingThinking && (
+              <ThinkingBubble 
+                thinking={streamingThinking}
+                isThinking={true}
               />
             )}
             
