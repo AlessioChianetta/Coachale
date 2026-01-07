@@ -516,7 +516,7 @@ ${conversationText}`,
         .from(users)
         .where(or(
           eq(users.id, consultantId),
-          eq(users.managerId, consultantId)
+          eq(users.consultantId, consultantId)
         ));
 
       if (!allUsers || allUsers.length === 0) {
@@ -612,7 +612,7 @@ ${conversationText}`,
         .from(users)
         .where(or(
           eq(users.id, consultantId),
-          eq(users.managerId, consultantId)
+          eq(users.consultantId, consultantId)
         ));
 
       const userIds = allUsers.map(u => u.id).filter(id => id != null);
