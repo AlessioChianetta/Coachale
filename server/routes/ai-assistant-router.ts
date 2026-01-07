@@ -906,6 +906,17 @@ router.get("/memory/manager-audit", authenticateToken, requireRole("consultant")
   }
 });
 
+router.get("/memory/manager/:subscriptionId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const { subscriptionId } = req.params;
+    const summaries = await conversationMemoryService.getManagerDailySummaries(subscriptionId, 30);
+    res.json(summaries);
+  } catch (error: any) {
+    console.error("[AI Assistant] Error fetching manager summaries:", error);
+    res.status(500).json({ error: error.message || "Failed to fetch manager summaries" });
+  }
+});
+
 router.post("/memory/manager/:subscriptionId/generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const { subscriptionId } = req.params;

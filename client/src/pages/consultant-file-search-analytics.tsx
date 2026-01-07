@@ -928,6 +928,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [viewingMemoryUserId, setViewingMemoryUserId] = useState<string | null>(null);
   const viewingMemoryUser = memoryAudit?.find(u => u.userId === viewingMemoryUserId);
 
+  const [viewingManagerSubscriptionId, setViewingManagerSubscriptionId] = useState<string | null>(null);
+  const viewingManagerData = managerMemoryAudit?.find(m => m.subscriptionId === viewingManagerSubscriptionId);
+
   const { data: memorySettings } = useQuery<{ memoryGenerationHour: number }>({
     queryKey: ["/api/consultant/ai/memory-settings"],
     queryFn: async () => {
@@ -1119,6 +1122,25 @@ export default function ConsultantFileSearchAnalyticsPage() {
       return res.json();
     },
     enabled: !!viewingMemoryUserId,
+  });
+
+  const { data: managerSummaries, isLoading: managerSummariesLoading } = useQuery<Array<{
+    id: string;
+    summaryDate: string;
+    summary: string;
+    conversationCount: number;
+    messageCount: number;
+    topics: string[];
+  }>>({
+    queryKey: ["/api/consultant/ai/memory/manager", viewingManagerSubscriptionId],
+    queryFn: async () => {
+      const res = await fetch(`/api/consultant/ai/memory/manager/${viewingManagerSubscriptionId}`, {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch manager memory");
+      return res.json();
+    },
+    enabled: !!viewingManagerSubscriptionId,
   });
 
   const memoryTabLoading = memoryStatsLoading || memoryAuditLoading || memoryLogsLoading;
@@ -6190,23 +6212,35 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                   )}
                                 </td>
                                 <td className="p-3 text-center">
-                                  {manager.agentAccessEnabled && manager.missingDays > 0 && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => generateManagerMemoryMutation.mutate(manager.subscriptionId)}
-                                      disabled={generateManagerMemoryMutation.isPending}
-                                    >
-                                      {generateManagerMemoryMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <>
-                                          <RefreshCw className="h-4 w-4 mr-1" />
-                                          Genera Riassunti
-                                        </>
-                                      )}
-                                    </Button>
-                                  )}
+                                  <div className="flex items-center justify-center gap-2">
+                                    {manager.existingSummaries > 0 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setViewingManagerSubscriptionId(manager.subscriptionId)}
+                                      >
+                                        <Brain className="h-4 w-4 mr-1" />
+                                        Visualizza
+                                      </Button>
+                                    )}
+                                    {manager.agentAccessEnabled && manager.missingDays > 0 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => generateManagerMemoryMutation.mutate(manager.subscriptionId)}
+                                        disabled={generateManagerMemoryMutation.isPending}
+                                      >
+                                        {generateManagerMemoryMutation.isPending ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <>
+                                            <RefreshCw className="h-4 w-4 mr-1" />
+                                            Genera
+                                          </>
+                                        )}
+                                      </Button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -6247,6 +6281,67 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <div key={summary.id} className="border rounded-lg p-4 bg-gray-50">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="font-medium text-purple-700">
+                                  {format(new Date(summary.summaryDate), "EEEE d MMMM yyyy", { locale: it })}
+                                </span>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {summary.conversationCount} chat
+                                  </Badge>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {summary.messageCount} msg
+                                  </Badge>
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                {summary.summary}
+                              </p>
+                              {summary.topics && summary.topics.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {summary.topics.slice(0, 5).map((topic, i) => (
+                                    <Badge key={i} variant="outline" className="text-xs bg-white">
+                                      {topic}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                          <Brain className="h-12 w-12 text-gray-300 mb-2" />
+                          <p>Nessun riassunto disponibile</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            I riassunti vengono generati automaticamente dalle conversazioni
+                          </p>
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={!!viewingManagerSubscriptionId} onOpenChange={(open) => !open && setViewingManagerSubscriptionId(null)}>
+                  <DialogContent className="max-w-2xl max-h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-amber-600" />
+                        Memoria AI - {viewingManagerData?.firstName || viewingManagerData?.email}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Riassunti giornalieri delle conversazioni Gold (ultimi 30 giorni)
+                      </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="h-[400px] pr-4">
+                      {managerSummariesLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
+                        </div>
+                      ) : managerSummaries && managerSummaries.length > 0 ? (
+                        <div className="space-y-4">
+                          {managerSummaries.map((summary) => (
+                            <div key={summary.id} className="border rounded-lg p-4 bg-amber-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-amber-700">
                                   {format(new Date(summary.summaryDate), "EEEE d MMMM yyyy", { locale: it })}
                                 </span>
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
