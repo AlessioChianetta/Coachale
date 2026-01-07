@@ -1401,30 +1401,37 @@ ${conversationText}`,
         console.warn("⚠️ [ManagerMemory] getGoldUserAgentBreakdown called with empty userId");
         return [];
       }
+      
+      // Gold users have subscriptionId, not regular visitorPattern
+      // Check if conversations exist for this Gold user via their subscription
       const visitorPattern = `manager_${userId}_%`;
+      console.log(`🔍 [ManagerMemory] Looking for conversations with pattern: ${visitorPattern}`);
 
-      // Get all conversations for this Gold user with agent info
+      // Get all conversations for this Gold user with agent config info
       const conversations = await db
         .select({
           id: whatsappAgentConsultantConversations.id,
-          agentProfileId: whatsappAgentConsultantConversations.agentProfileId,
+          agentConfigId: whatsappAgentConsultantConversations.agentConfigId,
           updatedAt: whatsappAgentConsultantConversations.updatedAt,
         })
         .from(whatsappAgentConsultantConversations)
         .where(like(whatsappAgentConsultantConversations.externalVisitorId, visitorPattern));
 
-      if (conversations.length === 0) {
+      console.log(`🔍 [ManagerMemory] Found ${conversations.length} conversations for user ${userId.slice(0, 8)}...`);
+
+      if (!conversations || conversations.length === 0) {
         return [];
       }
 
-      // Group conversations by agent
+      // Group conversations by agent config
       const agentMap = new Map<string, {
         conversationIds: string[];
         lastMessageAt: Date | null;
       }>();
 
       for (const conv of conversations) {
-        const agentId = conv.agentProfileId || 'unknown';
+        if (!conv) continue;
+        const agentId = conv.agentConfigId || 'unknown';
         if (!agentMap.has(agentId)) {
           agentMap.set(agentId, { conversationIds: [], lastMessageAt: null });
         }
@@ -1435,22 +1442,34 @@ ${conversationText}`,
         }
       }
 
-      // Get agent names from whatsapp_agent_profiles
-      const { whatsappAgentProfiles } = await import('../../../shared/schema');
-      const agentIds = Array.from(agentMap.keys()).filter(id => id !== 'unknown');
+      // Get agent names from consultant_whatsapp_config
+      const agentIds: string[] = [];
+      for (const key of agentMap.keys()) {
+        if (key !== 'unknown') {
+          agentIds.push(key);
+        }
+      }
       
       let agentNames = new Map<string, string>();
       if (agentIds.length > 0) {
-        const agents = await db
-          .select({
-            id: whatsappAgentProfiles.id,
-            name: whatsappAgentProfiles.name,
-          })
-          .from(whatsappAgentProfiles)
-          .where(inArray(whatsappAgentProfiles.id, agentIds));
-        
-        if (agents && Array.isArray(agents)) {
-          agentNames = new Map(agents.map(a => [a.id, a.name || 'Agente senza nome']));
+        try {
+          const agents = await db
+            .select({
+              id: consultantWhatsappConfig.id,
+              agentName: consultantWhatsappConfig.agentName,
+            })
+            .from(consultantWhatsappConfig)
+            .where(inArray(consultantWhatsappConfig.id, agentIds));
+          
+          if (agents && Array.isArray(agents)) {
+            for (const a of agents) {
+              if (a && a.id) {
+                agentNames.set(a.id, a.agentName || 'Agente senza nome');
+              }
+            }
+          }
+        } catch (queryError: any) {
+          console.error("❌ [ManagerMemory] Error querying agent configs:", queryError.message);
         }
       }
 
@@ -1464,6 +1483,8 @@ ${conversationText}`,
       }> = [];
 
       for (const [agentId, data] of agentMap.entries()) {
+        if (!data || !data.conversationIds || data.conversationIds.length === 0) continue;
+        
         const msgCountResult = await db
           .select({ count: sql<number>`count(*)::int` })
           .from(whatsappAgentConsultantMessages)
@@ -1484,6 +1505,7 @@ ${conversationText}`,
       return results;
     } catch (error: any) {
       console.error("❌ [ManagerMemory] Error getting agent breakdown:", error.message);
+      console.error("❌ [ManagerMemory] Stack:", error.stack);
       return [];
     }
   }
