@@ -11417,11 +11417,15 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
     
     const consultantId = req.user!.id;
     
     const sendEvent = (data: any) => {
       res.write(`data: ${JSON.stringify(data)}\n\n`);
+      if (typeof (res as any).flush === 'function') {
+        (res as any).flush();
+      }
     };
     
     try {
