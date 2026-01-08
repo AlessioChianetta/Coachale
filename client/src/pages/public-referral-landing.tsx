@@ -177,46 +177,46 @@ export default function PublicReferralLanding() {
 
   if (submitted) {
     return (
-      <div 
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{
-          background: `linear-gradient(135deg, ${accentColor}20 0%, ${accentColor}10 50%, #0f172a 100%)`,
-        }}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full"
+      <div className="min-h-screen bg-slate-900">
+        <div 
+          className="min-h-screen flex items-center justify-center p-4"
+          style={{
+            background: `linear-gradient(135deg, ${accentColor}30 0%, #1e293b 30%, #0f172a 100%)`,
+          }}
         >
-          <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
-            <CardContent className="p-12 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-md w-full"
+          >
+            <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-10 text-center">
               <div 
                 className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
-                style={{ backgroundColor: `${accentColor}30` }}
+                style={{ backgroundColor: accentColor }}
               >
-                <CheckCircle className="h-10 w-10" style={{ color: accentColor }} />
+                <CheckCircle className="h-10 w-10 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-3">Grazie per la tua richiesta!</h2>
-              <p className="text-white/70 mb-6">
+              <p className="text-slate-300 mb-6">
                 Abbiamo ricevuto i tuoi dati. {consultant?.firstName} ti contatterà presto.
               </p>
               {landing.bonusText && (
                 <div 
-                  className="p-4 rounded-lg border"
+                  className="p-5 rounded-xl border-2"
                   style={{ 
-                    backgroundColor: `${accentColor}15`,
-                    borderColor: `${accentColor}30`
+                    backgroundColor: `${accentColor}20`,
+                    borderColor: accentColor
                   }}
                 >
-                  <Gift className="h-6 w-6 mx-auto mb-2" style={{ color: accentColor }} />
-                  <p className="text-white font-medium">
+                  <Gift className="h-8 w-8 mx-auto mb-3" style={{ color: accentColor }} />
+                  <p className="text-white font-semibold text-lg">
                     Il tuo bonus: {landing.bonusText}
                   </p>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     );
   }
