@@ -1263,15 +1263,19 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   return (
     <>
       {!isMobile && isCollapsed && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="fixed top-6 left-6 z-50 h-10 w-10 bg-gradient-to-br from-cyan-500/10 to-teal-500/10 hover:from-cyan-500/20 hover:to-teal-500/20 border border-cyan-200/50 dark:border-cyan-800/50 hover:shadow-md transition-all duration-200 rounded-lg"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          title="Espandi sidebar"
+        <div 
+          className="hidden md:flex flex-col items-center justify-start bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 h-screen sticky top-0 w-14 py-4"
         >
-          <ChevronRight size={20} className="text-cyan-600 dark:text-cyan-400 transition-transform duration-200 group-hover:scale-110" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 bg-gradient-to-br from-cyan-500/10 to-teal-500/10 hover:from-cyan-500/20 hover:to-teal-500/20 border border-cyan-200/50 dark:border-cyan-800/50 hover:shadow-md transition-all duration-200 rounded-lg"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title="Espandi menu"
+          >
+            <ChevronRight size={20} className="text-cyan-600 dark:text-cyan-400 transition-transform duration-200" />
+          </Button>
+        </div>
       )}
       {!isCollapsed && (
       <div 
