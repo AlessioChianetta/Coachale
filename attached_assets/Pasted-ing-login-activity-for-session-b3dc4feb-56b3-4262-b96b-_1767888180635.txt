@@ -1,0 +1,115 @@
+ing login activity for session: b3dc4feb-56b3-4262-b96b-8506af722b4e
+Session created successfully: b3dc4feb-56b3-4262-b96b-8506af722b4e
+4:02:26 PM [express] POST /api/activity/session/start 201 in 1041ms :: {"sessionId":"b3dc4feb-56b3-4…
+4:02:27 PM [express] GET /api/ai-assistant/client/agents-for-assistant 304 in 308ms :: []
+4:02:28 PM [express] GET /api/momentum/goals 304 in 305ms :: []
+4:02:28 PM [express] GET /api/badges/19ed2469-e094-4033-9198-156fc5dbfd3f 200 in 909ms :: []
+4:02:28 PM [express] GET /api/momentum/checkins/current-streak 304 in 917ms :: {"streak":0}
+4:02:28 PM [express] GET /api/momentum/checkins/daily-stats 304 in 945ms :: {"date":"2026-01-08","to…
+4:02:28 PM [express] GET /api/client/consultant-info 304 in 1016ms :: {"success":true,"data":{"consu…
+4:02:28 PM [express] GET /api/auth/my-profiles 200 in 1029ms :: {"profiles":[{"id":"4712a814-821c-4a…
+4:02:28 PM [express] GET /api/calendar/events 304 in 306ms :: []
+4:02:28 PM [express] GET /api/daily-tasks/client 200 in 21ms
+4:02:28 PM [express] GET /api/badges/client 403 in 291ms :: {"message":"Access denied"}
+4:02:28 PM [express] GET /api/exercise-assignments/client 200 in 374ms :: []
+4:02:28 PM [express] GET /api/consultations/client 200 in 374ms :: []
+4:02:29 PM [express] GET /api/stats/client 200 in 580ms :: {"completedExercises":0,"totalExercises":…
+4:02:31 PM [express] GET /api/user/profile 200 in 32ms
+4:02:31 PM [express] GET /api/ai/conversations 200 in 320ms :: [{"id":"3050a920-f2c4-40f3-9f90-42d8c…
+4:02:31 PM [express] GET /api/ai/daily-summaries 200 in 339ms :: {"dailySummaries":[{"id":"fee231f0-…
+4:02:31 PM [express] GET /api/auth/my-profiles 304 in 420ms :: {"profiles":[{"id":"4712a814-821c-4ae…
+4:02:31 PM [express] GET /api/ai-assistant/preferences 200 in 528ms :: {"writingStyle":"professional…
+📝 [User Preferences] Applying preferences - Style: professional, Length: comprehensive
+🧠 [Memory Context] Daily summaries: 3 days, 2855 chars, ~714 tokens
+🧠 [Conversation Memory] Loaded daily summaries for client: 21 conversations across multiple days
+🧠 [Conversation Memory] Loaded 5 recent detailed conversations for client
+
+══════════════════════════════════════════════════════════════════════
+🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)
+══════════════════════════════════════════════════════════════════════
+   📦 Provider: Google AI Studio (@google/genai)
+   ✅ File Search API: SUPPORTED
+   ⚠️  Vertex AI: NOT compatible with File Search
+══════════════════════════════════════════════════════════════════════
+
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Gemini key for File Search (1/1)
+🔄 Building context for client 19ed2469-e094-4033-9198-156fc5dbfd3f (intent: general, sessionType: normal)
+📚 Including ALL 0 exercises in context (no limits applied)
+📚 Prepared 0 exercise metadata (content will be loaded on-demand when asked)
+📚 Found 0 documents linked to exercises
+📚 Total library documents included in context: 0 (intent: general)
+📊 Momentum stats: 0 check-ins (0 productive, 0% rate), streak: 0 days
+📅 Calendar stats: 0 total upcoming (0 ongoing, 0 today, 0 this week)
+📚 [Knowledge Base] Loading ALL knowledge content for client (no filtering)...
+📚 [Client Knowledge Base] Loaded 4 documents and 0 APIs for client 19ed2469-e094-4033-9198-156fc5dbfd3f
+✅ [Knowledge Base] Loaded ALL content: 4 documents, 0 API sources
+💾 Stored fresh context in cache for client 19ed2469-e094-4033-9198-156fc5dbfd3f (intent: general)
+⏱️  [TIMING] Context building: 2114ms
+⏱️  [TIMING] Exercise scraping: 1ms
+🔍 [KB Fallback Debug] Querying indexed docs for clientId: 19ed2469-e094-4033-9198-156fc5dbfd3f, consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📚 [KB Fallback] 0 KB docs indexed, 4 will be in prompt
+⏱️  [TIMING] Prompt building: 675ms
+
+📊 Token Usage Estimation (Intent: general):
+  - System Prompt: ~2,398,215 tokens
+  - 🧠 Conversation Memory: ~895 tokens (included in System Prompt)
+  - User Message: ~4 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~2,398,219 tokens
+  - File Search Mode: ✅ ACTIVE (RAG via stores)
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~2,398,215 tokens)
+══════════════════════════════════════════════════════════════════════
+
+📍 NEL SYSTEM PROMPT (2,398,215 tokens):
+   👤 User Profile & Base: ~2,398,215 tokens
+   ℹ️  (Include: data/ora, profilo utente, istruzioni AI, metadata esercizi)
+
+🔍 VIA FILE SEARCH RAG (indicizzati, cercati su richiesta):
+
+   💰 TOTALE FILE SEARCH: 2,395,760 tokens (270 documenti indicizzati)
+
+⚠️  NON DISPONIBILI ALL'AI (non sincronizzati in File Search):
+   📚 Exercises: ~500 tokens (1 documenti)
+   📖 Library: ~1,000 tokens (1 documenti)
+   💬 Consultations: ~300 tokens (1 documenti)
+   🎓 University: ~800 tokens (1 documenti)
+   💡 TIP: Sincronizza questi documenti in File Search per renderli disponibili all'AI
+
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/private-store-client-19ed24-7vc3z6n39pxe
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👥 Private Store - Client 19ed2469 (270 documenti):
+      📄 client_knowledge: 270
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~2,410,797 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~4,809,012 a ~2,398,215 tokens
+══════════════════════════════════════════════════════════════════════
+
+[AI] Using model: gemini-3-flash-preview with thinking_level: low [CLIENT STREAMING]
+[AI] Provider: Google AI Studio, User-selected: YES
+🔄 AI stream attempt 1/6...
+❌ AI streaming error on attempt 1: {"error":{"message":"{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_paid_tier_input_token_count, limit: 1000000, model: gemini-3-flash\\nPlease retry in 15.35897106s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.Help\",\n        \"links\": [\n          {\n            \"description\": \"Learn more about Gemini API quotas\",\n            \"url\": \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.QuotaFailure\",\n        \"violations\": [\n          {\n            \"quotaMetric\": \"generativelanguage.googleapis.com/generate_content_paid_tier_input_token_count\",\n            \"quotaId\": \"GenerateContentPaidTierInputTokensPerModelPerMinute\",\n            \"quotaDimensions\": {\n              \"model\": \"gemini-3-flash\",\n              \"location\": \"global\"\n            },\n            \"quotaValue\": \"1000000\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.RetryInfo\",\n        \"retryDelay\": \"15s\"\n      }\n    ]\n  }\n}\n","code":429,"status":"Too Many Requests"}}
+❌ Errore nel processing AI streaming: ApiError: {"error":{"message":"{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_paid_tier_input_token_count, limit: 1000000, model: gemini-3-flash\\nPlease retry in 15.35897106s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.Help\",\n        \"links\": [\n          {\n            \"description\": \"Learn more about Gemini API quotas\",\n            \"url\": \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.QuotaFailure\",\n        \"violations\": [\n          {\n            \"quotaMetric\": \"generativelanguage.googleapis.com/generate_content_paid_tier_input_token_count\",\n            \"quotaId\": \"GenerateContentPaidTierInputTokensPerModelPerMinute\",\n            \"quotaDimensions\": {\n              \"model\": \"gemini-3-flash\",\n              \"location\": \"global\"\n            },\n            \"quotaValue\": \"1000000\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.RetryInfo\",\n        \"retryDelay\": \"15s\"\n      }\n    ]\n  }\n}\n","code":429,"status":"Too Many Requests"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:860:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:515:9)
+    at async Models.Models.generateContentStream (/home/runner/workspace/node_modules/@google/genai/src/models.ts:201:14)
+    at async GeminiClientAdapter.generateContentStream (/home/runner/workspace/server/ai/provider-factory.ts:363:29)
+    at async streamWithBackoff (/home/runner/workspace/server/ai/retry-manager.ts:316:30)
+    at async streamWithRetriesAdapter (/home/runner/workspace/server/ai-service.ts:121:20)
+    at async Module.sendChatMessageStream (/home/runner/workspace/server/ai-service.ts:2164:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:10512:26) {
+  status: 429
+}
