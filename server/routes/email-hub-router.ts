@@ -1300,50 +1300,67 @@ router.post("/accounts/:id/sync", async (req: AuthRequest, res) => {
     });
 
     try {
-      const emails = await imapService.fetchRecentEmails(limit);
-      console.log(`[EMAIL-HUB SYNC] Fetched ${emails.length} emails from IMAP`);
+      // Sync from multiple folders: Inbox, Sent, Drafts
+      const foldersToSync = ["INBOX", "Sent", "INBOX.Sent", "Drafts", "INBOX.Drafts"];
+      let totalImported = 0;
+      let totalDuplicates = 0;
 
-      let imported = 0;
-      let duplicates = 0;
+      for (const folder of foldersToSync) {
+        try {
+          const emails = await imapService.fetchRecentEmailsFromFolder(folder, limit);
+          console.log(`[EMAIL-HUB SYNC] Fetched ${emails.length} emails from ${folder}`);
 
-      for (const email of emails) {
-        const existingEmail = await db
-          .select({ id: schema.hubEmails.id })
-          .from(schema.hubEmails)
-          .where(
-            and(
-              eq(schema.hubEmails.accountId, accountId),
-              eq(schema.hubEmails.messageId, email.messageId)
-            )
-          )
-          .limit(1);
+          // Determine folder type and direction based on folder name
+          const normalizedFolder = folder.toLowerCase().replace("inbox.", "");
+          const isSentFolder = normalizedFolder.includes("sent");
+          const isDraftsFolder = normalizedFolder.includes("draft");
+          const folderType = isSentFolder ? "sent" : isDraftsFolder ? "drafts" : "inbox";
+          const direction = isSentFolder ? "outbound" : "inbound";
 
-        if (existingEmail.length > 0) {
-          duplicates++;
-          continue;
+          for (const email of emails) {
+            const existingEmail = await db
+              .select({ id: schema.hubEmails.id })
+              .from(schema.hubEmails)
+              .where(
+                and(
+                  eq(schema.hubEmails.accountId, accountId),
+                  eq(schema.hubEmails.messageId, email.messageId)
+                )
+              )
+              .limit(1);
+
+            if (existingEmail.length > 0) {
+              totalDuplicates++;
+              continue;
+            }
+
+            await db.insert(schema.hubEmails).values({
+              accountId,
+              consultantId,
+              messageId: email.messageId,
+              subject: email.subject,
+              fromName: email.fromName,
+              fromEmail: email.fromEmail,
+              toRecipients: email.toRecipients,
+              ccRecipients: email.ccRecipients,
+              bodyHtml: email.bodyHtml,
+              bodyText: email.bodyText,
+              snippet: email.snippet,
+              direction,
+              folder: folderType,
+              isRead: isSentFolder || isDraftsFolder ? true : false,
+              receivedAt: email.receivedAt,
+              attachments: email.attachments,
+              hasAttachments: email.hasAttachments,
+              inReplyTo: email.inReplyTo,
+              processingStatus: isSentFolder ? "processed" : "new",
+            });
+            totalImported++;
+          }
+        } catch (folderErr: any) {
+          // Folder might not exist on this server, skip it
+          console.log(`[EMAIL-HUB SYNC] Could not sync folder ${folder}: ${folderErr.message}`);
         }
-
-        await db.insert(schema.hubEmails).values({
-          accountId,
-          consultantId,
-          messageId: email.messageId,
-          subject: email.subject,
-          fromName: email.fromName,
-          fromEmail: email.fromEmail,
-          toRecipients: email.toRecipients,
-          ccRecipients: email.ccRecipients,
-          bodyHtml: email.bodyHtml,
-          bodyText: email.bodyText,
-          snippet: email.snippet,
-          direction: "inbound",
-          isRead: false,
-          receivedAt: email.receivedAt,
-          attachments: email.attachments,
-          hasAttachments: email.hasAttachments,
-          inReplyTo: email.inReplyTo,
-          processingStatus: "new",
-        });
-        imported++;
       }
 
       await db
@@ -1351,14 +1368,14 @@ router.post("/accounts/:id/sync", async (req: AuthRequest, res) => {
         .set({ syncStatus: "idle", syncError: null, lastSyncAt: new Date() })
         .where(eq(schema.emailAccounts.id, accountId));
 
-      console.log(`[EMAIL-HUB SYNC] Completed: ${imported} imported, ${duplicates} duplicates`);
+      console.log(`[EMAIL-HUB SYNC] Completed: ${totalImported} imported, ${totalDuplicates} duplicates`);
 
       res.json({ 
         success: true, 
         data: { 
-          imported, 
-          duplicates, 
-          total: emails.length 
+          imported: totalImported, 
+          duplicates: totalDuplicates, 
+          total: totalImported + totalDuplicates 
         } 
       });
     } catch (syncError: any) {
