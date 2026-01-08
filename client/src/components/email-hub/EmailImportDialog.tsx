@@ -32,19 +32,18 @@ import {
 type ImportStatus = "pending" | "running" | "paused" | "completed" | "failed" | "cancelled";
 
 interface ImportProgress {
-  jobId: string;
+  id: string;
   status: ImportStatus;
-  currentFolder: string;
+  currentFolderPath: string | null;
+  currentFolderIndex: number;
   totalFolders: number;
-  processedFolders: number;
   totalEmails: number;
   processedEmails: number;
   importedEmails: number;
   duplicateEmails: number;
   failedEmails: number;
-  startedAt: string;
-  estimatedTimeRemaining: number | null;
-  error?: string;
+  startedAt: string | null;
+  lastError?: string | null;
 }
 
 interface EmailImportDialogProps {
@@ -98,21 +97,6 @@ const STATUS_CONFIG: Record<ImportStatus, {
   },
 };
 
-function formatTimeRemaining(seconds: number | null): string {
-  if (seconds === null || seconds <= 0) return "--";
-  
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  } else if (minutes > 0) {
-    return `${minutes}m ${secs}s`;
-  }
-  return `${secs}s`;
-}
-
 function formatElapsedTime(startedAt: string): string {
   const start = new Date(startedAt).getTime();
   const now = Date.now();
@@ -138,7 +122,7 @@ export function EmailImportDialog({
 }: EmailImportDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [elapsedTime, setElapsedTime] = useState<string>("0s");
@@ -252,53 +236,60 @@ export function EmailImportDialog({
     },
   });
 
-  const connectSSE = useCallback((jId: string) => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
+  const fetchJobProgress = useCallback(async (jId: string) => {
+    try {
+      const response = await fetch(`/api/email-hub/import/${jId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        console.error("[EmailImportDialog] Polling error:", response.status);
+        return null;
+      }
+      const result = await response.json();
+      return result.data;
+    } catch (err) {
+      console.error("[EmailImportDialog] Polling fetch error:", err);
+      return null;
+    }
+  }, []);
+
+  const startPolling = useCallback((jId: string) => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
     }
 
-    const authToken = localStorage.getItem("authToken") || "";
-    const url = `/api/email-hub/import/${jId}/progress?token=${encodeURIComponent(authToken)}`;
-    const eventSource = new EventSource(url);
-    eventSourceRef.current = eventSource;
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data: ImportProgress = JSON.parse(event.data);
+    const poll = async () => {
+      const data = await fetchJobProgress(jId);
+      if (data) {
         setProgress(data);
         
         if (data.status === "completed" || data.status === "failed" || data.status === "cancelled") {
-          eventSource.close();
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
           queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
           queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
         }
-      } catch (err) {
-        console.error("[EmailImportDialog] SSE parse error:", err);
       }
     };
 
-    eventSource.onerror = (err) => {
-      console.error("[EmailImportDialog] SSE error:", err);
-      eventSource.close();
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [queryClient]);
+    poll();
+    pollingRef.current = setInterval(poll, 1000);
+  }, [fetchJobProgress, queryClient]);
 
   useEffect(() => {
     if (jobId && open) {
-      connectSSE(jobId);
+      startPolling(jobId);
     }
 
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
       }
     };
-  }, [jobId, open, connectSSE]);
+  }, [jobId, open, startPolling]);
 
   useEffect(() => {
     if (progress?.startedAt && !isFinished) {
@@ -310,9 +301,9 @@ export function EmailImportDialog({
   }, [progress?.startedAt, isFinished]);
 
   const handleClose = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
     }
     setJobId(null);
     setProgress(null);
@@ -326,8 +317,8 @@ export function EmailImportDialog({
   const progressPercent = progress 
     ? progress.totalEmails > 0 
       ? Math.round((progress.processedEmails / progress.totalEmails) * 100)
-      : progress.processedFolders > 0 && progress.totalFolders > 0
-        ? Math.round((progress.processedFolders / progress.totalFolders) * 100)
+      : progress.currentFolderIndex > 0 && progress.totalFolders > 0
+        ? Math.round((progress.currentFolderIndex / progress.totalFolders) * 100)
         : 0
     : 0;
 
@@ -384,11 +375,11 @@ export function EmailImportDialog({
                 <Progress value={progressPercent} className="h-3" />
               </div>
 
-              {progress?.currentFolder && (
+              {progress?.currentFolderPath && (
                 <div className="flex items-center gap-2 text-sm">
                   <FolderOpen className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Cartella corrente:</span>
-                  <span className="font-medium truncate">{progress.currentFolder}</span>
+                  <span className="font-medium truncate">{progress.currentFolderPath}</span>
                 </div>
               )}
 
@@ -408,11 +399,14 @@ export function EmailImportDialog({
 
                 <div className="bg-muted/50 rounded-lg p-3">
                   <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                    <Clock className="h-3 w-3" />
-                    Tempo rimanente
+                    <FolderOpen className="h-3 w-3" />
+                    Cartelle
                   </div>
                   <p className="text-lg font-semibold">
-                    {formatTimeRemaining(progress?.estimatedTimeRemaining || null)}
+                    {progress?.currentFolderIndex || 0}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {" "}/ {progress?.totalFolders || "?"}
+                    </span>
                   </p>
                 </div>
 
@@ -437,10 +431,10 @@ export function EmailImportDialog({
                 </div>
               </div>
 
-              {progress?.error && (
+              {progress?.lastError && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                   <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
-                  <p className="text-sm text-destructive">{progress.error}</p>
+                  <p className="text-sm text-destructive">{progress.lastError}</p>
                 </div>
               )}
 
