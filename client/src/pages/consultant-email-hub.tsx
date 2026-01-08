@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1420,13 +1421,26 @@ export default function ConsultantEmailHub() {
           </div>
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {paginatedEmails.map((email) => (
-              <div
+            {paginatedEmails.map((email, index) => (
+              <motion.div
                 key={email.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  delay: index * 0.03,
+                  duration: 0.2,
+                  ease: [0.25, 0.46, 0.45, 0.94]
+                }}
+                whileHover={{ 
+                  backgroundColor: "rgba(139, 92, 246, 0.08)",
+                  scale: 1.005,
+                  transition: { duration: 0.15 }
+                }}
+                whileTap={{ scale: 0.995 }}
                 onClick={() => handleEmailClick(email)}
-                className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-3 ${
+                className={`px-4 py-3 cursor-pointer flex items-center gap-3 ${
                   !email.isRead ? "bg-violet-50/50 dark:bg-violet-950/20" : ""
-                } ${selectedEmail?.id === email.id ? "bg-violet-100 dark:bg-violet-900/30" : "hover:bg-slate-50 dark:hover:bg-slate-900"}`}
+                } ${selectedEmail?.id === email.id ? "bg-violet-100 dark:bg-violet-900/30" : ""}`}
               >
                 <Checkbox
                   checked={selectedEmails.has(email.id)}
@@ -1485,7 +1499,7 @@ export default function ConsultantEmailHub() {
                     {format(new Date(email.receivedAt), "dd/MM")}
                   </span>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
@@ -1594,65 +1608,137 @@ export default function ConsultantEmailHub() {
     <div className="flex-1 bg-white dark:bg-slate-950 flex flex-col h-full">
       {selectedEmail ? (
         <>
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="p-4 border-b border-slate-200 dark:border-slate-800"
+          >
             <div className="flex items-center gap-4 mb-4">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="gap-2" 
-                onClick={handleBackToList}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Indietro
-              </Button>
+              <motion.div whileHover={{ x: -3 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="gap-2 transition-all duration-200" 
+                  onClick={handleBackToList}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Indietro
+                </Button>
+              </motion.div>
               <div className="flex-1" />
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" className="gap-1">
-                  <Reply className="h-4 w-4" />
-                  Rispondi
-                </Button>
-                <Button 
-                  size="sm" 
-                  className="gap-1 bg-violet-600 hover:bg-violet-700"
-                  onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
-                  disabled={generateAIResponseMutation.isPending}
+                {[
+                  { icon: Reply, label: "Rispondi", variant: "outline" as const },
+                ].map((btn, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1 + i * 0.05 }}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <Button size="sm" variant={btn.variant} className="gap-1">
+                      <btn.icon className="h-4 w-4" />
+                      {btn.label}
+                    </Button>
+                  </motion.div>
+                ))}
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.15 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                 >
-                  {generateAIResponseMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                  AI Genera Bozza
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1">
-                  <Forward className="h-4 w-4" />
-                  Inoltra
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => toggleStarMutation.mutate(selectedEmail.id)}
+                  <Button 
+                    size="sm" 
+                    className="gap-1 bg-violet-600 hover:bg-violet-700 transition-all duration-200"
+                    onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
+                    disabled={generateAIResponseMutation.isPending}
+                  >
+                    {generateAIResponseMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    AI Genera Bozza
+                  </Button>
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                 >
-                  {selectedEmail.isStarred ? (
-                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                  ) : (
-                    <Star className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1 text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    <Forward className="h-4 w-4" />
+                    Inoltra
+                  </Button>
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.25 }}
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => toggleStarMutation.mutate(selectedEmail.id)}
+                  >
+                    <motion.div
+                      animate={selectedEmail.isStarred ? { scale: [1, 1.3, 1] } : {}}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {selectedEmail.isStarred ? (
+                        <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                      ) : (
+                        <Star className="h-4 w-4" />
+                      )}
+                    </motion.div>
+                  </Button>
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button size="sm" variant="outline" className="gap-1 text-destructive hover:text-destructive transition-colors duration-200">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </motion.div>
               </div>
             </div>
             
-            <h1 className="text-xl font-semibold mb-4">
+            <motion.h1 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
+              className="text-xl font-semibold mb-4"
+            >
               {selectedEmail.subject || "(Nessun oggetto)"}
-            </h1>
+            </motion.h1>
             
-            <div className="flex items-start gap-4">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-lg ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}>
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
+              className="flex items-start gap-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-lg ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}
+              >
                 {(selectedEmail.fromName || selectedEmail.fromEmail).charAt(0).toUpperCase()}
-              </div>
+              </motion.div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{selectedEmail.fromName || selectedEmail.fromEmail}</span>
@@ -1665,11 +1751,16 @@ export default function ConsultantEmailHub() {
               <div className="text-sm text-slate-400">
                 {format(new Date(selectedEmail.receivedAt), "dd MMMM yyyy, HH:mm")}
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
           
           <ScrollArea className="flex-1 p-6">
-            <div className="max-w-4xl mx-auto">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="max-w-4xl mx-auto"
+            >
               <div className="prose prose-sm dark:prose-invert max-w-none">
                 <div 
                   className="whitespace-pre-wrap text-slate-700 dark:text-slate-300"
@@ -1727,7 +1818,7 @@ export default function ConsultantEmailHub() {
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
           </ScrollArea>
         </>
       ) : null}
@@ -2207,14 +2298,42 @@ export default function ConsultantEmailHub() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 flex overflow-hidden">
-          {showFullEmailView && selectedEmail ? (
-            renderFullEmailView()
-          ) : (
-            <>
-              {!isMobile && renderLeftSidebar()}
-              {renderEmailList()}
-            </>
-          )}
+          <AnimatePresence mode="wait">
+            {showFullEmailView && selectedEmail ? (
+              <motion.div
+                key="email-view"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 300, 
+                  damping: 30,
+                  mass: 0.8
+                }}
+                className="flex-1 flex"
+              >
+                {renderFullEmailView()}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="email-list"
+                initial={{ opacity: 0, x: -40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 40 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 300, 
+                  damping: 30,
+                  mass: 0.8
+                }}
+                className="flex-1 flex"
+              >
+                {!isMobile && renderLeftSidebar()}
+                {renderEmailList()}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
