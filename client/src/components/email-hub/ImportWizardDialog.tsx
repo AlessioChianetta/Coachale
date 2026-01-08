@@ -358,12 +358,14 @@ export function ImportWizardDialog({
 
   const renderStep2 = () => (
     <div className="space-y-4">
-      <div className="text-center mb-4">
-        <p className="text-muted-foreground">
-          Configura il tipo di account per ogni indirizzo email.
-          Per i servizi solo invio, puoi configurare un provider IMAP esterno.
-        </p>
-      </div>
+      <Alert className="border-blue-500/50 bg-blue-500/10 mb-2">
+        <Cloud className="h-4 w-4 text-blue-500" />
+        <AlertDescription className="text-sm">
+          <strong>Come funziona:</strong> Amazon SES invia email ma non le riceve. 
+          Scegli <strong>Ibrido</strong> per usare Register.it (o altro) per la ricezione, 
+          oppure <strong>Solo invio</strong> se vuoi solo inviare.
+        </AlertDescription>
+      </Alert>
 
       <ScrollArea className="h-[400px] pr-4">
         <div className="space-y-6">
@@ -388,6 +390,9 @@ export function ImportWizardDialog({
                 <div className="space-y-4">
                   <div>
                     <Label className="text-sm font-medium mb-2 block">Tipo di account</Label>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Ogni indirizzo email puo avere un solo account. Se vuoi usare lo stesso indirizzo per inviare (es. Amazon SES) e ricevere (es. Register.it), scegli <strong>Ibrido</strong>.
+                    </p>
                     <div className="grid grid-cols-2 gap-2">
                       {(Object.entries(ACCOUNT_TYPE_LABELS) as [AccountType, typeof ACCOUNT_TYPE_LABELS[AccountType]][]).map(
                         ([type, { label, description, icon }]) => (
