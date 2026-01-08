@@ -479,13 +479,13 @@ export default function ConsultantEmailHub() {
       console.log("[EMAIL-HUB] Test result:", result);
       const imapOk = result.data?.imap?.success;
       const smtpOk = result.data?.smtp?.success;
-      const imapMsg = result.data?.imap?.message || "N/A";
-      const smtpMsg = result.data?.smtp?.message || "N/A";
+      const imapMsg = result.data?.imap?.message || result.data?.imap?.error || "N/A";
+      const smtpMsg = result.data?.smtp?.message || result.data?.smtp?.error || "N/A";
       
       if (imapOk && smtpOk) {
         toast({ 
           title: "Connessione riuscita", 
-          description: `IMAP: ${imapMsg} | SMTP: ${smtpMsg}` 
+          description: `IMAP: OK | SMTP: OK` 
         });
       } else {
         const errors = [];

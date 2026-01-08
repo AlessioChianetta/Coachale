@@ -311,9 +311,9 @@ const PROVIDER_PATTERNS: ProviderPattern[] = [
     pattern: /(smtp\.register\.it|authsmtp\.securemail\.pro)/i,
     providerName: 'Register.it',
     providerType: 'hosting',
-    suggestedImapHost: 'imap.securemail.pro',
+    suggestedImapHost: null, // IMAP is domain-specific: pop.yourdomain.it
     suggestedImapPort: 993,
-    description: 'Register.it - provider italiano con hosting email',
+    description: 'Register.it - provider italiano (IMAP: pop.tuodominio.it)',
   },
   {
     pattern: /smtp\.mailserver\.it/i,
