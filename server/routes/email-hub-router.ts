@@ -11,29 +11,27 @@ import { classifyEmailProvider, isSendOnlyProvider, ITALIAN_PROVIDERS } from "..
 
 const router = Router();
 
-const createAccountSchema = z.object({
+const baseAccountSchema = z.object({
   displayName: z.string().min(1).max(100),
   emailAddress: z.string().email(),
   accountType: z.enum(["smtp_only", "imap_only", "full", "hybrid"]).default("full"),
-  // IMAP - optional for smtp_only
   imapHost: z.string().min(1).optional(),
   imapPort: z.number().int().min(1).max(65535).default(993).optional(),
   imapUser: z.string().min(1).optional(),
   imapPassword: z.string().min(1).optional(),
   imapTls: z.boolean().default(true).optional(),
-  // SMTP - optional for imap_only
   smtpHost: z.string().min(1).optional(),
   smtpPort: z.number().int().min(1).max(65535).default(587).optional(),
   smtpUser: z.string().min(1).optional(),
   smtpPassword: z.string().min(1).optional(),
   smtpTls: z.boolean().default(true).optional(),
-  // AI config
   autoReplyMode: z.enum(["off", "review", "auto"]).default("review"),
   confidenceThreshold: z.number().min(0).max(1).default(0.8),
   aiTone: z.enum(["formal", "friendly", "professional"]).default("formal"),
   signature: z.string().optional(),
-}).refine(data => {
-  // Validate based on account type
+});
+
+const createAccountSchema = baseAccountSchema.refine(data => {
   if (data.accountType === "smtp_only" || data.accountType === "full" || data.accountType === "hybrid") {
     return data.smtpHost && data.smtpUser && data.smtpPassword;
   }
@@ -45,7 +43,7 @@ const createAccountSchema = z.object({
   return true;
 }, { message: "IMAP configuration required" });
 
-const updateAccountSchema = createAccountSchema.partial();
+const updateAccountSchema = baseAccountSchema.partial();
 
 router.get("/accounts", async (req: AuthRequest, res) => {
   try {
