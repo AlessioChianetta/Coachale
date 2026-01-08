@@ -11,6 +11,20 @@ import { classifyEmailProvider, isSendOnlyProvider, ITALIAN_PROVIDERS } from "..
 
 const router = Router();
 
+// Handle IDLE connection failures - update database when connection permanently fails
+const idleManager = ImapIdleManager.getInstance();
+idleManager.on("connectionFailed", async (accountId: string) => {
+  console.log(`[EMAIL-HUB] Updating syncStatus to 'error' for account ${accountId} after IDLE failure`);
+  try {
+    await db
+      .update(schema.emailAccounts)
+      .set({ syncStatus: "error" })
+      .where(eq(schema.emailAccounts.id, accountId));
+  } catch (err) {
+    console.error(`[EMAIL-HUB] Failed to update syncStatus for account ${accountId}:`, err);
+  }
+});
+
 // Helper function to start IDLE and initial sync for an account (runs in background)
 async function startIdleAndSyncInBackground(account: {
   id: string;

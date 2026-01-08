@@ -679,6 +679,12 @@ export class ImapIdleManager extends EventEmitter {
   getActiveConnections(): string[] {
     return Array.from(this.connections.keys());
   }
+
+  handleConnectionFailed(accountId: string): void {
+    this.connections.delete(accountId);
+    console.log(`[IMAP IDLE] Connection permanently failed for ${accountId}, removed from active connections`);
+    this.emit("connectionFailed", accountId);
+  }
 }
 
 class ImapIdleConnection {
@@ -686,10 +692,13 @@ class ImapIdleConnection {
   private config: IdleConnectionConfig;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private isConnected: boolean = false;
+  private shouldReconnect: boolean = true;
   private lastUid: number = 0;
   private idleTimer: NodeJS.Timeout | null = null;
+  private reconnectAttempts: number = 0;
   private readonly IDLE_REFRESH_INTERVAL = 25 * 60 * 1000; // 25 minutes (RFC recommends 29 max)
   private readonly RECONNECT_DELAY = 5000;
+  private readonly MAX_RECONNECT_ATTEMPTS = 5;
 
   constructor(config: IdleConnectionConfig) {
     this.config = config;
@@ -880,21 +889,38 @@ class ImapIdleConnection {
   }
 
   private scheduleReconnect(): void {
-    if (this.reconnectTimer) return;
+    if (this.reconnectTimer || !this.shouldReconnect) return;
+    
+    this.reconnectAttempts++;
+    
+    if (this.reconnectAttempts > this.MAX_RECONNECT_ATTEMPTS) {
+      console.error(`[IMAP IDLE] Max reconnect attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached for ${this.config.accountId}. Giving up.`);
+      this.shouldReconnect = false;
+      ImapIdleManager.getInstance().handleConnectionFailed(this.config.accountId);
+      return;
+    }
+    
+    const delay = this.RECONNECT_DELAY * Math.min(this.reconnectAttempts, 5); // Backoff up to 25s
+    console.log(`[IMAP IDLE] Scheduling reconnect for ${this.config.accountId} in ${delay}ms (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`);
     
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectTimer = null;
+      if (!this.shouldReconnect) return;
+      
       console.log(`[IMAP IDLE] Attempting reconnect for ${this.config.accountId}`);
       try {
         await this.connect();
+        this.reconnectAttempts = 0; // Reset on success
+        console.log(`[IMAP IDLE] Reconnect successful for ${this.config.accountId}`);
       } catch (error) {
         console.error(`[IMAP IDLE] Reconnect failed for ${this.config.accountId}:`, error);
         this.scheduleReconnect();
       }
-    }, this.RECONNECT_DELAY);
+    }, delay);
   }
 
   disconnect(): void {
+    this.shouldReconnect = false; // Prevent auto-reconnect on intentional disconnect
     this.clearIdleTimer();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
