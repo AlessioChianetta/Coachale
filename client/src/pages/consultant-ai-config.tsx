@@ -2725,31 +2725,33 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   ) : (
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Template Usato</TableHead>
-                          <TableHead>Generata il</TableHead>
-                          <TableHead className="text-right">Azioni</TableHead>
+                        <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                          <TableHead className="text-slate-700 dark:text-slate-300 w-[140px]">Cliente</TableHead>
+                          <TableHead className="text-slate-700 dark:text-slate-300">Subject</TableHead>
+                          <TableHead className="text-slate-700 dark:text-slate-300 w-[180px]">Template</TableHead>
+                          <TableHead className="text-slate-700 dark:text-slate-300 w-[110px]">Data</TableHead>
+                          <TableHead className="text-slate-700 dark:text-slate-300 text-right w-[130px]">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {drafts.map((draft) => (
-                          <TableRow key={draft.id}>
-                            <TableCell className="font-medium">{draft.clientName}</TableCell>
-                            <TableCell className="max-w-md truncate">{draft.subject}</TableCell>
+                          <TableRow key={draft.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                            <TableCell className="font-semibold text-slate-900 dark:text-slate-100">
+                              {draft.clientName || <span className="text-slate-400 italic">Sconosciuto</span>}
+                            </TableCell>
+                            <TableCell className="max-w-md truncate text-slate-600 dark:text-slate-400">{draft.subject}</TableCell>
                             <TableCell>
                               {draft.emailType === 'system_update' ? (
-                                <Badge className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white">
-                                  Aggiornamento Sistema
+                                <Badge className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-xs">
+                                  Aggiornamento
                                 </Badge>
                               ) : draft.journeyDay ? (
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="font-semibold">
+                                <div className="flex items-center gap-1">
+                                  <Badge variant="outline" className="font-semibold text-xs">
                                     Giorno {draft.journeyDay}
                                   </Badge>
                                   {(draft as any).journeyTemplate?.title && (
-                                    <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                    <span className="text-xs text-muted-foreground truncate max-w-[100px]">
                                       {(draft as any).journeyTemplate.title}
                                     </span>
                                   )}
@@ -2758,43 +2760,46 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                 <span className="text-xs text-muted-foreground">N/A</span>
                               )}
                             </TableCell>
-                            <TableCell>{format(new Date(draft.generatedAt), "dd/MM/yyyy HH:mm")}</TableCell>
+                            <TableCell className="text-sm text-slate-600 dark:text-slate-400">{format(new Date(draft.generatedAt), "dd/MM HH:mm")}</TableCell>
                             <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="flex items-center justify-end gap-1">
                                 <Button
-                                  variant="outline"
-                                  size="sm"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
                                   onClick={() => handlePreviewDraft(draft)}
+                                  title="Anteprima"
                                 >
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Preview
+                                  <Eye className="h-4 w-4" />
                                 </Button>
                                 <Button
-                                  variant="outline"
-                                  size="sm"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                   onClick={() => handleEditDraft(draft)}
+                                  title="Modifica"
                                 >
-                                  <Edit className="h-4 w-4 mr-1" />
-                                  Modifica
+                                  <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button
-                                  variant="default"
-                                  size="sm"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                                   onClick={() => approveDraftMutation.mutate(draft.id)}
                                   disabled={approveDraftMutation.isPending}
-                                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-sm"
+                                  title="Approva e invia"
                                 >
-                                  <Check className="h-4 w-4 mr-1" />
-                                  Approva
+                                  <Check className="h-4 w-4" />
                                 </Button>
                                 <Button
-                                  variant="destructive"
-                                  size="sm"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                   onClick={() => rejectDraftMutation.mutate(draft.id)}
                                   disabled={rejectDraftMutation.isPending}
+                                  title="Rifiuta"
                                 >
-                                  <X className="h-4 w-4 mr-1" />
-                                  Rifiuta
+                                  <X className="h-4 w-4" />
                                 </Button>
                               </div>
                             </TableCell>
