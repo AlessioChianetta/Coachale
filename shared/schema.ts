@@ -7167,6 +7167,21 @@ export const referrals = pgTable("referrals", {
   notes: text("notes"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
+  // Qualification data
+  qualificationRole: text("qualification_role").$type<"imprenditore" | "dipendente" | "libero_professionista" | "studente" | "altro">(),
+  qualificationCompanyType: text("qualification_company_type"),
+  qualificationSector: text("qualification_sector"),
+  qualificationEmployeeCount: text("qualification_employee_count"),
+  qualificationAnnualRevenue: text("qualification_annual_revenue"),
+  qualificationCurrentCompany: text("qualification_current_company"),
+  qualificationCurrentPosition: text("qualification_current_position"),
+  qualificationYearsExperience: text("qualification_years_experience"),
+  qualificationFieldOfStudy: text("qualification_field_of_study"),
+  qualificationUniversity: text("qualification_university"),
+  qualificationMotivation: text("qualification_motivation"),
+  qualificationBiggestProblem: text("qualification_biggest_problem"),
+  qualificationGoal12Months: text("qualification_goal_12_months"),
+  qualificationCurrentBlocker: text("qualification_current_blocker"),
 }, (table) => ({
   referralCodeIdx: index("idx_referrals_referral_code_id").on(table.referralCodeId),
   referrerIdx: index("idx_referrals_referrer_user_id").on(table.referrerUserId),
@@ -7191,15 +7206,37 @@ export const referralLandingConfig = pgTable("referral_landing_config", {
   // AI Assistant
   agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id),
   showAiChat: boolean("show_ai_chat").default(true),
+  aiAssistantIframeUrl: text("ai_assistant_iframe_url"),
   // Lead creation defaults
   defaultCampaignId: varchar("default_campaign_id").references(() => marketingCampaigns.id),
   // Bonus for referrer
   bonusType: text("bonus_type").$type<"months_free" | "cash" | "physical" | "discount" | "none">(),
   bonusValue: text("bonus_value"),
   bonusDescription: text("bonus_description"),
+  // UI customization
+  ctaButtonText: text("cta_button_text").default("Richiedi il tuo bonus"),
+  welcomeMessage: text("welcome_message"),
+  maxUsesPerCode: integer("max_uses_per_code").default(10),
   // Style (limited)
   accentColor: varchar("accent_color", { length: 7 }).default("#6366f1"),
   isActive: boolean("is_active").default(true),
+  // Qualification fields configuration (JSON)
+  qualificationFieldsConfig: jsonb("qualification_fields_config").$type<{
+    role: { enabled: boolean; required: boolean };
+    companyType: { enabled: boolean; required: boolean };
+    sector: { enabled: boolean; required: boolean };
+    employeeCount: { enabled: boolean; required: boolean };
+    annualRevenue: { enabled: boolean; required: boolean };
+    currentCompany: { enabled: boolean; required: boolean };
+    currentPosition: { enabled: boolean; required: boolean };
+    yearsExperience: { enabled: boolean; required: boolean };
+    fieldOfStudy: { enabled: boolean; required: boolean };
+    university: { enabled: boolean; required: boolean };
+    motivation: { enabled: boolean; required: boolean };
+    biggestProblem: { enabled: boolean; required: boolean };
+    goal12Months: { enabled: boolean; required: boolean };
+    currentBlocker: { enabled: boolean; required: boolean };
+  }>(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({

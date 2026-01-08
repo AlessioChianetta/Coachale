@@ -89,29 +89,29 @@ export default function ConsultantReferralSettingsPage() {
   });
 
   const { data: agentsData } = useQuery({
-    queryKey: ["/api/consultant/whatsapp-agents"],
+    queryKey: ["/api/followup/agents"],
     queryFn: async () => {
-      const response = await fetch("/api/consultant/whatsapp-agents", {
+      const response = await fetch("/api/followup/agents", {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) return { agents: [] };
+      if (!response.ok) return [];
       return response.json();
     },
   });
 
   const { data: campaignsData } = useQuery({
-    queryKey: ["/api/consultant/campaigns"],
+    queryKey: ["/api/campaigns"],
     queryFn: async () => {
-      const response = await fetch("/api/consultant/campaigns", {
+      const response = await fetch("/api/campaigns", {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) return { campaigns: [] };
+      if (!response.ok) return { data: [] };
       return response.json();
     },
   });
 
-  const agents = agentsData?.agents || [];
-  const campaigns = campaignsData?.campaigns || [];
+  const agents = agentsData || [];
+  const campaigns = campaignsData?.data || [];
 
   useEffect(() => {
     if (configData?.config) {
