@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { Message } from "./Message";
 import { motion } from "framer-motion";
-import { TypingIndicator } from "./TypingIndicator";
 
 interface MessageListProps {
   messages: Array<{
@@ -60,17 +59,6 @@ export function MessageList({ messages, isTyping, onActionClick }: MessageListPr
     prevMessagesLengthRef.current = messages.length;
   }, [messages, isTyping, scrollToBottom]);
 
-  // Don't show TypingIndicator if there's an assistant placeholder (empty content) or active thinking
-  // This prevents flashing when streaming completes and isThinking flips to false before isTyping
-  const hasAssistantPlaceholder = messages.some(msg => 
-    msg.role === "assistant" && (
-      msg.isThinking || 
-      !msg.content?.trim() ||
-      msg.thinking !== undefined
-    )
-  );
-  const showTypingIndicator = isTyping && !hasAssistantPlaceholder;
-
   return (
     <div 
       ref={containerRef}
@@ -92,17 +80,6 @@ export function MessageList({ messages, isTyping, onActionClick }: MessageListPr
             <Message message={message} onActionClick={onActionClick} />
           </motion.div>
         ))}
-
-        {showTypingIndicator && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="flex justify-center items-center"
-          >
-            <TypingIndicator />
-          </motion.div>
-        )}
         <div ref={messagesEndRef} />
       </div>
     </div>
