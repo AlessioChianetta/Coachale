@@ -76,6 +76,7 @@ import {
   PenSquare,
   Archive,
   Download,
+  ArrowRightLeft,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -90,6 +91,7 @@ interface EmailAccount {
   displayName: string;
   emailAddress: string;
   provider: string;
+  accountType?: "smtp_only" | "imap_only" | "full" | "hybrid";
   imapHost?: string;
   imapPort?: number;
   imapTls?: boolean;
@@ -913,7 +915,15 @@ export default function ConsultantEmailHub() {
                       <ChevronDown className={`h-3 w-3 transition-transform text-slate-400 ${
                         expandedAccounts.has(account.id) ? "" : "-rotate-90"
                       }`} />
-                      <Mail className="h-4 w-4 text-slate-400" />
+                      {account.accountType === "smtp_only" ? (
+                        <Send className="h-4 w-4 text-amber-400" title="Solo invio" />
+                      ) : account.accountType === "imap_only" ? (
+                        <Inbox className="h-4 w-4 text-blue-400" title="Solo ricezione" />
+                      ) : account.accountType === "hybrid" ? (
+                        <ArrowRightLeft className="h-4 w-4 text-violet-400" title="Configurazione ibrida" />
+                      ) : (
+                        <Mail className="h-4 w-4 text-slate-400" title="Account completo" />
+                      )}
                       <span className="text-sm truncate flex-1 text-slate-200">{account.displayName}</span>
                       {account.syncStatus === "connected" && (
                         <Wifi className="h-3 w-3 text-emerald-400" />
@@ -964,42 +974,48 @@ export default function ConsultantEmailHub() {
                 
                 <CollapsibleContent>
                   <div className="ml-5 space-y-0.5">
-                    <button
-                      onClick={() => handleFolderClick("inbox", account.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                        selectedFolder === "inbox" && selectedAccountId === account.id
-                          ? "bg-violet-600/20 text-violet-300"
-                          : "hover:bg-white/5 text-slate-400"
-                      }`}
-                    >
-                      <Inbox className="h-4 w-4" />
-                      <span className="flex-1 text-left">Inbox</span>
-                      {(account.unreadCount || 0) > 0 && (
-                        <Badge className="h-5 px-1.5 text-xs bg-violet-600">{account.unreadCount}</Badge>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleFolderClick("drafts", account.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                        selectedFolder === "drafts" && selectedAccountId === account.id
-                          ? "bg-violet-600/20 text-violet-300"
-                          : "hover:bg-white/5 text-slate-400"
-                      }`}
-                    >
-                      <FileText className="h-4 w-4" />
-                      <span className="flex-1 text-left">Bozze</span>
-                    </button>
-                    <button
-                      onClick={() => handleFolderClick("sent", account.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                        selectedFolder === "sent" && selectedAccountId === account.id
-                          ? "bg-violet-600/20 text-violet-300"
-                          : "hover:bg-white/5 text-slate-400"
-                      }`}
-                    >
-                      <Send className="h-4 w-4" />
-                      <span className="flex-1 text-left">Inviata</span>
-                    </button>
+                    {account.accountType !== "smtp_only" && (
+                      <button
+                        onClick={() => handleFolderClick("inbox", account.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                          selectedFolder === "inbox" && selectedAccountId === account.id
+                            ? "bg-violet-600/20 text-violet-300"
+                            : "hover:bg-white/5 text-slate-400"
+                        }`}
+                      >
+                        <Inbox className="h-4 w-4" />
+                        <span className="flex-1 text-left">Inbox</span>
+                        {(account.unreadCount || 0) > 0 && (
+                          <Badge className="h-5 px-1.5 text-xs bg-violet-600">{account.unreadCount}</Badge>
+                        )}
+                      </button>
+                    )}
+                    {account.accountType !== "smtp_only" && (
+                      <button
+                        onClick={() => handleFolderClick("drafts", account.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                          selectedFolder === "drafts" && selectedAccountId === account.id
+                            ? "bg-violet-600/20 text-violet-300"
+                            : "hover:bg-white/5 text-slate-400"
+                        }`}
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span className="flex-1 text-left">Bozze</span>
+                      </button>
+                    )}
+                    {account.accountType !== "imap_only" && (
+                      <button
+                        onClick={() => handleFolderClick("sent", account.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                          selectedFolder === "sent" && selectedAccountId === account.id
+                            ? "bg-violet-600/20 text-violet-300"
+                            : "hover:bg-white/5 text-slate-400"
+                        }`}
+                      >
+                        <Send className="h-4 w-4" />
+                        <span className="flex-1 text-left">Inviata</span>
+                      </button>
+                    )}
                   </div>
                 </CollapsibleContent>
               </Collapsible>

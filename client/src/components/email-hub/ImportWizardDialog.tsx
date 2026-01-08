@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
   Dialog,
@@ -151,11 +151,12 @@ export function ImportWizardDialog({
     setAccountConfigs(configs);
   };
 
-  useState(() => {
-    if (importPreview.settings.length > 0 && accountConfigs.size === 0) {
+  useEffect(() => {
+    if (open && importPreview.settings.length > 0) {
       initializeConfigs();
+      setCurrentStep(1);
     }
-  });
+  }, [open, importPreview.settings]);
 
   const updateAccountConfig = (settingId: string, updates: Partial<AccountConfig>) => {
     setAccountConfigs((prev) => {
