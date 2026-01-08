@@ -80,6 +80,7 @@ import {
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
+import { ImportWizardDialog } from "@/components/email-hub/ImportWizardDialog";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
@@ -212,6 +213,8 @@ export default function ConsultantEmailHub() {
     starred: false,
     processingStatus: null,
   });
+  
+  const [showImportWizard, setShowImportWizard] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -889,11 +892,10 @@ export default function ConsultantEmailHub() {
                     variant="outline"
                     size="sm"
                     className="text-xs border-violet-600 text-violet-300 hover:bg-violet-800/30"
-                    onClick={() => importAccountsMutation.mutate()}
-                    disabled={importAccountsMutation.isPending}
+                    onClick={() => setShowImportWizard(true)}
                   >
                     <Download className="h-3 w-3 mr-1" />
-                    {importAccountsMutation.isPending ? "Importando..." : `Importa (${importPreview.importable})`}
+                    Importa ({importPreview.importable})
                   </Button>
                 )}
               </div>
@@ -1852,6 +1854,23 @@ export default function ConsultantEmailHub() {
       {renderAccountDialog()}
       {renderEmailSheet()}
       {renderEditDraftDialog()}
+      
+      {importPreview && (
+        <ImportWizardDialog
+          open={showImportWizard}
+          onOpenChange={setShowImportWizard}
+          importPreview={importPreview}
+          onImportComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts/import-preview"] });
+            toast({ 
+              title: "Importazione completata", 
+              description: "Gli account sono stati importati con successo"
+            });
+          }}
+        />
+      )}
+      
       <ConsultantAIAssistant />
     </div>
   );
