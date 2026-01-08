@@ -7,27 +7,43 @@ import { z } from "zod";
 import { createImapService, ImapIdleManager, ParsedEmail } from "../services/email-hub/imap-service";
 import { createSmtpService } from "../services/email-hub/smtp-service";
 import { classifyEmail, generateEmailDraft, classifyAndGenerateDraft } from "../services/email-hub/email-ai-service";
+import { classifyEmailProvider, isSendOnlyProvider, ITALIAN_PROVIDERS } from "../services/email-hub/provider-classifier";
 
 const router = Router();
 
 const createAccountSchema = z.object({
   displayName: z.string().min(1).max(100),
   emailAddress: z.string().email(),
-  imapHost: z.string().min(1),
-  imapPort: z.number().int().min(1).max(65535).default(993),
-  imapUser: z.string().min(1),
-  imapPassword: z.string().min(1),
-  imapTls: z.boolean().default(true),
-  smtpHost: z.string().min(1),
-  smtpPort: z.number().int().min(1).max(65535).default(587),
-  smtpUser: z.string().min(1),
-  smtpPassword: z.string().min(1),
-  smtpTls: z.boolean().default(true),
+  accountType: z.enum(["smtp_only", "imap_only", "full", "hybrid"]).default("full"),
+  // IMAP - optional for smtp_only
+  imapHost: z.string().min(1).optional(),
+  imapPort: z.number().int().min(1).max(65535).default(993).optional(),
+  imapUser: z.string().min(1).optional(),
+  imapPassword: z.string().min(1).optional(),
+  imapTls: z.boolean().default(true).optional(),
+  // SMTP - optional for imap_only
+  smtpHost: z.string().min(1).optional(),
+  smtpPort: z.number().int().min(1).max(65535).default(587).optional(),
+  smtpUser: z.string().min(1).optional(),
+  smtpPassword: z.string().min(1).optional(),
+  smtpTls: z.boolean().default(true).optional(),
+  // AI config
   autoReplyMode: z.enum(["off", "review", "auto"]).default("review"),
   confidenceThreshold: z.number().min(0).max(1).default(0.8),
   aiTone: z.enum(["formal", "friendly", "professional"]).default("formal"),
   signature: z.string().optional(),
-});
+}).refine(data => {
+  // Validate based on account type
+  if (data.accountType === "smtp_only" || data.accountType === "full" || data.accountType === "hybrid") {
+    return data.smtpHost && data.smtpUser && data.smtpPassword;
+  }
+  return true;
+}, { message: "SMTP configuration required" }).refine(data => {
+  if (data.accountType === "imap_only" || data.accountType === "full" || data.accountType === "hybrid") {
+    return data.imapHost && data.imapUser && data.imapPassword;
+  }
+  return true;
+}, { message: "IMAP configuration required" });
 
 const updateAccountSchema = createAccountSchema.partial();
 
@@ -166,13 +182,21 @@ router.get("/accounts/import-preview", async (req: AuthRequest, res) => {
         total: existingSmtpSettings.length,
         importable: importableSettings.length,
         alreadyImported: existingSmtpSettings.length - importableSettings.length,
-        settings: importableSettings.map(s => ({
-          id: s.id,
-          fromEmail: s.fromEmail,
-          fromName: s.fromName,
-          smtpHost: s.smtpHost,
-          accountReference: s.accountReference,
-        })),
+        settings: importableSettings.map(s => {
+          const classification = classifyEmailProvider(s.smtpHost);
+          return {
+            id: s.id,
+            fromEmail: s.fromEmail,
+            fromName: s.fromName,
+            smtpHost: s.smtpHost,
+            smtpPort: s.smtpPort,
+            smtpUser: s.smtpUser,
+            smtpPassword: s.smtpPassword,
+            accountReference: s.accountReference,
+            provider: classification,
+          };
+        }),
+        italianProviders: ITALIAN_PROVIDERS,
       },
     });
   } catch (error: any) {
@@ -290,6 +314,151 @@ router.post("/accounts/import", async (req: AuthRequest, res) => {
     });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error importing accounts:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Import with wizard - supports hybrid configurations
+router.post("/accounts/import-wizard", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const importSchema = z.object({
+      accounts: z.array(z.object({
+        smtpSettingId: z.string(),
+        accountType: z.enum(["smtp_only", "imap_only", "full", "hybrid"]),
+        // IMAP override for hybrid configs
+        imapHost: z.string().optional(),
+        imapPort: z.number().default(993).optional(),
+        imapUser: z.string().optional(),
+        imapPassword: z.string().optional(),
+      }))
+    });
+    
+    const { accounts } = importSchema.parse(req.body);
+    
+    // Fetch original SMTP settings
+    const existingSmtpSettings = await db
+      .select()
+      .from(schema.consultantSmtpSettings)
+      .where(eq(schema.consultantSmtpSettings.consultantId, consultantId));
+    
+    const settingsMap = new Map(existingSmtpSettings.map(s => [s.id.toString(), s]));
+    
+    // Check for already imported
+    const existingAccounts = await db
+      .select({ emailAddress: schema.emailAccounts.emailAddress })
+      .from(schema.emailAccounts)
+      .where(eq(schema.emailAccounts.consultantId, consultantId));
+    
+    const existingEmails = new Set(existingAccounts.map(a => a.emailAddress.toLowerCase()));
+    
+    const mapTone = (tone: string | null): "formal" | "friendly" | "professional" => {
+      switch (tone) {
+        case "formale": return "formal";
+        case "amichevole": return "friendly";
+        case "professionale":
+        case "motivazionale": return "professional";
+        default: return "formal";
+      }
+    };
+    
+    const results: Array<{ success?: boolean; id?: string; emailAddress?: string; accountType?: string; error?: string; skipped?: boolean }> = [];
+    
+    for (const accountConfig of accounts) {
+      const settings = settingsMap.get(accountConfig.smtpSettingId);
+      if (!settings) {
+        results.push({ error: `Setting ${accountConfig.smtpSettingId} not found` });
+        continue;
+      }
+      
+      if (existingEmails.has(settings.fromEmail.toLowerCase())) {
+        results.push({ error: `${settings.fromEmail} already imported`, skipped: true });
+        continue;
+      }
+      
+      try {
+        const accountData: any = {
+          consultantId,
+          provider: "imap",
+          accountType: accountConfig.accountType,
+          displayName: settings.fromName || settings.fromEmail.split("@")[0],
+          emailAddress: settings.fromEmail,
+          aiTone: mapTone(settings.emailTone),
+          signature: settings.emailSignature,
+          autoReplyMode: "review",
+          confidenceThreshold: 0.8,
+          syncStatus: "idle",
+        };
+        
+        // Add SMTP if not imap_only
+        if (accountConfig.accountType !== "imap_only") {
+          accountData.smtpHost = settings.smtpHost;
+          accountData.smtpPort = settings.smtpPort;
+          accountData.smtpUser = settings.smtpUser;
+          accountData.smtpPassword = settings.smtpPassword;
+          accountData.smtpTls = settings.smtpSecure;
+        }
+        
+        // Add IMAP if not smtp_only
+        if (accountConfig.accountType !== "smtp_only") {
+          // Use provided IMAP or guess from SMTP
+          if (accountConfig.imapHost) {
+            accountData.imapHost = accountConfig.imapHost;
+            accountData.imapPort = accountConfig.imapPort || 993;
+            accountData.imapUser = accountConfig.imapUser || settings.smtpUser;
+            accountData.imapPassword = accountConfig.imapPassword || settings.smtpPassword;
+          } else {
+            // Try to guess (only for full-service providers)
+            const classification = classifyEmailProvider(settings.smtpHost);
+            if (classification.suggestedImapHost) {
+              accountData.imapHost = classification.suggestedImapHost;
+              accountData.imapPort = classification.suggestedImapPort || 993;
+              accountData.imapUser = settings.smtpUser;
+              accountData.imapPassword = settings.smtpPassword;
+            }
+          }
+          accountData.imapTls = true;
+        }
+        
+        const [account] = await db
+          .insert(schema.emailAccounts)
+          .values(accountData)
+          .returning();
+        
+        results.push({
+          success: true,
+          id: account.id,
+          emailAddress: account.emailAddress,
+          accountType: account.accountType || "full",
+        });
+        
+        existingEmails.add(settings.fromEmail.toLowerCase());
+      } catch (err: any) {
+        console.error(`[EMAIL-HUB] Error importing ${settings.fromEmail}:`, err);
+        results.push({ error: err.message, emailAddress: settings.fromEmail });
+      }
+    }
+    
+    const imported = results.filter(r => r.success).length;
+    
+    res.json({
+      success: true,
+      data: {
+        imported,
+        total: accounts.length,
+        results,
+      },
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: "Validation failed",
+        details: error.errors,
+      });
+    }
+    console.error("[EMAIL-HUB] Error in wizard import:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

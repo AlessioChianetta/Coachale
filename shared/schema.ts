@@ -7278,6 +7278,9 @@ export const emailAccounts = pgTable("email_accounts", {
   displayName: varchar("display_name", { length: 100 }),
   emailAddress: varchar("email_address", { length: 255 }).notNull(),
   
+  // Account type - determines capabilities
+  accountType: varchar("account_type", { length: 20 }).default("full").$type<"smtp_only" | "imap_only" | "full" | "hybrid">(),
+  
   // IMAP Settings
   imapHost: varchar("imap_host", { length: 255 }),
   imapPort: integer("imap_port").default(993),
