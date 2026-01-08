@@ -408,7 +408,7 @@ export default function PublicAgentShare() {
       }
       
       setIsStreaming(true);
-      setIsThinking(false);
+      setIsThinking(true);
       setStreamingThinking("");
       const streamId = `stream_${Date.now()}`;
       setStreamingMessage({
@@ -667,7 +667,7 @@ export default function PublicAgentShare() {
       setUploadingAudioPreview(audioUrl);
       setIsUploadingAudio(true);
       setIsStreaming(true);
-      setIsThinking(false);
+      setIsThinking(true);
       setStreamingThinking("");
       
       const formData = new FormData();

@@ -393,6 +393,7 @@ export default function ClientAIAssistant() {
         role: "assistant",
         content: "",
         status: "processing",
+        isThinking: true,
         modelName: modelLabel,
         thinkingLevel: thinkingLabel,
       };
