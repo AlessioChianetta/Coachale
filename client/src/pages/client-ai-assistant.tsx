@@ -107,6 +107,7 @@ export default function ClientAIAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mainSidebarCollapsed, setMainSidebarCollapsed] = useState(true);
   const [chatSidebarOpen, setChatSidebarOpen] = useState(!isMobile);
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const [conversationFilter, setConversationFilter] = useState<"all" | "assistenza" | "finanziario" | "vendita" | "business" | "live_voice">("all");
@@ -531,7 +532,7 @@ export default function ClientAIAssistant() {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} bg-gradient-to-br ${theme === 'dark' ? 'from-slate-900 via-slate-900 to-slate-900' : 'from-slate-50 via-cyan-50/30 to-teal-50/20'}`}>
       <div className="flex h-screen">
-        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
+        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} isCollapsed={mainSidebarCollapsed} onCollapsedChange={setMainSidebarCollapsed} />
 
         <div className="flex-1 flex overflow-hidden">
           {(!isMobile || chatSidebarOpen) && (
@@ -566,6 +567,8 @@ export default function ClientAIAssistant() {
                 availableAgents={availableAgents}
                 agentFilter={agentFilter}
                 onAgentFilterChange={setAgentFilter}
+                mainSidebarCollapsed={mainSidebarCollapsed}
+                onExpandMainSidebar={() => setMainSidebarCollapsed(false)}
               />
             </div>
           )}

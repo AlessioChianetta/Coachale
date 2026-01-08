@@ -23,7 +23,8 @@ import {
   Filter,
   ChevronDown,
   Mic,
-  UserCircle
+  UserCircle,
+  Menu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +60,8 @@ interface ConversationSidebarProps {
   agentFilter?: string;
   onAgentFilterChange?: (value: string) => void;
   onSettingsClick?: () => void;
+  mainSidebarCollapsed?: boolean;
+  onExpandMainSidebar?: () => void;
 }
 
 type FilterType = "all" | "assistenza" | "consulente" | "vocale";
@@ -79,6 +82,8 @@ export function ConversationSidebar({
   agentFilter = "all",
   onAgentFilterChange,
   onSettingsClick,
+  mainSidebarCollapsed,
+  onExpandMainSidebar,
 }: ConversationSidebarProps) {
   const [swipedConversationId, setSwipedConversationId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
@@ -268,6 +273,16 @@ export function ConversationSidebar({
               </motion.div>
             )}
           </AnimatePresence>
+        )}
+
+        {!sidebarMinimized && mainSidebarCollapsed && onExpandMainSidebar && (
+          <button
+            onClick={onExpandMainSidebar}
+            className="w-full flex items-center gap-1.5 px-2 py-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+          >
+            <Menu className="h-3 w-3" />
+            <span>Menu principale</span>
+          </button>
         )}
 
         {!sidebarMinimized && variant === "consultant" && onSettingsClick && (

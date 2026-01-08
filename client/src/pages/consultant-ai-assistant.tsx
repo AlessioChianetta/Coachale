@@ -100,6 +100,7 @@ export default function ConsultantAIAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mainSidebarCollapsed, setMainSidebarCollapsed] = useState(true);
   const [chatSidebarOpen, setChatSidebarOpen] = useState(!isMobile);
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
@@ -529,7 +530,7 @@ export default function ConsultantAIAssistant() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-teal-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <div className="flex h-screen">
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} isCollapsed={mainSidebarCollapsed} onCollapsedChange={setMainSidebarCollapsed} />
 
         <div className="flex-1 flex overflow-hidden">
           {(!isMobile || chatSidebarOpen) && (
@@ -565,6 +566,8 @@ export default function ConsultantAIAssistant() {
                 agentFilter={conversationFilter}
                 onAgentFilterChange={setConversationFilter}
                 onSettingsClick={() => setLocation('/consultant/ai-settings')}
+                mainSidebarCollapsed={mainSidebarCollapsed}
+                onExpandMainSidebar={() => setMainSidebarCollapsed(false)}
               />
             </div>
           )}
