@@ -433,6 +433,7 @@ router.put("/consultant/referral-landing", authenticateToken, requireRole("consu
       bonusDescription,
       accentColor,
       isActive,
+      defaultCampaignId,
     } = req.body;
 
     const existing = await db.query.referralLandingConfig.findFirst({
@@ -452,6 +453,7 @@ router.put("/consultant/referral-landing", authenticateToken, requireRole("consu
       bonusDescription,
       accentColor,
       isActive,
+      defaultCampaignId,
       updatedAt: new Date(),
     };
 
@@ -584,31 +586,51 @@ router.post("/public/referral/:code/submit", async (req, res) => {
       where: eq(users.id, referralCode.consultantId),
     });
 
+    const landingConfig = await db.query.referralLandingConfig.findFirst({
+      where: eq(referralLandingConfig.consultantId, referralCode.consultantId),
+    });
+
     let proactiveLeadId = null;
-    if (consultant) {
-      const agentConfig = await db.query.consultantWhatsappConfig.findFirst({
-        where: eq(sql`consultant_id`, referralCode.consultantId),
+    const agentConfigId = landingConfig?.agentConfigId;
+    const campaignId = landingConfig?.defaultCampaignId;
+
+    if (consultant && agentConfigId) {
+      const referrer = await db.query.users.findFirst({
+        where: eq(users.id, referralCode.userId),
       });
 
-      if (agentConfig) {
-        const referrer = await db.query.users.findFirst({
-          where: eq(users.id, referralCode.userId),
+      let campaignSnapshot = null;
+      if (campaignId) {
+        const campaign = await db.query.marketingCampaigns.findFirst({
+          where: eq(sql`id`, campaignId),
         });
-
-        const [lead] = await db.insert(proactiveLeads).values({
-          consultantId: referralCode.consultantId,
-          agentConfigId: agentConfig.id,
-          firstName,
-          lastName: lastName || "",
-          phoneNumber: phone,
-          email: email.toLowerCase(),
-          leadCategory: "referral",
-          status: "pending",
-          contactSchedule: new Date(),
-          notes: `Referral da landing page. Invitato da ${referrer?.firstName || ""} ${referrer?.lastName || ""}. ${notes || ""}`,
-        }).returning();
-        proactiveLeadId = lead.id;
+        if (campaign) {
+          campaignSnapshot = {
+            name: campaign.name,
+            goal: campaign.goal,
+            obiettivi: campaign.obiettivi,
+            desideri: campaign.desideri,
+            uncino: campaign.uncino,
+            statoIdeale: campaign.statoIdeale,
+          };
+        }
       }
+
+      const [lead] = await db.insert(proactiveLeads).values({
+        consultantId: referralCode.consultantId,
+        agentConfigId,
+        campaignId: campaignId || null,
+        campaignSnapshot,
+        firstName,
+        lastName: lastName || "",
+        phoneNumber: phone,
+        email: email.toLowerCase(),
+        leadCategory: "referral",
+        status: "pending",
+        contactSchedule: new Date(),
+        notes: `Referral da landing page. Invitato da ${referrer?.firstName || ""} ${referrer?.lastName || ""}. ${notes || ""}`,
+      }).returning();
+      proactiveLeadId = lead.id;
     }
 
     const [newReferral] = await db.insert(referrals).values({

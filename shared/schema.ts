@@ -7191,6 +7191,8 @@ export const referralLandingConfig = pgTable("referral_landing_config", {
   // AI Assistant
   agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id),
   showAiChat: boolean("show_ai_chat").default(true),
+  // Lead creation defaults
+  defaultCampaignId: varchar("default_campaign_id").references(() => marketingCampaigns.id),
   // Bonus for referrer
   bonusType: text("bonus_type").$type<"months_free" | "cash" | "physical" | "discount" | "none">(),
   bonusValue: text("bonus_value"),

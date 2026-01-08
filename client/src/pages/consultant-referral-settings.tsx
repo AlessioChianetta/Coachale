@@ -42,6 +42,8 @@ interface ReferralLandingConfig {
   welcomeMessage: string;
   bonusDescription: string;
   preferredChannel: "email" | "whatsapp" | "call" | "all";
+  agentConfigId: string | null;
+  defaultCampaignId: string | null;
 }
 
 const defaultFormData: ReferralLandingConfig = {
@@ -58,6 +60,8 @@ const defaultFormData: ReferralLandingConfig = {
   welcomeMessage: "Ciao! Come posso aiutarti oggi?",
   bonusDescription: "",
   preferredChannel: "all",
+  agentConfigId: null,
+  defaultCampaignId: null,
 };
 
 export default function ConsultantReferralSettingsPage() {
@@ -84,6 +88,31 @@ export default function ConsultantReferralSettingsPage() {
     },
   });
 
+  const { data: agentsData } = useQuery({
+    queryKey: ["/api/consultant/whatsapp-agents"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/whatsapp-agents", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { agents: [] };
+      return response.json();
+    },
+  });
+
+  const { data: campaignsData } = useQuery({
+    queryKey: ["/api/consultant/campaigns"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/campaigns", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { campaigns: [] };
+      return response.json();
+    },
+  });
+
+  const agents = agentsData?.agents || [];
+  const campaigns = campaignsData?.campaigns || [];
+
   useEffect(() => {
     if (configData?.config) {
       const config = configData.config;
@@ -101,6 +130,8 @@ export default function ConsultantReferralSettingsPage() {
         welcomeMessage: config.welcomeMessage || defaultFormData.welcomeMessage,
         bonusDescription: config.bonusDescription || defaultFormData.bonusDescription,
         preferredChannel: config.preferredChannel || defaultFormData.preferredChannel,
+        agentConfigId: config.agentConfigId || null,
+        defaultCampaignId: config.defaultCampaignId || null,
       });
     }
   }, [configData]);
@@ -121,6 +152,8 @@ export default function ConsultantReferralSettingsPage() {
         welcomeMessage: data.welcomeMessage,
         bonusDescription: data.bonusDescription,
         preferredChannel: data.preferredChannel,
+        agentConfigId: data.agentConfigId,
+        defaultCampaignId: data.defaultCampaignId,
       };
 
       const response = await fetch("/api/consultant/referral-landing", {
@@ -532,6 +565,52 @@ export default function ConsultantReferralSettingsPage() {
                       </Select>
                       <p className="text-xs text-slate-500">
                         Come preferisci essere contattato dai nuovi lead
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="agentConfigId">Agente WhatsApp per Lead</Label>
+                      <Select
+                        value={formData.agentConfigId || "none"}
+                        onValueChange={(value) => updateField("agentConfigId", value === "none" ? null : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona l'agente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nessun agente</SelectItem>
+                          {agents.map((agent: any) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              {agent.agentName || agent.businessName || "Agente senza nome"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-slate-500">
+                        L'agente WhatsApp che contatterà i lead generati dai referral
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="defaultCampaignId">Campagna di Default</Label>
+                      <Select
+                        value={formData.defaultCampaignId || "none"}
+                        onValueChange={(value) => updateField("defaultCampaignId", value === "none" ? null : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona la campagna" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nessuna campagna</SelectItem>
+                          {campaigns.map((campaign: any) => (
+                            <SelectItem key={campaign.id} value={campaign.id}>
+                              {campaign.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-slate-500">
+                        La campagna associata ai lead referral (include obiettivi e desideri)
                       </p>
                     </div>
 
