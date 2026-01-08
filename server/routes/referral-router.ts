@@ -428,12 +428,17 @@ router.put("/consultant/referral-landing", authenticateToken, requireRole("consu
       preferredChannel,
       agentConfigId,
       showAiChat,
+      aiAssistantIframeUrl,
       bonusType,
       bonusValue,
       bonusDescription,
       accentColor,
       isActive,
       defaultCampaignId,
+      ctaButtonText,
+      welcomeMessage,
+      maxUsesPerCode,
+      qualificationFieldsConfig,
     } = req.body;
 
     const existing = await db.query.referralLandingConfig.findFirst({
@@ -448,12 +453,17 @@ router.put("/consultant/referral-landing", authenticateToken, requireRole("consu
       preferredChannel,
       agentConfigId,
       showAiChat,
+      aiAssistantIframeUrl,
       bonusType,
       bonusValue,
       bonusDescription,
       accentColor,
       isActive,
       defaultCampaignId,
+      ctaButtonText,
+      welcomeMessage,
+      maxUsesPerCode,
+      qualificationFieldsConfig,
       updatedAt: new Date(),
     };
 
@@ -532,8 +542,12 @@ router.get("/public/referral/:code", async (req, res) => {
         profileImageUrl: landingConfig.profileImageUrl || consultant?.avatar,
         preferredChannel: landingConfig.preferredChannel,
         showAiChat: landingConfig.showAiChat,
+        aiAssistantIframeUrl: landingConfig.aiAssistantIframeUrl,
         agentConfigId: landingConfig.agentConfigId,
         accentColor: landingConfig.accentColor,
+        ctaButtonText: landingConfig.ctaButtonText || "Richiedi il tuo bonus",
+        welcomeMessage: landingConfig.welcomeMessage,
+        qualificationFieldsConfig: landingConfig.qualificationFieldsConfig,
       } : {
         headline: `Inizia il tuo percorso con ${consultant?.firstName || "noi"}`,
         description: "Siamo qui per aiutarti a raggiungere i tuoi obiettivi.",
@@ -541,7 +555,11 @@ router.get("/public/referral/:code", async (req, res) => {
         profileImageUrl: consultant?.avatar,
         preferredChannel: "all",
         showAiChat: false,
+        aiAssistantIframeUrl: null,
         accentColor: "#6366f1",
+        ctaButtonText: "Richiedi il tuo bonus",
+        welcomeMessage: null,
+        qualificationFieldsConfig: null,
       },
     });
   } catch (error: any) {
@@ -554,7 +572,27 @@ router.get("/public/referral/:code", async (req, res) => {
 router.post("/public/referral/:code/submit", async (req, res) => {
   try {
     const { code } = req.params;
-    const { firstName, lastName, email, phone, notes } = req.body;
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      phone, 
+      notes,
+      qualificationRole,
+      qualificationCompanyType,
+      qualificationSector,
+      qualificationEmployeeCount,
+      qualificationAnnualRevenue,
+      qualificationCurrentCompany,
+      qualificationCurrentPosition,
+      qualificationYearsExperience,
+      qualificationFieldOfStudy,
+      qualificationUniversity,
+      qualificationMotivation,
+      qualificationBiggestProblem,
+      qualificationGoal12Months,
+      qualificationCurrentBlocker,
+    } = req.body;
 
     if (!firstName || !email || !phone) {
       return res.status(400).json({ success: false, error: "Nome, email e telefono sono obbligatori" });
@@ -644,6 +682,20 @@ router.post("/public/referral/:code/submit", async (req, res) => {
       friendPhone: phone,
       inviteMethod: "link_shared",
       notes,
+      qualificationRole,
+      qualificationCompanyType,
+      qualificationSector,
+      qualificationEmployeeCount,
+      qualificationAnnualRevenue,
+      qualificationCurrentCompany,
+      qualificationCurrentPosition,
+      qualificationYearsExperience,
+      qualificationFieldOfStudy,
+      qualificationUniversity,
+      qualificationMotivation,
+      qualificationBiggestProblem,
+      qualificationGoal12Months,
+      qualificationCurrentBlocker,
     }).returning();
 
     try {
