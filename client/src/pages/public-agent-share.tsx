@@ -1187,7 +1187,6 @@ export default function PublicAgentShare() {
               onModelChange={setSelectedModel}
               thinkingLevel={thinkingLevel}
               onThinkingLevelChange={setThinkingLevel}
-              onLiveModeClick={startRecording}
             />
           )}
         </div>
