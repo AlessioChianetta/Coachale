@@ -11,6 +11,142 @@ import { classifyEmailProvider, isSendOnlyProvider, ITALIAN_PROVIDERS } from "..
 
 const router = Router();
 
+// Helper function to start IDLE and initial sync for an account (runs in background)
+async function startIdleAndSyncInBackground(account: {
+  id: string;
+  consultantId: string;
+  emailAddress: string;
+  imapHost: string | null;
+  imapPort: number | null;
+  imapUser: string | null;
+  imapPassword: string | null;
+  imapTls: boolean | null;
+}) {
+  if (!account.imapHost || !account.imapUser || !account.imapPassword) {
+    console.log(`[EMAIL-HUB AUTO] Skipping auto-sync for ${account.emailAddress} - no IMAP config`);
+    return;
+  }
+
+  console.log(`[EMAIL-HUB AUTO] Starting automatic sync for ${account.emailAddress}...`);
+
+  try {
+    // First do initial sync to fetch existing emails
+    const imapService = createImapService({
+      host: account.imapHost,
+      port: account.imapPort || 993,
+      user: account.imapUser,
+      password: account.imapPassword,
+      tls: account.imapTls ?? true,
+    });
+
+    await db
+      .update(schema.emailAccounts)
+      .set({ syncStatus: "syncing" })
+      .where(eq(schema.emailAccounts.id, account.id));
+
+    // Sync all folders
+    const folders = ["INBOX", "Sent", "INBOX.Sent", "Drafts", "INBOX.Drafts"];
+    let totalImported = 0;
+
+    for (const folder of folders) {
+      try {
+        const emails = await imapService.fetchRecentEmailsFromFolder(folder, 50);
+        console.log(`[EMAIL-HUB AUTO] Fetched ${emails.length} emails from ${folder}`);
+
+        for (const email of emails) {
+          const existingEmail = await db
+            .select({ id: schema.hubEmails.id })
+            .from(schema.hubEmails)
+            .where(
+              and(
+                eq(schema.hubEmails.accountId, account.id),
+                eq(schema.hubEmails.messageId, email.messageId)
+              )
+            )
+            .limit(1);
+
+          if (existingEmail.length === 0) {
+            const direction = folder.toLowerCase().includes("sent") ? "outbound" : "inbound";
+            await db.insert(schema.hubEmails).values({
+              accountId: account.id,
+              consultantId: account.consultantId,
+              messageId: email.messageId,
+              subject: email.subject,
+              fromName: email.fromName,
+              fromEmail: email.fromEmail,
+              toRecipients: email.toRecipients,
+              ccRecipients: email.ccRecipients,
+              bodyHtml: email.bodyHtml,
+              bodyText: email.bodyText,
+              snippet: email.snippet,
+              direction,
+              folder: folder.replace("INBOX.", "").toLowerCase(),
+              isRead: direction === "outbound",
+              receivedAt: email.receivedAt,
+              attachments: email.attachments,
+              hasAttachments: email.hasAttachments,
+              inReplyTo: email.inReplyTo,
+              processingStatus: direction === "outbound" ? "processed" : "new",
+            });
+            totalImported++;
+          }
+        }
+      } catch (folderErr: any) {
+        // Folder might not exist, that's ok
+        console.log(`[EMAIL-HUB AUTO] Could not sync folder ${folder}: ${folderErr.message}`);
+      }
+    }
+
+    console.log(`[EMAIL-HUB AUTO] Initial sync complete: ${totalImported} emails imported`);
+
+    // Now start IDLE for live updates
+    const idleManager = ImapIdleManager.getInstance();
+    
+    if (!idleManager.isConnected(account.id)) {
+      const started = await idleManager.startIdleForAccount({
+        host: account.imapHost,
+        port: account.imapPort || 993,
+        user: account.imapUser,
+        password: account.imapPassword,
+        tls: account.imapTls ?? true,
+        accountId: account.id,
+        consultantId: account.consultantId,
+        onNewEmail: async (email) => {
+          await saveEmailToDatabase(email, account.id, account.consultantId);
+        },
+        onError: async (error) => {
+          console.error(`[IMAP IDLE] Error for account ${account.id}:`, error.message);
+          await db
+            .update(schema.emailAccounts)
+            .set({ syncStatus: "error", syncError: error.message })
+            .where(eq(schema.emailAccounts.id, account.id));
+        },
+        onDisconnect: async () => {
+          console.log(`[IMAP IDLE] Disconnected from account ${account.id}`);
+          await db
+            .update(schema.emailAccounts)
+            .set({ syncStatus: "idle" })
+            .where(eq(schema.emailAccounts.id, account.id));
+        },
+      });
+
+      if (started) {
+        await db
+          .update(schema.emailAccounts)
+          .set({ syncStatus: "connected", syncError: null, lastSyncAt: new Date() })
+          .where(eq(schema.emailAccounts.id, account.id));
+        console.log(`[EMAIL-HUB AUTO] IDLE started for ${account.emailAddress}`);
+      }
+    }
+  } catch (error: any) {
+    console.error(`[EMAIL-HUB AUTO] Error during auto-sync for ${account.emailAddress}:`, error.message);
+    await db
+      .update(schema.emailAccounts)
+      .set({ syncStatus: "error", syncError: error.message })
+      .where(eq(schema.emailAccounts.id, account.id));
+  }
+}
+
 const baseAccountSchema = z.object({
   displayName: z.string().min(1).max(100),
   emailAddress: z.string().email(),
@@ -81,6 +217,13 @@ router.post("/accounts", async (req: AuthRequest, res) => {
         ...validated,
       })
       .returning();
+    
+    // Start automatic sync and IDLE in background (don't wait)
+    if (validated.accountType !== "smtp_only") {
+      startIdleAndSyncInBackground(account).catch(err => {
+        console.error(`[EMAIL-HUB] Background sync failed for ${account.emailAddress}:`, err.message);
+      });
+    }
     
     res.status(201).json({
       success: true,
@@ -297,6 +440,11 @@ router.post("/accounts/import", async (req: AuthRequest, res) => {
           emailAddress: account.emailAddress,
           displayName: account.displayName,
         });
+        
+        // Start automatic sync and IDLE in background (don't wait)
+        startIdleAndSyncInBackground(account).catch(err => {
+          console.error(`[EMAIL-HUB] Background sync failed for ${account.emailAddress}:`, err.message);
+        });
       } catch (err: any) {
         console.error(`[EMAIL-HUB] Error importing ${settings.fromEmail}:`, err);
       }
@@ -430,6 +578,13 @@ router.post("/accounts/import-wizard", async (req: AuthRequest, res) => {
           emailAddress: account.emailAddress,
           accountType: account.accountType || "full",
         });
+        
+        // Start automatic sync and IDLE in background (don't wait)
+        if (accountConfig.accountType !== "smtp_only") {
+          startIdleAndSyncInBackground(account).catch(err => {
+            console.error(`[EMAIL-HUB] Background sync failed for ${account.emailAddress}:`, err.message);
+          });
+        }
         
         existingEmails.add(settings.fromEmail.toLowerCase());
       } catch (err: any) {
@@ -644,7 +799,7 @@ router.post("/accounts/:id/test", async (req: AuthRequest, res) => {
 router.get("/inbox", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { accountId, status, starred, unread, limit = "50", offset = "0" } = req.query;
+    const { accountId, status, starred, unread, folder, direction, limit = "50", offset = "0" } = req.query;
     
     const conditions = [eq(schema.hubEmails.consultantId, consultantId)];
     
@@ -662,6 +817,16 @@ router.get("/inbox", async (req: AuthRequest, res) => {
     
     if (unread === "true") {
       conditions.push(eq(schema.hubEmails.isRead, false));
+    }
+    
+    // Filter by folder (inbox, sent, drafts, etc.)
+    if (folder && typeof folder === "string") {
+      conditions.push(eq(schema.hubEmails.folder, folder));
+    }
+    
+    // Filter by direction (inbound, outbound)
+    if (direction && typeof direction === "string") {
+      conditions.push(eq(schema.hubEmails.direction, direction as "inbound" | "outbound"));
     }
     
     const emails = await db

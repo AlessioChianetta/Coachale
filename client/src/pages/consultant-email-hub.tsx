@@ -299,11 +299,24 @@ export default function ConsultantEmailHub() {
     if (inboxFilter.readStatus === "read") params.set("read", "true");
     if (inboxFilter.starred) params.set("starred", "true");
     if (inboxFilter.processingStatus) params.set("status", inboxFilter.processingStatus);
+    
+    // Add folder filtering based on selectedFolder
+    if (selectedFolder === "inbox") {
+      params.set("folder", "inbox");
+    } else if (selectedFolder === "sent") {
+      params.set("folder", "sent");
+    } else if (selectedFolder === "drafts") {
+      params.set("folder", "drafts");
+    } else if (selectedFolder === "starred") {
+      params.set("starred", "true");
+    }
+    // ai-drafts is handled separately by a different query
+    
     return params.toString();
   };
 
   const { data: inboxData, isLoading: isLoadingInbox, refetch: refetchInbox } = useQuery({
-    queryKey: ["/api/email-hub/inbox", inboxFilter],
+    queryKey: ["/api/email-hub/inbox", inboxFilter, selectedFolder],
     queryFn: async () => {
       const queryString = buildInboxQueryParams();
       const response = await fetch(`/api/email-hub/inbox?${queryString}`, {

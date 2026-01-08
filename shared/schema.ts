@@ -7350,6 +7350,7 @@ export const hubEmails = pgTable("hub_emails", {
   
   // Direction & Status
   direction: varchar("direction", { length: 10 }).notNull().$type<"inbound" | "outbound">(),
+  folder: varchar("folder", { length: 50 }).default("inbox"),
   isRead: boolean("is_read").default(false),
   isStarred: boolean("is_starred").default(false),
   isArchived: boolean("is_archived").default(false),

@@ -72,12 +72,16 @@ export class ImapService {
   }
 
   async fetchRecentEmails(limit: number = 50): Promise<ParsedEmail[]> {
+    return this.fetchRecentEmailsFromFolder("INBOX", limit);
+  }
+
+  async fetchRecentEmailsFromFolder(folderName: string, limit: number = 50): Promise<ParsedEmail[]> {
     return new Promise((resolve, reject) => {
       const imap = this.createConnection();
       const emails: ParsedEmail[] = [];
 
       imap.once("ready", () => {
-        imap.openBox("INBOX", true, (err, box) => {
+        imap.openBox(folderName, true, (err, box) => {
           if (err) {
             imap.end();
             return reject(err);
