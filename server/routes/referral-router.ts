@@ -604,6 +604,7 @@ router.post("/public/referral/:code/submit", async (req, res) => {
           email: email.toLowerCase(),
           leadCategory: "referral",
           status: "pending",
+          contactSchedule: new Date(),
           notes: `Referral da landing page. Invitato da ${referrer?.firstName || ""} ${referrer?.lastName || ""}. ${notes || ""}`,
         }).returning();
         proactiveLeadId = lead.id;
