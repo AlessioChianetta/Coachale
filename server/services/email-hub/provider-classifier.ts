@@ -19,6 +19,11 @@ export interface ItalianProviderPreset {
 }
 
 export const ITALIAN_PROVIDERS: Record<string, ItalianProviderPreset> = {
+  'custom': {
+    name: 'Personalizzato (server privato)',
+    imapHost: '',
+    imapPort: 993,
+  },
   'register.it': {
     name: 'Register.it (inserisci pop.tuodominio.xx)',
     imapHost: '',
