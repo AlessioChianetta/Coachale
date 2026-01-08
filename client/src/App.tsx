@@ -40,6 +40,7 @@ const ConsultantTasks = lazy(() => import("@/pages/consultant-tasks"));
 const ConsultantUniversity = lazy(() => import("@/pages/consultant-university"));
 const ConsultantClientDaily = lazy(() => import("@/pages/consultant-client-daily"));
 const ConsultantSmtpSettings = lazy(() => import("@/pages/consultant-smtp-settings"));
+const ConsultantEmailHub = lazy(() => import("@/pages/consultant-email-hub"));
 const ConsultantEmailLogs = lazy(() => import("@/pages/consultant-email-logs"));
 const ConsultantAiConfig = lazy(() => import("@/pages/consultant-ai-config"));
 const ConsultantAIAssistant = lazy(() => import("@/pages/consultant-ai-assistant"));
@@ -322,6 +323,12 @@ function Router() {
           <Route path="/consultant/smtp-settings">
             <AuthGuard requiredRole="consultant">
               <ConsultantSmtpSettings />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/email-hub">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantEmailHub />
             </AuthGuard>
           </Route>
 
