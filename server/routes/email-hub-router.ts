@@ -487,10 +487,80 @@ router.delete("/accounts/:id", async (req: AuthRequest, res) => {
   }
 });
 
+router.post("/accounts/test", async (req: AuthRequest, res) => {
+  try {
+    const { imapHost, imapPort, imapUser, imapPassword, imapTls,
+            smtpHost, smtpPort, smtpUser, smtpPassword, smtpTls } = req.body;
+    
+    console.log(`[EMAIL-HUB TEST] Testing credentials directly (no account ID)`);
+    console.log(`[EMAIL-HUB TEST] IMAP config: host=${imapHost}, port=${imapPort}, user=${imapUser ? '***' : 'null'}`);
+    console.log(`[EMAIL-HUB TEST] SMTP config: host=${smtpHost}, port=${smtpPort}, user=${smtpUser ? '***' : 'null'}`);
+    
+    let imapResult: { success: boolean; message: string } = { success: true, message: "IMAP non configurato" };
+    let smtpResult: { success: boolean; message: string } = { success: true, message: "SMTP non configurato" };
+    
+    const hasImap = imapHost && imapPort && imapUser && imapPassword;
+    const hasSmtp = smtpHost && smtpPort && smtpUser && smtpPassword;
+    
+    console.log(`[EMAIL-HUB TEST] Has IMAP: ${!!hasImap}, Has SMTP: ${!!hasSmtp}`);
+    
+    if (hasImap) {
+      console.log(`[EMAIL-HUB TEST] Testing IMAP connection to ${imapHost}:${imapPort}...`);
+      const imapService = createImapService({
+        host: imapHost,
+        port: parseInt(imapPort, 10),
+        user: imapUser,
+        password: imapPassword,
+        tls: imapTls ?? true,
+      });
+      try {
+        imapResult = await imapService.testConnection();
+        console.log(`[EMAIL-HUB TEST] IMAP result:`, imapResult);
+      } catch (imapError: any) {
+        console.error(`[EMAIL-HUB TEST] IMAP error:`, imapError);
+        imapResult = { success: false, message: imapError.message || "Errore IMAP sconosciuto" };
+      }
+    }
+    
+    if (hasSmtp) {
+      console.log(`[EMAIL-HUB TEST] Testing SMTP connection to ${smtpHost}:${smtpPort}...`);
+      const smtpService = createSmtpService({
+        host: smtpHost,
+        port: parseInt(smtpPort, 10),
+        user: smtpUser,
+        password: smtpPassword,
+        tls: smtpTls ?? true,
+      });
+      try {
+        smtpResult = await smtpService.testConnection();
+        console.log(`[EMAIL-HUB TEST] SMTP result:`, smtpResult);
+      } catch (smtpError: any) {
+        console.error(`[EMAIL-HUB TEST] SMTP error:`, smtpError);
+        smtpResult = { success: false, message: smtpError.message || "Errore SMTP sconosciuto" };
+      }
+    }
+    
+    console.log(`[EMAIL-HUB TEST] Final results - IMAP: ${imapResult.success}, SMTP: ${smtpResult.success}`);
+    
+    res.json({
+      success: true,
+      data: {
+        imap: imapResult,
+        smtp: smtpResult,
+      },
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB TEST] Error testing connection:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post("/accounts/:id/test", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
     const accountId = req.params.id;
+    
+    console.log(`[EMAIL-HUB TEST] Starting test for account ${accountId}`);
     
     const [account] = await db
       .select()
@@ -503,29 +573,60 @@ router.post("/accounts/:id/test", async (req: AuthRequest, res) => {
       );
     
     if (!account) {
+      console.log(`[EMAIL-HUB TEST] Account not found: ${accountId}`);
       return res.status(404).json({ success: false, error: "Account not found" });
     }
     
-    const imapService = createImapService({
-      host: account.imapHost!,
-      port: account.imapPort!,
-      user: account.imapUser!,
-      password: account.imapPassword!,
-      tls: account.imapTls ?? true,
-    });
+    console.log(`[EMAIL-HUB TEST] Account found: ${account.email}`);
+    console.log(`[EMAIL-HUB TEST] Account type: ${account.accountType}`);
+    console.log(`[EMAIL-HUB TEST] IMAP config: host=${account.imapHost}, port=${account.imapPort}, user=${account.imapUser ? '***' : 'null'}`);
+    console.log(`[EMAIL-HUB TEST] SMTP config: host=${account.smtpHost}, port=${account.smtpPort}, user=${account.smtpUser ? '***' : 'null'}`);
     
-    const smtpService = createSmtpService({
-      host: account.smtpHost!,
-      port: account.smtpPort!,
-      user: account.smtpUser!,
-      password: account.smtpPassword!,
-      tls: account.smtpTls ?? true,
-    });
+    let imapResult: { success: boolean; message: string } = { success: true, message: "IMAP non configurato" };
+    let smtpResult: { success: boolean; message: string } = { success: true, message: "SMTP non configurato" };
     
-    const [imapResult, smtpResult] = await Promise.all([
-      imapService.testConnection(),
-      smtpService.testConnection(),
-    ]);
+    const hasImap = account.imapHost && account.imapPort && account.imapUser && account.imapPassword;
+    const hasSmtp = account.smtpHost && account.smtpPort && account.smtpUser && account.smtpPassword;
+    
+    console.log(`[EMAIL-HUB TEST] Has IMAP: ${hasImap}, Has SMTP: ${hasSmtp}`);
+    
+    if (hasImap) {
+      console.log(`[EMAIL-HUB TEST] Testing IMAP connection to ${account.imapHost}:${account.imapPort}...`);
+      const imapService = createImapService({
+        host: account.imapHost!,
+        port: account.imapPort!,
+        user: account.imapUser!,
+        password: account.imapPassword!,
+        tls: account.imapTls ?? true,
+      });
+      try {
+        imapResult = await imapService.testConnection();
+        console.log(`[EMAIL-HUB TEST] IMAP result:`, imapResult);
+      } catch (imapError: any) {
+        console.error(`[EMAIL-HUB TEST] IMAP error:`, imapError);
+        imapResult = { success: false, message: imapError.message || "Errore IMAP sconosciuto" };
+      }
+    }
+    
+    if (hasSmtp) {
+      console.log(`[EMAIL-HUB TEST] Testing SMTP connection to ${account.smtpHost}:${account.smtpPort}...`);
+      const smtpService = createSmtpService({
+        host: account.smtpHost!,
+        port: account.smtpPort!,
+        user: account.smtpUser!,
+        password: account.smtpPassword!,
+        tls: account.smtpTls ?? true,
+      });
+      try {
+        smtpResult = await smtpService.testConnection();
+        console.log(`[EMAIL-HUB TEST] SMTP result:`, smtpResult);
+      } catch (smtpError: any) {
+        console.error(`[EMAIL-HUB TEST] SMTP error:`, smtpError);
+        smtpResult = { success: false, message: smtpError.message || "Errore SMTP sconosciuto" };
+      }
+    }
+    
+    console.log(`[EMAIL-HUB TEST] Final results - IMAP: ${imapResult.success}, SMTP: ${smtpResult.success}`);
     
     res.json({
       success: true,
@@ -535,7 +636,7 @@ router.post("/accounts/:id/test", async (req: AuthRequest, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[EMAIL-HUB] Error testing connection:", error);
+    console.error("[EMAIL-HUB TEST] Error testing connection:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -446,6 +446,12 @@ export default function ConsultantEmailHub() {
 
   const testConnectionMutation = useMutation({
     mutationFn: async (data: AccountFormData) => {
+      console.log("[EMAIL-HUB] Testing connection with data:", { 
+        imapHost: data.imapHost, 
+        imapPort: data.imapPort,
+        smtpHost: data.smtpHost,
+        smtpPort: data.smtpPort 
+      });
       const response = await fetch("/api/email-hub/accounts/test", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
@@ -457,10 +463,31 @@ export default function ConsultantEmailHub() {
       }
       return response.json();
     },
-    onSuccess: () => {
-      toast({ title: "Connessione riuscita", description: "Le credenziali sono valide" });
+    onSuccess: (result) => {
+      console.log("[EMAIL-HUB] Test result:", result);
+      const imapOk = result.data?.imap?.success;
+      const smtpOk = result.data?.smtp?.success;
+      const imapMsg = result.data?.imap?.message || "N/A";
+      const smtpMsg = result.data?.smtp?.message || "N/A";
+      
+      if (imapOk && smtpOk) {
+        toast({ 
+          title: "Connessione riuscita", 
+          description: `IMAP: ${imapMsg} | SMTP: ${smtpMsg}` 
+        });
+      } else {
+        const errors = [];
+        if (!imapOk) errors.push(`IMAP: ${imapMsg}`);
+        if (!smtpOk) errors.push(`SMTP: ${smtpMsg}`);
+        toast({ 
+          title: "Test parzialmente fallito", 
+          description: errors.join(" | "), 
+          variant: "destructive" 
+        });
+      }
     },
     onError: (error: any) => {
+      console.error("[EMAIL-HUB] Test error:", error);
       toast({ title: "Connessione fallita", description: error.message, variant: "destructive" });
     },
   });
