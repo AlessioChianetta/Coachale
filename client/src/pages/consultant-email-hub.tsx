@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import {
   Mail,
@@ -55,11 +61,19 @@ import {
   EyeOff,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Check,
   X,
   Users,
   FileText,
   Wifi,
+  Search,
+  Paperclip,
+  Reply,
+  Forward,
+  MoreVertical,
+  PenSquare,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -106,6 +120,7 @@ interface Email {
   processingStatus: "new" | "processing" | "classified" | "draft_generated" | "sent";
   urgency?: "low" | "medium" | "high" | "urgent";
   classification?: string;
+  hasAttachments?: boolean;
 }
 
 interface AIResponse {
@@ -146,6 +161,8 @@ type InboxFilter = {
   processingStatus: string | null;
 };
 
+type FolderType = "inbox" | "drafts" | "sent" | "ai-drafts";
+
 const defaultFormData: AccountFormData = {
   displayName: "",
   emailAddress: "",
@@ -165,10 +182,11 @@ const defaultFormData: AccountFormData = {
   signature: "",
 };
 
+const ITEMS_PER_PAGE = 25;
+
 export default function ConsultantEmailHub() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("inbox");
   const [showAccountDialog, setShowAccountDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -178,6 +196,14 @@ export default function ConsultantEmailHub() {
   const [expandedDraftId, setExpandedDraftId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<AIResponse | null>(null);
   const [editedDraftContent, setEditedDraftContent] = useState("");
+  
+  const [selectedFolder, setSelectedFolder] = useState<FolderType>("inbox");
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>({
     accountId: null,
     readStatus: "all",
@@ -200,6 +226,19 @@ export default function ConsultantEmailHub() {
   });
 
   const accounts: EmailAccount[] = accountsData?.data || [];
+
+  useEffect(() => {
+    if (accounts.length > 0 && expandedAccounts.size === 0) {
+      setExpandedAccounts(new Set(accounts.map(a => a.id)));
+    }
+  }, [accounts]);
+
+  useEffect(() => {
+    setInboxFilter(prev => ({
+      ...prev,
+      accountId: selectedAccountId,
+    }));
+  }, [selectedAccountId]);
 
   const buildInboxQueryParams = () => {
     const params = new URLSearchParams();
@@ -265,6 +304,26 @@ export default function ConsultantEmailHub() {
   });
 
   const emailAIResponses: AIResponse[] = emailAIResponsesData?.data || [];
+
+  const filteredEmails = useMemo(() => {
+    let result = emails;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(e => 
+        e.subject?.toLowerCase().includes(q) ||
+        e.fromEmail?.toLowerCase().includes(q) ||
+        e.fromName?.toLowerCase().includes(q) ||
+        e.snippet?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [emails, searchQuery]);
+
+  const totalPages = Math.ceil(filteredEmails.length / ITEMS_PER_PAGE);
+  const paginatedEmails = filteredEmails.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const createAccountMutation = useMutation({
     mutationFn: async (data: AccountFormData) => {
@@ -569,50 +628,48 @@ export default function ConsultantEmailHub() {
 
   const handleEmailClick = (email: Email) => {
     setSelectedEmail(email);
-    setShowEmailSheet(true);
+    if (isMobile) {
+      setShowEmailSheet(true);
+    }
     if (!email.isRead) {
       markAsReadMutation.mutate(email.id);
     }
   };
 
-  const getSyncStatusBadge = (status?: string) => {
-    const config: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
-      syncing: { color: "bg-blue-100 text-blue-700", label: "Sincronizzazione", icon: <RefreshCw className="h-3 w-3 animate-spin" /> },
-      synced: { color: "bg-green-100 text-green-700", label: "Sincronizzato", icon: <CheckCircle className="h-3 w-3" /> },
-      connected: { color: "bg-emerald-100 text-emerald-700", label: "Live Sync", icon: <Wifi className="h-3 w-3" /> },
-      error: { color: "bg-red-100 text-red-700", label: "Errore", icon: <XCircle className="h-3 w-3" /> },
-      idle: { color: "bg-gray-100 text-gray-700", label: "In attesa", icon: <Clock className="h-3 w-3" /> },
-    };
-    const cfg = config[status || "idle"] || config.idle;
-    return (
-      <Badge className={`${cfg.color} flex items-center gap-1`}>
-        {cfg.icon}
-        {cfg.label}
-      </Badge>
-    );
+  const handleFolderClick = (folder: FolderType, accountId?: string) => {
+    setSelectedFolder(folder);
+    if (accountId) {
+      setSelectedAccountId(accountId);
+    }
+    setSelectedEmail(null);
+    setCurrentPage(1);
+    
+    if (folder === "inbox") {
+      setInboxFilter(prev => ({ ...prev, readStatus: "all", processingStatus: null }));
+    } else if (folder === "ai-drafts") {
+      refetchDrafts();
+    }
   };
 
-  const getProcessingStatusBadge = (status: Email["processingStatus"]) => {
-    const config: Record<string, { color: string; label: string }> = {
-      new: { color: "bg-blue-100 text-blue-700", label: "Nuovo" },
-      processing: { color: "bg-yellow-100 text-yellow-700", label: "Elaborazione" },
-      classified: { color: "bg-purple-100 text-purple-700", label: "Classificato" },
-      draft_generated: { color: "bg-green-100 text-green-700", label: "Bozza AI" },
-      sent: { color: "bg-gray-100 text-gray-700", label: "Risposto" },
-    };
-    const cfg = config[status] || config.new;
-    return <Badge className={cfg.color}>{cfg.label}</Badge>;
+  const toggleAccountExpanded = (accountId: string) => {
+    setExpandedAccounts(prev => {
+      const next = new Set(prev);
+      if (next.has(accountId)) {
+        next.delete(accountId);
+      } else {
+        next.add(accountId);
+      }
+      return next;
+    });
   };
 
-  const getUrgencyBadge = (urgency?: string) => {
-    if (!urgency) return null;
-    const config: Record<string, string> = {
-      low: "bg-gray-100 text-gray-600",
-      medium: "bg-yellow-100 text-yellow-700",
-      high: "bg-orange-100 text-orange-700",
-      urgent: "bg-red-100 text-red-700",
-    };
-    return <Badge className={config[urgency] || config.low}>{urgency}</Badge>;
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      "bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500",
+      "bg-rose-500", "bg-cyan-500", "bg-fuchsia-500", "bg-lime-500"
+    ];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
   };
 
   const getConfidenceBadge = (confidence: number) => {
@@ -620,450 +677,498 @@ export default function ConsultantEmailHub() {
     let color = "bg-red-100 text-red-700";
     if (pct >= 80) color = "bg-green-100 text-green-700";
     else if (pct >= 60) color = "bg-yellow-100 text-yellow-700";
-    return <Badge className={color}>{pct}% confidenza</Badge>;
+    return <Badge className={color}>{pct}%</Badge>;
   };
 
-  const renderAccountsTab = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Account Email Collegati</h2>
-          <p className="text-sm text-muted-foreground">Gestisci gli account email per la posta unificata</p>
-        </div>
-        <Button onClick={handleOpenAddAccount} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Aggiungi Account
+  const getFolderTitle = () => {
+    switch (selectedFolder) {
+      case "inbox": return "Posta in arrivo";
+      case "drafts": return "Bozze";
+      case "sent": return "Inviata";
+      case "ai-drafts": return "Bozze AI";
+      default: return "Posta in arrivo";
+    }
+  };
+
+  const renderLeftSidebar = () => (
+    <div className="w-[220px] min-w-[220px] bg-slate-900 text-white flex flex-col h-full">
+      <div className="p-4">
+        <Button 
+          className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2"
+          onClick={() => toast({ title: "Funzione in arrivo", description: "Composizione email in sviluppo" })}
+        >
+          <PenSquare className="h-4 w-4" />
+          Scrivi un messaggio
         </Button>
       </div>
+      
+      <ScrollArea className="flex-1">
+        <div className="px-2 pb-4">
+          {pendingDrafts.length > 0 && (
+            <button
+              onClick={() => handleFolderClick("ai-drafts")}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg mb-2 transition-colors ${
+                selectedFolder === "ai-drafts" 
+                  ? "bg-violet-600/20 text-violet-300" 
+                  : "hover:bg-white/5 text-slate-300"
+              }`}
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm flex-1 text-left">Bozze AI</span>
+              <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                {pendingDrafts.length}
+              </Badge>
+            </button>
+          )}
 
-      {isLoadingAccounts ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : accounts.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Mail className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nessun account collegato</h3>
-            <p className="text-sm text-muted-foreground mb-4">Aggiungi il tuo primo account email per iniziare</p>
-            <Button onClick={handleOpenAddAccount} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Aggiungi Account
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {accounts.map((account) => (
-            <Card key={account.id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Mail className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">{account.displayName}</CardTitle>
-                      <CardDescription className="text-xs">{account.emailAddress}</CardDescription>
-                    </div>
-                  </div>
-                  {getSyncStatusBadge(account.syncStatus)}
-                </div>
-              </CardHeader>
-              <CardContent className="pb-3">
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Provider</span>
-                    <span className="font-medium">{account.provider || "IMAP/SMTP"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Modalità AI</span>
-                    <Badge variant="outline">
-                      {account.autoReplyMode === "auto" ? "Automatico" : account.autoReplyMode === "review" ? "Revisione" : "Disattivato"}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Non letti</span>
-                    <Badge variant={account.unreadCount ? "destructive" : "secondary"}>
-                      {account.unreadCount || 0}
-                    </Badge>
-                  </div>
-                  {account.lastSyncAt && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Ultima sync</span>
-                      <span className="text-xs">{format(new Date(account.lastSyncAt), "dd/MM HH:mm")}</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="pt-0 flex-col gap-2">
-                <div className="flex w-full gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handleOpenEditAccount(account)}>
-                    <Edit className="h-4 w-4 mr-1" />
-                    Modifica
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => {
-                      if (confirm("Sei sicuro di voler eliminare questo account?")) {
-                        deleteAccountMutation.mutate(account.id);
-                      }
-                    }}
+            <Collapsible
+              key={account.id}
+              open={expandedAccounts.has(account.id)}
+              onOpenChange={() => toggleAccountExpanded(account.id)}
+            >
+              <div className="flex items-center gap-1 group">
+                <CollapsibleTrigger asChild>
+                  <button className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-left">
+                    <ChevronDown className={`h-3 w-3 transition-transform text-slate-400 ${
+                      expandedAccounts.has(account.id) ? "" : "-rotate-90"
+                    }`} />
+                    <Mail className="h-4 w-4 text-slate-400" />
+                    <span className="text-sm truncate flex-1 text-slate-200">{account.displayName}</span>
+                    {account.syncStatus === "connected" && (
+                      <Wifi className="h-3 w-3 text-emerald-400" />
+                    )}
+                  </button>
+                </CollapsibleTrigger>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white hover:bg-white/10"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => handleOpenEditAccount(account)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Modifica
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        if (account.syncStatus === "connected") {
+                          stopIdleMutation.mutate(account.id);
+                        } else {
+                          startIdleMutation.mutate(account.id);
+                        }
+                      }}
+                    >
+                      <Wifi className="h-4 w-4 mr-2" />
+                      {account.syncStatus === "connected" ? "Disattiva Sync" : "Attiva Sync Live"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-destructive"
+                      onClick={() => {
+                        if (confirm("Sei sicuro di voler eliminare questo account?")) {
+                          deleteAccountMutation.mutate(account.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Elimina
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              
+              <CollapsibleContent>
+                <div className="ml-5 space-y-0.5">
+                  <button
+                    onClick={() => handleFolderClick("inbox", account.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                      selectedFolder === "inbox" && selectedAccountId === account.id
+                        ? "bg-violet-600/20 text-violet-300"
+                        : "hover:bg-white/5 text-slate-400"
+                    }`}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                    <Inbox className="h-4 w-4" />
+                    <span className="flex-1 text-left">Inbox</span>
+                    {(account.unreadCount || 0) > 0 && (
+                      <Badge className="h-5 px-1.5 text-xs bg-violet-600">{account.unreadCount}</Badge>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleFolderClick("drafts", account.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                      selectedFolder === "drafts" && selectedAccountId === account.id
+                        ? "bg-violet-600/20 text-violet-300"
+                        : "hover:bg-white/5 text-slate-400"
+                    }`}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="flex-1 text-left">Bozze</span>
+                  </button>
+                  <button
+                    onClick={() => handleFolderClick("sent", account.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                      selectedFolder === "sent" && selectedAccountId === account.id
+                        ? "bg-violet-600/20 text-violet-300"
+                        : "hover:bg-white/5 text-slate-400"
+                    }`}
+                  >
+                    <Send className="h-4 w-4" />
+                    <span className="flex-1 text-left">Inviata</span>
+                  </button>
                 </div>
-                <Button
-                  variant={account.syncStatus === "connected" ? "secondary" : "default"}
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    if (account.syncStatus === "connected") {
-                      stopIdleMutation.mutate(account.id);
-                    } else {
-                      startIdleMutation.mutate(account.id);
-                    }
-                  }}
-                  disabled={startIdleMutation.isPending || stopIdleMutation.isPending}
-                >
-                  {startIdleMutation.isPending || stopIdleMutation.isPending ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Attendere...
-                    </>
-                  ) : account.syncStatus === "connected" ? (
-                    <>
-                      <Wifi className="h-4 w-4 mr-2" />
-                      Disattiva Sync Live
-                    </>
-                  ) : (
-                    <>
-                      <Wifi className="h-4 w-4 mr-2" />
-                      Attiva Sync Live
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
+              </CollapsibleContent>
+            </Collapsible>
           ))}
         </div>
-      )}
+      </ScrollArea>
+      
+      <div className="p-4 border-t border-slate-700">
+        <button
+          onClick={handleOpenAddAccount}
+          className="flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Aggiungi Account
+        </button>
+      </div>
     </div>
   );
 
-  const renderInboxTab = () => (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3 p-4 bg-muted/50 rounded-lg">
-        <div className="flex items-center gap-2">
-          <Label className="text-sm font-medium">Account:</Label>
-          <Select
-            value={inboxFilter.accountId || "all"}
-            onValueChange={(val) => setInboxFilter((prev) => ({ ...prev, accountId: val === "all" ? null : val }))}
+  const renderEmailList = () => (
+    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 border-x border-slate-200 dark:border-slate-800 min-w-0">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{getFolderTitle()}</h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => {
+              refetchInbox();
+              refetchDrafts();
+            }}
+            className="h-8 w-8"
           >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Tutti gli account" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti gli account</SelectItem>
-              {accounts.map((acc) => (
-                <SelectItem key={acc.id} value={acc.id}>{acc.displayName}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Label className="text-sm font-medium">Stato:</Label>
-          <Select
-            value={inboxFilter.readStatus}
-            onValueChange={(val: any) => setInboxFilter((prev) => ({ ...prev, readStatus: val }))}
-          >
-            <SelectTrigger className="w-[130px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti</SelectItem>
-              <SelectItem value="unread">Non letti</SelectItem>
-              <SelectItem value="read">Letti</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Switch
-            id="starred-filter"
-            checked={inboxFilter.starred}
-            onCheckedChange={(checked) => setInboxFilter((prev) => ({ ...prev, starred: checked }))}
+        
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Cerca email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9"
           />
-          <Label htmlFor="starred-filter" className="text-sm">Solo con stella</Label>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Label className="text-sm font-medium">Elaborazione:</Label>
-          <Select
-            value={inboxFilter.processingStatus || "all"}
-            onValueChange={(val) => setInboxFilter((prev) => ({ ...prev, processingStatus: val === "all" ? null : val }))}
+        
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant={inboxFilter.readStatus === "all" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setInboxFilter(prev => ({ ...prev, readStatus: "all" }))}
           >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Tutti" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti</SelectItem>
-              <SelectItem value="new">Nuovo</SelectItem>
-              <SelectItem value="processing">In elaborazione</SelectItem>
-              <SelectItem value="classified">Classificato</SelectItem>
-              <SelectItem value="draft_generated">Bozza pronta</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Button variant="outline" size="sm" onClick={() => refetchInbox()} className="ml-auto gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Aggiorna
-        </Button>
-      </div>
-
-      {isLoadingInbox ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : emails.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nessuna email trovata</h3>
-            <p className="text-sm text-muted-foreground">Le email appariranno qui una volta sincronizzate</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="border rounded-lg divide-y">
-          {emails.map((email) => (
-            <div
-              key={email.id}
-              className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                !email.isRead ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
-              }`}
-              onClick={() => handleEmailClick(email)}
+            Tutte
+          </Button>
+          <Button
+            variant={inboxFilter.readStatus === "read" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setInboxFilter(prev => ({ ...prev, readStatus: "read" }))}
+          >
+            Letta
+          </Button>
+          <Button
+            variant={inboxFilter.readStatus === "unread" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setInboxFilter(prev => ({ ...prev, readStatus: "unread" }))}
+          >
+            Non letto
+          </Button>
+          <Button
+            variant={inboxFilter.starred ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setInboxFilter(prev => ({ ...prev, starred: !prev.starred }))}
+          >
+            <Star className="h-3 w-3 mr-1" />
+            Preferiti
+          </Button>
+          
+          <div className="ml-auto flex items-center gap-1 text-xs text-slate-500">
+            <span>{filteredEmails.length > 0 ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, filteredEmails.length)}` : "0"} di {filteredEmails.length}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage(p => p - 1)}
             >
-              <div className="flex items-start gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 h-8 w-8"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleStarMutation.mutate(email.id);
-                  }}
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      <ScrollArea className="flex-1">
+        {selectedFolder === "ai-drafts" ? (
+          pendingDrafts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+              <Sparkles className="h-12 w-12 mb-4 text-slate-300" />
+              <p className="text-sm">Nessuna bozza AI in attesa</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {pendingDrafts.map((draft) => (
+                <div
+                  key={draft.id}
+                  className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
+                  onClick={() => setExpandedDraftId(expandedDraftId === draft.id ? null : draft.id)}
                 >
-                  {email.isStarred ? (
-                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                  ) : (
-                    <StarOff className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </Button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`font-medium truncate ${!email.isRead ? "font-bold" : ""}`}>
-                      {email.fromName || email.fromEmail}
-                    </span>
-                    <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                      {format(new Date(email.receivedAt), "dd/MM/yyyy HH:mm")}
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${getAvatarColor(draft.originalEmail?.fromName || "A")}`}>
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm truncate">
+                          {draft.originalEmail?.fromName || draft.originalEmail?.fromEmail || "Sconosciuto"}
+                        </span>
+                        {getConfidenceBadge(draft.confidence)}
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 truncate">{draft.draftSubject}</p>
+                    </div>
+                    <span className="text-xs text-slate-400 shrink-0">
+                      {format(new Date(draft.createdAt), "HH:mm")}
                     </span>
                   </div>
-                  <p className={`text-sm truncate mb-1 ${!email.isRead ? "font-semibold" : ""}`}>
-                    {email.subject || "(Nessun oggetto)"}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate mb-2">{email.snippet}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {getProcessingStatusBadge(email.processingStatus)}
-                    {getUrgencyBadge(email.urgency)}
+                  
+                  {expandedDraftId === draft.id && (
+                    <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg space-y-3">
+                      <div className="text-sm whitespace-pre-wrap text-slate-700 dark:text-slate-300">
+                        {draft.draftBodyText || draft.draftBodyHtml}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => approveDraftMutation.mutate(draft.id)} disabled={approveDraftMutation.isPending}>
+                          <Check className="h-4 w-4 mr-1" />
+                          Approva
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setEditingDraft(draft);
+                          setEditedDraftContent(draft.draftBodyText || draft.draftBodyHtml || "");
+                        }}>
+                          <Edit className="h-4 w-4 mr-1" />
+                          Modifica
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => rejectDraftMutation.mutate(draft.id)}>
+                          <X className="h-4 w-4 mr-1" />
+                          Rifiuta
+                        </Button>
+                        {draft.status === "approved" && (
+                          <Button size="sm" variant="secondary" className="ml-auto" onClick={() => sendDraftMutation.mutate(draft.id)}>
+                            <Send className="h-4 w-4 mr-1" />
+                            Invia
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        ) : isLoadingInbox ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          </div>
+        ) : paginatedEmails.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+            <Inbox className="h-12 w-12 mb-4 text-slate-300" />
+            <p className="text-sm">Nessuna email trovata</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {paginatedEmails.map((email) => (
+              <div
+                key={email.id}
+                onClick={() => handleEmailClick(email)}
+                className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-3 ${
+                  !email.isRead ? "bg-violet-50/50 dark:bg-violet-950/20" : ""
+                } ${selectedEmail?.id === email.id ? "bg-violet-100 dark:bg-violet-900/30" : "hover:bg-slate-50 dark:hover:bg-slate-900"}`}
+              >
+                <Checkbox
+                  checked={selectedEmails.has(email.id)}
+                  onCheckedChange={(checked) => {
+                    setSelectedEmails(prev => {
+                      const next = new Set(prev);
+                      if (checked) {
+                        next.add(email.id);
+                      } else {
+                        next.delete(email.id);
+                      }
+                      return next;
+                    });
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium shrink-0 ${getAvatarColor(email.fromName || email.fromEmail)}`}>
+                  {(email.fromName || email.fromEmail).charAt(0).toUpperCase()}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className={`text-sm truncate ${!email.isRead ? "font-semibold text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
+                      {email.fromName || email.fromEmail}
+                    </span>
                     {email.processingStatus === "draft_generated" && (
-                      <Badge variant="outline" className="gap-1">
-                        <Sparkles className="h-3 w-3" />
-                        Bozza AI
+                      <Badge className="h-5 px-1.5 text-xs bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                        <Sparkles className="h-3 w-3 mr-0.5" />
+                        AI
                       </Badge>
                     )}
                   </div>
+                  <p className={`text-sm truncate ${!email.isRead ? "text-slate-800 dark:text-slate-200" : "text-slate-600 dark:text-slate-400"}`}>
+                    {email.subject || "(Nessun oggetto)"}
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">{email.snippet}</p>
+                </div>
+                
+                <div className="flex items-center gap-2 shrink-0">
+                  {email.hasAttachments && <Paperclip className="h-4 w-4 text-slate-400" />}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleStarMutation.mutate(email.id);
+                    }}
+                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                  >
+                    {email.isStarred ? (
+                      <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                    ) : (
+                      <Star className="h-4 w-4 text-slate-300" />
+                    )}
+                  </button>
+                  <span className="text-xs text-slate-400 w-14 text-right">
+                    {format(new Date(email.receivedAt), "dd/MM")}
+                  </span>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </ScrollArea>
     </div>
   );
 
-  const renderAIDraftsTab = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Bozze AI in Attesa</h2>
-          <p className="text-sm text-muted-foreground">Rivedi e approva le risposte generate dall'AI</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => refetchDrafts()} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Aggiorna
-        </Button>
-      </div>
-
-      {isLoadingDrafts ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : pendingDrafts.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nessuna bozza in attesa</h3>
-            <p className="text-sm text-muted-foreground">Le bozze AI da approvare appariranno qui</p>
-          </CardContent>
-        </Card>
+  const renderPreviewPanel = () => (
+    <div className="w-[380px] min-w-[380px] bg-white dark:bg-slate-950 flex flex-col h-full">
+      {selectedEmail ? (
+        <>
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedEmail(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+                <h3 className="font-medium text-sm truncate">{selectedEmail.subject || "(Nessun oggetto)"}</h3>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}>
+                {(selectedEmail.fromName || selectedEmail.fromEmail).charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{selectedEmail.fromName || selectedEmail.fromEmail}</p>
+                <p className="text-xs text-slate-500">A: {selectedEmail.toEmail}</p>
+                <p className="text-xs text-slate-400">
+                  {format(new Date(selectedEmail.receivedAt), "dd MMMM yyyy, HH:mm")}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <ScrollArea className="flex-1 p-4">
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div 
+                className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300"
+                dangerouslySetInnerHTML={{ 
+                  __html: emailDetailData?.data?.bodyHtml || emailDetailData?.data?.bodyText || selectedEmail.snippet || "Caricamento contenuto..." 
+                }}
+              />
+            </div>
+            
+            {emailAIResponses.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-violet-500" />
+                  Risposte AI
+                </h4>
+                <div className="space-y-3">
+                  {emailAIResponses.map((resp) => (
+                    <div key={resp.id} className="p-3 bg-violet-50 dark:bg-violet-950/30 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium">{resp.draftSubject}</span>
+                        {getConfidenceBadge(resp.confidence)}
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                        {resp.draftBodyText || resp.draftBodyHtml}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </ScrollArea>
+          
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" className="gap-1">
+              <Reply className="h-4 w-4" />
+              Rispondi
+            </Button>
+            <Button 
+              size="sm" 
+              className="gap-1 bg-violet-600 hover:bg-violet-700"
+              onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
+              disabled={generateAIResponseMutation.isPending}
+            >
+              {generateAIResponseMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              AI Genera Bozza
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1">
+              <Forward className="h-4 w-4" />
+              Inoltra
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1 text-destructive hover:text-destructive ml-auto">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </>
       ) : (
-        <div className="space-y-3">
-          {pendingDrafts.map((draft) => (
-            <Card key={draft.id}>
-              <Collapsible
-                open={expandedDraftId === draft.id}
-                onOpenChange={(open) => setExpandedDraftId(open ? draft.id : null)}
-              >
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <CardTitle className="text-base">{draft.draftSubject}</CardTitle>
-                          {getConfidenceBadge(draft.confidence)}
-                        </div>
-                        {draft.originalEmail && (
-                          <CardDescription>
-                            Da: {draft.originalEmail.fromName || draft.originalEmail.fromEmail} • 
-                            {format(new Date(draft.createdAt), " dd/MM/yyyy HH:mm")}
-                          </CardDescription>
-                        )}
-                      </div>
-                      <Button variant="ghost" size="icon">
-                        {expandedDraftId === draft.id ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent className="pt-0">
-                    <Separator className="mb-4" />
-                    
-                    {draft.originalEmail && (
-                      <div className="mb-4 p-3 bg-muted/50 rounded-lg">
-                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
-                          Email Originale
-                        </h4>
-                        <p className="text-sm font-medium">{draft.originalEmail.subject}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {draft.originalEmail.snippet}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                        <Sparkles className="h-4 w-4" />
-                        Risposta AI Generata
-                      </h4>
-                      {editingDraft?.id === draft.id ? (
-                        <Textarea
-                          value={editedDraftContent}
-                          onChange={(e) => setEditedDraftContent(e.target.value)}
-                          rows={8}
-                          className="font-mono text-sm"
-                        />
-                      ) : (
-                        <div className="p-3 bg-background border rounded-lg text-sm whitespace-pre-wrap">
-                          {draft.draftBodyText || draft.draftBodyHtml}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {editingDraft?.id === draft.id ? (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => editDraftMutation.mutate({ responseId: draft.id, content: editedDraftContent })}
-                            disabled={editDraftMutation.isPending}
-                          >
-                            {editDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
-                            Salva
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditingDraft(null);
-                              setEditedDraftContent("");
-                            }}
-                          >
-                            <X className="h-4 w-4 mr-1" />
-                            Annulla
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => approveDraftMutation.mutate(draft.id)}
-                            disabled={approveDraftMutation.isPending}
-                          >
-                            {approveDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
-                            Approva
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditingDraft(draft);
-                              setEditedDraftContent(draft.draftBodyText || draft.draftBodyHtml || "");
-                            }}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Modifica
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => rejectDraftMutation.mutate(draft.id)}
-                            disabled={rejectDraftMutation.isPending}
-                          >
-                            {rejectDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <X className="h-4 w-4 mr-1" />}
-                            Rifiuta
-                          </Button>
-                          {draft.status === "approved" && (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="ml-auto"
-                              onClick={() => sendDraftMutation.mutate(draft.id)}
-                              disabled={sendDraftMutation.isPending}
-                            >
-                              {sendDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-                              Invia
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
-          ))}
+        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8">
+          <Mail className="h-16 w-16 mb-4 text-slate-200" />
+          <p className="text-sm text-center">Seleziona un'email per visualizzarla</p>
         </div>
       )}
     </div>
@@ -1357,8 +1462,6 @@ export default function ConsultantEmailHub() {
         {selectedEmail && (
           <div className="mt-6 space-y-6">
             <div className="flex items-center gap-2 flex-wrap">
-              {getProcessingStatusBadge(selectedEmail.processingStatus)}
-              {getUrgencyBadge(selectedEmail.urgency)}
               <span className="text-sm text-muted-foreground ml-auto">
                 {format(new Date(selectedEmail.receivedAt), "dd MMMM yyyy, HH:mm")}
               </span>
@@ -1466,76 +1569,64 @@ export default function ConsultantEmailHub() {
     </Sheet>
   );
 
+  const renderEditDraftDialog = () => (
+    <Dialog open={!!editingDraft} onOpenChange={(open) => !open && setEditingDraft(null)}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Modifica Bozza AI</DialogTitle>
+          <DialogDescription>
+            Modifica il contenuto della risposta prima di inviarla
+          </DialogDescription>
+        </DialogHeader>
+        <Textarea
+          value={editedDraftContent}
+          onChange={(e) => setEditedDraftContent(e.target.value)}
+          rows={12}
+          className="font-mono text-sm"
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditingDraft(null)}>
+            Annulla
+          </Button>
+          <Button 
+            onClick={() => editingDraft && editDraftMutation.mutate({ responseId: editingDraft.id, content: editedDraftContent })}
+            disabled={editDraftMutation.isPending}
+          >
+            {editDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+            Salva Modifiche
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (isLoadingAccounts) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="flex justify-center items-center min-h-screen bg-slate-100 dark:bg-slate-900">
         <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
-          <p className="text-slate-600">Caricamento Email Hub...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-violet-600 mx-auto" />
+          <p className="text-slate-600 dark:text-slate-400">Caricamento Email Hub...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="p-6 border-b bg-background/95 backdrop-blur">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
-                <Inbox className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">Email Hub</h1>
-                <p className="text-sm text-muted-foreground">Gestisci tutte le tue email con assistenza AI</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-auto p-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full max-w-md grid-cols-3">
-                <TabsTrigger value="accounts" className="gap-2">
-                  <Users className="h-4 w-4" />
-                  Account
-                </TabsTrigger>
-                <TabsTrigger value="inbox" className="gap-2">
-                  <Inbox className="h-4 w-4" />
-                  Inbox
-                </TabsTrigger>
-                <TabsTrigger value="drafts" className="gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Bozze AI
-                  {pendingDrafts.length > 0 && (
-                    <Badge variant="destructive" className="ml-1 h-5 px-1.5">
-                      {pendingDrafts.length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="accounts">
-                {renderAccountsTab()}
-              </TabsContent>
-
-              <TabsContent value="inbox">
-                {renderInboxTab()}
-              </TabsContent>
-
-              <TabsContent value="drafts">
-                {renderAIDraftsTab()}
-              </TabsContent>
-            </Tabs>
-          </div>
+        <div className="flex-1 flex overflow-hidden">
+          {!isMobile && renderLeftSidebar()}
+          {renderEmailList()}
+          {!isMobile && renderPreviewPanel()}
         </div>
       </div>
 
       {renderAccountDialog()}
       {renderEmailSheet()}
+      {renderEditDraftDialog()}
       <ConsultantAIAssistant />
     </div>
   );
