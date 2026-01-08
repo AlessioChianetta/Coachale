@@ -67,9 +67,12 @@ const ConsultantEmailJourney = lazy(() => import("@/pages/consultant-email-journ
 const ConsultantEchoDashboard = lazy(() => import("@/pages/consultant-echo-dashboard"));
 const ConsultantKnowledgeDocuments = lazy(() => import("@/pages/consultant-knowledge-documents"));
 const ConsultantKnowledgeApis = lazy(() => import("@/pages/consultant-knowledge-apis"));
+const ConsultantReferrals = lazy(() => import("@/pages/consultant-referrals"));
+const ConsultantReferralSettings = lazy(() => import("@/pages/consultant-referral-settings"));
 const ClientUniversity = lazy(() => import("@/pages/client-university"));
 const ClientDashboard = lazy(() => import("@/pages/client-dashboard"));
 const ClientExercises = lazy(() => import("@/pages/client-exercises"));
+const ClientReferral = lazy(() => import("@/pages/client-referral"));
 const ClientConsultations = lazy(() => import("@/pages/client-consultations"));
 const ClientDailyTasks = lazy(() => import("@/pages/client-daily-tasks"));
 const ClientAIAssistant = lazy(() => import("@/pages/client-ai-assistant"));
@@ -125,6 +128,7 @@ const PublicPricing = lazy(() => import("@/pages/public-pricing"));
 const PricingSuccess = lazy(() => import("@/pages/pricing-success"));
 const BronzeAuth = lazy(() => import("@/pages/bronze-auth"));
 const SelectAgent = lazy(() => import("@/pages/select-agent"));
+const PublicReferralLanding = lazy(() => import("@/pages/public-referral-landing"));
 
 const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
 const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
@@ -159,6 +163,9 @@ function Router() {
 
           {/* Public Sales Agent Landing - no auth required */}
           <Route path="/s/:shareToken" component={PublicSalesAgentLanding} />
+
+          {/* Public Referral Landing - no auth required */}
+          <Route path="/r/:code" component={PublicReferralLanding} />
 
           {/* Public Consultation Invite Lobby - no auth required */}
           <Route path="/invite/:token" component={ConsultationInviteLobby} />
@@ -212,6 +219,18 @@ function Router() {
           <Route path="/consultant/clients">
             <AuthGuard requiredRole="consultant">
               <ConsultantClientsPage />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/referrals">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantReferrals />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/referrals/settings">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantReferralSettings />
             </AuthGuard>
           </Route>
 
@@ -617,6 +636,12 @@ function Router() {
           <Route path="/client/settings">
             <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientSettings />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/client/referral">
+            <AuthGuard requiredRole="client">
+              <ClientReferral />
             </AuthGuard>
           </Route>
 

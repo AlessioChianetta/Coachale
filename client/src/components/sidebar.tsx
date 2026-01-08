@@ -43,6 +43,7 @@ import {
   Plug,
   FileSearch,
   Star,
+  Gift,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -187,6 +188,7 @@ const clientItems: SidebarItemWithChildren[] = [
       { name: "Consulenze AI", href: "/client/ai-consultations-history", icon: History, color: "text-teal-500" },
     ]
   },
+  { name: "Invita un Amico", href: "/client/referral", icon: Gift, color: "text-fuchsia-600" },
   { 
     name: "La Mia Università", 
     href: "/client/university", 
