@@ -445,14 +445,26 @@ export default function ConsultantEmailHub() {
   });
 
   const testConnectionMutation = useMutation({
-    mutationFn: async (data: AccountFormData) => {
+    mutationFn: async (data: AccountFormData & { accountId?: string }) => {
       console.log("[EMAIL-HUB] Testing connection with data:", { 
+        accountId: data.accountId,
         imapHost: data.imapHost, 
         imapPort: data.imapPort,
         smtpHost: data.smtpHost,
-        smtpPort: data.smtpPort 
+        smtpPort: data.smtpPort,
+        hasImapPassword: !!data.imapPassword,
+        hasSmtpPassword: !!data.smtpPassword
       });
-      const response = await fetch("/api/email-hub/accounts/test", {
+      
+      // Se stiamo modificando un account esistente e non abbiamo le password,
+      // usa l'endpoint con ID che legge le credenziali dal database
+      const url = data.accountId && (!data.imapPassword || !data.smtpPassword)
+        ? `/api/email-hub/accounts/${data.accountId}/test`
+        : "/api/email-hub/accounts/test";
+      
+      console.log("[EMAIL-HUB] Using endpoint:", url);
+      
+      const response = await fetch(url, {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -1765,8 +1777,8 @@ export default function ConsultantEmailHub() {
           </Button>
           <Button
             variant="secondary"
-            onClick={() => testConnectionMutation.mutate(formData)}
-            disabled={testConnectionMutation.isPending || !formData.imapHost || !formData.smtpHost}
+            onClick={() => testConnectionMutation.mutate({ ...formData, accountId: editingAccount?.id })}
+            disabled={testConnectionMutation.isPending || (!formData.imapHost && !formData.smtpHost)}
           >
             {testConnectionMutation.isPending ? (
               <>
