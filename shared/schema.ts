@@ -7122,3 +7122,105 @@ export const fileSearchSyncReports = pgTable("file_search_sync_reports", {
 
 export type FileSearchSyncReport = typeof fileSearchSyncReports.$inferSelect;
 export type InsertFileSearchSyncReport = typeof fileSearchSyncReports.$inferInsert;
+
+// =============================================
+// REFERRAL SYSTEM
+// =============================================
+
+// Referral Codes - Unique codes for each user linked to their consultant
+export const referralCodes = pgTable("referral_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id),
+  code: varchar("code").unique().notNull(),
+  codeType: text("code_type").notNull().$type<"client" | "consultant">(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  userIdx: index("idx_referral_codes_user_id").on(table.userId),
+  consultantIdx: index("idx_referral_codes_consultant_id").on(table.consultantId),
+  codeIdx: index("idx_referral_codes_code").on(table.code),
+}));
+
+export type ReferralCode = typeof referralCodes.$inferSelect;
+export type InsertReferralCode = typeof referralCodes.$inferInsert;
+
+// Referrals - Tracking of friend invitations
+export const referrals = pgTable("referrals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referralCodeId: varchar("referral_code_id").notNull().references(() => referralCodes.id),
+  referrerUserId: varchar("referrer_user_id").notNull().references(() => users.id),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id),
+  proactiveLeadId: varchar("proactive_lead_id").references(() => proactiveLeads.id),
+  // Friend data
+  friendFirstName: text("friend_first_name"),
+  friendLastName: text("friend_last_name"),
+  friendEmail: text("friend_email").notNull(),
+  friendPhone: text("friend_phone").notNull(),
+  // Tracking
+  status: text("status").$type<"pending" | "contacted" | "appointment_set" | "closed_won" | "closed_lost">().default("pending"),
+  inviteMethod: text("invite_method").$type<"link_shared" | "manual_entry">(),
+  emailSentAt: timestamp("email_sent_at"),
+  bonusAwarded: boolean("bonus_awarded").default(false),
+  bonusAwardedAt: timestamp("bonus_awarded_at"),
+  // Metadata
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  referralCodeIdx: index("idx_referrals_referral_code_id").on(table.referralCodeId),
+  referrerIdx: index("idx_referrals_referrer_user_id").on(table.referrerUserId),
+  consultantIdx: index("idx_referrals_consultant_id").on(table.consultantId),
+  statusIdx: index("idx_referrals_status").on(table.status),
+  emailIdx: index("idx_referrals_friend_email").on(table.friendEmail),
+}));
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
+
+// Referral Landing Config - Consultant's landing page customization
+export const referralLandingConfig = pgTable("referral_landing_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").unique().notNull().references(() => users.id),
+  // Landing content
+  headline: text("headline"),
+  description: text("description"),
+  bonusText: text("bonus_text"),
+  profileImageUrl: text("profile_image_url"),
+  preferredChannel: text("preferred_channel").$type<"email" | "whatsapp" | "call" | "all">().default("all"),
+  // AI Assistant
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id),
+  showAiChat: boolean("show_ai_chat").default(true),
+  // Bonus for referrer
+  bonusType: text("bonus_type").$type<"months_free" | "cash" | "physical" | "discount" | "none">(),
+  bonusValue: text("bonus_value"),
+  bonusDescription: text("bonus_description"),
+  // Style (limited)
+  accentColor: varchar("accent_color", { length: 7 }).default("#6366f1"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_referral_landing_config_consultant_id").on(table.consultantId),
+}));
+
+export type ReferralLandingConfig = typeof referralLandingConfig.$inferSelect;
+export type InsertReferralLandingConfig = typeof referralLandingConfig.$inferInsert;
+
+// Insert schemas for referral tables
+export const insertReferralCodeSchema = createInsertSchema(referralCodes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertReferralSchema = createInsertSchema(referrals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertReferralLandingConfigSchema = createInsertSchema(referralLandingConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});

@@ -116,6 +116,7 @@ import leadImportRouter from "./routes/lead-import-router";
 import stripeConnectRouter from "./routes/stripe-connect-router";
 import consultantPricingRouter from "./routes/consultant-pricing-router";
 import bronzeAuthRouter from "./routes/bronze-auth-router";
+import referralRouter from "./routes/referral-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -12155,6 +12156,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Consultant Pricing Page Configuration routes
   app.use("/api", consultantPricingRouter);
+
+  // Referral System routes
+  app.use("/api", referralRouter);
 
   // Consultant Onboarding routes
   app.use("/api/consultant/onboarding", onboardingRouter);
