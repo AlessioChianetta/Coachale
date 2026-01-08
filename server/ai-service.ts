@@ -1100,17 +1100,17 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
         // Use simple query with only clientId to avoid complex or() conditions
         console.log(`🔍 [KB Fallback Debug] Querying indexed docs for clientId: ${clientId}, consultantId: ${consultantId}`);
         
-        // Query for client-owned KB docs
+        // Query for client-owned KB docs (only 'client_knowledge' type)
         const clientKbDocs = await db.query.fileSearchDocuments.findMany({
           where: and(
-            eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+            eq(fileSearchDocuments.sourceType, 'client_knowledge'),
             eq(fileSearchDocuments.clientId, clientId),
             eq(fileSearchDocuments.status, 'indexed')
           ),
           columns: { sourceId: true }
         });
         
-        // Query for consultant-owned KB docs if consultantId is different
+        // Query for consultant-owned KB docs if consultantId is different (only 'knowledge_base' type)
         let consultantKbDocs: { sourceId: string | null }[] = [];
         if (consultantId && consultantId !== clientId) {
           consultantKbDocs = await db.query.fileSearchDocuments.findMany({
@@ -2004,17 +2004,17 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         // Use simple query with only clientId to avoid complex or() conditions
         console.log(`🔍 [KB Fallback Debug] Querying indexed docs for clientId: ${clientId}, consultantId: ${consultantId}`);
         
-        // Query for client-owned KB docs
+        // Query for client-owned KB docs (only 'client_knowledge' type)
         const clientKbDocs = await db.query.fileSearchDocuments.findMany({
           where: and(
-            eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+            eq(fileSearchDocuments.sourceType, 'client_knowledge'),
             eq(fileSearchDocuments.clientId, clientId),
             eq(fileSearchDocuments.status, 'indexed')
           ),
           columns: { sourceId: true }
         });
         
-        // Query for consultant-owned KB docs if consultantId is different
+        // Query for consultant-owned KB docs if consultantId is different (only 'knowledge_base' type)
         let consultantKbDocs: { sourceId: string | null }[] = [];
         if (consultantId && consultantId !== clientId) {
           consultantKbDocs = await db.query.fileSearchDocuments.findMany({

@@ -4236,7 +4236,7 @@ export class FileSearchSyncService {
         // Delete any existing base document (non-chunked version) before uploading chunks
         const existingBaseDoc = await db.query.fileSearchDocuments.findFirst({
           where: and(
-            eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+            eq(fileSearchDocuments.sourceType, 'client_knowledge'),
             eq(fileSearchDocuments.sourceId, documentId),
           ),
         });
@@ -4248,9 +4248,9 @@ export class FileSearchSyncService {
         const chunks = chunkTextContent(content, doc.title);
         console.log(`📦 [FileSync] Created ${chunks.length} chunks for: ${doc.title}`);
         
-        // RESUME MODE: Check which chunks already exist and only upload missing ones
+        // RESUME MODE: Check which chunks already exist and only upload missing ones (client docs use 'client_knowledge')
         const existingChunkDocs = await db.query.fileSearchDocuments.findMany({
-          where: eq(fileSearchDocuments.sourceType, 'knowledge_base'),
+          where: eq(fileSearchDocuments.sourceType, 'client_knowledge'),
         });
         const existingChunkIndices = new Set<number>();
         for (const chunkDoc of existingChunkDocs) {
