@@ -75,6 +75,7 @@ interface SidebarProps {
   showRoleSwitch?: boolean;
   onRoleSwitch?: (role: "consultant" | "client") => void;
   currentRole?: "consultant" | "client";
+  defaultCollapsed?: boolean;
 }
 
 interface SidebarItemWithChildren extends SidebarItem {
@@ -258,13 +259,13 @@ interface ProfileInfo {
   isDefault?: boolean;
 }
 
-export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externalShowRoleSwitch, onRoleSwitch: externalOnRoleSwitch, currentRole: externalCurrentRole }: SidebarProps) {
+export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externalShowRoleSwitch, onRoleSwitch: externalOnRoleSwitch, currentRole: externalCurrentRole, defaultCollapsed = false }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [isLoadingFinancial, setIsLoadingFinancial] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
   const [isSwitching, setIsSwitching] = useState(false);
   

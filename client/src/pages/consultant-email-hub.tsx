@@ -2295,7 +2295,7 @@ export default function ConsultantEmailHub() {
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} defaultCollapsed={true} />
 
         <div className="flex-1 flex overflow-hidden">
           {!isMobile && renderLeftSidebar()}
