@@ -353,6 +353,7 @@ export class ImapService {
     return new Promise((resolve, reject) => {
       const imap = this.createConnection();
       const emails: ParsedEmail[] = [];
+      const parsePromises: Promise<void>[] = [];
 
       imap.once("ready", () => {
         imap.openBox(folderName, true, (err, box) => {
@@ -383,15 +384,19 @@ export class ImapService {
               stream.on("data", (chunk) => {
                 buffer += chunk.toString("utf8");
               });
-              stream.on("end", async () => {
-                try {
-                  const parsed = await this.parseEmailBuffer(buffer);
-                  if (parsed) {
-                    emails.push(parsed);
+              stream.on("end", () => {
+                // Track parsing promise to wait for all to complete
+                const parsePromise = (async () => {
+                  try {
+                    const parsed = await this.parseEmailBuffer(buffer);
+                    if (parsed) {
+                      emails.push(parsed);
+                    }
+                  } catch (parseErr) {
+                    console.error("[IMAP] Error parsing email:", parseErr);
                   }
-                } catch (parseErr) {
-                  console.error("[IMAP] Error parsing email:", parseErr);
-                }
+                })();
+                parsePromises.push(parsePromise);
               });
             });
           });
@@ -401,7 +406,10 @@ export class ImapService {
             reject(fetchErr);
           });
 
-          fetch.once("end", () => {
+          fetch.once("end", async () => {
+            // Wait for all parsing to complete before resolving
+            await Promise.all(parsePromises);
+            console.log(`[IMAP] Finished parsing ${emails.length} emails from "${folderName}"`);
             imap.end();
             resolve(emails);
           });
