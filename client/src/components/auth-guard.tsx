@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { isAuthenticated, getAuthUser } from "@/lib/auth";
 
@@ -11,39 +11,68 @@ type AuthGuardProps = {
 
 export default function AuthGuard({ children, requiredRole, fallback, blockTiers }: AuthGuardProps) {
   const [location, setLocation] = useLocation();
+  const [isChecking, setIsChecking] = useState(true);
+  const [shouldRender, setShouldRender] = useState<"children" | "fallback" | "blocked" | "redirect">("redirect");
 
-  if (!isAuthenticated()) {
-    if (fallback) {
-      return <>{fallback}</>;
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      if (fallback) {
+        setShouldRender("fallback");
+      } else {
+        setLocation("/login");
+        setShouldRender("redirect");
+      }
+      setIsChecking(false);
+      return;
     }
-    setLocation("/login");
+
+    const user = getAuthUser();
+
+    if (requiredRole) {
+      if (!user || user.role !== requiredRole) {
+        setLocation("/login");
+        setShouldRender("redirect");
+        setIsChecking(false);
+        return;
+      }
+    }
+
+    if (blockTiers && user?.tier && blockTiers.includes(user.tier as "bronze" | "silver")) {
+      const agentSlug = user.agentSlug || localStorage.getItem('agentSlug');
+      if (agentSlug) {
+        setLocation(`/agent/${agentSlug}/chat`);
+        setShouldRender("redirect");
+      } else {
+        setShouldRender("blocked");
+      }
+      setIsChecking(false);
+      return;
+    }
+
+    setShouldRender("children");
+    setIsChecking(false);
+  }, [fallback, requiredRole, blockTiers, setLocation]);
+
+  if (isChecking) {
     return null;
   }
 
-  const user = getAuthUser();
-
-  if (requiredRole) {
-    if (!user || user.role !== requiredRole) {
-      setLocation("/login");
-      return null;
-    }
+  if (shouldRender === "fallback") {
+    return <>{fallback}</>;
   }
 
-  // Block Bronze/Silver tier users from accessing certain routes (like /client/*)
-  if (blockTiers && user?.tier && blockTiers.includes(user.tier as "bronze" | "silver")) {
-    // Get the agent slug from localStorage or user object
-    const agentSlug = user.agentSlug || localStorage.getItem('agentSlug');
-    if (agentSlug) {
-      setLocation(`/agent/${agentSlug}/chat`);
-      return null;
-    }
-    // If no agentSlug, show a message instead of redirecting to login (avoid loops)
+  if (shouldRender === "redirect") {
+    return null;
+  }
+
+  if (shouldRender === "blocked") {
+    const user = getAuthUser();
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="text-center max-w-md">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Accesso non disponibile</h1>
           <p className="text-gray-600 mb-6">
-            Il tuo piano ({user.tier === "bronze" ? "Bronze" : "Silver"}) non ha accesso a questa sezione.
+            Il tuo piano ({user?.tier === "bronze" ? "Bronze" : "Silver"}) non ha accesso a questa sezione.
             Contatta il tuo consulente per maggiori informazioni.
           </p>
           <button 
