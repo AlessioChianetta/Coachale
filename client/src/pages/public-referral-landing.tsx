@@ -222,234 +222,232 @@ export default function PublicReferralLanding() {
   }
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{
-        background: `linear-gradient(135deg, ${accentColor}20 0%, ${accentColor}10 50%, #0f172a 100%)`,
-      }}
-    >
-      <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5" />
-      
-      <div className="relative max-w-4xl mx-auto px-4 py-12 sm:py-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
-          {landing.profileImageUrl ? (
-            <Avatar className="w-28 h-28 mx-auto mb-6 ring-4 ring-white/20 shadow-2xl">
-              <AvatarImage src={landing.profileImageUrl} alt={consultant?.firstName} />
-              <AvatarFallback 
-                className="text-2xl font-bold text-white"
-                style={{ backgroundColor: accentColor }}
-              >
-                {consultant?.firstName?.[0]}{consultant?.lastName?.[0]}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div 
-              className="w-28 h-28 rounded-full mx-auto mb-6 flex items-center justify-center ring-4 ring-white/20 shadow-2xl"
-              style={{ backgroundColor: accentColor }}
-            >
-              <User className="h-14 w-14 text-white" />
-            </div>
-          )}
-
-          {referrer && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 mb-4 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm"
-            >
-              <Heart className="h-4 w-4 text-pink-400" />
-              <span className="text-white/80 text-sm">
-                Invitato da {referrer.firstName} {referrer.lastName}
-              </span>
-            </motion.div>
-          )}
-
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            {landing.headline || `Inizia con ${consultant?.firstName}`}
-          </h1>
-
-          <p className="text-lg text-white/70 max-w-2xl mx-auto">
-            {landing.description || 'Siamo qui per aiutarti a raggiungere i tuoi obiettivi.'}
-          </p>
-        </motion.div>
-
-        {landing.bonusText && (
+    <div className="min-h-screen bg-slate-900">
+      <div 
+        className="min-h-screen"
+        style={{
+          background: `linear-gradient(135deg, ${accentColor}30 0%, #1e293b 30%, #0f172a 100%)`,
+        }}
+      >
+        <div className="max-w-2xl mx-auto px-4 py-12 sm:py-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-8"
+            className="text-center mb-8"
           >
-            <Card 
-              className="border-2 backdrop-blur-sm overflow-hidden"
-              style={{ 
-                backgroundColor: `${accentColor}15`,
-                borderColor: `${accentColor}50`
-              }}
-            >
-              <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-                <div 
-                  className="w-16 h-16 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `${accentColor}30` }}
+            {landing.profileImageUrl ? (
+              <Avatar className="w-24 h-24 mx-auto mb-6 ring-4 ring-white/30 shadow-2xl">
+                <AvatarImage src={landing.profileImageUrl} alt={consultant?.firstName} />
+                <AvatarFallback 
+                  className="text-2xl font-bold text-white"
+                  style={{ backgroundColor: accentColor }}
                 >
-                  <Gift className="h-8 w-8" style={{ color: accentColor }} />
+                  {consultant?.firstName?.[0]}{consultant?.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <div 
+                className="w-24 h-24 rounded-full mx-auto mb-6 flex items-center justify-center ring-4 ring-white/30 shadow-2xl"
+                style={{ backgroundColor: accentColor }}
+              >
+                <User className="h-12 w-12 text-white" />
+              </div>
+            )}
+
+            {referrer && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="inline-flex items-center gap-2 px-4 py-2 mb-4 rounded-full bg-slate-800 border border-slate-700"
+              >
+                <Heart className="h-4 w-4 text-pink-400" />
+                <span className="text-slate-200 text-sm font-medium">
+                  Invitato da {referrer.firstName} {referrer.lastName}
+                </span>
+              </motion.div>
+            )}
+
+            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+              {landing.headline || `Inizia con ${consultant?.firstName}`}
+            </h1>
+
+            <p className="text-lg text-slate-300 max-w-xl mx-auto">
+              {landing.description || 'Siamo qui per aiutarti a raggiungere i tuoi obiettivi.'}
+            </p>
+          </motion.div>
+
+          {landing.bonusText && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mb-8"
+            >
+              <div 
+                className="rounded-xl border-2 p-6 flex items-center gap-4"
+                style={{ 
+                  backgroundColor: `${accentColor}20`,
+                  borderColor: accentColor
+                }}
+              >
+                <div 
+                  className="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  <Gift className="h-7 w-7 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-1 flex items-center gap-2 justify-center sm:justify-start">
-                    <Sparkles className="h-5 w-5" style={{ color: accentColor }} />
+                  <h3 className="text-lg font-bold text-white mb-0.5 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" style={{ color: accentColor }} />
                     Bonus Esclusivo
                   </h3>
-                  <p className="text-white/90 text-lg font-medium">
+                  <p className="text-white text-base font-medium">
                     {landing.bonusText}
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+              </div>
+            </motion.div>
+          )}
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
-            <CardContent className="p-6 sm:p-8">
-              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <Users className="h-5 w-5" style={{ color: accentColor }} />
-                Compila il modulo di contatto
-              </h2>
-
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-white flex items-center gap-1">
-                      Nome <span className="text-red-400">*</span>
-                    </Label>
-                    <Input
-                      id="firstName"
-                      placeholder="Mario"
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                      disabled={submitMutation.isPending}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-white">Cognome</Label>
-                    <Input
-                      id="lastName"
-                      placeholder="Rossi"
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                      disabled={submitMutation.isPending}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-white flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    Email <span className="text-red-400">*</span>
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="mario.rossi@example.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                    disabled={submitMutation.isPending}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-white flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    Telefono <span className="text-red-400">*</span>
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+39 123 456 7890"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                    disabled={submitMutation.isPending}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="message" className="text-white flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4" />
-                    Messaggio (opzionale)
-                  </Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Raccontaci brevemente le tue esigenze..."
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/40 min-h-[100px]"
-                    disabled={submitMutation.isPending}
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={submitMutation.isPending}
-                  className="w-full py-6 text-lg font-semibold transition-all duration-300 hover:shadow-lg"
-                  style={{ 
-                    backgroundColor: accentColor,
-                    color: 'white',
-                  }}
-                >
-                  {submitMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Invio in corso...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-5 w-5 mr-2" />
-                      Invia Richiesta
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {landing.showAiChat && landing.agentConfigId && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-8 text-center"
+            transition={{ delay: 0.2 }}
           >
-            <p className="text-white/60 mb-4">oppure</p>
-            <Button
-              variant="outline"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              onClick={() => window.open(`/ai/${landing.agentConfigId}`, '_blank')}
-            >
-              <MessageSquare className="h-5 w-5 mr-2" />
-              Parla con l'assistente AI
-            </Button>
-          </motion.div>
-        )}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-xl">
+              <div className="p-6 sm:p-8">
+                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  <Users className="h-5 w-5" style={{ color: accentColor }} />
+                  Compila il modulo di contatto
+                </h2>
 
-        <div className="mt-12 text-center">
-          <p className="text-white/40 text-sm">
-            Powered by {consultant?.firstName} {consultant?.lastName} • {new Date().getFullYear()}
-          </p>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName" className="text-slate-200 flex items-center gap-1">
+                        Nome <span className="text-red-400">*</span>
+                      </Label>
+                      <Input
+                        id="firstName"
+                        placeholder="Mario"
+                        value={formData.firstName}
+                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-indigo-500"
+                        disabled={submitMutation.isPending}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName" className="text-slate-200">Cognome</Label>
+                      <Input
+                        id="lastName"
+                        placeholder="Rossi"
+                        value={formData.lastName}
+                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-indigo-500"
+                        disabled={submitMutation.isPending}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-slate-200 flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="mario.rossi@example.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-indigo-500"
+                      disabled={submitMutation.isPending}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-slate-200 flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Telefono <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+39 123 456 7890"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-indigo-500"
+                      disabled={submitMutation.isPending}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="message" className="text-slate-200 flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Messaggio (opzionale)
+                    </Label>
+                    <Textarea
+                      id="message"
+                      placeholder="Raccontaci brevemente le tue esigenze..."
+                      value={formData.message}
+                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-indigo-500 min-h-[100px]"
+                      disabled={submitMutation.isPending}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={submitMutation.isPending}
+                    className="w-full py-6 text-lg font-semibold transition-all duration-300 hover:opacity-90 shadow-lg"
+                    style={{ 
+                      backgroundColor: accentColor,
+                      color: 'white',
+                    }}
+                  >
+                    {submitMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Invio in corso...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                        Invia Richiesta
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </div>
+            </div>
+          </motion.div>
+
+          {landing.showAiChat && landing.agentConfigId && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mt-8 text-center"
+            >
+              <p className="text-slate-400 mb-4">oppure</p>
+              <Button
+                variant="outline"
+                className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700"
+                onClick={() => window.open(`/ai/${landing.agentConfigId}`, '_blank')}
+              >
+                <MessageSquare className="h-5 w-5 mr-2" />
+                Parla con l'assistente AI
+              </Button>
+            </motion.div>
+          )}
+
+          <div className="mt-12 text-center">
+            <p className="text-slate-500 text-sm">
+              Powered by {consultant?.firstName} {consultant?.lastName} • {new Date().getFullYear()}
+            </p>
+          </div>
         </div>
       </div>
     </div>
