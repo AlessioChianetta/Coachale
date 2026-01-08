@@ -140,9 +140,12 @@ interface AIResponse {
   originalEmail?: Email;
 }
 
+type AccountType = "smtp_only" | "imap_only" | "full" | "hybrid";
+
 interface AccountFormData {
   displayName: string;
   emailAddress: string;
+  accountType: AccountType;
   imapHost: string;
   imapPort: number;
   imapUser: string;
@@ -171,6 +174,7 @@ type FolderType = "inbox" | "drafts" | "sent" | "ai-drafts" | "starred";
 const defaultFormData: AccountFormData = {
   displayName: "",
   emailAddress: "",
+  accountType: "full",
   imapHost: "",
   imapPort: 993,
   imapUser: "",
@@ -186,6 +190,13 @@ const defaultFormData: AccountFormData = {
   aiTone: "professional",
   signature: "",
 };
+
+const ACCOUNT_TYPE_OPTIONS = [
+  { value: "full", label: "Completo", description: "Stesso provider per invio e ricezione" },
+  { value: "smtp_only", label: "Solo invio", description: "Solo SMTP (es. Amazon SES)" },
+  { value: "imap_only", label: "Solo ricezione", description: "Solo IMAP" },
+  { value: "hybrid", label: "Ibrido", description: "Provider diversi per SMTP e IMAP" },
+];
 
 const ITEMS_PER_PAGE = 25;
 
@@ -1457,15 +1468,38 @@ export default function ConsultantEmailHub() {
                 />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Tipo di account</Label>
+              <Select
+                value={formData.accountType}
+                onValueChange={(val: AccountType) => handleInputChange("accountType", val)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCOUNT_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <div className="flex flex-col">
+                        <span>{opt.label}</span>
+                        <span className="text-xs text-muted-foreground">{opt.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <Separator />
+          {(formData.accountType === "imap_only" || formData.accountType === "full" || formData.accountType === "hybrid") && (
+            <>
+              <Separator />
 
-          <div className="space-y-4">
-            <h4 className="font-medium flex items-center gap-2">
-              <Server className="h-4 w-4" />
-              Configurazione IMAP (Ricezione)
-            </h4>
+              <div className="space-y-4">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Server className="h-4 w-4" />
+                  Configurazione IMAP (Ricezione)
+                </h4>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="imapHost">Host IMAP</Label>
@@ -1523,15 +1557,19 @@ export default function ConsultantEmailHub() {
               />
               <Label htmlFor="imapTls">Usa SSL/TLS</Label>
             </div>
-          </div>
+              </div>
+            </>
+          )}
 
-          <Separator />
+          {(formData.accountType === "smtp_only" || formData.accountType === "full" || formData.accountType === "hybrid") && (
+            <>
+              <Separator />
 
-          <div className="space-y-4">
-            <h4 className="font-medium flex items-center gap-2">
-              <Send className="h-4 w-4" />
-              Configurazione SMTP (Invio)
-            </h4>
+              <div className="space-y-4">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Send className="h-4 w-4" />
+                  Configurazione SMTP (Invio)
+                </h4>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="smtpHost">Host SMTP</Label>
@@ -1578,7 +1616,9 @@ export default function ConsultantEmailHub() {
               />
               <Label htmlFor="smtpTls">Usa SSL/TLS</Label>
             </div>
-          </div>
+              </div>
+            </>
+          )}
 
           <Separator />
 
