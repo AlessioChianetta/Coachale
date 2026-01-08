@@ -13,7 +13,7 @@ import { PromptBreakdownViewer, type PromptBreakdownData, type CitationData } fr
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea, type AIModel, type ThinkingLevel, type AttachedFile } from "@/components/ai-assistant/InputArea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Lock, AlertCircle, MessageCircle, Info, Mic, X, Sparkles, Send } from "lucide-react";
+import { Loader2, Lock, AlertCircle, MessageCircle, Info, Mic, X, Sparkles, Send, Bot, Building2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ShareMetadata {
