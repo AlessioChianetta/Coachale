@@ -198,6 +198,36 @@ const ACCOUNT_TYPE_OPTIONS = [
   { value: "hybrid", label: "Ibrido", description: "Provider diversi per SMTP e IMAP" },
 ];
 
+const SEND_ONLY_PROVIDERS = [
+  /email-smtp\..*\.amazonaws\.com/i,
+  /smtp\.sendgrid\.net/i,
+  /smtp\.mailgun\.org/i,
+  /smtp\.postmarkapp\.com/i,
+  /in(-v\d+)?\.mailjet\.com/i,
+];
+
+function classifyAccountType(account: EmailAccount): AccountType {
+  const hasImap = !!(account.imapHost && account.imapHost.trim());
+  const hasSmtp = !!(account.smtpHost && account.smtpHost.trim());
+
+  if (hasImap && hasSmtp) {
+    const imapDomain = account.imapHost?.replace(/^imap[s]?\./i, '').toLowerCase() || '';
+    const smtpDomain = account.smtpHost?.replace(/^smtp[s]?\./i, '').toLowerCase() || '';
+    
+    const isSendOnlySmtp = SEND_ONLY_PROVIDERS.some(p => p.test(account.smtpHost || ''));
+    
+    if (isSendOnlySmtp || imapDomain !== smtpDomain) {
+      return "hybrid";
+    }
+    return "full";
+  }
+  
+  if (hasSmtp && !hasImap) return "smtp_only";
+  if (hasImap && !hasSmtp) return "imap_only";
+  
+  return "full";
+}
+
 const ITEMS_PER_PAGE = 25;
 
 export default function ConsultantEmailHub() {
@@ -647,9 +677,11 @@ export default function ConsultantEmailHub() {
 
   const handleOpenEditAccount = (account: EmailAccount) => {
     setEditingAccount(account);
+    const detectedAccountType = classifyAccountType(account);
     setFormData({
       displayName: account.displayName,
       emailAddress: account.emailAddress,
+      accountType: detectedAccountType,
       imapHost: account.imapHost || "",
       imapPort: account.imapPort || 993,
       imapUser: account.emailAddress,
