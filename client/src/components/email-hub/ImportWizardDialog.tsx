@@ -111,6 +111,13 @@ const ACCOUNT_TYPE_LABELS: Record<AccountType, { label: string; description: str
   },
 };
 
+function getAvailableAccountTypes(providerType: string): AccountType[] {
+  if (providerType === "send_only") {
+    return ["smtp_only", "hybrid"];
+  }
+  return ["full", "smtp_only", "imap_only", "hybrid"];
+}
+
 const getProviderIcon = (providerType: string) => {
   switch (providerType) {
     case "send_only":
@@ -394,8 +401,9 @@ export function ImportWizardDialog({
                       Ogni indirizzo email puo avere un solo account. Se vuoi usare lo stesso indirizzo per inviare (es. Amazon SES) e ricevere (es. Register.it), scegli <strong>Ibrido</strong>.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
-                      {(Object.entries(ACCOUNT_TYPE_LABELS) as [AccountType, typeof ACCOUNT_TYPE_LABELS[AccountType]][]).map(
-                        ([type, { label, description, icon }]) => (
+                      {getAvailableAccountTypes(setting.provider.providerType).map((type) => {
+                        const { label, description, icon } = ACCOUNT_TYPE_LABELS[type];
+                        return (
                           <button
                             key={type}
                             type="button"
@@ -412,8 +420,8 @@ export function ImportWizardDialog({
                             </div>
                             <p className="text-xs text-muted-foreground">{description}</p>
                           </button>
-                        )
-                      )}
+                        );
+                      })}
                     </div>
                   </div>
 

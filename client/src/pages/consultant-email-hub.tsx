@@ -204,6 +204,16 @@ const SEND_ONLY_PROVIDERS = [
   /smtp\.mailgun\.org/i,
   /smtp\.postmarkapp\.com/i,
   /in(-v\d+)?\.mailjet\.com/i,
+  /(smtp(?:-relay)?\.brevo\.com|smtp(?:-relay)?\.sendinblue\.com)/i,
+  /smtp\.mailersend\.(com|net)/i,
+  /mail\.smtp2go\.com/i,
+  /(live|sandbox)\.smtp\.mailtrap\.io/i,
+  /smtp\.zeptomail\.com/i,
+  /smtp\.elasticemail\.com/i,
+  /smtp\.resend\.(com|dev)/i,
+  /smtp\.mandrillapp\.com/i,
+  /smtp\.sendpulse\.com/i,
+  /smtp\.sparkpostmail\.com/i,
 ];
 
 function classifyAccountType(account: EmailAccount): AccountType {
