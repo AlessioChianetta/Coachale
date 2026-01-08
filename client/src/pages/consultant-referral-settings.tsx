@@ -21,12 +21,40 @@ import {
   Sparkles,
   MessageSquare,
   Palette,
+  Bot,
+  ClipboardList,
+  Building2,
+  Briefcase,
+  GraduationCap,
+  User,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
+
+interface QualificationFieldConfig {
+  enabled: boolean;
+  required: boolean;
+}
+
+interface QualificationFieldsConfig {
+  role: QualificationFieldConfig;
+  motivation: QualificationFieldConfig;
+  biggestProblem: QualificationFieldConfig;
+  goal12Months: QualificationFieldConfig;
+  currentBlocker: QualificationFieldConfig;
+  companyType: QualificationFieldConfig;
+  sector: QualificationFieldConfig;
+  employeeCount: QualificationFieldConfig;
+  annualRevenue: QualificationFieldConfig;
+  currentCompany: QualificationFieldConfig;
+  currentPosition: QualificationFieldConfig;
+  yearsExperience: QualificationFieldConfig;
+  fieldOfStudy: QualificationFieldConfig;
+  university: QualificationFieldConfig;
+}
 
 interface ReferralLandingConfig {
   headline: string;
@@ -44,7 +72,26 @@ interface ReferralLandingConfig {
   preferredChannel: "email" | "whatsapp" | "call" | "all";
   agentConfigId: string | null;
   defaultCampaignId: string | null;
+  aiAssistantIframeUrl: string | null;
+  qualificationFieldsConfig: QualificationFieldsConfig;
 }
+
+const defaultQualificationFieldsConfig: QualificationFieldsConfig = {
+  role: { enabled: false, required: false },
+  motivation: { enabled: false, required: false },
+  biggestProblem: { enabled: false, required: false },
+  goal12Months: { enabled: false, required: false },
+  currentBlocker: { enabled: false, required: false },
+  companyType: { enabled: false, required: false },
+  sector: { enabled: false, required: false },
+  employeeCount: { enabled: false, required: false },
+  annualRevenue: { enabled: false, required: false },
+  currentCompany: { enabled: false, required: false },
+  currentPosition: { enabled: false, required: false },
+  yearsExperience: { enabled: false, required: false },
+  fieldOfStudy: { enabled: false, required: false },
+  university: { enabled: false, required: false },
+};
 
 const defaultFormData: ReferralLandingConfig = {
   headline: "Inizia il tuo percorso con me",
@@ -62,6 +109,33 @@ const defaultFormData: ReferralLandingConfig = {
   preferredChannel: "all",
   agentConfigId: null,
   defaultCampaignId: null,
+  aiAssistantIframeUrl: null,
+  qualificationFieldsConfig: defaultQualificationFieldsConfig,
+};
+
+const qualificationFieldLabels: Record<keyof QualificationFieldsConfig, { label: string; group: string }> = {
+  role: { label: "Il tuo ruolo", group: "common" },
+  motivation: { label: "Cosa ti ha spinto a contattarci?", group: "common" },
+  biggestProblem: { label: "Il problema più grande da risolvere", group: "common" },
+  goal12Months: { label: "Dove vuoi arrivare in 12 mesi?", group: "common" },
+  currentBlocker: { label: "Cosa ti blocca adesso?", group: "common" },
+  companyType: { label: "Tipo di azienda", group: "entrepreneur" },
+  sector: { label: "Settore", group: "entrepreneur" },
+  employeeCount: { label: "Numero dipendenti", group: "entrepreneur" },
+  annualRevenue: { label: "Fatturato annuo", group: "entrepreneur" },
+  currentCompany: { label: "Azienda dove lavori", group: "employee" },
+  currentPosition: { label: "Mansione attuale", group: "employee" },
+  yearsExperience: { label: "Anni di esperienza", group: "freelancer" },
+  fieldOfStudy: { label: "Campo di studio", group: "student" },
+  university: { label: "Università", group: "student" },
+};
+
+const groupLabels: Record<string, { label: string; icon: React.ReactNode }> = {
+  common: { label: "Campi Comuni", icon: <User className="h-4 w-4" /> },
+  entrepreneur: { label: "Imprenditore", icon: <Building2 className="h-4 w-4" /> },
+  employee: { label: "Dipendente", icon: <Briefcase className="h-4 w-4" /> },
+  freelancer: { label: "Freelancer", icon: <Briefcase className="h-4 w-4" /> },
+  student: { label: "Studente", icon: <GraduationCap className="h-4 w-4" /> },
 };
 
 export default function ConsultantReferralSettingsPage() {
@@ -132,6 +206,10 @@ export default function ConsultantReferralSettingsPage() {
         preferredChannel: config.preferredChannel || defaultFormData.preferredChannel,
         agentConfigId: config.agentConfigId || null,
         defaultCampaignId: config.defaultCampaignId || null,
+        aiAssistantIframeUrl: config.aiAssistantIframeUrl || null,
+        qualificationFieldsConfig: config.qualificationFieldsConfig 
+          ? { ...defaultQualificationFieldsConfig, ...config.qualificationFieldsConfig }
+          : defaultQualificationFieldsConfig,
       });
     }
   }, [configData]);
@@ -154,6 +232,8 @@ export default function ConsultantReferralSettingsPage() {
         preferredChannel: data.preferredChannel,
         agentConfigId: data.agentConfigId,
         defaultCampaignId: data.defaultCampaignId,
+        aiAssistantIframeUrl: data.aiAssistantIframeUrl,
+        qualificationFieldsConfig: data.qualificationFieldsConfig,
       };
 
       const response = await fetch("/api/consultant/referral-landing", {
@@ -189,6 +269,24 @@ export default function ConsultantReferralSettingsPage() {
 
   const updateField = <K extends keyof ReferralLandingConfig>(field: K, value: ReferralLandingConfig[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateQualificationField = (
+    fieldKey: keyof QualificationFieldsConfig,
+    property: "enabled" | "required",
+    value: boolean
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      qualificationFieldsConfig: {
+        ...prev.qualificationFieldsConfig,
+        [fieldKey]: {
+          ...prev.qualificationFieldsConfig[fieldKey],
+          [property]: value,
+          ...(property === "enabled" && !value ? { required: false } : {}),
+        },
+      },
+    }));
   };
 
   const handleSave = () => {
@@ -241,6 +339,51 @@ export default function ConsultantReferralSettingsPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+
+  const renderQualificationFieldsGroup = (group: string, fields: Array<keyof QualificationFieldsConfig>) => (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-sm font-medium text-slate-700 border-b pb-2">
+        {groupLabels[group].icon}
+        <span>{groupLabels[group].label}</span>
+      </div>
+      {fields.map((fieldKey) => {
+        const fieldConfig = formData.qualificationFieldsConfig[fieldKey];
+        const fieldLabel = qualificationFieldLabels[fieldKey];
+        return (
+          <div 
+            key={fieldKey}
+            className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
+          >
+            <span className="text-sm text-slate-700">{fieldLabel.label}</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label htmlFor={`${fieldKey}-enabled`} className="text-xs text-slate-500">
+                  Abilitato
+                </Label>
+                <Switch
+                  id={`${fieldKey}-enabled`}
+                  checked={fieldConfig.enabled}
+                  onCheckedChange={(checked) => updateQualificationField(fieldKey, "enabled", checked)}
+                />
+              </div>
+              {fieldConfig.enabled && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`${fieldKey}-required`} className="text-xs text-slate-500">
+                    Obbligatorio
+                  </Label>
+                  <Switch
+                    id={`${fieldKey}-required`}
+                    checked={fieldConfig.required}
+                    onCheckedChange={(checked) => updateQualificationField(fieldKey, "required", checked)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 
@@ -307,18 +450,26 @@ export default function ConsultantReferralSettingsPage() {
 
           <div className="max-w-6xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3 h-12">
+              <TabsList className="grid w-full grid-cols-5 h-12">
                 <TabsTrigger value="landing" className="flex items-center gap-2">
                   <Layout className="h-4 w-4" />
-                  <span className="hidden sm:inline">Landing Page</span>
+                  <span className="hidden sm:inline">Landing</span>
                 </TabsTrigger>
                 <TabsTrigger value="bonus" className="flex items-center gap-2">
                   <Gift className="h-4 w-4" />
-                  <span className="hidden sm:inline">Configurazione Bonus</span>
+                  <span className="hidden sm:inline">Bonus</span>
+                </TabsTrigger>
+                <TabsTrigger value="ai-assistant" className="flex items-center gap-2">
+                  <Bot className="h-4 w-4" />
+                  <span className="hidden sm:inline">AI Assistant</span>
+                </TabsTrigger>
+                <TabsTrigger value="qualification" className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  <span className="hidden sm:inline">Qualificazione</span>
                 </TabsTrigger>
                 <TabsTrigger value="settings" className="flex items-center gap-2">
                   <Settings className="h-4 w-4" />
-                  <span className="hidden sm:inline">Impostazioni Generali</span>
+                  <span className="hidden sm:inline">Generali</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -521,6 +672,91 @@ export default function ConsultantReferralSettingsPage() {
                 </Card>
               </TabsContent>
 
+              <TabsContent value="ai-assistant" className="space-y-6">
+                <Card className="border-0 shadow-lg max-w-2xl mx-auto">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bot className="h-6 w-6" />
+                      AI Assistant
+                    </CardTitle>
+                    <CardDescription>
+                      Configura l'assistente AI per la landing page referral
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="showAiChatAssistant" className="font-semibold">Abilita AI Assistant</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Mostra il pulsante chat flottante sulla landing page
+                        </p>
+                      </div>
+                      <Switch
+                        id="showAiChatAssistant"
+                        checked={formData.showAiChat}
+                        onCheckedChange={(checked) => updateField("showAiChat", checked)}
+                      />
+                    </div>
+
+                    {formData.showAiChat && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="aiAssistantIframeUrl">URL iframe AI Assistant</Label>
+                          <Input
+                            id="aiAssistantIframeUrl"
+                            placeholder="https://esempio.com/chat-widget"
+                            value={formData.aiAssistantIframeUrl || ""}
+                            onChange={(e) => updateField("aiAssistantIframeUrl", e.target.value || null)}
+                          />
+                          <p className="text-xs text-slate-500">
+                            Inserisci l'URL dell'iframe che verrà mostrato quando gli utenti cliccano sul pulsante chat flottante.
+                            Lascia vuoto per usare la chat AI integrata.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="welcomeMessageAi" className="flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4" />
+                            Messaggio di Benvenuto AI
+                          </Label>
+                          <Textarea
+                            id="welcomeMessageAi"
+                            placeholder="Ciao! Come posso aiutarti oggi?"
+                            value={formData.welcomeMessage}
+                            onChange={(e) => updateField("welcomeMessage", e.target.value)}
+                            rows={4}
+                          />
+                          <p className="text-xs text-slate-500">
+                            Questo messaggio verrà mostrato quando un utente apre la chat AI
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="qualification" className="space-y-6">
+                <Card className="border-0 shadow-lg max-w-3xl mx-auto">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ClipboardList className="h-6 w-6" />
+                      Campi di Qualificazione
+                    </CardTitle>
+                    <CardDescription>
+                      Configura quali campi mostrare nel form di qualificazione e quali sono obbligatori
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {renderQualificationFieldsGroup("common", ["role", "motivation", "biggestProblem", "goal12Months", "currentBlocker"])}
+                    {renderQualificationFieldsGroup("entrepreneur", ["companyType", "sector", "employeeCount", "annualRevenue"])}
+                    {renderQualificationFieldsGroup("employee", ["currentCompany", "currentPosition"])}
+                    {renderQualificationFieldsGroup("freelancer", ["yearsExperience"])}
+                    {renderQualificationFieldsGroup("student", ["fieldOfStudy", "university"])}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               <TabsContent value="settings" className="space-y-6">
                 <Card className="border-0 shadow-lg max-w-2xl mx-auto">
                   <CardHeader>
@@ -613,25 +849,6 @@ export default function ConsultantReferralSettingsPage() {
                         La campagna associata ai lead referral (include obiettivi e desideri)
                       </p>
                     </div>
-
-                    {formData.showAiChat && (
-                      <div className="space-y-2">
-                        <Label htmlFor="welcomeMessage" className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4" />
-                          Messaggio di Benvenuto AI
-                        </Label>
-                        <Textarea
-                          id="welcomeMessage"
-                          placeholder="Ciao! Come posso aiutarti oggi?"
-                          value={formData.welcomeMessage}
-                          onChange={(e) => updateField("welcomeMessage", e.target.value)}
-                          rows={4}
-                        />
-                        <p className="text-xs text-slate-500">
-                          Questo messaggio verrà mostrato quando un utente apre la chat AI
-                        </p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
