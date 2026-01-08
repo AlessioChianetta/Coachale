@@ -946,8 +946,47 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
     let recentObjections: any[] = [];
 
     // Check if consultant is writing - give full data access
-    if (participantType === 'consultant') {
+    // SECURITY: Double-check that participantUserId matches consultantId to prevent cross-tenant access
+    const participantUserId = (conversation.metadata as any)?.participantUserId;
+    let isValidConsultantAccess = participantType === 'consultant' && participantUserId === consultantId;
+    
+    // SECURITY FIX: Handle legacy conversations with stale consultant metadata
+    // If participantType is 'consultant' but participantUserId doesn't match (or is missing),
+    // forcibly downgrade to 'unknown' (lead) and update the database
+    if (participantType === 'consultant' && participantUserId !== consultantId) {
+      console.log(`\n⚠️ [SECURITY] Consultant access DENIED - participantUserId (${participantUserId}) !== consultantId (${consultantId})`);
+      console.log(`🔒 [SECURITY] Forcing downgrade to LEAD to prevent cross-tenant data exposure`);
+      
+      // Update conversation metadata to reflect correct classification
+      const correctedMetadata = {
+        ...(conversation.metadata || {}),
+        participantType: 'unknown',
+        participantUserId: null,
+        participantRole: null,
+        securityDowngrade: true,
+        securityDowngradeReason: `Cross-tenant access attempt: participantUserId (${participantUserId}) !== consultantId (${consultantId})`,
+        securityDowngradeAt: new Date().toISOString(),
+      };
+      
+      await db
+        .update(whatsappConversations)
+        .set({ 
+          metadata: correctedMetadata as any,
+          isLead: true,  // Force lead status
+        })
+        .where(eq(whatsappConversations.id, conversation.id));
+      
+      // Update local variables to reflect the correction
+      conversation.metadata = correctedMetadata as any;
+      conversation.isLead = true;
+      isValidConsultantAccess = false;
+      
+      console.log(`✅ [SECURITY] Conversation ${conversation.id} metadata corrected and persisted`);
+    }
+    
+    if (isValidConsultantAccess) {
       console.log(`\n👨‍💼 [CONSULTANT MODE] Building consultant context with full data access...`);
+      console.log(`🔒 [SECURITY] Verified: participantUserId (${participantUserId}) === consultantId (${consultantId})`);
 
       // Import buildConsultantContext
       const { buildConsultantContext } = await import('../consultant-context-builder');

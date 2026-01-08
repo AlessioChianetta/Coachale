@@ -473,6 +473,15 @@ export async function handleIncomingWhatsAppMessage(
 /**
  * Classifies a phone number participant type
  * Returns: "receptionist" | "consultant" | "client" | "unknown"
+ * 
+ * PRIORITY ORDER (security-aware):
+ * 1. Receptionist (hardcoded number)
+ * 2. Agent Owner - ONLY the consultant who owns this agent gets consultant access
+ * 3. Client of Agent Owner - even if they're a consultant elsewhere, treat as client here
+ * 4. Unknown/Lead - everyone else, including consultants from other accounts
+ * 
+ * This prevents cross-tenant data exposure: Consultant A cannot access Consultant B's data
+ * by writing to Consultant B's agent.
  */
 async function classifyParticipant(
   normalizedPhone: string,
@@ -494,21 +503,29 @@ async function classifyParticipant(
     return { type: "unknown", userId: null, userRole: null };
   }
 
-  // Check if it's a consultant (could be the same consultant managing the account)
-  const consultant = usersWithPhone.find((u: any) => u.role === "consultant");
-  if (consultant) {
-    console.log(`👨‍💼 [PARTICIPANT] Recognized CONSULTANT: ${consultant.firstName} ${consultant.lastName}`);
-    return { type: "consultant", userId: consultant.id, userRole: "consultant" };
+  // PRIORITY 1: Check if sender IS the agent owner (same consultant)
+  // Only give consultant access if the phone belongs to THE consultant who owns this agent
+  const ownerConsultant = usersWithPhone.find((u: any) => u.role === "consultant" && u.id === consultantId);
+  if (ownerConsultant) {
+    console.log(`👨‍💼 [PARTICIPANT] Recognized AGENT OWNER: ${ownerConsultant.firstName} ${ownerConsultant.lastName}`);
+    return { type: "consultant", userId: ownerConsultant.id, userRole: "consultant" };
   }
 
-  // Check if it's a client
+  // PRIORITY 2: Check if sender is a client of the agent owner
+  // This takes precedence even if the sender is a consultant elsewhere
   const client = usersWithPhone.find((u: any) => u.role === "client" && u.consultantId === consultantId);
   if (client) {
     console.log(`👤 [PARTICIPANT] Recognized CLIENT: ${client.firstName} ${client.lastName}`);
     return { type: "client", userId: client.id, userRole: "client" };
   }
 
-  // Has phone in DB but doesn't match criteria
+  // PRIORITY 3: Anyone else (including consultants of other accounts) is treated as unknown/lead
+  // This prevents cross-tenant data exposure
+  const otherConsultant = usersWithPhone.find((u: any) => u.role === "consultant");
+  if (otherConsultant) {
+    console.log(`⚠️ [PARTICIPANT] Consultant ${otherConsultant.firstName} ${otherConsultant.lastName} writing to another consultant's agent - treating as LEAD for security`);
+  }
+
   return { type: "unknown", userId: null, userRole: null };
 }
 
