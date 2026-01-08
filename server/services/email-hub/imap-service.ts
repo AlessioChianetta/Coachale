@@ -362,6 +362,8 @@ export class ImapService {
           }
 
           const totalMessages = box.messages.total;
+          console.log(`[IMAP] Opened folder "${folderName}": server reports ${totalMessages} total messages`);
+          
           if (totalMessages === 0) {
             imap.end();
             return resolve([]);
