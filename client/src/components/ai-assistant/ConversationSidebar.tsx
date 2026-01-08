@@ -284,16 +284,6 @@ export function ConversationSidebar({
             <span>Menu principale</span>
           </button>
         )}
-
-        {!sidebarMinimized && variant === "consultant" && onSettingsClick && (
-          <button
-            onClick={onSettingsClick}
-            className="w-full flex items-center gap-1.5 px-2 py-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
-          >
-            <Settings className="h-3 w-3" />
-            <span>Impostazioni</span>
-          </button>
-        )}
       </div>
 
       {!sidebarMinimized && (
