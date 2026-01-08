@@ -1314,8 +1314,6 @@ export default function ConsultantAIConfigPage() {
   const [updatesSystemPrompt, setUpdatesSystemPrompt] = useState("");
   const [updatesDescription, setUpdatesDescription] = useState("");
   const [selectedPromptPreset, setSelectedPromptPreset] = useState("custom");
-  const [schedulerCardOpen, setSchedulerCardOpen] = useState(false);
-  const [automationSettingsOpen, setAutomationSettingsOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -2306,138 +2304,177 @@ Non limitarti a stato attuale/ideale. Attingi da:
             </div>
           </div>
 
-          <Collapsible open={automationSettingsOpen} onOpenChange={setAutomationSettingsOpen} className="w-full mb-6">
-            <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
+          <Tabs defaultValue="controllo" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-9 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 h-auto rounded-xl shadow-sm backdrop-blur-sm">
+              <TabsTrigger 
+                value="controllo" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-700 data-[state=active]:to-slate-800 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <Settings className="h-4 w-4" />
+                <span className="hidden lg:inline">Controllo</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="drafts" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="hidden lg:inline">Bozze</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="echo" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden lg:inline">Echo</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="consultation-summary" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <Mail className="h-4 w-4" />
+                <span className="hidden lg:inline">Riepilogo</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="statistics" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden lg:inline">Statistiche</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="clients" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <Users className="h-4 w-4" />
+                <span className="hidden lg:inline">Clienti</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="journey" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <Route className="h-4 w-4" />
+                <span className="hidden lg:inline">Journey</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="updates" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <Megaphone className="h-4 w-4" />
+                <span className="hidden lg:inline">Updates</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="test" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <Zap className="h-4 w-4" />
+                <span className="hidden lg:inline">Test</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="controllo" className="space-y-6">
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
                     <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
                       <Settings className="h-4 w-4 text-white" />
                     </div>
                     Impostazioni Automation
                   </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400 mt-1">
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
                     Configura l'automazione generale delle email AI
                   </CardDescription>
-                </div>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-700">
-                    <ChevronsUpDown className="h-4 w-4 text-slate-500" />
-                    <span className="sr-only">Toggle automation settings</span>
-                  </Button>
-                </CollapsibleTrigger>
-              </CardHeader>
-              <CollapsibleContent>
+                </CardHeader>
                 <CardContent className="space-y-6">
-              {!isSmtpConfigured && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    Configurazione SMTP mancante! Le email non possono essere inviate. Configura SMTP prima di attivare l'automation.
-                  </AlertDescription>
-                </Alert>
-              )}
+                  {!isSmtpConfigured && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        Configurazione SMTP mancante! Le email non possono essere inviate. Configura SMTP prima di attivare l'automation.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="space-y-1">
-                  <Label htmlFor="automation-toggle" className="text-base font-semibold">
-                    Automation Generale
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    {automationEnabled 
-                      ? "Solo i clienti selezionati ricevono email automatiche" 
-                      : "Tutte le email vanno in bozza per approvazione manuale"}
-                  </p>
-                </div>
-                <Switch
-                  id="automation-toggle"
-                  checked={automationEnabled}
-                  onCheckedChange={(checked) => {
-                    setAutomationEnabled(checked);
-                    handleSaveAutomationSettings(checked);
-                  }}
-                  disabled={!isSmtpConfigured || updateSmtpMutation.isPending}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email-frequency">Frequenza Email (giorni)</Label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    id="email-frequency"
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={emailFrequency || ''}
-                    onChange={(e) => {
-                      const inputValue = e.target.value;
-                      console.log('📝 [EMAIL FREQUENCY] Input value:', inputValue);
-
-                      if (inputValue === '') {
-                        console.log('⚠️ [EMAIL FREQUENCY] Empty input, setting to 2');
-                        setEmailFrequency(2);
-                        return;
-                      }
-
-                      const val = parseInt(inputValue, 10);
-                      console.log('🔢 [EMAIL FREQUENCY] Parsed value:', val, 'isNaN:', isNaN(val));
-
-                      if (!isNaN(val) && val >= 1 && val <= 30) {
-                        console.log('✅ [EMAIL FREQUENCY] Valid value, setting to:', val);
-                        setEmailFrequency(val);
-                      } else {
-                        console.log('❌ [EMAIL FREQUENCY] Invalid value, ignoring');
-                      }
-                    }}
-                    className="max-w-[200px]"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    Invia email ogni {emailFrequency || 2} giorni
-                  </span>
-                  <Button
-                    onClick={() => {
-                      console.log('💾 [EMAIL FREQUENCY] Saving with value:', emailFrequency);
-                      handleSaveAutomationSettings();
-                    }}
-                    disabled={updateSmtpMutation.isPending}
-                    size="sm"
-                  >
-                    {updateSmtpMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Salvataggio...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Salva Frequenza
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
-          <Collapsible open={schedulerCardOpen} onOpenChange={setSchedulerCardOpen} className="w-full mb-6">
-            <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                  <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-lg">
-                    <Clock className="h-4 w-4 text-white" />
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="space-y-1">
+                      <Label htmlFor="automation-toggle" className="text-base font-semibold">
+                        Automation Generale
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {automationEnabled 
+                          ? "Solo i clienti selezionati ricevono email automatiche" 
+                          : "Tutte le email vanno in bozza per approvazione manuale"}
+                      </p>
+                    </div>
+                    <Switch
+                      id="automation-toggle"
+                      checked={automationEnabled}
+                      onCheckedChange={(checked) => {
+                        setAutomationEnabled(checked);
+                        handleSaveAutomationSettings(checked);
+                      }}
+                      disabled={!isSmtpConfigured || updateSmtpMutation.isPending}
+                    />
                   </div>
-                  Centro Controllo Scheduler
-                </CardTitle>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-700">
-                    <ChevronsUpDown className="h-4 w-4 text-slate-500" />
-                    <span className="sr-only">Toggle scheduler card</span>
-                  </Button>
-                </CollapsibleTrigger>
-              </CardHeader>
-              <CollapsibleContent>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email-frequency">Frequenza Email (giorni)</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        id="email-frequency"
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={emailFrequency || ''}
+                        onChange={(e) => {
+                          const inputValue = e.target.value;
+                          if (inputValue === '') {
+                            setEmailFrequency(2);
+                            return;
+                          }
+                          const val = parseInt(inputValue, 10);
+                          if (!isNaN(val) && val >= 1 && val <= 30) {
+                            setEmailFrequency(val);
+                          }
+                        }}
+                        className="max-w-[200px]"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        Invia email ogni {emailFrequency || 2} giorni
+                      </span>
+                      <Button
+                        onClick={() => handleSaveAutomationSettings()}
+                        disabled={updateSmtpMutation.isPending}
+                        size="sm"
+                      >
+                        {updateSmtpMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Salvataggio...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Salva Frequenza
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-lg">
+                      <Clock className="h-4 w-4 text-white" />
+                    </div>
+                    Centro Controllo Scheduler
+                  </CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    Gestisci lo scheduler per l'invio automatico delle email
+                  </CardDescription>
+                </CardHeader>
                 <CardContent className="space-y-6">
                   {schedulerStatusLoading ? (
                     <div className="flex items-center justify-center py-8">
@@ -2570,10 +2607,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
                         <Button
                           onClick={() => {
-                            if (executeNowMutation.isPending) {
-                              console.log("⚠️ Scheduler execution already in progress - ignoring click");
-                              return;
-                            }
+                            if (executeNowMutation.isPending) return;
                             if (confirm("Vuoi eseguire lo scheduler immediatamente?")) {
                               executeNowMutation.mutate();
                             }
@@ -2658,69 +2692,8 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     </Alert>
                   )}
                 </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
-          <Tabs defaultValue="drafts" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 h-auto rounded-xl shadow-sm backdrop-blur-sm">
-              <TabsTrigger 
-                value="drafts" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <FileText className="h-4 w-4" />
-                <span className="hidden lg:inline">Bozze</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="echo" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Sparkles className="h-4 w-4" />
-                <span className="hidden lg:inline">Echo</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="consultation-summary" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Mail className="h-4 w-4" />
-                <span className="hidden lg:inline">Riepilogo</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="statistics" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden lg:inline">Statistiche</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="clients" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Users className="h-4 w-4" />
-                <span className="hidden lg:inline">Clienti</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="journey" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Route className="h-4 w-4" />
-                <span className="hidden lg:inline">Journey</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="updates" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Megaphone className="h-4 w-4" />
-                <span className="hidden lg:inline">Updates</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="test" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Zap className="h-4 w-4" />
-                <span className="hidden lg:inline">Test</span>
-              </TabsTrigger>
-            </TabsList>
+              </Card>
+            </TabsContent>
 
             <TabsContent value="drafts" className="space-y-6">
               <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
