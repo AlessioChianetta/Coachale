@@ -714,6 +714,32 @@ export default function ConsultantEmailHub() {
     },
   });
 
+  const syncEmailsMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      const response = await fetch(`/api/email-hub/accounts/${accountId}/sync`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 50 }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to sync emails");
+      }
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
+      toast({ 
+        title: "Sincronizzazione completata", 
+        description: `${result.data.imported} email importate, ${result.data.duplicates} gia presenti` 
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore sincronizzazione", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleInputChange = (field: keyof AccountFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -1037,6 +1063,15 @@ export default function ConsultantEmailHub() {
                         <Edit className="h-4 w-4 mr-2" />
                         Modifica
                       </DropdownMenuItem>
+                      {(account.accountType === "imap_only" || account.accountType === "full" || account.accountType === "hybrid") && (
+                        <DropdownMenuItem 
+                          onClick={() => syncEmailsMutation.mutate(account.id)}
+                          disabled={syncEmailsMutation.isPending}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${syncEmailsMutation.isPending ? "animate-spin" : ""}`} />
+                          {syncEmailsMutation.isPending ? "Sincronizzazione..." : "Sincronizza Email"}
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem 
                         onClick={() => {
                           if (account.syncStatus === "connected") {

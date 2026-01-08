@@ -1092,6 +1092,124 @@ async function saveEmailToDatabase(email: ParsedEmail, accountId: string, consul
   console.log(`[IMAP IDLE] Saved new email: ${email.subject}`);
 }
 
+router.post("/accounts/:id/sync", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const accountId = req.params.id;
+    const { limit = 50 } = req.body;
+
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId)
+        )
+      );
+
+    if (!account) {
+      return res.status(404).json({ success: false, error: "Account not found" });
+    }
+
+    if (!account.imapPassword || !account.imapHost || !account.imapUser) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Missing IMAP credentials. Please update the account with valid IMAP settings." 
+      });
+    }
+
+    console.log(`[EMAIL-HUB SYNC] Starting sync for ${account.emailAddress}...`);
+
+    await db
+      .update(schema.emailAccounts)
+      .set({ syncStatus: "syncing" })
+      .where(eq(schema.emailAccounts.id, accountId));
+
+    const imapService = createImapService({
+      host: account.imapHost,
+      port: account.imapPort || 993,
+      user: account.imapUser,
+      password: account.imapPassword,
+      tls: account.imapTls ?? true,
+    });
+
+    try {
+      const emails = await imapService.fetchRecentEmails(limit);
+      console.log(`[EMAIL-HUB SYNC] Fetched ${emails.length} emails from IMAP`);
+
+      let imported = 0;
+      let duplicates = 0;
+
+      for (const email of emails) {
+        const existingEmail = await db
+          .select({ id: schema.hubEmails.id })
+          .from(schema.hubEmails)
+          .where(
+            and(
+              eq(schema.hubEmails.accountId, accountId),
+              eq(schema.hubEmails.messageId, email.messageId)
+            )
+          )
+          .limit(1);
+
+        if (existingEmail.length > 0) {
+          duplicates++;
+          continue;
+        }
+
+        await db.insert(schema.hubEmails).values({
+          accountId,
+          consultantId,
+          messageId: email.messageId,
+          subject: email.subject,
+          fromName: email.fromName,
+          fromEmail: email.fromEmail,
+          toRecipients: email.toRecipients,
+          ccRecipients: email.ccRecipients,
+          bodyHtml: email.bodyHtml,
+          bodyText: email.bodyText,
+          snippet: email.snippet,
+          direction: "inbound",
+          isRead: false,
+          receivedAt: email.receivedAt,
+          attachments: email.attachments,
+          hasAttachments: email.hasAttachments,
+          inReplyTo: email.inReplyTo,
+          processingStatus: "new",
+        });
+        imported++;
+      }
+
+      await db
+        .update(schema.emailAccounts)
+        .set({ syncStatus: "idle", syncError: null, lastSyncAt: new Date() })
+        .where(eq(schema.emailAccounts.id, accountId));
+
+      console.log(`[EMAIL-HUB SYNC] Completed: ${imported} imported, ${duplicates} duplicates`);
+
+      res.json({ 
+        success: true, 
+        data: { 
+          imported, 
+          duplicates, 
+          total: emails.length 
+        } 
+      });
+    } catch (syncError: any) {
+      console.error(`[EMAIL-HUB SYNC] Error:`, syncError);
+      await db
+        .update(schema.emailAccounts)
+        .set({ syncStatus: "error", syncError: syncError.message })
+        .where(eq(schema.emailAccounts.id, accountId));
+      throw syncError;
+    }
+  } catch (error: any) {
+    console.error("[EMAIL-HUB SYNC] Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post("/accounts/:id/idle/start", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
