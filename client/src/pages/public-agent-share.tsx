@@ -526,6 +526,10 @@ export default function PublicAgentShare() {
         createdAt: new Date(),
       };
       setOptimisticMessage(optimistic);
+      
+      // Show thinking indicator immediately
+      setIsThinking(true);
+      setStreamingThinking("");
     },
     onError: (error: Error) => {
       setIsStreaming(false);
@@ -1038,16 +1042,6 @@ export default function PublicAgentShare() {
                 </div>
               )}
               
-              {/* Prompt Breakdown Viewer - AI transparency */}
-              {isStreaming && promptBreakdown && (
-                <div className="px-4 pb-4">
-                  <PromptBreakdownViewer 
-                    breakdown={promptBreakdown} 
-                    citations={citations}
-                    className="max-w-md mx-auto"
-                  />
-                </div>
-              )}
             </>
           )}
         </div>
