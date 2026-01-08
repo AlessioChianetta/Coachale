@@ -241,6 +241,18 @@ export default function PublicReferralLanding() {
         toast({ variant: 'destructive', title: 'Errore', description: 'Seleziona il tuo ruolo' });
         return;
       }
+      
+      const currentRole = formData.qualificationRole as RoleType;
+      const roleSpecificFieldsMap: Record<RoleType, string[]> = {
+        'imprenditore': ['companyType', 'sector', 'employeeCount', 'annualRevenue'],
+        'dipendente': ['currentCompany', 'currentPosition', 'sector'],
+        'libero_professionista': ['sector', 'yearsExperience'],
+        'studente': ['fieldOfStudy', 'university'],
+        'altro': [],
+      };
+      const commonFieldsList = ['motivation', 'biggestProblem', 'goal12Months', 'currentBlocker'];
+      const visibleFields = [...commonFieldsList, ...(roleSpecificFieldsMap[currentRole] || [])];
+      
       const fieldValidations: Array<{ field: keyof QualificationFieldsConfig; formField: keyof FormData; label: string }> = [
         { field: 'motivation', formField: 'qualificationMotivation', label: 'Motivazione' },
         { field: 'biggestProblem', formField: 'qualificationBiggestProblem', label: 'Problema principale' },
@@ -257,6 +269,7 @@ export default function PublicReferralLanding() {
         { field: 'university', formField: 'qualificationUniversity', label: 'Università' },
       ];
       for (const { field, formField, label } of fieldValidations) {
+        if (!visibleFields.includes(field)) continue;
         const fieldConfig = config[field];
         if (fieldConfig?.enabled && fieldConfig?.required && !formData[formField]?.trim()) {
           setQualificationOpen(true);
