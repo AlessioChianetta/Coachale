@@ -30,7 +30,8 @@ import {
   TrendingUp,
   CheckCircle,
   RotateCcw,
-  Activity
+  Activity,
+  Gift
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -361,6 +362,12 @@ export default function ConsultantDashboard() {
       icon: Mail, 
       onClick: () => setLocation("/consultant/ai-config"),
       gradient: "from-orange-500 to-red-600"
+    },
+    { 
+      name: "Invita Amico", 
+      icon: Gift, 
+      onClick: () => setLocation("/consultant/referrals"),
+      gradient: "from-pink-500 to-rose-600"
     },
   ];
 

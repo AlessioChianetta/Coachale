@@ -30,7 +30,8 @@ import {
   MessageCircle,
   Activity,
   RotateCcw,
-  Settings
+  Settings,
+  Gift
 } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders, getAuthUser, logout } from "@/lib/auth";
@@ -247,6 +248,12 @@ export default function ClientDashboard() {
       icon: MessageCircle, 
       onClick: () => setLocation("/client/consultations"),
       gradient: "from-orange-500 to-red-600"
+    },
+    { 
+      name: "Invita Amico", 
+      icon: Gift, 
+      onClick: () => setLocation("/client/referral"),
+      gradient: "from-pink-500 to-rose-600"
     },
   ];
 
