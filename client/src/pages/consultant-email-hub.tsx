@@ -272,6 +272,7 @@ export default function ConsultantEmailHub() {
   const [showEmailImportDialog, setShowEmailImportDialog] = useState(false);
   const [importAccountId, setImportAccountId] = useState<string>("");
   const [importAccountName, setImportAccountName] = useState<string>("");
+  const [showFullEmailView, setShowFullEmailView] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -809,12 +810,18 @@ export default function ConsultantEmailHub() {
 
   const handleEmailClick = (email: Email) => {
     setSelectedEmail(email);
+    setShowFullEmailView(true);
     if (isMobile) {
       setShowEmailSheet(true);
     }
     if (!email.isRead) {
       markAsReadMutation.mutate(email.id);
     }
+  };
+
+  const handleBackToList = () => {
+    setShowFullEmailView(false);
+    setSelectedEmail(null);
   };
 
   const handleFolderClick = (folder: FolderType, accountId?: string | null) => {
@@ -1583,6 +1590,150 @@ export default function ConsultantEmailHub() {
     </div>
   );
 
+  const renderFullEmailView = () => (
+    <div className="flex-1 bg-white dark:bg-slate-950 flex flex-col h-full">
+      {selectedEmail ? (
+        <>
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-4 mb-4">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-2" 
+                onClick={handleBackToList}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Indietro
+              </Button>
+              <div className="flex-1" />
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="gap-1">
+                  <Reply className="h-4 w-4" />
+                  Rispondi
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="gap-1 bg-violet-600 hover:bg-violet-700"
+                  onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
+                  disabled={generateAIResponseMutation.isPending}
+                >
+                  {generateAIResponseMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  AI Genera Bozza
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1">
+                  <Forward className="h-4 w-4" />
+                  Inoltra
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => toggleStarMutation.mutate(selectedEmail.id)}
+                >
+                  {selectedEmail.isStarred ? (
+                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                  ) : (
+                    <Star className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1 text-destructive hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <h1 className="text-xl font-semibold mb-4">
+              {selectedEmail.subject || "(Nessun oggetto)"}
+            </h1>
+            
+            <div className="flex items-start gap-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-lg ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}>
+                {(selectedEmail.fromName || selectedEmail.fromEmail).charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{selectedEmail.fromName || selectedEmail.fromEmail}</span>
+                  <span className="text-sm text-slate-500">&lt;{selectedEmail.fromEmail}&gt;</span>
+                </div>
+                <div className="text-sm text-slate-500">
+                  A: {selectedEmail.toEmail}
+                </div>
+              </div>
+              <div className="text-sm text-slate-400">
+                {format(new Date(selectedEmail.receivedAt), "dd MMMM yyyy, HH:mm")}
+              </div>
+            </div>
+          </div>
+          
+          <ScrollArea className="flex-1 p-6">
+            <div className="max-w-4xl mx-auto">
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <div 
+                  className="whitespace-pre-wrap text-slate-700 dark:text-slate-300"
+                  dangerouslySetInnerHTML={{ 
+                    __html: emailDetailData?.data?.bodyHtml || emailDetailData?.data?.bodyText || selectedEmail.snippet || "Caricamento contenuto..." 
+                  }}
+                />
+              </div>
+              
+              {emailAIResponses.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
+                  <h4 className="text-lg font-medium mb-4 flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-violet-500" />
+                    Risposte AI Generate
+                  </h4>
+                  <div className="space-y-4">
+                    {emailAIResponses.map((resp) => (
+                      <Card key={resp.id} className="bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">{resp.draftSubject}</CardTitle>
+                            <div className="flex items-center gap-2">
+                              {getConfidenceBadge(resp.confidence)}
+                              <Badge variant={resp.status === "sent" ? "default" : "outline"}>
+                                {resp.status === "draft" ? "Bozza" :
+                                 resp.status === "approved" ? "Approvato" :
+                                 resp.status === "edited" ? "Modificato" :
+                                 resp.status === "rejected" ? "Rifiutato" : "Inviato"}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm whitespace-pre-wrap text-slate-600 dark:text-slate-400">
+                            {resp.draftBodyText || resp.draftBodyHtml}
+                          </p>
+                          {resp.status === "draft" && (
+                            <div className="flex gap-2 mt-4">
+                              <Button size="sm" variant="default">
+                                <Check className="h-4 w-4 mr-1" />
+                                Approva e Invia
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => {
+                                setEditingDraft(resp);
+                                setEditedDraftContent(resp.draftBodyText || resp.draftBodyHtml || "");
+                              }}>
+                                <Edit className="h-4 w-4 mr-1" />
+                                Modifica
+                              </Button>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </>
+      ) : null}
+    </div>
+  );
+
   const renderAccountDialog = () => (
     <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -2056,9 +2207,14 @@ export default function ConsultantEmailHub() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 flex overflow-hidden">
-          {!isMobile && renderLeftSidebar()}
-          {renderEmailList()}
-          {!isMobile && renderPreviewPanel()}
+          {showFullEmailView && selectedEmail ? (
+            renderFullEmailView()
+          ) : (
+            <>
+              {!isMobile && renderLeftSidebar()}
+              {renderEmailList()}
+            </>
+          )}
         </div>
       </div>
 
