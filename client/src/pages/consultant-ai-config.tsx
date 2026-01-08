@@ -2279,6 +2279,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 p-6 overflow-y-auto">
+          <div className="max-w-6xl mx-auto">
           {/* Navigation Tabs */}
           <NavigationTabs
             tabs={[
@@ -3884,6 +3885,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
               </Card>
             </TabsContent>
           </Tabs>
+          </div>
         </div>
       </div>
 
