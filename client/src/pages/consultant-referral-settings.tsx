@@ -833,13 +833,13 @@ export default function ConsultantReferralSettingsPage() {
                         value={formData.defaultCampaignId || "none"}
                         onValueChange={(value) => updateField("defaultCampaignId", value === "none" ? null : value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-slate-900">
                           <SelectValue placeholder="Seleziona la campagna" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nessuna campagna</SelectItem>
                           {campaigns.map((campaign: any) => (
-                            <SelectItem key={campaign.id} value={campaign.id}>
+                            <SelectItem key={campaign.id} value={campaign.id} className="text-slate-900">
                               {campaign.name}
                             </SelectItem>
                           ))}
