@@ -363,12 +363,6 @@ export default function ConsultantDashboard() {
       onClick: () => setLocation("/consultant/ai-config"),
       gradient: "from-orange-500 to-red-600"
     },
-    { 
-      name: "Invita Amico", 
-      icon: Gift, 
-      onClick: () => setLocation("/consultant/referrals"),
-      gradient: "from-pink-500 to-rose-600"
-    },
   ];
 
   const getUrgencyColor = (urgency: string) => {
@@ -449,6 +443,26 @@ export default function ConsultantDashboard() {
                 </Avatar>
               </div>
             </div>
+
+            {/* Referral Banner */}
+            <button
+              onClick={() => setLocation("/consultant/referrals")}
+              className="w-full group relative overflow-hidden rounded-xl p-4 text-left transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-500 opacity-90 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 flex items-center justify-between text-white">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-white/20">
+                    <Gift className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">Invita un Amico</p>
+                    <p className="text-sm text-white/80">Guadagna bonus per ogni cliente portato</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-5 w-5" />
+              </div>
+            </button>
 
             {/* KPI Header Strip */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
