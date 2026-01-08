@@ -716,18 +716,24 @@ export default function ConsultantEmailHub() {
 
   const syncEmailsMutation = useMutation({
     mutationFn: async (accountId: string) => {
+      console.log("[EMAIL-HUB SYNC] Starting sync for account:", accountId);
       const response = await fetch(`/api/email-hub/accounts/${accountId}/sync`, {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ limit: 50 }),
       });
+      console.log("[EMAIL-HUB SYNC] Response status:", response.status);
       if (!response.ok) {
         const err = await response.json();
+        console.log("[EMAIL-HUB SYNC] Error:", err);
         throw new Error(err.error || "Failed to sync emails");
       }
-      return response.json();
+      const result = await response.json();
+      console.log("[EMAIL-HUB SYNC] Result:", result);
+      return result;
     },
     onSuccess: (result) => {
+      console.log("[EMAIL-HUB SYNC] Success:", result);
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
       toast({ 
@@ -736,6 +742,7 @@ export default function ConsultantEmailHub() {
       });
     },
     onError: (error: any) => {
+      console.log("[EMAIL-HUB SYNC] Error:", error);
       toast({ title: "Errore sincronizzazione", description: error.message, variant: "destructive" });
     },
   });
@@ -1065,7 +1072,10 @@ export default function ConsultantEmailHub() {
                       </DropdownMenuItem>
                       {(account.accountType === "imap_only" || account.accountType === "full" || account.accountType === "hybrid") && (
                         <DropdownMenuItem 
-                          onClick={() => syncEmailsMutation.mutate(account.id)}
+                          onClick={() => {
+                            console.log("[EMAIL-HUB] Sync button clicked for account:", account.id, account.accountType);
+                            syncEmailsMutation.mutate(account.id);
+                          }}
                           disabled={syncEmailsMutation.isPending}
                         >
                           <RefreshCw className={`h-4 w-4 mr-2 ${syncEmailsMutation.isPending ? "animate-spin" : ""}`} />
