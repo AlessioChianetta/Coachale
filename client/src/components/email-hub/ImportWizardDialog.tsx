@@ -179,9 +179,22 @@ export function ImportWizardDialog({
   const handlePresetChange = (settingId: string, presetKey: string) => {
     const preset = importPreview.italianProviders[presetKey];
     if (preset) {
+      let imapHost = preset.imapHost;
+      
+      // Per Register.it, auto-genera l'host IMAP basato sul dominio email
+      if (presetKey === 'register.it' && !preset.imapHost) {
+        const setting = importPreview.settings.find(s => s.id === settingId);
+        if (setting?.fromEmail) {
+          const domain = setting.fromEmail.split('@')[1];
+          if (domain) {
+            imapHost = `pop.${domain}`;
+          }
+        }
+      }
+      
       updateAccountConfig(settingId, {
         selectedPreset: presetKey,
-        imapHost: preset.imapHost,
+        imapHost: imapHost,
         imapPort: preset.imapPort,
       });
     }
@@ -457,6 +470,12 @@ export function ImportWizardDialog({
                           </div>
                         )}
 
+                        {config.selectedPreset === 'register.it' && (
+                          <div className="p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+                            Per Register.it, l'host IMAP e specifico per dominio. Usa: <code className="font-mono bg-background/50 px-1 rounded">pop.{setting.fromEmail.split('@')[1]}</code>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <Label className="text-xs text-muted-foreground mb-1.5 block">
@@ -467,7 +486,9 @@ export function ImportWizardDialog({
                               onChange={(e) =>
                                 updateAccountConfig(setting.id, { imapHost: e.target.value })
                               }
-                              placeholder="imap.provider.it"
+                              placeholder={config.selectedPreset === 'register.it' 
+                                ? `pop.${setting.fromEmail.split('@')[1]}` 
+                                : "imap.provider.it"}
                               className="bg-background"
                             />
                           </div>

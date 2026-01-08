@@ -588,7 +588,7 @@ router.post("/accounts/:id/test", async (req: AuthRequest, res) => {
     const hasImap = account.imapHost && account.imapPort && account.imapUser && account.imapPassword;
     const hasSmtp = account.smtpHost && account.smtpPort && account.smtpUser && account.smtpPassword;
     
-    console.log(`[EMAIL-HUB TEST] Has IMAP: ${hasImap}, Has SMTP: ${hasSmtp}`);
+    console.log(`[EMAIL-HUB TEST] Has IMAP: ${hasImap ? 'YES' : 'NO'}, Has SMTP: ${hasSmtp ? 'YES' : 'NO'}`);
     
     if (hasImap) {
       console.log(`[EMAIL-HUB TEST] Testing IMAP connection to ${account.imapHost}:${account.imapPort}...`);

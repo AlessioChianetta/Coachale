@@ -20,8 +20,8 @@ export interface ItalianProviderPreset {
 
 export const ITALIAN_PROVIDERS: Record<string, ItalianProviderPreset> = {
   'register.it': {
-    name: 'Register.it',
-    imapHost: 'imap.securemail.pro',
+    name: 'Register.it (inserisci pop.tuodominio.xx)',
+    imapHost: '',
     imapPort: 993,
     smtpHost: 'authsmtp.securemail.pro',
     smtpPort: 587,
