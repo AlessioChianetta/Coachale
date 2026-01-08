@@ -192,7 +192,12 @@ export class ImapService {
 
           extractBoxes(boxes);
           
-          console.log(`[IMAP] Found ${allMailboxes.length} mailboxes:`, allMailboxes.map(m => `${m.path} (${m.specialUse || 'no special-use'})`).join(", "));
+          // Log ALL folders with details for debugging
+          console.log(`[IMAP] ===== FULL FOLDER LIST =====`);
+          for (const box of allMailboxes) {
+            console.log(`[IMAP]   ${box.path} | name="${box.name}" | specialUse=${box.specialUse || 'none'} | flags=${box.flags.join(',')}`);
+          }
+          console.log(`[IMAP] ===== END FOLDER LIST =====`);
 
           // Now identify special folders
           const result: DiscoveredFolders = {
