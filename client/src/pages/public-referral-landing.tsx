@@ -622,6 +622,18 @@ export default function PublicReferralLanding() {
                           university: 'Università',
                         };
                         
+                        const fieldPlaceholders: Record<string, string> = {
+                          companyType: 'Es: SRL, SPA, Ditta individuale...',
+                          sector: 'Es: Tecnologia, Ristorazione, Consulenza...',
+                          employeeCount: 'Es: 5, 10-50, oltre 100...',
+                          annualRevenue: 'Es: 100.000€, 500.000€, 1M+...',
+                          currentCompany: 'Es: Nome della tua azienda',
+                          currentPosition: 'Es: Manager, Developer, Commerciale...',
+                          yearsExperience: 'Es: 3 anni, 5-10 anni...',
+                          fieldOfStudy: 'Es: Economia, Ingegneria, Marketing...',
+                          university: 'Es: Bocconi, Politecnico, La Sapienza...',
+                        };
+                        
                         return (
                           <div key={field} className="space-y-2">
                             <Label className="text-gray-700 font-medium flex items-center gap-1">
@@ -633,6 +645,7 @@ export default function PublicReferralLanding() {
                                 ...formData, 
                                 [`qualification${field.charAt(0).toUpperCase() + field.slice(1)}`]: e.target.value 
                               })}
+                              placeholder={fieldPlaceholders[field]}
                               className="h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-gray-400 transition-colors"
                               disabled={submitMutation.isPending}
                             />
@@ -650,6 +663,13 @@ export default function PublicReferralLanding() {
                           currentBlocker: 'Cosa ti blocca adesso?',
                         };
                         
+                        const fieldPlaceholders: Record<string, string> = {
+                          motivation: 'Es: Ho visto un tuo post sui social e mi ha incuriosito...',
+                          biggestProblem: 'Es: Faccio fatica a gestire il tempo e le priorità...',
+                          goal12Months: 'Es: Vorrei aumentare il fatturato del 30% e lavorare meno ore...',
+                          currentBlocker: 'Es: Non so da dove iniziare e mi sento bloccato...',
+                        };
+                        
                         return (
                           <div key={field} className="space-y-2">
                             <Label className="text-gray-700 font-medium flex items-center gap-1">
@@ -661,6 +681,7 @@ export default function PublicReferralLanding() {
                                 ...formData, 
                                 [`qualification${field.charAt(0).toUpperCase() + field.slice(1)}`]: e.target.value 
                               })}
+                              placeholder={fieldPlaceholders[field]}
                               className="min-h-[100px] bg-gray-50 border-gray-200 focus:bg-white focus:border-gray-400 transition-colors resize-none"
                               disabled={submitMutation.isPending}
                             />
