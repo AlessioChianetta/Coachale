@@ -266,24 +266,78 @@ export class ImapService {
     });
   }
 
-  private findFolderByAlias(mailboxes: MailboxInfo[], aliases: string[]): string | null {
+  private findAllFolderCandidates(mailboxes: MailboxInfo[], aliases: string[]): MailboxInfo[] {
+    const candidates: MailboxInfo[] = [];
+    const seenPaths = new Set<string>();
+    
     // First try exact match on folder name (last segment)
     for (const box of mailboxes) {
+      // Skip folders with \Noselect or \NonExistent flags
+      if (box.flags.some(f => f === "\\Noselect" || f === "\\NonExistent")) {
+        continue;
+      }
       const folderName = box.name.toLowerCase();
-      if (aliases.includes(folderName)) {
-        return box.path;
+      if (aliases.includes(folderName) && !seenPaths.has(box.path)) {
+        candidates.push(box);
+        seenPaths.add(box.path);
       }
     }
+    
     // Then try partial match on full path
     for (const box of mailboxes) {
+      if (box.flags.some(f => f === "\\Noselect" || f === "\\NonExistent")) {
+        continue;
+      }
+      if (seenPaths.has(box.path)) continue;
+      
       const pathLower = box.path.toLowerCase();
       for (const alias of aliases) {
         if (pathLower.includes(alias)) {
-          return box.path;
+          candidates.push(box);
+          seenPaths.add(box.path);
+          break;
         }
       }
     }
-    return null;
+    
+    return candidates;
+  }
+
+  // English generic names that should have lower priority
+  private static ENGLISH_GENERIC_NAMES = new Set([
+    "sent", "sent mail", "sent items", "sent messages", "outbox",
+    "drafts", "draft", "draughts",
+    "trash", "deleted", "deleted items", "deleted messages", "bin",
+    "junk", "spam", "junk mail", "bulk mail",
+    "archive", "all mail", "all",
+  ]);
+
+  private findFolderByAlias(mailboxes: MailboxInfo[], aliases: string[]): string | null {
+    const candidates = this.findAllFolderCandidates(mailboxes, aliases);
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0].path;
+    
+    // Multiple candidates found - log them all
+    console.log(`[IMAP] Multiple folder candidates found:`, candidates.map(c => c.path).join(", "));
+    
+    // Score candidates: prefer localized names over generic English names
+    // Localized names (Italian, French, Spanish, etc.) get higher priority
+    const scored = candidates.map(c => {
+      const nameLower = c.name.toLowerCase();
+      const isEnglishGeneric = ImapService.ENGLISH_GENERIC_NAMES.has(nameLower);
+      // Higher score = better candidate
+      // Localized names score 10, English generic names score 1
+      const score = isEnglishGeneric ? 1 : 10;
+      return { candidate: c, score };
+    });
+    
+    // Sort by score descending
+    scored.sort((a, b) => b.score - a.score);
+    
+    const chosen = scored[0].candidate;
+    console.log(`[IMAP] Choosing folder: ${chosen.path} (score: ${scored[0].score}, localized: ${scored[0].score > 1})`);
+    
+    return chosen.path;
   }
 
   async fetchRecentEmails(limit: number = 50): Promise<ParsedEmail[]> {
