@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -20,10 +21,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
   Mail,
@@ -40,14 +48,17 @@ import {
   Sparkles,
   Send,
   Edit,
-  ThumbsUp,
-  ThumbsDown,
-  Filter,
+  Trash2,
   RefreshCw,
   Settings,
-  Trash2,
   Eye,
   EyeOff,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  X,
+  Users,
+  FileText,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -71,6 +82,8 @@ interface EmailAccount {
   confidenceThreshold: number;
   aiTone: "formal" | "friendly" | "professional";
   signature?: string;
+  syncStatus?: "syncing" | "synced" | "error" | "idle";
+  lastSyncAt?: string;
   unreadCount?: number;
   createdAt: string;
 }
@@ -90,7 +103,7 @@ interface Email {
   isRead: boolean;
   isStarred: boolean;
   processingStatus: "new" | "processing" | "classified" | "draft_generated" | "sent";
-  urgency?: string;
+  urgency?: "low" | "medium" | "high" | "urgent";
   classification?: string;
 }
 
@@ -103,6 +116,7 @@ interface AIResponse {
   confidence: number;
   status: "draft" | "approved" | "edited" | "rejected" | "sent";
   createdAt: string;
+  originalEmail?: Email;
 }
 
 interface AccountFormData {
@@ -124,7 +138,12 @@ interface AccountFormData {
   signature: string;
 }
 
-type FilterType = "all" | "unread" | "starred" | "needs_review" | "new" | "processing" | "classified" | "draft_generated";
+type InboxFilter = {
+  accountId: string | null;
+  readStatus: "all" | "read" | "unread";
+  starred: boolean;
+  processingStatus: string | null;
+};
 
 const defaultFormData: AccountFormData = {
   displayName: "",
@@ -148,14 +167,23 @@ const defaultFormData: AccountFormData = {
 export default function ConsultantEmailHub() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterType>("all");
-  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("inbox");
+  const [showAccountDialog, setShowAccountDialog] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [editingResponse, setEditingResponse] = useState<AIResponse | null>(null);
-  const [editedContent, setEditedContent] = useState("");
   const [formData, setFormData] = useState<AccountFormData>(defaultFormData);
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [showEmailSheet, setShowEmailSheet] = useState(false);
+  const [expandedDraftId, setExpandedDraftId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState<AIResponse | null>(null);
+  const [editedDraftContent, setEditedDraftContent] = useState("");
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>({
+    accountId: null,
+    readStatus: "all",
+    starred: false,
+    processingStatus: null,
+  });
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -172,22 +200,20 @@ export default function ConsultantEmailHub() {
 
   const accounts: EmailAccount[] = accountsData?.data || [];
 
-  const buildInboxQuery = () => {
+  const buildInboxQueryParams = () => {
     const params = new URLSearchParams();
-    if (selectedAccountId) params.set("accountId", selectedAccountId);
-    if (filter === "unread") params.set("unread", "true");
-    if (filter === "starred") params.set("starred", "true");
-    if (filter === "needs_review") params.set("needsReview", "true");
-    if (["new", "processing", "classified", "draft_generated"].includes(filter)) {
-      params.set("status", filter);
-    }
+    if (inboxFilter.accountId) params.set("accountId", inboxFilter.accountId);
+    if (inboxFilter.readStatus === "unread") params.set("unread", "true");
+    if (inboxFilter.readStatus === "read") params.set("read", "true");
+    if (inboxFilter.starred) params.set("starred", "true");
+    if (inboxFilter.processingStatus) params.set("status", inboxFilter.processingStatus);
     return params.toString();
   };
 
   const { data: inboxData, isLoading: isLoadingInbox, refetch: refetchInbox } = useQuery({
-    queryKey: ["/api/email-hub/inbox", selectedAccountId, filter],
+    queryKey: ["/api/email-hub/inbox", inboxFilter],
     queryFn: async () => {
-      const queryString = buildInboxQuery();
+      const queryString = buildInboxQueryParams();
       const response = await fetch(`/api/email-hub/inbox?${queryString}`, {
         headers: getAuthHeaders(),
       });
@@ -198,35 +224,46 @@ export default function ConsultantEmailHub() {
 
   const emails: Email[] = inboxData?.data || [];
 
-  const { data: emailDetailData, isLoading: isLoadingEmailDetail } = useQuery({
-    queryKey: ["/api/email-hub/emails", selectedEmailId],
+  const { data: pendingDraftsData, isLoading: isLoadingDrafts, refetch: refetchDrafts } = useQuery({
+    queryKey: ["/api/email-hub/ai-drafts/pending"],
     queryFn: async () => {
-      if (!selectedEmailId) return null;
-      const response = await fetch(`/api/email-hub/emails/${selectedEmailId}`, {
+      const response = await fetch("/api/email-hub/ai-drafts/pending", {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) throw new Error("Failed to fetch email");
+      if (!response.ok) throw new Error("Failed to fetch pending drafts");
       return response.json();
     },
-    enabled: !!selectedEmailId,
   });
 
-  const selectedEmail: Email | null = emailDetailData?.data || null;
+  const pendingDrafts: AIResponse[] = pendingDraftsData?.data || [];
 
-  const { data: aiResponsesData } = useQuery({
-    queryKey: ["/api/email-hub/emails", selectedEmailId, "ai-responses"],
+  const { data: emailDetailData } = useQuery({
+    queryKey: ["/api/email-hub/emails", selectedEmail?.id],
     queryFn: async () => {
-      if (!selectedEmailId) return null;
-      const response = await fetch(`/api/email-hub/emails/${selectedEmailId}/ai-responses`, {
+      if (!selectedEmail?.id) return null;
+      const response = await fetch(`/api/email-hub/emails/${selectedEmail.id}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch email details");
+      return response.json();
+    },
+    enabled: !!selectedEmail?.id,
+  });
+
+  const { data: emailAIResponsesData } = useQuery({
+    queryKey: ["/api/email-hub/emails", selectedEmail?.id, "ai-responses"],
+    queryFn: async () => {
+      if (!selectedEmail?.id) return null;
+      const response = await fetch(`/api/email-hub/emails/${selectedEmail.id}/ai-responses`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch AI responses");
       return response.json();
     },
-    enabled: !!selectedEmailId,
+    enabled: !!selectedEmail?.id,
   });
 
-  const aiResponses: AIResponse[] = aiResponsesData?.data || [];
+  const emailAIResponses: AIResponse[] = emailAIResponsesData?.data || [];
 
   const createAccountMutation = useMutation({
     mutationFn: async (data: AccountFormData) => {
@@ -243,7 +280,7 @@ export default function ConsultantEmailHub() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
-      setShowAccountModal(false);
+      setShowAccountDialog(false);
       setFormData(defaultFormData);
       toast({ title: "Successo", description: "Account email aggiunto con successo" });
     },
@@ -252,87 +289,43 @@ export default function ConsultantEmailHub() {
     },
   });
 
-  const markAsReadMutation = useMutation({
-    mutationFn: async (emailId: string) => {
-      const response = await fetch(`/api/email-hub/emails/${emailId}/read`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to mark as read");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmailId] });
-    },
-  });
-
-  const toggleStarMutation = useMutation({
-    mutationFn: async (emailId: string) => {
-      const response = await fetch(`/api/email-hub/emails/${emailId}/star`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to toggle star");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmailId] });
-    },
-  });
-
-  const approveResponseMutation = useMutation({
-    mutationFn: async (responseId: string) => {
-      const response = await fetch(`/api/email-hub/ai-responses/${responseId}/approve`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to approve response");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmailId, "ai-responses"] });
-      toast({ title: "Approvato", description: "Risposta AI approvata" });
-    },
-    onError: (error: any) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const editResponseMutation = useMutation({
-    mutationFn: async ({ responseId, content }: { responseId: string; content: string }) => {
-      const response = await fetch(`/api/email-hub/ai-responses/${responseId}/edit`, {
+  const updateAccountMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: AccountFormData }) => {
+      const response = await fetch(`/api/email-hub/accounts/${id}`, {
         method: "PUT",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ draftBodyHtml: content, draftBodyText: content }),
+        body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to edit response");
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to update account");
+      }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmailId, "ai-responses"] });
-      setEditingResponse(null);
-      setEditedContent("");
-      toast({ title: "Salvato", description: "Modifiche salvate" });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
+      setShowAccountDialog(false);
+      setEditingAccount(null);
+      setFormData(defaultFormData);
+      toast({ title: "Successo", description: "Account aggiornato con successo" });
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
 
-  const rejectResponseMutation = useMutation({
-    mutationFn: async (responseId: string) => {
-      const response = await fetch(`/api/email-hub/ai-responses/${responseId}/reject`, {
-        method: "PUT",
+  const deleteAccountMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/email-hub/accounts/${id}`, {
+        method: "DELETE",
         headers: getAuthHeaders(),
       });
-      if (!response.ok) throw new Error("Failed to reject response");
+      if (!response.ok) throw new Error("Failed to delete account");
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmailId, "ai-responses"] });
-      toast({ title: "Rifiutato", description: "Risposta AI rifiutata" });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
+      toast({ title: "Eliminato", description: "Account rimosso con successo" });
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -341,7 +334,7 @@ export default function ConsultantEmailHub() {
 
   const testConnectionMutation = useMutation({
     mutationFn: async (data: AccountFormData) => {
-      const response = await fetch("/api/email-hub/accounts/test-connection", {
+      const response = await fetch("/api/email-hub/accounts/test", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -360,21 +353,50 @@ export default function ConsultantEmailHub() {
     },
   });
 
+  const markAsReadMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      const response = await fetch(`/api/email-hub/emails/${emailId}/read`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to mark as read");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+    },
+  });
+
+  const toggleStarMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      const response = await fetch(`/api/email-hub/emails/${emailId}/star`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to toggle star");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+    },
+  });
+
   const generateAIResponseMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const response = await fetch(`/api/email-hub/emails/${emailId}/generate-response`, {
+      const response = await fetch(`/api/email-hub/emails/${emailId}/ai-responses`, {
         method: "POST",
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || "Failed to generate response");
+        throw new Error(err.error || "Failed to generate AI response");
       }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmailId, "ai-responses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmail?.id, "ai-responses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
       toast({ title: "Risposta generata", description: "La bozza AI è pronta per la revisione" });
     },
     onError: (error: any) => {
@@ -382,7 +404,64 @@ export default function ConsultantEmailHub() {
     },
   });
 
-  const sendResponseMutation = useMutation({
+  const approveDraftMutation = useMutation({
+    mutationFn: async (responseId: string) => {
+      const response = await fetch(`/api/email-hub/ai-responses/${responseId}/approve`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to approve draft");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
+      toast({ title: "Approvato", description: "Bozza approvata con successo" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const editDraftMutation = useMutation({
+    mutationFn: async ({ responseId, content }: { responseId: string; content: string }) => {
+      const response = await fetch(`/api/email-hub/ai-responses/${responseId}/edit`, {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ draftBodyHtml: content, draftBodyText: content }),
+      });
+      if (!response.ok) throw new Error("Failed to edit draft");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
+      setEditingDraft(null);
+      setEditedDraftContent("");
+      toast({ title: "Salvato", description: "Modifiche salvate" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const rejectDraftMutation = useMutation({
+    mutationFn: async (responseId: string) => {
+      const response = await fetch(`/api/email-hub/ai-responses/${responseId}/reject`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to reject draft");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
+      toast({ title: "Rifiutato", description: "Bozza rifiutata" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sendDraftMutation = useMutation({
     mutationFn: async (responseId: string) => {
       const response = await fetch(`/api/email-hub/ai-responses/${responseId}/send`, {
         method: "POST",
@@ -390,182 +469,307 @@ export default function ConsultantEmailHub() {
       });
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || "Failed to send response");
+        throw new Error(err.error || "Failed to send");
       }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmailId, "ai-responses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
-      toast({ title: "Email inviata", description: "La risposta è stata inviata con successo" });
+      toast({ title: "Inviato", description: "Email inviata con successo" });
     },
     onError: (error: any) => {
       toast({ title: "Errore invio", description: error.message, variant: "destructive" });
     },
   });
 
-  const toggleReadMutation = useMutation({
-    mutationFn: async ({ emailId, isRead }: { emailId: string; isRead: boolean }) => {
-      const response = await fetch(`/api/email-hub/emails/${emailId}/${isRead ? 'unread' : 'read'}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to toggle read status");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmailId] });
-    },
-  });
-
-  const archiveEmailMutation = useMutation({
-    mutationFn: async (emailId: string) => {
-      const response = await fetch(`/api/email-hub/emails/${emailId}/archive`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to archive email");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
-      setSelectedEmailId(null);
-      toast({ title: "Archiviato", description: "Email archiviata" });
-    },
-    onError: (error: any) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
-    },
-  });
-
-  useEffect(() => {
-    if (selectedEmailId && selectedEmail && !selectedEmail.isRead) {
-      markAsReadMutation.mutate(selectedEmailId);
-    }
-  }, [selectedEmailId, selectedEmail]);
-
   const handleInputChange = (field: keyof AccountFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleCreateAccount = () => {
-    createAccountMutation.mutate(formData);
+  const handleOpenAddAccount = () => {
+    setEditingAccount(null);
+    setFormData(defaultFormData);
+    setShowAccountDialog(true);
   };
 
-  const getStatusBadge = (status: Email["processingStatus"]) => {
-    const statusConfig: Record<string, { color: string; label: string }> = {
+  const handleOpenEditAccount = (account: EmailAccount) => {
+    setEditingAccount(account);
+    setFormData({
+      displayName: account.displayName,
+      emailAddress: account.emailAddress,
+      imapHost: account.imapHost || "",
+      imapPort: account.imapPort || 993,
+      imapUser: account.emailAddress,
+      imapPassword: "",
+      imapTls: account.imapTls ?? true,
+      smtpHost: account.smtpHost || "",
+      smtpPort: account.smtpPort || 587,
+      smtpUser: account.emailAddress,
+      smtpPassword: "",
+      smtpTls: account.smtpTls ?? true,
+      autoReplyMode: account.autoReplyMode,
+      confidenceThreshold: account.confidenceThreshold,
+      aiTone: account.aiTone,
+      signature: account.signature || "",
+    });
+    setShowAccountDialog(true);
+  };
+
+  const handleSaveAccount = () => {
+    if (editingAccount) {
+      updateAccountMutation.mutate({ id: editingAccount.id, data: formData });
+    } else {
+      createAccountMutation.mutate(formData);
+    }
+  };
+
+  const handleEmailClick = (email: Email) => {
+    setSelectedEmail(email);
+    setShowEmailSheet(true);
+    if (!email.isRead) {
+      markAsReadMutation.mutate(email.id);
+    }
+  };
+
+  const getSyncStatusBadge = (status?: string) => {
+    const config: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
+      syncing: { color: "bg-blue-100 text-blue-700", label: "Sincronizzazione", icon: <RefreshCw className="h-3 w-3 animate-spin" /> },
+      synced: { color: "bg-green-100 text-green-700", label: "Sincronizzato", icon: <CheckCircle className="h-3 w-3" /> },
+      error: { color: "bg-red-100 text-red-700", label: "Errore", icon: <XCircle className="h-3 w-3" /> },
+      idle: { color: "bg-gray-100 text-gray-700", label: "In attesa", icon: <Clock className="h-3 w-3" /> },
+    };
+    const cfg = config[status || "idle"] || config.idle;
+    return (
+      <Badge className={`${cfg.color} flex items-center gap-1`}>
+        {cfg.icon}
+        {cfg.label}
+      </Badge>
+    );
+  };
+
+  const getProcessingStatusBadge = (status: Email["processingStatus"]) => {
+    const config: Record<string, { color: string; label: string }> = {
       new: { color: "bg-blue-100 text-blue-700", label: "Nuovo" },
-      processing: { color: "bg-yellow-100 text-yellow-700", label: "In elaborazione" },
+      processing: { color: "bg-yellow-100 text-yellow-700", label: "Elaborazione" },
       classified: { color: "bg-purple-100 text-purple-700", label: "Classificato" },
-      draft_generated: { color: "bg-green-100 text-green-700", label: "Bozza pronta" },
-      sent: { color: "bg-gray-100 text-gray-700", label: "Inviato" },
+      draft_generated: { color: "bg-green-100 text-green-700", label: "Bozza AI" },
+      sent: { color: "bg-gray-100 text-gray-700", label: "Risposto" },
     };
-    const config = statusConfig[status] || statusConfig.new;
-    return <Badge className={config.color}>{config.label}</Badge>;
+    const cfg = config[status] || config.new;
+    return <Badge className={cfg.color}>{cfg.label}</Badge>;
   };
 
-  const getAIResponseStatusBadge = (status: AIResponse["status"]) => {
-    const statusConfig: Record<string, { color: string; label: string }> = {
-      draft: { color: "bg-gray-100 text-gray-700", label: "Bozza" },
-      approved: { color: "bg-green-100 text-green-700", label: "Approvato" },
-      edited: { color: "bg-blue-100 text-blue-700", label: "Modificato" },
-      rejected: { color: "bg-red-100 text-red-700", label: "Rifiutato" },
-      sent: { color: "bg-emerald-100 text-emerald-700", label: "Inviato" },
+  const getUrgencyBadge = (urgency?: string) => {
+    if (!urgency) return null;
+    const config: Record<string, string> = {
+      low: "bg-gray-100 text-gray-600",
+      medium: "bg-yellow-100 text-yellow-700",
+      high: "bg-orange-100 text-orange-700",
+      urgent: "bg-red-100 text-red-700",
     };
-    const config = statusConfig[status] || statusConfig.draft;
-    return <Badge className={config.color}>{config.label}</Badge>;
+    return <Badge className={config[urgency] || config.low}>{urgency}</Badge>;
   };
 
-  const renderLeftSidebar = () => (
-    <div className="w-64 border-r bg-muted/30 flex flex-col h-full">
-      <div className="p-4 border-b">
-        <Button onClick={() => setShowAccountModal(true)} className="w-full gap-2">
+  const getConfidenceBadge = (confidence: number) => {
+    const pct = Math.round(confidence * 100);
+    let color = "bg-red-100 text-red-700";
+    if (pct >= 80) color = "bg-green-100 text-green-700";
+    else if (pct >= 60) color = "bg-yellow-100 text-yellow-700";
+    return <Badge className={color}>{pct}% confidenza</Badge>;
+  };
+
+  const renderAccountsTab = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Account Email Collegati</h2>
+          <p className="text-sm text-muted-foreground">Gestisci gli account email per la posta unificata</p>
+        </div>
+        <Button onClick={handleOpenAddAccount} className="gap-2">
           <Plus className="h-4 w-4" />
           Aggiungi Account
         </Button>
       </div>
 
-      <div className="p-4 border-b">
-        <h3 className="font-semibold text-sm mb-3 text-muted-foreground">ACCOUNT</h3>
-        <ScrollArea className="h-40">
-          <div className="space-y-1">
-            <Button
-              variant={selectedAccountId === null ? "secondary" : "ghost"}
-              className="w-full justify-start gap-2"
-              onClick={() => setSelectedAccountId(null)}
-            >
-              <Inbox className="h-4 w-4" />
-              Tutti gli account
+      {isLoadingAccounts ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : accounts.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Mail className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">Nessun account collegato</h3>
+            <p className="text-sm text-muted-foreground mb-4">Aggiungi il tuo primo account email per iniziare</p>
+            <Button onClick={handleOpenAddAccount} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Aggiungi Account
             </Button>
-            {accounts.map((account) => (
-              <Button
-                key={account.id}
-                variant={selectedAccountId === account.id ? "secondary" : "ghost"}
-                className="w-full justify-start gap-2"
-                onClick={() => setSelectedAccountId(account.id)}
-              >
-                <Mail className="h-4 w-4" />
-                <span className="truncate flex-1 text-left">{account.displayName}</span>
-                {account.unreadCount && account.unreadCount > 0 && (
-                  <Badge variant="destructive" className="ml-auto">
-                    {account.unreadCount}
-                  </Badge>
-                )}
-              </Button>
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
-
-      <div className="p-4 flex-1">
-        <h3 className="font-semibold text-sm mb-3 text-muted-foreground">FILTRI</h3>
-        <div className="space-y-1">
-          {[
-            { value: "all", label: "Tutti", icon: Inbox },
-            { value: "unread", label: "Non letti", icon: Eye },
-            { value: "starred", label: "Con stella", icon: Star },
-            { value: "needs_review", label: "Da revisionare", icon: AlertCircle },
-            { value: "new", label: "Nuovi", icon: Clock },
-            { value: "processing", label: "In elaborazione", icon: Loader2 },
-            { value: "classified", label: "Classificati", icon: CheckCircle },
-            { value: "draft_generated", label: "Bozza pronta", icon: Sparkles },
-          ].map(({ value, label, icon: Icon }) => (
-            <Button
-              key={value}
-              variant={filter === value ? "secondary" : "ghost"}
-              className="w-full justify-start gap-2"
-              onClick={() => setFilter(value as FilterType)}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {accounts.map((account) => (
+            <Card key={account.id}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Mail className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">{account.displayName}</CardTitle>
+                      <CardDescription className="text-xs">{account.emailAddress}</CardDescription>
+                    </div>
+                  </div>
+                  {getSyncStatusBadge(account.syncStatus)}
+                </div>
+              </CardHeader>
+              <CardContent className="pb-3">
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Provider</span>
+                    <span className="font-medium">{account.provider || "IMAP/SMTP"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Modalità AI</span>
+                    <Badge variant="outline">
+                      {account.autoReplyMode === "auto" ? "Automatico" : account.autoReplyMode === "review" ? "Revisione" : "Disattivato"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Non letti</span>
+                    <Badge variant={account.unreadCount ? "destructive" : "secondary"}>
+                      {account.unreadCount || 0}
+                    </Badge>
+                  </div>
+                  {account.lastSyncAt && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Ultima sync</span>
+                      <span className="text-xs">{format(new Date(account.lastSyncAt), "dd/MM HH:mm")}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter className="pt-0 gap-2">
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleOpenEditAccount(account)}>
+                  <Edit className="h-4 w-4 mr-1" />
+                  Modifica
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => {
+                    if (confirm("Sei sicuro di voler eliminare questo account?")) {
+                      deleteAccountMutation.mutate(account.id);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 
-  const renderEmailList = () => (
-    <ScrollArea className="h-full">
+  const renderInboxTab = () => (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-muted/50 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Label className="text-sm font-medium">Account:</Label>
+          <Select
+            value={inboxFilter.accountId || "all"}
+            onValueChange={(val) => setInboxFilter((prev) => ({ ...prev, accountId: val === "all" ? null : val }))}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Tutti gli account" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti gli account</SelectItem>
+              {accounts.map((acc) => (
+                <SelectItem key={acc.id} value={acc.id}>{acc.displayName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label className="text-sm font-medium">Stato:</Label>
+          <Select
+            value={inboxFilter.readStatus}
+            onValueChange={(val: any) => setInboxFilter((prev) => ({ ...prev, readStatus: val }))}
+          >
+            <SelectTrigger className="w-[130px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti</SelectItem>
+              <SelectItem value="unread">Non letti</SelectItem>
+              <SelectItem value="read">Letti</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch
+            id="starred-filter"
+            checked={inboxFilter.starred}
+            onCheckedChange={(checked) => setInboxFilter((prev) => ({ ...prev, starred: checked }))}
+          />
+          <Label htmlFor="starred-filter" className="text-sm">Solo con stella</Label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label className="text-sm font-medium">Elaborazione:</Label>
+          <Select
+            value={inboxFilter.processingStatus || "all"}
+            onValueChange={(val) => setInboxFilter((prev) => ({ ...prev, processingStatus: val === "all" ? null : val }))}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Tutti" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti</SelectItem>
+              <SelectItem value="new">Nuovo</SelectItem>
+              <SelectItem value="processing">In elaborazione</SelectItem>
+              <SelectItem value="classified">Classificato</SelectItem>
+              <SelectItem value="draft_generated">Bozza pronta</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button variant="outline" size="sm" onClick={() => refetchInbox()} className="ml-auto gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Aggiorna
+        </Button>
+      </div>
+
       {isLoadingInbox ? (
-        <div className="flex items-center justify-center h-full p-8">
+        <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : emails.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-full p-8 text-muted-foreground">
-          <Mail className="h-12 w-12 mb-4" />
-          <p className="text-lg font-medium">Nessuna email</p>
-          <p className="text-sm">Le email appariranno qui una volta sincronizzate</p>
-        </div>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">Nessuna email trovata</h3>
+            <p className="text-sm text-muted-foreground">Le email appariranno qui una volta sincronizzate</p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="divide-y">
+        <div className="border rounded-lg divide-y">
           {emails.map((email) => (
             <div
               key={email.id}
               className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                selectedEmailId === email.id ? "bg-muted" : ""
-              } ${!email.isRead ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}`}
-              onClick={() => setSelectedEmailId(email.id)}
+                !email.isRead ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
+              }`}
+              onClick={() => handleEmailClick(email)}
             >
               <div className="flex items-start gap-3">
                 <Button
@@ -589,23 +793,20 @@ export default function ConsultantEmailHub() {
                       {email.fromName || email.fromEmail}
                     </span>
                     <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                      {format(new Date(email.receivedAt), "dd/MM HH:mm")}
+                      {format(new Date(email.receivedAt), "dd/MM/yyyy HH:mm")}
                     </span>
                   </div>
                   <p className={`text-sm truncate mb-1 ${!email.isRead ? "font-semibold" : ""}`}>
                     {email.subject || "(Nessun oggetto)"}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate mb-2">
-                    {email.snippet}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(email.processingStatus)}
+                  <p className="text-xs text-muted-foreground truncate mb-2">{email.snippet}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {getProcessingStatusBadge(email.processingStatus)}
+                    {getUrgencyBadge(email.urgency)}
                     {email.processingStatus === "draft_generated" && (
-                      <Sparkles className="h-4 w-4 text-purple-500" title="Bozza AI disponibile" />
-                    )}
-                    {email.urgency && (
-                      <Badge variant="outline" className="text-xs">
-                        {email.urgency}
+                      <Badge variant="outline" className="gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        Bozza AI
                       </Badge>
                     )}
                   </div>
@@ -615,304 +816,214 @@ export default function ConsultantEmailHub() {
           ))}
         </div>
       )}
-    </ScrollArea>
+    </div>
   );
 
-  const renderEmailDetail = () => {
-    if (!selectedEmail) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full p-8 text-muted-foreground">
-          <Mail className="h-16 w-16 mb-4" />
-          <p className="text-lg font-medium">Seleziona un'email</p>
-          <p className="text-sm">Clicca su un'email per visualizzarne i dettagli</p>
+  const renderAIDraftsTab = () => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Bozze AI in Attesa</h2>
+          <p className="text-sm text-muted-foreground">Rivedi e approva le risposte generate dall'AI</p>
         </div>
-      );
-    }
+        <Button variant="outline" size="sm" onClick={() => refetchDrafts()} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Aggiorna
+        </Button>
+      </div>
 
-    if (isLoadingEmailDetail) {
-      return (
-        <div className="flex items-center justify-center h-full">
+      {isLoadingDrafts ? (
+        <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      );
-    }
-
-    return (
-      <ScrollArea className="h-full">
-        <div className="p-6">
-          <div className="mb-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-bold mb-2">{selectedEmail.subject || "(Nessun oggetto)"}</h2>
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(selectedEmail.processingStatus)}
-                  {selectedEmail.urgency && (
-                    <Badge variant="outline">{selectedEmail.urgency}</Badge>
-                  )}
-                  {selectedEmail.classification && (
-                    <Badge variant="secondary">{selectedEmail.classification}</Badge>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => toggleStarMutation.mutate(selectedEmail.id)}
-                  title={selectedEmail.isStarred ? "Rimuovi stella" : "Aggiungi stella"}
-                >
-                  {selectedEmail.isStarred ? (
-                    <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                  ) : (
-                    <StarOff className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => toggleReadMutation.mutate({ emailId: selectedEmail.id, isRead: selectedEmail.isRead })}
-                  title={selectedEmail.isRead ? "Segna come non letto" : "Segna come letto"}
-                >
-                  {selectedEmail.isRead ? (
-                    <EyeOff className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-blue-500" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => archiveEmailMutation.mutate(selectedEmail.id)}
-                  title="Archivia"
-                  disabled={archiveEmailMutation.isPending}
-                >
-                  <Trash2 className="h-5 w-5 text-muted-foreground" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm mb-4 p-4 bg-muted/30 rounded-lg">
-              <div className="flex">
-                <span className="font-medium w-16">Da:</span>
-                <span>{selectedEmail.fromName ? `${selectedEmail.fromName} <${selectedEmail.fromEmail}>` : selectedEmail.fromEmail}</span>
-              </div>
-              <div className="flex">
-                <span className="font-medium w-16">A:</span>
-                <span>{selectedEmail.toEmail}</span>
-              </div>
-              <div className="flex">
-                <span className="font-medium w-16">Data:</span>
-                <span>{format(new Date(selectedEmail.receivedAt), "dd MMMM yyyy, HH:mm")}</span>
-              </div>
-            </div>
-          </div>
-
-          <Separator className="my-6" />
-
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">Contenuto Email</h3>
-            <div className="prose prose-sm max-w-none dark:prose-invert bg-white dark:bg-slate-900 p-4 rounded-lg border">
-              {selectedEmail.bodyHtml ? (
-                <div dangerouslySetInnerHTML={{ __html: selectedEmail.bodyHtml }} />
-              ) : (
-                <pre className="whitespace-pre-wrap font-sans">{selectedEmail.bodyText}</pre>
-              )}
-            </div>
-          </div>
-
-          <Separator className="my-6" />
-
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-purple-500" />
-                Risposta AI
-              </h3>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
-                disabled={generateAIResponseMutation.isPending}
+      ) : pendingDrafts.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">Nessuna bozza in attesa</h3>
+            <p className="text-sm text-muted-foreground">Le bozze AI da approvare appariranno qui</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {pendingDrafts.map((draft) => (
+            <Card key={draft.id}>
+              <Collapsible
+                open={expandedDraftId === draft.id}
+                onOpenChange={(open) => setExpandedDraftId(open ? draft.id : null)}
               >
-                {generateAIResponseMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                Genera Risposta AI
-              </Button>
-            </div>
-          </div>
-
-          {aiResponses.length > 0 && (
-            <>
-              <Separator className="my-6" />
-              <div>
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-500" />
-                  Risposte AI
-                </h3>
-                <div className="space-y-4">
-                  {aiResponses.map((response) => (
-                    <Card key={response.id}>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <CardTitle className="text-sm">{response.draftSubject}</CardTitle>
-                            {getAIResponseStatusBadge(response.status)}
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            Confidenza: {Math.round(response.confidence * 100)}%
-                          </span>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <CardTitle className="text-base">{draft.draftSubject}</CardTitle>
+                          {getConfidenceBadge(draft.confidence)}
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        {editingResponse?.id === response.id ? (
-                          <div className="space-y-3">
-                            <Textarea
-                              value={editedContent}
-                              onChange={(e) => setEditedContent(e.target.value)}
-                              rows={6}
-                              className="font-mono text-sm"
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => editResponseMutation.mutate({ responseId: response.id, content: editedContent })}
-                                disabled={editResponseMutation.isPending}
-                              >
-                                {editResponseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salva"}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setEditingResponse(null);
-                                  setEditedContent("");
-                                }}
-                              >
-                                Annulla
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="bg-muted/30 p-3 rounded-lg mb-4 text-sm">
-                              {response.draftBodyHtml ? (
-                                <div dangerouslySetInnerHTML={{ __html: response.draftBodyHtml }} />
-                              ) : (
-                                <pre className="whitespace-pre-wrap font-sans">{response.draftBodyText}</pre>
-                              )}
-                            </div>
-                            {response.status === "draft" && (
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  className="gap-1"
-                                  onClick={() => approveResponseMutation.mutate(response.id)}
-                                  disabled={approveResponseMutation.isPending}
-                                >
-                                  <ThumbsUp className="h-4 w-4" />
-                                  Approva
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="gap-1"
-                                  onClick={() => {
-                                    setEditingResponse(response);
-                                    setEditedContent(response.draftBodyText || response.draftBodyHtml || "");
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                  Modifica
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  className="gap-1"
-                                  onClick={() => rejectResponseMutation.mutate(response.id)}
-                                  disabled={rejectResponseMutation.isPending}
-                                >
-                                  <ThumbsDown className="h-4 w-4" />
-                                  Rifiuta
-                                </Button>
-                              </div>
-                            )}
-                            {(response.status === "approved" || response.status === "edited") && (
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  className="gap-1 bg-green-600 hover:bg-green-700"
-                                  onClick={() => sendResponseMutation.mutate(response.id)}
-                                  disabled={sendResponseMutation.isPending}
-                                >
-                                  {sendResponseMutation.isPending ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Send className="h-4 w-4" />
-                                  )}
-                                  Invia Risposta
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="gap-1"
-                                  onClick={() => {
-                                    setEditingResponse(response);
-                                    setEditedContent(response.draftBodyText || response.draftBodyHtml || "");
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                  Modifica
-                                </Button>
-                              </div>
-                            )}
-                          </>
+                        {draft.originalEmail && (
+                          <CardDescription>
+                            Da: {draft.originalEmail.fromName || draft.originalEmail.fromEmail} • 
+                            {format(new Date(draft.createdAt), " dd/MM/yyyy HH:mm")}
+                          </CardDescription>
                         )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </ScrollArea>
-    );
-  };
+                      </div>
+                      <Button variant="ghost" size="icon">
+                        {expandedDraftId === draft.id ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <Separator className="mb-4" />
+                    
+                    {draft.originalEmail && (
+                      <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          Email Originale
+                        </h4>
+                        <p className="text-sm font-medium">{draft.originalEmail.subject}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {draft.originalEmail.snippet}
+                        </p>
+                      </div>
+                    )}
 
-  const renderAccountModal = () => (
-    <Dialog open={showAccountModal} onOpenChange={setShowAccountModal}>
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Risposta AI Generata
+                      </h4>
+                      {editingDraft?.id === draft.id ? (
+                        <Textarea
+                          value={editedDraftContent}
+                          onChange={(e) => setEditedDraftContent(e.target.value)}
+                          rows={8}
+                          className="font-mono text-sm"
+                        />
+                      ) : (
+                        <div className="p-3 bg-background border rounded-lg text-sm whitespace-pre-wrap">
+                          {draft.draftBodyText || draft.draftBodyHtml}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {editingDraft?.id === draft.id ? (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => editDraftMutation.mutate({ responseId: draft.id, content: editedDraftContent })}
+                            disabled={editDraftMutation.isPending}
+                          >
+                            {editDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+                            Salva
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingDraft(null);
+                              setEditedDraftContent("");
+                            }}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Annulla
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => approveDraftMutation.mutate(draft.id)}
+                            disabled={approveDraftMutation.isPending}
+                          >
+                            {approveDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+                            Approva
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingDraft(draft);
+                              setEditedDraftContent(draft.draftBodyText || draft.draftBodyHtml || "");
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Modifica
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => rejectDraftMutation.mutate(draft.id)}
+                            disabled={rejectDraftMutation.isPending}
+                          >
+                            {rejectDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <X className="h-4 w-4 mr-1" />}
+                            Rifiuta
+                          </Button>
+                          {draft.status === "approved" && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="ml-auto"
+                              onClick={() => sendDraftMutation.mutate(draft.id)}
+                              disabled={sendDraftMutation.isPending}
+                            >
+                              {sendDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+                              Invia
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderAccountDialog = () => (
+    <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            Aggiungi Account Email
+            {editingAccount ? "Modifica Account" : "Aggiungi Account Email"}
           </DialogTitle>
           <DialogDescription>
-            Configura le impostazioni IMAP e SMTP per connettere il tuo account email
+            Configura le impostazioni IMAP e SMTP per collegare il tuo account email
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6">
           <div className="space-y-4">
-            <h4 className="font-medium">Informazioni Account</h4>
+            <h4 className="font-medium flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Informazioni Account
+            </h4>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="displayName">Nome visualizzato</Label>
                 <Input
                   id="displayName"
-                  placeholder="Account Lavoro"
+                  placeholder="Es. Email Lavoro"
                   value={formData.displayName}
                   onChange={(e) => handleInputChange("displayName", e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="emailAddress">Indirizzo Email</Label>
+                <Label htmlFor="emailAddress">Indirizzo email</Label>
                 <Input
                   id="emailAddress"
                   type="email"
@@ -971,8 +1082,8 @@ export default function ConsultantEmailHub() {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1057,7 +1168,7 @@ export default function ConsultantEmailHub() {
                 <Label htmlFor="autoReplyMode">Modalità risposta automatica</Label>
                 <Select
                   value={formData.autoReplyMode}
-                  onValueChange={(value: any) => handleInputChange("autoReplyMode", value)}
+                  onValueChange={(val: any) => handleInputChange("autoReplyMode", val)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1074,13 +1185,13 @@ export default function ConsultantEmailHub() {
                 <Label>Soglia di confidenza: {Math.round(formData.confidenceThreshold * 100)}%</Label>
                 <Slider
                   value={[formData.confidenceThreshold * 100]}
-                  onValueChange={(value) => handleInputChange("confidenceThreshold", value[0] / 100)}
+                  onValueChange={(val) => handleInputChange("confidenceThreshold", val[0] / 100)}
                   min={50}
                   max={100}
                   step={5}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Le risposte con confidenza inferiore richiederanno sempre revisione manuale
+                  Risposte con confidenza inferiore richiederanno revisione manuale
                 </p>
               </div>
 
@@ -1088,7 +1199,7 @@ export default function ConsultantEmailHub() {
                 <Label htmlFor="aiTone">Tono delle risposte</Label>
                 <Select
                   value={formData.aiTone}
-                  onValueChange={(value: any) => handleInputChange("aiTone", value)}
+                  onValueChange={(val: any) => handleInputChange("aiTone", val)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1116,12 +1227,12 @@ export default function ConsultantEmailHub() {
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={() => setShowAccountModal(false)}>
+          <Button variant="outline" onClick={() => setShowAccountDialog(false)}>
             Annulla
           </Button>
-          <Button 
+          <Button
             variant="secondary"
-            onClick={() => testConnectionMutation.mutate(formData)} 
+            onClick={() => testConnectionMutation.mutate(formData)}
             disabled={testConnectionMutation.isPending || !formData.imapHost || !formData.smtpHost}
           >
             {testConnectionMutation.isPending ? (
@@ -1136,22 +1247,147 @@ export default function ConsultantEmailHub() {
               </>
             )}
           </Button>
-          <Button onClick={handleCreateAccount} disabled={createAccountMutation.isPending}>
-            {createAccountMutation.isPending ? (
+          <Button
+            onClick={handleSaveAccount}
+            disabled={createAccountMutation.isPending || updateAccountMutation.isPending}
+          >
+            {(createAccountMutation.isPending || updateAccountMutation.isPending) ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creazione...
+                Salvataggio...
               </>
             ) : (
               <>
-                <Plus className="h-4 w-4 mr-2" />
-                Aggiungi Account
+                <Check className="h-4 w-4 mr-2" />
+                {editingAccount ? "Salva Modifiche" : "Aggiungi Account"}
               </>
             )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+
+  const renderEmailSheet = () => (
+    <Sheet open={showEmailSheet} onOpenChange={setShowEmailSheet}>
+      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="pr-8">{selectedEmail?.subject || "(Nessun oggetto)"}</SheetTitle>
+          <SheetDescription>
+            Da: {selectedEmail?.fromName || selectedEmail?.fromEmail}
+          </SheetDescription>
+        </SheetHeader>
+
+        {selectedEmail && (
+          <div className="mt-6 space-y-6">
+            <div className="flex items-center gap-2 flex-wrap">
+              {getProcessingStatusBadge(selectedEmail.processingStatus)}
+              {getUrgencyBadge(selectedEmail.urgency)}
+              <span className="text-sm text-muted-foreground ml-auto">
+                {format(new Date(selectedEmail.receivedAt), "dd MMMM yyyy, HH:mm")}
+              </span>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleStarMutation.mutate(selectedEmail.id)}
+              >
+                {selectedEmail.isStarred ? (
+                  <>
+                    <Star className="h-4 w-4 mr-1 text-yellow-500 fill-yellow-500" />
+                    Rimuovi stella
+                  </>
+                ) : (
+                  <>
+                    <StarOff className="h-4 w-4 mr-1" />
+                    Aggiungi stella
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => markAsReadMutation.mutate(selectedEmail.id)}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                Segna come {selectedEmail.isRead ? "non letto" : "letto"}
+              </Button>
+            </div>
+
+            <Separator />
+
+            <div>
+              <h4 className="text-sm font-medium mb-3">Contenuto Email</h4>
+              <div className="p-4 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap">
+                {emailDetailData?.data?.bodyText || emailDetailData?.data?.bodyHtml || selectedEmail.snippet || "Nessun contenuto disponibile"}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Risposte AI
+                </h4>
+                <Button
+                  size="sm"
+                  onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
+                  disabled={generateAIResponseMutation.isPending}
+                >
+                  {generateAIResponseMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Generazione...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      Genera Risposta AI
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {emailAIResponses.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nessuna risposta AI generata per questa email
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {emailAIResponses.map((resp) => (
+                    <Card key={resp.id}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm">{resp.draftSubject}</CardTitle>
+                          <div className="flex items-center gap-2">
+                            {getConfidenceBadge(resp.confidence)}
+                            <Badge variant={resp.status === "sent" ? "default" : "outline"}>
+                              {resp.status === "draft" ? "Bozza" :
+                               resp.status === "approved" ? "Approvato" :
+                               resp.status === "edited" ? "Modificato" :
+                               resp.status === "rejected" ? "Rifiutato" : "Inviato"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm whitespace-pre-wrap">
+                          {resp.draftBodyText || resp.draftBodyHtml}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 
   if (isLoadingAccounts) {
@@ -1172,60 +1408,58 @@ export default function ConsultantEmailHub() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="p-4 border-b bg-background/95 backdrop-blur">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
-                  <Inbox className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold">Email Hub</h1>
-                  <p className="text-sm text-muted-foreground">Gestisci tutte le tue email con assistenza AI</p>
-                </div>
+          <div className="p-6 border-b bg-background/95 backdrop-blur">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
+                <Inbox className="w-6 h-6 text-white" />
               </div>
-              <Button variant="outline" size="sm" onClick={() => refetchInbox()} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Aggiorna
-              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">Email Hub</h1>
+                <p className="text-sm text-muted-foreground">Gestisci tutte le tue email con assistenza AI</p>
+              </div>
             </div>
           </div>
 
-          <div className="flex-1 flex overflow-hidden">
-            {!isMobile && renderLeftSidebar()}
-            
-            <div className="flex-1 overflow-hidden">
-              {isMobile ? (
-                selectedEmailId ? (
-                  <div className="h-full flex flex-col">
-                    <div className="p-2 border-b">
-                      <Button variant="ghost" onClick={() => setSelectedEmailId(null)}>
-                        ← Torna alla lista
-                      </Button>
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      {renderEmailDetail()}
-                    </div>
-                  </div>
-                ) : (
-                  renderEmailList()
-                )
-              ) : (
-                <ResizablePanelGroup direction="horizontal">
-                  <ResizablePanel defaultSize={40} minSize={25}>
-                    {renderEmailList()}
-                  </ResizablePanel>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={60} minSize={30}>
-                    {renderEmailDetail()}
-                  </ResizablePanel>
-                </ResizablePanelGroup>
-              )}
-            </div>
+          <div className="flex-1 overflow-auto p-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="grid w-full max-w-md grid-cols-3">
+                <TabsTrigger value="accounts" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Account
+                </TabsTrigger>
+                <TabsTrigger value="inbox" className="gap-2">
+                  <Inbox className="h-4 w-4" />
+                  Inbox
+                </TabsTrigger>
+                <TabsTrigger value="drafts" className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Bozze AI
+                  {pendingDrafts.length > 0 && (
+                    <Badge variant="destructive" className="ml-1 h-5 px-1.5">
+                      {pendingDrafts.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="accounts">
+                {renderAccountsTab()}
+              </TabsContent>
+
+              <TabsContent value="inbox">
+                {renderInboxTab()}
+              </TabsContent>
+
+              <TabsContent value="drafts">
+                {renderAIDraftsTab()}
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
 
-      {renderAccountModal()}
+      {renderAccountDialog()}
+      {renderEmailSheet()}
       <ConsultantAIAssistant />
     </div>
   );
