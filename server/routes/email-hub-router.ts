@@ -1632,4 +1632,546 @@ router.get("/idle/status", async (req: AuthRequest, res) => {
   }
 });
 
+// ============================================
+// EMAIL IMPORT JOB ENDPOINTS
+// ============================================
+
+// Start a new import job for an account
+router.post("/accounts/:id/import/start", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const accountId = req.params.id;
+    const { batchSize = 100 } = req.body;
+
+    // Verify account ownership
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId)
+        )
+      );
+
+    if (!account) {
+      return res.status(404).json({ success: false, error: "Account not found" });
+    }
+
+    // Check for existing running job
+    const [existingJob] = await db
+      .select()
+      .from(schema.emailImportJobs)
+      .where(
+        and(
+          eq(schema.emailImportJobs.accountId, accountId),
+          or(
+            eq(schema.emailImportJobs.status, "pending"),
+            eq(schema.emailImportJobs.status, "running")
+          )
+        )
+      );
+
+    if (existingJob) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "An import job is already in progress for this account",
+        jobId: existingJob.id 
+      });
+    }
+
+    // Create IMAP service to discover folders and count emails
+    if (!account.imapHost || !account.imapUser || !account.imapPassword) {
+      return res.status(400).json({ success: false, error: "Account does not have IMAP configured" });
+    }
+
+    const imapService = createImapService({
+      host: account.imapHost,
+      port: account.imapPort || 993,
+      user: account.imapUser,
+      password: account.imapPassword,
+      tls: account.imapTls ?? true,
+    });
+
+    // Discover folders and get message counts
+    const discovered = await imapService.listMailboxes();
+    const foldersToImport = [
+      { path: discovered.inbox || "INBOX", type: "inbox" },
+      ...(discovered.sent ? [{ path: discovered.sent, type: "sent" }] : []),
+      ...(discovered.drafts ? [{ path: discovered.drafts, type: "drafts" }] : []),
+    ];
+
+    // Create import job
+    const [job] = await db
+      .insert(schema.emailImportJobs)
+      .values({
+        accountId,
+        consultantId,
+        status: "pending",
+        totalFolders: foldersToImport.length,
+        batchSize,
+        folderProgress: Object.fromEntries(
+          foldersToImport.map(f => [f.path, { totalMessages: 0, processedMessages: 0, lastUid: 0, status: "pending" }])
+        ),
+      })
+      .returning();
+
+    console.log(`[EMAIL-IMPORT] Created import job ${job.id} for account ${account.emailAddress}`);
+
+    // Start the import worker in background
+    startImportWorker(job.id, account, foldersToImport, batchSize);
+
+    res.json({ 
+      success: true, 
+      data: { 
+        jobId: job.id,
+        folders: foldersToImport.map(f => f.path),
+        batchSize 
+      } 
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-IMPORT] Error starting import:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get import job status
+router.get("/import/:jobId", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { jobId } = req.params;
+
+    const [job] = await db
+      .select()
+      .from(schema.emailImportJobs)
+      .where(
+        and(
+          eq(schema.emailImportJobs.id, jobId),
+          eq(schema.emailImportJobs.consultantId, consultantId)
+        )
+      );
+
+    if (!job) {
+      return res.status(404).json({ success: false, error: "Import job not found" });
+    }
+
+    res.json({ success: true, data: job });
+  } catch (error: any) {
+    console.error("[EMAIL-IMPORT] Error getting job status:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// SSE endpoint for real-time progress updates
+router.get("/import/:jobId/progress", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { jobId } = req.params;
+
+    // Verify job ownership
+    const [job] = await db
+      .select()
+      .from(schema.emailImportJobs)
+      .where(
+        and(
+          eq(schema.emailImportJobs.id, jobId),
+          eq(schema.emailImportJobs.consultantId, consultantId)
+        )
+      );
+
+    if (!job) {
+      return res.status(404).json({ success: false, error: "Import job not found" });
+    }
+
+    // Set up SSE
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    // Send initial state
+    res.write(`data: ${JSON.stringify(job)}\n\n`);
+
+    // Poll for updates every second
+    const interval = setInterval(async () => {
+      try {
+        const [updatedJob] = await db
+          .select()
+          .from(schema.emailImportJobs)
+          .where(eq(schema.emailImportJobs.id, jobId));
+
+        if (updatedJob) {
+          res.write(`data: ${JSON.stringify(updatedJob)}\n\n`);
+
+          // Stop polling if job is completed, failed, or cancelled
+          if (["completed", "failed", "cancelled"].includes(updatedJob.status)) {
+            clearInterval(interval);
+            res.end();
+          }
+        }
+      } catch (err) {
+        console.error("[EMAIL-IMPORT] SSE poll error:", err);
+      }
+    }, 1000);
+
+    // Clean up on client disconnect
+    req.on("close", () => {
+      clearInterval(interval);
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-IMPORT] Error setting up progress stream:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Pause import job
+router.post("/import/:jobId/pause", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { jobId } = req.params;
+
+    const [job] = await db
+      .update(schema.emailImportJobs)
+      .set({ status: "paused", updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.emailImportJobs.id, jobId),
+          eq(schema.emailImportJobs.consultantId, consultantId),
+          eq(schema.emailImportJobs.status, "running")
+        )
+      )
+      .returning();
+
+    if (!job) {
+      return res.status(404).json({ success: false, error: "Running job not found" });
+    }
+
+    console.log(`[EMAIL-IMPORT] Paused job ${jobId}`);
+    res.json({ success: true, data: job });
+  } catch (error: any) {
+    console.error("[EMAIL-IMPORT] Error pausing job:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Resume import job
+router.post("/import/:jobId/resume", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { jobId } = req.params;
+
+    const [job] = await db
+      .select()
+      .from(schema.emailImportJobs)
+      .where(
+        and(
+          eq(schema.emailImportJobs.id, jobId),
+          eq(schema.emailImportJobs.consultantId, consultantId),
+          eq(schema.emailImportJobs.status, "paused")
+        )
+      );
+
+    if (!job) {
+      return res.status(404).json({ success: false, error: "Paused job not found" });
+    }
+
+    // Get account details
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(eq(schema.emailAccounts.id, job.accountId));
+
+    if (!account || !account.imapHost) {
+      return res.status(400).json({ success: false, error: "Account IMAP not configured" });
+    }
+
+    // Update status to running
+    await db
+      .update(schema.emailImportJobs)
+      .set({ status: "running", updatedAt: new Date() })
+      .where(eq(schema.emailImportJobs.id, jobId));
+
+    // Resume the worker
+    const folderProgress = job.folderProgress as Record<string, any>;
+    const foldersToImport = Object.keys(folderProgress).map(path => ({ path, type: path.includes("Sent") ? "sent" : path.includes("Draft") ? "drafts" : "inbox" }));
+    
+    startImportWorker(jobId, account as any, foldersToImport, job.batchSize || 100);
+
+    console.log(`[EMAIL-IMPORT] Resumed job ${jobId}`);
+    res.json({ success: true, message: "Job resumed" });
+  } catch (error: any) {
+    console.error("[EMAIL-IMPORT] Error resuming job:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Cancel import job
+router.post("/import/:jobId/cancel", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { jobId } = req.params;
+
+    const [job] = await db
+      .update(schema.emailImportJobs)
+      .set({ status: "cancelled", updatedAt: new Date(), completedAt: new Date() })
+      .where(
+        and(
+          eq(schema.emailImportJobs.id, jobId),
+          eq(schema.emailImportJobs.consultantId, consultantId),
+          or(
+            eq(schema.emailImportJobs.status, "running"),
+            eq(schema.emailImportJobs.status, "paused"),
+            eq(schema.emailImportJobs.status, "pending")
+          )
+        )
+      )
+      .returning();
+
+    if (!job) {
+      return res.status(404).json({ success: false, error: "Active job not found" });
+    }
+
+    console.log(`[EMAIL-IMPORT] Cancelled job ${jobId}`);
+    res.json({ success: true, data: job });
+  } catch (error: any) {
+    console.error("[EMAIL-IMPORT] Error cancelling job:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get active import job for an account
+router.get("/accounts/:id/import/active", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const accountId = req.params.id;
+
+    const [job] = await db
+      .select()
+      .from(schema.emailImportJobs)
+      .where(
+        and(
+          eq(schema.emailImportJobs.accountId, accountId),
+          eq(schema.emailImportJobs.consultantId, consultantId),
+          or(
+            eq(schema.emailImportJobs.status, "pending"),
+            eq(schema.emailImportJobs.status, "running"),
+            eq(schema.emailImportJobs.status, "paused")
+          )
+        )
+      )
+      .orderBy(desc(schema.emailImportJobs.createdAt))
+      .limit(1);
+
+    res.json({ success: true, data: job || null });
+  } catch (error: any) {
+    console.error("[EMAIL-IMPORT] Error getting active job:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Background worker function to process import in batches
+async function startImportWorker(
+  jobId: string,
+  account: {
+    id: string;
+    emailAddress: string;
+    imapHost: string | null;
+    imapPort: number | null;
+    imapUser: string | null;
+    imapPassword: string | null;
+    imapTls: boolean | null;
+  },
+  foldersToImport: { path: string; type: string }[],
+  batchSize: number
+) {
+  console.log(`[EMAIL-IMPORT] Starting worker for job ${jobId}`);
+
+  try {
+    // Mark job as running
+    await db
+      .update(schema.emailImportJobs)
+      .set({ status: "running", startedAt: new Date(), updatedAt: new Date() })
+      .where(eq(schema.emailImportJobs.id, jobId));
+
+    const imapService = createImapService({
+      host: account.imapHost!,
+      port: account.imapPort || 993,
+      user: account.imapUser!,
+      password: account.imapPassword!,
+      tls: account.imapTls ?? true,
+    });
+
+    let totalImported = 0;
+    let totalDuplicates = 0;
+    let totalProcessed = 0;
+    let totalEmails = 0;
+
+    // First pass: count total emails in all folders
+    for (let i = 0; i < foldersToImport.length; i++) {
+      const folder = foldersToImport[i];
+      try {
+        const count = await imapService.getMailboxMessageCount(folder.path);
+        totalEmails += count;
+        
+        // Update folder progress with total count
+        const [job] = await db.select().from(schema.emailImportJobs).where(eq(schema.emailImportJobs.id, jobId));
+        const folderProgress = (job?.folderProgress || {}) as Record<string, any>;
+        folderProgress[folder.path] = { ...folderProgress[folder.path], totalMessages: count, status: "pending" };
+        
+        await db.update(schema.emailImportJobs).set({ 
+          folderProgress, 
+          totalEmails,
+          updatedAt: new Date() 
+        }).where(eq(schema.emailImportJobs.id, jobId));
+      } catch (err: any) {
+        console.error(`[EMAIL-IMPORT] Error counting folder ${folder.path}:`, err.message);
+      }
+    }
+
+    console.log(`[EMAIL-IMPORT] Job ${jobId}: Total emails to process: ${totalEmails}`);
+
+    // Second pass: import emails in batches
+    for (let i = 0; i < foldersToImport.length; i++) {
+      const folder = foldersToImport[i];
+      
+      // Check if job is paused or cancelled
+      const [currentJob] = await db.select().from(schema.emailImportJobs).where(eq(schema.emailImportJobs.id, jobId));
+      if (currentJob?.status === "paused" || currentJob?.status === "cancelled") {
+        console.log(`[EMAIL-IMPORT] Job ${jobId} is ${currentJob.status}, stopping worker`);
+        return;
+      }
+
+      // Update current folder
+      await db.update(schema.emailImportJobs).set({ 
+        currentFolderIndex: i,
+        currentFolderPath: folder.path,
+        updatedAt: new Date()
+      }).where(eq(schema.emailImportJobs.id, jobId));
+
+      console.log(`[EMAIL-IMPORT] Job ${jobId}: Processing folder ${folder.path} (${i + 1}/${foldersToImport.length})`);
+
+      try {
+        // Fetch emails from this folder
+        const emails = await imapService.fetchRecentEmailsFromFolder(folder.path, 1000);
+        
+        const isSent = folder.type === "sent";
+        const isDrafts = folder.type === "drafts";
+
+        // Process in batches
+        for (let j = 0; j < emails.length; j += batchSize) {
+          // Check for pause/cancel between batches
+          const [checkJob] = await db.select().from(schema.emailImportJobs).where(eq(schema.emailImportJobs.id, jobId));
+          if (checkJob?.status === "paused" || checkJob?.status === "cancelled") {
+            console.log(`[EMAIL-IMPORT] Job ${jobId} is ${checkJob.status}, stopping mid-batch`);
+            return;
+          }
+
+          const batch = emails.slice(j, j + batchSize);
+          
+          for (const email of batch) {
+            try {
+              const existingEmail = await db
+                .select({ id: schema.hubEmails.id })
+                .from(schema.hubEmails)
+                .where(
+                  and(
+                    eq(schema.hubEmails.accountId, account.id),
+                    eq(schema.hubEmails.messageId, email.messageId)
+                  )
+                )
+                .limit(1);
+
+              if (existingEmail.length > 0) {
+                totalDuplicates++;
+              } else {
+                await db.insert(schema.hubEmails).values({
+                  accountId: account.id,
+                  consultantId: currentJob!.consultantId,
+                  messageId: email.messageId,
+                  subject: email.subject,
+                  fromName: email.fromName,
+                  fromEmail: email.fromEmail,
+                  toRecipients: email.toRecipients,
+                  ccRecipients: email.ccRecipients,
+                  bodyHtml: email.bodyHtml,
+                  bodyText: email.bodyText,
+                  snippet: email.snippet,
+                  direction: isSent ? "outbound" : "inbound",
+                  folder: folder.type,
+                  isRead: isSent || isDrafts,
+                  receivedAt: email.receivedAt,
+                  attachments: email.attachments,
+                  hasAttachments: email.hasAttachments,
+                  inReplyTo: email.inReplyTo,
+                  processingStatus: isSent ? "processed" : "new",
+                });
+                totalImported++;
+              }
+              totalProcessed++;
+            } catch (emailErr: any) {
+              console.error(`[EMAIL-IMPORT] Error processing email:`, emailErr.message);
+            }
+          }
+
+          // Update progress after each batch
+          const folderProgress = (checkJob?.folderProgress || {}) as Record<string, any>;
+          folderProgress[folder.path] = { 
+            ...folderProgress[folder.path], 
+            processedMessages: Math.min(j + batchSize, emails.length),
+            status: "in_progress"
+          };
+
+          await db.update(schema.emailImportJobs).set({ 
+            processedEmails: totalProcessed,
+            importedEmails: totalImported,
+            duplicateEmails: totalDuplicates,
+            folderProgress,
+            updatedAt: new Date()
+          }).where(eq(schema.emailImportJobs.id, jobId));
+
+          console.log(`[EMAIL-IMPORT] Job ${jobId}: Batch completed. Processed: ${totalProcessed}/${totalEmails}, Imported: ${totalImported}, Duplicates: ${totalDuplicates}`);
+        }
+
+        // Mark folder as completed
+        const [completedJob] = await db.select().from(schema.emailImportJobs).where(eq(schema.emailImportJobs.id, jobId));
+        const folderProgress = (completedJob?.folderProgress || {}) as Record<string, any>;
+        folderProgress[folder.path] = { ...folderProgress[folder.path], status: "completed" };
+        await db.update(schema.emailImportJobs).set({ folderProgress, updatedAt: new Date() }).where(eq(schema.emailImportJobs.id, jobId));
+
+      } catch (folderErr: any) {
+        console.error(`[EMAIL-IMPORT] Error processing folder ${folder.path}:`, folderErr.message);
+        
+        // Mark folder as failed but continue
+        const [failedJob] = await db.select().from(schema.emailImportJobs).where(eq(schema.emailImportJobs.id, jobId));
+        const folderProgress = (failedJob?.folderProgress || {}) as Record<string, any>;
+        folderProgress[folder.path] = { ...folderProgress[folder.path], status: "failed" };
+        await db.update(schema.emailImportJobs).set({ 
+          folderProgress, 
+          lastError: folderErr.message,
+          errorCount: (failedJob?.errorCount || 0) + 1,
+          updatedAt: new Date() 
+        }).where(eq(schema.emailImportJobs.id, jobId));
+      }
+    }
+
+    // Mark job as completed
+    await db.update(schema.emailImportJobs).set({ 
+      status: "completed",
+      completedAt: new Date(),
+      updatedAt: new Date()
+    }).where(eq(schema.emailImportJobs.id, jobId));
+
+    console.log(`[EMAIL-IMPORT] Job ${jobId} completed. Imported: ${totalImported}, Duplicates: ${totalDuplicates}`);
+
+  } catch (error: any) {
+    console.error(`[EMAIL-IMPORT] Worker error for job ${jobId}:`, error);
+    
+    await db.update(schema.emailImportJobs).set({ 
+      status: "failed",
+      lastError: error.message,
+      updatedAt: new Date()
+    }).where(eq(schema.emailImportJobs.id, jobId));
+  }
+}
+
 export default router;

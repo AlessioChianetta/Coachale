@@ -82,6 +82,7 @@ import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { ImportWizardDialog } from "@/components/email-hub/ImportWizardDialog";
+import { EmailImportDialog } from "@/components/email-hub/EmailImportDialog";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
@@ -268,6 +269,9 @@ export default function ConsultantEmailHub() {
   });
   
   const [showImportWizard, setShowImportWizard] = useState(false);
+  const [showEmailImportDialog, setShowEmailImportDialog] = useState(false);
+  const [importAccountId, setImportAccountId] = useState<string>("");
+  const [importAccountName, setImportAccountName] = useState<string>("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1084,16 +1088,28 @@ export default function ConsultantEmailHub() {
                         Modifica
                       </DropdownMenuItem>
                       {(account.accountType === "imap_only" || account.accountType === "full" || account.accountType === "hybrid") && (
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            console.log("[EMAIL-HUB] Sync button clicked for account:", account.id, account.accountType);
-                            syncEmailsMutation.mutate(account.id);
-                          }}
-                          disabled={syncEmailsMutation.isPending}
-                        >
-                          <RefreshCw className={`h-4 w-4 mr-2 ${syncEmailsMutation.isPending ? "animate-spin" : ""}`} />
-                          {syncEmailsMutation.isPending ? "Sincronizzazione..." : "Sincronizza Email"}
-                        </DropdownMenuItem>
+                        <>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              console.log("[EMAIL-HUB] Sync button clicked for account:", account.id, account.accountType);
+                              syncEmailsMutation.mutate(account.id);
+                            }}
+                            disabled={syncEmailsMutation.isPending}
+                          >
+                            <RefreshCw className={`h-4 w-4 mr-2 ${syncEmailsMutation.isPending ? "animate-spin" : ""}`} />
+                            {syncEmailsMutation.isPending ? "Sincronizzazione..." : "Sincronizza Email"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setImportAccountId(account.id);
+                              setImportAccountName(account.displayName || account.emailAddress);
+                              setShowEmailImportDialog(true);
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Importa Email
+                          </DropdownMenuItem>
+                        </>
                       )}
                       <DropdownMenuItem 
                         onClick={() => {
@@ -2063,6 +2079,21 @@ export default function ConsultantEmailHub() {
               description: "Gli account sono stati importati con successo"
             });
           }}
+        />
+      )}
+
+      {importAccountId && (
+        <EmailImportDialog
+          open={showEmailImportDialog}
+          onOpenChange={(open) => {
+            setShowEmailImportDialog(open);
+            if (!open) {
+              setImportAccountId("");
+              setImportAccountName("");
+            }
+          }}
+          accountId={importAccountId}
+          accountName={importAccountName}
         />
       )}
       

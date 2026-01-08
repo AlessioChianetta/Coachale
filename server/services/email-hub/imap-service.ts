@@ -345,6 +345,37 @@ export class ImapService {
     return chosen.path;
   }
 
+  async getMailboxMessageCount(folderName: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const imap = this.createConnection();
+
+      const timeout = setTimeout(() => {
+        imap.destroy();
+        reject(new Error("Timeout while getting message count"));
+      }, 10000);
+
+      imap.once("ready", () => {
+        imap.openBox(folderName, true, (err, box) => {
+          clearTimeout(timeout);
+          if (err) {
+            imap.end();
+            return reject(err);
+          }
+          const count = box.messages.total;
+          imap.end();
+          resolve(count);
+        });
+      });
+
+      imap.once("error", (err: Error) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+
+      imap.connect();
+    });
+  }
+
   async fetchRecentEmails(limit: number = 50): Promise<ParsedEmail[]> {
     return this.fetchRecentEmailsFromFolder("INBOX", limit);
   }
