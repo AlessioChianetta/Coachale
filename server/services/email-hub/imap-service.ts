@@ -27,6 +27,73 @@ export interface ParsedEmail {
   hasAttachments: boolean;
 }
 
+export interface MailboxInfo {
+  path: string;
+  name: string;
+  delimiter: string;
+  specialUse: string | null; // \Sent, \Drafts, \Trash, \Junk, \Archive, etc.
+  flags: string[];
+  hasChildren: boolean;
+}
+
+export interface DiscoveredFolders {
+  inbox: string | null;
+  sent: string | null;
+  drafts: string | null;
+  trash: string | null;
+  junk: string | null;
+  archive: string | null;
+  all: MailboxInfo[];
+}
+
+// Common folder name aliases for fallback detection (case-insensitive)
+const SENT_ALIASES = [
+  "sent", "sent mail", "sent items", "sent messages", "outbox",
+  "posta inviata", "inviata", "inviati", // Italian
+  "envoyés", "messages envoyés", "éléments envoyés", // French
+  "enviados", "mensajes enviados", "elementos enviados", // Spanish
+  "gesendet", "gesendete objekte", "gesendete elemente", // German
+  "verzonden", "verzonden items", // Dutch
+  "enviadas", "itens enviados", // Portuguese
+];
+
+const DRAFTS_ALIASES = [
+  "drafts", "draft", "draughts",
+  "bozze", "bozza", // Italian
+  "brouillons", // French
+  "borradores", // Spanish
+  "entwürfe", // German
+  "concepten", // Dutch
+  "rascunhos", // Portuguese
+];
+
+const TRASH_ALIASES = [
+  "trash", "deleted", "deleted items", "deleted messages", "bin",
+  "cestino", "eliminati", "posta eliminata", // Italian
+  "corbeille", "éléments supprimés", // French
+  "papelera", "elementos eliminados", // Spanish
+  "papierkorb", "gelöschte objekte", // German
+  "prullenbak", "verwijderde items", // Dutch
+  "lixeira", "itens excluídos", // Portuguese
+];
+
+const JUNK_ALIASES = [
+  "junk", "spam", "junk mail", "bulk mail",
+  "posta indesiderata", "spam", // Italian
+  "courrier indésirable", "spam", // French
+  "correo no deseado", // Spanish
+  "junk-e-mail", // German
+  "ongewenste e-mail", // Dutch
+];
+
+const ARCHIVE_ALIASES = [
+  "archive", "all mail", "all",
+  "archivio", "tutti i messaggi", // Italian
+  "archives", "tous les messages", // French
+  "archivo", "todos los mensajes", // Spanish
+  "archiv", "alle nachrichten", // German
+];
+
 export class ImapService {
   private config: ImapConfig;
 
@@ -69,6 +136,154 @@ export class ImapService {
 
       imap.connect();
     });
+  }
+
+  async listMailboxes(): Promise<DiscoveredFolders> {
+    return new Promise((resolve, reject) => {
+      const imap = this.createConnection();
+      
+      const timeout = setTimeout(() => {
+        imap.destroy();
+        reject(new Error("Timeout while listing mailboxes"));
+      }, 20000);
+
+      imap.once("ready", () => {
+        imap.getBoxes((err, boxes) => {
+          clearTimeout(timeout);
+          if (err) {
+            imap.end();
+            return reject(err);
+          }
+
+          const allMailboxes: MailboxInfo[] = [];
+          
+          // Recursively extract all mailboxes
+          const extractBoxes = (boxesObj: any, parentPath: string = "") => {
+            for (const name in boxesObj) {
+              const box = boxesObj[name];
+              const delimiter = box.delimiter || "/";
+              const fullPath = parentPath ? `${parentPath}${delimiter}${name}` : name;
+              
+              // Extract special-use attribute if present
+              let specialUse: string | null = null;
+              const attribs = box.attribs || [];
+              for (const attr of attribs) {
+                if (attr.startsWith("\\") && ["\\Sent", "\\Drafts", "\\Trash", "\\Junk", "\\Archive", "\\All", "\\Flagged"].includes(attr)) {
+                  specialUse = attr;
+                  break;
+                }
+              }
+
+              allMailboxes.push({
+                path: fullPath,
+                name: name,
+                delimiter: delimiter,
+                specialUse: specialUse,
+                flags: attribs,
+                hasChildren: !!box.children,
+              });
+
+              // Recurse into children
+              if (box.children) {
+                extractBoxes(box.children, fullPath);
+              }
+            }
+          };
+
+          extractBoxes(boxes);
+          
+          console.log(`[IMAP] Found ${allMailboxes.length} mailboxes:`, allMailboxes.map(m => `${m.path} (${m.specialUse || 'no special-use'})`).join(", "));
+
+          // Now identify special folders
+          const result: DiscoveredFolders = {
+            inbox: null,
+            sent: null,
+            drafts: null,
+            trash: null,
+            junk: null,
+            archive: null,
+            all: allMailboxes,
+          };
+
+          // First pass: use SPECIAL-USE attributes (RFC 6154)
+          for (const box of allMailboxes) {
+            if (box.specialUse) {
+              switch (box.specialUse) {
+                case "\\Sent":
+                  result.sent = box.path;
+                  break;
+                case "\\Drafts":
+                  result.drafts = box.path;
+                  break;
+                case "\\Trash":
+                  result.trash = box.path;
+                  break;
+                case "\\Junk":
+                  result.junk = box.path;
+                  break;
+                case "\\Archive":
+                case "\\All":
+                  result.archive = box.path;
+                  break;
+              }
+            }
+            // INBOX is always named INBOX
+            if (box.path.toUpperCase() === "INBOX") {
+              result.inbox = box.path;
+            }
+          }
+
+          // Second pass: fallback to name matching if SPECIAL-USE not found
+          if (!result.sent) {
+            result.sent = this.findFolderByAlias(allMailboxes, SENT_ALIASES);
+          }
+          if (!result.drafts) {
+            result.drafts = this.findFolderByAlias(allMailboxes, DRAFTS_ALIASES);
+          }
+          if (!result.trash) {
+            result.trash = this.findFolderByAlias(allMailboxes, TRASH_ALIASES);
+          }
+          if (!result.junk) {
+            result.junk = this.findFolderByAlias(allMailboxes, JUNK_ALIASES);
+          }
+          if (!result.archive) {
+            result.archive = this.findFolderByAlias(allMailboxes, ARCHIVE_ALIASES);
+          }
+
+          console.log(`[IMAP] Discovered folders: inbox=${result.inbox}, sent=${result.sent}, drafts=${result.drafts}, trash=${result.trash}`);
+
+          imap.end();
+          resolve(result);
+        });
+      });
+
+      imap.once("error", (err: Error) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+
+      imap.connect();
+    });
+  }
+
+  private findFolderByAlias(mailboxes: MailboxInfo[], aliases: string[]): string | null {
+    // First try exact match on folder name (last segment)
+    for (const box of mailboxes) {
+      const folderName = box.name.toLowerCase();
+      if (aliases.includes(folderName)) {
+        return box.path;
+      }
+    }
+    // Then try partial match on full path
+    for (const box of mailboxes) {
+      const pathLower = box.path.toLowerCase();
+      for (const alias of aliases) {
+        if (pathLower.includes(alias)) {
+          return box.path;
+        }
+      }
+    }
+    return null;
   }
 
   async fetchRecentEmails(limit: number = 50): Promise<ParsedEmail[]> {

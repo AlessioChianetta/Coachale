@@ -21,6 +21,10 @@ async function startIdleAndSyncInBackground(account: {
   imapUser: string | null;
   imapPassword: string | null;
   imapTls: boolean | null;
+  inboxFolderPath?: string | null;
+  sentFolderPath?: string | null;
+  draftsFolderPath?: string | null;
+  trashFolderPath?: string | null;
 }) {
   if (!account.imapHost || !account.imapUser || !account.imapPassword) {
     console.log(`[EMAIL-HUB AUTO] Skipping auto-sync for ${account.emailAddress} - no IMAP config`);
@@ -30,7 +34,6 @@ async function startIdleAndSyncInBackground(account: {
   console.log(`[EMAIL-HUB AUTO] Starting automatic sync for ${account.emailAddress}...`);
 
   try {
-    // First do initial sync to fetch existing emails
     const imapService = createImapService({
       host: account.imapHost,
       port: account.imapPort || 993,
@@ -44,14 +47,58 @@ async function startIdleAndSyncInBackground(account: {
       .set({ syncStatus: "syncing" })
       .where(eq(schema.emailAccounts.id, account.id));
 
-    // Sync all folders
-    const folders = ["INBOX", "Sent", "INBOX.Sent", "Drafts", "INBOX.Drafts"];
+    // Step 1: Discover folders if any are missing
+    let inboxFolder = account.inboxFolderPath;
+    let sentFolder = account.sentFolderPath;
+    let draftsFolder = account.draftsFolderPath;
+    
+    if (!inboxFolder || !sentFolder || !draftsFolder) {
+      console.log(`[EMAIL-HUB AUTO] Discovering folders for ${account.emailAddress}...`);
+      try {
+        const discovered = await imapService.listMailboxes();
+        
+        // Save discovered folders to database
+        await db
+          .update(schema.emailAccounts)
+          .set({
+            inboxFolderPath: discovered.inbox || "INBOX",
+            sentFolderPath: discovered.sent,
+            draftsFolderPath: discovered.drafts,
+            trashFolderPath: discovered.trash,
+            junkFolderPath: discovered.junk,
+            archiveFolderPath: discovered.archive,
+            discoveredFoldersAt: new Date(),
+          })
+          .where(eq(schema.emailAccounts.id, account.id));
+        
+        inboxFolder = discovered.inbox || "INBOX";
+        sentFolder = discovered.sent;
+        draftsFolder = discovered.drafts;
+        
+        console.log(`[EMAIL-HUB AUTO] Discovered: inbox=${inboxFolder}, sent=${sentFolder}, drafts=${draftsFolder}`);
+      } catch (discoverErr: any) {
+        console.error(`[EMAIL-HUB AUTO] Failed to discover folders:`, discoverErr.message);
+      }
+    }
+
+    // Step 2: Build folder list to sync using discovered paths
+    const foldersToSync: { path: string; type: "inbox" | "sent" | "drafts" }[] = [
+      { path: inboxFolder || "INBOX", type: "inbox" },
+    ];
+    
+    if (sentFolder) {
+      foldersToSync.push({ path: sentFolder, type: "sent" });
+    }
+    if (draftsFolder) {
+      foldersToSync.push({ path: draftsFolder, type: "drafts" });
+    }
+
     let totalImported = 0;
 
-    for (const folder of folders) {
+    for (const folderInfo of foldersToSync) {
       try {
-        const emails = await imapService.fetchRecentEmailsFromFolder(folder, 50);
-        console.log(`[EMAIL-HUB AUTO] Fetched ${emails.length} emails from ${folder}`);
+        const emails = await imapService.fetchRecentEmailsFromFolder(folderInfo.path, 50);
+        console.log(`[EMAIL-HUB AUTO] Fetched ${emails.length} emails from ${folderInfo.path} (${folderInfo.type})`);
 
         for (const email of emails) {
           const existingEmail = await db
@@ -66,7 +113,8 @@ async function startIdleAndSyncInBackground(account: {
             .limit(1);
 
           if (existingEmail.length === 0) {
-            const direction = folder.toLowerCase().includes("sent") ? "outbound" : "inbound";
+            const isSent = folderInfo.type === "sent";
+            const isDrafts = folderInfo.type === "drafts";
             await db.insert(schema.hubEmails).values({
               accountId: account.id,
               consultantId: account.consultantId,
@@ -79,21 +127,20 @@ async function startIdleAndSyncInBackground(account: {
               bodyHtml: email.bodyHtml,
               bodyText: email.bodyText,
               snippet: email.snippet,
-              direction,
-              folder: folder.replace("INBOX.", "").toLowerCase(),
-              isRead: direction === "outbound",
+              direction: isSent ? "outbound" : "inbound",
+              folder: folderInfo.type,
+              isRead: isSent || isDrafts,
               receivedAt: email.receivedAt,
               attachments: email.attachments,
               hasAttachments: email.hasAttachments,
               inReplyTo: email.inReplyTo,
-              processingStatus: direction === "outbound" ? "processed" : "new",
+              processingStatus: isSent ? "processed" : "new",
             });
             totalImported++;
           }
         }
       } catch (folderErr: any) {
-        // Folder might not exist, that's ok
-        console.log(`[EMAIL-HUB AUTO] Could not sync folder ${folder}: ${folderErr.message}`);
+        console.log(`[EMAIL-HUB AUTO] Could not sync folder ${folderInfo.path}: ${folderErr.message}`);
       }
     }
 
@@ -1300,22 +1347,64 @@ router.post("/accounts/:id/sync", async (req: AuthRequest, res) => {
     });
 
     try {
-      // Sync from multiple folders: Inbox, Sent, Drafts
-      const foldersToSync = ["INBOX", "Sent", "INBOX.Sent", "Drafts", "INBOX.Drafts"];
+      // Step 1: Discover folders if any are missing
+      let inboxFolder = account.inboxFolderPath;
+      let sentFolder = account.sentFolderPath;
+      let draftsFolder = account.draftsFolderPath;
+      
+      if (!inboxFolder || !sentFolder || !draftsFolder) {
+        console.log(`[EMAIL-HUB SYNC] Discovering folders for ${account.emailAddress}...`);
+        try {
+          const discovered = await imapService.listMailboxes();
+          
+          // Save discovered folders to database
+          await db
+            .update(schema.emailAccounts)
+            .set({
+              inboxFolderPath: discovered.inbox || "INBOX",
+              sentFolderPath: discovered.sent,
+              draftsFolderPath: discovered.drafts,
+              trashFolderPath: discovered.trash,
+              junkFolderPath: discovered.junk,
+              archiveFolderPath: discovered.archive,
+              discoveredFoldersAt: new Date(),
+            })
+            .where(eq(schema.emailAccounts.id, accountId));
+          
+          inboxFolder = discovered.inbox || "INBOX";
+          sentFolder = discovered.sent;
+          draftsFolder = discovered.drafts;
+          
+          console.log(`[EMAIL-HUB SYNC] Discovered: inbox=${inboxFolder}, sent=${sentFolder}, drafts=${draftsFolder}`);
+        } catch (discoverErr: any) {
+          console.error(`[EMAIL-HUB SYNC] Failed to discover folders:`, discoverErr.message);
+        }
+      }
+
+      // Step 2: Build folder list using discovered paths
+      const foldersToSync: { path: string; type: "inbox" | "sent" | "drafts" }[] = [
+        { path: inboxFolder || "INBOX", type: "inbox" },
+      ];
+      
+      if (sentFolder) {
+        foldersToSync.push({ path: sentFolder, type: "sent" });
+      }
+      if (draftsFolder) {
+        foldersToSync.push({ path: draftsFolder, type: "drafts" });
+      }
+
+      console.log(`[EMAIL-HUB SYNC] Syncing folders:`, foldersToSync.map(f => f.path).join(", "));
+
       let totalImported = 0;
       let totalDuplicates = 0;
 
-      for (const folder of foldersToSync) {
+      for (const folderInfo of foldersToSync) {
         try {
-          const emails = await imapService.fetchRecentEmailsFromFolder(folder, limit);
-          console.log(`[EMAIL-HUB SYNC] Fetched ${emails.length} emails from ${folder}`);
+          const emails = await imapService.fetchRecentEmailsFromFolder(folderInfo.path, limit);
+          console.log(`[EMAIL-HUB SYNC] Fetched ${emails.length} emails from ${folderInfo.path} (${folderInfo.type})`);
 
-          // Determine folder type and direction based on folder name
-          const normalizedFolder = folder.toLowerCase().replace("inbox.", "");
-          const isSentFolder = normalizedFolder.includes("sent");
-          const isDraftsFolder = normalizedFolder.includes("draft");
-          const folderType = isSentFolder ? "sent" : isDraftsFolder ? "drafts" : "inbox";
-          const direction = isSentFolder ? "outbound" : "inbound";
+          const isSent = folderInfo.type === "sent";
+          const isDrafts = folderInfo.type === "drafts";
 
           for (const email of emails) {
             const existingEmail = await db
@@ -1346,20 +1435,19 @@ router.post("/accounts/:id/sync", async (req: AuthRequest, res) => {
               bodyHtml: email.bodyHtml,
               bodyText: email.bodyText,
               snippet: email.snippet,
-              direction,
-              folder: folderType,
-              isRead: isSentFolder || isDraftsFolder ? true : false,
+              direction: isSent ? "outbound" : "inbound",
+              folder: folderInfo.type,
+              isRead: isSent || isDrafts,
               receivedAt: email.receivedAt,
               attachments: email.attachments,
               hasAttachments: email.hasAttachments,
               inReplyTo: email.inReplyTo,
-              processingStatus: isSentFolder ? "processed" : "new",
+              processingStatus: isSent ? "processed" : "new",
             });
             totalImported++;
           }
         } catch (folderErr: any) {
-          // Folder might not exist on this server, skip it
-          console.log(`[EMAIL-HUB SYNC] Could not sync folder ${folder}: ${folderErr.message}`);
+          console.log(`[EMAIL-HUB SYNC] Could not sync folder ${folderInfo.path}: ${folderErr.message}`);
         }
       }
 

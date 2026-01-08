@@ -7306,6 +7306,15 @@ export const emailAccounts = pgTable("email_accounts", {
   syncStatus: varchar("sync_status", { length: 20 }).default("idle"),
   syncError: text("sync_error"),
   
+  // Discovered Folder Mappings (auto-detected from IMAP server)
+  inboxFolderPath: varchar("inbox_folder_path", { length: 255 }).default("INBOX"),
+  sentFolderPath: varchar("sent_folder_path", { length: 255 }),
+  draftsFolderPath: varchar("drafts_folder_path", { length: 255 }),
+  trashFolderPath: varchar("trash_folder_path", { length: 255 }),
+  junkFolderPath: varchar("junk_folder_path", { length: 255 }),
+  archiveFolderPath: varchar("archive_folder_path", { length: 255 }),
+  discoveredFoldersAt: timestamp("discovered_folders_at", { withTimezone: true }),
+  
   // State
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
