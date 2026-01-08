@@ -117,6 +117,7 @@ import stripeConnectRouter from "./routes/stripe-connect-router";
 import consultantPricingRouter from "./routes/consultant-pricing-router";
 import bronzeAuthRouter from "./routes/bronze-auth-router";
 import referralRouter from "./routes/referral-router";
+import emailHubRouter from "./routes/email-hub-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -12311,6 +12312,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Bronze Auth routes (Level 1 user authentication)
   app.use("/api/bronze", bronzeAuthRouter);
+
+  // Email Hub routes (unified inbox system)
+  app.use("/api/email-hub", authenticateToken, emailHubRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
