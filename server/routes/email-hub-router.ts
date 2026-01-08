@@ -1777,10 +1777,35 @@ router.get("/import/:jobId", async (req: AuthRequest, res) => {
 });
 
 // SSE endpoint for real-time progress updates
+// Note: EventSource doesn't support custom headers, so we accept token from query string
 router.get("/import/:jobId/progress", async (req: AuthRequest, res) => {
   try {
-    const consultantId = req.user!.id;
     const { jobId } = req.params;
+    const { token } = req.query;
+    
+    // For SSE endpoints, we need to handle auth differently since EventSource can't send headers
+    let consultantId: string;
+    
+    if (req.user?.id) {
+      // Standard auth worked (e.g., from cookie)
+      consultantId = req.user.id;
+    } else if (typeof token === "string" && token) {
+      // Verify token from query string
+      const jwt = require("jsonwebtoken");
+      const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        consultantId = decoded.userId || decoded.id;
+        if (!consultantId) {
+          return res.status(401).json({ success: false, error: "Invalid token" });
+        }
+      } catch (jwtErr) {
+        console.error("[EMAIL-IMPORT] JWT verification failed:", jwtErr);
+        return res.status(401).json({ success: false, error: "Token expired or invalid" });
+      }
+    } else {
+      return res.status(401).json({ success: false, error: "Authentication required" });
+    }
 
     // Verify job ownership
     const [job] = await db
