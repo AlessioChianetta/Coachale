@@ -76,6 +76,8 @@ interface SidebarProps {
   onRoleSwitch?: (role: "consultant" | "client") => void;
   currentRole?: "consultant" | "client";
   defaultCollapsed?: boolean;
+  isCollapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 interface SidebarItemWithChildren extends SidebarItem {
@@ -259,13 +261,22 @@ interface ProfileInfo {
   isDefault?: boolean;
 }
 
-export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externalShowRoleSwitch, onRoleSwitch: externalOnRoleSwitch, currentRole: externalCurrentRole, defaultCollapsed = false }: SidebarProps) {
+export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externalShowRoleSwitch, onRoleSwitch: externalOnRoleSwitch, currentRole: externalCurrentRole, defaultCollapsed = false, isCollapsed: controlledIsCollapsed, onCollapsedChange }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [isLoadingFinancial, setIsLoadingFinancial] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  const [internalCollapsed, setInternalCollapsed] = useState(defaultCollapsed);
+  
+  const isCollapsed = controlledIsCollapsed !== undefined ? controlledIsCollapsed : internalCollapsed;
+  
+  const setIsCollapsed = (collapsed: boolean) => {
+    if (controlledIsCollapsed === undefined) {
+      setInternalCollapsed(collapsed);
+    }
+    onCollapsedChange?.(collapsed);
+  };
   const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
   const [isSwitching, setIsSwitching] = useState(false);
   
@@ -1262,21 +1273,6 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   // Desktop version
   return (
     <>
-      {!isMobile && isCollapsed && (
-        <div 
-          className="hidden md:flex flex-col items-center justify-start bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 h-screen sticky top-0 w-14 py-4"
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 bg-gradient-to-br from-cyan-500/10 to-teal-500/10 hover:from-cyan-500/20 hover:to-teal-500/20 border border-cyan-200/50 dark:border-cyan-800/50 hover:shadow-md transition-all duration-200 rounded-lg"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            title="Espandi menu"
-          >
-            <ChevronRight size={20} className="text-cyan-600 dark:text-cyan-400 transition-transform duration-200" />
-          </Button>
-        </div>
-      )}
       {!isCollapsed && (
       <div 
         className="hidden md:flex flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4 transition-all duration-150 h-screen sticky top-0 w-72"

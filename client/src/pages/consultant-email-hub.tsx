@@ -78,6 +78,7 @@ import {
   Archive,
   Download,
   ArrowRightLeft,
+  Menu,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -245,6 +246,7 @@ const ITEMS_PER_PAGE = 25;
 export default function ConsultantEmailHub() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mainSidebarCollapsed, setMainSidebarCollapsed] = useState(true);
   const [showAccountDialog, setShowAccountDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -888,7 +890,18 @@ export default function ConsultantEmailHub() {
 
   const renderLeftSidebar = () => (
     <div className="w-[220px] min-w-[220px] bg-slate-900 text-white flex flex-col h-full">
-      <div className="p-4">
+      <div className="p-4 space-y-3">
+        {mainSidebarCollapsed && (
+          <Button 
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 text-slate-300 hover:text-white hover:bg-white/10"
+            onClick={() => setMainSidebarCollapsed(false)}
+          >
+            <Menu className="h-4 w-4" />
+            Menu principale
+          </Button>
+        )}
         <Button 
           className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2"
           onClick={() => toast({ title: "Funzione in arrivo", description: "Composizione email in sviluppo" })}
@@ -2295,7 +2308,13 @@ export default function ConsultantEmailHub() {
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} defaultCollapsed={true} />
+        <Sidebar 
+          role="consultant" 
+          isOpen={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          isCollapsed={mainSidebarCollapsed}
+          onCollapsedChange={setMainSidebarCollapsed}
+        />
 
         <div className="flex-1 flex overflow-hidden">
           {!isMobile && renderLeftSidebar()}
