@@ -7448,3 +7448,64 @@ export const insertEmailHubAiResponseSchema = createInsertSchema(emailHubAiRespo
   id: true,
   createdAt: true,
 });
+
+// Email Import Jobs - Track large-scale email imports with progress
+export const emailImportJobs = pgTable("email_import_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountId: varchar("account_id").notNull().references(() => emailAccounts.id, { onDelete: "cascade" }),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Job Status
+  status: varchar("status", { length: 20 }).notNull().default("pending").$type<
+    "pending" | "running" | "paused" | "completed" | "failed" | "cancelled"
+  >(),
+  
+  // Progress Tracking
+  totalFolders: integer("total_folders").default(0),
+  currentFolderIndex: integer("current_folder_index").default(0),
+  currentFolderPath: varchar("current_folder_path", { length: 255 }),
+  
+  totalEmails: integer("total_emails").default(0),
+  processedEmails: integer("processed_emails").default(0),
+  importedEmails: integer("imported_emails").default(0),
+  duplicateEmails: integer("duplicate_emails").default(0),
+  failedEmails: integer("failed_emails").default(0),
+  
+  // Batch Configuration
+  batchSize: integer("batch_size").default(100),
+  
+  // Per-folder progress (JSONB to track UID offsets per folder)
+  folderProgress: jsonb("folder_progress").default({}).$type<{
+    [folderPath: string]: {
+      totalMessages: number;
+      processedMessages: number;
+      lastUid: number;
+      status: "pending" | "in_progress" | "completed" | "failed";
+    };
+  }>(),
+  
+  // Error tracking
+  lastError: text("last_error"),
+  errorCount: integer("error_count").default(0),
+  
+  // Timing
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  estimatedCompletionAt: timestamp("estimated_completion_at", { withTimezone: true }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  accountIdx: index("idx_email_import_jobs_account").on(table.accountId),
+  statusIdx: index("idx_email_import_jobs_status").on(table.status),
+  consultantIdx: index("idx_email_import_jobs_consultant").on(table.consultantId),
+}));
+
+export type EmailImportJob = typeof emailImportJobs.$inferSelect;
+export type InsertEmailImportJob = typeof emailImportJobs.$inferInsert;
+
+export const insertEmailImportJobSchema = createInsertSchema(emailImportJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
