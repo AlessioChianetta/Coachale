@@ -59,6 +59,7 @@ import {
   X,
   Users,
   FileText,
+  Wifi,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -483,6 +484,48 @@ export default function ConsultantEmailHub() {
     },
   });
 
+  const startIdleMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      const response = await fetch(`/api/email-hub/accounts/${accountId}/idle/start`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to start IDLE");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
+      toast({ title: "Sync Attivata", description: "Sincronizzazione in tempo reale attivata" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const stopIdleMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      const response = await fetch(`/api/email-hub/accounts/${accountId}/idle/stop`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to stop IDLE");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
+      toast({ title: "Sync Disattivata", description: "Sincronizzazione in tempo reale disattivata" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleInputChange = (field: keyof AccountFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -536,6 +579,7 @@ export default function ConsultantEmailHub() {
     const config: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
       syncing: { color: "bg-blue-100 text-blue-700", label: "Sincronizzazione", icon: <RefreshCw className="h-3 w-3 animate-spin" /> },
       synced: { color: "bg-green-100 text-green-700", label: "Sincronizzato", icon: <CheckCircle className="h-3 w-3" /> },
+      connected: { color: "bg-emerald-100 text-emerald-700", label: "Live Sync", icon: <Wifi className="h-3 w-3" /> },
       error: { color: "bg-red-100 text-red-700", label: "Errore", icon: <XCircle className="h-3 w-3" /> },
       idle: { color: "bg-gray-100 text-gray-700", label: "In attesa", icon: <Clock className="h-3 w-3" /> },
     };
@@ -652,22 +696,54 @@ export default function ConsultantEmailHub() {
                   )}
                 </div>
               </CardContent>
-              <CardFooter className="pt-0 gap-2">
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleOpenEditAccount(account)}>
-                  <Edit className="h-4 w-4 mr-1" />
-                  Modifica
-                </Button>
+              <CardFooter className="pt-0 flex-col gap-2">
+                <div className="flex w-full gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handleOpenEditAccount(account)}>
+                    <Edit className="h-4 w-4 mr-1" />
+                    Modifica
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      if (confirm("Sei sicuro di voler eliminare questo account?")) {
+                        deleteAccountMutation.mutate(account.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
                 <Button
-                  variant="outline"
+                  variant={account.syncStatus === "connected" ? "secondary" : "default"}
                   size="sm"
-                  className="text-destructive hover:text-destructive"
+                  className="w-full"
                   onClick={() => {
-                    if (confirm("Sei sicuro di voler eliminare questo account?")) {
-                      deleteAccountMutation.mutate(account.id);
+                    if (account.syncStatus === "connected") {
+                      stopIdleMutation.mutate(account.id);
+                    } else {
+                      startIdleMutation.mutate(account.id);
                     }
                   }}
+                  disabled={startIdleMutation.isPending || stopIdleMutation.isPending}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  {startIdleMutation.isPending || stopIdleMutation.isPending ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Attendere...
+                    </>
+                  ) : account.syncStatus === "connected" ? (
+                    <>
+                      <Wifi className="h-4 w-4 mr-2" />
+                      Disattiva Sync Live
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="h-4 w-4 mr-2" />
+                      Attiva Sync Live
+                    </>
+                  )}
                 </Button>
               </CardFooter>
             </Card>

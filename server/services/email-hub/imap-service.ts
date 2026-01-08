@@ -1,6 +1,7 @@
 import Imap from "imap";
 import { simpleParser, ParsedMail } from "mailparser";
 import { Readable } from "stream";
+import { EventEmitter } from "events";
 
 export interface ImapConfig {
   host: string;
@@ -290,4 +291,301 @@ export class ImapService {
 
 export function createImapService(config: ImapConfig): ImapService {
   return new ImapService(config);
+}
+
+export interface IdleConnectionConfig extends ImapConfig {
+  accountId: string;
+  consultantId: string;
+  onNewEmail: (email: ParsedEmail) => Promise<void>;
+  onError?: (error: Error) => void;
+  onDisconnect?: () => void;
+}
+
+export class ImapIdleManager extends EventEmitter {
+  private connections: Map<string, ImapIdleConnection> = new Map();
+  private static instance: ImapIdleManager;
+
+  private constructor() {
+    super();
+  }
+
+  static getInstance(): ImapIdleManager {
+    if (!ImapIdleManager.instance) {
+      ImapIdleManager.instance = new ImapIdleManager();
+    }
+    return ImapIdleManager.instance;
+  }
+
+  async startIdleForAccount(config: IdleConnectionConfig): Promise<boolean> {
+    const key = config.accountId;
+    
+    if (this.connections.has(key)) {
+      console.log(`[IMAP IDLE] Account ${key} already has active connection`);
+      return true;
+    }
+
+    try {
+      const connection = new ImapIdleConnection(config);
+      await connection.connect();
+      this.connections.set(key, connection);
+      console.log(`[IMAP IDLE] Started IDLE for account ${key}`);
+      return true;
+    } catch (error) {
+      console.error(`[IMAP IDLE] Failed to start IDLE for account ${key}:`, error);
+      return false;
+    }
+  }
+
+  stopIdleForAccount(accountId: string): void {
+    const connection = this.connections.get(accountId);
+    if (connection) {
+      connection.disconnect();
+      this.connections.delete(accountId);
+      console.log(`[IMAP IDLE] Stopped IDLE for account ${accountId}`);
+    }
+  }
+
+  stopAll(): void {
+    for (const [accountId, connection] of this.connections) {
+      connection.disconnect();
+      console.log(`[IMAP IDLE] Stopped IDLE for account ${accountId}`);
+    }
+    this.connections.clear();
+  }
+
+  isConnected(accountId: string): boolean {
+    return this.connections.has(accountId);
+  }
+
+  getActiveConnections(): string[] {
+    return Array.from(this.connections.keys());
+  }
+}
+
+class ImapIdleConnection {
+  private imap: Imap | null = null;
+  private config: IdleConnectionConfig;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private isConnected: boolean = false;
+  private lastUid: number = 0;
+  private idleTimer: NodeJS.Timeout | null = null;
+  private readonly IDLE_REFRESH_INTERVAL = 25 * 60 * 1000; // 25 minutes (RFC recommends 29 max)
+  private readonly RECONNECT_DELAY = 5000;
+
+  constructor(config: IdleConnectionConfig) {
+    this.config = config;
+  }
+
+  async connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.imap = new Imap({
+        user: this.config.user,
+        password: this.config.password,
+        host: this.config.host,
+        port: this.config.port,
+        tls: this.config.tls,
+        tlsOptions: { rejectUnauthorized: false },
+        authTimeout: 15000,
+        connTimeout: 20000,
+        keepalive: {
+          interval: 10000,
+          idleInterval: 300000,
+          forceNoop: true
+        }
+      });
+
+      this.imap.once("ready", () => {
+        this.isConnected = true;
+        this.openInboxAndIdle()
+          .then(() => resolve())
+          .catch(reject);
+      });
+
+      this.imap.once("error", (err: Error) => {
+        console.error(`[IMAP IDLE] Connection error for ${this.config.accountId}:`, err.message);
+        this.config.onError?.(err);
+        if (!this.isConnected) {
+          reject(err);
+        } else {
+          this.scheduleReconnect();
+        }
+      });
+
+      this.imap.once("end", () => {
+        console.log(`[IMAP IDLE] Connection ended for ${this.config.accountId}`);
+        this.isConnected = false;
+        this.config.onDisconnect?.();
+        this.scheduleReconnect();
+      });
+
+      this.imap.connect();
+    });
+  }
+
+  private async openInboxAndIdle(): Promise<void> {
+    if (!this.imap) return;
+
+    return new Promise((resolve, reject) => {
+      this.imap!.openBox("INBOX", false, (err, box) => {
+        if (err) {
+          return reject(err);
+        }
+
+        this.lastUid = box.uidnext - 1;
+        console.log(`[IMAP IDLE] Inbox opened for ${this.config.accountId}, last UID: ${this.lastUid}`);
+
+        this.imap!.on("mail", (numNewMsgs: number) => {
+          console.log(`[IMAP IDLE] ${numNewMsgs} new message(s) for ${this.config.accountId}`);
+          this.fetchNewEmails();
+        });
+
+        this.startIdleRefresh();
+        resolve();
+      });
+    });
+  }
+
+  private startIdleRefresh(): void {
+    this.clearIdleTimer();
+    this.idleTimer = setInterval(() => {
+      if (this.imap && this.isConnected) {
+        console.log(`[IMAP IDLE] Refreshing IDLE for ${this.config.accountId}`);
+        this.imap.openBox("INBOX", false, () => {});
+      }
+    }, this.IDLE_REFRESH_INTERVAL);
+  }
+
+  private clearIdleTimer(): void {
+    if (this.idleTimer) {
+      clearInterval(this.idleTimer);
+      this.idleTimer = null;
+    }
+  }
+
+  private async fetchNewEmails(): Promise<void> {
+    if (!this.imap || !this.isConnected) return;
+
+    try {
+      const searchCriteria = ["UNSEEN", ["UID", `${this.lastUid + 1}:*`]];
+      
+      this.imap.search(searchCriteria, (err, uids) => {
+        if (err || !uids || uids.length === 0) return;
+
+        const fetch = this.imap!.fetch(uids, { bodies: "", struct: true });
+
+        fetch.on("message", (msg, seqno) => {
+          let uid = 0;
+          
+          msg.once("attributes", (attrs) => {
+            uid = attrs.uid;
+            if (uid > this.lastUid) {
+              this.lastUid = uid;
+            }
+          });
+
+          msg.on("body", (stream) => {
+            let buffer = "";
+            stream.on("data", (chunk) => {
+              buffer += chunk.toString("utf8");
+            });
+            stream.on("end", async () => {
+              try {
+                const parsed = await this.parseEmailBuffer(buffer);
+                if (parsed) {
+                  console.log(`[IMAP IDLE] New email: ${parsed.subject} from ${parsed.fromEmail}`);
+                  await this.config.onNewEmail(parsed);
+                }
+              } catch (parseErr) {
+                console.error("[IMAP IDLE] Error parsing email:", parseErr);
+              }
+            });
+          });
+        });
+
+        fetch.once("error", (fetchErr) => {
+          console.error("[IMAP IDLE] Fetch error:", fetchErr);
+        });
+      });
+    } catch (error) {
+      console.error("[IMAP IDLE] fetchNewEmails error:", error);
+    }
+  }
+
+  private async parseEmailBuffer(buffer: string): Promise<ParsedEmail | null> {
+    try {
+      const parsed: ParsedMail = await simpleParser(buffer);
+
+      const fromAddress = parsed.from?.value?.[0];
+      if (!fromAddress?.address) {
+        return null;
+      }
+
+      const toRecipients = (parsed.to?.value || []).map((addr) => ({
+        name: addr.name || undefined,
+        email: addr.address || "",
+      }));
+
+      const ccRecipients = (parsed.cc?.value || []).map((addr) => ({
+        name: addr.name || undefined,
+        email: addr.address || "",
+      }));
+
+      const bodyText = parsed.text || "";
+      const snippet = bodyText.slice(0, 200).replace(/\s+/g, " ").trim();
+
+      const attachments = (parsed.attachments || []).map((att) => ({
+        filename: att.filename || "unnamed",
+        contentType: att.contentType || "application/octet-stream",
+        size: att.size || 0,
+      }));
+
+      return {
+        messageId: parsed.messageId || `generated-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        subject: parsed.subject,
+        fromName: fromAddress.name || undefined,
+        fromEmail: fromAddress.address,
+        toRecipients,
+        ccRecipients,
+        bodyHtml: parsed.html || undefined,
+        bodyText: bodyText || undefined,
+        snippet: snippet || undefined,
+        receivedAt: parsed.date || new Date(),
+        inReplyTo: parsed.inReplyTo || undefined,
+        attachments,
+        hasAttachments: attachments.length > 0,
+      };
+    } catch (err) {
+      console.error("[IMAP IDLE] parseEmailBuffer error:", err);
+      return null;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) return;
+    
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectTimer = null;
+      console.log(`[IMAP IDLE] Attempting reconnect for ${this.config.accountId}`);
+      try {
+        await this.connect();
+      } catch (error) {
+        console.error(`[IMAP IDLE] Reconnect failed for ${this.config.accountId}:`, error);
+        this.scheduleReconnect();
+      }
+    }, this.RECONNECT_DELAY);
+  }
+
+  disconnect(): void {
+    this.clearIdleTimer();
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.imap) {
+      this.imap.removeAllListeners();
+      this.imap.end();
+      this.imap = null;
+    }
+    this.isConnected = false;
+  }
 }

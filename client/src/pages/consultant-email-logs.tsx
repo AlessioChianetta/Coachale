@@ -27,7 +27,8 @@ import {
   MailX,
   TestTube,
   Sparkles,
-  History
+  History,
+  Inbox
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
@@ -204,6 +205,7 @@ export default function ConsultantEmailLogsPage() {
             tabs={[
               { label: "Configurazione", href: "/consultant/ai-config", icon: Sparkles },
               { label: "Log Email", href: "/consultant/email-logs", icon: History },
+              { label: "Email Hub", href: "/consultant/email-hub", icon: Inbox },
             ]}
           />
 

@@ -4,7 +4,7 @@ import { db } from "../db";
 import * as schema from "@shared/schema";
 import { eq, and, desc, sql, or } from "drizzle-orm";
 import { z } from "zod";
-import { createImapService } from "../services/email-hub/imap-service";
+import { createImapService, ImapIdleManager, ParsedEmail } from "../services/email-hub/imap-service";
 import { createSmtpService } from "../services/email-hub/smtp-service";
 import { classifyEmail, generateEmailDraft, classifyAndGenerateDraft } from "../services/email-hub/email-ai-service";
 
@@ -619,6 +619,194 @@ router.post("/ai-responses/:id/send", async (req: AuthRequest, res) => {
     });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error sending email:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+async function saveEmailToDatabase(email: ParsedEmail, accountId: string, consultantId: string): Promise<void> {
+  const existingEmail = await db
+    .select()
+    .from(schema.hubEmails)
+    .where(eq(schema.hubEmails.messageId, email.messageId))
+    .limit(1);
+
+  if (existingEmail.length > 0) {
+    console.log(`[IMAP IDLE] Email already exists: ${email.messageId}`);
+    return;
+  }
+
+  await db.insert(schema.hubEmails).values({
+    accountId,
+    consultantId,
+    messageId: email.messageId,
+    subject: email.subject,
+    fromName: email.fromName,
+    fromEmail: email.fromEmail,
+    toRecipients: email.toRecipients,
+    ccRecipients: email.ccRecipients,
+    bodyHtml: email.bodyHtml,
+    bodyText: email.bodyText,
+    snippet: email.snippet,
+    direction: "inbound",
+    isRead: false,
+    receivedAt: email.receivedAt,
+    attachments: email.attachments,
+    hasAttachments: email.hasAttachments,
+    inReplyTo: email.inReplyTo,
+    processingStatus: "new",
+  });
+
+  console.log(`[IMAP IDLE] Saved new email: ${email.subject}`);
+}
+
+router.post("/accounts/:id/idle/start", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const accountId = req.params.id;
+
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId)
+        )
+      );
+
+    if (!account) {
+      return res.status(404).json({ success: false, error: "Account not found" });
+    }
+
+    if (!account.imapPassword || !account.imapHost || !account.imapUser) {
+      await db
+        .update(schema.emailAccounts)
+        .set({ syncStatus: "error", syncError: "Missing IMAP credentials" })
+        .where(eq(schema.emailAccounts.id, accountId));
+      return res.status(400).json({ 
+        success: false, 
+        error: "Missing IMAP credentials. Please update the account with valid IMAP settings." 
+      });
+    }
+
+    const idleManager = ImapIdleManager.getInstance();
+
+    if (idleManager.isConnected(accountId)) {
+      return res.json({ success: true, message: "IDLE already active" });
+    }
+
+    console.log(`[IMAP IDLE] Starting connection for ${account.emailAddress} at ${account.imapHost}:${account.imapPort}`);
+
+    const started = await idleManager.startIdleForAccount({
+      host: account.imapHost,
+      port: account.imapPort || 993,
+      user: account.imapUser,
+      password: account.imapPassword,
+      tls: account.imapTls ?? true,
+      accountId,
+      consultantId,
+      onNewEmail: async (email) => {
+        await saveEmailToDatabase(email, accountId, consultantId);
+      },
+      onError: async (error) => {
+        console.error(`[IMAP IDLE] Error for account ${accountId}:`, error.message);
+        await db
+          .update(schema.emailAccounts)
+          .set({ syncStatus: "error", syncError: error.message })
+          .where(eq(schema.emailAccounts.id, accountId));
+      },
+      onDisconnect: async () => {
+        console.log(`[IMAP IDLE] Disconnected from account ${accountId}`);
+        await db
+          .update(schema.emailAccounts)
+          .set({ syncStatus: "idle" })
+          .where(eq(schema.emailAccounts.id, accountId));
+      },
+    });
+
+    if (started) {
+      await db
+        .update(schema.emailAccounts)
+        .set({ syncStatus: "connected", syncError: null, lastSyncAt: new Date() })
+        .where(eq(schema.emailAccounts.id, accountId));
+
+      res.json({ success: true, message: "IDLE started successfully" });
+    } else {
+      await db
+        .update(schema.emailAccounts)
+        .set({ syncStatus: "error", syncError: "Failed to connect" })
+        .where(eq(schema.emailAccounts.id, accountId));
+      res.status(500).json({ success: false, error: "Failed to start IDLE connection" });
+    }
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error starting IDLE:", error);
+    const accountId = req.params.id;
+    await db
+      .update(schema.emailAccounts)
+      .set({ syncStatus: "error", syncError: error.message })
+      .where(eq(schema.emailAccounts.id, accountId));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/accounts/:id/idle/stop", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const accountId = req.params.id;
+
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId)
+        )
+      );
+
+    if (!account) {
+      return res.status(404).json({ success: false, error: "Account not found" });
+    }
+
+    const idleManager = ImapIdleManager.getInstance();
+    idleManager.stopIdleForAccount(accountId);
+
+    await db
+      .update(schema.emailAccounts)
+      .set({ syncStatus: "idle" })
+      .where(eq(schema.emailAccounts.id, accountId));
+
+    res.json({ success: true, message: "IDLE stopped successfully" });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error stopping IDLE:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/idle/status", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const accounts = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(eq(schema.emailAccounts.consultantId, consultantId));
+
+    const idleManager = ImapIdleManager.getInstance();
+    const activeConnections = idleManager.getActiveConnections();
+
+    const status = accounts.map((acc) => ({
+      accountId: acc.id,
+      displayName: acc.displayName,
+      emailAddress: acc.emailAddress,
+      isIdleActive: activeConnections.includes(acc.id),
+      syncStatus: acc.syncStatus,
+      lastSyncAt: acc.lastSyncAt,
+    }));
+
+    res.json({ success: true, data: status });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error getting IDLE status:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

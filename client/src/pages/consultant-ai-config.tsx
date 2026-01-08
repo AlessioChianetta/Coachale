@@ -2313,6 +2313,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
             tabs={[
               { label: "Configurazione", href: "/consultant/ai-config", icon: Sparkles },
               { label: "Log Email", href: "/consultant/email-logs", icon: History },
+              { label: "Email Hub", href: "/consultant/email-hub", icon: Inbox },
             ]}
           />
 
