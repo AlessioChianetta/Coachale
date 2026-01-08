@@ -74,6 +74,8 @@ import {
   Forward,
   MoreVertical,
   PenSquare,
+  Archive,
+  Download,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -161,7 +163,7 @@ type InboxFilter = {
   processingStatus: string | null;
 };
 
-type FolderType = "inbox" | "drafts" | "sent" | "ai-drafts";
+type FolderType = "inbox" | "drafts" | "sent" | "ai-drafts" | "starred";
 
 const defaultFormData: AccountFormData = {
   displayName: "",
@@ -233,12 +235,6 @@ export default function ConsultantEmailHub() {
     }
   }, [accounts]);
 
-  useEffect(() => {
-    setInboxFilter(prev => ({
-      ...prev,
-      accountId: selectedAccountId,
-    }));
-  }, [selectedAccountId]);
 
   const buildInboxQueryParams = () => {
     const params = new URLSearchParams();
@@ -410,6 +406,44 @@ export default function ConsultantEmailHub() {
     },
     onError: (error: any) => {
       toast({ title: "Connessione fallita", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { data: importPreviewData } = useQuery({
+    queryKey: ["/api/email-hub/accounts/import-preview"],
+    queryFn: async () => {
+      const response = await fetch("/api/email-hub/accounts/import-preview", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to check import preview");
+      return response.json();
+    },
+  });
+
+  const importPreview = importPreviewData?.data;
+
+  const importAccountsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/email-hub/accounts/import", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to import accounts");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts/import-preview"] });
+      toast({ 
+        title: "Importazione completata", 
+        description: data.data?.message || `${data.data?.imported || 0} account importati`
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore importazione", description: error.message, variant: "destructive" });
     },
   });
 
@@ -636,17 +670,21 @@ export default function ConsultantEmailHub() {
     }
   };
 
-  const handleFolderClick = (folder: FolderType, accountId?: string) => {
+  const handleFolderClick = (folder: FolderType, accountId?: string | null) => {
     setSelectedFolder(folder);
-    if (accountId) {
-      setSelectedAccountId(accountId);
-    }
+    setSelectedAccountId(accountId || null);
     setSelectedEmail(null);
     setCurrentPage(1);
     
-    if (folder === "inbox") {
-      setInboxFilter(prev => ({ ...prev, readStatus: "all", processingStatus: null }));
-    } else if (folder === "ai-drafts") {
+    setInboxFilter(prev => ({ 
+      ...prev, 
+      readStatus: "all", 
+      processingStatus: null,
+      starred: folder === "starred",
+      accountId: accountId || null
+    }));
+    
+    if (folder === "ai-drafts") {
       refetchDrafts();
     }
   };
@@ -686,9 +724,12 @@ export default function ConsultantEmailHub() {
       case "drafts": return "Bozze";
       case "sent": return "Inviata";
       case "ai-drafts": return "Bozze AI";
+      case "starred": return "Importante";
       default: return "Posta in arrivo";
     }
   };
+
+  const totalUnreadCount = accounts.reduce((sum, acc) => sum + (acc.unreadCount || 0), 0);
 
   const renderLeftSidebar = () => (
     <div className="w-[220px] min-w-[220px] bg-slate-900 text-white flex flex-col h-full">
@@ -704,6 +745,88 @@ export default function ConsultantEmailHub() {
       
       <ScrollArea className="flex-1">
         <div className="px-2 pb-4">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handleFolderClick("inbox", null)}
+              className={`flex-1 flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                selectedFolder === "inbox" && !selectedAccountId
+                  ? "bg-violet-600/20 text-violet-300" 
+                  : "hover:bg-white/5 text-slate-300"
+              }`}
+            >
+              <Inbox className="h-4 w-4" />
+              <span className="text-sm flex-1 text-left">Posta in arrivo</span>
+              {totalUnreadCount > 0 && (
+                <Badge className="h-5 px-1.5 text-xs bg-violet-600">{totalUnreadCount}</Badge>
+              )}
+            </button>
+            <button
+              className="h-8 w-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              onClick={(e) => { e.stopPropagation(); refetchInbox(); }}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <button
+            onClick={() => handleFolderClick("drafts", null)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              selectedFolder === "drafts" && !selectedAccountId
+                ? "bg-violet-600/20 text-violet-300" 
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Bozze</span>
+          </button>
+
+          <button
+            onClick={() => handleFolderClick("sent", null)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              selectedFolder === "sent" && !selectedAccountId
+                ? "bg-violet-600/20 text-violet-300" 
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <Send className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Inviata</span>
+          </button>
+
+          <button
+            onClick={() => handleFolderClick("starred", null)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              selectedFolder === "starred"
+                ? "bg-violet-600/20 text-violet-300" 
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <Star className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Importante</span>
+          </button>
+
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-slate-400 text-sm">
+                <ChevronDown className="h-3 w-3" />
+                <span className="flex-1 text-left">Altro</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="ml-5 space-y-0.5">
+                <button className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-white/5 text-slate-400 text-sm">
+                  <Archive className="h-4 w-4" />
+                  <span className="flex-1 text-left">Archivio</span>
+                </button>
+                <button className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-white/5 text-slate-400 text-sm">
+                  <Trash2 className="h-4 w-4" />
+                  <span className="flex-1 text-left">Cestino</span>
+                </button>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Separator className="my-3 bg-slate-700" />
+
           {pendingDrafts.length > 0 && (
             <button
               onClick={() => handleFolderClick("ai-drafts")}
@@ -721,109 +844,211 @@ export default function ConsultantEmailHub() {
             </button>
           )}
 
-          {accounts.map((account) => (
-            <Collapsible
-              key={account.id}
-              open={expandedAccounts.has(account.id)}
-              onOpenChange={() => toggleAccountExpanded(account.id)}
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-slate-400 text-sm">
+                <ChevronDown className="h-3 w-3" />
+                <span className="flex-1 text-left">Newsletter</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <p className="text-xs text-slate-500 px-3 py-2">Nessuna newsletter</p>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Separator className="my-3 bg-slate-700" />
+
+          <div className="flex items-center justify-between px-3 py-1">
+            <span className="text-xs text-slate-500 uppercase tracking-wider">Account</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 text-slate-500 hover:text-white"
+              onClick={handleOpenAddAccount}
             >
-              <div className="flex items-center gap-1 group">
-                <CollapsibleTrigger asChild>
-                  <button className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-left">
-                    <ChevronDown className={`h-3 w-3 transition-transform text-slate-400 ${
-                      expandedAccounts.has(account.id) ? "" : "-rotate-90"
-                    }`} />
-                    <Mail className="h-4 w-4 text-slate-400" />
-                    <span className="text-sm truncate flex-1 text-slate-200">{account.displayName}</span>
-                    {account.syncStatus === "connected" && (
-                      <Wifi className="h-3 w-3 text-emerald-400" />
-                    )}
-                  </button>
-                </CollapsibleTrigger>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white hover:bg-white/10"
-                    >
-                      <Settings className="h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => handleOpenEditAccount(account)}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Modifica
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        if (account.syncStatus === "connected") {
-                          stopIdleMutation.mutate(account.id);
-                        } else {
-                          startIdleMutation.mutate(account.id);
-                        }
-                      }}
-                    >
-                      <Wifi className="h-4 w-4 mr-2" />
-                      {account.syncStatus === "connected" ? "Disattiva Sync" : "Attiva Sync Live"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-destructive"
-                      onClick={() => {
-                        if (confirm("Sei sicuro di voler eliminare questo account?")) {
-                          deleteAccountMutation.mutate(account.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Elimina
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+
+          {accounts.length === 0 ? (
+            <div className="px-3 py-4 text-center">
+              <Mail className="h-8 w-8 mx-auto text-slate-600 mb-2" />
+              <p className="text-xs text-slate-500 mb-2">Nessun account</p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs border-slate-600 text-slate-300 hover:bg-slate-800"
+                  onClick={handleOpenAddAccount}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Aggiungi
+                </Button>
+                {importPreview?.available && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs border-violet-600 text-violet-300 hover:bg-violet-800/30"
+                    onClick={() => importAccountsMutation.mutate()}
+                    disabled={importAccountsMutation.isPending}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    {importAccountsMutation.isPending ? "Importando..." : `Importa (${importPreview.importable})`}
+                  </Button>
+                )}
               </div>
-              
-              <CollapsibleContent>
-                <div className="ml-5 space-y-0.5">
-                  <button
-                    onClick={() => handleFolderClick("inbox", account.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                      selectedFolder === "inbox" && selectedAccountId === account.id
-                        ? "bg-violet-600/20 text-violet-300"
-                        : "hover:bg-white/5 text-slate-400"
-                    }`}
-                  >
-                    <Inbox className="h-4 w-4" />
-                    <span className="flex-1 text-left">Inbox</span>
-                    {(account.unreadCount || 0) > 0 && (
-                      <Badge className="h-5 px-1.5 text-xs bg-violet-600">{account.unreadCount}</Badge>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleFolderClick("drafts", account.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                      selectedFolder === "drafts" && selectedAccountId === account.id
-                        ? "bg-violet-600/20 text-violet-300"
-                        : "hover:bg-white/5 text-slate-400"
-                    }`}
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="flex-1 text-left">Bozze</span>
-                  </button>
-                  <button
-                    onClick={() => handleFolderClick("sent", account.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                      selectedFolder === "sent" && selectedAccountId === account.id
-                        ? "bg-violet-600/20 text-violet-300"
-                        : "hover:bg-white/5 text-slate-400"
-                    }`}
-                  >
-                    <Send className="h-4 w-4" />
-                    <span className="flex-1 text-left">Inviata</span>
-                  </button>
+            </div>
+          ) : (
+            accounts.map((account) => (
+              <Collapsible
+                key={account.id}
+                open={expandedAccounts.has(account.id)}
+                onOpenChange={() => toggleAccountExpanded(account.id)}
+              >
+                <div className="flex items-center gap-1 group">
+                  <CollapsibleTrigger asChild>
+                    <button className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-left">
+                      <ChevronDown className={`h-3 w-3 transition-transform text-slate-400 ${
+                        expandedAccounts.has(account.id) ? "" : "-rotate-90"
+                      }`} />
+                      <Mail className="h-4 w-4 text-slate-400" />
+                      <span className="text-sm truncate flex-1 text-slate-200">{account.displayName}</span>
+                      {account.syncStatus === "connected" && (
+                        <Wifi className="h-3 w-3 text-emerald-400" />
+                      )}
+                    </button>
+                  </CollapsibleTrigger>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white hover:bg-white/10"
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => handleOpenEditAccount(account)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Modifica
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          if (account.syncStatus === "connected") {
+                            stopIdleMutation.mutate(account.id);
+                          } else {
+                            startIdleMutation.mutate(account.id);
+                          }
+                        }}
+                      >
+                        <Wifi className="h-4 w-4 mr-2" />
+                        {account.syncStatus === "connected" ? "Disattiva Sync" : "Attiva Sync Live"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={() => {
+                          if (confirm("Sei sicuro di voler eliminare questo account?")) {
+                            deleteAccountMutation.mutate(account.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Elimina
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
+                
+                <CollapsibleContent>
+                  <div className="ml-5 space-y-0.5">
+                    <button
+                      onClick={() => handleFolderClick("inbox", account.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                        selectedFolder === "inbox" && selectedAccountId === account.id
+                          ? "bg-violet-600/20 text-violet-300"
+                          : "hover:bg-white/5 text-slate-400"
+                      }`}
+                    >
+                      <Inbox className="h-4 w-4" />
+                      <span className="flex-1 text-left">Inbox</span>
+                      {(account.unreadCount || 0) > 0 && (
+                        <Badge className="h-5 px-1.5 text-xs bg-violet-600">{account.unreadCount}</Badge>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleFolderClick("drafts", account.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                        selectedFolder === "drafts" && selectedAccountId === account.id
+                          ? "bg-violet-600/20 text-violet-300"
+                          : "hover:bg-white/5 text-slate-400"
+                      }`}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="flex-1 text-left">Bozze</span>
+                    </button>
+                    <button
+                      onClick={() => handleFolderClick("sent", account.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                        selectedFolder === "sent" && selectedAccountId === account.id
+                          ? "bg-violet-600/20 text-violet-300"
+                          : "hover:bg-white/5 text-slate-400"
+                      }`}
+                    >
+                      <Send className="h-4 w-4" />
+                      <span className="flex-1 text-left">Inviata</span>
+                    </button>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))
+          )}
+
+          <Separator className="my-3 bg-slate-700" />
+
+          <Collapsible>
+            <div className="flex items-center justify-between px-3 py-1 group">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider hover:text-slate-300">
+                  <ChevronDown className="h-3 w-3" />
+                  Cartelle
+                </button>
+              </CollapsibleTrigger>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                <Button variant="ghost" size="icon" className="h-5 w-5 text-slate-500 hover:text-white">
+                  <Plus className="h-3 w-3" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-5 w-5 text-slate-500 hover:text-white">
+                  <Settings className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            <CollapsibleContent>
+              <p className="text-xs text-slate-500 px-3 py-2">Nessuna cartella personalizzata</p>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible>
+            <div className="flex items-center justify-between px-3 py-1 group">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider hover:text-slate-300">
+                  <ChevronDown className="h-3 w-3" />
+                  Etichette
+                </button>
+              </CollapsibleTrigger>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                <Button variant="ghost" size="icon" className="h-5 w-5 text-slate-500 hover:text-white">
+                  <Plus className="h-3 w-3" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-5 w-5 text-slate-500 hover:text-white">
+                  <Settings className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            <CollapsibleContent>
+              <p className="text-xs text-slate-500 px-3 py-2">Nessuna etichetta</p>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </ScrollArea>
       

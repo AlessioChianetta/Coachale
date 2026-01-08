@@ -129,6 +129,171 @@ router.put("/accounts/:id", async (req: AuthRequest, res) => {
   }
 });
 
+router.get("/accounts/import-preview", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const existingSmtpSettings = await db
+      .select()
+      .from(schema.consultantSmtpSettings)
+      .where(eq(schema.consultantSmtpSettings.consultantId, consultantId));
+    
+    if (!existingSmtpSettings.length) {
+      return res.json({ 
+        success: true, 
+        data: { 
+          available: false, 
+          message: "Nessuna configurazione email esistente trovata" 
+        } 
+      });
+    }
+    
+    const existingAccounts = await db
+      .select({ emailAddress: schema.emailAccounts.emailAddress })
+      .from(schema.emailAccounts)
+      .where(eq(schema.emailAccounts.consultantId, consultantId));
+    
+    const existingEmails = new Set(existingAccounts.map(a => a.emailAddress.toLowerCase()));
+    
+    const importableSettings = existingSmtpSettings.filter(
+      s => !existingEmails.has(s.fromEmail.toLowerCase())
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        available: importableSettings.length > 0,
+        total: existingSmtpSettings.length,
+        importable: importableSettings.length,
+        alreadyImported: existingSmtpSettings.length - importableSettings.length,
+        settings: importableSettings.map(s => ({
+          id: s.id,
+          fromEmail: s.fromEmail,
+          fromName: s.fromName,
+          smtpHost: s.smtpHost,
+          accountReference: s.accountReference,
+        })),
+      },
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error checking import preview:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/accounts/import", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const existingSmtpSettings = await db
+      .select()
+      .from(schema.consultantSmtpSettings)
+      .where(eq(schema.consultantSmtpSettings.consultantId, consultantId));
+    
+    if (!existingSmtpSettings.length) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Nessuna configurazione email esistente trovata" 
+      });
+    }
+    
+    const existingAccounts = await db
+      .select({ emailAddress: schema.emailAccounts.emailAddress })
+      .from(schema.emailAccounts)
+      .where(eq(schema.emailAccounts.consultantId, consultantId));
+    
+    const existingEmails = new Set(existingAccounts.map(a => a.emailAddress.toLowerCase()));
+    
+    const settingsToImport = existingSmtpSettings.filter(
+      s => !existingEmails.has(s.fromEmail.toLowerCase())
+    );
+    
+    if (!settingsToImport.length) {
+      return res.json({ 
+        success: true, 
+        data: { imported: 0, message: "Tutte le configurazioni sono già state importate" }
+      });
+    }
+    
+    const guessImapFromSmtp = (smtpHost: string): { host: string; port: number } => {
+      const hostLower = smtpHost.toLowerCase();
+      if (hostLower.includes("gmail") || hostLower.includes("google")) {
+        return { host: "imap.gmail.com", port: 993 };
+      }
+      if (hostLower.includes("outlook") || hostLower.includes("office365") || hostLower.includes("microsoft")) {
+        return { host: "outlook.office365.com", port: 993 };
+      }
+      if (hostLower.includes("yahoo")) {
+        return { host: "imap.mail.yahoo.com", port: 993 };
+      }
+      return { host: smtpHost.replace(/^smtp\./, "imap."), port: 993 };
+    };
+    
+    const mapTone = (tone: string | null): "formal" | "friendly" | "professional" => {
+      switch (tone) {
+        case "formale": return "formal";
+        case "amichevole": return "friendly";
+        case "professionale":
+        case "motivazionale": return "professional";
+        default: return "formal";
+      }
+    };
+    
+    const importedAccounts = [];
+    
+    for (const settings of settingsToImport) {
+      const imap = guessImapFromSmtp(settings.smtpHost);
+      
+      try {
+        const [account] = await db
+          .insert(schema.emailAccounts)
+          .values({
+            consultantId,
+            provider: "imap",
+            displayName: settings.fromName || settings.fromEmail.split("@")[0],
+            emailAddress: settings.fromEmail,
+            imapHost: imap.host,
+            imapPort: imap.port,
+            imapUser: settings.smtpUser,
+            imapPassword: settings.smtpPassword,
+            imapTls: true,
+            smtpHost: settings.smtpHost,
+            smtpPort: settings.smtpPort,
+            smtpUser: settings.smtpUser,
+            smtpPassword: settings.smtpPassword,
+            smtpTls: settings.smtpSecure,
+            aiTone: mapTone(settings.emailTone),
+            signature: settings.emailSignature,
+            autoReplyMode: "review",
+            confidenceThreshold: 0.8,
+            syncStatus: "idle",
+          })
+          .returning();
+        
+        importedAccounts.push({
+          id: account.id,
+          emailAddress: account.emailAddress,
+          displayName: account.displayName,
+        });
+      } catch (err: any) {
+        console.error(`[EMAIL-HUB] Error importing ${settings.fromEmail}:`, err);
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        imported: importedAccounts.length,
+        accounts: importedAccounts,
+        message: `${importedAccounts.length} account importati con successo`,
+      },
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error importing accounts:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.delete("/accounts/:id", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
