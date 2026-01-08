@@ -56,8 +56,11 @@ import {
   RefreshCw,
   RotateCcw,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Inbox,
+  ArrowRight
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -426,6 +429,31 @@ function EmailJourneyTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Email Hub Quick Access */}
+      <Card className="border border-indigo-200 dark:border-indigo-700 shadow-sm bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30">
+        <CardContent className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
+              <Inbox className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-indigo-900 dark:text-indigo-100">Email Hub</h3>
+              <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                Gestisci tutti i tuoi account email e risposte AI in un unico posto
+              </p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            className="border-indigo-300 hover:bg-indigo-100 dark:border-indigo-600 dark:hover:bg-indigo-900"
+            onClick={() => window.location.href = '/consultant/email-hub'}
+          >
+            Apri Email Hub
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Improved Table */}
       <Card className="border-0 shadow-lg">

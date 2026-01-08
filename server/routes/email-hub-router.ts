@@ -6,6 +6,7 @@ import { eq, and, desc, sql, or } from "drizzle-orm";
 import { z } from "zod";
 import { createImapService } from "../services/email-hub/imap-service";
 import { createSmtpService } from "../services/email-hub/smtp-service";
+import { classifyEmail, generateEmailDraft, classifyAndGenerateDraft } from "../services/email-hub/email-ai-service";
 
 const router = Router();
 
@@ -381,22 +382,49 @@ router.post("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
       return res.status(404).json({ success: false, error: "Email not found" });
     }
     
-    const draftSubject = email.subject?.startsWith("Re:") 
-      ? email.subject 
-      : `Re: ${email.subject || "No Subject"}`;
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(eq(schema.emailAccounts.id, email.accountId));
     
-    const draftBodyText = `Thank you for your email. I will review it and respond shortly.`;
-    const draftBodyHtml = `<p>${draftBodyText}</p>`;
+    if (!account) {
+      return res.status(404).json({ success: false, error: "Email account not found" });
+    }
+    
+    const accountSettings = {
+      aiTone: (account.aiTone as "formal" | "friendly" | "professional") || "professional",
+      signature: account.signature,
+      confidenceThreshold: account.confidenceThreshold || 0.8,
+    };
+    
+    const originalEmail = {
+      subject: email.subject,
+      fromName: email.fromName,
+      fromEmail: email.fromEmail,
+      bodyText: email.bodyText,
+      bodyHtml: email.bodyHtml,
+    };
+    
+    const draft = await generateEmailDraft(
+      emailId,
+      originalEmail,
+      accountSettings,
+      consultantId
+    );
+    
+    const classification = await classifyEmail(emailId, consultantId);
     
     const [response] = await db
       .insert(schema.emailHubAiResponses)
       .values({
         emailId,
-        draftSubject,
-        draftBodyHtml,
-        draftBodyText,
-        confidence: 0.85,
-        modelUsed: "placeholder",
+        draftSubject: draft.subject,
+        draftBodyHtml: draft.bodyHtml,
+        draftBodyText: draft.bodyText,
+        confidence: draft.confidence,
+        modelUsed: draft.modelUsed,
+        tokensUsed: draft.tokensUsed,
+        reasoning: classification as any,
         status: "draft",
       })
       .returning();
@@ -406,7 +434,7 @@ router.post("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
       .set({ processingStatus: "draft_generated", updatedAt: new Date() })
       .where(eq(schema.hubEmails.id, emailId));
     
-    res.status(201).json({ success: true, data: response });
+    res.status(201).json({ success: true, data: response, classification });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error generating AI response:", error);
     res.status(500).json({ success: false, error: error.message });
