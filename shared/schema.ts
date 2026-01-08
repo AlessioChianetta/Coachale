@@ -7263,3 +7263,175 @@ export const insertReferralLandingConfigSchema = createInsertSchema(referralLand
   createdAt: true,
   updatedAt: true,
 });
+
+// ============================================
+// EMAIL HUB - Tables for unified inbox system
+// ============================================
+
+// Email Accounts - Connected email accounts
+export const emailAccounts = pgTable("email_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Identification
+  provider: varchar("provider", { length: 20 }).notNull().default("imap"),
+  displayName: varchar("display_name", { length: 100 }),
+  emailAddress: varchar("email_address", { length: 255 }).notNull(),
+  
+  // IMAP Settings
+  imapHost: varchar("imap_host", { length: 255 }),
+  imapPort: integer("imap_port").default(993),
+  imapUser: varchar("imap_user", { length: 255 }),
+  imapPassword: text("imap_password"),
+  imapTls: boolean("imap_tls").default(true),
+  
+  // SMTP Settings
+  smtpHost: varchar("smtp_host", { length: 255 }),
+  smtpPort: integer("smtp_port").default(587),
+  smtpUser: varchar("smtp_user", { length: 255 }),
+  smtpPassword: text("smtp_password"),
+  smtpTls: boolean("smtp_tls").default(true),
+  
+  // AI Configuration
+  autoReplyMode: varchar("auto_reply_mode", { length: 20 }).notNull().default("review"),
+  confidenceThreshold: real("confidence_threshold").default(0.8),
+  aiTone: varchar("ai_tone", { length: 20 }).default("formal"),
+  signature: text("signature"),
+  
+  // Sync Status
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  syncStatus: varchar("sync_status", { length: 20 }).default("idle"),
+  syncError: text("sync_error"),
+  
+  // State
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_email_accounts_consultant").on(table.consultantId),
+  activeIdx: index("idx_email_accounts_active").on(table.isActive),
+  uniqueConsultantEmail: unique().on(table.consultantId, table.emailAddress),
+}));
+
+export type EmailAccount = typeof emailAccounts.$inferSelect;
+export type InsertEmailAccount = typeof emailAccounts.$inferInsert;
+
+// Hub Emails - Email messages
+export const hubEmails = pgTable("hub_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountId: varchar("account_id").notNull().references(() => emailAccounts.id, { onDelete: "cascade" }),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id),
+  
+  // Message Identity
+  messageId: varchar("message_id", { length: 500 }).unique().notNull(),
+  threadId: varchar("thread_id", { length: 255 }),
+  inReplyTo: varchar("in_reply_to", { length: 500 }),
+  
+  // Headers
+  subject: text("subject"),
+  fromName: varchar("from_name", { length: 255 }),
+  fromEmail: varchar("from_email", { length: 255 }).notNull(),
+  toRecipients: jsonb("to_recipients").notNull().default([]),
+  ccRecipients: jsonb("cc_recipients").default([]),
+  bccRecipients: jsonb("bcc_recipients").default([]),
+  replyTo: varchar("reply_to", { length: 255 }),
+  
+  // Content
+  bodyHtml: text("body_html"),
+  bodyText: text("body_text"),
+  snippet: varchar("snippet", { length: 500 }),
+  
+  // Attachments
+  attachments: jsonb("attachments").default([]),
+  hasAttachments: boolean("has_attachments").default(false),
+  
+  // Direction & Status
+  direction: varchar("direction", { length: 10 }).notNull().$type<"inbound" | "outbound">(),
+  isRead: boolean("is_read").default(false),
+  isStarred: boolean("is_starred").default(false),
+  isArchived: boolean("is_archived").default(false),
+  
+  // AI Processing
+  aiClassification: jsonb("ai_classification").$type<{
+    intent?: string;
+    urgency?: "high" | "medium" | "low";
+    sentiment?: "positive" | "neutral" | "negative";
+    category?: string;
+    suggestedAction?: string;
+  }>(),
+  aiConfidence: real("ai_confidence"),
+  processingStatus: varchar("processing_status", { length: 30 }).notNull().default("new").$type<
+    "new" | "processing" | "classified" | "draft_generated" | "reviewed" | "sent" | "ignored"
+  >(),
+  
+  // Timestamps
+  receivedAt: timestamp("received_at", { withTimezone: true }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  accountIdx: index("idx_hub_emails_account").on(table.accountId),
+  consultantIdx: index("idx_hub_emails_consultant").on(table.consultantId),
+  threadIdx: index("idx_hub_emails_thread").on(table.threadId),
+  statusIdx: index("idx_hub_emails_status").on(table.processingStatus),
+  receivedIdx: index("idx_hub_emails_received").on(table.receivedAt),
+}));
+
+export type HubEmail = typeof hubEmails.$inferSelect;
+export type InsertHubEmail = typeof hubEmails.$inferInsert;
+
+// Email Hub AI Responses - AI-generated drafts
+export const emailHubAiResponses = pgTable("email_hub_ai_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  emailId: varchar("email_id").notNull().references(() => hubEmails.id, { onDelete: "cascade" }),
+  
+  // Draft Content
+  draftSubject: text("draft_subject"),
+  draftBodyHtml: text("draft_body_html"),
+  draftBodyText: text("draft_body_text"),
+  
+  // AI Metadata
+  reasoning: jsonb("reasoning"),
+  confidence: real("confidence"),
+  modelUsed: varchar("model_used", { length: 50 }),
+  tokensUsed: integer("tokens_used"),
+  
+  // Status
+  status: varchar("status", { length: 30 }).notNull().default("draft").$type<
+    "draft" | "approved" | "edited" | "rejected" | "sent"
+  >(),
+  
+  // Edit tracking
+  originalDraft: text("original_draft"),
+  editedBy: varchar("edited_by").references(() => users.id),
+  editNotes: text("edit_notes"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+}, (table) => ({
+  emailIdx: index("idx_hub_ai_responses_email").on(table.emailId),
+  statusIdx: index("idx_hub_ai_responses_status").on(table.status),
+}));
+
+export type EmailHubAiResponse = typeof emailHubAiResponses.$inferSelect;
+export type InsertEmailHubAiResponse = typeof emailHubAiResponses.$inferInsert;
+
+// Insert schemas for Email Hub
+export const insertEmailAccountSchema = createInsertSchema(emailAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertHubEmailSchema = createInsertSchema(hubEmails).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailHubAiResponseSchema = createInsertSchema(emailHubAiResponses).omit({
+  id: true,
+  createdAt: true,
+});
