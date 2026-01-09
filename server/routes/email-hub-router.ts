@@ -990,6 +990,244 @@ router.put("/emails/:id/star", async (req: AuthRequest, res) => {
   }
 });
 
+// ============================================
+// MANUAL EMAIL COMPOSITION ENDPOINTS
+// ============================================
+
+// Compose new email (not a reply)
+router.post("/compose", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { accountId, to, cc, bcc, subject, bodyHtml, bodyText } = req.body;
+
+    if (!accountId || !to || !subject) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Account, destinatario e oggetto sono obbligatori" 
+      });
+    }
+
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId)
+        )
+      );
+
+    if (!account) {
+      return res.status(404).json({ success: false, error: "Account email non trovato" });
+    }
+
+    if (!account.smtpHost || !account.smtpUser || !account.smtpPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "SMTP non configurato per questo account" 
+      });
+    }
+
+    const smtpService = createSmtpService({
+      host: account.smtpHost,
+      port: account.smtpPort || 587,
+      user: account.smtpUser,
+      password: account.smtpPassword,
+      tls: account.smtpTls ?? true,
+    });
+
+    const toArray = Array.isArray(to) ? to : [to];
+    const ccArray = cc ? (Array.isArray(cc) ? cc : [cc]) : [];
+    const bccArray = bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : [];
+
+    const sendResult = await smtpService.sendEmail({
+      from: account.emailAddress,
+      fromName: account.displayName || undefined,
+      to: toArray,
+      cc: ccArray.length > 0 ? ccArray : undefined,
+      bcc: bccArray.length > 0 ? bccArray : undefined,
+      subject,
+      html: bodyHtml || undefined,
+      text: bodyText || undefined,
+    });
+
+    if (!sendResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: `Invio fallito: ${sendResult.error}`,
+      });
+    }
+
+    const [savedEmail] = await db
+      .insert(schema.hubEmails)
+      .values({
+        accountId,
+        consultantId,
+        messageId: sendResult.messageId || `manual-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        subject,
+        fromName: account.displayName,
+        fromEmail: account.emailAddress,
+        toRecipients: toArray,
+        ccRecipients: ccArray,
+        bccRecipients: bccArray,
+        bodyHtml,
+        bodyText,
+        snippet: bodyText?.substring(0, 200) || "",
+        direction: "outbound",
+        folder: "sent",
+        isRead: true,
+        sentAt: new Date(),
+        processingStatus: "sent",
+      })
+      .returning();
+
+    console.log(`[EMAIL-HUB] Composed and sent new email to ${toArray.join(", ")}`);
+
+    res.json({
+      success: true,
+      message: "Email inviata con successo",
+      data: savedEmail,
+      messageId: sendResult.messageId,
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error composing email:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Reply to an email directly (without AI draft)
+router.post("/reply", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { emailId, bodyHtml, bodyText, replyAll } = req.body;
+
+    if (!emailId || (!bodyHtml && !bodyText)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Email ID e contenuto sono obbligatori" 
+      });
+    }
+
+    const [originalEmail] = await db
+      .select()
+      .from(schema.hubEmails)
+      .where(
+        and(
+          eq(schema.hubEmails.id, emailId),
+          eq(schema.hubEmails.consultantId, consultantId)
+        )
+      );
+
+    if (!originalEmail) {
+      return res.status(404).json({ success: false, error: "Email originale non trovata" });
+    }
+
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          eq(schema.emailAccounts.id, originalEmail.accountId),
+          eq(schema.emailAccounts.consultantId, consultantId)
+        )
+      );
+
+    if (!account) {
+      return res.status(404).json({ success: false, error: "Account email non trovato" });
+    }
+
+    if (!account.smtpHost || !account.smtpUser || !account.smtpPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "SMTP non configurato per questo account" 
+      });
+    }
+
+    const smtpService = createSmtpService({
+      host: account.smtpHost,
+      port: account.smtpPort || 587,
+      user: account.smtpUser,
+      password: account.smtpPassword,
+      tls: account.smtpTls ?? true,
+    });
+
+    let toRecipients = [originalEmail.fromEmail];
+    let ccRecipients: string[] = [];
+    
+    if (replyAll) {
+      const originalTo = (originalEmail.toRecipients as string[]) || [];
+      const originalCc = (originalEmail.ccRecipients as string[]) || [];
+      
+      toRecipients = [originalEmail.fromEmail, ...originalTo.filter(e => e !== account.emailAddress)];
+      ccRecipients = originalCc.filter(e => e !== account.emailAddress);
+    }
+
+    const replySubject = originalEmail.subject?.startsWith("Re: ") 
+      ? originalEmail.subject 
+      : `Re: ${originalEmail.subject || "(Nessun oggetto)"}`;
+
+    const sendResult = await smtpService.sendEmail({
+      from: account.emailAddress,
+      fromName: account.displayName || undefined,
+      to: toRecipients,
+      cc: ccRecipients.length > 0 ? ccRecipients : undefined,
+      subject: replySubject,
+      html: bodyHtml || undefined,
+      text: bodyText || undefined,
+      inReplyTo: originalEmail.messageId,
+      references: originalEmail.messageId,
+    });
+
+    if (!sendResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: `Invio fallito: ${sendResult.error}`,
+      });
+    }
+
+    const [savedReply] = await db
+      .insert(schema.hubEmails)
+      .values({
+        accountId: originalEmail.accountId,
+        consultantId,
+        messageId: sendResult.messageId || `reply-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        threadId: originalEmail.threadId || originalEmail.messageId,
+        inReplyTo: originalEmail.messageId,
+        subject: replySubject,
+        fromName: account.displayName,
+        fromEmail: account.emailAddress,
+        toRecipients,
+        ccRecipients,
+        bodyHtml,
+        bodyText,
+        snippet: bodyText?.substring(0, 200) || "",
+        direction: "outbound",
+        folder: "sent",
+        isRead: true,
+        sentAt: new Date(),
+        processingStatus: "sent",
+      })
+      .returning();
+
+    await db
+      .update(schema.hubEmails)
+      .set({ processingStatus: "sent", updatedAt: new Date() })
+      .where(eq(schema.hubEmails.id, emailId));
+
+    console.log(`[EMAIL-HUB] Sent reply to ${originalEmail.fromEmail}`);
+
+    res.json({
+      success: true,
+      message: "Risposta inviata con successo",
+      data: savedReply,
+      messageId: sendResult.messageId,
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error sending reply:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
