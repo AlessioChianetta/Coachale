@@ -1492,6 +1492,44 @@ async function evaluateConversation(
 
   const aiDecisionRule = applicableRules.find(r => r.triggerType === 'ai_decision');
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRE-AI FILTER: Skip AI call if too early (based on "Tempo minimo attesa")
+  // This optimization prevents unnecessary AI calls when it's clearly too soon
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Get minimum wait time from consultant's rules (use minimum hoursWithoutReply across all rules)
+  const allConditions = applicableRules
+    .map(r => r.triggerCondition as Record<string, any> | null)
+    .filter(c => c && typeof c.hoursWithoutReply === 'number');
+  
+  // Default minimum: 0.5 hours (30 minutes) if no rules configured
+  const minWaitHours = allConditions.length > 0
+    ? Math.min(...allConditions.map(c => c!.hoursWithoutReply))
+    : 0.5;
+  
+  if (candidate.hoursSilent < minWaitHours) {
+    const minutesSilentTotal = Math.floor(candidate.hoursSilent * 60);
+    const minutesRequired = Math.floor(minWaitHours * 60);
+    
+    console.log(`⏳ [PRE-AI-FILTER] Troppo presto per ${candidate.conversationId} - ${minutesSilentTotal}min < ${minutesRequired}min minimo`);
+    console.log(`   💰 AI CALL SKIPPED - risparmio costi!`);
+    
+    // Log static "ATTENDI" decision without calling AI
+    await logFollowupDecision(
+      candidate.conversationId,
+      'skip',
+      `[PRE-FILTER] Tempo insufficiente: ${minutesSilentTotal} minuti trascorsi, minimo richiesto: ${minutesRequired} minuti. Nessuna chiamata AI effettuata.`,
+      0.95, // High confidence since it's a deterministic rule
+      null,
+      null,
+      'pre-filter-static'
+    );
+    
+    return 'skipped';
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  
   // NUOVO: Creiamo una regola virtuale AI se non esiste una regola esplicita
   // Il sistema AI "Marco" funziona autonomamente senza regole predefinite
   const effectiveAiRule = aiDecisionRule || {
