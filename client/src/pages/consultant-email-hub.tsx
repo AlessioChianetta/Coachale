@@ -79,6 +79,8 @@ import {
   Download,
   ArrowRightLeft,
   Menu,
+  Ticket,
+  Webhook,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -87,6 +89,8 @@ import { ImportWizardDialog } from "@/components/email-hub/ImportWizardDialog";
 import { EmailImportDialog } from "@/components/email-hub/EmailImportDialog";
 import { EmailComposer } from "@/components/email-hub/EmailComposer";
 import { EmailAISettings } from "@/components/email-hub/EmailAISettings";
+import { TicketSettingsPanel } from "@/components/email-hub/TicketSettingsPanel";
+import { TicketsList } from "@/components/email-hub/TicketsList";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
@@ -284,6 +288,7 @@ export default function ConsultantEmailHub() {
   const [showAISettings, setShowAISettings] = useState(false);
   const [aiSettingsAccountId, setAISettingsAccountId] = useState<string>("");
   const [aiSettingsAccountName, setAISettingsAccountName] = useState<string>("");
+  const [showTicketView, setShowTicketView] = useState<"list" | "settings" | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -840,6 +845,8 @@ export default function ConsultantEmailHub() {
     setSelectedAccountId(accountId || null);
     setSelectedEmail(null);
     setCurrentPage(1);
+    setShowTicketView(null);
+    setShowFullEmailView(false);
     
     setInboxFilter(prev => ({ 
       ...prev, 
@@ -978,6 +985,32 @@ export default function ConsultantEmailHub() {
           >
             <Star className="h-4 w-4" />
             <span className="text-sm flex-1 text-left">Importante</span>
+          </button>
+
+          <Separator className="my-2 bg-slate-700" />
+          
+          <button
+            onClick={() => setShowTicketView("list")}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              showTicketView === "list"
+                ? "bg-orange-600/20 text-orange-300" 
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <Ticket className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Ticket</span>
+          </button>
+          
+          <button
+            onClick={() => setShowTicketView("settings")}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              showTicketView === "settings"
+                ? "bg-orange-600/20 text-orange-300" 
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <Webhook className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Webhook</span>
           </button>
 
           <Collapsible>
@@ -2398,7 +2431,56 @@ export default function ConsultantEmailHub() {
         <div className="flex-1 flex overflow-hidden">
           {!isMobile && renderLeftSidebar()}
           <AnimatePresence mode="wait">
-            {showFullEmailView && selectedEmail ? (
+            {showTicketView ? (
+              <motion.div
+                key="ticket-view"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 400, 
+                  damping: 35,
+                  mass: 0.6
+                }}
+                className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-6"
+              >
+                <div className="max-w-4xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {showTicketView === "list" ? "Ticket" : "Configurazione Webhook"}
+                      </h1>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {showTicketView === "list" 
+                          ? "Gestisci i ticket creati per le email che richiedono attenzione"
+                          : "Configura le integrazioni webhook per i ticket"
+                        }
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={showTicketView === "list" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowTicketView("list")}
+                      >
+                        <Ticket className="h-4 w-4 mr-2" />
+                        Ticket
+                      </Button>
+                      <Button
+                        variant={showTicketView === "settings" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowTicketView("settings")}
+                      >
+                        <Webhook className="h-4 w-4 mr-2" />
+                        Webhook
+                      </Button>
+                    </div>
+                  </div>
+                  {showTicketView === "list" ? <TicketsList /> : <TicketSettingsPanel />}
+                </div>
+              </motion.div>
+            ) : showFullEmailView && selectedEmail ? (
               <motion.div
                 key="email-view"
                 initial={{ opacity: 0, x: 30 }}
