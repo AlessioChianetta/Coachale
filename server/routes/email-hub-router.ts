@@ -217,6 +217,12 @@ async function startIdleAndSyncInBackground(account: {
               processingStatus: (isSent || isTrash) ? "processed" : "new",
             });
             totalImported++;
+          } else {
+            // Update folder if email was moved to a different folder
+            await db
+              .update(schema.hubEmails)
+              .set({ folder: folderInfo.type, updatedAt: new Date() })
+              .where(eq(schema.hubEmails.id, existingEmail[0].id));
           }
         }
       } catch (folderErr: any) {
@@ -2622,6 +2628,11 @@ router.post("/accounts/:id/sync", async (req: AuthRequest, res) => {
               .limit(1);
 
             if (existingEmail.length > 0) {
+              // Update folder if email was moved to a different folder
+              await db
+                .update(schema.hubEmails)
+                .set({ folder: folderInfo.type, updatedAt: new Date() })
+                .where(eq(schema.hubEmails.id, existingEmail[0].id));
               totalDuplicates++;
               continue;
             }
@@ -2659,7 +2670,7 @@ router.post("/accounts/:id/sync", async (req: AuthRequest, res) => {
         .set({ syncStatus: "idle", syncError: null, lastSyncAt: new Date() })
         .where(eq(schema.emailAccounts.id, accountId));
 
-      console.log(`[EMAIL-HUB SYNC] Completed: ${totalImported} imported, ${totalDuplicates} duplicates`);
+      console.log(`[EMAIL-HUB SYNC] Completed: ${totalImported} imported, ${totalDuplicates} updated`);
 
       res.json({ 
         success: true, 
