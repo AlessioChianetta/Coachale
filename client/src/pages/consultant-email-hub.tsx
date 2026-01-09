@@ -51,6 +51,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  AlertTriangle,
   Clock,
   Sparkles,
   Send,
@@ -131,7 +132,7 @@ interface Email {
   receivedAt: string;
   isRead: boolean;
   isStarred: boolean;
-  processingStatus: "new" | "processing" | "classified" | "draft_generated" | "sent";
+  processingStatus: "new" | "processing" | "classified" | "draft_generated" | "sent" | "needs_review";
   urgency?: "low" | "medium" | "high" | "urgent";
   classification?: string;
   hasAttachments?: boolean;
@@ -144,7 +145,7 @@ interface AIResponse {
   draftBodyHtml?: string;
   draftBodyText?: string;
   confidence: number;
-  status: "draft" | "approved" | "edited" | "rejected" | "sent";
+  status: "draft" | "approved" | "edited" | "rejected" | "sent" | "auto_sent" | "draft_needs_review";
   createdAt: string;
   originalEmail?: Email;
 }
@@ -1555,6 +1556,18 @@ export default function ConsultantEmailHub() {
                         AI
                       </Badge>
                     )}
+                    {email.processingStatus === "needs_review" && (
+                      <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                        <AlertTriangle className="h-3 w-3 mr-0.5" />
+                        Urgente
+                      </Badge>
+                    )}
+                    {email.processingStatus === "sent" && (
+                      <Badge className="h-5 px-1.5 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                        <Check className="h-3 w-3 mr-0.5" />
+                        Risposto
+                      </Badge>
+                    )}
                   </div>
                   <p className={`text-sm truncate ${!email.isRead ? "text-slate-800 dark:text-slate-200" : "text-slate-600 dark:text-slate-400"}`}>
                     {email.subject || "(Nessun oggetto)"}
@@ -1913,11 +1926,13 @@ export default function ConsultantEmailHub() {
                             <CardTitle className="text-base">{resp.draftSubject}</CardTitle>
                             <div className="flex items-center gap-2">
                               {getConfidenceBadge(resp.confidence)}
-                              <Badge variant={resp.status === "sent" ? "default" : "outline"}>
+                              <Badge variant={resp.status === "sent" || resp.status === "auto_sent" ? "default" : resp.status === "draft_needs_review" ? "destructive" : "outline"}>
                                 {resp.status === "draft" ? "Bozza" :
                                  resp.status === "approved" ? "Approvato" :
                                  resp.status === "edited" ? "Modificato" :
-                                 resp.status === "rejected" ? "Rifiutato" : "Inviato"}
+                                 resp.status === "rejected" ? "Rifiutato" :
+                                 resp.status === "auto_sent" ? "Inviato Auto" :
+                                 resp.status === "draft_needs_review" ? "Richiede Revisione" : "Inviato"}
                               </Badge>
                             </div>
                           </div>
@@ -2353,11 +2368,13 @@ export default function ConsultantEmailHub() {
                           <CardTitle className="text-sm">{resp.draftSubject}</CardTitle>
                           <div className="flex items-center gap-2">
                             {getConfidenceBadge(resp.confidence)}
-                            <Badge variant={resp.status === "sent" ? "default" : "outline"}>
+                            <Badge variant={resp.status === "sent" || resp.status === "auto_sent" ? "default" : resp.status === "draft_needs_review" ? "destructive" : "outline"}>
                               {resp.status === "draft" ? "Bozza" :
                                resp.status === "approved" ? "Approvato" :
                                resp.status === "edited" ? "Modificato" :
-                               resp.status === "rejected" ? "Rifiutato" : "Inviato"}
+                               resp.status === "rejected" ? "Rifiutato" :
+                               resp.status === "auto_sent" ? "Inviato Auto" :
+                               resp.status === "draft_needs_review" ? "Richiede Revisione" : "Inviato"}
                             </Badge>
                           </div>
                         </div>

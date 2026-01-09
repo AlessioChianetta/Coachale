@@ -7379,7 +7379,7 @@ export const hubEmails = pgTable("hub_emails", {
   }>(),
   aiConfidence: real("ai_confidence"),
   processingStatus: varchar("processing_status", { length: 30 }).notNull().default("new").$type<
-    "new" | "processing" | "classified" | "draft_generated" | "reviewed" | "sent" | "ignored"
+    "new" | "processing" | "classified" | "draft_generated" | "reviewed" | "sent" | "ignored" | "needs_review"
   >(),
   
   // Timestamps
@@ -7416,7 +7416,7 @@ export const emailHubAiResponses = pgTable("email_hub_ai_responses", {
   
   // Status
   status: varchar("status", { length: 30 }).notNull().default("draft").$type<
-    "draft" | "approved" | "edited" | "rejected" | "sent"
+    "draft" | "approved" | "edited" | "rejected" | "sent" | "auto_sent" | "draft_needs_review"
   >(),
   
   // Edit tracking
