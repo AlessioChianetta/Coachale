@@ -1,8 +1,10 @@
 import { db } from "../../db";
 import * as schema from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { getAIProvider } from "../../ai/provider-factory";
 import { GoogleGenAI } from "@google/genai";
+import { searchKnowledgeBase, getKnowledgeContext } from "./email-knowledge-service";
+import { createTicketFromEmail, getTicketSettings } from "./ticket-webhook-service";
 
 export interface EmailClassification {
   intent: "question" | "complaint" | "request" | "follow-up" | "spam" | "thank-you" | "information" | "other";
@@ -233,14 +235,46 @@ ${threadContext}
   }
 }
 
+export interface ExtendedAccountSettings extends AccountSettings {
+  customInstructions?: string | null;
+  aiLanguage?: string | null;
+  escalationKeywords?: string[] | null;
+  stopOnRisk?: boolean | null;
+  bookingLink?: string | null;
+}
+
+export interface ClassifyAndGenerateResult {
+  classification: EmailClassification;
+  draft: EmailDraft | null;
+  kbSearchResult?: {
+    found: boolean;
+    documentsCount: number;
+  };
+  ticketCreated?: boolean;
+  ticketId?: string;
+  stoppedByRisk?: boolean;
+  riskReason?: string;
+}
+
+async function checkEscalationKeywords(
+  text: string, 
+  keywords: string[]
+): Promise<{ found: boolean; matchedKeyword?: string }> {
+  const normalizedText = text.toLowerCase();
+  for (const keyword of keywords) {
+    if (normalizedText.includes(keyword.toLowerCase().trim())) {
+      return { found: true, matchedKeyword: keyword };
+    }
+  }
+  return { found: false };
+}
+
 export async function classifyAndGenerateDraft(
   emailId: string,
   consultantId: string,
-  accountSettings: AccountSettings
-): Promise<{
-  classification: EmailClassification;
-  draft: EmailDraft;
-}> {
+  accountSettings: AccountSettings,
+  extendedSettings?: ExtendedAccountSettings
+): Promise<ClassifyAndGenerateResult> {
   const [email] = await db
     .select()
     .from(schema.hubEmails)
@@ -260,12 +294,137 @@ export async function classifyAndGenerateDraft(
     bodyHtml: email.bodyHtml,
   };
 
+  const emailText = `${email.subject || ""} ${email.bodyText || ""}`;
+
+  if (extendedSettings?.escalationKeywords && extendedSettings.escalationKeywords.length > 0) {
+    const escalationCheck = await checkEscalationKeywords(
+      emailText, 
+      extendedSettings.escalationKeywords
+    );
+    
+    if (escalationCheck.found && extendedSettings.stopOnRisk) {
+      console.log(`[EMAIL-AI] Escalation keyword detected: "${escalationCheck.matchedKeyword}". Stopping AI processing.`);
+      
+      const ticket = await createTicketFromEmail(
+        emailId,
+        consultantId,
+        email.accountId,
+        "escalation_keyword",
+        {
+          reasonDetails: `Parola chiave rilevata: "${escalationCheck.matchedKeyword}"`,
+          aiClassification: classification,
+          priority: "high",
+        }
+      );
+      
+      return {
+        classification,
+        draft: null,
+        stoppedByRisk: true,
+        riskReason: `Parola chiave di escalation rilevata: "${escalationCheck.matchedKeyword}"`,
+        ticketCreated: !!ticket,
+        ticketId: ticket?.id,
+      };
+    }
+  }
+
+  const kbResult = await searchKnowledgeBase(consultantId, {
+    subject: email.subject || "",
+    fromEmail: email.fromEmail,
+    fromName: email.fromName || undefined,
+    bodyText: email.bodyText || "",
+  });
+
+  console.log(`[EMAIL-AI] Knowledge Base search: found=${kbResult.found}, documents=${kbResult.documents.length}`);
+
+  let enhancedSettings = { ...accountSettings };
+  
+  if (kbResult.found && kbResult.documents.length > 0) {
+    const kbContext = await getKnowledgeContext(consultantId, {
+      subject: email.subject || "",
+      fromEmail: email.fromEmail,
+      bodyText: email.bodyText || "",
+    });
+    
+    if (kbContext) {
+      const existingInstructions = extendedSettings?.customInstructions || "";
+      enhancedSettings = {
+        ...accountSettings,
+      };
+      
+      console.log(`[EMAIL-AI] Enhanced prompt with KB context (${kbContext.length} chars)`);
+    }
+  }
+
+  const ticketSettings = await getTicketSettings(consultantId);
+  let ticketCreated = false;
+  let ticketId: string | undefined;
+
+  if (!kbResult.found && ticketSettings?.autoCreateTicketOnNoAnswer) {
+    console.log(`[EMAIL-AI] No KB answer found, creating ticket...`);
+    const ticket = await createTicketFromEmail(
+      emailId,
+      consultantId,
+      email.accountId,
+      "no_kb_answer",
+      {
+        reasonDetails: "L'AI non ha trovato informazioni pertinenti nella Knowledge Base",
+        aiClassification: classification,
+      }
+    );
+    ticketCreated = !!ticket;
+    ticketId = ticket?.id;
+  }
+
+  if (classification.urgency === "high" && ticketSettings?.autoCreateTicketOnHighUrgency && !ticketCreated) {
+    console.log(`[EMAIL-AI] High urgency detected, creating ticket...`);
+    const ticket = await createTicketFromEmail(
+      emailId,
+      consultantId,
+      email.accountId,
+      "high_urgency",
+      {
+        reasonDetails: `Urgenza elevata rilevata: ${classification.reasoning || ""}`,
+        aiClassification: classification,
+        priority: "urgent",
+      }
+    );
+    ticketCreated = !!ticket;
+    ticketId = ticket?.id;
+  }
+
+  if (classification.sentiment === "negative" && ticketSettings?.autoCreateTicketOnNegativeSentiment && !ticketCreated) {
+    console.log(`[EMAIL-AI] Negative sentiment detected, creating ticket...`);
+    const ticket = await createTicketFromEmail(
+      emailId,
+      consultantId,
+      email.accountId,
+      "negative_sentiment",
+      {
+        reasonDetails: `Sentiment negativo rilevato: ${classification.reasoning || ""}`,
+        aiClassification: classification,
+        priority: "high",
+      }
+    );
+    ticketCreated = !!ticket;
+    ticketId = ticket?.id;
+  }
+
   const draft = await generateEmailDraft(
     emailId,
     originalEmail,
-    accountSettings,
+    enhancedSettings,
     consultantId
   );
 
-  return { classification, draft };
+  return { 
+    classification, 
+    draft,
+    kbSearchResult: {
+      found: kbResult.found,
+      documentsCount: kbResult.documents.length,
+    },
+    ticketCreated,
+    ticketId,
+  };
 }
