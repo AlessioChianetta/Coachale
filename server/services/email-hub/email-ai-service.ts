@@ -1,7 +1,7 @@
 import { db } from "../../db";
 import * as schema from "@shared/schema";
 import { eq, and } from "drizzle-orm";
-import { getAIProvider, getModelForProviderName } from "../../ai/provider-factory";
+import { getGoogleAIStudioClientForFileSearch, GEMINI_3_MODEL } from "../../ai/provider-factory";
 import { GoogleGenAI } from "@google/genai";
 import { searchKnowledgeBase } from "./email-knowledge-service";
 import { createTicketFromEmail, getTicketSettings } from "./ticket-webhook-service";
@@ -140,11 +140,16 @@ Oggetto: ${email.subject || "(Nessun oggetto)"}
 ${email.bodyText || email.bodyHtml || "(Nessun contenuto)"}
 `.trim();
 
-  const provider = await getAIProvider(consultantId);
-  const model = "gemini-2.5-flash";
+  // Use Google AI Studio specifically for Gemini 3 support
+  const studioClient = await getGoogleAIStudioClientForFileSearch(consultantId);
+  if (!studioClient) {
+    throw new Error("Google AI Studio non disponibile per la classificazione email");
+  }
+  const model = GEMINI_3_MODEL;
+  console.log(`[EMAIL-AI] Classification using ${model} (Google AI Studio)`);
 
   try {
-    const result = await provider.client.generateContent({
+    const result = await studioClient.client.generateContent({
       model,
       contents: [
         { role: "user", parts: [{ text: CLASSIFICATION_PROMPT }] },
@@ -222,10 +227,13 @@ ${originalEmail.bodyText || originalEmail.bodyHtml || "(Nessun contenuto)"}
 ${threadContext}
 `.trim();
 
-  const provider = await getAIProvider(consultantId);
-  // Use model based on provider type (Vertex AI vs Google AI Studio)
-  const model = getModelForProviderName(provider.metadata?.name);
-  console.log(`[EMAIL-AI] Using model ${model} (provider: ${provider.metadata?.name || 'unknown'})`);
+  // Use Google AI Studio specifically for Gemini 3 + FileSearch support
+  const studioClient = await getGoogleAIStudioClientForFileSearch(consultantId);
+  if (!studioClient) {
+    throw new Error("Google AI Studio non disponibile per la generazione bozze email");
+  }
+  const model = GEMINI_3_MODEL;
+  console.log(`[EMAIL-AI] Draft generation using ${model} (Google AI Studio)`);
 
   // Build FileSearch tool if store names are available
   const fileSearchTool = extendedOptions?.fileSearchStoreNames?.length 
@@ -237,7 +245,7 @@ ${threadContext}
   }
 
   try {
-    const result = await provider.client.generateContent({
+    const result = await studioClient.client.generateContent({
       model,
       contents: [
         { role: "user", parts: [{ text: systemPrompt }] },
