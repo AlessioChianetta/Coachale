@@ -1228,6 +1228,112 @@ router.post("/reply", async (req: AuthRequest, res) => {
   }
 });
 
+// ============================================
+// AI SETTINGS ENDPOINTS
+// ============================================
+
+// Update AI settings for an account
+router.put("/accounts/:id/ai-settings", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const accountId = req.params.id;
+    const {
+      aiTone,
+      confidenceThreshold,
+      autoReplyMode,
+      signature,
+      customInstructions,
+      aiLanguage,
+      escalationKeywords,
+      stopOnRisk,
+      bookingLink,
+    } = req.body;
+
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId)
+        )
+      );
+
+    if (!account) {
+      return res.status(404).json({ success: false, error: "Account non trovato" });
+    }
+
+    const updateData: Partial<typeof schema.emailAccounts.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+
+    if (aiTone !== undefined) updateData.aiTone = aiTone;
+    if (confidenceThreshold !== undefined) updateData.confidenceThreshold = confidenceThreshold;
+    if (autoReplyMode !== undefined) updateData.autoReplyMode = autoReplyMode;
+    if (signature !== undefined) updateData.signature = signature;
+    if (customInstructions !== undefined) updateData.customInstructions = customInstructions;
+    if (aiLanguage !== undefined) updateData.aiLanguage = aiLanguage;
+    if (escalationKeywords !== undefined) updateData.escalationKeywords = escalationKeywords;
+    if (stopOnRisk !== undefined) updateData.stopOnRisk = stopOnRisk;
+    if (bookingLink !== undefined) updateData.bookingLink = bookingLink;
+
+    const [updated] = await db
+      .update(schema.emailAccounts)
+      .set(updateData)
+      .where(eq(schema.emailAccounts.id, accountId))
+      .returning();
+
+    console.log(`[EMAIL-HUB] Updated AI settings for account ${accountId}`);
+
+    res.json({
+      success: true,
+      message: "Impostazioni AI aggiornate",
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error updating AI settings:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get AI settings for an account
+router.get("/accounts/:id/ai-settings", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const accountId = req.params.id;
+
+    const [account] = await db
+      .select({
+        id: schema.emailAccounts.id,
+        aiTone: schema.emailAccounts.aiTone,
+        confidenceThreshold: schema.emailAccounts.confidenceThreshold,
+        autoReplyMode: schema.emailAccounts.autoReplyMode,
+        signature: schema.emailAccounts.signature,
+        customInstructions: schema.emailAccounts.customInstructions,
+        aiLanguage: schema.emailAccounts.aiLanguage,
+        escalationKeywords: schema.emailAccounts.escalationKeywords,
+        stopOnRisk: schema.emailAccounts.stopOnRisk,
+        bookingLink: schema.emailAccounts.bookingLink,
+      })
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId)
+        )
+      );
+
+    if (!account) {
+      return res.status(404).json({ success: false, error: "Account non trovato" });
+    }
+
+    res.json({ success: true, data: account });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching AI settings:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;

@@ -86,6 +86,7 @@ import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAss
 import { ImportWizardDialog } from "@/components/email-hub/ImportWizardDialog";
 import { EmailImportDialog } from "@/components/email-hub/EmailImportDialog";
 import { EmailComposer } from "@/components/email-hub/EmailComposer";
+import { EmailAISettings } from "@/components/email-hub/EmailAISettings";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
@@ -280,6 +281,9 @@ export default function ConsultantEmailHub() {
   const [showComposer, setShowComposer] = useState(false);
   const [composerReplyTo, setComposerReplyTo] = useState<Email | null>(null);
   const [composerReplyAll, setComposerReplyAll] = useState(false);
+  const [showAISettings, setShowAISettings] = useState(false);
+  const [aiSettingsAccountId, setAISettingsAccountId] = useState<string>("");
+  const [aiSettingsAccountName, setAISettingsAccountName] = useState<string>("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1111,6 +1115,16 @@ export default function ConsultantEmailHub() {
                       <DropdownMenuItem onClick={() => handleOpenEditAccount(account)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Modifica
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setAISettingsAccountId(account.id);
+                          setAISettingsAccountName(account.displayName || account.emailAddress);
+                          setShowAISettings(true);
+                        }}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2 text-violet-400" />
+                        Impostazioni AI
                       </DropdownMenuItem>
                       {(account.accountType === "imap_only" || account.accountType === "full" || account.accountType === "hybrid") && (
                         <>
@@ -2485,6 +2499,21 @@ export default function ConsultantEmailHub() {
         } : undefined}
         replyAll={composerReplyAll}
       />
+
+      {aiSettingsAccountId && (
+        <EmailAISettings
+          open={showAISettings}
+          onOpenChange={(open) => {
+            setShowAISettings(open);
+            if (!open) {
+              setAISettingsAccountId("");
+              setAISettingsAccountName("");
+            }
+          }}
+          accountId={aiSettingsAccountId}
+          accountName={aiSettingsAccountName}
+        />
+      )}
       
       <ConsultantAIAssistant />
     </div>

@@ -7300,6 +7300,11 @@ export const emailAccounts = pgTable("email_accounts", {
   confidenceThreshold: real("confidence_threshold").default(0.8),
   aiTone: varchar("ai_tone", { length: 20 }).default("formal"),
   signature: text("signature"),
+  customInstructions: text("custom_instructions"),
+  aiLanguage: varchar("ai_language", { length: 10 }).default("it"),
+  escalationKeywords: jsonb("escalation_keywords").default([]).$type<string[]>(),
+  stopOnRisk: boolean("stop_on_risk").default(true),
+  bookingLink: text("booking_link"),
   
   // Sync Status
   lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
