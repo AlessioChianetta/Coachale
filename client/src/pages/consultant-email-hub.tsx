@@ -83,6 +83,7 @@ import {
   Ticket,
   Webhook,
   BookOpen,
+  Zap,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/navbar";
@@ -366,6 +367,20 @@ export default function ConsultantEmailHub() {
   });
 
   const pendingDrafts: AIResponse[] = pendingDraftsData?.data || [];
+
+  const { data: aiStatsData, refetch: refetchAiStats } = useQuery({
+    queryKey: ["/api/email-hub/ai-stats"],
+    queryFn: async () => {
+      const response = await fetch("/api/email-hub/ai-stats", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch AI stats");
+      return response.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  const aiStats = aiStatsData?.data || { pendingAI: 0, processingAI: 0, draftGenerated: 0, needsReview: 0 };
 
   const { data: emailDetailData } = useQuery({
     queryKey: ["/api/email-hub/emails", selectedEmail?.id],
@@ -785,6 +800,33 @@ export default function ConsultantEmailHub() {
     },
   });
 
+  const batchProcessMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/email-hub/batch-process", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 10 }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to process");
+      }
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-stats"] });
+      toast({ 
+        title: "Elaborazione AI completata", 
+        description: result.data.message || `${result.data.processed} email elaborate`
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore elaborazione AI", description: error.message, variant: "destructive" });
+    },
+  });
+
   const syncAllAccountsAndRefresh = async () => {
     if (isSyncing || accounts.length === 0) {
       refetchInbox();
@@ -1116,6 +1158,41 @@ export default function ConsultantEmailHub() {
           </Collapsible>
 
           <Separator className="my-3 bg-slate-700" />
+
+          {(aiStats.pendingAI > 0 || aiStats.processingAI > 0 || batchProcessMutation.isPending) && (
+            <div className="mx-2 mb-3 p-3 rounded-lg bg-violet-900/30 border border-violet-700/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-violet-300 flex items-center gap-1.5">
+                  {batchProcessMutation.isPending || aiStats.processingAI > 0 ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Elaborazione AI...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3" />
+                      Email da elaborare
+                    </>
+                  )}
+                </span>
+                <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-violet-600">
+                  {aiStats.pendingAI}
+                </Badge>
+              </div>
+              {aiStats.pendingAI > 0 && !batchProcessMutation.isPending && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-xs border-violet-500 text-violet-300 hover:bg-violet-600/30"
+                  onClick={() => batchProcessMutation.mutate()}
+                  disabled={batchProcessMutation.isPending}
+                >
+                  <Zap className="h-3 w-3 mr-1" />
+                  Genera bozze AI
+                </Button>
+              )}
+            </div>
+          )}
 
           {pendingDrafts.length > 0 && (
             <button

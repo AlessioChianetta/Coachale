@@ -1341,6 +1341,157 @@ router.get("/accounts/:id/ai-settings", async (req: AuthRequest, res) => {
   }
 });
 
+router.get("/ai-drafts/pending", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const pendingDrafts = await db
+      .select({
+        id: schema.emailHubAiResponses.id,
+        emailId: schema.emailHubAiResponses.emailId,
+        draftSubject: schema.emailHubAiResponses.draftSubject,
+        draftBodyText: schema.emailHubAiResponses.draftBodyText,
+        draftBodyHtml: schema.emailHubAiResponses.draftBodyHtml,
+        confidence: schema.emailHubAiResponses.confidence,
+        status: schema.emailHubAiResponses.status,
+        createdAt: schema.emailHubAiResponses.createdAt,
+        emailSubject: schema.hubEmails.subject,
+        emailFromEmail: schema.hubEmails.fromEmail,
+        emailFromName: schema.hubEmails.fromName,
+      })
+      .from(schema.emailHubAiResponses)
+      .innerJoin(schema.hubEmails, eq(schema.emailHubAiResponses.emailId, schema.hubEmails.id))
+      .where(
+        and(
+          eq(schema.hubEmails.consultantId, consultantId),
+          eq(schema.emailHubAiResponses.status, "draft")
+        )
+      )
+      .orderBy(desc(schema.emailHubAiResponses.createdAt))
+      .limit(50);
+    
+    res.json({ success: true, data: pendingDrafts });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching pending drafts:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/ai-stats", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const [stats] = await db
+      .select({
+        pendingAI: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'new' AND ${schema.hubEmails.direction} = 'inbound')`,
+        processingAI: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'processing')`,
+        draftGenerated: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'draft_generated')`,
+        needsReview: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'needs_review')`,
+        total: sql<number>`COUNT(*)`,
+      })
+      .from(schema.hubEmails)
+      .where(eq(schema.hubEmails.consultantId, consultantId));
+    
+    res.json({ 
+      success: true, 
+      data: {
+        pendingAI: Number(stats?.pendingAI) || 0,
+        processingAI: Number(stats?.processingAI) || 0,
+        draftGenerated: Number(stats?.draftGenerated) || 0,
+        needsReview: Number(stats?.needsReview) || 0,
+        total: Number(stats?.total) || 0,
+      }
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching AI stats:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/batch-process", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { limit = 10 } = req.body;
+    
+    const pendingEmails = await db
+      .select({
+        id: schema.hubEmails.id,
+        accountId: schema.hubEmails.accountId,
+        subject: schema.hubEmails.subject,
+      })
+      .from(schema.hubEmails)
+      .where(
+        and(
+          eq(schema.hubEmails.consultantId, consultantId),
+          eq(schema.hubEmails.processingStatus, "new"),
+          eq(schema.hubEmails.direction, "inbound")
+        )
+      )
+      .orderBy(desc(schema.hubEmails.receivedAt))
+      .limit(limit);
+    
+    if (pendingEmails.length === 0) {
+      return res.json({ 
+        success: true, 
+        data: { processed: 0, skipped: 0, failed: 0, message: "Nessuna email da elaborare" }
+      });
+    }
+    
+    console.log(`[EMAIL-AI-BATCH] Starting batch process for ${pendingEmails.length} emails`);
+    
+    let processed = 0;
+    let failed = 0;
+    let skipped = 0;
+    
+    for (const email of pendingEmails) {
+      try {
+        const [account] = await db
+          .select({ autoReplyMode: schema.emailAccounts.autoReplyMode })
+          .from(schema.emailAccounts)
+          .where(eq(schema.emailAccounts.id, email.accountId));
+        
+        if (!account || account.autoReplyMode === "off") {
+          skipped++;
+          console.log(`[EMAIL-AI-BATCH] Skipped ${email.subject} (autoReplyMode: ${account?.autoReplyMode || 'no account'})`);
+          continue;
+        }
+        
+        await db
+          .update(schema.hubEmails)
+          .set({ processingStatus: "processing", updatedAt: new Date() })
+          .where(eq(schema.hubEmails.id, email.id));
+        
+        await processNewEmailAI(email.id, email.accountId, consultantId);
+        processed++;
+        console.log(`[EMAIL-AI-BATCH] Processed ${processed}/${pendingEmails.length}: ${email.subject}`);
+      } catch (err: any) {
+        failed++;
+        console.error(`[EMAIL-AI-BATCH] Failed to process ${email.id}:`, err.message);
+        await db
+          .update(schema.hubEmails)
+          .set({ processingStatus: "error", updatedAt: new Date() })
+          .where(eq(schema.hubEmails.id, email.id));
+      }
+    }
+    
+    console.log(`[EMAIL-AI-BATCH] Completed: ${processed} processed, ${skipped} skipped, ${failed} failed`);
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        processed, 
+        skipped,
+        failed, 
+        total: pendingEmails.length,
+        message: processed > 0 ? `${processed} email elaborate con AI` : (skipped > 0 ? "Email saltate (AI disattivata)" : "Elaborazione fallita")
+      }
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error in batch process:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
