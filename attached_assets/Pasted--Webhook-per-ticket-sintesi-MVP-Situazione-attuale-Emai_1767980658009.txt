@@ -1,0 +1,131 @@
+🎯 Webhook per ticket — sintesi MVP
+
+Situazione attuale
+
+Email → AI decide → bozza / invio
+
+Step vendibile
+
+“Se è una richiesta di supporto, segnalo/creo un ticket automaticamente”
+
+Perché webhook (e non integrazioni dirette)
+
+Ogni tool (Zendesk, Jira, Linear, ClickUp, custom):
+
+ha campi, workflow e permessi diversi
+
+Integrazioni dirette = complessità + tempo perso
+
+Webhook = delegare l’inferno agli altri
+
+✅ Cosa fa il webhook
+
+NON crea il ticket
+
+Dice solo:
+
+“Ho deciso che questa email È un ticket”
+
+Fine.
+
+🧩 Evento consigliato
+
+Usane uno solo (MVP): ticket.suggested
+
+Payload esempio:
+
+{
+"event": "ticket.suggested",
+"email_id": "abc123",
+"thread_id": "thr789",
+"from": "cliente@azienda.com",
+"subject": "Non funziona il login",
+"summary": "Problema di accesso segnalato dal cliente",
+"priority": "high",
+"confidence": 0.88,
+"category": "support",
+"raw_email_url": "https://app/emails/abc123"
+}
+
+
+Il cliente:
+
+riceve il webhook
+
+crea il ticket come vuole
+
+nel tool che vuole
+
+🧠 Quando scatta il webhook (regola MVP)
+
+Scatta solo se:
+
+intent = support
+
+confidence > soglia
+
+non flagged (pagamenti, legale, VIP)
+
+Altrimenti:
+
+solo bozza
+
+o suggerimento visivo
+
+🧯 Perché NON creare tu il ticket
+
+campi diversi
+
+SLA
+
+status
+
+assegnazioni
+
+custom fields
+
+👉 non è MVP, è un inferno
+
+Webhook =
+
+“Ecco l’evento. Arrangiati.”
+
+Ed è accettabile (anzi, apprezzato) dai primi clienti.
+
+💰 Come venderlo
+
+❌ “Integrazione ticketing”
+✅ “Si integra con qualsiasi sistema di ticket via webhook”
+
+Risultato:
+
+più potente
+
+più onesto
+
+enterprise-ready
+
+zero codice extra per te
+
+❌ Errori da evitare
+
+webhook con 100 opzioni
+
+inbound webhook che modifica il tuo stato
+
+logica ticket nel webhook
+
+webhook prima della decisione AI
+
+🧱 Architettura corretta
+Email → AI classify
+↓
+Decision engine
+↓
+ticket.suggested (webhook)
+↓
+Sistema cliente crea ticket
+
+
+Il tuo sistema è il cervello.
+Gli altri sono braccia opzionali.
