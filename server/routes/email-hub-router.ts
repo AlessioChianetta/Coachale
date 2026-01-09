@@ -1401,11 +1401,165 @@ router.post("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
       return res.status(404).json({ success: false, error: "Email account not found" });
     }
     
+    const autoReplyMode = account.autoReplyMode || "review";
+    const confidenceThreshold = account.confidenceThreshold || 0.8;
+    
     const accountSettings = {
       aiTone: (account.aiTone as "formal" | "friendly" | "professional") || "professional",
       signature: account.signature,
-      confidenceThreshold: account.confidenceThreshold || 0.8,
+      confidenceThreshold,
     };
+    
+    const extendedSettings = {
+      customInstructions: account.customInstructions,
+      aiLanguage: account.aiLanguage,
+      escalationKeywords: account.escalationKeywords as string[] | null,
+      stopOnRisk: account.stopOnRisk,
+      bookingLink: account.bookingLink,
+    };
+
+    if (autoReplyMode === "auto") {
+      console.log(`[EMAIL-AI-AUTO] Processing email ${emailId} in auto mode`);
+      
+      const result = await classifyAndGenerateDraft(
+        emailId,
+        consultantId,
+        accountSettings,
+        extendedSettings
+      );
+      
+      if (result.stoppedByRisk) {
+        console.log(`[EMAIL-AI-AUTO] Email ${emailId} stopped by risk: ${result.riskReason}`);
+        
+        const [response] = await db
+          .insert(schema.emailHubAiResponses)
+          .values({
+            emailId,
+            draftSubject: null,
+            draftBodyHtml: null,
+            draftBodyText: null,
+            confidence: 0,
+            modelUsed: "gemini-2.5-flash",
+            reasoning: result.classification as any,
+            status: "draft_needs_review",
+          })
+          .returning();
+        
+        await db
+          .update(schema.hubEmails)
+          .set({ processingStatus: "needs_review", updatedAt: new Date() })
+          .where(eq(schema.hubEmails.id, emailId));
+        
+        return res.status(201).json({ 
+          success: true, 
+          data: response, 
+          classification: result.classification,
+          stoppedByRisk: true,
+          riskReason: result.riskReason,
+        });
+      }
+      
+      if (!result.draft) {
+        return res.status(500).json({ 
+          success: false, 
+          error: "Failed to generate draft" 
+        });
+      }
+      
+      if (result.draft.confidence >= confidenceThreshold) {
+        const hasSmtpConfig = account.smtpHost && account.smtpUser && account.smtpPassword;
+        const canSendSmtp = ["smtp_only", "full", "hybrid"].includes(account.accountType || "full");
+        
+        if (hasSmtpConfig && canSendSmtp) {
+          console.log(`[EMAIL-AI-AUTO] Email ${emailId} confidence ${result.draft.confidence} >= threshold ${confidenceThreshold}, sending automatically`);
+          
+          const smtpService = createSmtpService({
+            host: account.smtpHost!,
+            port: account.smtpPort || 587,
+            user: account.smtpUser!,
+            password: account.smtpPassword!,
+            tls: account.smtpTls ?? true,
+          });
+          
+          const sendResult = await smtpService.sendEmail({
+            from: account.emailAddress,
+            fromName: account.displayName || undefined,
+            to: email.fromEmail,
+            subject: result.draft.subject,
+            html: result.draft.bodyHtml || undefined,
+            text: result.draft.bodyText || undefined,
+            inReplyTo: email.messageId,
+            references: email.messageId,
+          });
+          
+          if (sendResult.success) {
+            console.log(`[EMAIL-AI-AUTO] Email ${emailId} sent automatically (msgId: ${sendResult.messageId})`);
+            
+            const [response] = await db
+              .insert(schema.emailHubAiResponses)
+              .values({
+                emailId,
+                draftSubject: result.draft.subject,
+                draftBodyHtml: result.draft.bodyHtml,
+                draftBodyText: result.draft.bodyText,
+                confidence: result.draft.confidence,
+                modelUsed: result.draft.modelUsed,
+                tokensUsed: result.draft.tokensUsed,
+                reasoning: result.classification as any,
+                status: "auto_sent",
+                sentAt: new Date(),
+              })
+              .returning();
+            
+            await db
+              .update(schema.hubEmails)
+              .set({ processingStatus: "sent", updatedAt: new Date() })
+              .where(eq(schema.hubEmails.id, emailId));
+            
+            return res.status(201).json({ 
+              success: true, 
+              data: response, 
+              classification: result.classification,
+              autoSent: true,
+              messageId: sendResult.messageId,
+            });
+          } else {
+            console.error(`[EMAIL-AI-AUTO] Failed to send email ${emailId}: ${sendResult.error}`);
+          }
+        } else {
+          console.log(`[EMAIL-AI-AUTO] Email ${emailId} has high confidence but no SMTP config, saving as draft`);
+        }
+      } else {
+        console.log(`[EMAIL-AI-AUTO] Email ${emailId} confidence ${result.draft.confidence} < threshold ${confidenceThreshold}, requires review`);
+      }
+      
+      const [response] = await db
+        .insert(schema.emailHubAiResponses)
+        .values({
+          emailId,
+          draftSubject: result.draft.subject,
+          draftBodyHtml: result.draft.bodyHtml,
+          draftBodyText: result.draft.bodyText,
+          confidence: result.draft.confidence,
+          modelUsed: result.draft.modelUsed,
+          tokensUsed: result.draft.tokensUsed,
+          reasoning: result.classification as any,
+          status: "draft",
+        })
+        .returning();
+      
+      await db
+        .update(schema.hubEmails)
+        .set({ processingStatus: "draft_generated", updatedAt: new Date() })
+        .where(eq(schema.hubEmails.id, emailId));
+      
+      return res.status(201).json({ 
+        success: true, 
+        data: response, 
+        classification: result.classification,
+        kbSearchResult: result.kbSearchResult,
+      });
+    }
     
     const originalEmail = {
       subject: email.subject,
@@ -1633,7 +1787,7 @@ router.post("/ai-responses/:id/send", async (req: AuthRequest, res) => {
   }
 });
 
-async function saveEmailToDatabase(email: ParsedEmail, accountId: string, consultantId: string): Promise<void> {
+async function saveEmailToDatabase(email: ParsedEmail, accountId: string, consultantId: string): Promise<string | null> {
   const existingEmail = await db
     .select()
     .from(schema.hubEmails)
@@ -1642,10 +1796,10 @@ async function saveEmailToDatabase(email: ParsedEmail, accountId: string, consul
 
   if (existingEmail.length > 0) {
     console.log(`[IMAP IDLE] Email already exists: ${email.messageId}`);
-    return;
+    return null;
   }
 
-  await db.insert(schema.hubEmails).values({
+  const [inserted] = await db.insert(schema.hubEmails).values({
     accountId,
     consultantId,
     messageId: email.messageId,
@@ -1664,9 +1818,184 @@ async function saveEmailToDatabase(email: ParsedEmail, accountId: string, consul
     hasAttachments: email.hasAttachments,
     inReplyTo: email.inReplyTo,
     processingStatus: "new",
-  });
+  }).returning();
 
-  console.log(`[IMAP IDLE] Saved new email: ${email.subject}`);
+  console.log(`[IMAP IDLE] Saved new email: ${email.subject} (id: ${inserted.id})`);
+  
+  processNewEmailAI(inserted.id, accountId, consultantId).catch(err => {
+    console.error(`[EMAIL-AI-AUTO] Background processing failed for email ${inserted.id}:`, err.message);
+  });
+  
+  return inserted.id;
+}
+
+async function processNewEmailAI(emailId: string, accountId: string, consultantId: string): Promise<void> {
+  try {
+    const [account] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(eq(schema.emailAccounts.id, accountId));
+    
+    if (!account) {
+      console.log(`[EMAIL-AI-AUTO] Account ${accountId} not found, skipping AI processing`);
+      return;
+    }
+    
+    const autoReplyMode = account.autoReplyMode || "review";
+    
+    if (autoReplyMode === "off") {
+      console.log(`[EMAIL-AI-AUTO] Auto-reply is off for account ${accountId}, skipping`);
+      return;
+    }
+    
+    const [email] = await db
+      .select()
+      .from(schema.hubEmails)
+      .where(eq(schema.hubEmails.id, emailId));
+    
+    if (!email) {
+      console.log(`[EMAIL-AI-AUTO] Email ${emailId} not found, skipping`);
+      return;
+    }
+    
+    console.log(`[EMAIL-AI-AUTO] Processing new email "${email.subject}" (mode: ${autoReplyMode})`);
+    
+    const confidenceThreshold = account.confidenceThreshold || 0.8;
+    
+    const accountSettings = {
+      aiTone: (account.aiTone as "formal" | "friendly" | "professional") || "professional",
+      signature: account.signature,
+      confidenceThreshold,
+    };
+    
+    const extendedSettings = {
+      customInstructions: account.customInstructions,
+      aiLanguage: account.aiLanguage,
+      escalationKeywords: account.escalationKeywords as string[] | null,
+      stopOnRisk: account.stopOnRisk,
+      bookingLink: account.bookingLink,
+    };
+    
+    const result = await classifyAndGenerateDraft(
+      emailId,
+      consultantId,
+      accountSettings,
+      extendedSettings
+    );
+    
+    if (result.stoppedByRisk) {
+      console.log(`[EMAIL-AI-AUTO] Email ${emailId} stopped by risk: ${result.riskReason}`);
+      
+      await db
+        .insert(schema.emailHubAiResponses)
+        .values({
+          emailId,
+          draftSubject: null,
+          draftBodyHtml: null,
+          draftBodyText: null,
+          confidence: 0,
+          modelUsed: "gemini-2.5-flash",
+          reasoning: result.classification as any,
+          status: "draft_needs_review",
+        });
+      
+      await db
+        .update(schema.hubEmails)
+        .set({ processingStatus: "needs_review", updatedAt: new Date() })
+        .where(eq(schema.hubEmails.id, emailId));
+      
+      return;
+    }
+    
+    if (!result.draft) {
+      console.error(`[EMAIL-AI-AUTO] Failed to generate draft for email ${emailId}`);
+      return;
+    }
+    
+    if (autoReplyMode === "auto" && result.draft.confidence >= confidenceThreshold) {
+      const hasSmtpConfig = account.smtpHost && account.smtpUser && account.smtpPassword;
+      const canSendSmtp = ["smtp_only", "full", "hybrid"].includes(account.accountType || "full");
+      
+      if (hasSmtpConfig && canSendSmtp) {
+        console.log(`[EMAIL-AI-AUTO] Email ${emailId} confidence ${result.draft.confidence.toFixed(2)} >= threshold ${confidenceThreshold}, sending automatically`);
+        
+        const smtpService = createSmtpService({
+          host: account.smtpHost!,
+          port: account.smtpPort || 587,
+          user: account.smtpUser!,
+          password: account.smtpPassword!,
+          tls: account.smtpTls ?? true,
+        });
+        
+        const sendResult = await smtpService.sendEmail({
+          from: account.emailAddress,
+          fromName: account.displayName || undefined,
+          to: email.fromEmail,
+          subject: result.draft.subject,
+          html: result.draft.bodyHtml || undefined,
+          text: result.draft.bodyText || undefined,
+          inReplyTo: email.messageId,
+          references: email.messageId,
+        });
+        
+        if (sendResult.success) {
+          console.log(`[EMAIL-AI-AUTO] Email ${emailId} auto-sent successfully (msgId: ${sendResult.messageId})`);
+          
+          await db
+            .insert(schema.emailHubAiResponses)
+            .values({
+              emailId,
+              draftSubject: result.draft.subject,
+              draftBodyHtml: result.draft.bodyHtml,
+              draftBodyText: result.draft.bodyText,
+              confidence: result.draft.confidence,
+              modelUsed: result.draft.modelUsed,
+              tokensUsed: result.draft.tokensUsed,
+              reasoning: result.classification as any,
+              status: "auto_sent",
+              sentAt: new Date(),
+            });
+          
+          await db
+            .update(schema.hubEmails)
+            .set({ processingStatus: "sent", updatedAt: new Date() })
+            .where(eq(schema.hubEmails.id, emailId));
+          
+          return;
+        } else {
+          console.error(`[EMAIL-AI-AUTO] Failed to auto-send email ${emailId}: ${sendResult.error}`);
+        }
+      } else {
+        console.log(`[EMAIL-AI-AUTO] Email ${emailId} has high confidence but no SMTP config, saving as draft for review`);
+      }
+    } else if (autoReplyMode === "auto" && result.draft.confidence < confidenceThreshold) {
+      console.log(`[EMAIL-AI-AUTO] Email ${emailId} confidence ${result.draft.confidence.toFixed(2)} < threshold ${confidenceThreshold}, requires review`);
+    }
+    
+    await db
+      .insert(schema.emailHubAiResponses)
+      .values({
+        emailId,
+        draftSubject: result.draft.subject,
+        draftBodyHtml: result.draft.bodyHtml,
+        draftBodyText: result.draft.bodyText,
+        confidence: result.draft.confidence,
+        modelUsed: result.draft.modelUsed,
+        tokensUsed: result.draft.tokensUsed,
+        reasoning: result.classification as any,
+        status: "draft",
+      });
+    
+    await db
+      .update(schema.hubEmails)
+      .set({ processingStatus: "draft_generated", updatedAt: new Date() })
+      .where(eq(schema.hubEmails.id, emailId));
+    
+    console.log(`[EMAIL-AI-AUTO] Draft generated for email ${emailId} (confidence: ${result.draft.confidence.toFixed(2)})`);
+    
+  } catch (error: any) {
+    console.error(`[EMAIL-AI-AUTO] Error processing email ${emailId}:`, error.message);
+  }
 }
 
 router.post("/accounts/:id/sync", async (req: AuthRequest, res) => {
