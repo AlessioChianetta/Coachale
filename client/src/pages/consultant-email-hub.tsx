@@ -1013,8 +1013,8 @@ export default function ConsultantEmailHub() {
   const totalUnreadCount = accounts.reduce((sum, acc) => sum + (acc.unreadCount || 0), 0);
 
   const renderLeftSidebar = () => (
-    <div className="w-[220px] min-w-[220px] bg-slate-900 text-white flex flex-col h-full">
-      <div className="p-4 space-y-3">
+    <div className="w-[220px] min-w-[220px] bg-slate-900 text-white flex flex-col h-full overflow-hidden">
+      <div className="p-4 space-y-3 shrink-0">
         {mainSidebarCollapsed && (
           <Button 
             variant="ghost"
@@ -1039,7 +1039,8 @@ export default function ConsultantEmailHub() {
         </Button>
       </div>
       
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-hidden relative">
+        <ScrollArea className="h-full">
         <div className="px-2 pb-4">
           <div className="flex items-center gap-1">
             <button
@@ -1464,9 +1465,10 @@ export default function ConsultantEmailHub() {
             </CollapsibleContent>
           </Collapsible>
         </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
       
-      <div className="p-4 border-t border-slate-700">
+      <div className="p-4 border-t border-slate-700 shrink-0">
         <button
           onClick={handleOpenAddAccount}
           className="flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 transition-colors"
