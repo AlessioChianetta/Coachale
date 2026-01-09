@@ -10,7 +10,6 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -2632,49 +2631,12 @@ export default function ConsultantEmailHub() {
     </Dialog>
   );
 
-  const isInitialLoading = isLoadingAccounts || (isLoadingInbox && emails.length === 0);
-
-  if (isInitialLoading) {
+  if (isLoadingAccounts) {
     return (
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
-        {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-        <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
-          <Sidebar 
-            role="consultant" 
-            isOpen={sidebarOpen} 
-            onClose={() => setSidebarOpen(false)} 
-            isCollapsed={mainSidebarCollapsed}
-            onCollapsedChange={setMainSidebarCollapsed}
-          />
-          <div className="flex-1 flex overflow-hidden">
-            {!isMobile && (
-              <div className="w-[220px] min-w-[220px] bg-slate-900 text-white flex flex-col h-full p-4 space-y-3">
-                <Skeleton className="h-10 w-full bg-slate-700" />
-                <Skeleton className="h-8 w-full bg-slate-800" />
-                <Skeleton className="h-8 w-full bg-slate-800" />
-                <Skeleton className="h-8 w-full bg-slate-800" />
-                <Skeleton className="h-8 w-full bg-slate-800" />
-                <Separator className="my-2 bg-slate-700" />
-                <Skeleton className="h-6 w-20 bg-slate-800" />
-                <Skeleton className="h-12 w-full bg-slate-800" />
-              </div>
-            )}
-            <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 border-x border-slate-200 dark:border-slate-800 p-4 space-y-3">
-              <div className="flex items-center justify-between mb-4">
-                <Skeleton className="h-6 w-32 bg-slate-200 dark:bg-slate-800" />
-                <div className="flex gap-2">
-                  <Skeleton className="h-9 w-28 bg-slate-200 dark:bg-slate-800" />
-                  <Skeleton className="h-9 w-9 bg-slate-200 dark:bg-slate-800" />
-                </div>
-              </div>
-              <Skeleton className="h-10 w-full bg-slate-200 dark:bg-slate-800" />
-              <div className="space-y-2 mt-4">
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full bg-slate-200 dark:bg-slate-800" />
-                ))}
-              </div>
-            </div>
-          </div>
+      <div className="flex justify-center items-center min-h-screen bg-slate-100 dark:bg-slate-900">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-violet-600 mx-auto" />
+          <p className="text-slate-600 dark:text-slate-400">Caricamento Email Hub...</p>
         </div>
       </div>
     );
