@@ -57,7 +57,17 @@ Analizza l'email seguente e restituisci una classificazione JSON con questi camp
 
 Rispondi SOLO con il JSON valido, senza markdown o altro testo.`;
 
-function buildDraftPrompt(tone: string, signature?: string | null): string {
+interface DraftPromptOptions {
+  tone: string;
+  signature?: string | null;
+  customInstructions?: string | null;
+  knowledgeContext?: string | null;
+  bookingLink?: string | null;
+}
+
+function buildDraftPrompt(options: DraftPromptOptions): string {
+  const { tone, signature, customInstructions, knowledgeContext, bookingLink } = options;
+  
   const toneInstructions: Record<string, string> = {
     formal: `Usa un tono formale e professionale. Utilizza il "Lei" come forma di cortesia. 
 Evita colloquialismi e mantieni un registro alto. Inizia con "Gentile" o "Egregio/a".`,
@@ -71,17 +81,33 @@ Mantieni un equilibrio tra formalità e accessibilità. Sii chiaro e conciso.`,
     ? `\n\nFirma da includere alla fine:\n${signature}`
     : "";
 
+  const customBlock = customInstructions
+    ? `\n\nISTRUZIONI PERSONALIZZATE DEL CONSULENTE:\n${customInstructions}`
+    : "";
+
+  const kbBlock = knowledgeContext
+    ? `\n\nCONTESTO DALLA KNOWLEDGE BASE:\nUsa le seguenti informazioni per formulare una risposta accurata:\n${knowledgeContext}`
+    : "";
+
+  const bookingBlock = bookingLink
+    ? `\n\nLink di prenotazione da includere se appropriato: ${bookingLink}`
+    : "";
+
   return `Sei un assistente AI che aiuta un consulente italiano a rispondere alle email.
 
 ISTRUZIONI SUL TONO:
 ${toneInstructions[tone] || toneInstructions.professional}
+${customBlock}
+${kbBlock}
+${bookingBlock}
 
 REGOLE:
 1. Rispondi in italiano
 2. Mantieni la risposta pertinente e utile
-3. Non inventare informazioni che non conosci
+3. Utilizza le informazioni dalla Knowledge Base quando disponibili
 4. Se l'email richiede informazioni specifiche che non hai, suggerisci di verificare o chiedere
 5. Includi la firma alla fine se fornita
+6. Se hai un link di prenotazione e il cliente chiede un appuntamento, proponilo
 ${signatureBlock}
 
 Genera una risposta email appropriata. Restituisci SOLO un JSON valido con questi campi:
@@ -157,16 +183,26 @@ ${email.bodyText || email.bodyHtml || "(Nessun contenuto)"}
   }
 }
 
+export interface ExtendedDraftOptions {
+  customInstructions?: string | null;
+  knowledgeContext?: string | null;
+  bookingLink?: string | null;
+}
+
 export async function generateEmailDraft(
   emailId: string,
   originalEmail: OriginalEmail,
   accountSettings: AccountSettings,
-  consultantId: string
+  consultantId: string,
+  extendedOptions?: ExtendedDraftOptions
 ): Promise<EmailDraft> {
-  const systemPrompt = buildDraftPrompt(
-    accountSettings.aiTone || "professional",
-    accountSettings.signature
-  );
+  const systemPrompt = buildDraftPrompt({
+    tone: accountSettings.aiTone || "professional",
+    signature: accountSettings.signature,
+    customInstructions: extendedOptions?.customInstructions,
+    knowledgeContext: extendedOptions?.knowledgeContext,
+    bookingLink: extendedOptions?.bookingLink,
+  });
 
   let threadContext = "";
   if (originalEmail.threadHistory && originalEmail.threadHistory.length > 0) {
@@ -337,21 +373,16 @@ export async function classifyAndGenerateDraft(
 
   console.log(`[EMAIL-AI] Knowledge Base search: found=${kbResult.found}, documents=${kbResult.documents.length}`);
 
-  let enhancedSettings = { ...accountSettings };
+  let kbContext: string | null = null;
   
   if (kbResult.found && kbResult.documents.length > 0) {
-    const kbContext = await getKnowledgeContext(consultantId, {
+    kbContext = await getKnowledgeContext(consultantId, {
       subject: email.subject || "",
       fromEmail: email.fromEmail,
       bodyText: email.bodyText || "",
     });
     
     if (kbContext) {
-      const existingInstructions = extendedSettings?.customInstructions || "";
-      enhancedSettings = {
-        ...accountSettings,
-      };
-      
       console.log(`[EMAIL-AI] Enhanced prompt with KB context (${kbContext.length} chars)`);
     }
   }
@@ -413,8 +444,13 @@ export async function classifyAndGenerateDraft(
   const draft = await generateEmailDraft(
     emailId,
     originalEmail,
-    enhancedSettings,
-    consultantId
+    accountSettings,
+    consultantId,
+    {
+      customInstructions: extendedSettings?.customInstructions,
+      knowledgeContext: kbContext,
+      bookingLink: extendedSettings?.bookingLink,
+    }
   );
 
   return { 
