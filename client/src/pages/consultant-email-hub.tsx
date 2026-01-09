@@ -919,7 +919,11 @@ export default function ConsultantEmailHub() {
         )}
         <Button 
           className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2"
-          onClick={() => toast({ title: "Funzione in arrivo", description: "Composizione email in sviluppo" })}
+          onClick={() => {
+            setComposerReplyTo(null);
+            setComposerReplyAll(false);
+            setShowComposer(true);
+          }}
         >
           <PenSquare className="h-4 w-4" />
           Scrivi un messaggio
