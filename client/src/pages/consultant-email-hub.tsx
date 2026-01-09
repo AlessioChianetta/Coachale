@@ -1360,7 +1360,25 @@ export default function ConsultantEmailHub() {
                 open={expandedAccounts.has(account.id)}
                 onOpenChange={() => toggleAccountExpanded(account.id)}
               >
-                <div className="flex items-center gap-1 group">
+                <div className="flex items-center gap-1 group relative">
+                  {account.autoReplyMode === "auto" && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="absolute -top-1 right-8 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 z-10">
+                            <Zap className="h-3 w-3 text-amber-400" />
+                            <span className="text-[10px] font-medium text-amber-300">AUTO</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="font-medium">Invio automatico attivo</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Le email con confidenza &gt; {Math.round((account.confidenceThreshold || 0.8) * 100)}% vengono inviate automaticamente
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   <CollapsibleTrigger asChild>
                     <button className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-left">
                       <ChevronDown className={`h-3 w-3 transition-transform text-slate-400 ${
@@ -1376,24 +1394,6 @@ export default function ConsultantEmailHub() {
                         <Mail className="h-4 w-4 text-slate-400" title="Account completo" />
                       )}
                       <span className="text-sm truncate flex-1 text-slate-200">{account.displayName}</span>
-                      {account.autoReplyMode === "auto" && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30">
-                                <Zap className="h-3 w-3 text-amber-400" />
-                                <span className="text-[10px] font-medium text-amber-300">AUTO</span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs">
-                              <p className="font-medium">Invio automatico attivo</p>
-                              <p className="text-xs text-slate-400 mt-1">
-                                Le email con confidenza &gt; {Math.round((account.confidenceThreshold || 0.8) * 100)}% vengono inviate automaticamente
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
                       {account.syncStatus === "connected" && (
                         <Wifi className="h-3 w-3 text-emerald-400" />
                       )}
