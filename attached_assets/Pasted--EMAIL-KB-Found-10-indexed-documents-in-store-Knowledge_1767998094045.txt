@@ -1,0 +1,32 @@
+[EMAIL-KB] Found 10 indexed documents in store Knowledge Base Consulente
+[EMAIL-KB] Search complete. Found: true, Documents: 10
+[EMAIL-AI] Enhanced prompt with KB context (997 chars)
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: none)...
+📋 Client preferred AI provider: vertex_admin
+⚠️ TIER 0: Skipped (no consultantId provided)
+⚠️ TIER 0.5: Skipped (no consultantId provided)
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+10:35:18 PM [express] GET /api/email-hub/ai-stats 304 in 337ms :: {"success":true,"data":{"pendingAI"…
+[EMAIL-AI] Draft generation error: SyntaxError: Unterminated string in JSON at position 1205
+    at parse (<anonymous>)
+    at JSON.parse (/home/runner/workspace/node_modules/pdf-parse/node_modules/pdfjs-dist/legacy/build/pdf.mjs:4852:56)
+    at generateEmailDraft (/home/runner/workspace/server/services/email-hub/email-ai-service.ts:242:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async classifyAndGenerateDraft (/home/runner/workspace/server/services/email-hub/email-ai-service.ts:444:17)
+    at async processNewEmailAI (/home/runner/workspace/server/routes/email-hub-router.ts:2368:20)
+[EMAIL-AI-AUTO] Email 72be175e-9419-46ed-8895-e0b2e6f8f1e8 confidence 0.30 < threshold 0.8, requires review
+[EMAIL-AI-AUTO] Draft generated for email 72be175e-9419-46ed-8895-e0b2e6f8f1e8 (confidence: 0.30)
+[EMAIL-HUB SYNC] Starting sync for no-reply@alessiochianetta.it...
+[EMAIL-HUB SYNC] Syncing folders: INBOX, IN

@@ -232,14 +232,39 @@ ${threadContext}
       ],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096, // Increased to prevent JSON truncation
       },
     });
 
     const responseText = result.response.text();
-    const cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    let cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     
-    const draft = JSON.parse(cleanedResponse);
+    // Attempt to repair truncated JSON (common with token limits)
+    let draft: any;
+    try {
+      draft = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.warn("[EMAIL-AI] JSON parse failed, attempting repair...");
+      
+      // Try to extract fields manually if JSON is malformed
+      const subjectMatch = cleanedResponse.match(/"subject"\s*:\s*"([^"]+)"/);
+      const bodyTextMatch = cleanedResponse.match(/"bodyText"\s*:\s*"([\s\S]*?)(?:"|$)/);
+      const bodyHtmlMatch = cleanedResponse.match(/"bodyHtml"\s*:\s*"([\s\S]*?)(?:"|$)/);
+      const confidenceMatch = cleanedResponse.match(/"confidence"\s*:\s*([\d.]+)/);
+      
+      if (subjectMatch || bodyTextMatch || bodyHtmlMatch) {
+        console.log("[EMAIL-AI] Recovered partial data from malformed JSON");
+        draft = {
+          subject: subjectMatch?.[1] || null,
+          bodyText: bodyTextMatch?.[1]?.replace(/\\n/g, "\n").replace(/\\"/g, '"') || "",
+          bodyHtml: bodyHtmlMatch?.[1]?.replace(/\\n/g, "\n").replace(/\\"/g, '"') || "",
+          confidence: confidenceMatch ? parseFloat(confidenceMatch[1]) : 0.5,
+        };
+      } else {
+        // Can't recover, rethrow original error
+        throw parseError;
+      }
+    }
     
     const subject = draft.subject || (originalEmail.subject?.startsWith("Re:") 
       ? originalEmail.subject 
