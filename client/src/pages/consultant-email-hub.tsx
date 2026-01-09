@@ -183,7 +183,7 @@ type InboxFilter = {
   processingStatus: string | null;
 };
 
-type FolderType = "inbox" | "drafts" | "sent" | "ai-drafts" | "starred";
+type FolderType = "inbox" | "drafts" | "sent" | "trash" | "ai-drafts" | "starred";
 
 const defaultFormData: AccountFormData = {
   displayName: "",
@@ -335,6 +335,8 @@ export default function ConsultantEmailHub() {
       params.set("folder", "sent");
     } else if (selectedFolder === "drafts") {
       params.set("folder", "drafts");
+    } else if (selectedFolder === "trash") {
+      params.set("folder", "trash");
     } else if (selectedFolder === "starred") {
       params.set("starred", "true");
     }
@@ -1007,6 +1009,7 @@ export default function ConsultantEmailHub() {
       case "inbox": return "Posta in arrivo";
       case "drafts": return "Bozze";
       case "sent": return "Inviata";
+      case "trash": return "Cestino";
       case "ai-drafts": return "Bozze AI";
       case "starred": return "Importante";
       default: return "Posta in arrivo";
@@ -1091,6 +1094,18 @@ export default function ConsultantEmailHub() {
           >
             <Send className="h-4 w-4" />
             <span className="text-sm flex-1 text-left">Inviata</span>
+          </button>
+
+          <button
+            onClick={() => handleFolderClick("trash", null)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              selectedFolder === "trash" && !selectedAccountId
+                ? "bg-violet-600/20 text-violet-300" 
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Cestino</span>
           </button>
 
           <button
@@ -1435,6 +1450,19 @@ export default function ConsultantEmailHub() {
                       >
                         <Send className="h-4 w-4" />
                         <span className="flex-1 text-left">Inviata</span>
+                      </button>
+                    )}
+                    {account.accountType !== "smtp_only" && (
+                      <button
+                        onClick={() => handleFolderClick("trash", account.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                          selectedFolder === "trash" && selectedAccountId === account.id
+                            ? "bg-violet-600/20 text-violet-300"
+                            : "hover:bg-white/5 text-slate-400"
+                        }`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="flex-1 text-left">Cestino</span>
                       </button>
                     )}
                   </div>
