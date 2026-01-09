@@ -1077,7 +1077,8 @@ router.get("/agents", authenticateToken, requireRole("consultant"), async (req, 
 router.get("/activity-log", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const consultantId = req.user!.id;
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+    const pageSize = Math.min(Math.max(parseInt(req.query.pageSize as string) || 20, 1), 100);
     const filter = req.query.filter as string || 'all';
     const agentIdFilter = req.query.agentId as string || null;
     const searchQuery = req.query.search as string || null;
@@ -1143,8 +1144,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         eq(schema.consultantWhatsappConfig.consultantId, consultantId),
         schema.followupAiEvaluationLog.createdAt
       ))
-      .orderBy(desc(schema.followupAiEvaluationLog.createdAt))
-      .limit(limit);
+      .orderBy(desc(schema.followupAiEvaluationLog.createdAt));
 
     // Enrich AI logs with 24h window info
     const enrichedAiLogs = await Promise.all(aiLogs.map(async (log) => {
@@ -1231,8 +1231,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         eq(schema.consultantWhatsappConfig.consultantId, consultantId),
         schema.scheduledFollowupMessages.createdAt
       ))
-      .orderBy(desc(schema.scheduledFollowupMessages.createdAt))
-      .limit(limit);
+      .orderBy(desc(schema.scheduledFollowupMessages.createdAt));
 
     // Enrich scheduled messages with 24h window info
     const enrichedMessages = await Promise.all(scheduledMessages.map(async (msg) => {
@@ -1357,9 +1356,9 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       filteredEvents = filteredEvents.filter(e => e.type === 'message_scheduled');
     }
 
-    // Group by conversation for timeline view
+    // Group ALL events by conversation first (for complete timeline per conversation)
     const groupedByConversation: Record<string, any> = {};
-    for (const event of filteredEvents.slice(0, limit)) {
+    for (const event of filteredEvents) {
       if (!groupedByConversation[event.conversationId]) {
         groupedByConversation[event.conversationId] = {
           conversationId: event.conversationId,
@@ -1376,10 +1375,34 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       groupedByConversation[event.conversationId].events.push(event);
     }
 
+    // Get all conversations sorted by most recent event
+    const allConversations = Object.values(groupedByConversation).sort((a: any, b: any) => {
+      const aTime = a.events[0]?.timestamp ? new Date(a.events[0].timestamp).getTime() : 0;
+      const bTime = b.events[0]?.timestamp ? new Date(b.events[0].timestamp).getTime() : 0;
+      return bTime - aTime;
+    });
+
+    // Calculate pagination for conversations
+    const totalConversations = allConversations.length;
+    const totalPages = Math.ceil(totalConversations / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedConversations = allConversations.slice(startIndex, endIndex);
+
+    // Get events only for paginated conversations (not all events)
+    const paginatedConversationIds = new Set(paginatedConversations.map((c: any) => c.conversationId));
+    const paginatedEvents = filteredEvents.filter(e => paginatedConversationIds.has(e.conversationId));
+
     res.json({
-      timeline: Object.values(groupedByConversation),
-      allEvents: filteredEvents.slice(0, limit),
+      timeline: paginatedConversations,
+      allEvents: paginatedEvents,
       total: filteredEvents.length,
+      totalConversations,
+      page: Math.min(page, totalPages || 1),
+      pageSize,
+      totalPages: totalPages || 1,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
     });
   } catch (error: any) {
     console.error("Error fetching activity log:", error);

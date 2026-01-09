@@ -348,6 +348,20 @@ export interface ActivityLogFilters {
   search?: string;
   dateFrom?: string;
   dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ActivityLogResponse {
+  timeline: any[];
+  allEvents: any[];
+  total: number;
+  totalConversations: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
 }
 
 export function useActivityLog(filters: ActivityLogFilters = {}) {
@@ -357,9 +371,10 @@ export function useActivityLog(filters: ActivityLogFilters = {}) {
   if (filters.search) params.set("search", filters.search);
   if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
   if (filters.dateTo) params.set("dateTo", filters.dateTo);
-  params.set("limit", "50");
+  params.set("page", String(filters.page || 1));
+  params.set("pageSize", String(filters.pageSize || 20));
 
-  return useQuery({
+  return useQuery<ActivityLogResponse>({
     queryKey: ["activity-log", filters],
     queryFn: async () => {
       const res = await fetch(`/api/followup/activity-log?${params.toString()}`, {

@@ -35,7 +35,9 @@ import {
   Image as ImageIcon,
   FileText,
   CheckCheck,
-  Check
+  Check,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Link } from "wouter";
 import { useSendMessageNow, useFollowupAgents, useActivityLog, usePendingQueue, type ActivityLogFilters, type PendingQueueItem } from "@/hooks/useFollowupApi";
@@ -991,6 +993,12 @@ export function LiveActivityFeed() {
   const [dateTo, setDateTo] = useState<string>('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filter, agentId, search, dateFrom, dateTo]);
 
   const filters: ActivityLogFilters = useMemo(() => ({
     filter: filter !== 'all' ? filter : undefined,
@@ -998,7 +1006,9 @@ export function LiveActivityFeed() {
     search: search || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
-  }), [filter, agentId, search, dateFrom, dateTo]);
+    page,
+    pageSize: 20,
+  }), [filter, agentId, search, dateFrom, dateTo, page]);
 
   const { data, isLoading, error, refetch, isFetching } = useActivityLog(filters);
   const { data: agents } = useFollowupAgents();
@@ -1009,6 +1019,7 @@ export function LiveActivityFeed() {
     setSearch('');
     setDateFrom('');
     setDateTo('');
+    setPage(1);
   };
 
   const hasActiveFilters = agentId || search || dateFrom || dateTo;
@@ -1168,11 +1179,31 @@ export function LiveActivityFeed() {
                   </div>
                 )}
               </ScrollArea>
-              {data?.total && data.total > 0 && (
-                <div className="p-2 border-t border-border text-center">
-                  <p className="text-[10px] text-muted-foreground">
-                    {data.timeline?.length || 0} conversazioni · {data.total} eventi
-                  </p>
+              {data && data.totalConversations > 0 && (
+                <div className="p-2 border-t border-border">
+                  <div className="flex items-center justify-between gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={!data.hasPrevPage || isFetching}
+                      className="h-6 px-2"
+                    >
+                      <ChevronLeft className="h-3 w-3" />
+                    </Button>
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Pag. {data.page}/{data.totalPages} · {data.totalConversations} conv.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPage(p => p + 1)}
+                      disabled={!data.hasNextPage || isFetching}
+                      className="h-6 px-2"
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
