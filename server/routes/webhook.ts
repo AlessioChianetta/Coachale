@@ -408,6 +408,8 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
 
     // Now safe to log payload details (after auth)
     console.log(`📨 [AC-WEBHOOK] Payload type: ${payload.type}`);
+    console.log(`📨 [AC-WEBHOOK] Full payload keys: ${Object.keys(payload).join(', ')}`);
+    console.log(`📨 [AC-WEBHOOK] Full payload:`, JSON.stringify(payload, null, 2));
 
     // Accept relevant event types from ActiveCampaign
     const acceptedTypes = ['subscribe', 'contact_add', 'contact_update', undefined, ''];
@@ -430,12 +432,32 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       firstName = 'Lead';
     }
 
-    // Get phone - critical field
-    const rawPhone = contact.phone || payload.phone || '';
+    // Get phone - try many field variations (ActiveCampaign can send in different formats)
+    const rawPhone = 
+      contact.phone || 
+      contact.phone_number ||
+      contact.mobile ||
+      contact.cellulare ||
+      contact.telefono ||
+      payload.phone || 
+      payload.phone_number ||
+      payload.mobile ||
+      payload.cellulare ||
+      payload.telefono ||
+      // ActiveCampaign custom fields format
+      (payload.fields && (payload.fields.phone || payload.fields.PHONE || payload.fields.Phone)) ||
+      (payload.fields && (payload.fields.phone_number || payload.fields.PHONE_NUMBER)) ||
+      (payload.fields && (payload.fields.mobile || payload.fields.MOBILE)) ||
+      (payload.fields && (payload.fields.cellulare || payload.fields.CELLULARE)) ||
+      (payload.fields && (payload.fields.telefono || payload.fields.TELEFONO)) ||
+      '';
+    
+    console.log(`📞 [AC-WEBHOOK] Looking for phone - contact.phone: ${contact.phone}, payload.phone: ${payload.phone}, rawPhone found: ${rawPhone}`);
+    
     const phoneNumber = normalizePhone(rawPhone);
     
     if (!phoneNumber) {
-      console.log(`❌ [AC-WEBHOOK] Missing phone number in payload`);
+      console.log(`❌ [AC-WEBHOOK] Missing phone number in payload - tried all field variations`);
       return res.status(400).json({
         success: false,
         error: 'Phone number is required',
