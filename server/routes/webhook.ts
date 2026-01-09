@@ -370,11 +370,56 @@ router.get('/activecampaign/:secretKey/test', async (req: Request, res: Response
   });
 });
 
+// Helper to parse ActiveCampaign bracket notation (contact[email] -> nested object)
+function parseACBracketNotation(payload: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(payload)) {
+    // Check if key has bracket notation like "contact[email]" or "contact[fields][39]"
+    const bracketMatch = key.match(/^([^\[]+)(\[.+\])$/);
+    
+    if (bracketMatch) {
+      const rootKey = bracketMatch[1]; // e.g., "contact"
+      const brackets = bracketMatch[2]; // e.g., "[email]" or "[fields][39]"
+      
+      // Extract all bracket contents
+      const parts = brackets.match(/\[([^\]]*)\]/g)?.map(b => b.slice(1, -1)) || [];
+      
+      if (!result[rootKey]) {
+        result[rootKey] = {};
+      }
+      
+      // Navigate/create nested structure
+      let current = result[rootKey];
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (!current[part]) {
+          current[part] = {};
+        }
+        current = current[part];
+      }
+      
+      // Set the final value
+      if (parts.length > 0) {
+        current[parts[parts.length - 1]] = value;
+      }
+    } else {
+      // No bracket notation, copy directly
+      result[key] = value;
+    }
+  }
+  
+  return result;
+}
+
 // ActiveCampaign Webhook Handler
 router.post('/activecampaign/:secretKey', async (req: Request, res: Response) => {
   try {
     const { secretKey } = req.params;
-    const payload: ActiveCampaignPayload = req.body;
+    const rawPayload = req.body;
+    
+    // Parse bracket notation into nested objects
+    const payload: any = parseACBracketNotation(rawPayload);
 
     console.log(`📨 [AC-WEBHOOK] Received ActiveCampaign webhook with secretKey: ${secretKey.substring(0, 8)}...`);
 
@@ -408,8 +453,7 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
 
     // Now safe to log payload details (after auth)
     console.log(`📨 [AC-WEBHOOK] Payload type: ${payload.type}`);
-    console.log(`📨 [AC-WEBHOOK] Full payload keys: ${Object.keys(payload).join(', ')}`);
-    console.log(`📨 [AC-WEBHOOK] Full payload:`, JSON.stringify(payload, null, 2));
+    console.log(`📨 [AC-WEBHOOK] Parsed payload:`, JSON.stringify(payload, null, 2));
 
     // Accept relevant event types from ActiveCampaign
     const acceptedTypes = ['subscribe', 'contact_add', 'contact_update', undefined, ''];
@@ -423,6 +467,10 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
 
     // Extract contact data - ActiveCampaign can send data in different formats
     const contact = payload.contact || {};
+    const contactFields = contact.fields || {};
+    
+    console.log(`📋 [AC-WEBHOOK] Contact object:`, JSON.stringify(contact, null, 2));
+    console.log(`📋 [AC-WEBHOOK] Contact fields:`, JSON.stringify(contactFields, null, 2));
     
     // Get name - try multiple field variations
     let firstName = contact.firstName || contact.first_name || payload.firstName || payload.first_name || '';
@@ -432,8 +480,33 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       firstName = 'Lead';
     }
 
-    // Get phone - try many field variations (ActiveCampaign can send in different formats)
-    const rawPhone = 
+    // Helper to find phone in an object by checking known field names
+    const findPhoneInObject = (obj: Record<string, any>): string => {
+      if (!obj) return '';
+      
+      // Direct phone field names
+      const phoneFieldNames = ['phone', 'phone_number', 'mobile', 'cellulare', 'telefono', 'PHONE', 'MOBILE', 'CELLULARE', 'TELEFONO'];
+      for (const fieldName of phoneFieldNames) {
+        if (obj[fieldName]) return obj[fieldName];
+      }
+      
+      // Check all field values for phone-like patterns (for custom fields with numeric IDs)
+      for (const [key, value] of Object.entries(obj)) {
+        if (typeof value === 'string' && value.length >= 8 && value.length <= 20) {
+          // Check if it looks like a phone number (contains mostly digits)
+          const digits = value.replace(/\D/g, '');
+          if (digits.length >= 8 && digits.length <= 15) {
+            console.log(`📞 [AC-WEBHOOK] Found potential phone in field "${key}": ${value}`);
+            return value;
+          }
+        }
+      }
+      
+      return '';
+    };
+
+    // Get phone - try many locations
+    let rawPhone = 
       contact.phone || 
       contact.phone_number ||
       contact.mobile ||
@@ -444,23 +517,20 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       payload.mobile ||
       payload.cellulare ||
       payload.telefono ||
-      // ActiveCampaign custom fields format
-      (payload.fields && (payload.fields.phone || payload.fields.PHONE || payload.fields.Phone)) ||
-      (payload.fields && (payload.fields.phone_number || payload.fields.PHONE_NUMBER)) ||
-      (payload.fields && (payload.fields.mobile || payload.fields.MOBILE)) ||
-      (payload.fields && (payload.fields.cellulare || payload.fields.CELLULARE)) ||
-      (payload.fields && (payload.fields.telefono || payload.fields.TELEFONO)) ||
+      findPhoneInObject(contactFields) ||
+      findPhoneInObject(payload.fields) ||
       '';
     
-    console.log(`📞 [AC-WEBHOOK] Looking for phone - contact.phone: ${contact.phone}, payload.phone: ${payload.phone}, rawPhone found: ${rawPhone}`);
+    console.log(`📞 [AC-WEBHOOK] Phone search result - rawPhone: "${rawPhone}"`);
     
     const phoneNumber = normalizePhone(rawPhone);
     
     if (!phoneNumber) {
       console.log(`❌ [AC-WEBHOOK] Missing phone number in payload - tried all field variations`);
+      console.log(`💡 [AC-WEBHOOK] Tip: Make sure the phone field is mapped in ActiveCampaign automation`);
       return res.status(400).json({
         success: false,
-        error: 'Phone number is required',
+        error: 'Phone number is required. Ensure your ActiveCampaign automation includes the phone field.',
       });
     }
 
