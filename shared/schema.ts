@@ -7514,3 +7514,89 @@ export const insertEmailImportJobSchema = createInsertSchema(emailImportJobs).om
   createdAt: true,
   updatedAt: true,
 });
+
+// ============================================
+// EMAIL TICKET SYSTEM - Tables for ticket creation and webhooks
+// ============================================
+
+export const emailTicketSettings = pgTable("email_ticket_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  
+  webhookUrl: text("webhook_url"),
+  webhookSecret: varchar("webhook_secret", { length: 255 }),
+  webhookEnabled: boolean("webhook_enabled").default(false),
+  
+  autoCreateTicketOnNoAnswer: boolean("auto_create_ticket_on_no_answer").default(true),
+  autoCreateTicketOnHighUrgency: boolean("auto_create_ticket_on_high_urgency").default(true),
+  autoCreateTicketOnNegativeSentiment: boolean("auto_create_ticket_on_negative_sentiment").default(false),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+});
+
+export type EmailTicketSettings = typeof emailTicketSettings.$inferSelect;
+export type InsertEmailTicketSettings = typeof emailTicketSettings.$inferInsert;
+
+export const emailTickets = pgTable("email_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  emailId: varchar("email_id").notNull().references(() => hubEmails.id, { onDelete: "cascade" }),
+  accountId: varchar("account_id").notNull().references(() => emailAccounts.id, { onDelete: "cascade" }),
+  
+  status: varchar("status", { length: 20 }).notNull().default("open").$type<"open" | "in_progress" | "resolved" | "closed">(),
+  priority: varchar("priority", { length: 20 }).notNull().default("medium").$type<"low" | "medium" | "high" | "urgent">(),
+  
+  reason: varchar("reason", { length: 50 }).notNull().$type<
+    "no_kb_answer" | "high_urgency" | "negative_sentiment" | "escalation_keyword" | "low_confidence" | "manual"
+  >(),
+  reasonDetails: text("reason_details"),
+  
+  aiClassification: jsonb("ai_classification"),
+  suggestedResponse: text("suggested_response"),
+  
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  resolutionNotes: text("resolution_notes"),
+  
+  webhookSent: boolean("webhook_sent").default(false),
+  webhookSentAt: timestamp("webhook_sent_at", { withTimezone: true }),
+  webhookResponseStatus: integer("webhook_response_status"),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_email_tickets_consultant").on(table.consultantId),
+  statusIdx: index("idx_email_tickets_status").on(table.status),
+  emailIdx: index("idx_email_tickets_email").on(table.emailId),
+}));
+
+export type EmailTicket = typeof emailTickets.$inferSelect;
+export type InsertEmailTicket = typeof emailTickets.$inferInsert;
+
+export const emailWebhookLogs = pgTable("email_webhook_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  ticketId: varchar("ticket_id").references(() => emailTickets.id, { onDelete: "set null" }),
+  
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  payload: jsonb("payload").notNull(),
+  
+  webhookUrl: text("webhook_url").notNull(),
+  
+  status: varchar("status", { length: 20 }).notNull().default("pending").$type<"pending" | "success" | "failed" | "retrying">(),
+  responseStatus: integer("response_status"),
+  responseBody: text("response_body"),
+  errorMessage: text("error_message"),
+  
+  attempts: integer("attempts").default(0),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_email_webhook_logs_consultant").on(table.consultantId),
+  statusIdx: index("idx_email_webhook_logs_status").on(table.status),
+}));
+
+export type EmailWebhookLog = typeof emailWebhookLogs.$inferSelect;
+export type InsertEmailWebhookLog = typeof emailWebhookLogs.$inferInsert;

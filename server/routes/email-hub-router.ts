@@ -8,6 +8,13 @@ import { createImapService, ImapIdleManager, ParsedEmail } from "../services/ema
 import { createSmtpService } from "../services/email-hub/smtp-service";
 import { classifyEmail, generateEmailDraft, classifyAndGenerateDraft } from "../services/email-hub/email-ai-service";
 import { classifyEmailProvider, isSendOnlyProvider, ITALIAN_PROVIDERS } from "../services/email-hub/provider-classifier";
+import { 
+  getTicketSettings, 
+  updateTicketSettings, 
+  createTicketFromEmail,
+  sendTicketWebhook,
+} from "../services/email-hub/ticket-webhook-service";
+import { searchKnowledgeBase } from "../services/email-hub/email-knowledge-service";
 
 const router = Router();
 
@@ -2556,5 +2563,263 @@ async function startImportWorker(
     }).where(eq(schema.emailImportJobs.id, jobId));
   }
 }
+
+// ============================================
+// TICKET AND WEBHOOK ENDPOINTS
+// ============================================
+
+router.get("/ticket-settings", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const settings = await getTicketSettings(consultantId);
+    
+    res.json({ 
+      success: true, 
+      data: settings || {
+        webhookUrl: null,
+        webhookEnabled: false,
+        autoCreateTicketOnNoAnswer: true,
+        autoCreateTicketOnHighUrgency: true,
+        autoCreateTicketOnNegativeSentiment: false,
+      }
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching ticket settings:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put("/ticket-settings", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const {
+      webhookUrl,
+      webhookSecret,
+      webhookEnabled,
+      autoCreateTicketOnNoAnswer,
+      autoCreateTicketOnHighUrgency,
+      autoCreateTicketOnNegativeSentiment,
+    } = req.body;
+
+    const settings = await updateTicketSettings(consultantId, {
+      webhookUrl,
+      webhookSecret,
+      webhookEnabled,
+      autoCreateTicketOnNoAnswer,
+      autoCreateTicketOnHighUrgency,
+      autoCreateTicketOnNegativeSentiment,
+    });
+
+    console.log(`[EMAIL-HUB] Updated ticket settings for consultant ${consultantId}`);
+    res.json({ success: true, data: settings });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error updating ticket settings:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/tickets", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const status = req.query.status as string | undefined;
+
+    let query = db
+      .select({
+        ticket: schema.emailTickets,
+        email: {
+          subject: schema.hubEmails.subject,
+          fromEmail: schema.hubEmails.fromEmail,
+          fromName: schema.hubEmails.fromName,
+          snippet: schema.hubEmails.snippet,
+          receivedAt: schema.hubEmails.receivedAt,
+        },
+      })
+      .from(schema.emailTickets)
+      .leftJoin(schema.hubEmails, eq(schema.emailTickets.emailId, schema.hubEmails.id))
+      .where(eq(schema.emailTickets.consultantId, consultantId))
+      .orderBy(desc(schema.emailTickets.createdAt));
+
+    const tickets = await query;
+
+    const filtered = status 
+      ? tickets.filter(t => t.ticket.status === status)
+      : tickets;
+
+    res.json({ success: true, data: filtered });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching tickets:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/tickets", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { emailId, reason, reasonDetails, priority } = req.body;
+
+    if (!emailId || !reason) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Email ID e motivo sono obbligatori" 
+      });
+    }
+
+    const [email] = await db
+      .select()
+      .from(schema.hubEmails)
+      .where(
+        and(
+          eq(schema.hubEmails.id, emailId),
+          eq(schema.hubEmails.consultantId, consultantId)
+        )
+      );
+
+    if (!email) {
+      return res.status(404).json({ success: false, error: "Email non trovata" });
+    }
+
+    const ticket = await createTicketFromEmail(
+      emailId,
+      consultantId,
+      email.accountId,
+      reason,
+      { reasonDetails, priority }
+    );
+
+    if (!ticket) {
+      return res.status(500).json({ success: false, error: "Errore nella creazione del ticket" });
+    }
+
+    res.json({ success: true, data: ticket });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error creating ticket:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.patch("/tickets/:id", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const ticketId = req.params.id;
+    const { status, priority, resolutionNotes } = req.body;
+
+    const [ticket] = await db
+      .select()
+      .from(schema.emailTickets)
+      .where(
+        and(
+          eq(schema.emailTickets.id, ticketId),
+          eq(schema.emailTickets.consultantId, consultantId)
+        )
+      );
+
+    if (!ticket) {
+      return res.status(404).json({ success: false, error: "Ticket non trovato" });
+    }
+
+    const updateData: Partial<schema.InsertEmailTicket> = {
+      updatedAt: new Date(),
+    };
+
+    if (status) updateData.status = status;
+    if (priority) updateData.priority = priority;
+    if (resolutionNotes) updateData.resolutionNotes = resolutionNotes;
+
+    if (status === "resolved" || status === "closed") {
+      updateData.resolvedAt = new Date();
+      updateData.resolvedBy = consultantId;
+    }
+
+    const [updated] = await db
+      .update(schema.emailTickets)
+      .set(updateData)
+      .where(eq(schema.emailTickets.id, ticketId))
+      .returning();
+
+    res.json({ success: true, data: updated });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error updating ticket:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/test-webhook", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const settings = await getTicketSettings(consultantId);
+
+    if (!settings?.webhookUrl) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Nessun webhook URL configurato" 
+      });
+    }
+
+    const testPayload = {
+      event: "test",
+      timestamp: new Date().toISOString(),
+      message: "Test webhook from Email Hub",
+      consultant: { id: consultantId },
+    };
+
+    const signature = require("crypto")
+      .createHmac("sha256", settings.webhookSecret || "")
+      .update(JSON.stringify(testPayload))
+      .digest("hex");
+
+    const response = await fetch(settings.webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Webhook-Signature": `sha256=${signature}`,
+        "X-Webhook-Event": "test",
+      },
+      body: JSON.stringify(testPayload),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const responseBody = await response.text().catch(() => "");
+
+    await db.insert(schema.emailWebhookLogs).values({
+      consultantId,
+      eventType: "test",
+      payload: testPayload as any,
+      webhookUrl: settings.webhookUrl,
+      status: response.ok ? "success" : "failed",
+      responseStatus: response.status,
+      responseBody: responseBody.substring(0, 500),
+      attempts: 1,
+      lastAttemptAt: new Date(),
+    });
+
+    res.json({ 
+      success: response.ok,
+      statusCode: response.status,
+      message: response.ok ? "Webhook inviato con successo" : `Errore: HTTP ${response.status}`,
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error testing webhook:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/webhook-logs", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const logs = await db
+      .select()
+      .from(schema.emailWebhookLogs)
+      .where(eq(schema.emailWebhookLogs.consultantId, consultantId))
+      .orderBy(desc(schema.emailWebhookLogs.createdAt))
+      .limit(limit);
+
+    res.json({ success: true, data: logs });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching webhook logs:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 export default router;
