@@ -7436,6 +7436,63 @@ export const emailHubAiResponses = pgTable("email_hub_ai_responses", {
 export type EmailHubAiResponse = typeof emailHubAiResponses.$inferSelect;
 export type InsertEmailHubAiResponse = typeof emailHubAiResponses.$inferInsert;
 
+// Email Hub AI Events - Track AI decisions and reasoning
+export const hubEmailAiEvents = pgTable("hub_email_ai_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  emailId: varchar("email_id").notNull().references(() => hubEmails.id, { onDelete: "cascade" }),
+  accountId: varchar("account_id").notNull().references(() => emailAccounts.id, { onDelete: "cascade" }),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id),
+  
+  // Event Type
+  eventType: varchar("event_type", { length: 30 }).notNull().$type<
+    "classification" | "draft_generated" | "auto_sent" | "held_for_review" | "ticket_created" | "escalated" | "skipped" | "error"
+  >(),
+  
+  // Classification Result
+  classification: jsonb("classification").$type<{
+    intent?: string;
+    urgency?: "high" | "medium" | "low";
+    sentiment?: "positive" | "neutral" | "negative";
+    category?: string;
+    suggestedAction?: string;
+    riskDetected?: boolean;
+    escalationKeywords?: string[];
+  }>(),
+  
+  // Decision Details
+  confidence: real("confidence"),
+  confidenceThreshold: real("confidence_threshold"),
+  decision: varchar("decision", { length: 50 }).$type<
+    "auto_send" | "create_draft" | "needs_review" | "create_ticket" | "escalate" | "skip" | "error"
+  >(),
+  decisionReason: text("decision_reason"),
+  
+  // Related Entities
+  draftId: varchar("draft_id").references(() => emailHubAiResponses.id),
+  ticketId: varchar("ticket_id"),
+  
+  // AI Metadata
+  modelUsed: varchar("model_used", { length: 50 }),
+  tokensUsed: integer("tokens_used"),
+  processingTimeMs: integer("processing_time_ms"),
+  knowledgeDocsUsed: jsonb("knowledge_docs_used").$type<string[]>(),
+  
+  // Email Context (for quick reference)
+  emailSubject: text("email_subject"),
+  emailFrom: varchar("email_from", { length: 255 }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  emailIdx: index("idx_hub_ai_events_email").on(table.emailId),
+  accountIdx: index("idx_hub_ai_events_account").on(table.accountId),
+  consultantIdx: index("idx_hub_ai_events_consultant").on(table.consultantId),
+  eventTypeIdx: index("idx_hub_ai_events_type").on(table.eventType),
+  createdIdx: index("idx_hub_ai_events_created").on(table.createdAt),
+}));
+
+export type HubEmailAiEvent = typeof hubEmailAiEvents.$inferSelect;
+export type InsertHubEmailAiEvent = typeof hubEmailAiEvents.$inferInsert;
+
 // Insert schemas for Email Hub
 export const insertEmailAccountSchema = createInsertSchema(emailAccounts).omit({
   id: true,
