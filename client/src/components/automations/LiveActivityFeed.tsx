@@ -9,6 +9,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import {
   Activity,
   User,
@@ -27,7 +29,8 @@ import {
   Zap,
   Search,
   Calendar,
-  Filter
+  Filter,
+  Inbox
 } from "lucide-react";
 import { Link } from "wouter";
 import { useSendMessageNow, useFollowupAgents, useActivityLog, usePendingQueue, type ActivityLogFilters, type PendingQueueItem } from "@/hooks/useFollowupApi";
@@ -83,32 +86,32 @@ interface ActivityLogResponse {
 function getStatusConfig(status: string) {
   switch (status) {
     case 'active':
-      return { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Attivo' };
+      return { color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle, label: 'Attivo' };
     case 'stopped':
-      return { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Stop' };
+      return { color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', icon: XCircle, label: 'Stop' };
     case 'waiting':
-      return { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'In Attesa' };
+      return { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock, label: 'In Attesa' };
     case 'error':
-      return { color: 'bg-orange-100 text-orange-700', icon: AlertTriangle, label: 'Errore' };
+      return { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', icon: AlertTriangle, label: 'Errore' };
     case 'scheduled':
-      return { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Programmato' };
+      return { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: Clock, label: 'Programmato' };
     default:
-      return { color: 'bg-gray-100 text-gray-700', icon: Activity, label: status };
+      return { color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400', icon: Activity, label: status };
   }
 }
 
 function getTemperatureConfig(temperature?: string) {
   switch (temperature) {
     case 'hot':
-      return { emoji: '🔥', label: 'Hot', color: 'bg-red-100 text-red-700 border-red-300' };
+      return { emoji: '🔥', label: 'Hot', color: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700' };
     case 'warm':
-      return { emoji: '🟡', label: 'Warm', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
+      return { emoji: '🟡', label: 'Warm', color: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700' };
     case 'cold':
-      return { emoji: '❄️', label: 'Cold', color: 'bg-blue-100 text-blue-700 border-blue-300' };
+      return { emoji: '❄️', label: 'Cold', color: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700' };
     case 'ghost':
-      return { emoji: '👻', label: 'Ghost', color: 'bg-gray-100 text-gray-500 border-gray-300' };
+      return { emoji: '👻', label: 'Ghost', color: 'bg-gray-100 text-gray-500 border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600' };
     default:
-      return { emoji: '🟡', label: 'Warm', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
+      return { emoji: '🟡', label: 'Warm', color: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700' };
   }
 }
 
@@ -199,7 +202,6 @@ function SendNowButton({
   const { toast } = useToast();
   const sendNow = useSendMessageNow();
 
-  // Can send if: inside 24h window (canSendFreeform) OR has an approved template
   const canSend = canSendFreeform || hasApprovedTemplate;
 
   const handleSendNow = async (e: React.MouseEvent) => {
@@ -237,7 +239,7 @@ function SendNowButton({
               size="sm"
               onClick={handleSendNow}
               disabled={isDisabled}
-              className={`gap-1 ${!canSend ? 'opacity-50 cursor-not-allowed' : 'text-blue-600 border-blue-300 hover:bg-blue-50'}`}
+              className={`gap-1 ${!canSend ? 'opacity-50 cursor-not-allowed' : 'text-blue-600 border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
             >
               {sendNow.isPending ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -297,7 +299,7 @@ function RetryButton({ messageId }: { messageId: string }) {
       size="sm"
       onClick={handleRetry}
       disabled={isRetrying}
-      className="gap-1 text-orange-600 border-orange-300 hover:bg-orange-50"
+      className="gap-1 text-orange-600 border-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20"
     >
       {isRetrying ? (
         <Loader2 className="h-3 w-3 animate-spin" />
@@ -366,7 +368,7 @@ function SimulateAiButton({ conversationId }: { conversationId: string }) {
             size="sm"
             onClick={handleSimulate}
             disabled={isSimulating}
-            className="gap-1 text-purple-600 border-purple-300 hover:bg-purple-50"
+            className="gap-1 text-purple-600 border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20"
           >
             {isSimulating ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -384,110 +386,64 @@ function SimulateAiButton({ conversationId }: { conversationId: string }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PENDING QUEUE PANEL - Shows upcoming follow-ups grouped by agent
-// ═══════════════════════════════════════════════════════════════════════════
-
-
-
 function PendingQueuePanel() {
   const { data, isLoading, error } = usePendingQueue();
+  const [isOpen, setIsOpen] = useState(true);
 
   if (isLoading) {
     return (
-      <Card className="mb-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Prossimi Controlli
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 bg-muted rounded w-3/4"></div>
-            <div className="h-4 bg-muted rounded w-1/2"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="p-3 border-b border-border">
+        <div className="animate-pulse space-y-2">
+          <div className="h-4 bg-muted rounded w-3/4"></div>
+          <div className="h-4 bg-muted rounded w-1/2"></div>
+        </div>
+      </div>
     );
   }
 
-  if (error) {
-    return (
-      <Card className="mb-4 border-red-200">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2 text-red-600">
-            <AlertTriangle className="h-4 w-4" />
-            Errore Prossimi Controlli
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-red-500">{(error as Error).message}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!data) {
+  if (error || !data || data.agents.length === 0) {
     return null;
   }
 
-  if (data.agents.length === 0) {
-    return (
-      <Card className="mb-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Prossimi Controlli
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Nessun follow-up in coda</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="mb-4">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Clock className="h-4 w-4" />
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border-b border-border">
+      <CollapsibleTrigger className="w-full p-3 flex items-center justify-between hover:bg-muted/50 transition-colors">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Clock className="h-4 w-4 text-primary" />
           Prossimi Controlli
-          <Badge variant="secondary" className="ml-auto">
-            {data.totalPending} attivi
+          <Badge variant="secondary" className="text-xs">
+            {data.totalPending}
           </Badge>
-          {data.totalDormant > 0 && (
-            <Badge variant="outline" className="text-orange-600">
-              {data.totalDormant} in pausa
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {data.agents.map((agent) => (
-          <div key={agent.agentId} className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Activity className="h-3 w-3 text-primary" />
-              {agent.agentName}
-              <Badge variant="outline" className="text-xs">
-                {agent.pending.length}
-              </Badge>
+        </div>
+        {isOpen ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="p-3 pt-0 space-y-2 max-h-48 overflow-y-auto">
+          {data.agents.map((agent) => (
+            <div key={agent.agentId} className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Activity className="h-3 w-3" />
+                {agent.agentName}
+              </div>
+              <div className="ml-4 space-y-1">
+                {agent.pending.slice(0, 3).map((item) => (
+                  <PendingQueueRow key={item.conversationId} item={item} />
+                ))}
+                {agent.pending.length > 3 && (
+                  <p className="text-xs text-muted-foreground">
+                    +{agent.pending.length - 3} altri...
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="ml-5 space-y-1">
-              {agent.pending.slice(0, 5).map((item) => (
-                <PendingQueueRow key={item.conversationId} item={item} />
-              ))}
-              {agent.pending.length > 5 && (
-                <p className="text-xs text-muted-foreground">
-                  +{agent.pending.length - 5} altri...
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -506,310 +462,328 @@ function PendingQueueRow({ item }: { item: PendingQueueItem }) {
     return format(date, "dd MMM HH:mm", { locale: it });
   };
 
-  // Describe what will happen next
-  const getNextAction = () => {
-    if (item.isDormant) {
-      return `Risveglio: ${item.dormantUntil ? format(new Date(item.dormantUntil), "dd MMM yyyy", { locale: it }) : '3 mesi'}`;
-    }
-    if (item.consecutiveNoReply >= 2) {
-      return "⚠️ Prossimo: ultimo tentativo prima di dormienza";
-    }
-    if (item.consecutiveNoReply === 1) {
-      return `📤 Prossimo: follow-up #${item.followupCount + 1} (tentativo 2/3)`;
-    }
-    return `📤 Prossimo: follow-up #${item.followupCount + 1}`;
-  };
+  return (
+    <div className={`flex items-center justify-between text-xs p-1.5 rounded ${
+      item.isDormant ? 'bg-orange-50 dark:bg-orange-900/20' :
+      item.isOverdue ? 'bg-red-50 dark:bg-red-900/20' :
+      'bg-muted/50'
+    }`}>
+      <span className="truncate font-medium">{item.leadName}</span>
+      <Badge variant="secondary" className="text-[10px] ml-1">
+        {item.isDormant ? '😴' : formatNextCheck(item.nextCheckAt)}
+      </Badge>
+    </div>
+  );
+}
+
+function ConversationListItem({
+  conversation,
+  isSelected,
+  onClick
+}: {
+  conversation: ConversationTimeline;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const statusConfig = getStatusConfig(conversation.currentStatus);
+  const StatusIcon = statusConfig.icon;
+  const tempConfig = getTemperatureConfig(conversation.temperatureLevel);
+  const lastEvent = conversation.events[0];
+  const lastEventTime = lastEvent ? format(new Date(lastEvent.timestamp), "dd MMM HH:mm", { locale: it }) : null;
 
   return (
-    <div className={`flex flex-col gap-1 text-xs p-2 rounded ${item.isDormant ? 'bg-orange-50 border border-orange-200' :
-      item.isOverdue ? 'bg-red-50 border border-red-200' :
-        'bg-muted/50'
-      }`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <User className="h-3 w-3 flex-shrink-0" />
-          <span className="truncate font-medium">{item.leadName}</span>
-          <span className="text-muted-foreground">({item.consecutiveNoReply}/3)</span>
+    <div
+      onClick={onClick}
+      className={`p-3 border-b border-border cursor-pointer transition-colors hover:bg-muted/50 ${
+        isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <div className="bg-gray-100 dark:bg-gray-800 p-1.5 rounded-full flex-shrink-0">
+          <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {item.isDormant ? (
-            <Badge variant="outline" className="text-orange-600 text-[10px]">
-              😴 Pausa
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-1">
+            <span className="font-medium text-sm truncate">{conversation.leadName}</span>
+            <Badge variant="outline" className={`text-[10px] px-1 py-0 h-4 flex-shrink-0 border ${tempConfig.color}`}>
+              {tempConfig.emoji}
             </Badge>
-          ) : item.isOverdue ? (
-            <Badge variant="destructive" className="text-[10px]">
-              ⚠️ Scaduto
+          </div>
+          <div className="flex items-center gap-1 mt-0.5">
+            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 font-normal">
+              {conversation.agentName}
             </Badge>
-          ) : (
-            <Badge variant="secondary" className="text-[10px]">
-              {formatNextCheck(item.nextCheckAt)}
+            <Badge className={`text-[10px] px-1 py-0 h-4 ${statusConfig.color}`}>
+              <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
+              {statusConfig.label}
             </Badge>
+          </div>
+          {lastEventTime && (
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {lastEventTime} · {conversation.events.length} eventi
+            </p>
           )}
         </div>
-      </div>
-      <div className="text-[10px] text-muted-foreground pl-5">
-        {getNextAction()}
       </div>
     </div>
   );
 }
 
-function ConversationCard({ conversation }: { conversation: ConversationTimeline }) {
-  const [isOpen, setIsOpen] = useState(false);
+function ConversationDetailView({ conversation }: { conversation: ConversationTimeline | null }) {
   const [showFullReasoning, setShowFullReasoning] = useState<Record<string, boolean>>({});
   const [showFullMessagePreview, setShowFullMessagePreview] = useState<Record<string, boolean>>({});
+
+  if (!conversation) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center p-8">
+        <div className="bg-muted/50 rounded-full p-6 mb-4">
+          <Inbox className="h-12 w-12 text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-medium mb-2">Seleziona una conversazione</h3>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          Seleziona una conversazione dalla lista per visualizzare la timeline degli eventi e le azioni disponibili.
+        </p>
+      </div>
+    );
+  }
+
   const statusConfig = getStatusConfig(conversation.currentStatus);
   const StatusIcon = statusConfig.icon;
   const tempConfig = getTemperatureConfig(conversation.temperatureLevel);
   const countdown = formatCountdown(conversation.window24hExpiresAt);
 
   return (
-    <Card className="overflow-hidden">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full">
-                  <User className="h-5 w-5 text-gray-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2 flex-wrap">
-                    {conversation.leadName}
-                    <Badge variant="outline" className="text-xs font-normal">
-                      via {conversation.agentName}
-                    </Badge>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge variant="outline" className={`text-xs font-normal border ${tempConfig.color}`}>
-                            {tempConfig.emoji} {tempConfig.label}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Temperatura lead: {tempConfig.label}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </CardTitle>
-                  <CardDescription className="text-xs flex items-center gap-2 flex-wrap">
-                    {conversation.events.length} eventi recenti
-                    {countdown && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${countdown.isExpired
-                              ? 'bg-red-100 text-red-700'
-                              : countdown.isUrgent
-                                ? 'bg-orange-100 text-orange-700'
-                                : 'bg-green-100 text-green-700'
-                              }`}>
-                              <Clock className="h-3 w-3" />
-                              {countdown.isExpired ? '24h scaduta' : `24h: ${countdown.text}`}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{countdown.isExpired
-                              ? 'Finestra 24h scaduta - serve template approvato'
-                              : `Finestra 24h scade tra ${countdown.text}`}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </CardDescription>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge className={`${statusConfig.color} flex items-center gap-1`}>
-                  <StatusIcon className="h-3 w-3" />
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b border-border bg-muted/30">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full">
+              <User className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-lg flex items-center gap-2 flex-wrap">
+                {conversation.leadName}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className={`text-xs font-normal border ${tempConfig.color}`}>
+                        {tempConfig.emoji} {tempConfig.label}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Temperatura lead: {tempConfig.label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </h2>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+                <span>via {conversation.agentName}</span>
+                <Badge className={`${statusConfig.color} text-xs`}>
+                  <StatusIcon className="h-3 w-3 mr-1" />
                   {statusConfig.label}
                 </Badge>
-                {isOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                {countdown && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
+                          countdown.isExpired
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            : countdown.isUrgent
+                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                              : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        }`}>
+                          <Clock className="h-3 w-3" />
+                          {countdown.isExpired ? '24h scaduta' : `24h: ${countdown.text}`}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{countdown.isExpired
+                          ? 'Finestra 24h scaduta - serve template approvato'
+                          : `Finestra 24h scade tra ${countdown.text}`}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </div>
             </div>
-          </CardHeader>
-        </CollapsibleTrigger>
+          </div>
+        </div>
 
-        <CollapsibleContent>
-          <CardContent className="pt-0">
-            <div className="border-l-2 border-gray-200 dark:border-gray-700 ml-4 pl-4 space-y-3">
-              {conversation.events.slice(0, 10).map((event) => (
-                <div key={event.id} className="relative">
-                  <div className="absolute -left-[21px] w-3 h-3 rounded-full bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-600" />
+        <div className="flex gap-2 flex-wrap">
+          <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
+            <Button variant="outline" size="sm" className="gap-1">
+              <MessageSquare className="h-3 w-3" />
+              Vedi Chat
+            </Button>
+          </Link>
+          <SimulateAiButton conversationId={conversation.conversationId} />
+          {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (() => {
+            const scheduledEvent = conversation.events.find(e => e.type === 'message_scheduled');
+            return scheduledEvent ? (
+              <SendNowButton
+                messageId={scheduledEvent.id.replace('msg-', '')}
+                canSendFreeform={scheduledEvent.canSendFreeform}
+                hasApprovedTemplate={scheduledEvent.templateTwilioStatus === 'approved'}
+              />
+            ) : null;
+          })()}
+          {conversation.currentStatus === 'error' && conversation.events.some(e => e.type === 'message_failed') && (
+            <RetryButton
+              messageId={conversation.events.find(e => e.type === 'message_failed')!.id.replace('msg-', '')}
+            />
+          )}
+        </div>
+      </div>
 
-                  <div className="flex items-start gap-2">
-                    {getEventIcon(event.type)}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium">
-                          {getEventLabel(event.type, event.decision)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(event.timestamp), "dd MMM HH:mm", { locale: it })}
-                        </span>
-                      </div>
+      <ScrollArea className="flex-1">
+        <div className="p-4">
+          <h3 className="text-sm font-medium mb-3 text-muted-foreground">
+            Timeline Eventi ({conversation.events.length})
+          </h3>
+          <div className="border-l-2 border-gray-200 dark:border-gray-700 ml-2 pl-4 space-y-4">
+            {conversation.events.map((event) => (
+              <div key={event.id} className="relative">
+                <div className="absolute -left-[21px] w-3 h-3 rounded-full bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-600" />
 
-                      {event.matchedRuleId && (
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                          Regola: {event.matchedRuleId}
-                          {event.matchedRuleReason && ` - ${event.matchedRuleReason}`}
-                        </p>
-                      )}
-
-                      {event.reasoning && (
-                        <div className="mt-0.5">
-                          <p className={`text-xs text-muted-foreground ${showFullReasoning[event.id] ? '' : 'line-clamp-2'}`}>
-                            {event.reasoning}
-                          </p>
-                          {event.reasoning.length > 100 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowFullReasoning(prev => ({ ...prev, [event.id]: !prev[event.id] }));
-                              }}
-                              className="text-xs text-blue-600 hover:underline mt-0.5"
-                            >
-                              {showFullReasoning[event.id] ? 'Mostra meno' : 'Mostra tutto'}
-                            </button>
-                          )}
-                        </div>
-                      )}
-
-                      {event.messagePreview && (
-                        <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <MessageSquare className="h-3 w-3" />
-                              {event.templateName ? `Template: ${event.templateName}` : 'Messaggio AI'}
-                            </p>
-                            {(() => {
-                              const templateStatus = getTemplateStatusConfig(event.templateTwilioStatus, !!event.templateId);
-                              return (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className={`text-xs flex items-center gap-1 ${templateStatus.color}`}>
-                                        <span>{templateStatus.icon}</span>
-                                        <span className="hidden sm:inline">{templateStatus.label}</span>
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{templateStatus.tooltip}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              );
-                            })()}
-                          </div>
-                          <p className={`text-xs italic ${showFullMessagePreview[event.id] ? '' : 'line-clamp-3'}`}>"{event.messagePreview}"</p>
-                          {event.messagePreview.length > 150 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowFullMessagePreview(prev => ({ ...prev, [event.id]: !prev[event.id] }));
-                              }}
-                              className="text-xs text-blue-600 hover:underline mt-1"
-                            >
-                              {showFullMessagePreview[event.id] ? 'Mostra meno' : 'Mostra tutto'}
-                            </button>
-                          )}
-                          {event.aiSelectedTemplateReasoning && (
-                            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5 flex items-center gap-1">
-                              <Brain className="h-3 w-3" />
-                              <span className="font-medium">AI:</span> {event.aiSelectedTemplateReasoning}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {event.errorMessage && (
-                        <div className="mt-0.5">
-                          <p className="text-xs text-red-600">
-                            Errore: {event.errorMessage}
-                          </p>
-                          {event.type === 'message_failed' && (
-                            <div className="mt-1.5">
-                              <RetryButton messageId={event.id.replace('msg-', '')} />
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {event.confidenceScore !== undefined && (
-                        <span className="text-xs text-muted-foreground">
-                          Confidenza: {Math.round(event.confidenceScore * 100)}%
-                        </span>
-                      )}
-
-                      {event.type === 'message_scheduled' && event.status === 'scheduled' && (
-                        <div className="mt-2">
-                          <SendNowButton
-                            messageId={event.id.replace('msg-', '')}
-                            canSendFreeform={event.canSendFreeform}
-                            hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
-                          />
-                        </div>
-                      )}
+                <div className="flex items-start gap-2">
+                  {getEventIcon(event.type)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium">
+                        {getEventLabel(event.type, event.decision)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(event.timestamp), "dd MMM HH:mm", { locale: it })}
+                      </span>
                     </div>
+
+                    {event.matchedRuleId && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                        Regola: {event.matchedRuleId}
+                        {event.matchedRuleReason && ` - ${event.matchedRuleReason}`}
+                      </p>
+                    )}
+
+                    {event.reasoning && (
+                      <div className="mt-0.5">
+                        <p className={`text-xs text-muted-foreground ${showFullReasoning[event.id] ? '' : 'line-clamp-2'}`}>
+                          {event.reasoning}
+                        </p>
+                        {event.reasoning.length > 100 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowFullReasoning(prev => ({ ...prev, [event.id]: !prev[event.id] }));
+                            }}
+                            className="text-xs text-blue-600 hover:underline mt-0.5"
+                          >
+                            {showFullReasoning[event.id] ? 'Mostra meno' : 'Mostra tutto'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {event.messagePreview && (
+                      <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MessageSquare className="h-3 w-3" />
+                            {event.templateName ? `Template: ${event.templateName}` : 'Messaggio AI'}
+                          </p>
+                          {(() => {
+                            const templateStatus = getTemplateStatusConfig(event.templateTwilioStatus, !!event.templateId);
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className={`text-xs flex items-center gap-1 ${templateStatus.color}`}>
+                                      <span>{templateStatus.icon}</span>
+                                      <span className="hidden sm:inline">{templateStatus.label}</span>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{templateStatus.tooltip}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          })()}
+                        </div>
+                        <p className={`text-xs italic ${showFullMessagePreview[event.id] ? '' : 'line-clamp-3'}`}>"{event.messagePreview}"</p>
+                        {event.messagePreview.length > 150 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowFullMessagePreview(prev => ({ ...prev, [event.id]: !prev[event.id] }));
+                            }}
+                            className="text-xs text-blue-600 hover:underline mt-1"
+                          >
+                            {showFullMessagePreview[event.id] ? 'Mostra meno' : 'Mostra tutto'}
+                          </button>
+                        )}
+                        {event.aiSelectedTemplateReasoning && (
+                          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5 flex items-center gap-1">
+                            <Brain className="h-3 w-3" />
+                            <span className="font-medium">AI:</span> {event.aiSelectedTemplateReasoning}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {event.errorMessage && (
+                      <div className="mt-0.5">
+                        <p className="text-xs text-red-600">
+                          Errore: {event.errorMessage}
+                        </p>
+                        {event.type === 'message_failed' && (
+                          <div className="mt-1.5">
+                            <RetryButton messageId={event.id.replace('msg-', '')} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {event.confidenceScore !== undefined && (
+                      <span className="text-xs text-muted-foreground">
+                        Confidenza: {Math.round(event.confidenceScore * 100)}%
+                      </span>
+                    )}
+
+                    {event.type === 'message_scheduled' && event.status === 'scheduled' && (
+                      <div className="mt-2">
+                        <SendNowButton
+                          messageId={event.id.replace('msg-', '')}
+                          canSendFreeform={event.canSendFreeform}
+                          hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2 mt-4 pt-3 border-t flex-wrap">
-              <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
-                <Button variant="outline" size="sm" className="gap-1">
-                  <MessageSquare className="h-3 w-3" />
-                  Vedi Chat
-                </Button>
-              </Link>
-              <SimulateAiButton conversationId={conversation.conversationId} />
-              {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (() => {
-                const scheduledEvent = conversation.events.find(e => e.type === 'message_scheduled');
-                return scheduledEvent ? (
-                  <SendNowButton
-                    messageId={scheduledEvent.id.replace('msg-', '')}
-                    canSendFreeform={scheduledEvent.canSendFreeform}
-                    hasApprovedTemplate={scheduledEvent.templateTwilioStatus === 'approved'}
-                  />
-                ) : null;
-              })()}
-              {conversation.currentStatus === 'error' && conversation.events.some(e => e.type === 'message_failed') && (
-                <RetryButton
-                  messageId={conversation.events.find(e => e.type === 'message_failed')!.id.replace('msg-', '')}
-                />
-              )}
-            </div>
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+              </div>
+            ))}
+          </div>
+        </div>
+      </ScrollArea>
+    </div>
   );
 }
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-3">
-      {[1, 2, 3].map((i) => (
-        <Card key={i}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-9 w-9 rounded-full" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-20" />
-                </div>
-              </div>
-              <Skeleton className="h-5 w-16" />
+    <div className="space-y-0">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="p-3 border-b border-border">
+          <div className="flex items-start gap-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-32" />
             </div>
-          </CardHeader>
-        </Card>
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -822,6 +796,7 @@ export function LiveActivityFeed() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
   const filters: ActivityLogFilters = useMemo(() => ({
     filter: filter !== 'all' ? filter : undefined,
@@ -844,9 +819,14 @@ export function LiveActivityFeed() {
 
   const hasActiveFilters = agentId || search || dateFrom || dateTo;
 
+  const selectedConversation = useMemo(() => {
+    if (!selectedConversationId || !data?.timeline) return null;
+    return data.timeline.find((c: ConversationTimeline) => c.conversationId === selectedConversationId) || null;
+  }, [selectedConversationId, data?.timeline]);
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="flex flex-col h-[calc(100vh-200px)] min-h-[500px]">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList>
             <TabsTrigger value="all" className="text-xs">Tutti</TabsTrigger>
@@ -886,7 +866,7 @@ export function LiveActivityFeed() {
       </div>
 
       {showAdvancedFilters && (
-        <Card className="p-4">
+        <Card className="p-4 mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -954,46 +934,63 @@ export function LiveActivityFeed() {
         </Card>
       )}
 
-      {isLoading && <LoadingSkeleton />}
-
       {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4 text-center text-red-600">
+        <Card className="border-red-200 bg-red-50 dark:bg-red-900/20 mb-4">
+          <CardContent className="p-4 text-center text-red-600 dark:text-red-400">
             Errore nel caricamento del log attività
           </CardContent>
         </Card>
       )}
 
-      {!isLoading && !error && data?.timeline?.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">
-              {hasActiveFilters
-                ? "Nessuna attività trovata con i filtri selezionati. Prova a modificare i criteri di ricerca."
-                : "Nessuna attività trovata. Le attività appariranno quando il sistema valuterà le conversazioni."
-              }
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="flex-1 overflow-hidden">
+        <ResizablePanelGroup direction="horizontal">
+          <ResizablePanel defaultSize={32} minSize={25} maxSize={45}>
+            <div className="h-full flex flex-col border-r border-border">
+              <PendingQueuePanel />
+              <ScrollArea className="flex-1">
+                {isLoading && <LoadingSkeleton />}
 
-      {!isLoading && !error && data?.timeline && data.timeline.length > 0 && (
-        <div className="space-y-3">
-          {/* Pending Queue Panel shows upcoming follow-ups */}
-          <PendingQueuePanel />
+                {!isLoading && !error && data?.timeline?.length === 0 && (
+                  <div className="p-6 text-center">
+                    <Activity className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      {hasActiveFilters
+                        ? "Nessuna attività trovata."
+                        : "Nessuna attività."}
+                    </p>
+                  </div>
+                )}
 
-          {data.timeline.map((conversation: ConversationTimeline) => (
-            <ConversationCard key={conversation.conversationId} conversation={conversation} />
-          ))}
-        </div>
-      )}
+                {!isLoading && !error && data?.timeline && data.timeline.length > 0 && (
+                  <div>
+                    {data.timeline.map((conversation: ConversationTimeline) => (
+                      <ConversationListItem
+                        key={conversation.conversationId}
+                        conversation={conversation}
+                        isSelected={selectedConversationId === conversation.conversationId}
+                        onClick={() => setSelectedConversationId(conversation.conversationId)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+              {data?.total && data.total > 0 && (
+                <div className="p-2 border-t border-border text-center">
+                  <p className="text-[10px] text-muted-foreground">
+                    {data.timeline?.length || 0} conversazioni · {data.total} eventi
+                  </p>
+                </div>
+              )}
+            </div>
+          </ResizablePanel>
 
-      {data?.total && data.total > 0 && (
-        <p className="text-xs text-center text-muted-foreground">
-          Mostrando {data.timeline?.length || 0} conversazioni ({data.total} eventi totali)
-        </p>
-      )}
+          <ResizableHandle withHandle />
+
+          <ResizablePanel defaultSize={68} minSize={55}>
+            <ConversationDetailView conversation={selectedConversation} />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </Card>
     </div>
   );
 }
