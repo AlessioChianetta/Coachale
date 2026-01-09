@@ -1,4 +1,5 @@
 import { Router } from "express";
+import jwt from "jsonwebtoken";
 import { type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
 import * as schema from "@shared/schema";
@@ -17,6 +18,28 @@ import {
 import { searchKnowledgeBase } from "../services/email-hub/email-knowledge-service";
 
 const router = Router();
+
+// SSE client management for real-time email notifications
+interface SSEClient {
+  id: string;
+  consultantId: string;
+  res: import("express").Response;
+}
+
+const sseClients: Map<string, SSEClient> = new Map();
+
+function broadcastToConsultant(consultantId: string, event: string, data: any) {
+  sseClients.forEach((client) => {
+    if (client.consultantId === consultantId) {
+      try {
+        client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      } catch (err) {
+        console.error(`[SSE] Error sending to client ${client.id}:`, err);
+        sseClients.delete(client.id);
+      }
+    }
+  });
+}
 
 // Helper function to log AI decisions to hub_email_ai_events
 async function logAiEvent(params: {
@@ -313,6 +336,59 @@ const createAccountSchema = baseAccountSchema.refine(data => {
 }, { message: "IMAP configuration required" });
 
 const updateAccountSchema = baseAccountSchema.partial();
+
+// SSE endpoint for real-time email notifications
+// Note: This endpoint handles auth manually since EventSource doesn't support custom headers
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
+
+router.get("/events", (req, res) => {
+  const token = req.query.token as string;
+  
+  if (!token) {
+    return res.status(401).json({ error: "Token required" });
+  }
+  
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+  
+  const consultantId = decoded.userId || decoded.id;
+  if (!consultantId) {
+    return res.status(401).json({ error: "Invalid token payload" });
+  }
+  
+  const clientId = `${consultantId}-${Date.now()}`;
+  
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+  
+  // Send initial connection confirmation
+  res.write(`event: connected\ndata: ${JSON.stringify({ clientId })}\n\n`);
+  
+  sseClients.set(clientId, { id: clientId, consultantId, res });
+  console.log(`[SSE] Client connected: ${clientId} (total: ${sseClients.size})`);
+  
+  // Keep-alive ping every 30 seconds
+  const pingInterval = setInterval(() => {
+    try {
+      res.write(`event: ping\ndata: ${JSON.stringify({ timestamp: Date.now() })}\n\n`);
+    } catch (err) {
+      clearInterval(pingInterval);
+    }
+  }, 30000);
+  
+  req.on("close", () => {
+    clearInterval(pingInterval);
+    sseClients.delete(clientId);
+    console.log(`[SSE] Client disconnected: ${clientId} (remaining: ${sseClients.size})`);
+  });
+});
 
 router.get("/accounts", async (req: AuthRequest, res) => {
   try {
@@ -2211,6 +2287,15 @@ async function saveEmailToDatabase(email: ParsedEmail, accountId: string, consul
 
   console.log(`[IMAP IDLE] Saved new email: ${email.subject} (id: ${inserted.id})`);
   
+  // Broadcast to connected SSE clients for real-time update
+  broadcastToConsultant(consultantId, "new_email", {
+    id: inserted.id,
+    subject: email.subject,
+    fromEmail: email.fromEmail,
+    fromName: email.fromName,
+    receivedAt: email.receivedAt,
+  });
+  
   processNewEmailAI(inserted.id, accountId, consultantId).catch(err => {
     console.error(`[EMAIL-AI-AUTO] Background processing failed for email ${inserted.id}:`, err.message);
   });
@@ -2482,6 +2567,13 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
             emailFrom: email.fromEmail,
           });
           
+          // Broadcast AI processing complete for real-time update
+          broadcastToConsultant(consultantId, "ai_processed", {
+            emailId,
+            action: "auto_sent",
+            subject: email.subject,
+          });
+          
           return;
         } else {
           console.error(`[EMAIL-AI-AUTO] Failed to auto-send email ${emailId}: ${sendResult.error}`);
@@ -2569,6 +2661,13 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
     });
     
     console.log(`[EMAIL-AI-AUTO] Draft generated for email ${emailId} (confidence: ${result.draft.confidence.toFixed(2)})`);
+    
+    // Broadcast AI processing complete for real-time update
+    broadcastToConsultant(consultantId, "ai_processed", {
+      emailId,
+      action: needsReview ? "draft_for_review" : "draft_generated",
+      subject: email.subject,
+    });
     
   } catch (error: any) {
     console.error(`[EMAIL-AI-AUTO] Error processing email ${emailId}:`, error.message);

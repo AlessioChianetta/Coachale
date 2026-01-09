@@ -325,6 +325,49 @@ export default function ConsultantEmailHub() {
     }
   }, [accounts]);
 
+  // SSE connection for real-time email updates
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+    
+    const eventSource = new EventSource(`/api/email-hub/events?token=${encodeURIComponent(token)}`);
+    
+    eventSource.addEventListener("connected", (event) => {
+      console.log("[SSE] Connected to email updates:", JSON.parse(event.data));
+    });
+    
+    eventSource.addEventListener("new_email", (event) => {
+      const emailData = JSON.parse(event.data);
+      console.log("[SSE] New email received:", emailData.subject);
+      
+      // Invalidate queries to refresh the inbox
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
+      
+      toast({
+        title: "Nuova email ricevuta",
+        description: emailData.subject || "Email senza oggetto",
+      });
+    });
+    
+    eventSource.addEventListener("ai_processed", (event) => {
+      const data = JSON.parse(event.data);
+      console.log("[SSE] AI processed email:", data);
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
+    });
+    
+    eventSource.onerror = (err) => {
+      console.error("[SSE] Connection error:", err);
+    };
+    
+    return () => {
+      eventSource.close();
+    };
+  }, [queryClient, toast]);
 
   const buildInboxQueryParams = () => {
     const params = new URLSearchParams();
