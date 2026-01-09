@@ -8,11 +8,65 @@ const router = Router();
 
 function normalizePhone(phone: string | undefined): string {
   if (!phone) return '';
-  let normalized = phone.replace(/[\s\-\(\)]/g, '');
-  if (!normalized.startsWith('+')) {
-    normalized = '+' + normalized;
+  
+  // Remove spaces, dashes, parentheses, dots
+  let normalized = phone.replace(/[\s\-\(\)\.]/g, '');
+  
+  // Extract just digits for analysis
+  const digitsOnly = normalized.replace(/\D/g, '');
+  
+  console.log(`🔧 [PHONE-NORMALIZE] Input: "${phone}" -> cleaned: "${normalized}" -> digits: "${digitsOnly}"`);
+  
+  // Handle Italian numbers specifically
+  // Italian mobile numbers: 3XX XXX XXXX (10 digits starting with 3)
+  // Italian landlines: 0X XXX XXXX (9-10 digits starting with 0)
+  
+  // Case 1: Number starts with +1 (US prefix) but looks Italian (10 digits starting with 3)
+  if (normalized.startsWith('+1') && digitsOnly.length === 11 && digitsOnly.startsWith('13')) {
+    // +1 3XX XXX XXXX -> +39 3XX XXX XXXX
+    const italianNumber = '+39' + digitsOnly.substring(1);
+    console.log(`🔧 [PHONE-NORMALIZE] Converted +1 to +39: "${italianNumber}"`);
+    return italianNumber;
   }
-  return normalized;
+  
+  // Case 2: Just digits starting with 3 (Italian mobile without prefix)
+  if (digitsOnly.length === 10 && digitsOnly.startsWith('3')) {
+    const italianNumber = '+39' + digitsOnly;
+    console.log(`🔧 [PHONE-NORMALIZE] Added +39 prefix: "${italianNumber}"`);
+    return italianNumber;
+  }
+  
+  // Case 3: Digits starting with 39 followed by 3 (Italian with country code but no +)
+  if (digitsOnly.length === 12 && digitsOnly.startsWith('393')) {
+    const italianNumber = '+' + digitsOnly;
+    console.log(`🔧 [PHONE-NORMALIZE] Added + prefix: "${italianNumber}"`);
+    return italianNumber;
+  }
+  
+  // Case 4: Number starts with 0039 (old Italian international format)
+  if (digitsOnly.startsWith('0039')) {
+    const italianNumber = '+39' + digitsOnly.substring(4);
+    console.log(`🔧 [PHONE-NORMALIZE] Converted 0039 to +39: "${italianNumber}"`);
+    return italianNumber;
+  }
+  
+  // Case 5: Number starts with 00 followed by country code (international format)
+  if (normalized.startsWith('00')) {
+    const internationalNumber = '+' + digitsOnly.substring(2);
+    console.log(`🔧 [PHONE-NORMALIZE] Converted 00 to +: "${internationalNumber}"`);
+    return internationalNumber;
+  }
+  
+  // Case 6: Already has + prefix, keep as is
+  if (normalized.startsWith('+')) {
+    console.log(`🔧 [PHONE-NORMALIZE] Already formatted: "${normalized}"`);
+    return normalized;
+  }
+  
+  // Case 7: Default - add + prefix
+  const result = '+' + normalized;
+  console.log(`🔧 [PHONE-NORMALIZE] Default + prefix: "${result}"`);
+  return result;
 }
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {
