@@ -292,6 +292,7 @@ export default function ConsultantEmailHub() {
   const [aiSettingsAccountId, setAISettingsAccountId] = useState<string>("");
   const [aiSettingsAccountName, setAISettingsAccountName] = useState<string>("");
   const [showTicketView, setShowTicketView] = useState<"list" | "settings" | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -784,6 +785,69 @@ export default function ConsultantEmailHub() {
     },
   });
 
+  const syncAllAccountsAndRefresh = async () => {
+    if (isSyncing || accounts.length === 0) {
+      refetchInbox();
+      refetchDrafts();
+      return;
+    }
+    
+    setIsSyncing(true);
+    try {
+      const imapAccounts = accounts.filter(acc => acc.imapHost && acc.accountType !== "smtp_only");
+      
+      if (imapAccounts.length === 0) {
+        refetchInbox();
+        refetchDrafts();
+        setIsSyncing(false);
+        return;
+      }
+      
+      const results = await Promise.allSettled(
+        imapAccounts.map(async (acc) => {
+          const response = await fetch(`/api/email-hub/accounts/${acc.id}/sync`, {
+            method: "POST",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ limit: 50 }),
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Errore sync ${acc.displayName}`);
+          }
+          return { account: acc.displayName, success: true };
+        })
+      );
+      
+      const failed = results.filter(r => r.status === "rejected") as PromiseRejectedResult[];
+      const succeeded = results.filter(r => r.status === "fulfilled").length;
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
+      
+      if (failed.length === 0) {
+        toast({ title: "Sincronizzazione completata", description: `${succeeded} account sincronizzati` });
+      } else if (succeeded > 0) {
+        toast({ 
+          title: "Sincronizzazione parziale", 
+          description: `${succeeded} OK, ${failed.length} errori`,
+          variant: "destructive"
+        });
+      } else {
+        toast({ 
+          title: "Sincronizzazione fallita", 
+          description: failed[0]?.reason?.message || "Errore durante la sincronizzazione",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error("[SYNC] Error:", error);
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleInputChange = (field: keyof AccountFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -952,9 +1016,10 @@ export default function ConsultantEmailHub() {
             </button>
             <button
               className="h-8 w-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-              onClick={(e) => { e.stopPropagation(); refetchInbox(); }}
+              onClick={(e) => { e.stopPropagation(); syncAllAccountsAndRefresh(); }}
+              disabled={isSyncing}
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
             </button>
           </div>
 
@@ -1357,13 +1422,11 @@ export default function ConsultantEmailHub() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => {
-                refetchInbox();
-                refetchDrafts();
-              }}
+              onClick={syncAllAccountsAndRefresh}
+              disabled={isSyncing}
               className="h-8 w-8"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
             </Button>
           </div>
         </div>

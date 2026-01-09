@@ -3151,4 +3151,38 @@ router.get("/webhook-logs", async (req: AuthRequest, res) => {
   }
 });
 
+// Initialize IDLE connections for all existing accounts on server startup
+export async function initializeEmailHubIdle() {
+  console.log("[EMAIL-HUB INIT] Starting IDLE initialization for existing accounts...");
+  
+  try {
+    const accounts = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          sql`${schema.emailAccounts.imapHost} IS NOT NULL`,
+          sql`${schema.emailAccounts.imapPassword} IS NOT NULL`
+        )
+      );
+    
+    console.log(`[EMAIL-HUB INIT] Found ${accounts.length} accounts with IMAP configured`);
+    
+    for (const account of accounts) {
+      if (account.accountType === "smtp_only") {
+        console.log(`[EMAIL-HUB INIT] Skipping SMTP-only account: ${account.emailAddress}`);
+        continue;
+      }
+      
+      startIdleAndSyncInBackground(account).catch(err => {
+        console.error(`[EMAIL-HUB INIT] Failed to start IDLE for ${account.emailAddress}:`, err.message);
+      });
+    }
+    
+    console.log(`[EMAIL-HUB INIT] IDLE initialization queued for ${accounts.length} accounts`);
+  } catch (error: any) {
+    console.error("[EMAIL-HUB INIT] Error initializing IDLE connections:", error);
+  }
+}
+
 export default router;

@@ -117,7 +117,7 @@ import stripeConnectRouter from "./routes/stripe-connect-router";
 import consultantPricingRouter from "./routes/consultant-pricing-router";
 import bronzeAuthRouter from "./routes/bronze-auth-router";
 import referralRouter from "./routes/referral-router";
-import emailHubRouter from "./routes/email-hub-router";
+import emailHubRouter, { initializeEmailHubIdle } from "./routes/email-hub-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -19020,6 +19020,13 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       res.end();
     });
   });
+
+  // Initialize Email Hub IDLE connections for existing accounts (with small delay)
+  setTimeout(() => {
+    initializeEmailHubIdle().catch(err => {
+      console.error("[EMAIL-HUB INIT] Failed to initialize IDLE connections:", err);
+    });
+  }, 5000);
 
   const httpServer = createServer(app);
   return httpServer;
