@@ -18,6 +18,59 @@ import { searchKnowledgeBase } from "../services/email-hub/email-knowledge-servi
 
 const router = Router();
 
+// Helper function to log AI decisions to hub_email_ai_events
+async function logAiEvent(params: {
+  emailId: string;
+  accountId: string;
+  consultantId: string;
+  eventType: "classification" | "draft_generated" | "auto_sent" | "held_for_review" | "ticket_created" | "escalated" | "skipped" | "error";
+  classification?: {
+    intent?: string;
+    urgency?: "high" | "medium" | "low";
+    sentiment?: "positive" | "neutral" | "negative";
+    category?: string;
+    suggestedAction?: string;
+    riskDetected?: boolean;
+    escalationKeywords?: string[];
+  };
+  confidence?: number;
+  confidenceThreshold?: number;
+  decision?: "auto_send" | "create_draft" | "needs_review" | "create_ticket" | "escalate" | "skip" | "error";
+  decisionReason?: string;
+  draftId?: string;
+  ticketId?: string;
+  modelUsed?: string;
+  tokensUsed?: number;
+  processingTimeMs?: number;
+  knowledgeDocsUsed?: string[];
+  emailSubject?: string;
+  emailFrom?: string;
+}): Promise<void> {
+  try {
+    await db.insert(schema.hubEmailAiEvents).values({
+      emailId: params.emailId,
+      accountId: params.accountId,
+      consultantId: params.consultantId,
+      eventType: params.eventType,
+      classification: params.classification as any,
+      confidence: params.confidence,
+      confidenceThreshold: params.confidenceThreshold,
+      decision: params.decision,
+      decisionReason: params.decisionReason,
+      draftId: params.draftId,
+      ticketId: params.ticketId,
+      modelUsed: params.modelUsed,
+      tokensUsed: params.tokensUsed,
+      processingTimeMs: params.processingTimeMs,
+      knowledgeDocsUsed: params.knowledgeDocsUsed as any,
+      emailSubject: params.emailSubject,
+      emailFrom: params.emailFrom,
+    });
+  } catch (error: any) {
+    console.error(`[EMAIL-AI-EVENT] Failed to log event: ${error.message}`);
+  }
+}
+
 // Handle IDLE connection failures - update database when connection permanently fails
 const idleManager = ImapIdleManager.getInstance();
 idleManager.on("connectionFailed", async (accountId: string) => {
@@ -1408,6 +1461,101 @@ router.get("/ai-stats", async (req: AuthRequest, res) => {
   }
 });
 
+router.get("/ai-events", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { limit = 50, accountId, eventType, offset = 0 } = req.query;
+    
+    let whereConditions = [eq(schema.hubEmailAiEvents.consultantId, consultantId)];
+    
+    if (accountId && typeof accountId === "string") {
+      whereConditions.push(eq(schema.hubEmailAiEvents.accountId, accountId));
+    }
+    
+    if (eventType && typeof eventType === "string") {
+      whereConditions.push(eq(schema.hubEmailAiEvents.eventType, eventType as any));
+    }
+    
+    const events = await db
+      .select()
+      .from(schema.hubEmailAiEvents)
+      .where(and(...whereConditions))
+      .orderBy(desc(schema.hubEmailAiEvents.createdAt))
+      .limit(Number(limit))
+      .offset(Number(offset));
+    
+    const [countResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(schema.hubEmailAiEvents)
+      .where(and(...whereConditions));
+    
+    res.json({ 
+      success: true, 
+      data: events,
+      total: Number(countResult?.count) || 0,
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching AI events:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/ai-events/summary", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { days = 7 } = req.query;
+    
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - Number(days));
+    
+    const summary = await db
+      .select({
+        eventType: schema.hubEmailAiEvents.eventType,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(schema.hubEmailAiEvents)
+      .where(
+        and(
+          eq(schema.hubEmailAiEvents.consultantId, consultantId),
+          sql`${schema.hubEmailAiEvents.createdAt} >= ${startDate}`
+        )
+      )
+      .groupBy(schema.hubEmailAiEvents.eventType);
+    
+    const avgConfidence = await db
+      .select({
+        avgConfidence: sql<number>`AVG(${schema.hubEmailAiEvents.confidence})`,
+        avgProcessingTime: sql<number>`AVG(${schema.hubEmailAiEvents.processingTimeMs})`,
+      })
+      .from(schema.hubEmailAiEvents)
+      .where(
+        and(
+          eq(schema.hubEmailAiEvents.consultantId, consultantId),
+          sql`${schema.hubEmailAiEvents.createdAt} >= ${startDate}`,
+          sql`${schema.hubEmailAiEvents.confidence} IS NOT NULL`
+        )
+      );
+    
+    res.json({ 
+      success: true, 
+      data: {
+        byEventType: summary.reduce((acc, s) => {
+          acc[s.eventType] = Number(s.count);
+          return acc;
+        }, {} as Record<string, number>),
+        averages: {
+          confidence: avgConfidence[0]?.avgConfidence || 0,
+          processingTimeMs: avgConfidence[0]?.avgProcessingTime || 0,
+        },
+        period: Number(days),
+      }
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching AI events summary:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post("/batch-process", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
@@ -1981,6 +2129,8 @@ async function saveEmailToDatabase(email: ParsedEmail, accountId: string, consul
 }
 
 async function processNewEmailAI(emailId: string, accountId: string, consultantId: string): Promise<void> {
+  const startTime = Date.now();
+  
   try {
     const [account] = await db
       .select()
@@ -1994,11 +2144,6 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
     
     const autoReplyMode = account.autoReplyMode || "review";
     
-    if (autoReplyMode === "off") {
-      console.log(`[EMAIL-AI-AUTO] Auto-reply is off for account ${accountId}, skipping`);
-      return;
-    }
-    
     const [email] = await db
       .select()
       .from(schema.hubEmails)
@@ -2006,6 +2151,24 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
     
     if (!email) {
       console.log(`[EMAIL-AI-AUTO] Email ${emailId} not found, skipping`);
+      return;
+    }
+    
+    if (autoReplyMode === "off") {
+      console.log(`[EMAIL-AI-AUTO] Auto-reply is off for account ${accountId}, skipping`);
+      
+      await logAiEvent({
+        emailId,
+        accountId,
+        consultantId,
+        eventType: "skipped",
+        decision: "skip",
+        decisionReason: "Modalità AI disattivata per questo account",
+        emailSubject: email.subject || undefined,
+        emailFrom: email.fromEmail,
+        processingTimeMs: Date.now() - startTime,
+      });
+      
       return;
     }
     
@@ -2034,6 +2197,51 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
       extendedSettings
     );
     
+    const processingTimeMs = Date.now() - startTime;
+    
+    await logAiEvent({
+      emailId,
+      accountId,
+      consultantId,
+      eventType: "classification",
+      classification: {
+        intent: result.classification.intent,
+        urgency: result.classification.urgency,
+        sentiment: result.classification.sentiment,
+        category: result.classification.category,
+        suggestedAction: result.classification.suggestedAction,
+      },
+      confidence: result.classification.confidence,
+      confidenceThreshold,
+      decisionReason: result.classification.reasoning || "Classificazione AI completata",
+      modelUsed: "gemini-2.5-flash",
+      processingTimeMs,
+      emailSubject: email.subject || undefined,
+      emailFrom: email.fromEmail,
+    });
+    
+    if (result.ticketCreated && result.ticketId) {
+      await logAiEvent({
+        emailId,
+        accountId,
+        consultantId,
+        eventType: "ticket_created",
+        classification: {
+          intent: result.classification.intent,
+          urgency: result.classification.urgency,
+          sentiment: result.classification.sentiment,
+          category: result.classification.category,
+          suggestedAction: result.classification.suggestedAction,
+        },
+        confidence: result.classification.confidence,
+        decision: "create_ticket",
+        decisionReason: "Ticket creato automaticamente in base alle condizioni configurate",
+        ticketId: result.ticketId,
+        emailSubject: email.subject || undefined,
+        emailFrom: email.fromEmail,
+      });
+    }
+    
     if (result.stoppedByRisk) {
       console.log(`[EMAIL-AI-AUTO] Email ${emailId} stopped by risk: ${result.riskReason}`);
       
@@ -2055,11 +2263,57 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
         .set({ processingStatus: "needs_review", updatedAt: new Date() })
         .where(eq(schema.hubEmails.id, emailId));
       
+      await logAiEvent({
+        emailId,
+        accountId,
+        consultantId,
+        eventType: "escalated",
+        classification: {
+          intent: result.classification.intent,
+          urgency: result.classification.urgency,
+          sentiment: result.classification.sentiment,
+          category: result.classification.category,
+          suggestedAction: result.classification.suggestedAction,
+          riskDetected: true,
+        },
+        confidence: result.classification.confidence,
+        confidenceThreshold,
+        decision: "escalate",
+        decisionReason: result.riskReason || "Parola chiave di escalation rilevata",
+        ticketId: result.ticketId,
+        modelUsed: "gemini-2.5-flash",
+        processingTimeMs: Date.now() - startTime,
+        emailSubject: email.subject || undefined,
+        emailFrom: email.fromEmail,
+      });
+      
       return;
     }
     
     if (!result.draft) {
       console.error(`[EMAIL-AI-AUTO] Failed to generate draft for email ${emailId}`);
+      
+      await logAiEvent({
+        emailId,
+        accountId,
+        consultantId,
+        eventType: "error",
+        classification: {
+          intent: result.classification.intent,
+          urgency: result.classification.urgency,
+          sentiment: result.classification.sentiment,
+          category: result.classification.category,
+          suggestedAction: result.classification.suggestedAction,
+        },
+        confidence: result.classification.confidence,
+        decision: "error",
+        decisionReason: "Generazione bozza fallita",
+        modelUsed: "gemini-2.5-flash",
+        processingTimeMs,
+        emailSubject: email.subject || undefined,
+        emailFrom: email.fromEmail,
+      });
+      
       return;
     }
     
@@ -2092,7 +2346,7 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
         if (sendResult.success) {
           console.log(`[EMAIL-AI-AUTO] Email ${emailId} auto-sent successfully (msgId: ${sendResult.messageId})`);
           
-          await db
+          const [insertedDraft] = await db
             .insert(schema.emailHubAiResponses)
             .values({
               emailId,
@@ -2105,16 +2359,64 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
               reasoning: result.classification as any,
               status: "auto_sent",
               sentAt: new Date(),
-            });
+            })
+            .returning();
           
           await db
             .update(schema.hubEmails)
             .set({ processingStatus: "sent", updatedAt: new Date() })
             .where(eq(schema.hubEmails.id, emailId));
           
+          await logAiEvent({
+            emailId,
+            accountId,
+            consultantId,
+            eventType: "auto_sent",
+            classification: {
+              intent: result.classification.intent,
+              urgency: result.classification.urgency,
+              sentiment: result.classification.sentiment,
+              category: result.classification.category,
+              suggestedAction: result.classification.suggestedAction,
+            },
+            confidence: result.draft.confidence,
+            confidenceThreshold,
+            decision: "auto_send",
+            decisionReason: `Confidenza ${(result.draft.confidence * 100).toFixed(0)}% >= soglia ${(confidenceThreshold * 100).toFixed(0)}%, inviata automaticamente`,
+            draftId: insertedDraft?.id,
+            ticketId: result.ticketId,
+            modelUsed: result.draft.modelUsed,
+            tokensUsed: result.draft.tokensUsed,
+            processingTimeMs: Date.now() - startTime,
+            emailSubject: email.subject || undefined,
+            emailFrom: email.fromEmail,
+          });
+          
           return;
         } else {
           console.error(`[EMAIL-AI-AUTO] Failed to auto-send email ${emailId}: ${sendResult.error}`);
+          
+          await logAiEvent({
+            emailId,
+            accountId,
+            consultantId,
+            eventType: "error",
+            classification: {
+              intent: result.classification.intent,
+              urgency: result.classification.urgency,
+              sentiment: result.classification.sentiment,
+              category: result.classification.category,
+              suggestedAction: result.classification.suggestedAction,
+            },
+            confidence: result.draft.confidence,
+            confidenceThreshold,
+            decision: "error",
+            decisionReason: `Invio automatico fallito: ${sendResult.error}`,
+            modelUsed: result.draft.modelUsed,
+            processingTimeMs: Date.now() - startTime,
+            emailSubject: email.subject || undefined,
+            emailFrom: email.fromEmail,
+          });
         }
       } else {
         console.log(`[EMAIL-AI-AUTO] Email ${emailId} has high confidence but no SMTP config, saving as draft for review`);
@@ -2123,7 +2425,7 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
       console.log(`[EMAIL-AI-AUTO] Email ${emailId} confidence ${result.draft.confidence.toFixed(2)} < threshold ${confidenceThreshold}, requires review`);
     }
     
-    await db
+    const [insertedDraft] = await db
       .insert(schema.emailHubAiResponses)
       .values({
         emailId,
@@ -2135,17 +2437,61 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
         tokensUsed: result.draft.tokensUsed,
         reasoning: result.classification as any,
         status: "draft",
-      });
+      })
+      .returning();
     
     await db
       .update(schema.hubEmails)
       .set({ processingStatus: "draft_generated", updatedAt: new Date() })
       .where(eq(schema.hubEmails.id, emailId));
     
+    const needsReview = autoReplyMode === "review" || result.draft.confidence < confidenceThreshold;
+    const draftEventType = needsReview ? "held_for_review" : "draft_generated";
+    const decisionReason = autoReplyMode === "review" 
+      ? `Modalità "review" attiva, bozza generata per approvazione manuale`
+      : autoReplyMode === "auto" && result.draft.confidence < confidenceThreshold
+        ? `Confidenza ${(result.draft.confidence * 100).toFixed(0)}% < soglia ${(confidenceThreshold * 100).toFixed(0)}%, richiede revisione`
+        : `Bozza generata per revisione (no SMTP config)`;
+    
+    await logAiEvent({
+      emailId,
+      accountId,
+      consultantId,
+      eventType: draftEventType,
+      classification: {
+        intent: result.classification.intent,
+        urgency: result.classification.urgency,
+        sentiment: result.classification.sentiment,
+        category: result.classification.category,
+        suggestedAction: result.classification.suggestedAction,
+      },
+      confidence: result.draft.confidence,
+      confidenceThreshold,
+      decision: "create_draft",
+      decisionReason,
+      draftId: insertedDraft?.id,
+      ticketId: result.ticketId,
+      modelUsed: result.draft.modelUsed,
+      tokensUsed: result.draft.tokensUsed,
+      processingTimeMs: Date.now() - startTime,
+      emailSubject: email.subject || undefined,
+      emailFrom: email.fromEmail,
+    });
+    
     console.log(`[EMAIL-AI-AUTO] Draft generated for email ${emailId} (confidence: ${result.draft.confidence.toFixed(2)})`);
     
   } catch (error: any) {
     console.error(`[EMAIL-AI-AUTO] Error processing email ${emailId}:`, error.message);
+    
+    await logAiEvent({
+      emailId,
+      accountId,
+      consultantId,
+      eventType: "error",
+      decision: "error",
+      decisionReason: `Errore durante elaborazione: ${error.message}`,
+      processingTimeMs: Date.now() - startTime,
+    });
   }
 }
 

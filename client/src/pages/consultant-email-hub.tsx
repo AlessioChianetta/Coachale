@@ -95,6 +95,7 @@ import { EmailComposer } from "@/components/email-hub/EmailComposer";
 import { EmailAISettings } from "@/components/email-hub/EmailAISettings";
 import { TicketSettingsPanel } from "@/components/email-hub/TicketSettingsPanel";
 import { TicketsList } from "@/components/email-hub/TicketsList";
+import { AIEventsPanel } from "@/components/email-hub/AIEventsPanel";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
@@ -293,6 +294,7 @@ export default function ConsultantEmailHub() {
   const [aiSettingsAccountId, setAISettingsAccountId] = useState<string>("");
   const [aiSettingsAccountName, setAISettingsAccountName] = useState<string>("");
   const [showTicketView, setShowTicketView] = useState<"list" | "settings" | null>(null);
+  const [showAiEventsView, setShowAiEventsView] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const { toast } = useToast();
@@ -955,6 +957,7 @@ export default function ConsultantEmailHub() {
     setSelectedEmail(null);
     setCurrentPage(1);
     setShowTicketView(null);
+    setShowAiEventsView(false);
     setShowFullEmailView(false);
     
     setInboxFilter(prev => ({ 
@@ -1105,7 +1108,10 @@ export default function ConsultantEmailHub() {
           <Separator className="my-2 bg-slate-700" />
           
           <button
-            onClick={() => setShowTicketView("list")}
+            onClick={() => {
+              setShowTicketView("list");
+              setShowAiEventsView(false);
+            }}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
               showTicketView === "list"
                 ? "bg-orange-600/20 text-orange-300" 
@@ -1117,7 +1123,10 @@ export default function ConsultantEmailHub() {
           </button>
           
           <button
-            onClick={() => setShowTicketView("settings")}
+            onClick={() => {
+              setShowTicketView("settings");
+              setShowAiEventsView(false);
+            }}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
               showTicketView === "settings"
                 ? "bg-orange-600/20 text-orange-300" 
@@ -1126,6 +1135,21 @@ export default function ConsultantEmailHub() {
           >
             <Webhook className="h-4 w-4" />
             <span className="text-sm flex-1 text-left">Webhook</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setShowAiEventsView(true);
+              setShowTicketView(null);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              showAiEventsView
+                ? "bg-blue-600/20 text-blue-300" 
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Cronologia AI</span>
           </button>
           
           <Link href="/consultant/knowledge-documents">
@@ -2605,7 +2629,23 @@ export default function ConsultantEmailHub() {
         <div className="flex-1 flex overflow-hidden">
           {!isMobile && renderLeftSidebar()}
           <AnimatePresence mode="wait">
-            {showTicketView ? (
+            {showAiEventsView ? (
+              <motion.div
+                key="ai-events-view"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 400, 
+                  damping: 35,
+                  mass: 0.6
+                }}
+                className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900"
+              >
+                <AIEventsPanel />
+              </motion.div>
+            ) : showTicketView ? (
               <motion.div
                 key="ticket-view"
                 initial={{ opacity: 0, x: 30 }}
