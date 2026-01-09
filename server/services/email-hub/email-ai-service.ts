@@ -1,14 +1,11 @@
 import { db } from "../../db";
 import * as schema from "@shared/schema";
 import { eq, and } from "drizzle-orm";
-import { getAIProvider } from "../../ai/provider-factory";
+import { getAIProvider, getModelForProviderName } from "../../ai/provider-factory";
 import { GoogleGenAI } from "@google/genai";
 import { searchKnowledgeBase } from "./email-knowledge-service";
 import { createTicketFromEmail, getTicketSettings } from "./ticket-webhook-service";
 import { FileSearchService, fileSearchService } from "../../ai/file-search-service";
-
-// Use Gemini 3 Flash Preview for better reasoning (same as AI Assistant)
-const EMAIL_AI_MODEL = "gemini-3-flash-preview";
 
 export interface EmailClassification {
   intent: "question" | "complaint" | "request" | "follow-up" | "spam" | "thank-you" | "information" | "other";
@@ -226,7 +223,9 @@ ${threadContext}
 `.trim();
 
   const provider = await getAIProvider(consultantId);
-  const model = EMAIL_AI_MODEL;
+  // Use model based on provider type (Vertex AI vs Google AI Studio)
+  const model = getModelForProviderName(provider.metadata?.name);
+  console.log(`[EMAIL-AI] Using model ${model} (provider: ${provider.metadata?.name || 'unknown'})`);
 
   // Build FileSearch tool if store names are available
   const fileSearchTool = extendedOptions?.fileSearchStoreNames?.length 

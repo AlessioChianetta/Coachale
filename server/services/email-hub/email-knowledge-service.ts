@@ -41,7 +41,6 @@ export async function getConsultantFileSearchStores(
       .select({
         id: schema.fileSearchStores.id,
         storeName: schema.fileSearchStores.storeName,
-        displayName: schema.fileSearchStores.displayName,
       })
       .from(schema.fileSearchStores)
       .where(
