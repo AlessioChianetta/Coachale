@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,14 +30,32 @@ import {
   Search,
   Calendar,
   Filter,
-  Inbox
+  Inbox,
+  Bot,
+  Image as ImageIcon,
+  FileText,
+  CheckCheck,
+  Check
 } from "lucide-react";
 import { Link } from "wouter";
 import { useSendMessageNow, useFollowupAgents, useActivityLog, usePendingQueue, type ActivityLogFilters, type PendingQueueItem } from "@/hooks/useFollowupApi";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+interface WhatsAppMessage {
+  id: string;
+  text: string;
+  direction: "inbound" | "outbound";
+  sender: "client" | "consultant" | "ai";
+  mediaType: string;
+  mediaUrl: string | null;
+  twilioStatus: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  deliveredAt: string | null;
+}
 
 interface TimelineEvent {
   id: string;
@@ -529,9 +547,289 @@ function ConversationListItem({
   );
 }
 
+function MessageStatusIcon({ status }: { status: string | null }) {
+  if (!status) return null;
+  switch (status) {
+    case 'delivered':
+    case 'read':
+      return <CheckCheck className="h-3 w-3 text-blue-500" />;
+    case 'sent':
+      return <CheckCheck className="h-3 w-3 text-gray-400" />;
+    case 'queued':
+    case 'accepted':
+      return <Check className="h-3 w-3 text-gray-400" />;
+    case 'failed':
+    case 'undelivered':
+      return <XCircle className="h-3 w-3 text-red-500" />;
+    default:
+      return <Check className="h-3 w-3 text-gray-400" />;
+  }
+}
+
+function ChatMessagesView({ conversationId }: { conversationId: string }) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const { data: messagesData, isLoading } = useQuery({
+    queryKey: ["/api/whatsapp/conversations", conversationId, "messages"],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/whatsapp/conversations/${conversationId}/messages`,
+        { headers: getAuthHeaders() }
+      );
+      if (!response.ok) throw new Error("Failed to fetch messages");
+      return response.json();
+    },
+    enabled: !!conversationId,
+    refetchInterval: 10000,
+  });
+
+  const messages: WhatsAppMessage[] = messagesData?.messages || [];
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (messages.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+        <MessageSquare className="h-10 w-10 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground">Nessun messaggio in questa conversazione</p>
+      </div>
+    );
+  }
+
+  return (
+    <ScrollArea className="flex-1">
+      <div className="p-4 space-y-3 bg-[#e5ddd5] dark:bg-gray-900/50 min-h-full">
+        {messages.map((msg) => {
+          const isInbound = msg.direction === "inbound";
+          const isAI = msg.sender === "ai";
+          
+          return (
+            <div
+              key={msg.id}
+              className={`flex ${isInbound ? "justify-start" : "justify-end"}`}
+            >
+              <div
+                className={`max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${
+                  isInbound
+                    ? "bg-white dark:bg-gray-800 text-foreground"
+                    : isAI
+                      ? "bg-purple-100 dark:bg-purple-900/50 text-foreground"
+                      : "bg-green-100 dark:bg-green-900/50 text-foreground"
+                }`}
+              >
+                {isAI && (
+                  <div className="flex items-center gap-1 mb-1 text-purple-600 dark:text-purple-400">
+                    <Bot className="h-3 w-3" />
+                    <span className="text-[10px] font-medium">AI</span>
+                  </div>
+                )}
+                
+                {msg.mediaUrl && msg.mediaType?.startsWith("image") && (
+                  <div className="mb-2">
+                    <img
+                      src={msg.mediaUrl}
+                      alt="Media"
+                      className="max-w-full rounded-lg max-h-48 object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                
+                {msg.mediaUrl && !msg.mediaType?.startsWith("image") && (
+                  <div className="mb-2 p-2 bg-gray-100 dark:bg-gray-700 rounded flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <a
+                      href={msg.mediaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Apri file
+                    </a>
+                  </div>
+                )}
+                
+                {msg.text && (
+                  <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
+                )}
+                
+                <div className={`flex items-center gap-1 mt-1 ${isInbound ? "justify-start" : "justify-end"}`}>
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(new Date(msg.createdAt), "HH:mm", { locale: it })}
+                  </span>
+                  {!isInbound && <MessageStatusIcon status={msg.twilioStatus} />}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+    </ScrollArea>
+  );
+}
+
+function TimelineEventsView({ 
+  conversation, 
+  showFullReasoning, 
+  setShowFullReasoning,
+  showFullMessagePreview,
+  setShowFullMessagePreview
+}: { 
+  conversation: ConversationTimeline;
+  showFullReasoning: Record<string, boolean>;
+  setShowFullReasoning: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  showFullMessagePreview: Record<string, boolean>;
+  setShowFullMessagePreview: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+}) {
+  return (
+    <ScrollArea className="flex-1">
+      <div className="p-4">
+        <h3 className="text-sm font-medium mb-3 text-muted-foreground">
+          Timeline Eventi ({conversation.events.length})
+        </h3>
+        <div className="border-l-2 border-gray-200 dark:border-gray-700 ml-2 pl-4 space-y-4">
+          {conversation.events.map((event) => (
+            <div key={event.id} className="relative">
+              <div className="absolute -left-[21px] w-3 h-3 rounded-full bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-600" />
+
+              <div className="flex items-start gap-2">
+                {getEventIcon(event.type)}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">
+                      {getEventLabel(event.type, event.decision)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(event.timestamp), "dd MMM HH:mm", { locale: it })}
+                    </span>
+                  </div>
+
+                  {event.matchedRuleId && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                      Regola: {event.matchedRuleId}
+                      {event.matchedRuleReason && ` - ${event.matchedRuleReason}`}
+                    </p>
+                  )}
+
+                  {event.reasoning && (
+                    <div className="mt-0.5">
+                      <p className={`text-xs text-muted-foreground ${showFullReasoning[event.id] ? '' : 'line-clamp-2'}`}>
+                        {event.reasoning}
+                      </p>
+                      {event.reasoning.length > 100 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowFullReasoning(prev => ({ ...prev, [event.id]: !prev[event.id] }));
+                          }}
+                          className="text-xs text-blue-600 hover:underline mt-0.5"
+                        >
+                          {showFullReasoning[event.id] ? 'Mostra meno' : 'Mostra tutto'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {event.messagePreview && (
+                    <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MessageSquare className="h-3 w-3" />
+                          {event.templateName ? `Template: ${event.templateName}` : 'Messaggio AI'}
+                        </p>
+                        {(() => {
+                          const templateStatus = getTemplateStatusConfig(event.templateTwilioStatus, !!event.templateId);
+                          return (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={`text-xs flex items-center gap-1 ${templateStatus.color}`}>
+                                    <span>{templateStatus.icon}</span>
+                                    <span className="hidden sm:inline">{templateStatus.label}</span>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{templateStatus.tooltip}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        })()}
+                      </div>
+                      <p className={`text-xs italic ${showFullMessagePreview[event.id] ? '' : 'line-clamp-3'}`}>"{event.messagePreview}"</p>
+                      {event.messagePreview.length > 150 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowFullMessagePreview(prev => ({ ...prev, [event.id]: !prev[event.id] }));
+                          }}
+                          className="text-xs text-blue-600 hover:underline mt-1"
+                        >
+                          {showFullMessagePreview[event.id] ? 'Mostra meno' : 'Mostra tutto'}
+                        </button>
+                      )}
+                      {event.aiSelectedTemplateReasoning && (
+                        <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5 flex items-center gap-1">
+                          <Brain className="h-3 w-3" />
+                          <span className="font-medium">AI:</span> {event.aiSelectedTemplateReasoning}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {event.errorMessage && (
+                    <div className="mt-0.5">
+                      <p className="text-xs text-red-600">
+                        Errore: {event.errorMessage}
+                      </p>
+                      {event.type === 'message_failed' && (
+                        <div className="mt-1.5">
+                          <RetryButton messageId={event.id.replace('msg-', '')} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {event.confidenceScore !== undefined && (
+                    <span className="text-xs text-muted-foreground">
+                      Confidenza: {Math.round(event.confidenceScore * 100)}%
+                    </span>
+                  )}
+
+                  {event.type === 'message_scheduled' && event.status === 'scheduled' && (
+                    <div className="mt-2">
+                      <SendNowButton
+                        messageId={event.id.replace('msg-', '')}
+                        canSendFreeform={event.canSendFreeform}
+                        hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </ScrollArea>
+  );
+}
+
 function ConversationDetailView({ conversation }: { conversation: ConversationTimeline | null }) {
   const [showFullReasoning, setShowFullReasoning] = useState<Record<string, boolean>>({});
   const [showFullMessagePreview, setShowFullMessagePreview] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<string>("chat");
 
   if (!conversation) {
     return (
@@ -541,7 +839,7 @@ function ConversationDetailView({ conversation }: { conversation: ConversationTi
         </div>
         <h3 className="text-lg font-medium mb-2">Seleziona una conversazione</h3>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Seleziona una conversazione dalla lista per visualizzare la timeline degli eventi e le azioni disponibili.
+          Seleziona una conversazione dalla lista per visualizzare la chat e la timeline degli eventi.
         </p>
       </div>
     );
@@ -611,162 +909,58 @@ function ConversationDetailView({ conversation }: { conversation: ConversationTi
           </div>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
-            <Button variant="outline" size="sm" className="gap-1">
-              <MessageSquare className="h-3 w-3" />
-              Vedi Chat
-            </Button>
-          </Link>
-          <SimulateAiButton conversationId={conversation.conversationId} />
-          {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (() => {
-            const scheduledEvent = conversation.events.find(e => e.type === 'message_scheduled');
-            return scheduledEvent ? (
-              <SendNowButton
-                messageId={scheduledEvent.id.replace('msg-', '')}
-                canSendFreeform={scheduledEvent.canSendFreeform}
-                hasApprovedTemplate={scheduledEvent.templateTwilioStatus === 'approved'}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+            <TabsList className="h-8">
+              <TabsTrigger value="chat" className="text-xs gap-1 px-3">
+                <MessageSquare className="h-3 w-3" />
+                Chat
+              </TabsTrigger>
+              <TabsTrigger value="timeline" className="text-xs gap-1 px-3">
+                <Activity className="h-3 w-3" />
+                Timeline AI ({conversation.events.length})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex gap-2 flex-wrap">
+            <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
+              <Button variant="outline" size="sm" className="gap-1 h-8">
+                <ExternalLink className="h-3 w-3" />
+                Apri
+              </Button>
+            </Link>
+            <SimulateAiButton conversationId={conversation.conversationId} />
+            {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (() => {
+              const scheduledEvent = conversation.events.find(e => e.type === 'message_scheduled');
+              return scheduledEvent ? (
+                <SendNowButton
+                  messageId={scheduledEvent.id.replace('msg-', '')}
+                  canSendFreeform={scheduledEvent.canSendFreeform}
+                  hasApprovedTemplate={scheduledEvent.templateTwilioStatus === 'approved'}
+                />
+              ) : null;
+            })()}
+            {conversation.currentStatus === 'error' && conversation.events.some(e => e.type === 'message_failed') && (
+              <RetryButton
+                messageId={conversation.events.find(e => e.type === 'message_failed')!.id.replace('msg-', '')}
               />
-            ) : null;
-          })()}
-          {conversation.currentStatus === 'error' && conversation.events.some(e => e.type === 'message_failed') && (
-            <RetryButton
-              messageId={conversation.events.find(e => e.type === 'message_failed')!.id.replace('msg-', '')}
-            />
-          )}
+            )}
+          </div>
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-4">
-          <h3 className="text-sm font-medium mb-3 text-muted-foreground">
-            Timeline Eventi ({conversation.events.length})
-          </h3>
-          <div className="border-l-2 border-gray-200 dark:border-gray-700 ml-2 pl-4 space-y-4">
-            {conversation.events.map((event) => (
-              <div key={event.id} className="relative">
-                <div className="absolute -left-[21px] w-3 h-3 rounded-full bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-600" />
-
-                <div className="flex items-start gap-2">
-                  {getEventIcon(event.type)}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium">
-                        {getEventLabel(event.type, event.decision)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(event.timestamp), "dd MMM HH:mm", { locale: it })}
-                      </span>
-                    </div>
-
-                    {event.matchedRuleId && (
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                        Regola: {event.matchedRuleId}
-                        {event.matchedRuleReason && ` - ${event.matchedRuleReason}`}
-                      </p>
-                    )}
-
-                    {event.reasoning && (
-                      <div className="mt-0.5">
-                        <p className={`text-xs text-muted-foreground ${showFullReasoning[event.id] ? '' : 'line-clamp-2'}`}>
-                          {event.reasoning}
-                        </p>
-                        {event.reasoning.length > 100 && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowFullReasoning(prev => ({ ...prev, [event.id]: !prev[event.id] }));
-                            }}
-                            className="text-xs text-blue-600 hover:underline mt-0.5"
-                          >
-                            {showFullReasoning[event.id] ? 'Mostra meno' : 'Mostra tutto'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {event.messagePreview && (
-                      <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <MessageSquare className="h-3 w-3" />
-                            {event.templateName ? `Template: ${event.templateName}` : 'Messaggio AI'}
-                          </p>
-                          {(() => {
-                            const templateStatus = getTemplateStatusConfig(event.templateTwilioStatus, !!event.templateId);
-                            return (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className={`text-xs flex items-center gap-1 ${templateStatus.color}`}>
-                                      <span>{templateStatus.icon}</span>
-                                      <span className="hidden sm:inline">{templateStatus.label}</span>
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{templateStatus.tooltip}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            );
-                          })()}
-                        </div>
-                        <p className={`text-xs italic ${showFullMessagePreview[event.id] ? '' : 'line-clamp-3'}`}>"{event.messagePreview}"</p>
-                        {event.messagePreview.length > 150 && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowFullMessagePreview(prev => ({ ...prev, [event.id]: !prev[event.id] }));
-                            }}
-                            className="text-xs text-blue-600 hover:underline mt-1"
-                          >
-                            {showFullMessagePreview[event.id] ? 'Mostra meno' : 'Mostra tutto'}
-                          </button>
-                        )}
-                        {event.aiSelectedTemplateReasoning && (
-                          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5 flex items-center gap-1">
-                            <Brain className="h-3 w-3" />
-                            <span className="font-medium">AI:</span> {event.aiSelectedTemplateReasoning}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {event.errorMessage && (
-                      <div className="mt-0.5">
-                        <p className="text-xs text-red-600">
-                          Errore: {event.errorMessage}
-                        </p>
-                        {event.type === 'message_failed' && (
-                          <div className="mt-1.5">
-                            <RetryButton messageId={event.id.replace('msg-', '')} />
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {event.confidenceScore !== undefined && (
-                      <span className="text-xs text-muted-foreground">
-                        Confidenza: {Math.round(event.confidenceScore * 100)}%
-                      </span>
-                    )}
-
-                    {event.type === 'message_scheduled' && event.status === 'scheduled' && (
-                      <div className="mt-2">
-                        <SendNowButton
-                          messageId={event.id.replace('msg-', '')}
-                          canSendFreeform={event.canSendFreeform}
-                          hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </ScrollArea>
+      {activeTab === "chat" ? (
+        <ChatMessagesView conversationId={conversation.conversationId} />
+      ) : (
+        <TimelineEventsView 
+          conversation={conversation}
+          showFullReasoning={showFullReasoning}
+          setShowFullReasoning={setShowFullReasoning}
+          showFullMessagePreview={showFullMessagePreview}
+          setShowFullMessagePreview={setShowFullMessagePreview}
+        />
+      )}
     </div>
   );
 }
