@@ -82,7 +82,9 @@ import {
   Menu,
   Ticket,
   Webhook,
+  BookOpen,
 } from "lucide-react";
+import { Link } from "wouter";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -1017,6 +1019,15 @@ export default function ConsultantEmailHub() {
             <Webhook className="h-4 w-4" />
             <span className="text-sm flex-1 text-left">Webhook</span>
           </button>
+          
+          <Link href="/consultant/knowledge-documents">
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors hover:bg-white/5 text-slate-300"
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="text-sm flex-1 text-left">Knowledge Base</span>
+            </button>
+          </Link>
 
           <Collapsible>
             <CollapsibleTrigger asChild>
