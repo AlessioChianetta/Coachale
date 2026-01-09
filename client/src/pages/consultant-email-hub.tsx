@@ -1404,7 +1404,7 @@ export default function ConsultantEmailHub() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white hover:bg-white/10"
+                        className="h-7 w-7 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 text-slate-400 hover:text-white hover:bg-white/10"
                       >
                         <Settings className="h-3.5 w-3.5" />
                       </Button>
