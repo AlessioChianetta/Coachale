@@ -3,8 +3,12 @@ import * as schema from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { getAIProvider } from "../../ai/provider-factory";
 import { GoogleGenAI } from "@google/genai";
-import { searchKnowledgeBase, getKnowledgeContext } from "./email-knowledge-service";
+import { searchKnowledgeBase } from "./email-knowledge-service";
 import { createTicketFromEmail, getTicketSettings } from "./ticket-webhook-service";
+import { FileSearchService, fileSearchService } from "../../ai/file-search-service";
+
+// Use Gemini 3 Flash Preview for better reasoning (same as AI Assistant)
+const EMAIL_AI_MODEL = "gemini-3-flash-preview";
 
 export interface EmailClassification {
   intent: "question" | "complaint" | "request" | "follow-up" | "spam" | "thank-you" | "information" | "other";
@@ -187,6 +191,7 @@ export interface ExtendedDraftOptions {
   customInstructions?: string | null;
   knowledgeContext?: string | null;
   bookingLink?: string | null;
+  fileSearchStoreNames?: string[];
 }
 
 export async function generateEmailDraft(
@@ -221,7 +226,16 @@ ${threadContext}
 `.trim();
 
   const provider = await getAIProvider(consultantId);
-  const model = "gemini-2.5-flash";
+  const model = EMAIL_AI_MODEL;
+
+  // Build FileSearch tool if store names are available
+  const fileSearchTool = extendedOptions?.fileSearchStoreNames?.length 
+    ? fileSearchService.buildFileSearchTool(extendedOptions.fileSearchStoreNames)
+    : null;
+
+  if (fileSearchTool) {
+    console.log(`[EMAIL-AI] Using FileSearch RAG with ${extendedOptions?.fileSearchStoreNames?.length} stores`);
+  }
 
   try {
     const result = await provider.client.generateContent({
@@ -232,8 +246,9 @@ ${threadContext}
       ],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 4096, // Increased to prevent JSON truncation
+        maxOutputTokens: 4096,
       },
+      ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
 
     const responseText = result.response.text();
@@ -396,20 +411,13 @@ export async function classifyAndGenerateDraft(
     bodyText: email.bodyText || "",
   });
 
-  console.log(`[EMAIL-AI] Knowledge Base search: found=${kbResult.found}, documents=${kbResult.documents.length}`);
+  console.log(`[EMAIL-AI] Knowledge Base search: found=${kbResult.found}, stores=${kbResult.storeNames?.length || 0}, docs=${kbResult.totalDocuments || 0}`);
 
-  let kbContext: string | null = null;
+  // Use FileSearch store names for native RAG (no manual context extraction needed)
+  const fileSearchStoreNames = kbResult.found ? kbResult.storeNames : [];
   
-  if (kbResult.found && kbResult.documents.length > 0) {
-    kbContext = await getKnowledgeContext(consultantId, {
-      subject: email.subject || "",
-      fromEmail: email.fromEmail,
-      bodyText: email.bodyText || "",
-    });
-    
-    if (kbContext) {
-      console.log(`[EMAIL-AI] Enhanced prompt with KB context (${kbContext.length} chars)`);
-    }
+  if (fileSearchStoreNames.length > 0) {
+    console.log(`[EMAIL-AI] FileSearch RAG enabled with ${kbResult.totalDocuments} documents in ${fileSearchStoreNames.length} stores`);
   }
 
   const ticketSettings = await getTicketSettings(consultantId);
@@ -473,8 +481,8 @@ export async function classifyAndGenerateDraft(
     consultantId,
     {
       customInstructions: extendedSettings?.customInstructions,
-      knowledgeContext: kbContext,
       bookingLink: extendedSettings?.bookingLink,
+      fileSearchStoreNames,
     }
   );
 
@@ -483,7 +491,7 @@ export async function classifyAndGenerateDraft(
     draft,
     kbSearchResult: {
       found: kbResult.found,
-      documentsCount: kbResult.documents.length,
+      documentsCount: kbResult.totalDocuments || 0,
     },
     ticketCreated,
     ticketId,

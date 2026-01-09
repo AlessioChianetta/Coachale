@@ -1840,6 +1840,24 @@ export default function ConsultantEmailHub() {
                         Risposto
                       </Badge>
                     )}
+                    {(email as any).senderClient && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge className="h-5 px-1.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                              <Users className="h-3 w-3 mr-0.5" />
+                              Cliente
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="font-medium">{(email as any).senderClient.firstName} {(email as any).senderClient.lastName}</p>
+                            {(email as any).senderClient.level && (
+                              <p className="text-xs text-slate-400">Livello: {(email as any).senderClient.level}</p>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </div>
                   <p className={`text-sm truncate ${!email.isRead ? "text-slate-800 dark:text-slate-200" : "text-slate-600 dark:text-slate-400"}`}>
                     {email.subject || "(Nessun oggetto)"}

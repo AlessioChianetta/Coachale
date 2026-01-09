@@ -1046,7 +1046,46 @@ router.get("/inbox", async (req: AuthRequest, res) => {
       .limit(parseInt(limit as string, 10))
       .offset(parseInt(offset as string, 10));
     
-    res.json({ success: true, data: emails, count: emails.length });
+    // Detect if sender is an existing client
+    const uniqueEmails = [...new Set(emails.map(e => e.fromEmail?.toLowerCase()).filter(Boolean))];
+    
+    let clientsMap: Record<string, { id: string; firstName: string; lastName: string; level?: string }> = {};
+    
+    if (uniqueEmails.length > 0) {
+      const clients = await db
+        .select({
+          id: schema.users.id,
+          email: schema.users.email,
+          firstName: schema.users.firstName,
+          lastName: schema.users.lastName,
+          level: schema.users.level,
+        })
+        .from(schema.users)
+        .where(
+          and(
+            eq(schema.users.consultantId, consultantId),
+            eq(schema.users.role, "client"),
+            sql`LOWER(${schema.users.email}) = ANY(${sql`ARRAY[${sql.join(uniqueEmails.map(e => sql`${e}`), sql`, `)}]::text[]`})`
+          )
+        );
+      
+      for (const client of clients) {
+        clientsMap[client.email.toLowerCase()] = {
+          id: client.id,
+          firstName: client.firstName,
+          lastName: client.lastName,
+          level: client.level || undefined,
+        };
+      }
+    }
+    
+    // Attach client info to each email
+    const emailsWithClientInfo = emails.map(email => ({
+      ...email,
+      senderClient: email.fromEmail ? clientsMap[email.fromEmail.toLowerCase()] || null : null,
+    }));
+    
+    res.json({ success: true, data: emailsWithClientInfo, count: emails.length });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error fetching inbox:", error);
     res.status(500).json({ success: false, error: error.message });
