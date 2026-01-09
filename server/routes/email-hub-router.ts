@@ -1477,7 +1477,7 @@ router.get("/ai-stats", async (req: AuthRequest, res) => {
 router.get("/ai-events", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { limit = 50, accountId, eventType, offset = 0 } = req.query;
+    const { limit = 50, accountId, eventType, offset = 0, dateFrom, dateTo, search } = req.query;
     
     let whereConditions = [eq(schema.hubEmailAiEvents.consultantId, consultantId)];
     
@@ -1487,6 +1487,28 @@ router.get("/ai-events", async (req: AuthRequest, res) => {
     
     if (eventType && typeof eventType === "string") {
       whereConditions.push(eq(schema.hubEmailAiEvents.eventType, eventType as any));
+    }
+    
+    if (dateFrom && typeof dateFrom === "string") {
+      const fromDate = new Date(dateFrom);
+      if (!isNaN(fromDate.getTime())) {
+        whereConditions.push(sql`${schema.hubEmailAiEvents.createdAt} >= ${fromDate}`);
+      }
+    }
+    
+    if (dateTo && typeof dateTo === "string") {
+      const toDate = new Date(dateTo);
+      if (!isNaN(toDate.getTime())) {
+        toDate.setHours(23, 59, 59, 999);
+        whereConditions.push(sql`${schema.hubEmailAiEvents.createdAt} <= ${toDate}`);
+      }
+    }
+    
+    if (search && typeof search === "string" && search.trim()) {
+      const searchTerm = `%${search.trim().toLowerCase()}%`;
+      whereConditions.push(
+        sql`(LOWER(${schema.hubEmailAiEvents.emailSubject}) LIKE ${searchTerm} OR LOWER(${schema.hubEmailAiEvents.emailFrom}) LIKE ${searchTerm})`
+      );
     }
     
     const events = await db
@@ -1516,10 +1538,38 @@ router.get("/ai-events", async (req: AuthRequest, res) => {
 router.get("/ai-events/summary", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { days = 7 } = req.query;
+    const { days = 7, accountId } = req.query;
+    let numDays = Number(days);
+    
+    if (isNaN(numDays) || numDays <= 0) {
+      numDays = 7;
+    }
+    if (numDays > 3650) {
+      numDays = 3650;
+    }
     
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - Number(days));
+    startDate.setDate(startDate.getDate() - numDays);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const previousStartDate = new Date(startDate);
+    previousStartDate.setDate(previousStartDate.getDate() - numDays);
+    
+    let baseConditions = [eq(schema.hubEmailAiEvents.consultantId, consultantId)];
+    if (accountId && typeof accountId === "string") {
+      baseConditions.push(eq(schema.hubEmailAiEvents.accountId, accountId));
+    }
+    
+    const currentPeriodConditions = [
+      ...baseConditions,
+      sql`${schema.hubEmailAiEvents.createdAt} >= ${startDate}`
+    ];
+    
+    const previousPeriodConditions = [
+      ...baseConditions,
+      sql`${schema.hubEmailAiEvents.createdAt} >= ${previousStartDate}`,
+      sql`${schema.hubEmailAiEvents.createdAt} < ${startDate}`
+    ];
     
     const summary = await db
       .select({
@@ -1527,12 +1577,16 @@ router.get("/ai-events/summary", async (req: AuthRequest, res) => {
         count: sql<number>`COUNT(*)`,
       })
       .from(schema.hubEmailAiEvents)
-      .where(
-        and(
-          eq(schema.hubEmailAiEvents.consultantId, consultantId),
-          sql`${schema.hubEmailAiEvents.createdAt} >= ${startDate}`
-        )
-      )
+      .where(and(...currentPeriodConditions))
+      .groupBy(schema.hubEmailAiEvents.eventType);
+    
+    const previousSummary = await db
+      .select({
+        eventType: schema.hubEmailAiEvents.eventType,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(schema.hubEmailAiEvents)
+      .where(and(...previousPeriodConditions))
       .groupBy(schema.hubEmailAiEvents.eventType);
     
     const avgConfidence = await db
@@ -1543,24 +1597,47 @@ router.get("/ai-events/summary", async (req: AuthRequest, res) => {
       .from(schema.hubEmailAiEvents)
       .where(
         and(
-          eq(schema.hubEmailAiEvents.consultantId, consultantId),
-          sql`${schema.hubEmailAiEvents.createdAt} >= ${startDate}`,
+          ...currentPeriodConditions,
           sql`${schema.hubEmailAiEvents.confidence} IS NOT NULL`
         )
       );
     
+    const dailyBreakdown = await db
+      .select({
+        date: sql<string>`DATE(${schema.hubEmailAiEvents.createdAt})`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(schema.hubEmailAiEvents)
+      .where(and(...currentPeriodConditions))
+      .groupBy(sql`DATE(${schema.hubEmailAiEvents.createdAt})`)
+      .orderBy(sql`DATE(${schema.hubEmailAiEvents.createdAt})`);
+    
+    const byEventType = summary.reduce((acc, s) => {
+      acc[s.eventType] = Number(s.count);
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const previousByEventType = previousSummary.reduce((acc, s) => {
+      acc[s.eventType] = Number(s.count);
+      return acc;
+    }, {} as Record<string, number>);
+    
     res.json({ 
       success: true, 
       data: {
-        byEventType: summary.reduce((acc, s) => {
-          acc[s.eventType] = Number(s.count);
-          return acc;
-        }, {} as Record<string, number>),
+        byEventType,
+        previousPeriod: {
+          byEventType: previousByEventType,
+        },
         averages: {
           confidence: avgConfidence[0]?.avgConfidence || 0,
           processingTimeMs: avgConfidence[0]?.avgProcessingTime || 0,
         },
-        period: Number(days),
+        dailyBreakdown: dailyBreakdown.map(d => ({
+          date: d.date,
+          count: Number(d.count),
+        })),
+        period: numDays,
       }
     });
   } catch (error: any) {
