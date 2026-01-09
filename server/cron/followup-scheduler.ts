@@ -1081,10 +1081,10 @@ export async function findCandidateConversations(
   }
 
   // Build dynamic where conditions
-  // TASK 7: Confirmation log - we filter out closed conversations here
-  console.log(`✅ [FILTER-CHECK] Excluding closed states: 'closed_won', 'closed_lost' from candidate search`);
+  // TASK 7: Confirmation log - we filter out closed/nurturing conversations here
+  console.log(`✅ [FILTER-CHECK] Excluding states: 'closed_won', 'closed_lost', 'nurturing' from candidate search`);
   const whereConditions = [
-    sql`${conversationStates.currentState} NOT IN ('closed_won', 'closed_lost')`,
+    sql`${conversationStates.currentState} NOT IN ('closed_won', 'closed_lost', 'nurturing')`,
     inArray(whatsappConversations.consultantId, consultantIds),
     eq(whatsappConversations.isActive, true)
   ];
@@ -1118,6 +1118,8 @@ export async function findCandidateConversations(
       dormantUntil: conversationStates.dormantUntil,
       permanentlyExcluded: conversationStates.permanentlyExcluded,
       dormantReason: conversationStates.dormantReason,
+      // Anti-duplication field
+      lastAiEvaluationAt: conversationStates.lastAiEvaluationAt,
       conversation: {
         consultantId: whatsappConversations.consultantId,
         agentConfigId: whatsappConversations.agentConfigId,
@@ -1209,6 +1211,16 @@ export async function findCandidateConversations(
       const daysUntilWakeup = Math.ceil((new Date(state.dormantUntil).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       console.log(`😴 [CANDIDATE] ${state.conversationId}: SKIPPED - Dormant until ${state.dormantUntil.toISOString()} (${daysUntilWakeup} days left)`);
       continue;
+    }
+    
+    // 2b. Anti-duplication: Skip if AI was evaluated very recently (within 5 minutes)
+    // This prevents the 350+ duplicate evaluations bug
+    if (state.lastAiEvaluationAt) {
+      const minutesSinceLastEval = (now.getTime() - new Date(state.lastAiEvaluationAt).getTime()) / (1000 * 60);
+      if (minutesSinceLastEval < 5) {
+        console.log(`⏭️ [CANDIDATE] ${state.conversationId}: SKIPPED - AI evaluated ${minutesSinceLastEval.toFixed(1)} min ago (cooldown: 5 min)`);
+        continue;
+      }
     }
     
     // 3. Check if reached 3 consecutive no-reply attempts (trigger dormancy)
@@ -1842,6 +1854,36 @@ async function evaluateConversation(
     console.log(`🛑 [FOLLOWUP-SCHEDULER] Stopped follow-ups for ${candidate.conversationId}, new state: ${newState}`);
     return 'stopped';
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NURTURING HANDLER: When AI recommends quarterly nurturing mode
+  // This prevents the 350+ duplicate evaluations bug
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (decision.decision === 'nurturing' || decision.decision === 'silence') {
+    const dormantDays = decision.scheduledDays || 90; // Default 90 days (3 months) for quarterly nurturing
+    const dormantUntilDate = new Date();
+    dormantUntilDate.setDate(dormantUntilDate.getDate() + dormantDays);
+    
+    const nurturingReason = decision.silenceReason || decision.completionReason || 
+      `Nurturing trimestrale: ricontattare dopo ${dormantDays} giorni`;
+    
+    await updateConversationState(candidate.conversationId, {
+      currentState: 'nurturing',
+      previousState: candidate.currentState,
+      lastAiEvaluationAt: new Date(),
+      aiRecommendation: decision.reasoning,
+      dormantUntil: dormantUntilDate,
+      dormantReason: nurturingReason,
+      nextFollowupScheduledAt: dormantUntilDate,
+    } as any);
+
+    console.log(`🌱 [FOLLOWUP-SCHEDULER] Entered NURTURING mode for ${candidate.conversationId}`);
+    console.log(`   Dormant until: ${dormantUntilDate.toISOString()} (${dormantDays} days)`);
+    console.log(`   Reason: ${nurturingReason}`);
+    
+    return 'stopped';
+  }
+  // ═══════════════════════════════════════════════════════════════════════════
 
   await updateConversationState(candidate.conversationId, {
     lastAiEvaluationAt: new Date(),
