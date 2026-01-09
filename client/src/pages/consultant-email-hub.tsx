@@ -85,6 +85,7 @@ import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { ImportWizardDialog } from "@/components/email-hub/ImportWizardDialog";
 import { EmailImportDialog } from "@/components/email-hub/EmailImportDialog";
+import { EmailComposer } from "@/components/email-hub/EmailComposer";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
@@ -276,6 +277,9 @@ export default function ConsultantEmailHub() {
   const [importAccountId, setImportAccountId] = useState<string>("");
   const [importAccountName, setImportAccountName] = useState<string>("");
   const [showFullEmailView, setShowFullEmailView] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
+  const [composerReplyTo, setComposerReplyTo] = useState<Email | null>(null);
+  const [composerReplyAll, setComposerReplyAll] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1274,17 +1278,31 @@ export default function ConsultantEmailHub() {
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{getFolderTitle()}</h2>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => {
-              refetchInbox();
-              refetchDrafts();
-            }}
-            className="h-8 w-8"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              size="sm"
+              className="bg-violet-600 hover:bg-violet-700 gap-1"
+              onClick={() => {
+                setComposerReplyTo(null);
+                setComposerReplyAll(false);
+                setShowComposer(true);
+              }}
+            >
+              <PenSquare className="h-4 w-4" />
+              Nuova Email
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => {
+                refetchInbox();
+                refetchDrafts();
+              }}
+              className="h-8 w-8"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         <div className="relative">
@@ -1582,9 +1600,31 @@ export default function ConsultantEmailHub() {
           </ScrollArea>
           
           <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" className="gap-1">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="gap-1"
+              onClick={() => {
+                setComposerReplyTo(selectedEmail);
+                setComposerReplyAll(false);
+                setShowComposer(true);
+              }}
+            >
               <Reply className="h-4 w-4" />
               Rispondi
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="gap-1"
+              onClick={() => {
+                setComposerReplyTo(selectedEmail);
+                setComposerReplyAll(true);
+                setShowComposer(true);
+              }}
+            >
+              <Users className="h-4 w-4" />
+              Rispondi a tutti
             </Button>
             <Button 
               size="sm" 
@@ -1641,23 +1681,48 @@ export default function ConsultantEmailHub() {
               </motion.div>
               <div className="flex-1" />
               <div className="flex items-center gap-2">
-                {[
-                  { icon: Reply, label: "Rispondi", variant: "outline" as const },
-                ].map((btn, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.05 + i * 0.03, duration: 0.12 }}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.05, duration: 0.12 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-1"
+                    onClick={() => {
+                      setComposerReplyTo(selectedEmail);
+                      setComposerReplyAll(false);
+                      setShowComposer(true);
+                    }}
                   >
-                    <Button size="sm" variant={btn.variant} className="gap-1">
-                      <btn.icon className="h-4 w-4" />
-                      {btn.label}
-                    </Button>
-                  </motion.div>
-                ))}
+                    <Reply className="h-4 w-4" />
+                    Rispondi
+                  </Button>
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.08, duration: 0.12 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-1"
+                    onClick={() => {
+                      setComposerReplyTo(selectedEmail);
+                      setComposerReplyAll(true);
+                      setShowComposer(true);
+                    }}
+                  >
+                    <Users className="h-4 w-4" />
+                    Rispondi a tutti
+                  </Button>
+                </motion.div>
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -2390,6 +2455,36 @@ export default function ConsultantEmailHub() {
           accountName={importAccountName}
         />
       )}
+
+      <EmailComposer
+        open={showComposer}
+        onOpenChange={(open) => {
+          setShowComposer(open);
+          if (!open) {
+            setComposerReplyTo(null);
+            setComposerReplyAll(false);
+          }
+        }}
+        accounts={accounts.map(a => ({
+          id: a.id,
+          displayName: a.displayName || a.emailAddress,
+          emailAddress: a.emailAddress,
+          smtpHost: a.smtpHost,
+        }))}
+        defaultAccountId={selectedAccountId || accounts[0]?.id}
+        replyTo={composerReplyTo ? {
+          id: composerReplyTo.id,
+          fromEmail: composerReplyTo.fromEmail,
+          fromName: composerReplyTo.fromName,
+          subject: composerReplyTo.subject,
+          toRecipients: composerReplyTo.toRecipients as string[],
+          ccRecipients: composerReplyTo.ccRecipients as string[],
+          bodyText: composerReplyTo.bodyText,
+          bodyHtml: composerReplyTo.bodyHtml,
+          messageId: composerReplyTo.messageId,
+        } : undefined}
+        replyAll={composerReplyAll}
+      />
       
       <ConsultantAIAssistant />
     </div>
