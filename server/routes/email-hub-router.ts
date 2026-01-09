@@ -1446,13 +1446,14 @@ router.get("/ai-stats", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
     
+    // Exclude trash folder emails from AI stats - they should not be queued for processing
     const [stats] = await db
       .select({
-        pendingAI: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'new' AND ${schema.hubEmails.direction} = 'inbound')`,
-        processingAI: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'processing')`,
-        draftGenerated: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'draft_generated')`,
-        needsReview: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'needs_review')`,
-        total: sql<number>`COUNT(*)`,
+        pendingAI: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'new' AND ${schema.hubEmails.direction} = 'inbound' AND ${schema.hubEmails.folder} != 'trash')`,
+        processingAI: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'processing' AND ${schema.hubEmails.folder} != 'trash')`,
+        draftGenerated: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'draft_generated' AND ${schema.hubEmails.folder} != 'trash')`,
+        needsReview: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.processingStatus} = 'needs_review' AND ${schema.hubEmails.folder} != 'trash')`,
+        total: sql<number>`COUNT(*) FILTER (WHERE ${schema.hubEmails.folder} != 'trash')`,
       })
       .from(schema.hubEmails)
       .where(eq(schema.hubEmails.consultantId, consultantId));
