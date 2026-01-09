@@ -1161,22 +1161,22 @@ export default function ConsultantEmailHub() {
           <Separator className="my-3 bg-slate-700" />
 
           {(aiStats.pendingAI > 0 || aiStats.processingAI > 0 || batchProcessMutation.isPending) && (
-            <div className="mx-2 mb-3 p-3 rounded-lg bg-violet-900/30 border border-violet-700/50">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-violet-300 flex items-center gap-1.5">
+            <div className="mb-2 p-2 rounded-lg bg-violet-900/30 border border-violet-700/50">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-violet-300 flex items-center gap-1">
                   {batchProcessMutation.isPending || aiStats.processingAI > 0 ? (
                     <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Elaborazione AI...
+                      <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                      <span className="truncate">Elaborazione...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-3 w-3" />
-                      Email da elaborare
+                      <Sparkles className="h-3 w-3 shrink-0" />
+                      <span className="truncate">Email in coda</span>
                     </>
                   )}
                 </span>
-                <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-violet-600">
+                <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-violet-600 shrink-0">
                   {aiStats.pendingAI}
                 </Badge>
               </div>
@@ -1184,12 +1184,12 @@ export default function ConsultantEmailHub() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full text-xs border-violet-500 text-violet-300 hover:bg-violet-600/30"
+                  className="w-full h-7 text-xs border-violet-500 text-violet-300 hover:bg-violet-600/30"
                   onClick={() => batchProcessMutation.mutate()}
                   disabled={batchProcessMutation.isPending}
                 >
-                  <Zap className="h-3 w-3 mr-1" />
-                  Genera bozze AI
+                  <Zap className="h-3 w-3 mr-1 shrink-0" />
+                  <span className="truncate">Genera bozze</span>
                 </Button>
               )}
             </div>
