@@ -1538,6 +1538,16 @@ export class FileSearchSyncService {
       totalFailed += result.failed;
     }
 
+    // 9b. Email Account Knowledge
+    if (settings.autoSyncEmailAccounts) {
+      console.log(`📧 [Scheduled] Syncing Email Account Knowledge...`);
+      const result = await this.syncAllEmailAccountKnowledge(consultantId);
+      details.emailAccounts = { synced: result.synced, skipped: result.skipped || 0, failed: result.failed };
+      totalSynced += result.synced;
+      totalSkipped += result.skipped || 0;
+      totalFailed += result.failed;
+    }
+
     // Get all clients for client-specific syncs
     const needsClientSync = settings.autoSyncFinancial || settings.autoSyncGoals || 
       settings.autoSyncTasks || settings.autoSyncDailyReflections || 
@@ -6401,6 +6411,86 @@ export class FileSearchSyncService {
         total: 0,
         synced: 0,
         failed: 1,
+        errors: [error.message],
+      };
+    }
+  }
+
+  /**
+   * Sync ALL Email Account Knowledge Bases for a consultant
+   * Iterates over all email accounts and syncs their knowledge bases
+   * 
+   * @param consultantId - The consultant ID
+   * @returns Aggregated sync results
+   */
+  static async syncAllEmailAccountKnowledge(consultantId: string): Promise<{
+    total: number;
+    synced: number;
+    skipped: number;
+    failed: number;
+    accountsProcessed: number;
+    errors: string[];
+  }> {
+    try {
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`📧 [FileSync] Syncing ALL Email Account Knowledge for consultant ${consultantId.substring(0, 8)}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      const accounts = await db.query.emailAccounts.findMany({
+        where: eq(emailAccounts.consultantId, consultantId),
+      });
+
+      if (accounts.length === 0) {
+        console.log(`ℹ️ [FileSync] No email accounts found for consultant ${consultantId.substring(0, 8)}`);
+        return { total: 0, synced: 0, skipped: 0, failed: 0, accountsProcessed: 0, errors: [] };
+      }
+
+      console.log(`📋 [FileSync] Found ${accounts.length} email accounts to sync`);
+
+      let totalItems = 0;
+      let totalSynced = 0;
+      let totalFailed = 0;
+      const allErrors: string[] = [];
+
+      for (const account of accounts) {
+        try {
+          console.log(`\n📧 [FileSync] Processing email account: ${account.emailAddress}`);
+          const result = await this.syncEmailAccountKnowledge(account.id);
+          totalItems += result.total;
+          totalSynced += result.synced;
+          totalFailed += result.failed;
+          allErrors.push(...result.errors);
+        } catch (err: any) {
+          console.error(`❌ [FileSync] Error syncing email account ${account.emailAddress}:`, err.message);
+          totalFailed++;
+          allErrors.push(`${account.emailAddress}: ${err.message}`);
+        }
+      }
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`✅ [FileSync] ALL Email Account Knowledge Sync Complete`);
+      console.log(`   Accounts: ${accounts.length}`);
+      console.log(`   Total Items: ${totalItems}`);
+      console.log(`   Synced: ${totalSynced}`);
+      console.log(`   Failed: ${totalFailed}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      return {
+        total: totalItems,
+        synced: totalSynced,
+        skipped: 0,
+        failed: totalFailed,
+        accountsProcessed: accounts.length,
+        errors: allErrors,
+      };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing all email account knowledge:', error);
+      return {
+        total: 0,
+        synced: 0,
+        skipped: 0,
+        failed: 1,
+        accountsProcessed: 0,
         errors: [error.message],
       };
     }
