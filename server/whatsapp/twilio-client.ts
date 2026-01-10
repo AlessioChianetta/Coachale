@@ -278,6 +278,20 @@ export async function sendWhatsAppMessage(
           ? (message.status as "queued" | "sent" | "delivered" | "read" | "failed" | "undelivered")
           : "sent";
 
+        // Fetch existing message to preserve metadata (templateBody, etc.)
+        const [existingMsg] = await db
+          .select()
+          .from(whatsappMessages)
+          .where(eq(whatsappMessages.id, messageId))
+          .limit(1);
+        
+        // Parse existing metadata if it's a string
+        const existingMetadata = existingMsg?.metadata 
+          ? (typeof existingMsg.metadata === 'string' 
+              ? JSON.parse(existingMsg.metadata) 
+              : existingMsg.metadata)
+          : {};
+
         await db
           .update(whatsappMessages)
           .set({
@@ -285,6 +299,7 @@ export async function sendWhatsAppMessage(
             twilioStatus: validStatus,
             sentAt: new Date(),
             metadata: { 
+              ...existingMetadata,
               templateMode: true, 
               contentSid: options.contentSid,
               contentVariables: options.contentVariables 
