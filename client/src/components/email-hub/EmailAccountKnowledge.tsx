@@ -256,7 +256,7 @@ export function EmailAccountKnowledge({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  const items: KnowledgeItem[] = knowledgeData?.items || [];
+  const items: KnowledgeItem[] = knowledgeData?.data || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
