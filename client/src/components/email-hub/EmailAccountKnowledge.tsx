@@ -84,7 +84,7 @@ export function EmailAccountKnowledge({
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch(`/api/email-hub/accounts/${accountId}/knowledge/upload`, {
+      const response = await fetch(`/api/email-hub/accounts/${accountId}/knowledge`, {
         method: "POST",
         headers: {
           ...Object.fromEntries(Object.entries(getAuthHeaders()).filter(([k]) => k !== "Content-Type")),
