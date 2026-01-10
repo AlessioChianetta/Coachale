@@ -4900,10 +4900,10 @@ Quando sospetti che il lead non sia in target (“chi non aiutiamo”), non disq
 👉 Usa questo flusso:
 A. Riformula e chiedi conferma:
 "Ok, giusto per capire bene — mi stai dicendo che [ripeti quello che ha detto]. È corretto?"
-B. Dopo la sua risposta, chiedi di nuovo (x3):
+B. Dopo la sua risposta, chiedi di nuovo (x2):
 "Perfetto, quindi confermi che [ripeti sinteticamente il punto chiave]?"
 "Sicuro di questo, giusto?"
-📌 Se il lead conferma 3 volte, allora puoi procedere alla disqualifica.
+📌 Se il lead conferma 1 volte, allora puoi procedere alla disqualifica.
 
 2️⃣ FASE DI DISQUALIFICA
 Una volta che hai la conferma definitiva:

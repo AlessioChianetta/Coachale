@@ -583,11 +583,11 @@ Prima assicurati che abbia capito bene.
 A. Riformula e chiedi conferma:
 "Ok, giusto per capire bene — mi stai dicendo che [ripeti quello che ha detto]. È corretto?"
 
-B. Chiedi conferma 3 volte:
+B. Chiedi conferma 1 volte:
 "Perfetto, quindi confermi che [ripeti sinteticamente]?"
 "Sicuro di questo, giusto?"
 
-📌 Se il lead conferma 3 volte, procedi alla disqualifica.
+📌 Se il lead conferma 1 volta, procedi alla disqualifica.
 
 2️⃣ FASE DI DISQUALIFICA
 
