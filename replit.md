@@ -18,6 +18,7 @@ The application is built with a modern stack:
 - **Security**: JWT tokens handle client-side authentication, with secure password management via bcrypt.
 - **Access Control**: A role-based access control system differentiates between consultant, client, and super_admin roles.
 - **Super Admin System**: Features global OAuth, TURN server configurations, and a 3-tier priority system for Gemini API keys.
+- **Multi-Profile System**: Users can have multiple roles simultaneously via `user_role_profiles` table. Consultants can enable/disable consultant profiles for their clients via the Clients management page. Dual authorization checks verify ownership through both `users.consultantId` and `user_role_profiles.consultantId` to handle legacy data.
 
 ## UI/UX Decisions
 - **Design System**: Modern, accessible, and responsive design is achieved using `shadcn/ui` and `Tailwind CSS`.
