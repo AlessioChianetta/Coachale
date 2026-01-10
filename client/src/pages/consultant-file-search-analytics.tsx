@@ -126,6 +126,7 @@ interface FileSearchSettings {
   autoSyncAssignedLibrary: boolean;
   autoSyncAssignedUniversity: boolean;
   autoSyncExerciseExternalDocs: boolean;
+  autoSyncEmailAccounts: boolean;
   scheduledSyncEnabled: boolean;
   scheduledSyncHour: number;
   lastScheduledSync: string | null;
@@ -211,6 +212,22 @@ interface HierarchicalData {
       exerciseResponses: boolean;
       consultationNotes: boolean;
       knowledgeBase: boolean;
+    };
+  }>;
+  emailAccountStores: Array<{
+    accountId: string;
+    accountName: string;
+    emailAddress: string;
+    storeId: string | null;
+    storeName: string | null;
+    hasStore: boolean;
+    hasDocuments: boolean;
+    documents: {
+      knowledgeBase: any[];
+    };
+    totals: {
+      knowledgeBase: number;
+      total: number;
     };
   }>;
 }
@@ -493,6 +510,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
   
   const [consultantStoreOpen, setConsultantStoreOpen] = useState(true);
   const [clientStoresOpen, setClientStoresOpen] = useState(true);
+  const [emailAccountStoresOpen, setEmailAccountStoresOpen] = useState(true);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openClients, setOpenClients] = useState<Record<string, boolean>>({});
   
@@ -3072,6 +3090,83 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                   )}
                                 </CollapsibleContent>
                               </Collapsible>
+
+                              {/* Email Account Stores Section */}
+                              {hData.emailAccountStores && hData.emailAccountStores.length > 0 && (
+                                <Collapsible open={emailAccountStoresOpen} onOpenChange={setEmailAccountStoresOpen}>
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors">
+                                    {emailAccountStoresOpen ? <ChevronDown className="h-5 w-5 text-blue-600" /> : <ChevronRight className="h-5 w-5 text-blue-600" />}
+                                    <Mail className="h-5 w-5 text-blue-600" />
+                                    <span className="font-semibold text-blue-900">Account Email</span>
+                                    <Badge className="ml-auto bg-blue-200 text-blue-800">
+                                      {hData.emailAccountStores.filter(a => a.hasDocuments).length}/{hData.emailAccountStores.length} account
+                                    </Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                                    {hData.emailAccountStores.map(account => (
+                                      <Collapsible key={account.accountId} open={openClients[`email-${account.accountId}`]} onOpenChange={() => toggleClient(`email-${account.accountId}`)}>
+                                        <CollapsibleTrigger className={`flex items-center gap-2 w-full p-2.5 rounded-lg transition-colors border ${account.hasDocuments ? 'hover:bg-gray-50 border-gray-200' : 'hover:bg-amber-50 border-dashed border-amber-200 bg-amber-25'}`}>
+                                          {openClients[`email-${account.accountId}`] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                          <Mail className={`h-4 w-4 ${account.hasDocuments ? 'text-blue-600' : 'text-amber-500'}`} />
+                                          <span className="text-gray-800 font-medium">{account.accountName}</span>
+                                          <span className="text-gray-400 text-xs hidden md:inline">({account.emailAddress})</span>
+                                          {account.hasDocuments ? (
+                                            <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200">
+                                              <CheckCircle2 className="h-3 w-3 mr-1" />{account.totals.total} doc
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="ml-auto bg-amber-50 text-amber-700 border-amber-200">
+                                              <AlertCircle className="h-3 w-3 mr-1" />Da sincronizzare
+                                            </Badge>
+                                          )}
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="ml-8 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                          {account.hasDocuments ? (
+                                            <div className="space-y-3">
+                                              {account.totals.knowledgeBase > 0 && (
+                                                <Collapsible open={openCategories[`email-${account.accountId}-kb`]} onOpenChange={() => toggleCategory(`email-${account.accountId}-kb`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`email-${account.accountId}-kb`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <Brain className="h-4 w-4 text-blue-600" />
+                                                    <span className="text-sm text-gray-700">Knowledge Base</span>
+                                                    <Badge variant="outline" className="ml-auto bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                                      {account.totals.knowledgeBase} doc
+                                                    </Badge>
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(account.documents?.knowledgeBase || []).map((doc: any) => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {account.totals.knowledgeBase === 0 && (
+                                                <p className="text-gray-500 text-sm text-center py-2">Nessun documento categorizzato</p>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <div className="text-center py-3">
+                                              <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                                              <p className="text-amber-600 text-sm font-medium mb-1">Nessun documento sincronizzato</p>
+                                              <p className="text-gray-500 text-xs mb-3">Contenuti disponibili per la sincronizzazione:</p>
+                                              <div className="flex flex-wrap justify-center gap-2">
+                                                <Badge variant="outline" className="text-xs"><Brain className="h-3 w-3 mr-1" />Knowledge Base Email</Badge>
+                                              </div>
+                                              <p className="text-gray-400 text-xs mt-3">Vai alla tab Audit per sincronizzare</p>
+                                            </div>
+                                          )}
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
                             </div>
                           ) : (
                             <div className="text-center py-12">
@@ -3368,6 +3463,21 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <Switch
                             checked={settings?.autoSyncWhatsappAgents ?? false}
                             onCheckedChange={(checked) => handleToggle('autoSyncWhatsappAgents', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-blue-600" />
+                            <div>
+                              <Label>Account Email</Label>
+                              <p className="text-sm text-gray-500">Sincronizza automaticamente le Knowledge Base degli account email</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncEmailAccounts ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncEmailAccounts', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
                         </div>
