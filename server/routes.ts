@@ -3102,6 +3102,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add consultant profile to existing client (Email Condivisa feature)
+  app.post("/api/users/:id/add-consultant-profile", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get target user
+      const targetUser = await storage.getUser(id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "Utente non trovato" });
+      }
+      
+      // Check if user already has a consultant profile and verify ownership
+      const existingProfiles = await storage.getUserRoleProfiles(id);
+      const hasConsultantProfile = existingProfiles.some(p => p.role === 'consultant');
+      
+      // Verify the consultant owns this client - check both users table AND user_role_profiles
+      const ownsViaUsersTable = targetUser.consultantId === req.user!.id;
+      const ownsViaProfile = existingProfiles.some(p => p.role === 'client' && p.consultantId === req.user!.id);
+      
+      if (!ownsViaUsersTable && !ownsViaProfile) {
+        return res.status(403).json({ message: "Non hai accesso a questo utente" });
+      }
+      
+      if (hasConsultantProfile) {
+        return res.status(400).json({ message: "L'utente ha già un profilo consulente" });
+      }
+      
+      // Create consultant profile
+      const newProfile = await storage.createUserRoleProfile({
+        userId: id,
+        role: 'consultant',
+        consultantId: null, // Consultant profile doesn't have a parent consultant
+        isDefault: false,
+        isActive: true,
+      });
+      
+      // Update user's main role to consultant
+      await storage.updateUser(id, { role: 'consultant' });
+      
+      console.log(`[PROFILE] Added consultant profile for user ${targetUser.email} by consultant ${req.user!.id}`);
+      
+      res.status(201).json({ 
+        message: "Profilo consulente aggiunto con successo",
+        profile: newProfile 
+      });
+    } catch (error: any) {
+      console.error("[PROFILE] Error adding consultant profile:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Remove consultant profile from user
+  app.delete("/api/users/:id/remove-consultant-profile", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get target user
+      const targetUser = await storage.getUser(id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "Utente non trovato" });
+      }
+      
+      // Verify the consultant owns this client (check their client profile)
+      const existingProfiles = await storage.getUserRoleProfiles(id);
+      const clientProfile = existingProfiles.find(p => p.role === 'client' && p.consultantId === req.user!.id);
+      
+      if (!clientProfile) {
+        return res.status(403).json({ message: "Non hai accesso a questo utente" });
+      }
+      
+      const consultantProfile = existingProfiles.find(p => p.role === 'consultant');
+      if (!consultantProfile) {
+        return res.status(400).json({ message: "L'utente non ha un profilo consulente" });
+      }
+      
+      // Deactivate consultant profile instead of deleting
+      await db.update(schema.userRoleProfiles)
+        .set({ isActive: false })
+        .where(eq(schema.userRoleProfiles.id, consultantProfile.id));
+      
+      // Update user's main role back to client
+      await storage.updateUser(id, { role: 'client' });
+      
+      console.log(`[PROFILE] Removed consultant profile for user ${targetUser.email} by consultant ${req.user!.id}`);
+      
+      res.json({ message: "Profilo consulente rimosso con successo" });
+    } catch (error: any) {
+      console.error("[PROFILE] Error removing consultant profile:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Consultants route (public for registration)
   app.get("/api/consultants", async (req, res) => {
     try {

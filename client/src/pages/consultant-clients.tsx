@@ -32,8 +32,17 @@ import {
   Key,
   CheckSquare,
   Loader2,
-  Briefcase
+  Briefcase,
+  UserCog,
+  UserMinus
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -95,6 +104,62 @@ export default function ConsultantClientsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setIsNewClientDialogOpen(false);
       setNewClientForm({ firstName: '', lastName: '', email: '', password: '', isEmployee: false });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const addConsultantProfileMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const response = await fetch(`/api/users/${clientId}/add-consultant-profile`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Errore nell\'aggiunta del profilo consulente');
+      }
+      return response.json();
+    },
+    onSuccess: (data, clientId) => {
+      toast({
+        title: "Profilo consulente aggiunto",
+        description: "L'utente ora può accedere sia come cliente che come consulente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const removeConsultantProfileMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const response = await fetch(`/api/users/${clientId}/remove-consultant-profile`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Errore nella rimozione del profilo consulente');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Profilo consulente rimosso",
+        description: "L'utente può ora accedere solo come cliente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
     },
     onError: (error: Error) => {
       toast({
@@ -513,9 +578,17 @@ export default function ConsultantClientsPage() {
                                 </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
-                                <p className="font-semibold text-slate-800 text-sm truncate">
-                                  {client.firstName} {client.lastName}
-                                </p>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="font-semibold text-slate-800 text-sm truncate">
+                                    {client.firstName} {client.lastName}
+                                  </p>
+                                  {client.role === 'consultant' && (
+                                    <Badge className="text-[10px] px-1.5 py-0 bg-violet-100 text-violet-700 border-violet-200">
+                                      <UserCog className="w-2.5 h-2.5 mr-0.5" />
+                                      Cons
+                                    </Badge>
+                                  )}
+                                </div>
                                 <p className="text-xs text-slate-500 truncate">@{client.username}</p>
                               </div>
                             </div>
@@ -582,14 +655,39 @@ export default function ConsultantClientsPage() {
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                title="Altre azioni"
-                                className="h-8 w-8 p-0 hover:bg-slate-100 hover:text-slate-600"
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    title="Altre azioni"
+                                    className="h-8 w-8 p-0 hover:bg-slate-100 hover:text-slate-600"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                  {client.role === 'consultant' ? (
+                                    <DropdownMenuItem 
+                                      onClick={() => removeConsultantProfileMutation.mutate(client.id)}
+                                      disabled={removeConsultantProfileMutation.isPending}
+                                      className="text-orange-600 focus:text-orange-700"
+                                    >
+                                      <UserMinus className="w-4 h-4 mr-2" />
+                                      Rimuovi profilo consulente
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem 
+                                      onClick={() => addConsultantProfileMutation.mutate(client.id)}
+                                      disabled={addConsultantProfileMutation.isPending}
+                                      className="text-violet-600 focus:text-violet-700"
+                                    >
+                                      <UserCog className="w-4 h-4 mr-2" />
+                                      Abilita come consulente
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
 

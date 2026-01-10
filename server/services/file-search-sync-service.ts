@@ -5414,7 +5414,7 @@ export class FileSearchSyncService {
         type: emailAccountKnowledgeItems.type 
       })
         .from(emailAccountKnowledgeItems)
-        .where(eq(emailAccountKnowledgeItems.emailAccountId, account.id));
+        .where(eq(emailAccountKnowledgeItems.accountId, account.id));
 
       // Get email account's file search store
       const accountStores = await db.select({ id: fileSearchStores.id })
