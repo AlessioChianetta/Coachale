@@ -2663,6 +2663,7 @@ export class FileSearchSyncService {
     university: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
     consultations: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
     whatsappAgents: { total: number; synced: number; failed: number; agentsProcessed: number; errors: string[] };
+    emailAccounts?: { total: number; synced: number; failed: number; accountsProcessed: number; errors: string[] };
     clientPrivateData?: {
       clientsProcessed: number;
       exerciseResponses: { total: number; synced: number; failed: number };
@@ -2732,6 +2733,15 @@ export class FileSearchSyncService {
       console.log(`📱 [FileSync] Syncing WHATSAPP AGENT knowledge...`);
       console.log(`${'─'.repeat(70)}`);
       whatsappAgentsResult = await this.syncAllWhatsappAgentKnowledge(consultantId);
+    }
+
+    // Sync Email Account Knowledge if enabled
+    let emailAccountsResult = { total: 0, synced: 0, failed: 0, accountsProcessed: 0, errors: [] as string[] };
+    if (settings?.autoSyncEmailAccounts) {
+      console.log(`\n${'─'.repeat(70)}`);
+      console.log(`📧 [FileSync] Syncing EMAIL ACCOUNT knowledge...`);
+      console.log(`${'─'.repeat(70)}`);
+      emailAccountsResult = await this.syncAllEmailAccountKnowledge(consultantId);
     }
 
     // Sync client private data (exercise responses, client knowledge, client consultations)
@@ -3200,7 +3210,7 @@ export class FileSearchSyncService {
     }
 
     const totalSynced = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
-      universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced +
+      universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced + emailAccountsResult.synced +
       totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced + 
       totalFinancialData.synced + totalAssignedExercises.synced + totalAssignedLibrary.synced +
       totalAssignedUniversity.synced + totalGoals.synced + totalTasks.synced +
@@ -3279,19 +3289,19 @@ export class FileSearchSyncService {
 
     // Calculate totals for report
     const totalSyncedAll = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
-      universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced +
+      universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced + emailAccountsResult.synced +
       totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced +
       totalFinancialData.synced + totalAssignedExercises.synced + totalAssignedLibrary.synced +
       totalAssignedUniversity.synced + totalGoals.synced + totalTasks.synced;
     
     const totalFailedAll = libraryResult.failed + knowledgeResult.failed + exercisesResult.failed +
-      universityResult.failed + consultationsResult.failed + whatsappAgentsResult.failed +
+      universityResult.failed + consultationsResult.failed + whatsappAgentsResult.failed + emailAccountsResult.failed +
       totalExerciseResponses.failed + totalClientKnowledge.failed + totalClientConsultations.failed +
       totalFinancialData.failed + totalAssignedExercises.failed + totalAssignedLibrary.failed +
       totalAssignedUniversity.failed + totalGoals.failed + totalTasks.failed;
 
     const totalProcessedAll = libraryResult.total + knowledgeResult.total + exercisesResult.total +
-      universityResult.total + consultationsResult.total + whatsappAgentsResult.total +
+      universityResult.total + consultationsResult.total + whatsappAgentsResult.total + emailAccountsResult.total +
       totalExerciseResponses.total + totalClientKnowledge.total + totalClientConsultations.total +
       totalFinancialData.total + totalAssignedExercises.total + totalAssignedLibrary.total +
       totalAssignedUniversity.total + totalGoals.total + totalTasks.total;
@@ -3319,6 +3329,7 @@ export class FileSearchSyncService {
       assignedUniversity: { name: 'University Assegnata', processed: totalAssignedUniversity.total, synced: totalAssignedUniversity.synced, updated: 0, skipped: 0, failed: totalAssignedUniversity.failed, durationMs: 0, errors: [] },
       goals: { name: 'Obiettivi', processed: totalGoals.total, synced: totalGoals.synced, updated: 0, skipped: 0, failed: totalGoals.failed, durationMs: 0, errors: [] },
       tasks: { name: 'Task', processed: totalTasks.total, synced: totalTasks.synced, updated: 0, skipped: 0, failed: totalTasks.failed, durationMs: 0, errors: [] },
+      emailAccounts: { name: 'Account Email', processed: emailAccountsResult.total, synced: emailAccountsResult.synced, updated: 0, skipped: 0, failed: emailAccountsResult.failed, durationMs: 0, errors: emailAccountsResult.errors || [] },
     };
 
     // Collect all errors
@@ -3329,6 +3340,7 @@ export class FileSearchSyncService {
       ...universityResult.errors,
       ...consultationsResult.errors,
       ...whatsappAgentsResult.errors,
+      ...emailAccountsResult.errors,
       ...orphanErrors,
     ];
 
@@ -3382,6 +3394,7 @@ export class FileSearchSyncService {
       university: universityResult,
       consultations: consultationsResult,
       whatsappAgents: whatsappAgentsResult,
+      emailAccounts: emailAccountsResult,
       clientPrivateData: {
         clientsProcessed,
         exerciseResponses: totalExerciseResponses,
@@ -4647,7 +4660,12 @@ export class FileSearchSyncService {
       agentName: string;
       knowledgeItems: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
     }>;
-    summary: { totalMissing: number; totalOutdated: number; consultantMissing: number; consultantOutdated: number; clientsMissing: number; clientsOutdated: number; whatsappAgentsMissing: number; healthScore: number };
+    emailAccounts: Array<{
+      accountId: string;
+      emailAddress: string;
+      knowledgeItems: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
+    }>;
+    summary: { totalMissing: number; totalOutdated: number; consultantMissing: number; consultantOutdated: number; clientsMissing: number; clientsOutdated: number; whatsappAgentsMissing: number; emailAccountsMissing: number; healthScore: number };
     recommendations: string[];
   }> {
     const auditStartTime = Date.now();
@@ -5378,24 +5396,89 @@ export class FileSearchSyncService {
       }
     }
 
+    // Audit Email Accounts
+    const emailAccountsAudit: Array<{
+      accountId: string;
+      emailAddress: string;
+      knowledgeItems: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
+    }> = [];
+    let totalEmailAccountsMissing = 0;
+
+    const consultantEmailAccounts = await db.select({ id: emailAccounts.id, emailAddress: emailAccounts.emailAddress })
+      .from(emailAccounts).where(eq(emailAccounts.consultantId, consultantId));
+
+    for (const account of consultantEmailAccounts) {
+      const accountKnowledge = await db.select({ 
+        id: emailAccountKnowledgeItems.id, 
+        title: emailAccountKnowledgeItems.title,
+        type: emailAccountKnowledgeItems.type 
+      })
+        .from(emailAccountKnowledgeItems)
+        .where(eq(emailAccountKnowledgeItems.emailAccountId, account.id));
+
+      // Get email account's file search store
+      const accountStores = await db.select({ id: fileSearchStores.id })
+        .from(fileSearchStores)
+        .where(and(
+          eq(fileSearchStores.ownerId, account.id),
+          eq(fileSearchStores.ownerType, 'email_account')
+        ));
+      const accountStoreIds = accountStores.map(s => s.id);
+
+      let accountIndexedDocs: { sourceType: string | null; sourceId: string | null }[] = [];
+      if (accountStoreIds.length > 0) {
+        const accountIndexedRaw = await db.select({
+          sourceType: fileSearchDocuments.sourceType,
+          sourceId: fileSearchDocuments.sourceId,
+        })
+          .from(fileSearchDocuments)
+          .where(and(
+            inArray(fileSearchDocuments.storeId, accountStoreIds),
+            eq(fileSearchDocuments.status, 'indexed')
+          ));
+        accountIndexedDocs = accountIndexedRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
+      }
+
+      const indexedEmailKnowledgeIds = new Set(accountIndexedDocs.filter(d => d.sourceType === 'email_account_knowledge').map(d => d.sourceId));
+      const emailKnowledgeMissing = accountKnowledge.filter(k => !indexedEmailKnowledgeIds.has(k.id)).map(k => ({ 
+        id: k.id, 
+        title: k.title, 
+        type: k.type || 'document' 
+      }));
+
+      if (accountKnowledge.length > 0) {
+        emailAccountsAudit.push({
+          accountId: account.id,
+          emailAddress: account.emailAddress,
+          knowledgeItems: {
+            total: accountKnowledge.length,
+            indexed: accountKnowledge.length - emailKnowledgeMissing.length,
+            missing: emailKnowledgeMissing
+          }
+        });
+        totalEmailAccountsMissing += emailKnowledgeMissing.length;
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // PHASE 6: WHATSAPP AGENTS AUDIT
     // ═══════════════════════════════════════════════════════════════════════════
     const phase6Start = Date.now();
-    console.log(`📊 [Audit] Phase 6: Auditing WhatsApp agents...`);
+    console.log(`📊 [Audit] Phase 6: Auditing WhatsApp agents and Email accounts...`);
     
     const consultantMissing = libraryResult.missing.length + knowledgeBaseResult.missing.length + 
                               exercisesResult.missing.length + universityResult.missing.length + consultantGuideResult.missing.length;
     const consultantOutdated = libraryResult.outdated.length + knowledgeBaseResult.outdated.length + 
                                exercisesResult.outdated.length + universityResult.outdated.length + consultantGuideResult.outdated.length;
-    const totalMissing = consultantMissing + totalClientsMissing + totalWhatsappAgentsMissing;
+    const totalMissing = consultantMissing + totalClientsMissing + totalWhatsappAgentsMissing + totalEmailAccountsMissing;
     const totalOutdated = consultantOutdated + totalClientsOutdated;
 
     const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total + universityResult.total + 
                       consultantGuideResult.total +
                       clientsAudit.reduce((sum, c) => sum + c.exerciseResponses.total + c.consultationNotes.total + c.knowledgeDocs.total +
                         c.assignedExercises.total + c.assignedLibrary.total + c.assignedUniversity.total + c.goals.total + c.tasks.total, 0) +
-                      whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.total, 0);
+                      whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.total, 0) +
+                      emailAccountsAudit.reduce((sum, a) => sum + a.knowledgeItems.total, 0);
     const totalIndexed = (libraryResult.total - libraryResult.missing.length) + 
                          (knowledgeBaseResult.total - knowledgeBaseResult.missing.length) +
                          (exercisesResult.total - exercisesResult.missing.length) + 
@@ -5410,7 +5493,8 @@ export class FileSearchSyncService {
                            (c.assignedUniversity.total - c.assignedUniversity.missing.length) +
                            (c.goals.total - c.goals.missing.length) +
                            (c.tasks.total - c.tasks.missing.length), 0) +
-                         whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.indexed, 0);
+                         whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.indexed, 0) +
+                         emailAccountsAudit.reduce((sum, a) => sum + a.knowledgeItems.indexed, 0);
 
     // Health score: penalize missing fully (1.0) and outdated partially (0.5)
     const effectiveIssues = totalMissing + (totalOutdated * 0.5);
@@ -5445,6 +5529,9 @@ export class FileSearchSyncService {
     }
     if (totalWhatsappAgentsMissing > 0) {
       recommendations.push(`Sincronizza ${totalWhatsappAgentsMissing} documenti knowledge degli agenti WhatsApp mancanti`);
+    }
+    if (totalEmailAccountsMissing > 0) {
+      recommendations.push(`Sincronizza ${totalEmailAccountsMissing} documenti knowledge degli account email mancanti`);
     }
     
     // NEW: Outdated recommendations
@@ -5514,6 +5601,7 @@ export class FileSearchSyncService {
     console.log(`      🎯 Goals: ${totalGoalsMissing} missing`);
     console.log(`      ✅ Tasks: ${totalTasksMissing} missing`);
     console.log(`   📱 WhatsApp Agents: ${whatsappAgentsAudit.length} agents, ${totalWhatsappAgentsMissing} missing`);
+    console.log(`   📧 Email Accounts: ${emailAccountsAudit.length} accounts, ${totalEmailAccountsMissing} missing`);
     console.log(`   📊 Summary: ${totalMissing} missing, ${totalOutdated} outdated`);
     console.log(`   🏥 Health Score: ${clampedHealthScore}%`);
     console.log(`${'═'.repeat(60)}\n`);
@@ -5528,6 +5616,7 @@ export class FileSearchSyncService {
       },
       clients: clientsAudit,
       whatsappAgents: whatsappAgentsAudit,
+      emailAccounts: emailAccountsAudit,
       summary: {
         totalMissing,
         totalOutdated,
@@ -5536,6 +5625,7 @@ export class FileSearchSyncService {
         clientsMissing: totalClientsMissing,
         clientsOutdated: totalClientsOutdated,
         whatsappAgentsMissing: totalWhatsappAgentsMissing,
+        emailAccountsMissing: totalEmailAccountsMissing,
         healthScore: clampedHealthScore,
       },
       recommendations,

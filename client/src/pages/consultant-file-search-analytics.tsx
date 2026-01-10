@@ -337,6 +337,16 @@ interface AuditData {
       missing: Array<{ id: string; title: string }>;
     };
   }>;
+  whatsappAgents?: Array<{
+    agentId: string;
+    agentName: string;
+    knowledgeItems: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
+  }>;
+  emailAccounts?: Array<{
+    accountId: string;
+    emailAddress: string;
+    knowledgeItems: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
+  }>;
   summary: {
     totalMissing: number;
     consultantMissing: number;
@@ -345,6 +355,8 @@ interface AuditData {
     totalOutdated?: number;
     consultantOutdated?: number;
     clientsOutdated?: number;
+    whatsappAgentsMissing?: number;
+    emailAccountsMissing?: number;
   };
   recommendations: string[];
 }
@@ -1745,6 +1757,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [openExternalDocsClients, setOpenExternalDocsClients] = useState<Record<string, boolean>>({});
   const [openAuditClients, setOpenAuditClients] = useState<Record<string, boolean>>({});
   const [openAuditAgents, setOpenAuditAgents] = useState<Record<string, boolean>>({});
+  const [openAuditEmailAccounts, setOpenAuditEmailAccounts] = useState<Record<string, boolean>>({});
   const [migratingClients, setMigratingClients] = useState<Record<string, boolean>>({});
   const [openClientAuditCategories, setOpenClientAuditCategories] = useState<Record<string, boolean>>({});
   
@@ -1758,6 +1771,10 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
   const toggleAuditAgent = (agentId: string) => {
     setOpenAuditAgents(prev => ({ ...prev, [agentId]: !prev[agentId] }));
+  };
+
+  const toggleAuditEmailAccount = (accountId: string) => {
+    setOpenAuditEmailAccounts(prev => ({ ...prev, [accountId]: !prev[accountId] }));
   };
 
   const toggleExternalDocsClient = (clientId: string) => {
@@ -4014,7 +4031,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                       <div className="p-4 bg-red-50 rounded-lg border border-red-200">
                         <p className="text-2xl font-bold text-red-700">
                           {auditData?.summary?.totalMissing || 0}
@@ -4044,6 +4061,12 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           {auditData?.summary?.whatsappAgentsMissing || 0}
                         </p>
                         <p className="text-sm text-green-600">Agenti WhatsApp</p>
+                      </div>
+                      <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                        <p className="text-2xl font-bold text-orange-700">
+                          {auditData?.summary?.emailAccountsMissing || 0}
+                        </p>
+                        <p className="text-sm text-orange-600">Account Email</p>
                       </div>
                     </div>
 
@@ -5121,6 +5144,92 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                         size="sm" 
                                         variant="outline"
                                         onClick={() => syncSingleMutation.mutate({ type: 'whatsapp_knowledge', id: item.id, agentId: agent.agentId })}
+                                        disabled={syncSingleMutation.isPending}
+                                      >
+                                        {syncSingleMutation.isPending ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <>
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Sync
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </>
+                              )}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        );
+                      })
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-orange-600" />
+                      Account Email - Elementi Mancanti
+                    </CardTitle>
+                    <CardDescription>
+                      Knowledge base degli account email non ancora indicizzata
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(!auditData?.emailAccounts || auditData.emailAccounts.length === 0) ? (
+                      <p className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg text-center">
+                        Nessun account email con knowledge base da sincronizzare
+                      </p>
+                    ) : (
+                      auditData.emailAccounts.map(account => {
+                        const accountMissing = account.knowledgeItems?.missing?.length || 0;
+                        return (
+                          <Collapsible key={account.accountId} open={openAuditEmailAccounts[account.accountId]} onOpenChange={() => toggleAuditEmailAccount(account.accountId)}>
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors">
+                              {openAuditEmailAccounts[account.accountId] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                              <Mail className="h-4 w-4 text-orange-600" />
+                              <span className="font-medium text-orange-900">{account.emailAddress}</span>
+                              <Badge className={`ml-auto ${accountMissing > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                                {accountMissing} mancanti
+                              </Badge>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                              {accountMissing === 0 ? (
+                                <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                  Tutta la knowledge base di questo account è indicizzata
+                                </p>
+                              ) : (
+                                <>
+                                  <div className="flex justify-end mb-2">
+                                    <Button 
+                                      size="sm" 
+                                      variant="default"
+                                      onClick={() => syncSingleMutation.mutate({ type: 'email_account', id: account.accountId })}
+                                      disabled={syncSingleMutation.isPending}
+                                      className="bg-orange-600 hover:bg-orange-700"
+                                    >
+                                      {syncSingleMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      ) : (
+                                        <RefreshCw className="h-3 w-3 mr-1" />
+                                      )}
+                                      Sincronizza Tutto Account
+                                    </Button>
+                                  </div>
+                                  {account.knowledgeItems.missing.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-3 w-3 text-gray-400" />
+                                        <span className="text-sm">{item.title}</span>
+                                        <Badge variant="outline" className="text-xs">{item.type}</Badge>
+                                      </div>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => syncSingleMutation.mutate({ type: 'email_account_knowledge', id: item.id, accountId: account.accountId })}
                                         disabled={syncSingleMutation.isPending}
                                       >
                                         {syncSingleMutation.isPending ? (

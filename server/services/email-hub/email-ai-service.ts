@@ -62,6 +62,7 @@ export interface AIStructuredResponse {
   ticketReason: string | null;
   ticketPriority: AITicketPriority | null;
   suggestedActions: string[];
+  documentCitations?: string[];
 }
 
 export interface DecisionEngineInput {
@@ -510,6 +511,16 @@ ${threadContext}
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
 
+    // Parse citations from File Search response
+    let documentCitations: string[] = [];
+    if (extendedOptions?.fileSearchStoreNames?.length) {
+      const citations = fileSearchService.parseCitations(result.response);
+      documentCitations = citations.map(c => c.sourceTitle).filter(Boolean);
+      if (documentCitations.length > 0) {
+        console.log(`[EMAIL-AI] Parsed ${documentCitations.length} citations from File Search: ${documentCitations.join(', ')}`);
+      }
+    }
+
     const responseText = result.response.text();
     let cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     
@@ -525,6 +536,7 @@ ${threadContext}
       ticketReason: parsed.ticketReason || null,
       ticketPriority: parsed.ticketPriority || null,
       suggestedActions: Array.isArray(parsed.suggestedActions) ? parsed.suggestedActions : [],
+      documentCitations,
     };
   } catch (error: any) {
     console.error("[EMAIL-AI] Structured response generation error:", error);
@@ -599,6 +611,7 @@ export interface ClassifyAndGenerateResult {
   kbSearchResult?: {
     found: boolean;
     documentsCount: number;
+    storeNamesUsed?: string[];
   };
   ticketCreated?: boolean;
   ticketId?: string;
@@ -607,6 +620,7 @@ export interface ClassifyAndGenerateResult {
   aiResponse?: AIStructuredResponse;
   decisionAction?: AIDecisionAction;
   decisionId?: string;
+  documentCitationsUsed?: string[];
 }
 
 async function checkEscalationKeywords(
@@ -820,12 +834,14 @@ export async function classifyAndGenerateDraft(
     kbSearchResult: {
       found: kbResult.found,
       documentsCount: kbResult.totalDocuments || 0,
+      storeNamesUsed: fileSearchStoreNames,
     },
     ticketCreated,
     ticketId,
     aiResponse,
     decisionAction: decisionResult.action,
     decisionId,
+    documentCitationsUsed: aiResponse.documentCitations,
   };
 }
 

@@ -2430,6 +2430,9 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
       decisionReason: result.classification.reasoning || "Classificazione AI completata",
       modelUsed: "gemini-2.5-flash",
       processingTimeMs,
+      knowledgeDocsUsed: result.documentCitationsUsed?.length 
+        ? result.documentCitationsUsed 
+        : result.kbSearchResult?.storeNamesUsed,
       emailSubject: email.subject || undefined,
       emailFrom: email.fromEmail,
     });
@@ -2451,6 +2454,9 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
         decision: "create_ticket",
         decisionReason: "Ticket creato automaticamente in base alle condizioni configurate",
         ticketId: result.ticketId,
+        knowledgeDocsUsed: result.documentCitationsUsed?.length 
+          ? result.documentCitationsUsed 
+          : result.kbSearchResult?.storeNamesUsed,
         emailSubject: email.subject || undefined,
         emailFrom: email.fromEmail,
       });
@@ -2497,6 +2503,9 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
         ticketId: result.ticketId,
         modelUsed: "gemini-2.5-flash",
         processingTimeMs: Date.now() - startTime,
+        knowledgeDocsUsed: result.documentCitationsUsed?.length 
+          ? result.documentCitationsUsed 
+          : result.kbSearchResult?.storeNamesUsed,
         emailSubject: email.subject || undefined,
         emailFrom: email.fromEmail,
       });
@@ -2524,6 +2533,9 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
         decisionReason: "Generazione bozza fallita",
         modelUsed: "gemini-2.5-flash",
         processingTimeMs,
+        knowledgeDocsUsed: result.documentCitationsUsed?.length 
+          ? result.documentCitationsUsed 
+          : result.kbSearchResult?.storeNamesUsed,
         emailSubject: email.subject || undefined,
         emailFrom: email.fromEmail,
       });
@@ -2602,6 +2614,9 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
             modelUsed: result.draft.modelUsed,
             tokensUsed: result.draft.tokensUsed,
             processingTimeMs: Date.now() - startTime,
+            knowledgeDocsUsed: result.documentCitationsUsed?.length 
+              ? result.documentCitationsUsed 
+              : result.kbSearchResult?.storeNamesUsed,
             emailSubject: email.subject || undefined,
             emailFrom: email.fromEmail,
           });
@@ -2635,6 +2650,9 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
             decisionReason: `Invio automatico fallito: ${sendResult.error}`,
             modelUsed: result.draft.modelUsed,
             processingTimeMs: Date.now() - startTime,
+            knowledgeDocsUsed: result.documentCitationsUsed?.length 
+              ? result.documentCitationsUsed 
+              : result.kbSearchResult?.storeNamesUsed,
             emailSubject: email.subject || undefined,
             emailFrom: email.fromEmail,
           });
@@ -2695,6 +2713,9 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
       modelUsed: result.draft.modelUsed,
       tokensUsed: result.draft.tokensUsed,
       processingTimeMs: Date.now() - startTime,
+      knowledgeDocsUsed: result.documentCitationsUsed?.length 
+        ? result.documentCitationsUsed 
+        : result.kbSearchResult?.storeNamesUsed,
       emailSubject: email.subject || undefined,
       emailFrom: email.fromEmail,
     });
@@ -2719,6 +2740,7 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
       decision: "error",
       decisionReason: `Errore durante elaborazione: ${error.message}`,
       processingTimeMs: Date.now() - startTime,
+      knowledgeDocsUsed: result?.kbSearchResult?.storeNamesUsed,
     });
   }
 }
