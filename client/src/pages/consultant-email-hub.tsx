@@ -99,6 +99,7 @@ import { ImportWizardDialog } from "@/components/email-hub/ImportWizardDialog";
 import { EmailImportDialog } from "@/components/email-hub/EmailImportDialog";
 import { EmailComposer } from "@/components/email-hub/EmailComposer";
 import { EmailAISettings } from "@/components/email-hub/EmailAISettings";
+import { EmailAccountKnowledge } from "@/components/email-hub/EmailAccountKnowledge";
 import { TicketSettingsPanel } from "@/components/email-hub/TicketSettingsPanel";
 import { TicketsList } from "@/components/email-hub/TicketsList";
 import { AIEventsPanel } from "@/components/email-hub/AIEventsPanel";
@@ -299,6 +300,9 @@ export default function ConsultantEmailHub() {
   const [showAISettings, setShowAISettings] = useState(false);
   const [aiSettingsAccountId, setAISettingsAccountId] = useState<string>("");
   const [aiSettingsAccountName, setAISettingsAccountName] = useState<string>("");
+  const [showKnowledge, setShowKnowledge] = useState(false);
+  const [knowledgeAccountId, setKnowledgeAccountId] = useState<string>("");
+  const [knowledgeAccountName, setKnowledgeAccountName] = useState<string>("");
   const [showTicketView, setShowTicketView] = useState<"list" | "settings" | null>(null);
   const [showAiEventsView, setShowAiEventsView] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -1423,6 +1427,16 @@ export default function ConsultantEmailHub() {
                       >
                         <Sparkles className="h-4 w-4 mr-2 text-violet-400" />
                         Impostazioni AI
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setKnowledgeAccountId(account.id);
+                          setKnowledgeAccountName(account.displayName || account.emailAddress);
+                          setShowKnowledge(true);
+                        }}
+                      >
+                        <BookOpen className="h-4 w-4 mr-2 text-emerald-400" />
+                        Knowledge Base
                       </DropdownMenuItem>
                       {(account.accountType === "imap_only" || account.accountType === "full" || account.accountType === "hybrid") && (
                         <>
@@ -2921,6 +2935,21 @@ export default function ConsultantEmailHub() {
           }}
           accountId={aiSettingsAccountId}
           accountName={aiSettingsAccountName}
+        />
+      )}
+
+      {knowledgeAccountId && (
+        <EmailAccountKnowledge
+          open={showKnowledge}
+          onOpenChange={(open) => {
+            setShowKnowledge(open);
+            if (!open) {
+              setKnowledgeAccountId("");
+              setKnowledgeAccountName("");
+            }
+          }}
+          accountId={knowledgeAccountId}
+          accountName={knowledgeAccountName}
         />
       )}
       
