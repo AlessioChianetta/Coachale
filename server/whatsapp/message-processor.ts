@@ -1423,7 +1423,8 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         isProactiveLead,
         proactiveLeadData?.leadInfo,
         proactiveLeadData?.idealState,
-        isProactiveAgent
+        isProactiveAgent,
+        proactiveLeadData?.phoneNumber
       );
     }
 
@@ -3990,7 +3991,8 @@ async function buildLeadSystemPrompt(
   isProactiveLead: boolean = false,
   leadInfo?: any,
   idealState?: string,
-  isProactiveAgent: boolean = false
+  isProactiveAgent: boolean = false,
+  proactiveLeadPhone?: string
 ): Promise<string> {
   // Extract consultant info
   const businessName = consultantConfig?.businessName || "il consulente";
@@ -4249,6 +4251,45 @@ ${consultantBio ? `\n\nIl consulente: ${consultantBio}` : ''}`;
 
     if (isProactiveAgent) {
       finalPrompt += '\n\n' + PROACTIVE_MODE_BLOCK;
+    }
+
+    // Inject known contact data block for proactive leads
+    if (isProactiveLead && proactiveLeadPhone) {
+      const knownEmail = leadInfo?.email;
+      const formattedPhone = proactiveLeadPhone.startsWith('+') 
+        ? proactiveLeadPhone 
+        : `+${proactiveLeadPhone}`;
+      
+      const knownContactBlock = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 DATI CONTATTO GIÀ NOTI (dal database lead proattivi)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Telefono WhatsApp: ${formattedPhone}
+${knownEmail ? `Email: ${knownEmail}` : 'Email: non disponibile - da raccogliere'}
+
+⚠️ REGOLE IMPORTANTI PER LA RACCOLTA DATI:
+
+📞 TELEFONO:
+- NON chiedere "qual è il tuo telefono?" - LO HAI GIÀ NEL SISTEMA
+- PROPONI CONFERMA: "Il numero ${formattedPhone} va bene per l'appuntamento, o preferisci usarne un altro?"
+- Se il lead risponde "sì" / "ok" / "va bene" / "quello" → USA il numero proposto
+- Se il lead fornisce un numero diverso → USA quello nuovo
+
+📧 EMAIL:
+${knownEmail 
+  ? `- NON chiedere "qual è la tua email?" - L'HAI GIÀ
+- PROPONI CONFERMA: "L'email ${knownEmail} va bene per ricevere l'invito, o preferisci un'altra?"
+- Se il lead conferma → USA l'email proposta
+- Se il lead fornisce un'email diversa → USA quella nuova`
+  : `- L'email NON è ancora nota - DEVI chiederla
+- Chiedi: "Mi lasci la tua email? Ti mando l'invito al calendario 📅"`}
+
+🎯 OBIETTIVO: Velocizzare il booking usando i dati già noti, confermandoli prima di procedere.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+      finalPrompt += '\n\n' + knownContactBlock;
+      console.log(`   - Known Contact Data: ENABLED (phone: ${formattedPhone}, email: ${knownEmail || 'NOT AVAILABLE'})`);
     }
 
     // Inject disqualification block only if disqualificationEnabled

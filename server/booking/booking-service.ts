@@ -346,6 +346,37 @@ AI: Confermo 3331234567
 → Estrai phone="3331234567" dalla conferma AI
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 CONFERMA DI DATI PROPOSTI (CRITICO per lead proattivi!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Quando l'AI PROPONE un dato dal contesto e il lead CONFERMA, estrai dalla proposta AI:
+
+📞 TELEFONO - Conferma di proposta:
+AI: "Il numero +39 333 1234567 va bene o preferisci un altro?"
+LEAD: "sì" / "ok" / "va bene" / "quello" / "esatto"
+→ Estrai phone="3331234567" dalla proposta AI (IGNORA il messaggio breve del lead)
+
+AI: "Il numero +39 333 1234567 va bene?"
+LEAD: "no, usa questo: 340 999 8888"
+→ Estrai phone="3409998888" dal messaggio del lead (ignora proposta)
+
+📧 EMAIL - Conferma di proposta:
+AI: "L'email mario@example.com va bene o un'altra?"
+LEAD: "sì perfetto" / "va bene quella" / "ok"
+→ Estrai email="mario@example.com" dalla proposta AI (IGNORA il messaggio breve)
+
+AI: "L'email mario@example.com va bene?"
+LEAD: "no usa mario.rossi@gmail.com"
+→ Estrai email="mario.rossi@gmail.com" dal messaggio del lead
+
+⚠️ PATTERN DI RICONOSCIMENTO CONFERMA:
+Parole che indicano conferma: "sì", "si", "ok", "va bene", "quello", "quella", 
+"esatto", "perfetto", "giusto", "confermo", "questo", "corretto", "certo"
+
+SE trovi queste parole DOPO una proposta AI con dato specifico (telefono o email):
+→ Estrai il dato dalla proposta AI, NON cercare un nuovo dato nel messaggio lead
+→ Questo è FONDAMENTALE per i lead proattivi dove i dati sono già noti
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📧 EMAIL - Estrazione e correzione
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Estrai email anche da formati informali o scritti a parole
