@@ -1136,7 +1136,7 @@ export default function PublicAgentShare() {
         )}
         
         {/* Input area - using InputArea for visual consistency with AI Assistant */}
-        <div className="flex-shrink-0 bg-background px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] sticky bottom-0">
+        <div className="flex-shrink-0 bg-card/95 backdrop-blur-sm px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-lg sticky bottom-0">
           {isRecording ? (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
