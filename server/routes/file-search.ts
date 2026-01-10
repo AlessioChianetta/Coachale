@@ -185,6 +185,107 @@ router.post('/sync-whatsapp/:agentConfigId', authenticateToken, requireRole('con
 });
 
 /**
+ * POST /api/file-search/sync-email-account/:accountId
+ * Trigger sync of Email Account knowledge base to FileSearchStore
+ */
+router.post('/sync-email-account/:accountId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { accountId } = req.params;
+
+    // Verify the email account belongs to the authenticated consultant
+    const [account] = await db
+      .select()
+      .from(emailAccounts)
+      .where(and(
+        eq(emailAccounts.id, accountId),
+        eq(emailAccounts.consultantId, userId)
+      ))
+      .limit(1);
+
+    if (!account) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Account email non trovato o non autorizzato' 
+      });
+    }
+
+    const result = await fileSearchSyncService.syncEmailAccountKnowledge(accountId);
+    res.json({
+      success: true,
+      accountName: account.displayName || account.emailAddress,
+      ...result,
+      message: `Sincronizzazione Knowledge Base email completata. ${result.synced}/${result.total} documenti sincronizzati.`,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing email account knowledge:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/sync-all-email-accounts
+ * Trigger sync of ALL Email Account knowledge bases for the consultant
+ */
+router.post('/sync-all-email-accounts', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+
+    // Get all email accounts for this consultant
+    const accounts = await db
+      .select()
+      .from(emailAccounts)
+      .where(eq(emailAccounts.consultantId, userId));
+
+    if (accounts.length === 0) {
+      return res.json({
+        success: true,
+        accountsSynced: 0,
+        message: 'Nessun account email configurato.',
+      });
+    }
+
+    let totalSynced = 0;
+    let totalDocs = 0;
+    const results: { accountId: string; accountName: string; synced: number; total: number }[] = [];
+
+    for (const account of accounts) {
+      try {
+        const result = await fileSearchSyncService.syncEmailAccountKnowledge(account.id);
+        totalSynced += result.synced;
+        totalDocs += result.total;
+        results.push({
+          accountId: account.id,
+          accountName: account.displayName || account.emailAddress,
+          synced: result.synced,
+          total: result.total,
+        });
+      } catch (err: any) {
+        console.error(`[FileSearch API] Error syncing email account ${account.id}:`, err);
+        results.push({
+          accountId: account.id,
+          accountName: account.displayName || account.emailAddress,
+          synced: 0,
+          total: 0,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      accountsSynced: accounts.length,
+      totalSynced,
+      totalDocs,
+      results,
+      message: `Sincronizzazione completata per ${accounts.length} account email. ${totalSynced}/${totalDocs} documenti sincronizzati.`,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing all email accounts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/file-search/sync-all
  * Trigger full sync of ALL content (library + knowledge base + exercises + university + consultations) to FileSearchStore
  */
