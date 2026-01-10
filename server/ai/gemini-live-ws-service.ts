@@ -20,7 +20,7 @@ import { SalesManagerAgent } from './sales-manager-agent';
 import { generateDiscoveryRec, type DiscoveryRec } from './discovery-rec-generator';
 import type { SalesManagerParams, SalesManagerAnalysis, BusinessContext } from './sales-manager-agent';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
 
 
 

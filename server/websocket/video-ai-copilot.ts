@@ -8,7 +8,7 @@ import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-conve
 import { SalesManagerAgent, type SalesManagerAnalysis, type ArchetypeState, type ConversationMessage, type BusinessContext } from '../ai/sales-manager-agent';
 import { parseScriptContentToStructure } from '../ai/sales-script-structure-parser';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
 
 interface Participant {
   id: string;
