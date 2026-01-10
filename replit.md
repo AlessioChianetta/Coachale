@@ -58,9 +58,11 @@ The platform extensively leverages AI for various functionalities:
 - **Advanced Features**: Multi-folder support, automatic background synchronization, IMAP IDLE for real-time reception, universal IMAP folder discovery with localized fallback, scalable email import for large mailboxes with SSE progress streaming, and improved IDLE connection reliability.
 - **AI Email Capabilities**: Per-account AI configuration for tone, custom instructions, escalation keywords, booking link integration, and language settings.
 - **Ticket System**: Automatic ticket creation based on configurable conditions, with priority levels and workflow management.
-- **Knowledge Base Integration**: Semantic search of consultant documentation to inform AI responses.
+- **Knowledge Base Integration**: Semantic search of consultant documentation to inform AI responses, with per-account isolated File Search stores and document citation tracking.
+- **Email Account Knowledge Base**: Each email account can have its own dedicated knowledge base (via `emailAccountKnowledgeItems` table) with automatic File Search store provisioning. The AI queries both consultant-wide and account-specific stores when generating responses, with source citations tracked in `hubEmailAiEvents.knowledgeDocsUsed`.
 - **Webhook Integration**: External system notifications with HMAC SHA-256 signatures and retry logic.
 - **Risk Detection**: Escalation keyword matching with optional AI processing halt and automatic ticket creation for high-risk emails.
+- **Analytics & Audit**: Comprehensive File Search analytics page with email account audit section showing sync status, missing documents, and per-account sync controls.
 
 # External Dependencies
 - **Supabase**: Provides PostgreSQL hosting.
