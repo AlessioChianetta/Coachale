@@ -205,6 +205,14 @@ export function EmailAccountKnowledge({
       formData.append("file", file);
       formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
       
+      // Determine file type from extension
+      const extension = file.name.split('.').pop()?.toLowerCase() || '';
+      let fileType = 'txt';
+      if (extension === 'pdf') fileType = 'pdf';
+      else if (extension === 'docx' || extension === 'doc') fileType = 'docx';
+      else if (extension === 'txt') fileType = 'txt';
+      formData.append("type", fileType);
+      
       try {
         await uploadMutation.mutateAsync(formData);
       } finally {
