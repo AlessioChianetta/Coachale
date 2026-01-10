@@ -3,7 +3,7 @@ import { authenticateToken, requireRole, type AuthRequest } from '../middleware/
 import { fileSearchService } from '../ai/file-search-service';
 import { fileSearchSyncService } from '../services/file-search-sync-service';
 import { db } from '../db';
-import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig, fileSearchSyncReports } from '../../shared/schema';
+import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig, fileSearchSyncReports, emailAccounts, emailAccountKnowledgeItems } from '../../shared/schema';
 import { eq, desc, sql, and, gte, isNull, isNotNull, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -925,7 +925,15 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       ));
     
     const clientIds = allClients.map(c => c.id);
-    const allOwnerIds = [consultantId, ...clientIds];
+    
+    // Recupera tutti gli account email del consulente
+    const emailAccountsList = await db
+      .select()
+      .from(emailAccounts)
+      .where(eq(emailAccounts.consultantId, consultantId));
+    
+    const emailAccountIds = emailAccountsList.map(e => e.id);
+    const allOwnerIds = [consultantId, ...clientIds, ...emailAccountIds];
     
     // Get ALL stores: consultant store + client private stores
     const stores = await db
@@ -1059,6 +1067,33 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       };
     });
     
+    // Build email account stores data - store per ogni account email
+    // Email account stores usano ownerType='email_account' e ownerId=account.id
+    const emailAccountStoresData = emailAccountsList.map(account => {
+      const accountStore = stores.find(s => s.ownerId === account.id && s.ownerType === 'email_account');
+      const accountDocuments = documents.filter(d => d.storeOwnerId === account.id);
+      
+      return {
+        accountId: account.id,
+        accountName: account.displayName || account.emailAddress,
+        emailAddress: account.emailAddress,
+        storeId: accountStore?.id || null,
+        storeName: accountStore?.displayName || null,
+        hasStore: !!accountStore,
+        hasDocuments: accountDocuments.length > 0,
+        documents: {
+          knowledgeBase: accountDocuments.filter(d => d.sourceType === 'email_account_knowledge'),
+        },
+        totals: {
+          knowledgeBase: accountDocuments.filter(d => d.sourceType === 'email_account_knowledge').length,
+          total: accountDocuments.length,
+        },
+      };
+    });
+    
+    // Conta stores inclusi email account
+    const emailAccountStoresCount = emailAccountStoresData.filter(e => e.hasStore).length;
+    
     const totalFileSearchCalls = usageLogs.filter(l => l.usedFileSearch).length;
     const totalClassicRagCalls = usageLogs.filter(l => !l.usedFileSearch).length;
     const totalTokensSaved = usageLogs.reduce((acc, l) => acc + (l.tokensSaved || 0), 0);
@@ -1105,7 +1140,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         totalTokensSaved,
         totalCitations,
         avgResponseTimeMs: avgResponseTime,
-        totalStores: stores.length,
+        totalStores: stores.length + emailAccountStoresCount,
         totalDocuments: totalDocuments[0]?.count || 0,
       },
       dailyStats: Object.values(dailyStats).sort((a, b) => a.date.localeCompare(b.date)),
@@ -1144,6 +1179,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       hierarchicalData: {
         consultantStore,
         clientStores: clientStoresData,
+        emailAccountStores: emailAccountStoresData,
       },
       geminiApiKeyConfigured: await fileSearchService.isApiKeyConfigured(consultantId),
     });
