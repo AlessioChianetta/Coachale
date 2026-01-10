@@ -1193,6 +1193,7 @@ export default function ProactiveLeadsPage() {
                 { label: "Lead Proattivi", href: "/consultant/proactive-leads", icon: UserPlus },
                 { label: "Campagne", href: "/consultant/campaigns", icon: Megaphone },
                 { label: "Automazioni", href: "/consultant/automations", icon: Zap },
+                { label: "Conversazioni", href: "/consultant/whatsapp-conversations", icon: MessageCircle },
               ]}
             />
 
