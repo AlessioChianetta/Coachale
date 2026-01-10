@@ -6,6 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { searchKnowledgeBase } from "./email-knowledge-service";
 import { createTicketFromEmail, getTicketSettings } from "./ticket-webhook-service";
 import { FileSearchService, fileSearchService } from "../../ai/file-search-service";
+import { FileSearchSyncService } from "../file-search-sync-service";
 
 export interface EmailClassification {
   intent: "question" | "complaint" | "request" | "follow-up" | "spam" | "thank-you" | "information" | "other";
@@ -43,6 +44,75 @@ export interface OriginalEmail {
     bodyText?: string | null;
     receivedAt: Date;
   }>;
+}
+
+export type AIResponseCategory = "info_request" | "complaint" | "billing" | "technical" | "booking" | "other";
+export type AIResponseSentiment = "positive" | "neutral" | "negative";
+export type AIResponseUrgency = "low" | "medium" | "high" | "critical";
+export type AITicketPriority = "low" | "medium" | "high" | "urgent";
+export type AIDecisionAction = "auto_sent" | "draft_created" | "ticket_created" | "escalated" | "ignored";
+
+export interface AIStructuredResponse {
+  response: string;
+  confidence: number;
+  category: AIResponseCategory;
+  sentiment: AIResponseSentiment;
+  urgency: AIResponseUrgency;
+  createTicket: boolean;
+  ticketReason: string | null;
+  ticketPriority: AITicketPriority | null;
+  suggestedActions: string[];
+}
+
+export interface DecisionEngineInput {
+  aiResponse: AIStructuredResponse;
+  autoSendEnabled: boolean;
+}
+
+export interface DecisionEngineResult {
+  action: AIDecisionAction;
+  confidenceThreshold: number;
+  shouldAutoSend: boolean;
+  shouldCreateTicket: boolean;
+}
+
+const CATEGORY_CONFIDENCE_THRESHOLDS: Record<AIResponseCategory, number> = {
+  info_request: 0.75,
+  other: 0.75,
+  complaint: 0.85,
+  billing: 0.90,
+  technical: 0.90,
+  booking: 0.80,
+};
+
+export function executeDecisionEngine(input: DecisionEngineInput): DecisionEngineResult {
+  const { aiResponse, autoSendEnabled } = input;
+  const { confidence, category, createTicket } = aiResponse;
+  
+  const threshold = CATEGORY_CONFIDENCE_THRESHOLDS[category] || 0.75;
+  
+  let action: AIDecisionAction;
+  let shouldAutoSend = false;
+  let shouldCreateTicket = false;
+  
+  if (confidence < 0.60 || createTicket === true) {
+    action = "ticket_created";
+    shouldCreateTicket = true;
+  } else if (confidence >= threshold && autoSendEnabled) {
+    action = "auto_sent";
+    shouldAutoSend = true;
+  } else if (confidence >= 0.60 && confidence < threshold) {
+    action = "draft_created";
+  } else {
+    action = "draft_created";
+  }
+  
+  return {
+    action,
+    confidenceThreshold: threshold,
+    shouldAutoSend,
+    shouldCreateTicket,
+  };
 }
 
 const CLASSIFICATION_PROMPT = `Sei un assistente AI specializzato nell'analisi delle email per un consulente italiano.
@@ -120,6 +190,74 @@ Genera una risposta email appropriata. Restituisci SOLO un JSON valido con quest
 Rispondi SOLO con il JSON valido, senza markdown o altro testo.`;
 }
 
+const STRUCTURED_RESPONSE_PROMPT = `Sei un assistente AI specializzato nell'analisi e risposta alle email per un consulente italiano.
+
+Analizza l'email e genera una risposta strutturata in JSON con questi campi ESATTI:
+
+- response: string (testo della risposta email, professionale e pertinente)
+- confidence: number (da 0 a 1, quanto sei sicuro della risposta)
+- category: "info_request" | "complaint" | "billing" | "technical" | "booking" | "other"
+- sentiment: "positive" | "neutral" | "negative" (tono percepito nell'email ricevuta)
+- urgency: "low" | "medium" | "high" | "critical"
+- createTicket: boolean (true se richiede intervento umano urgente)
+- ticketReason: string | null (motivo per creare il ticket, se createTicket è true)
+- ticketPriority: "low" | "medium" | "high" | "urgent" | null (priorità del ticket, se createTicket è true)
+- suggestedActions: string[] (lista di azioni consigliate, es: ["Verificare disponibilità", "Chiamare cliente"])
+
+CRITERI PER createTicket = true:
+- Reclami gravi o clienti arrabbiati
+- Richieste di rimborso o problemi di fatturazione complessi
+- Situazioni che richiedono decisioni umane
+- Informazioni mancanti critiche per rispondere
+- Richieste di consulenza specifica non coperta dalla knowledge base
+
+CRITERI PER confidence:
+- 0.9-1.0: Risposta certa, informazioni complete dalla knowledge base
+- 0.7-0.9: Risposta buona, alcune informazioni dalla KB
+- 0.5-0.7: Risposta generica, poche informazioni specifiche
+- 0.3-0.5: Risposta incerta, potrebbe richiedere revisione
+- 0.0-0.3: Non sono sicuro, meglio creare un ticket
+
+Rispondi SOLO con il JSON valido, senza markdown, commenti o altro testo.`;
+
+function buildStructuredResponsePrompt(options: DraftPromptOptions): string {
+  const { tone, signature, customInstructions, knowledgeContext, bookingLink } = options;
+  
+  const toneInstructions: Record<string, string> = {
+    formal: `Usa un tono formale e professionale. Utilizza il "Lei" come forma di cortesia. 
+Evita colloquialismi e mantieni un registro alto. Inizia con "Gentile" o "Egregio/a".`,
+    friendly: `Usa un tono cordiale e amichevole ma sempre professionale. 
+Puoi usare il "tu" se appropriato. Sii caloroso ma non troppo informale.`,
+    professional: `Usa un tono professionale e diretto. 
+Mantieni un equilibrio tra formalità e accessibilità. Sii chiaro e conciso.`,
+  };
+
+  const signatureBlock = signature 
+    ? `\n\nFirma da includere alla fine della risposta:\n${signature}`
+    : "";
+
+  const customBlock = customInstructions
+    ? `\n\nISTRUZIONI PERSONALIZZATE DEL CONSULENTE:\n${customInstructions}`
+    : "";
+
+  const kbBlock = knowledgeContext
+    ? `\n\nCONTESTO DALLA KNOWLEDGE BASE:\nUsa le seguenti informazioni per formulare una risposta accurata:\n${knowledgeContext}`
+    : "";
+
+  const bookingBlock = bookingLink
+    ? `\n\nLink di prenotazione da includere se il cliente chiede un appuntamento: ${bookingLink}`
+    : "";
+
+  return `${STRUCTURED_RESPONSE_PROMPT}
+
+ISTRUZIONI SUL TONO:
+${toneInstructions[tone] || toneInstructions.professional}
+${customBlock}
+${kbBlock}
+${bookingBlock}
+${signatureBlock}`;
+}
+
 export async function classifyEmail(
   emailId: string,
   consultantId: string
@@ -140,7 +278,6 @@ Oggetto: ${email.subject || "(Nessun oggetto)"}
 ${email.bodyText || email.bodyHtml || "(Nessun contenuto)"}
 `.trim();
 
-  // Use Google AI Studio specifically for Gemini 3 support
   const studioClient = await getGoogleAIStudioClientForFileSearch(consultantId);
   if (!studioClient) {
     throw new Error("Google AI Studio non disponibile per la classificazione email");
@@ -227,7 +364,6 @@ ${originalEmail.bodyText || originalEmail.bodyHtml || "(Nessun contenuto)"}
 ${threadContext}
 `.trim();
 
-  // Use Google AI Studio specifically for Gemini 3 + FileSearch support
   const studioClient = await getGoogleAIStudioClientForFileSearch(consultantId);
   if (!studioClient) {
     throw new Error("Google AI Studio non disponibile per la generazione bozze email");
@@ -235,7 +371,6 @@ ${threadContext}
   const model = GEMINI_3_MODEL;
   console.log(`[EMAIL-AI] Draft generation using ${model} (Google AI Studio)`);
 
-  // Build FileSearch tool if store names are available
   const fileSearchTool = extendedOptions?.fileSearchStoreNames?.length 
     ? fileSearchService.buildFileSearchTool(extendedOptions.fileSearchStoreNames)
     : null;
@@ -261,14 +396,12 @@ ${threadContext}
     const responseText = result.response.text();
     let cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     
-    // Attempt to repair truncated JSON (common with token limits)
     let draft: any;
     try {
       draft = JSON.parse(cleanedResponse);
     } catch (parseError) {
       console.warn("[EMAIL-AI] JSON parse failed, attempting repair...");
       
-      // Try to extract fields manually if JSON is malformed
       const subjectMatch = cleanedResponse.match(/"subject"\s*:\s*"([^"]+)"/);
       const bodyTextMatch = cleanedResponse.match(/"bodyText"\s*:\s*"([\s\S]*?)(?:"|$)/);
       const bodyHtmlMatch = cleanedResponse.match(/"bodyHtml"\s*:\s*"([\s\S]*?)(?:"|$)/);
@@ -283,7 +416,6 @@ ${threadContext}
           confidence: confidenceMatch ? parseFloat(confidenceMatch[1]) : 0.5,
         };
       } else {
-        // Can't recover, rethrow original error
         throw parseError;
       }
     }
@@ -318,12 +450,147 @@ ${threadContext}
   }
 }
 
+export async function generateStructuredAIResponse(
+  emailId: string,
+  originalEmail: OriginalEmail,
+  accountSettings: AccountSettings,
+  consultantId: string,
+  extendedOptions?: ExtendedDraftOptions
+): Promise<AIStructuredResponse> {
+  const systemPrompt = buildStructuredResponsePrompt({
+    tone: accountSettings.aiTone || "professional",
+    signature: accountSettings.signature,
+    customInstructions: extendedOptions?.customInstructions,
+    knowledgeContext: extendedOptions?.knowledgeContext,
+    bookingLink: extendedOptions?.bookingLink,
+  });
+
+  let threadContext = "";
+  if (originalEmail.threadHistory && originalEmail.threadHistory.length > 0) {
+    threadContext = "\n\nSTORICO CONVERSAZIONE:\n" + originalEmail.threadHistory
+      .slice(-3)
+      .map((msg, i) => `[${i + 1}] Da: ${msg.fromEmail}\n${msg.bodyText || "(vuoto)"}`)
+      .join("\n---\n");
+  }
+
+  const emailContent = `
+Da: ${originalEmail.fromName || ""} <${originalEmail.fromEmail}>
+Oggetto: ${originalEmail.subject || "(Nessun oggetto)"}
+
+${originalEmail.bodyText || originalEmail.bodyHtml || "(Nessun contenuto)"}
+${threadContext}
+`.trim();
+
+  const studioClient = await getGoogleAIStudioClientForFileSearch(consultantId);
+  if (!studioClient) {
+    throw new Error("Google AI Studio non disponibile per la generazione risposta strutturata");
+  }
+  const model = GEMINI_3_MODEL;
+  console.log(`[EMAIL-AI] Structured response generation using ${model} (Google AI Studio)`);
+
+  const fileSearchTool = extendedOptions?.fileSearchStoreNames?.length 
+    ? fileSearchService.buildFileSearchTool(extendedOptions.fileSearchStoreNames)
+    : null;
+
+  if (fileSearchTool) {
+    console.log(`[EMAIL-AI] Using FileSearch RAG with ${extendedOptions?.fileSearchStoreNames?.length} stores`);
+  }
+
+  try {
+    const result = await studioClient.client.generateContent({
+      model,
+      contents: [
+        { role: "user", parts: [{ text: systemPrompt }] },
+        { role: "user", parts: [{ text: `EMAIL DA ANALIZZARE E A CUI RISPONDERE:\n\n${emailContent}` }] },
+      ],
+      generationConfig: {
+        temperature: 0.5,
+        maxOutputTokens: 4096,
+      },
+      ...(fileSearchTool && { tools: [fileSearchTool] }),
+    });
+
+    const responseText = result.response.text();
+    let cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    
+    const parsed = JSON.parse(cleanedResponse) as AIStructuredResponse;
+    
+    return {
+      response: parsed.response || "",
+      confidence: Math.min(1, Math.max(0, parsed.confidence || 0.5)),
+      category: parsed.category || "other",
+      sentiment: parsed.sentiment || "neutral",
+      urgency: parsed.urgency || "medium",
+      createTicket: parsed.createTicket ?? false,
+      ticketReason: parsed.ticketReason || null,
+      ticketPriority: parsed.ticketPriority || null,
+      suggestedActions: Array.isArray(parsed.suggestedActions) ? parsed.suggestedActions : [],
+    };
+  } catch (error: any) {
+    console.error("[EMAIL-AI] Structured response generation error:", error);
+    
+    return {
+      response: `Grazie per la sua email. La contatterò al più presto.${
+        accountSettings.signature ? `\n\n${accountSettings.signature}` : ""
+      }`,
+      confidence: 0.3,
+      category: "other",
+      sentiment: "neutral",
+      urgency: "medium",
+      createTicket: true,
+      ticketReason: `Errore nella generazione AI: ${error.message}`,
+      ticketPriority: "medium",
+      suggestedActions: ["Revisione manuale richiesta"],
+    };
+  }
+}
+
+async function logAIDecision(params: {
+  consultantId: string;
+  emailId: string;
+  accountId: string;
+  aiResponse: AIStructuredResponse;
+  decisionResult: DecisionEngineResult;
+  ticketId?: string | null;
+  usedKnowledgeBase: boolean;
+  sources?: string[];
+  autoSendEnabled: boolean;
+}): Promise<string> {
+  const { consultantId, emailId, accountId, aiResponse, decisionResult, ticketId, usedKnowledgeBase, sources, autoSendEnabled } = params;
+  
+  const [inserted] = await db.insert(schema.emailAiDecisions).values({
+    consultantId,
+    emailId,
+    accountId,
+    response: aiResponse.response,
+    confidence: aiResponse.confidence,
+    category: aiResponse.category,
+    sentiment: aiResponse.sentiment,
+    urgency: aiResponse.urgency,
+    createTicket: aiResponse.createTicket,
+    ticketReason: aiResponse.ticketReason,
+    ticketPriority: aiResponse.ticketPriority,
+    ticketId: ticketId || null,
+    usedKnowledgeBase,
+    sources: sources || [],
+    actionTaken: decisionResult.action,
+    confidenceThreshold: decisionResult.confidenceThreshold,
+    autoSendEnabled,
+    suggestedActions: aiResponse.suggestedActions,
+  }).returning({ id: schema.emailAiDecisions.id });
+  
+  console.log(`[EMAIL-AI] Logged AI decision ${inserted.id} for email ${emailId}: action=${decisionResult.action}, confidence=${aiResponse.confidence}`);
+  
+  return inserted.id;
+}
+
 export interface ExtendedAccountSettings extends AccountSettings {
   customInstructions?: string | null;
   aiLanguage?: string | null;
   escalationKeywords?: string[] | null;
   stopOnRisk?: boolean | null;
   bookingLink?: string | null;
+  autoSendEnabled?: boolean;
 }
 
 export interface ClassifyAndGenerateResult {
@@ -337,6 +604,9 @@ export interface ClassifyAndGenerateResult {
   ticketId?: string;
   stoppedByRisk?: boolean;
   riskReason?: string;
+  aiResponse?: AIStructuredResponse;
+  decisionAction?: AIDecisionAction;
+  decisionId?: string;
 }
 
 async function checkEscalationKeywords(
@@ -420,11 +690,16 @@ export async function classifyAndGenerateDraft(
 
   console.log(`[EMAIL-AI] Knowledge Base search: found=${kbResult.found}, stores=${kbResult.storeNames?.length || 0}, docs=${kbResult.totalDocuments || 0}`);
 
-  // Use FileSearch store names for native RAG (no manual context extraction needed)
-  const fileSearchStoreNames = kbResult.found ? kbResult.storeNames : [];
+  let fileSearchStoreNames = kbResult.found ? kbResult.storeNames || [] : [];
+  
+  const emailAccountStore = await FileSearchSyncService.getEmailAccountStore(email.accountId);
+  if (emailAccountStore) {
+    console.log(`[EMAIL-AI] Adding email account store: ${emailAccountStore}`);
+    fileSearchStoreNames = [...fileSearchStoreNames, emailAccountStore];
+  }
   
   if (fileSearchStoreNames.length > 0) {
-    console.log(`[EMAIL-AI] FileSearch RAG enabled with ${kbResult.totalDocuments} documents in ${fileSearchStoreNames.length} stores`);
+    console.log(`[EMAIL-AI] FileSearch RAG enabled with ${kbResult.totalDocuments || 0} documents in ${fileSearchStoreNames.length} stores`);
   }
 
   const ticketSettings = await getTicketSettings(consultantId);
@@ -481,7 +756,7 @@ export async function classifyAndGenerateDraft(
     ticketId = ticket?.id;
   }
 
-  const draft = await generateEmailDraft(
+  const aiResponse = await generateStructuredAIResponse(
     emailId,
     originalEmail,
     accountSettings,
@@ -493,6 +768,52 @@ export async function classifyAndGenerateDraft(
     }
   );
 
+  const autoSendEnabled = extendedSettings?.autoSendEnabled ?? false;
+  const decisionResult = executeDecisionEngine({
+    aiResponse,
+    autoSendEnabled,
+  });
+
+  if (decisionResult.shouldCreateTicket && !ticketCreated) {
+    console.log(`[EMAIL-AI] Decision engine requests ticket creation: ${aiResponse.ticketReason}`);
+    const ticket = await createTicketFromEmail(
+      emailId,
+      consultantId,
+      email.accountId,
+      "ai_low_confidence",
+      {
+        reasonDetails: aiResponse.ticketReason || `AI confidence troppo bassa: ${aiResponse.confidence}`,
+        aiClassification: classification,
+        priority: aiResponse.ticketPriority || "medium",
+        suggestedResponse: aiResponse.response,
+      }
+    );
+    ticketCreated = !!ticket;
+    ticketId = ticket?.id;
+  }
+
+  const decisionId = await logAIDecision({
+    consultantId,
+    emailId,
+    accountId: email.accountId,
+    aiResponse,
+    decisionResult,
+    ticketId,
+    usedKnowledgeBase: kbResult.found || !!emailAccountStore,
+    sources: kbResult.storeNames,
+    autoSendEnabled,
+  });
+
+  const draft: EmailDraft = {
+    subject: originalEmail.subject?.startsWith("Re:") 
+      ? originalEmail.subject 
+      : `Re: ${originalEmail.subject || "Senza oggetto"}`,
+    bodyHtml: `<p>${aiResponse.response.replace(/\n/g, "<br>")}</p>`,
+    bodyText: aiResponse.response,
+    confidence: aiResponse.confidence,
+    modelUsed: GEMINI_3_MODEL,
+  };
+
   return { 
     classification, 
     draft,
@@ -502,5 +823,10 @@ export async function classifyAndGenerateDraft(
     },
     ticketCreated,
     ticketId,
+    aiResponse,
+    decisionAction: decisionResult.action,
+    decisionId,
   };
 }
+
+export { CATEGORY_CONFIDENCE_THRESHOLDS };
