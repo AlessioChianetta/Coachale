@@ -6262,6 +6262,7 @@ export class FileSearchSyncService {
   static async syncEmailAccountKnowledge(accountId: string): Promise<{
     total: number;
     synced: number;
+    skipped: number;
     failed: number;
     errors: string[];
   }> {
@@ -6272,7 +6273,7 @@ export class FileSearchSyncService {
 
       if (!account) {
         console.error(`[FileSync] Email account not found: ${accountId}`);
-        return { total: 0, synced: 0, failed: 1, errors: ['Email account not found'] };
+        return { total: 0, synced: 0, skipped: 0, failed: 1, errors: ['Email account not found'] };
       }
 
       const consultantId = account.consultantId;
@@ -6286,7 +6287,7 @@ export class FileSearchSyncService {
 
       if (knowledgeItems.length === 0) {
         console.log(`ℹ️ [FileSync] No knowledge items found for email account ${accountId.substring(0, 8)}`);
-        return { total: 0, synced: 0, failed: 0, errors: [] };
+        return { total: 0, synced: 0, skipped: 0, failed: 0, errors: [] };
       }
 
       let accountStore = await db.query.fileSearchStores.findFirst({
@@ -6308,7 +6309,7 @@ export class FileSearchSyncService {
 
         if (!result.success || !result.storeId) {
           console.error(`[FileSync] Failed to create FileSearchStore: ${result.error}`);
-          return { total: knowledgeItems.length, synced: 0, failed: knowledgeItems.length, errors: [result.error || 'Failed to create store'] };
+          return { total: knowledgeItems.length, synced: 0, skipped: 0, failed: knowledgeItems.length, errors: [result.error || 'Failed to create store'] };
         }
 
         accountStore = await db.query.fileSearchStores.findFirst({
@@ -6316,11 +6317,12 @@ export class FileSearchSyncService {
         });
 
         if (!accountStore) {
-          return { total: knowledgeItems.length, synced: 0, failed: knowledgeItems.length, errors: ['Store created but not found'] };
+          return { total: knowledgeItems.length, synced: 0, skipped: 0, failed: knowledgeItems.length, errors: ['Store created but not found'] };
         }
       }
 
       let synced = 0;
+      let skipped = 0;
       let failed = 0;
       const errors: string[] = [];
 
@@ -6330,7 +6332,7 @@ export class FileSearchSyncService {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('email_account_knowledge', item.id);
         if (isAlreadyIndexed) {
           console.log(`📌 [FileSync] Email knowledge item already indexed: ${item.title}`);
-          synced++;
+          skipped++;
           continue;
         }
 
@@ -6395,13 +6397,14 @@ export class FileSearchSyncService {
       console.log(`\n${'═'.repeat(60)}`);
       console.log(`✅ [FileSync] Email Account Knowledge Sync Complete`);
       console.log(`   Account: ${account.emailAddress}`);
-      console.log(`   Synced: ${synced}/${knowledgeItems.length}`);
-      console.log(`   Failed: ${failed}`);
+      console.log(`   Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+      console.log(`   Total: ${knowledgeItems.length}`);
       console.log(`${'═'.repeat(60)}\n`);
 
       return {
         total: knowledgeItems.length,
         synced,
+        skipped,
         failed,
         errors,
       };
@@ -6410,6 +6413,7 @@ export class FileSearchSyncService {
       return {
         total: 0,
         synced: 0,
+        skipped: 0,
         failed: 1,
         errors: [error.message],
       };
@@ -6449,6 +6453,7 @@ export class FileSearchSyncService {
 
       let totalItems = 0;
       let totalSynced = 0;
+      let totalSkipped = 0;
       let totalFailed = 0;
       const allErrors: string[] = [];
 
@@ -6458,11 +6463,11 @@ export class FileSearchSyncService {
           const result = await this.syncEmailAccountKnowledge(account.id);
           totalItems += result.total;
           totalSynced += result.synced;
+          totalSkipped += result.skipped;
           totalFailed += result.failed;
           allErrors.push(...result.errors);
         } catch (err: any) {
           console.error(`❌ [FileSync] Error syncing email account ${account.emailAddress}:`, err.message);
-          totalFailed++;
           allErrors.push(`${account.emailAddress}: ${err.message}`);
         }
       }
@@ -6471,14 +6476,13 @@ export class FileSearchSyncService {
       console.log(`✅ [FileSync] ALL Email Account Knowledge Sync Complete`);
       console.log(`   Accounts: ${accounts.length}`);
       console.log(`   Total Items: ${totalItems}`);
-      console.log(`   Synced: ${totalSynced}`);
-      console.log(`   Failed: ${totalFailed}`);
+      console.log(`   Synced: ${totalSynced}, Skipped: ${totalSkipped}, Failed: ${totalFailed}`);
       console.log(`${'═'.repeat(60)}\n`);
 
       return {
         total: totalItems,
         synced: totalSynced,
-        skipped: 0,
+        skipped: totalSkipped,
         failed: totalFailed,
         accountsProcessed: accounts.length,
         errors: allErrors,
