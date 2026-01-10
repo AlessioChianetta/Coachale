@@ -94,12 +94,18 @@ function normalizePhoneNumber(rawPhone: string, defaultCountryCode = "39"): stri
     digits = digits.replace(/^0+/, "");
   }
 
-  // Gestisce doppio prefisso paese (393939...)
+  // Gestisce doppio prefisso paese (solo esattamente 2 volte: 39393... -> 393...)
+  // NON rimuove se il prefisso appare 3+ volte (es: 393939... potrebbe essere valido)
   if (defaultCountryCode) {
-    const pattern = new RegExp(`^(?:${defaultCountryCode})+`);
-    const match = digits.match(pattern);
-    if (match && match[0].length > defaultCountryCode.length) {
-      digits = defaultCountryCode + digits.slice(match[0].length);
+    const doublePrefix = defaultCountryCode + defaultCountryCode;
+    if (digits.startsWith(doublePrefix)) {
+      // Verifica che non ci sia un TERZO prefisso (evita di corrompere numeri come +393939649434)
+      const triplePrefix = doublePrefix + defaultCountryCode;
+      if (!digits.startsWith(triplePrefix)) {
+        // Solo doppio prefisso: rimuovi uno
+        digits = digits.slice(defaultCountryCode.length);
+      }
+      // Se triplo o più, lascia invariato (probabile numero valido)
     }
   }
 
