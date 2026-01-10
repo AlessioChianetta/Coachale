@@ -34,6 +34,8 @@ import {
   userFinanceSettings,
   whatsappAgentKnowledgeItems,
   consultantWhatsappConfig,
+  emailAccountKnowledgeItems,
+  emailAccounts,
   fileSearchSettings,
   dailyReflections,
   clientProgress,
@@ -6238,6 +6240,216 @@ export class FileSearchSyncService {
       agentsProcessed: validAgentConfigs.length,
       errors: allErrors,
     };
+  }
+
+  /**
+   * Sync Email Account Knowledge Base to FileSearchStore
+   * Creates a dedicated store for each email account and syncs all knowledge items
+   * 
+   * @param accountId - The email account ID
+   * @returns Sync results with counts and errors
+   */
+  static async syncEmailAccountKnowledge(accountId: string): Promise<{
+    total: number;
+    synced: number;
+    failed: number;
+    errors: string[];
+  }> {
+    try {
+      const account = await db.query.emailAccounts.findFirst({
+        where: eq(emailAccounts.id, accountId),
+      });
+
+      if (!account) {
+        console.error(`[FileSync] Email account not found: ${accountId}`);
+        return { total: 0, synced: 0, failed: 1, errors: ['Email account not found'] };
+      }
+
+      const consultantId = account.consultantId;
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`📧 [FileSync] Syncing Email Account Knowledge for "${account.emailAddress}" (${accountId.substring(0, 8)})`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      const knowledgeItems = await db.query.emailAccountKnowledgeItems.findMany({
+        where: eq(emailAccountKnowledgeItems.accountId, accountId),
+      });
+
+      if (knowledgeItems.length === 0) {
+        console.log(`ℹ️ [FileSync] No knowledge items found for email account ${accountId.substring(0, 8)}`);
+        return { total: 0, synced: 0, failed: 0, errors: [] };
+      }
+
+      let accountStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, accountId),
+          eq(fileSearchStores.ownerType, 'email_account'),
+        ),
+      });
+
+      if (!accountStore) {
+        console.log(`🔧 [FileSync] Creating new FileSearchStore for Email Account "${account.emailAddress}"`);
+        const result = await fileSearchService.createStore({
+          displayName: `Email Account: ${account.emailAddress}`,
+          ownerId: accountId,
+          ownerType: 'email_account',
+          description: `Knowledge base per l'account email "${account.emailAddress}"`,
+          userId: consultantId,
+        });
+
+        if (!result.success || !result.storeId) {
+          console.error(`[FileSync] Failed to create FileSearchStore: ${result.error}`);
+          return { total: knowledgeItems.length, synced: 0, failed: knowledgeItems.length, errors: [result.error || 'Failed to create store'] };
+        }
+
+        accountStore = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, result.storeId),
+        });
+
+        if (!accountStore) {
+          return { total: knowledgeItems.length, synced: 0, failed: knowledgeItems.length, errors: ['Store created but not found'] };
+        }
+      }
+
+      let synced = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      console.log(`🔄 [FileSync] Syncing ${knowledgeItems.length} knowledge items for email account "${account.emailAddress}"`);
+
+      for (const item of knowledgeItems) {
+        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('email_account_knowledge', item.id);
+        if (isAlreadyIndexed) {
+          console.log(`📌 [FileSync] Email knowledge item already indexed: ${item.title}`);
+          synced++;
+          continue;
+        }
+
+        let content = item.content;
+        if (!content && item.filePath) {
+          try {
+            const extractedText = await extractTextFromFile(item.filePath, item.type);
+            content = extractedText || '';
+          } catch (err: any) {
+            console.warn(`⚠️ [FileSync] Could not extract text from ${item.fileName}: ${err.message}`);
+            content = `[Documento: ${item.title}]\nTipo: ${item.type}\nFile: ${item.fileName || 'N/A'}`;
+          }
+        }
+
+        if (!content || content.trim().length === 0) {
+          console.warn(`⚠️ [FileSync] Skipping empty knowledge item: ${item.title}`);
+          failed++;
+          errors.push(`${item.title}: Empty content`);
+          continue;
+        }
+
+        const uploadResult = await fileSearchService.uploadDocumentFromContent({
+          content: `# ${item.title}\n\n${content}`,
+          displayName: item.title,
+          storeId: accountStore.id,
+          sourceType: 'email_account_knowledge',
+          sourceId: item.id,
+          userId: consultantId,
+          customMetadata: {
+            docType: item.type,
+            emailAccountId: accountId,
+          },
+        });
+
+        if (uploadResult.success) {
+          synced++;
+          console.log(`✅ [FileSync] Synced email knowledge item: ${item.title}`);
+        } else {
+          failed++;
+          errors.push(`${item.title}: ${uploadResult.error}`);
+          console.error(`❌ [FileSync] Failed to sync email knowledge item "${item.title}": ${uploadResult.error}`);
+        }
+      }
+
+      // Reconciliation
+      const activeItemIds = knowledgeItems.map(item => item.id);
+
+      if (accountStore) {
+        const fileSearchServiceInstance = new FileSearchService();
+        const reconcileResult = await fileSearchServiceInstance.reconcileBySourceType(
+          accountStore.id,
+          'email_account_knowledge',
+          activeItemIds,
+          consultantId
+        );
+        
+        if (reconcileResult.removed > 0) {
+          console.log(`🧹 [FileSync] Reconciled ${reconcileResult.removed} orphaned email knowledge documents from account store`);
+        }
+      }
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`✅ [FileSync] Email Account Knowledge Sync Complete`);
+      console.log(`   Account: ${account.emailAddress}`);
+      console.log(`   Synced: ${synced}/${knowledgeItems.length}`);
+      console.log(`   Failed: ${failed}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      return {
+        total: knowledgeItems.length,
+        synced,
+        failed,
+        errors,
+      };
+    } catch (error: any) {
+      console.error('[FileSync] Email account knowledge sync error:', error);
+      return {
+        total: 0,
+        synced: 0,
+        failed: 1,
+        errors: [error.message],
+      };
+    }
+  }
+
+  /**
+   * Get or create FileSearchStore for an email account
+   * 
+   * @param accountId - The email account ID
+   * @returns The store ID or null if not found/created
+   */
+  static async getEmailAccountStore(accountId: string): Promise<string | null> {
+    try {
+      const account = await db.query.emailAccounts.findFirst({
+        where: eq(emailAccounts.id, accountId),
+      });
+
+      if (!account) {
+        return null;
+      }
+
+      let store = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, accountId),
+          eq(fileSearchStores.ownerType, 'email_account'),
+        ),
+      });
+
+      if (!store) {
+        const result = await fileSearchService.createStore({
+          displayName: `Email Account: ${account.emailAddress}`,
+          ownerId: accountId,
+          ownerType: 'email_account',
+          description: `Knowledge base per l'account email "${account.emailAddress}"`,
+          userId: account.consultantId,
+        });
+
+        if (!result.success || !result.storeId) {
+          return null;
+        }
+
+        return result.storeId;
+      }
+
+      return store.id;
+    } catch (error) {
+      console.error('[FileSync] Error getting email account store:', error);
+      return null;
+    }
   }
 
   /**

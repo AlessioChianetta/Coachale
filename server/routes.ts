@@ -74,6 +74,7 @@ import twilioTemplateExportRouter from "./routes/whatsapp/twilio-template-export
 import agentInstructionsRouter from "./routes/whatsapp/agent-instructions-router";
 import templateApprovalRouter from "./routes/whatsapp/template-approval-router";
 import agentKnowledgeRouter from "./routes/whatsapp/agent-knowledge-router";
+import emailAccountKnowledgeRouter from "./routes/email-hub/email-account-knowledge-router";
 import agentShareRouter from "./routes/whatsapp/agent-share-router";
 import agentStatsRouter from "./routes/whatsapp/agent-stats-router";
 import agentUsersRouter from "./routes/whatsapp/agent-users-router";
@@ -12073,6 +12074,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // WhatsApp Agent Knowledge Base routes
   app.use("/api", agentKnowledgeRouter);
+  app.use("/api", emailAccountKnowledgeRouter);
 
   // WhatsApp Agent Users routes (Bronze/Silver access management) - MUST be before agentStatsRouter
   app.use("/api/whatsapp/agents", agentUsersRouter);
