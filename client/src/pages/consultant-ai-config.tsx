@@ -2914,18 +2914,20 @@ Non limitarti a stato attuale/ideale. Attingi da:
                             </TableCell>
                             <TableCell>{format(new Date(draft.generatedAt), "dd/MM/yyyy HH:mm", { locale: it })}</TableCell>
                             <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="flex items-center justify-end gap-1">
                                 <Button
-                                  variant="outline"
-                                  size="sm"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
                                   onClick={() => handlePreviewDraft(draft)}
+                                  title="Anteprima"
                                 >
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Preview
+                                  <Eye className="h-4 w-4" />
                                 </Button>
                                 <Button
-                                  variant="outline"
-                                  size="sm"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
                                   onClick={() => {
                                     console.log('💾 [SAVE FOR AI] Salvataggio riepilogo per AI');
                                     console.log('💾 [SAVE FOR AI] Draft ID:', draft.id);
@@ -2934,13 +2936,14 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                     saveForAiMutation.mutate(draft.id);
                                   }}
                                   disabled={saveForAiMutation.isPending}
-                                  className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white border-0"
+                                  title="Salva per AI"
                                 >
-                                  Salva per AI
+                                  <Brain className="h-4 w-4" />
                                 </Button>
                                 <Button
-                                  variant="default"
-                                  size="sm"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                                   onClick={() => {
                                     console.log('📧 [CONSULTATION EMAIL] Invio email di riepilogo consulenza');
                                     console.log('📧 [CONSULTATION EMAIL] Draft ID:', draft.id);
@@ -2951,19 +2954,19 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                     sendConsultationDraftMutation.mutate(draft.id);
                                   }}
                                   disabled={sendConsultationDraftMutation.isPending}
-                                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                                  title="Invia email"
                                 >
-                                  <Send className="h-4 w-4 mr-1" />
-                                  Invia
+                                  <Send className="h-4 w-4" />
                                 </Button>
                                 <Button
-                                  variant="destructive"
-                                  size="sm"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                   onClick={() => deleteConsultationDraftMutation.mutate(draft.id)}
                                   disabled={deleteConsultationDraftMutation.isPending}
+                                  title="Elimina"
                                 >
-                                  <X className="h-4 w-4 mr-1" />
-                                  Elimina
+                                  <X className="h-4 w-4" />
                                 </Button>
                               </div>
                             </TableCell>

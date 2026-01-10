@@ -7605,7 +7605,7 @@ export const emailTickets = pgTable("email_tickets", {
   priority: varchar("priority", { length: 20 }).notNull().default("medium").$type<"low" | "medium" | "high" | "urgent">(),
   
   reason: varchar("reason", { length: 50 }).notNull().$type<
-    "no_kb_answer" | "high_urgency" | "negative_sentiment" | "escalation_keyword" | "low_confidence" | "manual"
+    "no_kb_answer" | "high_urgency" | "negative_sentiment" | "escalation_keyword" | "low_confidence" | "manual" | "ai_decision"
   >(),
   reasonDetails: text("reason_details"),
   
@@ -7657,3 +7657,74 @@ export const emailWebhookLogs = pgTable("email_webhook_logs", {
 
 export type EmailWebhookLog = typeof emailWebhookLogs.$inferSelect;
 export type InsertEmailWebhookLog = typeof emailWebhookLogs.$inferInsert;
+
+// Email Account Knowledge Items - Per-account knowledge base (like WhatsApp agents)
+export const emailAccountKnowledgeItems = pgTable("email_account_knowledge_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountId: varchar("account_id").references(() => emailAccounts.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  type: text("type").$type<"text" | "pdf" | "docx" | "txt">().notNull(),
+  content: text("content").notNull(),
+  filePath: text("file_path"),
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  order: integer("order").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  accountIdx: index("idx_email_account_knowledge_items_account").on(table.accountId),
+  consultantIdx: index("idx_email_account_knowledge_items_consultant").on(table.consultantId),
+}));
+
+export type EmailAccountKnowledgeItem = typeof emailAccountKnowledgeItems.$inferSelect;
+export type InsertEmailAccountKnowledgeItem = typeof emailAccountKnowledgeItems.$inferInsert;
+
+// Email AI Decisions - Audit trail for AI decisions
+export const emailAiDecisions = pgTable("email_ai_decisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  emailId: varchar("email_id").notNull().references(() => hubEmails.id, { onDelete: "cascade" }),
+  accountId: varchar("account_id").notNull().references(() => emailAccounts.id, { onDelete: "cascade" }),
+  
+  // AI Response
+  response: text("response").notNull(),
+  confidence: real("confidence").notNull(),
+  
+  // Classification
+  category: varchar("category", { length: 50 }).$type<"info_request" | "complaint" | "billing" | "technical" | "booking" | "other">(),
+  sentiment: varchar("sentiment", { length: 20 }).$type<"positive" | "neutral" | "negative">(),
+  urgency: varchar("urgency", { length: 20 }).$type<"low" | "medium" | "high" | "critical">(),
+  
+  // Ticket Decision
+  createTicket: boolean("create_ticket").default(false).notNull(),
+  ticketReason: text("ticket_reason"),
+  ticketPriority: varchar("ticket_priority", { length: 20 }).$type<"low" | "medium" | "high" | "urgent">(),
+  ticketId: varchar("ticket_id").references(() => emailTickets.id, { onDelete: "set null" }),
+  
+  // Knowledge Base
+  usedKnowledgeBase: boolean("used_knowledge_base").default(false).notNull(),
+  sources: jsonb("sources").default([]).$type<string[]>(),
+  
+  // Action Taken
+  actionTaken: varchar("action_taken", { length: 30 }).notNull().$type<
+    "auto_sent" | "draft_created" | "ticket_created" | "escalated" | "ignored"
+  >(),
+  
+  // Thresholds Used
+  confidenceThreshold: real("confidence_threshold"),
+  autoSendEnabled: boolean("auto_send_enabled").default(false),
+  
+  // Suggested Actions
+  suggestedActions: jsonb("suggested_actions").default([]).$type<string[]>(),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_email_ai_decisions_consultant").on(table.consultantId),
+  emailIdx: index("idx_email_ai_decisions_email").on(table.emailId),
+  accountIdx: index("idx_email_ai_decisions_account").on(table.accountId),
+  createdAtIdx: index("idx_email_ai_decisions_created_at").on(table.createdAt),
+}));
+
+export type EmailAiDecision = typeof emailAiDecisions.$inferSelect;
+export type InsertEmailAiDecision = typeof emailAiDecisions.$inferInsert;
