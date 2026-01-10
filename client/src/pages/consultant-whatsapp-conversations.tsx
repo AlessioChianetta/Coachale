@@ -75,6 +75,7 @@ interface Conversation {
   agentConfigId: string | null;
   agentName: string;
   isLead: boolean;
+  isProactiveLead: boolean;
   aiEnabled: boolean;
   lastMessageAt: Date;
   lastMessageFrom: string;
@@ -83,6 +84,7 @@ interface Conversation {
   metadata: any;
   testModeOverride: "client" | "lead" | "consulente" | null;
   testModeUserId: string | null;
+  contactName: string | null;
   lastMessage: {
     text: string;
     sender: string;
@@ -868,75 +870,84 @@ export default function ConsultantWhatsAppConversationsPage() {
                         return (
                         <div
                           key={conv.id}
-                          className={`p-3 sm:p-4 border-b cursor-pointer transition-all duration-150 ${
+                          className={`p-3 sm:p-4 border-b cursor-pointer transition-all duration-200 ${
                             selectedConversationId === conv.id
-                              ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
+                              ? "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/20 border-l-4 border-l-blue-500 shadow-sm"
                               : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                           }`}
                           onClick={() => setSelectedConversationId(conv.id)}
                         >
-                          <div className="flex items-start gap-2 sm:gap-3">
-                            <Avatar className="h-10 w-10 sm:h-11 sm:w-11 flex-shrink-0">
-                              <AvatarFallback className={`${
-                                badgeInfo.label === "Consulente" ? "bg-cyan-500" :
-                                badgeInfo.label === "Receptionist" ? "bg-amber-500" :
-                                badgeInfo.label === "Lead" ? "bg-purple-500" : "bg-green-600"
-                              } text-white font-semibold text-sm`}>
-                                {getInitials(conv.phoneNumber)}
-                              </AvatarFallback>
-                            </Avatar>
+                          <div className="flex items-start gap-3">
+                            <div className="relative">
+                              <Avatar className="h-12 w-12 flex-shrink-0 ring-2 ring-white dark:ring-gray-800 shadow-sm">
+                                <AvatarFallback className={`${
+                                  badgeInfo.label === "Consulente" ? "bg-gradient-to-br from-cyan-500 to-blue-500" :
+                                  badgeInfo.label === "Receptionist" ? "bg-gradient-to-br from-amber-500 to-orange-500" :
+                                  badgeInfo.label === "Lead" ? "bg-gradient-to-br from-purple-500 to-pink-500" : "bg-gradient-to-br from-green-500 to-emerald-500"
+                                } text-white font-semibold text-sm`}>
+                                  {conv.contactName ? conv.contactName.split(' ').filter(n => n && n.length > 0).map(n => n[0]).join('').toUpperCase().slice(0, 2) || getInitials(conv.phoneNumber) : getInitials(conv.phoneNumber)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {conv.aiEnabled && (
+                                <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
+                                  <Bot className="h-2.5 w-2.5 text-white" />
+                                </div>
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1 gap-2">
-                                <p className={`text-xs sm:text-sm text-gray-900 dark:text-white truncate ${
-                                  conv.unreadByConsultant > 0 ? "font-bold" : "font-medium"
-                                }`}>
-                                  {conv.phoneNumber}
-                                </p>
-                                {conv.unreadByConsultant > 0 && (
-                                  <Badge className="h-5 min-w-[20px] px-1.5 sm:px-2 text-xs bg-blue-600 hover:bg-blue-600">
-                                    {conv.unreadByConsultant}
-                                  </Badge>
-                                )}
+                              <div className="flex items-center justify-between mb-0.5 gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm text-gray-900 dark:text-white truncate ${
+                                    conv.unreadByConsultant > 0 ? "font-bold" : "font-semibold"
+                                  }`}>
+                                    {conv.contactName || 'Contatto Sconosciuto'}
+                                  </p>
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                                    {conv.phoneNumber}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  {conv.unreadByConsultant > 0 && (
+                                    <Badge className="h-5 min-w-[20px] px-1.5 text-xs bg-blue-600 hover:bg-blue-600 shadow-sm">
+                                      {conv.unreadByConsultant}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 sm:gap-1.5 mb-1.5 flex-wrap">
-                                <Badge className={`text-[10px] sm:text-xs py-0.5 px-1.5 sm:px-2 ${badgeInfo.className}`}>
+                              <div className="flex items-center gap-1 mb-1.5 flex-wrap">
+                                <Badge className={`text-[10px] py-0.5 px-1.5 ${badgeInfo.className}`}>
                                   {badgeInfo.label}
                                 </Badge>
                                 {conv.isProactiveLead && (
-                                  <Badge className="text-[10px] sm:text-xs py-0.5 px-1.5 sm:px-2 bg-orange-500 hover:bg-orange-500 text-white">
+                                  <Badge className="text-[10px] py-0.5 px-1.5 bg-orange-500 hover:bg-orange-500 text-white">
                                     Proattivo
                                   </Badge>
                                 )}
                                 {conv.agentName && (
-                                  <Badge variant="outline" className="text-[10px] sm:text-xs py-0.5 px-1 sm:px-1.5 text-gray-600 dark:text-gray-300">
+                                  <Badge variant="outline" className="text-[10px] py-0.5 px-1 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800">
                                     {conv.agentName.split(' ')[0]}
-                                  </Badge>
-                                )}
-                                {conv.aiEnabled && (
-                                  <Badge variant="outline" className="text-[10px] sm:text-xs py-0.5 px-1 sm:px-1.5 text-blue-600 dark:text-blue-400">
-                                    AI
                                   </Badge>
                                 )}
                                 {conv.agentConfigId && (() => {
                                   const agent = whatsappAgents.find((a: any) => a.id === conv.agentConfigId);
                                   return agent?.isDryRun === true && (
-                                    <Badge variant="outline" className="text-[10px] sm:text-xs py-0.5 px-1 sm:px-1.5 text-orange-600 dark:text-orange-400 border-orange-300">
-                                      🧪 Dry Run
+                                    <Badge variant="outline" className="text-[10px] py-0.5 px-1 text-orange-600 dark:text-orange-400 border-orange-300 bg-orange-50 dark:bg-orange-900/20">
+                                      🧪 Test
                                     </Badge>
                                   );
                                 })()}
                                 {conv.testModeOverride && (
-                                  <Badge variant="outline" className="text-[10px] sm:text-xs py-0.5 px-1 sm:px-1.5 text-yellow-700 dark:text-yellow-400 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
-                                    Test: {conv.testModeOverride === "lead" ? "Lead" : conv.testModeOverride === "consulente" ? "Consulente" : "Cliente"}
+                                  <Badge variant="outline" className="text-[10px] py-0.5 px-1 text-yellow-700 dark:text-yellow-400 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
+                                    Test
                                   </Badge>
                                 )}
                               </div>
                               {conv.lastMessage && (
-                                <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">
-                                  {conv.lastMessage.text}
+                                <p className="text-[11px] text-gray-600 dark:text-gray-400 line-clamp-1 leading-relaxed">
+                                  {conv.lastMessage.text?.startsWith('TEMPLATE:') ? '📋 Template inviato' : conv.lastMessage.text}
                                 </p>
                               )}
-                              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
                                 {formatDistanceToNow(new Date(conv.lastMessageAt), {
                                   addSuffix: true,
                                   locale: it,

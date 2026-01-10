@@ -16063,6 +16063,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           conversation: schema.whatsappConversations,
           lastMessage: schema.whatsappMessages,
           agentConfig: schema.consultantWhatsappConfig,
+          proactiveLead: schema.proactiveLeads,
+          user: schema.users,
         })
         .from(schema.whatsappConversations)
         .leftJoin(
@@ -16082,6 +16084,14 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           schema.consultantWhatsappConfig,
           eq(schema.consultantWhatsappConfig.id, schema.whatsappConversations.agentConfigId)
         )
+        .leftJoin(
+          schema.proactiveLeads,
+          eq(schema.proactiveLeads.id, schema.whatsappConversations.proactiveLeadId)
+        )
+        .leftJoin(
+          schema.users,
+          eq(schema.users.id, schema.whatsappConversations.userId)
+        )
         .where(and(...whereConditions))
         .orderBy(desc(schema.whatsappConversations.lastMessageAt))
         .limit(100);
@@ -16097,29 +16107,47 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
       // Transform to include unread count and filter
       const result = deduplicatedConversations
-        .map((c) => ({
-          id: c.conversation.id,
-          phoneNumber: c.conversation.phoneNumber,
-          userId: c.conversation.userId,
-          agentConfigId: c.conversation.agentConfigId,
-          agentName: c.agentConfig?.agentName || 'Unknown Agent',
-          isLead: c.conversation.isLead,
-          aiEnabled: c.conversation.aiEnabled,
-          lastMessageAt: c.conversation.lastMessageAt,
-          lastMessageFrom: c.conversation.lastMessageFrom,
-          messageCount: c.conversation.messageCount,
-          unreadByConsultant: c.conversation.unreadByConsultant,
-          metadata: c.conversation.metadata,
-          testModeOverride: c.conversation.testModeOverride,
-          testModeUserId: c.conversation.testModeUserId,
-          lastMessage: c.lastMessage
-            ? {
-                text: c.lastMessage.messageText,
-                sender: c.lastMessage.sender,
-                createdAt: c.lastMessage.createdAt,
-              }
-            : null,
-        }))
+        .map((c) => {
+          // Get contact name from proactiveLead or user
+          let contactName: string | null = null;
+          if (c.proactiveLead) {
+            contactName = [c.proactiveLead.firstName, c.proactiveLead.lastName]
+              .filter(Boolean)
+              .join(' ')
+              .trim() || null;
+          } else if (c.user) {
+            contactName = [c.user.firstName, c.user.lastName]
+              .filter(Boolean)
+              .join(' ')
+              .trim() || null;
+          }
+          
+          return {
+            id: c.conversation.id,
+            phoneNumber: c.conversation.phoneNumber,
+            userId: c.conversation.userId,
+            agentConfigId: c.conversation.agentConfigId,
+            agentName: c.agentConfig?.agentName || 'Unknown Agent',
+            isLead: c.conversation.isLead,
+            isProactiveLead: c.conversation.isProactiveLead,
+            aiEnabled: c.conversation.aiEnabled,
+            lastMessageAt: c.conversation.lastMessageAt,
+            lastMessageFrom: c.conversation.lastMessageFrom,
+            messageCount: c.conversation.messageCount,
+            unreadByConsultant: c.conversation.unreadByConsultant,
+            metadata: c.conversation.metadata,
+            testModeOverride: c.conversation.testModeOverride,
+            testModeUserId: c.conversation.testModeUserId,
+            contactName,
+            lastMessage: c.lastMessage
+              ? {
+                  text: c.lastMessage.messageText,
+                  sender: c.lastMessage.sender,
+                  createdAt: c.lastMessage.createdAt,
+                }
+              : null,
+          };
+        })
         .filter((c) => {
           if (filter === "leads") return c.isLead;
           if (filter === "clients") return !c.isLead;
