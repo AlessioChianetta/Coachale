@@ -511,6 +511,8 @@ export default function ContentStudioPosts() {
     videoProblema: "",
     videoSoluzione: "",
     videoCta: "",
+    videoFullScript: "",
+    videoUrl: "",
     imageText: "",
     imageSubtitle: "",
     imageConceptDescription: "",
@@ -518,6 +520,7 @@ export default function ContentStudioPosts() {
   const [ideaForCopy, setIdeaForCopy] = useState("");
   const [sourceIdeaId, setSourceIdeaId] = useState<string | null>(null);
   const [sourceIdeaTitle, setSourceIdeaTitle] = useState<string | null>(null);
+  const [outputTypeFromIdea, setOutputTypeFromIdea] = useState<boolean>(false);
 
   const [copyVariations, setCopyVariations] = useState<CopyVariation[]>([]);
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
@@ -575,6 +578,7 @@ export default function ContentStudioPosts() {
 
         if (structured && structured.type === "copy_long") {
           setSelectedOutputType("copy_long");
+          setOutputTypeFromIdea(true);
           setFormData((prev) => ({
             ...prev,
             title: idea.title || "",
@@ -588,6 +592,7 @@ export default function ContentStudioPosts() {
           }));
         } else if (structured && structured.type === "video_script") {
           setSelectedOutputType("video_script");
+          setOutputTypeFromIdea(true);
           setFormData((prev) => ({
             ...prev,
             title: idea.title || "",
@@ -596,10 +601,12 @@ export default function ContentStudioPosts() {
             videoProblema: structured.problema || "",
             videoSoluzione: structured.soluzione || "",
             videoCta: structured.cta || "",
+            videoFullScript: structured.fullScript || idea.videoScript || "",
             body: structured.fullScript || idea.videoScript || idea.description || "",
           }));
         } else if (structured && structured.type === "copy_short") {
           setSelectedOutputType("copy_short");
+          setOutputTypeFromIdea(true);
           setFormData((prev) => ({
             ...prev,
             title: idea.title || "",
@@ -608,6 +615,7 @@ export default function ContentStudioPosts() {
             cta: structured.cta || "",
           }));
         } else if (mediaType === "video" && idea.videoScript) {
+          setOutputTypeFromIdea(true);
           setSelectedOutputType("video_script");
           setFormData((prev) => ({
             ...prev,
@@ -1278,22 +1286,32 @@ export default function ContentStudioPosts() {
                           </Button>
                         )}
                       </div>
-                      <div className="flex gap-2 items-center">
+                      <div className="flex gap-2 items-center flex-wrap">
                         <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo output:</Label>
-                        <Select
-                          value={selectedOutputType}
-                          onValueChange={(value) => setSelectedOutputType(value as CopyOutputType)}
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Seleziona tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="copy_short">📝 Copy Corto (Caption)</SelectItem>
-                            <SelectItem value="copy_long">📄 Copy Lungo (Inserzione 6 step)</SelectItem>
-                            <SelectItem value="video_script">🎬 Script Video (con timing)</SelectItem>
-                            <SelectItem value="image_copy">🖼️ Copy Immagine</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {outputTypeFromIdea ? (
+                          <Badge variant="secondary" className="text-xs">
+                            {selectedOutputType === "video_script" && "🎬 Script Video"}
+                            {selectedOutputType === "copy_long" && "📄 Copy Lungo"}
+                            {selectedOutputType === "copy_short" && "📝 Copy Corto"}
+                            {selectedOutputType === "image_copy" && "🖼️ Immagine"}
+                            <span className="ml-1 text-muted-foreground">(da idea)</span>
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={selectedOutputType}
+                            onValueChange={(value) => setSelectedOutputType(value as CopyOutputType)}
+                          >
+                            <SelectTrigger className="h-8 text-xs w-auto">
+                              <SelectValue placeholder="Seleziona tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="copy_short">📝 Copy Corto (Caption)</SelectItem>
+                              <SelectItem value="copy_long">📄 Copy Lungo (6 step)</SelectItem>
+                              <SelectItem value="video_script">🎬 Script Video</SelectItem>
+                              <SelectItem value="image_copy">🖼️ Copy Immagine</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                       {isCarouselMode && (
                         <p className="text-xs text-muted-foreground">
