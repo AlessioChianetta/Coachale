@@ -1,21 +1,24 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Lightbulb,
   FileText,
   Megaphone,
   Users,
-  Plus,
   TrendingUp,
   Clock,
   ArrowRight,
+  AlertCircle,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
+import { getAuthHeaders } from "@/lib/auth";
 
 interface KPICard {
   title: string;
@@ -23,6 +26,28 @@ interface KPICard {
   icon: React.ComponentType<any>;
   color: string;
   bgColor: string;
+}
+
+interface ContentIdea {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+}
+
+interface ContentPost {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+}
+
+interface Campaign {
+  id: string;
+  name: string;
+  status: string;
+  createdAt: string;
+  leads?: number;
 }
 
 interface ActivityItem {
@@ -38,74 +63,118 @@ export default function ContentStudioDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [, setLocation] = useLocation();
 
+  const { data: ideasResponse, isLoading: ideasLoading } = useQuery({
+    queryKey: ["/api/content/ideas"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/ideas", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch ideas");
+      return response.json();
+    },
+  });
+
+  const { data: postsResponse, isLoading: postsLoading } = useQuery({
+    queryKey: ["/api/content/posts"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/posts", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch posts");
+      return response.json();
+    },
+  });
+
+  const { data: campaignsResponse, isLoading: campaignsLoading } = useQuery({
+    queryKey: ["/api/content/campaigns"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/campaigns", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch campaigns");
+      return response.json();
+    },
+  });
+
+  const ideas: ContentIdea[] = ideasResponse?.data || [];
+  const posts: ContentPost[] = postsResponse?.data || [];
+  const campaigns: Campaign[] = campaignsResponse?.data || [];
+
+  const isLoading = ideasLoading || postsLoading || campaignsLoading;
+
+  const activeCampaigns = campaigns.filter((c) => c.status === "attiva" || c.status === "active");
+  const publishedPosts = posts.filter((p) => p.status === "pubblicato" || p.status === "published");
+  const totalLeads = campaigns.reduce((sum, c) => sum + (c.leads || 0), 0);
+
   const kpiCards: KPICard[] = [
     {
-      title: "[DEMO] Idee Generate",
-      value: 47,
+      title: "Idee Generate",
+      value: ideas.length,
       icon: Lightbulb,
       color: "text-amber-600",
       bgColor: "bg-amber-500/10",
     },
     {
-      title: "[DEMO] Post Pubblicati",
-      value: 23,
+      title: "Post Pubblicati",
+      value: publishedPosts.length,
       icon: FileText,
       color: "text-blue-600",
       bgColor: "bg-blue-500/10",
     },
     {
-      title: "[DEMO] Campagne Attive",
-      value: 3,
+      title: "Campagne Attive",
+      value: activeCampaigns.length,
       icon: Megaphone,
       color: "text-purple-600",
       bgColor: "bg-purple-500/10",
     },
     {
-      title: "[DEMO] Lead Generati",
-      value: 156,
+      title: "Lead Generati",
+      value: totalLeads,
       icon: Users,
       color: "text-green-600",
       bgColor: "bg-green-500/10",
     },
   ];
 
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) return "Meno di 1 ora fa";
+    if (diffHours < 24) return `${diffHours} ore fa`;
+    if (diffDays === 1) return "1 giorno fa";
+    return `${diffDays} giorni fa`;
+  };
+
   const recentActivity: ActivityItem[] = [
-    {
-      id: "1",
-      type: "idea",
-      title: "[DEMO] 5 Modi per Aumentare le Vendite",
-      timestamp: "2 ore fa",
-      status: "Nuova",
-    },
-    {
-      id: "2",
-      type: "post",
-      title: "[DEMO] Carosello Instagram - Fitness Tips",
-      timestamp: "5 ore fa",
-      status: "Programmato",
-    },
-    {
-      id: "3",
-      type: "campaign",
-      title: "[DEMO] Campagna Lead Gen Gennaio",
-      timestamp: "1 giorno fa",
-      status: "Attiva",
-    },
-    {
-      id: "4",
-      type: "post",
-      title: "[DEMO] Reel TikTok - Behind the Scenes",
-      timestamp: "2 giorni fa",
-      status: "Pubblicato",
-    },
-    {
-      id: "5",
-      type: "idea",
-      title: "[DEMO] Tutorial Video Prodotto X",
-      timestamp: "3 giorni fa",
-      status: "In Lavorazione",
-    },
-  ];
+    ...ideas.slice(0, 3).map((idea) => ({
+      id: idea.id,
+      type: "idea" as const,
+      title: idea.title,
+      timestamp: formatRelativeTime(idea.createdAt),
+      status: idea.status === "new" ? "Nuova" : idea.status === "in_progress" ? "In Lavorazione" : idea.status,
+    })),
+    ...posts.slice(0, 3).map((post) => ({
+      id: post.id,
+      type: "post" as const,
+      title: post.title || "Post senza titolo",
+      timestamp: formatRelativeTime(post.createdAt),
+      status: post.status === "published" ? "Pubblicato" : post.status === "scheduled" ? "Programmato" : post.status === "draft" ? "Bozza" : post.status,
+    })),
+    ...campaigns.slice(0, 2).map((campaign) => ({
+      id: campaign.id,
+      type: "campaign" as const,
+      title: campaign.name,
+      timestamp: formatRelativeTime(campaign.createdAt),
+      status: campaign.status === "active" ? "Attiva" : campaign.status === "paused" ? "In Pausa" : campaign.status,
+    })),
+  ].sort((a, b) => {
+    return 0;
+  }).slice(0, 5);
 
   const quickActions = [
     {
@@ -142,21 +211,16 @@ export default function ContentStudioDashboard() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Nuova":
-        return "bg-blue-500/10 text-blue-600";
-      case "Programmato":
-        return "bg-amber-500/10 text-amber-600";
-      case "Attiva":
-        return "bg-green-500/10 text-green-600";
-      case "Pubblicato":
-        return "bg-emerald-500/10 text-emerald-600";
-      case "In Lavorazione":
-        return "bg-purple-500/10 text-purple-600";
-      default:
-        return "bg-gray-500/10 text-gray-600";
-    }
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus === "nuova" || lowerStatus === "new") return "bg-blue-500/10 text-blue-600";
+    if (lowerStatus === "programmato" || lowerStatus === "scheduled") return "bg-amber-500/10 text-amber-600";
+    if (lowerStatus === "attiva" || lowerStatus === "active") return "bg-green-500/10 text-green-600";
+    if (lowerStatus === "pubblicato" || lowerStatus === "published") return "bg-emerald-500/10 text-emerald-600";
+    if (lowerStatus === "in lavorazione" || lowerStatus === "in_progress") return "bg-purple-500/10 text-purple-600";
+    return "bg-gray-500/10 text-gray-600";
   };
+
+  const topCampaign = campaigns.find((c) => c.status === "attiva" || c.status === "active");
 
   return (
     <div className="min-h-screen bg-background">
@@ -179,9 +243,6 @@ export default function ContentStudioDashboard() {
                   Gestisci i tuoi contenuti e campagne marketing
                 </p>
               </div>
-              <Badge variant="outline" className="text-amber-600 border-amber-300">
-                [DEMO] Dati di Esempio
-              </Badge>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -193,9 +254,13 @@ export default function ContentStudioDashboard() {
                         <p className="text-xs sm:text-sm font-medium text-muted-foreground">
                           {kpi.title}
                         </p>
-                        <p className="text-2xl sm:text-3xl font-bold">
-                          {kpi.value}
-                        </p>
+                        {isLoading ? (
+                          <Skeleton className="h-8 w-16" />
+                        ) : (
+                          <p className="text-2xl sm:text-3xl font-bold">
+                            {kpi.value}
+                          </p>
+                        )}
                       </div>
                       <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
                         <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
@@ -236,33 +301,50 @@ export default function ContentStudioDashboard() {
                   <Clock className="h-5 w-5 text-muted-foreground" />
                   Attività Recente
                 </CardTitle>
-                <Badge variant="secondary">[DEMO]</Badge>
               </CardHeader>
               <CardContent className="space-y-3">
-                {recentActivity.map((item) => {
-                  const IconComponent = getTypeIcon(item.type);
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
-                    >
-                      <div className="p-2 rounded-lg bg-muted">
-                        <IconComponent className="h-4 w-4 text-muted-foreground" />
+                {isLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3">
+                      <Skeleton className="h-10 w-10 rounded-lg" />
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-48 mb-2" />
+                        <Skeleton className="h-3 w-24" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">
-                          {item.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.timestamp}
-                        </p>
-                      </div>
-                      <Badge className={getStatusColor(item.status)} variant="secondary">
-                        {item.status}
-                      </Badge>
                     </div>
-                  );
-                })}
+                  ))
+                ) : recentActivity.length > 0 ? (
+                  recentActivity.map((item) => {
+                    const IconComponent = getTypeIcon(item.type);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                      >
+                        <div className="p-2 rounded-lg bg-muted">
+                          <IconComponent className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">
+                            {item.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.timestamp}
+                          </p>
+                        </div>
+                        <Badge className={getStatusColor(item.status)} variant="secondary">
+                          {item.status}
+                        </Badge>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Nessuna attività recente</p>
+                    <p className="text-sm">Inizia creando la tua prima idea o post!</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -271,28 +353,28 @@ export default function ContentStudioDashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <TrendingUp className="h-5 w-5 text-green-500" />
-                    [DEMO] Performance Settimanale
+                    Performance
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
-                        Engagement Rate
+                        Idee Totali
                       </span>
-                      <span className="font-semibold text-green-600">+12.5%</span>
+                      <span className="font-semibold">{ideas.length}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
-                        Reach Totale
+                        Post Totali
                       </span>
-                      <span className="font-semibold">45.2K</span>
+                      <span className="font-semibold">{posts.length}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
-                        Conversioni
+                        Campagne Totali
                       </span>
-                      <span className="font-semibold text-blue-600">89</span>
+                      <span className="font-semibold">{campaigns.length}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -302,31 +384,29 @@ export default function ContentStudioDashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Megaphone className="h-5 w-5 text-purple-500" />
-                    [DEMO] Campagna Top
+                    Campagna Top
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-medium">Lead Gen Gennaio 2025</p>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Spesa</p>
-                        <p className="font-semibold">€1,250</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Lead</p>
-                        <p className="font-semibold text-green-600">47</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">CPL</p>
-                        <p className="font-semibold">€26.60</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">CTR</p>
-                        <p className="font-semibold">3.2%</p>
+                  {topCampaign ? (
+                    <div className="space-y-2">
+                      <p className="font-medium">{topCampaign.name}</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Status</p>
+                          <p className="font-semibold capitalize">{topCampaign.status}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Lead</p>
+                          <p className="font-semibold text-green-600">{topCampaign.leads || 0}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      Nessuna campagna attiva
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>

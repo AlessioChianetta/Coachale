@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Palette,
   Upload,
@@ -16,16 +18,35 @@ import {
   Linkedin,
   Twitter,
   Youtube,
+  Loader2,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthHeaders } from "@/lib/auth";
+
+interface BrandAssets {
+  id?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  brandVoice?: string;
+  keywords?: string[];
+  avoidWords?: string[];
+  instagramHandle?: string;
+  facebookHandle?: string;
+  linkedinHandle?: string;
+  twitterHandle?: string;
+  youtubeHandle?: string;
+  logoUrl?: string;
+}
 
 export default function ContentStudioBrand() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [brandColors, setBrandColors] = useState({
     primary: "#6366f1",
@@ -33,34 +54,86 @@ export default function ContentStudioBrand() {
     accent: "#f59e0b",
   });
 
-  const [brandVoice, setBrandVoice] = useState(
-    "[DEMO] Professionale ma accessibile. Usiamo un tono amichevole che ispira fiducia. Parliamo come un coach esperto che si preoccupa genuinamente del successo dei propri clienti."
-  );
-
-  const [keywords, setKeywords] = useState<string[]>([
-    "[DEMO] Trasformazione",
-    "[DEMO] Risultati",
-    "[DEMO] Benessere",
-    "[DEMO] Energia",
-    "[DEMO] Crescita",
-  ]);
-
-  const [avoidWords, setAvoidWords] = useState<string[]>([
-    "[DEMO] Facile",
-    "[DEMO] Veloce",
-    "[DEMO] Miracoloso",
-    "[DEMO] Gratis",
-  ]);
-
+  const [brandVoice, setBrandVoice] = useState("");
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [avoidWords, setAvoidWords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState("");
   const [newAvoidWord, setNewAvoidWord] = useState("");
-
   const [socialHandles, setSocialHandles] = useState({
-    instagram: "[DEMO] @tuobrand",
-    facebook: "[DEMO] tuobrand",
-    linkedin: "[DEMO] tuobrand",
-    twitter: "[DEMO] @tuobrand",
-    youtube: "[DEMO] TuoBrandChannel",
+    instagram: "",
+    facebook: "",
+    linkedin: "",
+    twitter: "",
+    youtube: "",
+  });
+
+  const { data: brandResponse, isLoading } = useQuery({
+    queryKey: ["/api/content/brand-assets"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/brand-assets", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { data: null };
+        }
+        throw new Error("Failed to fetch brand assets");
+      }
+      return response.json();
+    },
+  });
+
+  useEffect(() => {
+    if (brandResponse?.data) {
+      const data = brandResponse.data;
+      setBrandColors({
+        primary: data.primaryColor || "#6366f1",
+        secondary: data.secondaryColor || "#ec4899",
+        accent: data.accentColor || "#f59e0b",
+      });
+      setBrandVoice(data.brandVoice || "");
+      setKeywords(data.keywords || []);
+      setAvoidWords(data.avoidWords || []);
+      setSocialHandles({
+        instagram: data.instagramHandle || "",
+        facebook: data.facebookHandle || "",
+        linkedin: data.linkedinHandle || "",
+        twitter: data.twitterHandle || "",
+        youtube: data.youtubeHandle || "",
+      });
+    }
+  }, [brandResponse]);
+
+  const saveBrandMutation = useMutation({
+    mutationFn: async (brandData: BrandAssets) => {
+      const response = await fetch("/api/content/brand-assets", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(brandData),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save brand assets");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Brand salvato",
+        description: "Le impostazioni del brand sono state salvate con successo",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/content/brand-assets"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const addKeyword = () => {
@@ -86,11 +159,46 @@ export default function ContentStudioBrand() {
   };
 
   const handleSave = () => {
-    toast({
-      title: "Brand salvato",
-      description: "Le impostazioni del brand sono state salvate con successo.",
+    saveBrandMutation.mutate({
+      primaryColor: brandColors.primary,
+      secondaryColor: brandColors.secondary,
+      accentColor: brandColors.accent,
+      brandVoice,
+      keywords,
+      avoidWords,
+      instagramHandle: socialHandles.instagram,
+      facebookHandle: socialHandles.facebook,
+      linkedinHandle: socialHandles.linkedin,
+      twitterHandle: socialHandles.twitter,
+      youtubeHandle: socialHandles.youtube,
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
+        <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
+          <Sidebar
+            role="consultant"
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+              <Skeleton className="h-12 w-64" />
+              <Card>
+                <CardContent className="p-6 space-y-4">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -114,15 +222,14 @@ export default function ContentStudioBrand() {
                   Configura l'identità visiva e verbale del tuo brand
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="text-amber-600 border-amber-300">
-                  [DEMO] Dati di Esempio
-                </Badge>
-                <Button onClick={handleSave}>
+              <Button onClick={handleSave} disabled={saveBrandMutation.isPending}>
+                {saveBrandMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
                   <Save className="h-4 w-4 mr-2" />
-                  Salva
-                </Button>
-              </div>
+                )}
+                Salva
+              </Button>
             </div>
 
             <Card>
@@ -229,9 +336,6 @@ export default function ContentStudioBrand() {
                   <p className="text-xs text-muted-foreground mt-1">
                     PNG, SVG o JPG (consigliato: 500x500px)
                   </p>
-                  <Badge variant="secondary" className="mt-3">
-                    [DEMO] Funzionalità placeholder
-                  </Badge>
                 </div>
               </CardContent>
             </Card>
@@ -248,7 +352,7 @@ export default function ContentStudioBrand() {
                     rows={4}
                     value={brandVoice}
                     onChange={(e) => setBrandVoice(e.target.value)}
-                    placeholder="Descrivi il tono di voce del tuo brand..."
+                    placeholder="Descrivi il tono di voce del tuo brand... Es: Professionale ma accessibile. Usiamo un tono amichevole che ispira fiducia."
                   />
                 </div>
               </CardContent>
@@ -275,6 +379,11 @@ export default function ContentStudioBrand() {
                       </button>
                     </Badge>
                   ))}
+                  {keywords.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Nessuna parola chiave aggiunta
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Input
@@ -311,6 +420,11 @@ export default function ContentStudioBrand() {
                       </button>
                     </Badge>
                   ))}
+                  {avoidWords.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Nessuna parola da evitare aggiunta
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Input
@@ -402,8 +516,16 @@ export default function ContentStudioBrand() {
             </Card>
 
             <div className="flex justify-end pb-6">
-              <Button onClick={handleSave} size="lg">
-                <Save className="h-4 w-4 mr-2" />
+              <Button
+                onClick={handleSave}
+                size="lg"
+                disabled={saveBrandMutation.isPending}
+              >
+                {saveBrandMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
                 Salva Tutte le Impostazioni
               </Button>
             </div>

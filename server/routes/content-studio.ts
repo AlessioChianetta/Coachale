@@ -641,10 +641,16 @@ router.get("/calendar", authenticateToken, requireRole("consultant"), async (req
       filtered = filtered.filter(i => i.platform === platform);
     }
     
+    // Transform items to include computed 'type' field for frontend compatibility
+    const transformedItems = filtered.map(item => ({
+      ...item,
+      type: item.campaignId ? "campaign" : "post" as "post" | "campaign",
+    }));
+    
     res.json({
       success: true,
-      data: filtered,
-      count: filtered.length
+      data: transformedItems,
+      count: transformedItems.length
     });
   } catch (error: any) {
     console.error("❌ [CONTENT-STUDIO] Error fetching calendar items:", error);
@@ -655,23 +661,43 @@ router.get("/calendar", authenticateToken, requireRole("consultant"), async (req
   }
 });
 
+// Custom schema for calendar item creation that accepts 'type' field from frontend
+const createCalendarItemSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  scheduledDate: z.string().min(1, "Scheduled date is required"),
+  scheduledTime: z.string().optional().default("09:00"),
+  type: z.enum(["post", "campaign"]).optional(),
+  platform: z.string().optional(),
+  contentType: z.string().optional(),
+  status: z.enum(["scheduled", "published", "missed", "cancelled"]).optional(),
+  postId: z.string().optional(),
+  campaignId: z.string().optional(),
+});
+
 // POST /api/content/calendar - Create calendar item
 router.post("/calendar", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
     
-    const validatedData = insertContentCalendarSchema.parse({
-      ...req.body,
-      consultantId
-    });
+    const validatedData = createCalendarItemSchema.parse(req.body);
+    
+    // Extract type and remove it from data to insert (since DB doesn't have type column)
+    const { type, ...restData } = validatedData;
     
     const [item] = await db.insert(schema.contentCalendar)
-      .values(validatedData)
+      .values({
+        ...restData,
+        consultantId,
+      })
       .returning();
     
+    // Return with computed type field for frontend compatibility
     res.status(201).json({
       success: true,
-      data: item,
+      data: {
+        ...item,
+        type: item.campaignId ? "campaign" : "post" as "post" | "campaign",
+      },
       message: "Calendar item created"
     });
   } catch (error: any) {
@@ -712,16 +738,24 @@ router.put("/calendar/:id", authenticateToken, requireRole("consultant"), async 
       });
     }
     
-    const validatedData = insertContentCalendarSchema.partial().parse(req.body);
+    // Use custom schema that handles 'type' field from frontend
+    const validatedData = createCalendarItemSchema.partial().parse(req.body);
+    
+    // Extract type and remove it from data to update (since DB doesn't have type column)
+    const { type, ...restData } = validatedData;
     
     const [updated] = await db.update(schema.contentCalendar)
-      .set(validatedData)
+      .set(restData)
       .where(eq(schema.contentCalendar.id, itemId))
       .returning();
     
+    // Return with computed type field for frontend compatibility
     res.json({
       success: true,
-      data: updated,
+      data: {
+        ...updated,
+        type: updated.campaignId ? "campaign" : "post" as "post" | "campaign",
+      },
       message: "Calendar item updated"
     });
   } catch (error: any) {

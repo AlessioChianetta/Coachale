@@ -53,6 +53,26 @@ The platform extensively leverages AI for various functionalities:
 ## Referral System
 - **"Invita un Amico"**: A complete referral system for both clients and consultants, featuring unique referral codes, tracking, customizable landing pages with AI assistant integration, dynamic qualification fields, automated email invitations, CRM lead creation, and bonus tracking.
 
+## Content Marketing Studio
+- **Goal**: Comprehensive content creation and marketing funnel system to support 1M MRR target.
+- **Database Tables**: 7 tables (`brand_assets`, `content_ideas`, `content_posts`, `ad_campaigns`, `content_calendar`, `generated_images`, `content_templates`) with full Drizzle ORM definitions.
+- **Backend**: 25 CRUD endpoints + 5 AI endpoints in `server/routes/content-studio.ts`.
+- **AI Services**: `server/services/content-ai-service.ts` provides:
+  - `generateContentIdeas()` - AI-powered content idea generation
+  - `generatePostCopy()` - Social media copy with hook/body/CTA structure
+  - `generateCampaignContent()` - Full 6-step campaign builder (Hook→Target→Problem→Solution→Proof→CTA)
+  - `generateImagePrompt()` - Optimized prompts for image generation
+- **Image Generation**: Integration with Google Gemini Imagen 3 (`imagen-3.0-generate-002`) for AI image creation.
+- **Frontend Pages** (in `client/src/pages/content-studio/`):
+  - Dashboard with KPI stats
+  - Ideas generator with AI assistance
+  - Posts creator with copy generation
+  - Campaign builder with 6-step wizard
+  - Visuals generator with Imagen 3
+  - Content calendar with scheduling
+  - Brand assets settings (colors, voice, social handles)
+- **Integration Points**: Campaigns connect to `proactive_leads` for lead generation and `consultations` for booking.
+
 ## Email Hub System
 - **Email Management**: A comprehensive email hub for consultants with IMAP/SMTP support, unified inbox, and AI-powered response generation.
 - **Provider Flexibility**: Supports various account types (smtp_only, imap_only, full, hybrid) and Italian provider presets.
