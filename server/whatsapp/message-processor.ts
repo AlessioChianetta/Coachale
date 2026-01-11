@@ -2147,7 +2147,17 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     console.log(`   ├── bookingEnabled: ${consultantConfig?.bookingEnabled !== false ? '✅ SÌ' : '❌ NO (disabilitato)'}`);
     console.log(`   ├── agentHasCalendar: ${agentHasCalendar ? '✅ SÌ (Google Calendar connesso)' : '❌ NO (calendario non connesso)'}`);
     console.log(`   ├── effectiveUserId: ${effectiveUserId ? `❌ PRESENTE (${effectiveUserId}) - è un cliente esistente, skip booking` : '✅ ASSENTE (è un lead)'}`);
-    console.log(`   └── Agent: ${consultantConfig?.agentName || 'Unknown'}`);
+    console.log(`   ├── Agent: ${consultantConfig?.agentName || 'Unknown'}`);
+    console.log(`   📱 DATI LEAD PROATTIVO:`);
+    console.log(`   ├── isProactiveLead: ${isProactiveLead ? '✅ SÌ' : '❌ NO'}`);
+    console.log(`   ├── proactiveLeadData: ${proactiveLeadData ? '✅ CARICATO' : '❌ NON DISPONIBILE'}`);
+    if (proactiveLeadData) {
+      console.log(`   ├── phoneNumber: ${proactiveLeadData.phoneNumber || 'N/A'}`);
+      console.log(`   ├── email (from leadInfo): ${proactiveLeadData.leadInfo?.email || 'N/A'}`);
+      console.log(`   └── firstName: ${proactiveLeadData.firstName || 'N/A'}`);
+    } else {
+      console.log(`   └── (nessun dato lead proattivo)`);
+    }
     
     const willAnalyzeBooking = consultantConfig?.bookingEnabled !== false && agentHasCalendar && !effectiveUserId;
     console.log(`   🎯 DECISIONE: ${willAnalyzeBooking ? '✅ PROCEDERÀ con analisi booking' : '❌ SKIP analisi booking'}`);
@@ -4245,8 +4255,49 @@ ${consultantBio ? `\n\nIl consulente: ${consultantBio}` : ''}`;
     finalPrompt += '\n\n' + CORE_CONVERSATION_RULES_BLOCK;
 
     // Inject booking conversation phases only if bookingEnabled
+    // IMPORTANT: Resolve contact placeholders for proactive leads BEFORE injecting
     if (consultantConfig.bookingEnabled !== false) {
-      finalPrompt += '\n\n' + BOOKING_CONVERSATION_PHASES_BLOCK;
+      let bookingPhasesBlock = BOOKING_CONVERSATION_PHASES_BLOCK;
+      
+      // Resolve [TELEFONO_DAL_CONTESTO] and [EMAIL_DAL_CONTESTO] placeholders for proactive leads
+      if (isProactiveLead && proactiveLeadPhone) {
+        const knownEmail = leadInfo?.email;
+        const formattedPhone = proactiveLeadPhone.startsWith('+') 
+          ? proactiveLeadPhone 
+          : `+${proactiveLeadPhone}`;
+        
+        console.log(`\n📱 [CONTACT PLACEHOLDER] Resolving placeholders for proactive lead:`);
+        console.log(`   ├── Phone from DB: ${proactiveLeadPhone}`);
+        console.log(`   ├── Formatted Phone: ${formattedPhone}`);
+        console.log(`   ├── Email from DB: ${knownEmail || 'NOT AVAILABLE'}`);
+        console.log(`   └── Will replace: [TELEFONO_DAL_CONTESTO] → ${formattedPhone}`);
+        
+        // Replace phone placeholder
+        bookingPhasesBlock = bookingPhasesBlock.replace(
+          /\[TELEFONO_DAL_CONTESTO\]/g, 
+          formattedPhone
+        );
+        
+        // Replace email placeholder
+        if (knownEmail) {
+          console.log(`   └── Will replace: [EMAIL_DAL_CONTESTO] → ${knownEmail}`);
+          bookingPhasesBlock = bookingPhasesBlock.replace(
+            /\[EMAIL_DAL_CONTESTO\]/g, 
+            knownEmail
+          );
+        } else {
+          // If no email, change instruction to ask for it
+          console.log(`   └── Email not available - keeping ask instruction`);
+          bookingPhasesBlock = bookingPhasesBlock.replace(
+            /\[EMAIL_DAL_CONTESTO\]/g, 
+            '[DA CHIEDERE]'
+          );
+        }
+        
+        console.log(`✅ [CONTACT PLACEHOLDER] Placeholders resolved successfully`);
+      }
+      
+      finalPrompt += '\n\n' + bookingPhasesBlock;
     }
 
     if (isProactiveAgent) {
