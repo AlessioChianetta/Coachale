@@ -7766,7 +7766,7 @@ export const contentIdeas = pgTable("content_ideas", {
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 500 }).notNull(),
   description: text("description"),
-  contentType: varchar("content_type", { length: 50 }).notNull().$type<"post" | "carosello" | "reel" | "video" | "story" | "articolo">(),
+  contentType: varchar("content_type", { length: 50 }).$type<"post" | "carosello" | "reel" | "video" | "story" | "articolo">(),
   targetAudience: text("target_audience"),
   niche: varchar("niche", { length: 200 }),
   objective: varchar("objective", { length: 50 }).$type<"awareness" | "engagement" | "leads" | "sales" | "education">(),
