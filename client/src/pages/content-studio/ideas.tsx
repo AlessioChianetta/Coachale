@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -27,17 +28,27 @@ import {
   Sparkles,
   Star,
   FileText,
-  Megaphone,
   Zap,
   Loader2,
   Trash2,
   AlertCircle,
+  Calendar,
+  ImageIcon,
+  Bookmark,
+  BookmarkCheck,
+  ArrowUpDown,
+  HelpCircle,
+  Hash,
+  MessageCircleQuestion,
+  Wrench,
+  TrendingUp,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
+import { useLocation } from "wouter";
 
 interface Idea {
   id: string;
@@ -49,6 +60,7 @@ interface Idea {
   targetAudience: string;
   status: string;
   createdAt: string;
+  isSaved?: boolean;
 }
 
 const CONTENT_TYPES = [
@@ -59,6 +71,42 @@ const CONTENT_TYPES = [
   { value: "story", label: "Story" },
   { value: "articolo", label: "Articolo" },
 ];
+
+type HookType = "how-to" | "curiosità" | "numero" | "problema";
+
+function getHookType(hook: string): HookType {
+  if (!hook) return "problema";
+  const lowerHook = hook.toLowerCase();
+  if (lowerHook.includes("come ") || lowerHook.includes("come?")) return "how-to";
+  if (lowerHook.includes("?")) return "curiosità";
+  if (/\d+/.test(hook)) return "numero";
+  return "problema";
+}
+
+function getHookTypeInfo(hookType: HookType) {
+  switch (hookType) {
+    case "how-to":
+      return { label: "How-to", icon: Wrench, color: "bg-blue-500/10 text-blue-600" };
+    case "curiosità":
+      return { label: "Curiosità", icon: MessageCircleQuestion, color: "bg-purple-500/10 text-purple-600" };
+    case "numero":
+      return { label: "Numero", icon: Hash, color: "bg-orange-500/10 text-orange-600" };
+    default:
+      return { label: "Problema", icon: HelpCircle, color: "bg-slate-500/10 text-slate-600" };
+  }
+}
+
+function getPotential(score: number): { label: string; color: string } {
+  if (score >= 85) return { label: "Alto", color: "bg-green-500/10 text-green-600" };
+  if (score >= 70) return { label: "Medio", color: "bg-amber-500/10 text-amber-600" };
+  return { label: "Basso", color: "bg-red-500/10 text-red-600" };
+}
+
+function getScoreProgressColor(score: number): string {
+  if (score >= 85) return "bg-green-500";
+  if (score >= 70) return "bg-amber-500";
+  return "bg-red-500";
+}
 
 export default function ContentStudioIdeas() {
   const isMobile = useIsMobile();
@@ -73,8 +121,21 @@ export default function ContentStudioIdeas() {
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
   const [showGeneratedDialog, setShowGeneratedDialog] = useState(false);
 
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterContentType, setFilterContentType] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("score-desc");
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const handleDevelopPost = (idea: Idea) => {
+    const params = new URLSearchParams();
+    if (idea.title) params.set("ideaTitle", idea.title);
+    if (idea.hook) params.set("ideaHook", idea.hook);
+    if (idea.description) params.set("ideaDescription", idea.description);
+    setLocation(`/consultant/content-studio/posts?${params.toString()}`);
+  };
 
   const { data: ideasResponse, isLoading } = useQuery({
     queryKey: ["/api/content/ideas"],
@@ -88,6 +149,40 @@ export default function ContentStudioIdeas() {
   });
 
   const ideas: Idea[] = ideasResponse?.data || [];
+
+  const filteredAndSortedIdeas = useMemo(() => {
+    let result = [...ideas];
+
+    if (filterStatus !== "all") {
+      const statusMap: Record<string, string> = {
+        new: "new",
+        "in-progress": "in_progress",
+        used: "used",
+      };
+      result = result.filter((idea) => idea.status === statusMap[filterStatus]);
+    }
+
+    if (filterContentType !== "all") {
+      result = result.filter((idea) =>
+        idea.contentType?.toLowerCase().includes(filterContentType.toLowerCase())
+      );
+    }
+
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "score-desc":
+          return (b.score || 0) - (a.score || 0);
+        case "date-desc":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "content-type":
+          return (a.contentType || "").localeCompare(b.contentType || "");
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [ideas, filterStatus, filterContentType, sortBy]);
 
   const createIdeaMutation = useMutation({
     mutationFn: async (idea: Partial<Idea>) => {
@@ -218,8 +313,8 @@ export default function ContentStudioIdeas() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 90) return "text-green-600 bg-green-500/10";
-    if (score >= 80) return "text-amber-600 bg-amber-500/10";
+    if (score >= 85) return "text-green-600 bg-green-500/10";
+    if (score >= 70) return "text-amber-600 bg-amber-500/10";
     return "text-red-600 bg-red-500/10";
   };
 
@@ -334,8 +429,8 @@ export default function ContentStudioIdeas() {
                   <Slider
                     value={[ideaCount]}
                     onValueChange={(value) => setIdeaCount(value[0])}
-                    min={3}
-                    max={15}
+                    min={5}
+                    max={20}
                     step={1}
                     className="w-full"
                   />
@@ -370,8 +465,55 @@ export default function ContentStudioIdeas() {
             <div>
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Zap className="h-5 w-5 text-amber-500" />
-                Le Tue Idee ({ideas.length})
+                Le Tue Idee ({filteredAndSortedIdeas.length})
               </h2>
+
+              <Card className="mb-4">
+                <CardContent className="p-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex items-center gap-2 flex-1">
+                      <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                          <SelectValue placeholder="Ordina per" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="score-desc">Score (alto-basso)</SelectItem>
+                          <SelectItem value="date-desc">Data (recente)</SelectItem>
+                          <SelectItem value="content-type">Tipo contenuto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="w-full sm:w-[160px]">
+                        <SelectValue placeholder="Filtra per Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti gli status</SelectItem>
+                        <SelectItem value="new">Nuove</SelectItem>
+                        <SelectItem value="in-progress">In lavorazione</SelectItem>
+                        <SelectItem value="used">Usate</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={filterContentType} onValueChange={setFilterContentType}>
+                      <SelectTrigger className="w-full sm:w-[160px]">
+                        <SelectValue placeholder="Filtra per Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti i tipi</SelectItem>
+                        <SelectItem value="post">Post</SelectItem>
+                        <SelectItem value="carosello">Carosello</SelectItem>
+                        <SelectItem value="reel">Reel</SelectItem>
+                        <SelectItem value="video">Video</SelectItem>
+                        <SelectItem value="story">Story</SelectItem>
+                        <SelectItem value="articolo">Articolo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
 
               {isLoading ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -385,70 +527,118 @@ export default function ContentStudioIdeas() {
                     </Card>
                   ))}
                 </div>
-              ) : ideas.length > 0 ? (
+              ) : filteredAndSortedIdeas.length > 0 ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {ideas.map((idea) => (
-                    <Card key={idea.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-base">{idea.title}</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {idea.description}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {idea.score && (
-                              <div
-                                className={`flex items-center gap-1 px-2 py-1 rounded-lg ${getScoreColor(
-                                  idea.score
-                                )}`}
+                  {filteredAndSortedIdeas.map((idea) => {
+                    const hookType = getHookType(idea.hook);
+                    const hookTypeInfo = getHookTypeInfo(hookType);
+                    const HookIcon = hookTypeInfo.icon;
+                    const potential = getPotential(idea.score || 0);
+                    
+                    return (
+                      <Card key={idea.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-base">{idea.title}</h3>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {idea.description}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteIdeaMutation.mutate(idea.id)}
                               >
-                                <Star className="h-4 w-4" />
-                                <span className="font-bold">{idea.score}</span>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {idea.score && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div
+                                  className={`flex items-center gap-1 px-2 py-1 rounded-lg ${getScoreColor(
+                                    idea.score
+                                  )}`}
+                                >
+                                  <Star className="h-4 w-4" />
+                                  <span className="font-bold">{idea.score}</span>
+                                </div>
+                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${potential.color}`}>
+                                  <TrendingUp className="h-3 w-3" />
+                                  {potential.label}
+                                </div>
                               </div>
+                              <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className={`absolute left-0 top-0 h-full rounded-full transition-all ${getScoreProgressColor(idea.score)}`}
+                                  style={{ width: `${idea.score}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {idea.hook && (
+                            <div className="bg-muted/50 p-3 rounded-lg">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-xs text-muted-foreground">
+                                  Hook Suggerito:
+                                </p>
+                                <Badge variant="outline" className={`text-xs ${hookTypeInfo.color}`}>
+                                  <HookIcon className="h-3 w-3 mr-1" />
+                                  {hookTypeInfo.label}
+                                </Badge>
+                              </div>
+                              <p className="text-sm font-medium italic">"{idea.hook}"</p>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {idea.contentType && (
+                              <Badge variant="outline">{idea.contentType}</Badge>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteIdeaMutation.mutate(idea.id)}
+                            {idea.targetAudience && (
+                              <Badge variant="secondary">{idea.targetAudience}</Badge>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDevelopPost(idea)}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <FileText className="h-4 w-4 mr-1" />
+                              Sviluppa Post
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <ImageIcon className="h-4 w-4 mr-1" />
+                              Genera Immagine
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Calendar className="h-4 w-4 mr-1" />
+                              Calendario
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              disabled={idea.isSaved}
+                            >
+                              {idea.isSaved ? (
+                                <BookmarkCheck className="h-4 w-4 mr-1" />
+                              ) : (
+                                <Bookmark className="h-4 w-4 mr-1" />
+                              )}
+                              Salva
                             </Button>
                           </div>
-                        </div>
-
-                        {idea.hook && (
-                          <div className="bg-muted/50 p-3 rounded-lg">
-                            <p className="text-xs text-muted-foreground mb-1">
-                              Hook Suggerito:
-                            </p>
-                            <p className="text-sm font-medium italic">"{idea.hook}"</p>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {idea.contentType && (
-                            <Badge variant="outline">{idea.contentType}</Badge>
-                          )}
-                          {idea.targetAudience && (
-                            <Badge variant="secondary">{idea.targetAudience}</Badge>
-                          )}
-                        </div>
-
-                        <div className="flex gap-2 pt-2">
-                          <Button variant="outline" size="sm" className="flex-1">
-                            <FileText className="h-4 w-4 mr-1" />
-                            Usa per Post
-                          </Button>
-                          <Button variant="outline" size="sm" className="flex-1">
-                            <Megaphone className="h-4 w-4 mr-1" />
-                            Usa per Campagna
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 <Card>

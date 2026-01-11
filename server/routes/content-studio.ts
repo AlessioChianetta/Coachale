@@ -1072,6 +1072,7 @@ router.delete("/templates/:id", authenticateToken, requireRole("consultant"), as
 import {
   generateContentIdeas,
   generatePostCopy,
+  generatePostCopyVariations,
   generateCampaignContent,
   generateImagePrompt,
   type ContentType,
@@ -1193,6 +1194,45 @@ router.post("/ai/generate-copy", authenticateToken, requireRole("consultant"), a
     res.status(500).json({
       success: false,
       error: error.message || "Failed to generate post copy",
+    });
+  }
+});
+
+router.post("/ai/generate-copy-variations", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const validatedData = generateCopySchema.parse(req.body);
+    
+    console.log(`🤖 [CONTENT-AI] Generating 3 copy variations for consultant ${consultantId}`);
+    
+    const result = await generatePostCopyVariations({
+      consultantId,
+      idea: validatedData.idea,
+      platform: validatedData.platform as Platform,
+      brandVoice: validatedData.brandVoice,
+      keywords: validatedData.keywords,
+      tone: validatedData.tone,
+      maxLength: validatedData.maxLength,
+    });
+    
+    console.log(`✅ [CONTENT-AI] Generated ${result.variations.length} variations using ${result.modelUsed}`);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors,
+      });
+    }
+    console.error("❌ [CONTENT-AI] Error generating copy variations:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate post copy variations",
     });
   }
 });

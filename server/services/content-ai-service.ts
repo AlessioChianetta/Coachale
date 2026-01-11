@@ -362,6 +362,114 @@ RISPONDI SOLO con un JSON valido:
   }
 }
 
+export interface PostCopyVariation {
+  hook: string;
+  body: string;
+  cta: string;
+  hashtags?: string[];
+}
+
+export interface GeneratePostCopyVariationsResult {
+  variations: PostCopyVariation[];
+  modelUsed: string;
+  tokensUsed?: number;
+}
+
+export async function generatePostCopyVariations(params: GeneratePostCopyParams): Promise<GeneratePostCopyVariationsResult> {
+  const { consultantId, idea, platform, brandVoice, keywords, tone, maxLength } = params;
+  
+  await rateLimitCheck(consultantId);
+  
+  const assets = await getBrandAssets(consultantId);
+  const effectiveBrandVoice = brandVoice || assets?.brandVoice || 'professional';
+  const effectiveTone = tone || assets?.toneOfVoice || 'friendly professional';
+
+  const platformGuidelines: Record<Platform, string> = {
+    instagram: "Usa emoji moderati, hashtag (max 10), formato verticale. Max 2200 caratteri ma primo paragrafo cruciale.",
+    facebook: "Testo più lungo accettato, meno hashtag, incoraggia commenti e condivisioni.",
+    linkedin: "Tono professionale, focus su valore business, usa bullet points, no emoji eccessivi.",
+    tiktok: "Ultra breve, diretto, trendy, usa riferimenti pop culture, hashtag trending.",
+    youtube: "Descrizione SEO-friendly, timestamps, link, CTA per subscribe e like.",
+    twitter: "Max 280 caratteri, conciso, usa thread se necessario, hashtag limitati.",
+  };
+
+  const prompt = `Sei un copywriter esperto di social media italiano. Crea 3 VARIAZIONI DIVERSE del copy per un post.
+
+IDEA DEL CONTENUTO:
+${idea}
+
+PIATTAFORMA: ${platform}
+${platformGuidelines[platform]}
+
+BRAND VOICE: ${effectiveBrandVoice}
+TONO: ${effectiveTone}
+${keywords?.length ? `KEYWORDS DA INCLUDERE: ${keywords.join(', ')}` : ''}
+${maxLength ? `LUNGHEZZA MASSIMA: ${maxLength} caratteri` : ''}
+
+Per ogni variazione genera:
+1. hook: Prima riga che cattura attenzione (usa approcci DIVERSI: curiosità, provocazione, domanda, statistica, etc.)
+2. body: Corpo del testo con il messaggio principale (stili diversi: narrativo, lista, educativo)
+3. cta: Call to action finale (varia tra urgenza, beneficio, curiosità)
+4. hashtags: Array di hashtag suggeriti (se appropriato per la piattaforma)
+
+IMPORTANTE: Le 3 variazioni devono essere SIGNIFICATIVAMENTE diverse tra loro in tono e approccio.
+
+RISPONDI SOLO con un JSON valido:
+{
+  "variations": [
+    {
+      "hook": "...",
+      "body": "...",
+      "cta": "...",
+      "hashtags": ["..."]
+    },
+    {
+      "hook": "...",
+      "body": "...",
+      "cta": "...",
+      "hashtags": ["..."]
+    },
+    {
+      "hook": "...",
+      "body": "...",
+      "cta": "...",
+      "hashtags": ["..."]
+    }
+  ]
+}`;
+
+  try {
+    const { client, metadata } = await getAIProvider(consultantId, "post-copy-variations");
+    const { model } = getModelWithThinking(metadata?.provider);
+    
+    const result = await client.generateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.9,
+        maxOutputTokens: 4096,
+      },
+    });
+    
+    const responseText = result.response.text();
+    const parsed = parseJsonResponse<{ variations: PostCopyVariation[] }>(responseText, {
+      variations: [
+        { hook: "Scopri qualcosa di nuovo oggi!", body: idea, cta: "Scopri di più nel link in bio", hashtags: [] },
+        { hook: "Non crederai a quello che sto per dirti...", body: idea, cta: "Commenta qui sotto!", hashtags: [] },
+        { hook: "Ecco cosa devi sapere:", body: idea, cta: "Salva questo post per dopo!", hashtags: [] },
+      ]
+    });
+    
+    return {
+      variations: parsed.variations.slice(0, 3),
+      modelUsed: model,
+    };
+  } catch (error: any) {
+    console.error("[CONTENT-AI] Error generating post copy variations:", error);
+    throw new Error(`Failed to generate post copy variations: ${error.message}`);
+  }
+}
+
 export async function generateCampaignContent(params: GenerateCampaignParams): Promise<GenerateCampaignResult> {
   const { consultantId, productOrService, targetAudience, objective, budget, duration, uniqueSellingPoints, brandVoice } = params;
   
