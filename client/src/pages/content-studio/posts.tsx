@@ -1076,7 +1076,7 @@ export default function ContentStudioPosts() {
       createPostMutation.mutate({
         ...formData,
         body: concatenatedBody,
-        contentType: "carousel",
+        contentType: "carosello",
         title: formData.title || `Carosello ${carouselSlides.length} slide`,
         ideaId: sourceIdeaId || undefined,
         structuredContent,
@@ -1090,8 +1090,17 @@ export default function ContentStudioPosts() {
         });
         return;
       }
+      
+      let contentType: string = "post";
+      if (selectedOutputType === "video_script") {
+        contentType = "reel";
+      } else if (selectedOutputType === "copy_long") {
+        contentType = "articolo";
+      }
+      
       createPostMutation.mutate({
         ...formData,
+        contentType,
         ideaId: sourceIdeaId || undefined,
         structuredContent,
       });
