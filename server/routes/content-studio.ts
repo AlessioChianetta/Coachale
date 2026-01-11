@@ -1028,4 +1028,217 @@ router.delete("/templates/:id", authenticateToken, requireRole("consultant"), as
   }
 });
 
+// ============================================================
+// AI GENERATION ENDPOINTS
+// ============================================================
+
+import {
+  generateContentIdeas,
+  generatePostCopy,
+  generateCampaignContent,
+  generateImagePrompt,
+  type ContentType,
+  type ContentObjective,
+  type Platform,
+  type ImageStyle,
+} from "../services/content-ai-service";
+
+const generateIdeasSchema = z.object({
+  niche: z.string().min(1, "Niche is required"),
+  targetAudience: z.string().min(1, "Target audience is required"),
+  contentType: z.enum(["post", "carosello", "reel", "video", "story", "articolo"]),
+  objective: z.enum(["awareness", "engagement", "leads", "sales", "education"]),
+  additionalContext: z.string().optional(),
+  count: z.number().min(1).max(10).optional(),
+});
+
+const generateCopySchema = z.object({
+  idea: z.string().min(1, "Idea is required"),
+  platform: z.enum(["instagram", "facebook", "linkedin", "tiktok", "youtube", "twitter"]),
+  brandVoice: z.string().optional(),
+  keywords: z.array(z.string()).optional(),
+  tone: z.string().optional(),
+  maxLength: z.number().optional(),
+});
+
+const generateCampaignSchema = z.object({
+  productOrService: z.string().min(1, "Product or service is required"),
+  targetAudience: z.string().min(1, "Target audience is required"),
+  objective: z.enum(["awareness", "engagement", "leads", "sales", "education"]),
+  budget: z.string().optional(),
+  duration: z.string().optional(),
+  uniqueSellingPoints: z.array(z.string()).optional(),
+  brandVoice: z.string().optional(),
+});
+
+const generateImagePromptSchema = z.object({
+  contentDescription: z.string().min(1, "Content description is required"),
+  brandColors: z.array(z.string()).optional(),
+  style: z.enum(["realistic", "illustration", "minimal", "bold", "professional", "playful"]),
+  platform: z.enum(["instagram", "facebook", "linkedin", "tiktok", "youtube", "twitter"]),
+  aspectRatio: z.enum(["1:1", "4:5", "9:16", "16:9"]).optional(),
+  mood: z.string().optional(),
+  includeText: z.boolean().optional(),
+  textToInclude: z.string().optional(),
+});
+
+router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const validatedData = generateIdeasSchema.parse(req.body);
+    
+    console.log(`🤖 [CONTENT-AI] Generating ideas for consultant ${consultantId}`);
+    
+    const result = await generateContentIdeas({
+      consultantId,
+      niche: validatedData.niche,
+      targetAudience: validatedData.targetAudience,
+      contentType: validatedData.contentType as ContentType,
+      objective: validatedData.objective as ContentObjective,
+      additionalContext: validatedData.additionalContext,
+      count: validatedData.count,
+    });
+    
+    console.log(`✅ [CONTENT-AI] Generated ${result.ideas.length} ideas using ${result.modelUsed}`);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors,
+      });
+    }
+    console.error("❌ [CONTENT-AI] Error generating ideas:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate content ideas",
+    });
+  }
+});
+
+router.post("/ai/generate-copy", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const validatedData = generateCopySchema.parse(req.body);
+    
+    console.log(`🤖 [CONTENT-AI] Generating copy for consultant ${consultantId}`);
+    
+    const result = await generatePostCopy({
+      consultantId,
+      idea: validatedData.idea,
+      platform: validatedData.platform as Platform,
+      brandVoice: validatedData.brandVoice,
+      keywords: validatedData.keywords,
+      tone: validatedData.tone,
+      maxLength: validatedData.maxLength,
+    });
+    
+    console.log(`✅ [CONTENT-AI] Generated copy using ${result.modelUsed}`);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors,
+      });
+    }
+    console.error("❌ [CONTENT-AI] Error generating copy:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate post copy",
+    });
+  }
+});
+
+router.post("/ai/generate-campaign", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const validatedData = generateCampaignSchema.parse(req.body);
+    
+    console.log(`🤖 [CONTENT-AI] Generating campaign for consultant ${consultantId}`);
+    
+    const result = await generateCampaignContent({
+      consultantId,
+      productOrService: validatedData.productOrService,
+      targetAudience: validatedData.targetAudience,
+      objective: validatedData.objective as ContentObjective,
+      budget: validatedData.budget,
+      duration: validatedData.duration,
+      uniqueSellingPoints: validatedData.uniqueSellingPoints,
+      brandVoice: validatedData.brandVoice,
+    });
+    
+    console.log(`✅ [CONTENT-AI] Generated campaign using ${result.modelUsed}`);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors,
+      });
+    }
+    console.error("❌ [CONTENT-AI] Error generating campaign:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate campaign content",
+    });
+  }
+});
+
+router.post("/ai/generate-image-prompt", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const validatedData = generateImagePromptSchema.parse(req.body);
+    
+    console.log(`🤖 [CONTENT-AI] Generating image prompt for consultant ${consultantId}`);
+    
+    const result = await generateImagePrompt({
+      consultantId,
+      contentDescription: validatedData.contentDescription,
+      brandColors: validatedData.brandColors,
+      style: validatedData.style as ImageStyle,
+      platform: validatedData.platform as Platform,
+      aspectRatio: validatedData.aspectRatio,
+      mood: validatedData.mood,
+      includeText: validatedData.includeText,
+      textToInclude: validatedData.textToInclude,
+    });
+    
+    console.log(`✅ [CONTENT-AI] Generated image prompt using ${result.modelUsed}`);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors,
+      });
+    }
+    console.error("❌ [CONTENT-AI] Error generating image prompt:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate image prompt",
+    });
+  }
+});
+
 export default router;
