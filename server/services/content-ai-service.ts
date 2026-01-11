@@ -533,11 +533,55 @@ RISPONDI SOLO con un JSON valido nel formato:
       };
     }
     
-    const enrichedIdeas = parsed.ideas.slice(0, count).map(idea => ({
-      ...idea,
-      mediaType: idea.mediaType || mediaType,
-      copyType: idea.copyType || copyType,
-    }));
+    const enrichedIdeas = parsed.ideas.slice(0, count).map(idea => {
+      const sc = idea.structuredContent as any;
+      
+      let videoScript: string | undefined;
+      let imageDescription: string | undefined;
+      let imageOverlayText: string | undefined;
+      let copyContent: string | undefined;
+      
+      if (sc) {
+        if (sc.type === "video_script") {
+          videoScript = sc.fullScript;
+          if (!videoScript && (sc.hook || sc.problema || sc.soluzione || sc.cta)) {
+            videoScript = [sc.hook, sc.problema, sc.soluzione, sc.cta].filter(Boolean).join("\n\n");
+          }
+        } else if (sc.type === "copy_long") {
+          const copyParts = [sc.hook, sc.chiCosaCome, sc.errore, sc.soluzione, sc.riprovaSociale, sc.cta].filter(Boolean);
+          if (copyParts.length > 0) {
+            copyContent = copyParts.join("\n\n");
+          }
+          imageDescription = sc.imageDescription;
+          imageOverlayText = sc.imageOverlayText;
+        } else if (sc.type === "copy_short") {
+          const copyParts = [sc.hook, sc.body, sc.cta].filter(Boolean);
+          if (copyParts.length > 0) {
+            copyContent = copyParts.join("\n\n");
+          }
+          imageDescription = sc.imageDescription;
+          imageOverlayText = sc.imageOverlayText;
+        } else if (sc.type === "image_copy") {
+          imageDescription = sc.conceptDescription;
+          imageOverlayText = sc.imageText;
+          if (sc.subtitle) {
+            copyContent = sc.subtitle;
+          }
+        }
+      }
+      
+      console.log(`[CONTENT-AI] Enriching idea "${idea.title}": mediaType=${idea.mediaType || mediaType}, structuredType=${sc?.type}, hasVideoScript=${!!videoScript}, hasImageDesc=${!!imageDescription}, hasCopyContent=${!!copyContent}`);
+      
+      return {
+        ...idea,
+        mediaType: idea.mediaType || mediaType,
+        copyType: idea.copyType || copyType,
+        videoScript: idea.videoScript || videoScript,
+        imageDescription: idea.imageDescription || imageDescription,
+        imageOverlayText: idea.imageOverlayText || imageOverlayText,
+        copyContent: idea.copyContent || copyContent,
+      };
+    });
     
     return {
       ideas: enrichedIdeas,
