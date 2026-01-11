@@ -402,7 +402,7 @@ RISPONDI SOLO con un JSON valido nel formato:
 
   try {
     const { client, metadata } = await getAIProvider(consultantId, "content-ideas");
-    const { model } = getModelWithThinking(metadata?.provider);
+    const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
       model,
@@ -505,7 +505,7 @@ RISPONDI SOLO con un JSON valido:
 
   try {
     const { client, metadata } = await getAIProvider(consultantId, "post-copy");
-    const { model } = getModelWithThinking(metadata?.provider);
+    const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
       model,
@@ -924,7 +924,7 @@ export async function generatePostCopyVariations(params: GeneratePostCopyVariati
 
   try {
     const { client, metadata } = await getAIProvider(consultantId, "post-copy-variations");
-    const { model } = getModelWithThinking(metadata?.provider);
+    const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
       model,
@@ -1028,7 +1028,7 @@ RISPONDI SOLO con un JSON valido:
 
   try {
     const { client, metadata } = await getAIProvider(consultantId, "campaign-content");
-    const { model } = getModelWithThinking(metadata?.provider);
+    const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
       model,
@@ -1150,7 +1150,7 @@ RISPONDI SOLO con un JSON valido:
 
   try {
     const { client, metadata } = await getAIProvider(consultantId, "image-prompt");
-    const { model } = getModelWithThinking(metadata?.provider);
+    const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
       model,
