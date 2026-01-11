@@ -28,6 +28,8 @@ export interface StructuredCopyShort {
   body: string;
   cta: string;
   hashtags?: string[];
+  imageDescription?: string;
+  imageOverlayText?: string;
 }
 
 export interface StructuredCopyLong {
@@ -39,6 +41,8 @@ export interface StructuredCopyLong {
   riprovaSociale: string;
   cta: string;
   hashtags?: string[];
+  imageDescription?: string;
+  imageOverlayText?: string;
 }
 
 export interface StructuredVideoScript {
@@ -400,6 +404,10 @@ Colori: ${JSON.stringify(assets.primaryColors || [])}
   const awarenessInfo = AWARENESS_LEVEL_INSTRUCTIONS[awarenessLevel];
 
   const getStructuredContentInstructions = () => {
+    const imageFields = mediaType === "photo" ? `,
+  "imageDescription": "Descrizione visiva dettagliata dell'immagine: soggetto, sfondo, colori, mood, stile fotografico",
+  "imageOverlayText": "Testo breve e d'impatto da sovrapporre all'immagine (max 10 parole)"` : "";
+    
     if (mediaType === "video") {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
@@ -424,7 +432,7 @@ Lo script DEVE essere scritto per essere DETTO A VOCE, frasi corte e incisive.`;
   "soluzione": "La tua soluzione unica al problema - cosa offri e perché funziona",
   "riprovaSociale": "Testimonianze, risultati, numeri che provano il valore",
   "cta": "Call to action finale chiara e urgente",
-  "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
 Ogni blocco deve essere narrativo, emotivo, con emoji moderati. Separa i pensieri all'interno di ogni blocco con ㅤ.`;
     } else {
@@ -435,7 +443,7 @@ Ogni blocco deve essere narrativo, emotivo, con emoji moderati. Separa i pensier
   "hook": "La prima frase d'impatto che cattura attenzione",
   "body": "Il corpo del messaggio - conciso, dritto al punto",
   "cta": "Call to action finale",
-  "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
 Massimo 3-4 blocchi di testo totali. Dritto al punto.`;
     }
@@ -471,8 +479,7 @@ Per ogni idea, fornisci TUTTI questi elementi:
 6. suggestedCta: Call to action suggerita
 7. mediaType: "${mediaType}"
 8. copyType: "${copyType}"
-9. structuredContent: Contenuto strutturato (vedi formato sotto)
-${mediaType === "photo" ? "10. imageDescription: Descrizione visiva dell'immagine\n11. imageOverlayText: Testo da sovrapporre all'immagine" : ""}
+9. structuredContent: Contenuto strutturato COMPLETO (vedi formato sotto) - TUTTI i campi devono essere dentro questo oggetto
 
 ${structuredContentInstructions}
 
@@ -488,7 +495,7 @@ RISPONDI SOLO con un JSON valido nel formato:
       "suggestedCta": "...",
       "mediaType": "${mediaType}",
       "copyType": "${copyType}",
-      "structuredContent": { /* oggetto JSON secondo il formato sopra */ }${mediaType === "photo" ? ',\n      "imageDescription": "...",\n      "imageOverlayText": "..."' : ''}
+      "structuredContent": { /* oggetto JSON COMPLETO secondo il formato sopra */ }
     }
   ]
 }`;

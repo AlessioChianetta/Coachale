@@ -7798,6 +7798,8 @@ export interface StructuredCopyShort {
   body: string;
   cta: string;
   hashtags?: string[];
+  imageDescription?: string;
+  imageOverlayText?: string;
 }
 
 export interface StructuredCopyLong {
@@ -7809,6 +7811,8 @@ export interface StructuredCopyLong {
   riprovaSociale: string;
   cta: string;
   hashtags?: string[];
+  imageDescription?: string;
+  imageOverlayText?: string;
 }
 
 export interface VideoScriptSegment {
