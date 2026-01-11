@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users,
@@ -280,6 +281,10 @@ export default function ProactiveLeadsPage() {
   const [selectedLeadForLogs, setSelectedLeadForLogs] = useState<ProactiveLead | null>(null);
   const [triggeringLeadId, setTriggeringLeadId] = useState<string | null>(null);
 
+  // Bulk selection state
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+
   // Fetch all leads
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
     queryKey: ["/api/proactive-leads"],
@@ -468,6 +473,43 @@ export default function ProactiveLeadsPage() {
       toast({
         title: "✅ Lead eliminato",
         description: "Il lead è stato eliminato con successo.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response = await fetch("/api/proactive-leads/bulk", {
+        method: "DELETE",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete leads");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
+      setIsBulkDeleteDialogOpen(false);
+      setSelectedLeads(new Set());
+      toast({
+        title: "✅ Lead eliminati",
+        description: `${data.deletedCount || selectedLeads.size} lead eliminati con successo.`,
       });
     },
     onError: (error: Error) => {
@@ -699,6 +741,43 @@ export default function ProactiveLeadsPage() {
     if (leadToDelete?.id) {
       deleteMutation.mutate(leadToDelete.id);
     }
+  };
+
+  // Bulk selection helper functions
+  const handleSelectAll = () => {
+    const currentPageIds = paginatedLeads.map((lead) => lead.id);
+    const allSelected = currentPageIds.every((id) => selectedLeads.has(id));
+    
+    if (allSelected) {
+      // Deselect all on current page
+      const newSelected = new Set(selectedLeads);
+      currentPageIds.forEach((id) => newSelected.delete(id));
+      setSelectedLeads(newSelected);
+    } else {
+      // Select all on current page
+      const newSelected = new Set(selectedLeads);
+      currentPageIds.forEach((id) => newSelected.add(id));
+      setSelectedLeads(newSelected);
+    }
+  };
+
+  const handleSelectLead = (id: string) => {
+    const newSelected = new Set(selectedLeads);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedLeads(newSelected);
+  };
+
+  const handleBulkDelete = () => {
+    setIsBulkDeleteDialogOpen(true);
+  };
+
+  const confirmBulkDelete = () => {
+    const ids = Array.from(selectedLeads);
+    bulkDeleteMutation.mutate(ids);
   };
 
   const handleViewLogs = (lead: ProactiveLead) => {
@@ -1462,6 +1541,12 @@ export default function ProactiveLeadsPage() {
                 <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900 dark:to-slate-900 rounded-t-lg">
                   <CardTitle>Lead ({filteredLeads.length})</CardTitle>
                   <div className="flex items-center gap-2">
+                    {selectedLeads.size > 0 && (
+                      <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Elimina {selectedLeads.size} selezionati
+                      </Button>
+                    )}
                     <Label htmlFor="items-per-page" className="text-sm text-gray-600">
                       Elementi per pagina:
                     </Label>
@@ -1488,6 +1573,12 @@ export default function ProactiveLeadsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox 
+                              checked={paginatedLeads.length > 0 && paginatedLeads.every((lead) => selectedLeads.has(lead.id))}
+                              onCheckedChange={handleSelectAll}
+                            />
+                          </TableHead>
                           <TableHead>Nome</TableHead>
                           <TableHead>Telefono</TableHead>
                           <TableHead>Obiettivo</TableHead>
@@ -1504,6 +1595,12 @@ export default function ProactiveLeadsPage() {
                           
                           return (
                             <TableRow key={lead.id} className={`transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 hover:shadow-sm ${hasResponded ? "bg-green-50/50 dark:bg-green-950/20" : ""}`}>
+                              <TableCell className="w-12">
+                                <Checkbox 
+                                  checked={selectedLeads.has(lead.id)}
+                                  onCheckedChange={() => handleSelectLead(lead.id)}
+                                />
+                              </TableCell>
                               <TableCell className="font-medium">
                                 <div className="flex items-center gap-2">
                                   <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${hasResponded ? 'bg-green-100 dark:bg-green-900/40' : 'bg-gray-100 dark:bg-gray-800'}`}>
@@ -2309,6 +2406,35 @@ export default function ProactiveLeadsPage() {
                   </>
                 ) : (
                   "Elimina"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
+              <AlertDialogDescription>
+                Stai per eliminare {selectedLeads.size} lead. Questa azione è irreversibile.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmBulkDelete}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={bulkDeleteMutation.isPending}
+              >
+                {bulkDeleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Eliminazione...
+                  </>
+                ) : (
+                  `Elimina ${selectedLeads.size} Lead`
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

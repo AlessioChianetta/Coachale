@@ -496,6 +496,64 @@ router.delete("/proactive-leads/:id", authenticateToken, requireRole("consultant
   }
 });
 
+// DELETE /api/proactive-leads/bulk - Bulk delete leads
+router.delete("/proactive-leads/bulk", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { ids } = req.body;
+
+    // Validate request body
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Request body must contain a non-empty 'ids' array"
+      });
+    }
+
+    console.log(`🗑️ [PROACTIVE LEADS BULK DELETE] Deleting ${ids.length} leads for consultant ${consultantId}`);
+
+    let deletedCount = 0;
+    const errors: Array<{ id: string; error: string }> = [];
+
+    // Delete each lead, verifying ownership
+    for (const leadId of ids) {
+      try {
+        // Verify lead exists and belongs to consultant
+        const existingLead = await storage.getProactiveLead(leadId, consultantId);
+        if (!existingLead) {
+          errors.push({ id: leadId, error: "Lead not found or access denied" });
+          continue;
+        }
+
+        const deleted = await storage.deleteProactiveLead(leadId, consultantId);
+        if (deleted) {
+          deletedCount++;
+        } else {
+          errors.push({ id: leadId, error: "Failed to delete lead" });
+        }
+      } catch (err: any) {
+        errors.push({ id: leadId, error: err.message || "Unknown error" });
+      }
+    }
+
+    console.log(`✅ [PROACTIVE LEADS BULK DELETE] Deleted ${deletedCount}/${ids.length} leads. Errors: ${errors.length}`);
+
+    res.json({
+      success: true,
+      deletedCount,
+      totalRequested: ids.length,
+      errors: errors.length > 0 ? errors : undefined,
+      message: `${deletedCount} lead eliminati con successo`
+    });
+  } catch (error: any) {
+    console.error("❌ [PROACTIVE LEADS BULK DELETE] Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to delete leads"
+    });
+  }
+});
+
 // PATCH /api/proactive-leads/:id/status - Update only status field
 router.patch("/proactive-leads/:id/status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
