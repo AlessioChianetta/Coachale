@@ -7780,6 +7780,7 @@ export const contentIdeas = pgTable("content_ideas", {
   imageDescription: text("image_description"),
   imageOverlayText: text("image_overlay_text"),
   copyContent: text("copy_content"),
+  awarenessLevel: varchar("awareness_level", { length: 50 }).default("problem_aware").$type<"unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware">(),
   status: varchar("status", { length: 50 }).default("draft").$type<"draft" | "approved" | "used" | "archived">(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -7788,6 +7789,7 @@ export const contentIdeas = pgTable("content_ideas", {
   statusIdx: index("idx_content_ideas_status").on(table.status),
 }));
 
+export type AwarenessLevel = "unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware";
 export type ContentIdea = typeof contentIdeas.$inferSelect;
 export type InsertContentIdea = typeof contentIdeas.$inferInsert;
 export const insertContentIdeaSchema = createInsertSchema(contentIdeas).omit({ id: true, createdAt: true, updatedAt: true });

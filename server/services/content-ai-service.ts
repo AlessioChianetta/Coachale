@@ -8,6 +8,8 @@ export type ContentObjective = "awareness" | "engagement" | "leads" | "sales" | 
 export type Platform = "instagram" | "facebook" | "linkedin" | "tiktok" | "youtube" | "twitter";
 export type ImageStyle = "realistic" | "illustration" | "minimal" | "bold" | "professional" | "playful";
 
+export type AwarenessLevel = "unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware";
+
 export interface GenerateIdeasParams {
   consultantId: string;
   niche: string;
@@ -17,6 +19,7 @@ export interface GenerateIdeasParams {
   count?: number;
   mediaType?: "video" | "photo";
   copyType?: "short" | "long";
+  awarenessLevel?: AwarenessLevel;
 }
 
 export interface ContentIdea {
