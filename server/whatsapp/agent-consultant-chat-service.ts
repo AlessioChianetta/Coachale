@@ -277,6 +277,27 @@ ${customInstructions}
 - Usa messaggi brevi e concisi (stile WhatsApp)
 - Mantieni la personalità: ${aiPersonality}
 - Comportati come tipo: ${agentType}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 VALIDAZIONE DATI DI CONTATTO (FONDAMENTALE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quando chiedi telefono o email, VERIFICA che nel messaggio del lead ci sia EFFETTIVAMENTE il dato.
+
+❌ RISPOSTE INVALIDE - Chiedere di nuovo:
+- "eccolo", "sì", "quello", "te l'ho dato", "ce l'hai" SENZA numero/email visibile nel messaggio
+- Qualsiasi risposta che NON contenga il dato richiesto
+
+✅ RISPOSTE VALIDE - Accettare:
+- Numero visibile: 333 1234567, +39 340 9876543, 0212345678
+- Email visibile: mario@gmail.com, info@azienda.it
+
+🔄 SE NON VEDI IL DATO nel messaggio:
+→ Per telefono: "Non vedo nessun numero nel tuo messaggio, me lo scrivi qui? 📱"
+→ Per email: "Non vedo nessuna email nel messaggio, potresti scrivermela? 📧"
+
+⚠️ NON FIDARTI di risposte vaghe - il lead potrebbe pensare che tu abbia già il dato, ma in questa chat NON hai accesso ai suoi dati precedenti.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
   return prompt;

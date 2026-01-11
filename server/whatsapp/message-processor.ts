@@ -4359,6 +4359,29 @@ Se il lead insiste dicendo "dovresti averla", "te l'ho già data", "controllala"
     console.log(`   - Disqualification: ${consultantConfig.disqualificationEnabled !== false ? 'ENABLED' : 'DISABLED'}`);
     console.log(`   - Upselling: ${consultantConfig.upsellingEnabled === true ? 'ENABLED' : 'DISABLED'} (no block yet)`);
 
+    // Add universal contact data validation block (applies to ALL conversations)
+    const contactValidationBlock = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 VALIDAZIONE DATI DI CONTATTO (FONDAMENTALE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quando chiedi telefono o email, VERIFICA che nel messaggio del lead ci sia EFFETTIVAMENTE il dato.
+
+❌ RISPOSTE INVALIDE - Chiedere di nuovo:
+- "eccolo", "sì", "quello", "te l'ho dato", "ce l'hai" SENZA numero/email visibile nel messaggio
+- Qualsiasi risposta che NON contenga il dato richiesto
+
+✅ RISPOSTE VALIDE - Accettare:
+- Numero visibile: 333 1234567, +39 340 9876543, 0212345678
+- Email visibile: mario@gmail.com, info@azienda.it
+
+🔄 SE NON VEDI IL DATO nel messaggio:
+→ Per telefono: "Non vedo nessun numero nel tuo messaggio, me lo scrivi qui? 📱"
+→ Per email: "Non vedo nessuna email nel messaggio, potresti scrivermela? 📧"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+    finalPrompt += '\n\n' + contactValidationBlock;
+
     // Log only first 100 chars of prompt (reduced verbosity)
     console.log(`📤 [SYSTEM PROMPT] Ready (${finalPrompt.length} chars): "${finalPrompt.substring(0, 100).replace(/\n/g, ' ')}..."`);
 
