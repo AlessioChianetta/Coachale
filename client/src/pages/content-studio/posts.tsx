@@ -98,15 +98,47 @@ interface Post {
   };
 }
 
-interface CopyVariation {
+type CopyOutputType = "copy_short" | "copy_long" | "video_script" | "image_copy";
+
+interface VideoScriptSegment {
+  timing: string;
+  visual: string;
+  voiceover: string;
+}
+
+interface ShortCopyVariation {
+  outputType: "copy_short";
   hook: string;
-  target?: string;
-  problem?: string;
-  solution?: string;
-  proof?: string;
   cta: string;
   hashtags?: string[];
 }
+
+interface LongCopyVariation {
+  outputType: "copy_long";
+  hook: string;
+  chiCosaCome: string;
+  errore: string;
+  soluzione: string;
+  riprovaSociale: string;
+  cta: string;
+  hashtags?: string[];
+}
+
+interface VideoScriptVariation {
+  outputType: "video_script";
+  segments: VideoScriptSegment[];
+  hashtags?: string[];
+}
+
+interface ImageCopyVariation {
+  outputType: "image_copy";
+  imageText: string;
+  subtitle: string;
+  conceptDescription: string;
+  hashtags?: string[];
+}
+
+type CopyVariation = ShortCopyVariation | LongCopyVariation | VideoScriptVariation | ImageCopyVariation;
 
 interface CarouselSlide {
   title: string;
@@ -476,6 +508,7 @@ export default function ContentStudioPosts() {
   const [copyVariations, setCopyVariations] = useState<CopyVariation[]>([]);
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
   const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
+  const [selectedOutputType, setSelectedOutputType] = useState<CopyOutputType>("copy_long");
 
   const [isCarouselMode, setIsCarouselMode] = useState(false);
   const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>([
@@ -643,6 +676,7 @@ export default function ContentStudioPosts() {
         body: JSON.stringify({
           idea: ideaForCopy,
           platform: formData.platform,
+          outputType: selectedOutputType,
         }),
       });
 
@@ -664,7 +698,7 @@ export default function ContentStudioPosts() {
 
       toast({
         title: "Variazioni generate!",
-        description: `${variations.length} variazioni create con successo`,
+        description: `${variations.length} variazioni ${getOutputTypeLabel(selectedOutputType)} create con successo`,
       });
     } catch (error: any) {
       toast({
@@ -677,20 +711,55 @@ export default function ContentStudioPosts() {
     }
   };
 
+  const getOutputTypeLabel = (type: CopyOutputType): string => {
+    switch (type) {
+      case "copy_short": return "Copy Corto";
+      case "copy_long": return "Copy Lungo";
+      case "video_script": return "Script Video";
+      case "image_copy": return "Copy Immagine";
+      default: return "Copy";
+    }
+  };
+
   const handleSelectVariation = (variation: CopyVariation) => {
-    const bodyParts = [
-      variation.target,
-      variation.problem,
-      variation.solution,
-      variation.proof,
-    ].filter(Boolean);
-    const combinedBody = bodyParts.join("\n\n");
+    let hook = "";
+    let body = "";
+    let cta = "";
+    
+    switch (variation.outputType) {
+      case "copy_short":
+        hook = variation.hook;
+        cta = variation.cta;
+        break;
+      case "copy_long":
+        hook = variation.hook;
+        body = [
+          variation.chiCosaCome,
+          `❌ ERRORE: ${variation.errore}`,
+          `✅ SOLUZIONE: ${variation.soluzione}`,
+          `📊 ${variation.riprovaSociale}`,
+        ].filter(Boolean).join("\n\n");
+        cta = variation.cta;
+        break;
+      case "video_script":
+        hook = variation.segments?.[0]?.voiceover || "";
+        body = variation.segments?.map(s => 
+          `[${s.timing}]\n🎬 ${s.visual}\n🎤 ${s.voiceover}`
+        ).join("\n\n") || "";
+        cta = variation.segments?.[variation.segments.length - 1]?.voiceover || "";
+        break;
+      case "image_copy":
+        hook = variation.imageText;
+        body = `📸 Concept: ${variation.conceptDescription}`;
+        cta = variation.subtitle;
+        break;
+    }
     
     setFormData((prev) => ({
       ...prev,
-      hook: variation.hook || prev.hook,
-      body: combinedBody || prev.body,
-      cta: variation.cta || prev.cta,
+      hook: hook || prev.hook,
+      body: body || prev.body,
+      cta: cta || prev.cta,
     }));
     if (variation.hashtags?.length) {
       setSuggestedHashtags(variation.hashtags);
@@ -698,7 +767,7 @@ export default function ContentStudioPosts() {
     setShowVariationsDialog(false);
     toast({
       title: "Variazione selezionata",
-      description: "Il copy è stato applicato al form (6 step framework)",
+      description: `${getOutputTypeLabel(variation.outputType)} applicato al form`,
     });
   };
 
@@ -1000,13 +1069,14 @@ export default function ContentStudioPosts() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label>Genera con AI {isCarouselMode ? "(contenuto per slide)" : "(3 variazioni)"}</Label>
                       <div className="flex gap-2">
                         <Input
                           placeholder="Descrivi l'idea del post..."
                           value={ideaForCopy}
                           onChange={(e) => setIdeaForCopy(e.target.value)}
+                          className="flex-1"
                         />
                         <Button
                           variant="outline"
@@ -1028,6 +1098,23 @@ export default function ContentStudioPosts() {
                             <Layers className="h-4 w-4" />
                           </Button>
                         )}
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo output:</Label>
+                        <Select
+                          value={selectedOutputType}
+                          onValueChange={(value) => setSelectedOutputType(value as CopyOutputType)}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Seleziona tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="copy_short">📝 Copy Corto (Caption)</SelectItem>
+                            <SelectItem value="copy_long">📄 Copy Lungo (Inserzione 6 step)</SelectItem>
+                            <SelectItem value="video_script">🎬 Script Video (con timing)</SelectItem>
+                            <SelectItem value="image_copy">🖼️ Copy Immagine</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       {isCarouselMode && (
                         <p className="text-xs text-muted-foreground">
@@ -1393,7 +1480,7 @@ export default function ContentStudioPosts() {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-yellow-500" />
-                    Scegli una Variazione
+                    Scegli una Variazione - {getOutputTypeLabel(selectedOutputType)}
                   </DialogTitle>
                 </DialogHeader>
                 <Tabs defaultValue="0" className="mt-4">
@@ -1406,30 +1493,96 @@ export default function ContentStudioPosts() {
                     <TabsContent key={idx} value={String(idx)} className="space-y-4">
                       <Card>
                         <CardContent className="p-4 space-y-3">
-                          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg">
-                            <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">1. HOOK</Label>
-                            <p className="text-sm font-medium mt-1">{variation.hook}</p>
-                          </div>
-                          <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
-                            <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold">2. TARGET (Aiuto chi a fare cosa)</Label>
-                            <p className="text-sm mt-1">{variation.target || "Non specificato"}</p>
-                          </div>
-                          <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg">
-                            <Label className="text-xs text-red-600 dark:text-red-400 font-semibold">3. PROBLEMA</Label>
-                            <p className="text-sm mt-1">{variation.problem || "Non specificato"}</p>
-                          </div>
-                          <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg">
-                            <Label className="text-xs text-green-600 dark:text-green-400 font-semibold">4. SOLUZIONE</Label>
-                            <p className="text-sm mt-1">{variation.solution || "Non specificato"}</p>
-                          </div>
-                          <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg">
-                            <Label className="text-xs text-amber-600 dark:text-amber-400 font-semibold">5. RIPROVA (Proof)</Label>
-                            <p className="text-sm mt-1">{variation.proof || "Non specificato"}</p>
-                          </div>
-                          <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg">
-                            <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">6. CTA</Label>
-                            <p className="text-sm font-medium mt-1">{variation.cta}</p>
-                          </div>
+                          {variation.outputType === "copy_short" && (
+                            <>
+                              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">📝 HOOK</Label>
+                                <p className="text-sm font-medium mt-1">{variation.hook}</p>
+                              </div>
+                              <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">🎯 CTA</Label>
+                                <p className="text-sm font-medium mt-1">{variation.cta}</p>
+                              </div>
+                            </>
+                          )}
+                          
+                          {variation.outputType === "copy_long" && (
+                            <>
+                              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">1. 🎣 HOOK</Label>
+                                <p className="text-sm font-medium mt-1">{variation.hook}</p>
+                              </div>
+                              <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold">2. 👤 CHI-COSA-COME</Label>
+                                <p className="text-sm mt-1">{variation.chiCosaCome}</p>
+                              </div>
+                              <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-red-600 dark:text-red-400 font-semibold">3. ❌ ERRORE</Label>
+                                <p className="text-sm mt-1">{variation.errore}</p>
+                              </div>
+                              <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-green-600 dark:text-green-400 font-semibold">4. ✅ SOLUZIONE</Label>
+                                <p className="text-sm mt-1">{variation.soluzione}</p>
+                              </div>
+                              <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-amber-600 dark:text-amber-400 font-semibold">5. 📊 RIPROVA SOCIALE</Label>
+                                <p className="text-sm mt-1">{variation.riprovaSociale}</p>
+                              </div>
+                              <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">6. 🎯 CTA</Label>
+                                <p className="text-sm font-medium mt-1">{variation.cta}</p>
+                              </div>
+                            </>
+                          )}
+                          
+                          {variation.outputType === "video_script" && (
+                            <>
+                              {variation.segments?.map((segment, segIdx) => (
+                                <div key={segIdx} className={`p-3 rounded-lg ${
+                                  segIdx === 0 ? "bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20" :
+                                  segIdx === 1 ? "bg-blue-50 dark:bg-blue-950/20" :
+                                  segIdx === 2 ? "bg-red-50 dark:bg-red-950/20" :
+                                  segIdx === 3 ? "bg-green-50 dark:bg-green-950/20" :
+                                  "bg-indigo-50 dark:bg-indigo-950/20"
+                                }`}>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Badge variant="outline" className="text-xs font-mono">{segment.timing}</Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {segIdx === 0 ? "HOOK" : segIdx === 1 ? "CHI-COSA-COME" : segIdx === 2 ? "ERRORE" : segIdx === 3 ? "SOLUZIONE + RIPROVA" : "CTA"}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-xs font-semibold text-muted-foreground">🎬 Visual:</span>
+                                      <p className="text-xs text-muted-foreground italic">{segment.visual}</p>
+                                    </div>
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-xs font-semibold">🎤 Voiceover:</span>
+                                      <p className="text-sm font-medium">{segment.voiceover}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          
+                          {variation.outputType === "image_copy" && (
+                            <>
+                              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-4 rounded-lg text-center">
+                                <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">🖼️ TESTO SULL'IMMAGINE</Label>
+                                <p className="text-lg font-bold mt-2 leading-tight">{variation.imageText}</p>
+                              </div>
+                              <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold">📝 SOTTOTITOLO / CAPTION</Label>
+                                <p className="text-sm mt-1">{variation.subtitle}</p>
+                              </div>
+                              <div className="bg-gray-50 dark:bg-gray-950/20 p-3 rounded-lg">
+                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold">🎨 CONCEPT VISIVO</Label>
+                                <p className="text-sm mt-1 italic text-muted-foreground">{variation.conceptDescription}</p>
+                              </div>
+                            </>
+                          )}
+                          
                           {variation.hashtags && variation.hashtags.length > 0 && (
                             <div className="flex flex-wrap gap-1 pt-2">
                               {variation.hashtags.map((tag, tagIdx) => (

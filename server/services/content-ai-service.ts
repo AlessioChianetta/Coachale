@@ -373,24 +373,364 @@ RISPONDI SOLO con un JSON valido:
   }
 }
 
-export interface PostCopyVariation {
+export type CopyOutputType = "copy_short" | "copy_long" | "video_script" | "image_copy";
+
+export interface VideoScriptSegment {
+  timing: string;
+  visual: string;
+  voiceover: string;
+}
+
+export interface ShortCopyVariation {
+  outputType: "copy_short";
   hook: string;
-  target: string;
-  problem: string;
-  solution: string;
-  proof: string;
   cta: string;
   hashtags?: string[];
 }
 
+export interface LongCopyVariation {
+  outputType: "copy_long";
+  hook: string;
+  chiCosaCome: string;
+  errore: string;
+  soluzione: string;
+  riprovaSociale: string;
+  cta: string;
+  hashtags?: string[];
+}
+
+export interface VideoScriptVariation {
+  outputType: "video_script";
+  segments: VideoScriptSegment[];
+  hashtags?: string[];
+}
+
+export interface ImageCopyVariation {
+  outputType: "image_copy";
+  imageText: string;
+  subtitle: string;
+  conceptDescription: string;
+  hashtags?: string[];
+}
+
+export type PostCopyVariation = ShortCopyVariation | LongCopyVariation | VideoScriptVariation | ImageCopyVariation;
+
+export interface GeneratePostCopyVariationsParams extends GeneratePostCopyParams {
+  outputType?: CopyOutputType;
+}
+
 export interface GeneratePostCopyVariationsResult {
   variations: PostCopyVariation[];
+  outputType: CopyOutputType;
   modelUsed: string;
   tokensUsed?: number;
 }
 
-export async function generatePostCopyVariations(params: GeneratePostCopyParams): Promise<GeneratePostCopyVariationsResult> {
-  const { consultantId, idea, platform, brandVoice, keywords, tone, maxLength } = params;
+function getPromptForOutputType(
+  outputType: CopyOutputType,
+  idea: string,
+  platform: Platform,
+  platformGuidelines: Record<Platform, string>,
+  effectiveBrandVoice: string,
+  effectiveTone: string,
+  keywords?: string[],
+  maxLength?: number
+): string {
+  const baseContext = `Sei un copywriter esperto di social media italiano.
+
+IDEA DEL CONTENUTO:
+${idea}
+
+PIATTAFORMA: ${platform}
+${platformGuidelines[platform]}
+
+BRAND VOICE: ${effectiveBrandVoice}
+TONO: ${effectiveTone}
+${keywords?.length ? `KEYWORDS DA INCLUDERE: ${keywords.join(', ')}` : ''}
+${maxLength ? `LUNGHEZZA MASSIMA: ${maxLength} caratteri` : ''}`;
+
+  switch (outputType) {
+    case "copy_short":
+      return `${baseContext}
+
+Genera 3 VARIAZIONI di CAPTION BREVI per social media. Ogni variazione deve avere solo:
+- hook: Una frase d'impatto breve e incisiva (domanda provocatoria o affermazione forte)
+- cta: Chiamata all'azione chiara e diretta
+
+Le variazioni devono essere significativamente diverse tra loro.
+
+RISPONDI SOLO con un JSON valido:
+{
+  "variations": [
+    { "hook": "...", "cta": "...", "hashtags": ["..."] },
+    { "hook": "...", "cta": "...", "hashtags": ["..."] },
+    { "hook": "...", "cta": "...", "hashtags": ["..."] }
+  ]
+}`;
+
+    case "copy_long":
+      return `${baseContext}
+
+Genera 3 VARIAZIONI di INSERZIONI COMPLETE usando il FRAMEWORK PERSUASIVO a 6 STEP:
+
+1. HOOK - Domanda provocatoria o frase d'impatto che cattura subito l'attenzione
+2. CHI-COSA-COME - Presentazione personale con autorità: "Ciao, sono [Nome]. Se frequenti [contesto], ci siamo già visti a [evento]. Aiuto [chi] a [cosa] attraverso [metodo unico]"
+3. ERRORE - L'errore SPECIFICO che fanno le persone: "L'errore più grande? Considerare X come Y..." (sii specifico e concreto)
+4. SOLUZIONE - Il metodo unico con nome proprio: "Il mio metodo [Nome] non è [cosa comune], è [cosa unica che lo differenzia]"
+5. RIPROVA SOCIALE - Storie concrete con nomi, eventi specifici, risultati misurabili (anche struttura suggerita)
+6. CTA - Azione specifica con urgenza chiara
+
+IMPORTANTE: Le 3 variazioni devono essere SIGNIFICATIVAMENTE diverse tra loro in tono e approccio.
+
+RISPONDI SOLO con un JSON valido:
+{
+  "variations": [
+    {
+      "hook": "...",
+      "chiCosaCome": "Ciao, sono [Nome]. Aiuto [chi] a [cosa] attraverso [metodo]...",
+      "errore": "L'errore più grande? ...",
+      "soluzione": "Il mio metodo [Nome] non è..., è...",
+      "riprovaSociale": "Solo la settimana scorsa, [Nome] ha...",
+      "cta": "...",
+      "hashtags": ["..."]
+    },
+    { ... },
+    { ... }
+  ]
+}`;
+
+    case "video_script":
+      return `${baseContext}
+
+Genera 3 VARIAZIONI di SCRIPT VIDEO con timing precisi. Ogni variazione deve seguire questa struttura temporale:
+
+- 00-05s: HOOK - Frase d'impatto che ferma lo scroll
+- 05-20s: CHI-COSA-COME - Presentazione con autorità
+- 20-35s: ERRORE - L'errore specifico che fa il target
+- 35-50s: SOLUZIONE + RIPROVA SOCIALE - Metodo unico + storie concrete
+- 50-60s: CTA - Azione urgente finale
+
+Per ogni segmento temporale, fornisci:
+- visual: Descrizione dell'inquadratura/cosa si vede
+- voiceover: Testo da pronunciare/sottotitolare
+
+RISPONDI SOLO con un JSON valido:
+{
+  "variations": [
+    {
+      "segments": [
+        { "timing": "00-05s", "visual": "Close-up sul volto, sguardo diretto in camera", "voiceover": "[HOOK qui]" },
+        { "timing": "05-20s", "visual": "Piano medio, ambiente professionale", "voiceover": "Ciao, sono [Nome]..." },
+        { "timing": "20-35s", "visual": "B-roll o gesture che enfatizza il problema", "voiceover": "L'errore più grande?..." },
+        { "timing": "35-50s", "visual": "Mostra risultati, testimonial, o dimostrazione", "voiceover": "Il mio metodo..." },
+        { "timing": "50-60s", "visual": "Call to action visiva, testo su schermo", "voiceover": "[CTA urgente]" }
+      ],
+      "hashtags": ["..."]
+    },
+    { ... },
+    { ... }
+  ]
+}`;
+
+    case "image_copy":
+      return `${baseContext}
+
+Genera 3 VARIAZIONI di COPY PER IMMAGINE. Ogni variazione deve avere:
+- imageText: Testo BREVE da mettere SULL'immagine (massimo 10 parole, deve essere leggibile e d'impatto)
+- subtitle: Sottotitolo/caption da mettere SOTTO l'immagine (più lungo, può includere dettagli)
+- conceptDescription: Descrizione del concept visivo dell'immagine (cosa dovrebbe mostrare l'immagine per accompagnare il testo)
+
+Il testo sull'immagine deve essere d'impatto immediato, il sottotitolo può espandere il messaggio.
+
+RISPONDI SOLO con un JSON valido:
+{
+  "variations": [
+    {
+      "imageText": "Massimo 10 parole d'impatto",
+      "subtitle": "Sottotitolo più lungo che espande il messaggio...",
+      "conceptDescription": "Immagine che mostra...",
+      "hashtags": ["..."]
+    },
+    { ... },
+    { ... }
+  ]
+}`;
+
+    default:
+      return getPromptForOutputType("copy_long", idea, platform, platformGuidelines, effectiveBrandVoice, effectiveTone, keywords, maxLength);
+  }
+}
+
+function getDefaultVariationsForType(outputType: CopyOutputType): PostCopyVariation[] {
+  switch (outputType) {
+    case "copy_short":
+      return [
+        { outputType: "copy_short", hook: "Stai facendo questo errore?", cta: "Scopri di più nel link in bio", hashtags: [] },
+        { outputType: "copy_short", hook: "Ecco cosa nessuno ti dice...", cta: "Commenta 'INFO' per saperne di più", hashtags: [] },
+        { outputType: "copy_short", hook: "3 secondi per cambiare tutto.", cta: "Salva questo post!", hashtags: [] },
+      ];
+    case "copy_long":
+      return [
+        { 
+          outputType: "copy_long",
+          hook: "Stai perdendo clienti ogni giorno senza saperlo?",
+          chiCosaCome: "Ciao, sono [Nome]. Aiuto professionisti a trasformare il loro business attraverso strategie di marketing personalizzate.",
+          errore: "L'errore più grande? Pensare che basti 'essere sui social' per avere risultati.",
+          soluzione: "Il mio Metodo 3P non è il solito corso, è un sistema pratico testato su oltre 100 aziende.",
+          riprovaSociale: "Solo il mese scorso, Marco ha triplicato i suoi contatti in 30 giorni applicando questo metodo.",
+          cta: "Commenta 'VOGLIO' per ricevere la guida gratuita!",
+          hashtags: []
+        },
+        { 
+          outputType: "copy_long",
+          hook: "Perché il 90% dei business fallisce online?",
+          chiCosaCome: "Ciao, sono [Nome]. Se frequenti eventi di settore, probabilmente ci siamo già visti. Aiuto imprenditori a scalare online.",
+          errore: "L'errore più grande? Copiare quello che fanno gli altri senza una strategia.",
+          soluzione: "Il mio Framework Unico parte dai tuoi punti di forza, non dalle mode del momento.",
+          riprovaSociale: "Laura ha raddoppiato il fatturato in 6 mesi partendo da zero follower.",
+          cta: "Prenota una call gratuita - link in bio!",
+          hashtags: []
+        },
+        { 
+          outputType: "copy_long",
+          hook: "Sai qual è la differenza tra chi cresce e chi resta fermo?",
+          chiCosaCome: "Ciao, sono [Nome]. Aiuto freelancer e consulenti a costruire un business sostenibile.",
+          errore: "L'errore più grande? Lavorare 12 ore al giorno pensando che sia l'unico modo.",
+          soluzione: "Il mio Sistema Libertà ti insegna a lavorare meno ma meglio, automatizzando ciò che ti ruba tempo.",
+          riprovaSociale: "Giorgio ora lavora 5 ore al giorno e guadagna il doppio. Vero story.",
+          cta: "Scrivi 'LIBERTÀ' nei commenti per il primo step gratuito!",
+          hashtags: []
+        },
+      ];
+    case "video_script":
+      return [
+        {
+          outputType: "video_script",
+          segments: [
+            { timing: "00-05s", visual: "Close-up, sguardo in camera", voiceover: "Stai perdendo soldi ogni giorno?" },
+            { timing: "05-20s", visual: "Piano medio, ambiente professionale", voiceover: "Ciao, sono [Nome]. Aiuto professionisti a crescere online." },
+            { timing: "20-35s", visual: "B-roll con grafiche", voiceover: "L'errore più grande? Pensare di non aver bisogno di una strategia." },
+            { timing: "35-50s", visual: "Mostra risultati", voiceover: "Il mio metodo ha aiutato 100+ persone a triplicare i risultati." },
+            { timing: "50-60s", visual: "CTA su schermo", voiceover: "Link in bio per iniziare gratis!" },
+          ],
+          hashtags: []
+        },
+        {
+          outputType: "video_script",
+          segments: [
+            { timing: "00-05s", visual: "Hook visivo forte", voiceover: "Fermati. Questo ti riguarda." },
+            { timing: "05-20s", visual: "Presentazione personale", voiceover: "Sono [Nome] e quello che sto per dirti cambierà tutto." },
+            { timing: "20-35s", visual: "Problema visualizzato", voiceover: "Stai facendo questo errore senza saperlo..." },
+            { timing: "35-50s", visual: "Soluzione in azione", voiceover: "Ecco la soluzione che ha funzionato per tutti." },
+            { timing: "50-60s", visual: "Azione finale", voiceover: "Commenta ORA per sapere come!" },
+          ],
+          hashtags: []
+        },
+        {
+          outputType: "video_script",
+          segments: [
+            { timing: "00-05s", visual: "Inquadratura dinamica", voiceover: "3 secondi per cambiare la tua vita." },
+            { timing: "05-20s", visual: "Chi sono io", voiceover: "Ciao, sono [Nome]. Aiuto [chi] a [cosa]." },
+            { timing: "20-35s", visual: "Il problema comune", voiceover: "L'errore che tutti fanno? Questo." },
+            { timing: "35-50s", visual: "La mia soluzione", voiceover: "Il mio metodo è diverso perché..." },
+            { timing: "50-60s", visual: "CTA visiva", voiceover: "Segui per altri consigli come questo!" },
+          ],
+          hashtags: []
+        },
+      ];
+    case "image_copy":
+      return [
+        {
+          outputType: "image_copy",
+          imageText: "Smetti di fare questo errore",
+          subtitle: "Il 90% delle persone sbaglia questo passaggio fondamentale. Scopri come evitarlo e ottenere risultati 3x più velocemente.",
+          conceptDescription: "Immagine con sfondo pulito, testo grande e leggibile, colori contrastanti che catturano l'attenzione",
+          hashtags: []
+        },
+        {
+          outputType: "image_copy",
+          imageText: "La verità che nessuno ti dice",
+          subtitle: "Dopo anni di esperienza ho capito una cosa: il successo non è questione di fortuna, è questione di strategia.",
+          conceptDescription: "Ritratto professionale o scena di lavoro, atmosfera autentica e credibile",
+          hashtags: []
+        },
+        {
+          outputType: "image_copy",
+          imageText: "Risultati in 30 giorni",
+          subtitle: "Non prometto magie, ma un metodo testato su oltre 100 persone. Funziona. Punto.",
+          conceptDescription: "Grafica con numeri/statistiche, visual che comunica crescita e successo",
+          hashtags: []
+        },
+      ];
+    default:
+      return getDefaultVariationsForType("copy_long");
+  }
+}
+
+function parseVariationsResponse(responseText: string, outputType: CopyOutputType): PostCopyVariation[] {
+  const fallback = getDefaultVariationsForType(outputType);
+  
+  try {
+    const cleanedText = responseText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    const parsed = JSON.parse(cleanedText);
+    
+    if (!parsed.variations || !Array.isArray(parsed.variations)) {
+      return fallback;
+    }
+    
+    return parsed.variations.slice(0, 3).map((v: any) => {
+      switch (outputType) {
+        case "copy_short":
+          return {
+            outputType: "copy_short",
+            hook: v.hook || "",
+            cta: v.cta || "",
+            hashtags: v.hashtags || [],
+          } as ShortCopyVariation;
+        case "copy_long":
+          return {
+            outputType: "copy_long",
+            hook: v.hook || "",
+            chiCosaCome: v.chiCosaCome || v.target || "",
+            errore: v.errore || v.problem || "",
+            soluzione: v.soluzione || v.solution || "",
+            riprovaSociale: v.riprovaSociale || v.proof || "",
+            cta: v.cta || "",
+            hashtags: v.hashtags || [],
+          } as LongCopyVariation;
+        case "video_script":
+          return {
+            outputType: "video_script",
+            segments: (v.segments || []).map((s: any) => ({
+              timing: s.timing || "",
+              visual: s.visual || "",
+              voiceover: s.voiceover || "",
+            })),
+            hashtags: v.hashtags || [],
+          } as VideoScriptVariation;
+        case "image_copy":
+          return {
+            outputType: "image_copy",
+            imageText: v.imageText || "",
+            subtitle: v.subtitle || "",
+            conceptDescription: v.conceptDescription || "",
+            hashtags: v.hashtags || [],
+          } as ImageCopyVariation;
+        default:
+          return v;
+      }
+    });
+  } catch (error) {
+    console.error("[CONTENT-AI] Failed to parse variations response:", error);
+    return fallback;
+  }
+}
+
+export async function generatePostCopyVariations(params: GeneratePostCopyVariationsParams): Promise<GeneratePostCopyVariationsResult> {
+  const { consultantId, idea, platform, brandVoice, keywords, tone, maxLength, outputType = "copy_long" } = params;
   
   await rateLimitCheck(consultantId);
   
@@ -407,61 +747,16 @@ export async function generatePostCopyVariations(params: GeneratePostCopyParams)
     twitter: "Max 280 caratteri, conciso, usa thread se necessario, hashtag limitati.",
   };
 
-  const prompt = `Sei un copywriter esperto di social media italiano. Crea 3 VARIAZIONI DIVERSE del copy per un post usando il FRAMEWORK PERSUASIVO a 6 step.
-
-IDEA DEL CONTENUTO:
-${idea}
-
-PIATTAFORMA: ${platform}
-${platformGuidelines[platform]}
-
-BRAND VOICE: ${effectiveBrandVoice}
-TONO: ${effectiveTone}
-${keywords?.length ? `KEYWORDS DA INCLUDERE: ${keywords.join(', ')}` : ''}
-${maxLength ? `LUNGHEZZA MASSIMA: ${maxLength} caratteri` : ''}
-
-FRAMEWORK PERSUASIVO (6 STEP) per ogni variazione:
-1. HOOK - Prima riga che cattura attenzione (usa approcci DIVERSI: curiosità, provocazione, domanda, statistica)
-2. TARGET - "Aiuto [CHI] a [FARE COSA] [COME]" - Identifica il pubblico e il beneficio
-3. PROBLEM - Il problema/pain point che il target sta vivendo
-4. SOLUTION - La tua soluzione/offerta
-5. PROOF - Riprova sociale: testimonianze, risultati, numeri
-6. CTA - Call to action finale (varia tra urgenza, beneficio, curiosità)
-
-IMPORTANTE: Le 3 variazioni devono essere SIGNIFICATIVAMENTE diverse tra loro in tono e approccio.
-
-RISPONDI SOLO con un JSON valido:
-{
-  "variations": [
-    {
-      "hook": "...",
-      "target": "Aiuto [chi] a [cosa] [come]",
-      "problem": "...",
-      "solution": "...",
-      "proof": "...",
-      "cta": "...",
-      "hashtags": ["..."]
-    },
-    {
-      "hook": "...",
-      "target": "Aiuto [chi] a [cosa] [come]",
-      "problem": "...",
-      "solution": "...",
-      "proof": "...",
-      "cta": "...",
-      "hashtags": ["..."]
-    },
-    {
-      "hook": "...",
-      "target": "Aiuto [chi] a [cosa] [come]",
-      "problem": "...",
-      "solution": "...",
-      "proof": "...",
-      "cta": "...",
-      "hashtags": ["..."]
-    }
-  ]
-}`;
+  const prompt = getPromptForOutputType(
+    outputType,
+    idea,
+    platform,
+    platformGuidelines,
+    effectiveBrandVoice,
+    effectiveTone,
+    keywords,
+    maxLength
+  );
 
   try {
     const { client, metadata } = await getAIProvider(consultantId, "post-copy-variations");
@@ -477,16 +772,11 @@ RISPONDI SOLO con un JSON valido:
     });
     
     const responseText = result.response.text();
-    const parsed = parseJsonResponse<{ variations: PostCopyVariation[] }>(responseText, {
-      variations: [
-        { hook: "Scopri qualcosa di nuovo oggi!", target: "Aiuto professionisti a crescere online", problem: "Molti non sanno da dove iniziare", solution: "Il mio metodo in 3 step", proof: "100+ clienti soddisfatti", cta: "Scopri di più nel link in bio", hashtags: [] },
-        { hook: "Non crederai a quello che sto per dirti...", target: "Aiuto imprenditori a scalare", problem: "Sei bloccato nella routine quotidiana", solution: "Ecco la strategia che funziona", proof: "Risultati in 30 giorni garantiti", cta: "Commenta qui sotto!", hashtags: [] },
-        { hook: "Ecco cosa devi sapere:", target: "Aiuto freelancer a trovare clienti", problem: "Fatichi a trovare clienti costanti", solution: "Un sistema automatizzato per lead", proof: "Media di 10 lead a settimana", cta: "Salva questo post per dopo!", hashtags: [] },
-      ]
-    });
+    const variations = parseVariationsResponse(responseText, outputType);
     
     return {
-      variations: parsed.variations.slice(0, 3),
+      variations,
+      outputType,
       modelUsed: model,
     };
   } catch (error: any) {

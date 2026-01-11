@@ -1097,6 +1097,7 @@ const generateCopySchema = z.object({
   keywords: z.array(z.string()).optional(),
   tone: z.string().optional(),
   maxLength: z.number().optional(),
+  outputType: z.enum(["copy_short", "copy_long", "video_script", "image_copy"]).optional(),
 });
 
 const generateCampaignSchema = z.object({
@@ -1203,7 +1204,8 @@ router.post("/ai/generate-copy-variations", authenticateToken, requireRole("cons
     const consultantId = req.user!.id;
     const validatedData = generateCopySchema.parse(req.body);
     
-    console.log(`🤖 [CONTENT-AI] Generating 3 copy variations for consultant ${consultantId}`);
+    const outputType = validatedData.outputType || "copy_long";
+    console.log(`🤖 [CONTENT-AI] Generating 3 copy variations (${outputType}) for consultant ${consultantId}`);
     
     const result = await generatePostCopyVariations({
       consultantId,
@@ -1213,9 +1215,10 @@ router.post("/ai/generate-copy-variations", authenticateToken, requireRole("cons
       keywords: validatedData.keywords,
       tone: validatedData.tone,
       maxLength: validatedData.maxLength,
+      outputType,
     });
     
-    console.log(`✅ [CONTENT-AI] Generated ${result.variations.length} variations using ${result.modelUsed}`);
+    console.log(`✅ [CONTENT-AI] Generated ${result.variations.length} ${outputType} variations using ${result.modelUsed}`);
     
     res.json({
       success: true,
