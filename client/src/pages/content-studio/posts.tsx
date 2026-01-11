@@ -70,6 +70,8 @@ import {
   ChevronLeft,
   ChevronRight,
   GripVertical,
+  Video,
+  Link,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1584,48 +1586,59 @@ export default function ContentStudioPosts() {
 
                         {selectedOutputType === "video_script" && (
                           <div className="space-y-3">
-                            <div className="bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">
-                                🎬 00-05s: HOOK VISIVO
+                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
+                                1. 🎣 HOOK
                               </Label>
                               <Textarea
-                                placeholder="Azione visiva che cattura l'attenzione..."
+                                placeholder="La frase di apertura che cattura l'attenzione..."
                                 rows={2}
                                 value={formData.videoHook || ""}
                                 onChange={(e) => setFormData({ ...formData, videoHook: e.target.value })}
                               />
                             </div>
-                            <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
-                                📍 05-15s: PROBLEMA
+                            <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
+                                2. ❌ PROBLEMA
                               </Label>
                               <Textarea
-                                placeholder="Descrizione del problema..."
+                                placeholder="Il problema che affronti nel video..."
                                 rows={2}
                                 value={formData.videoProblema || ""}
                                 onChange={(e) => setFormData({ ...formData, videoProblema: e.target.value })}
                               />
                             </div>
                             <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-green-600 dark:text-green-400 font-semibold">
-                                💡 15-40s: SOLUZIONE
+                              <Label className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
+                                3. ✅ SOLUZIONE
                               </Label>
                               <Textarea
-                                placeholder="Come risolvi il problema..."
+                                placeholder="La soluzione o il contenuto principale..."
                                 rows={3}
                                 value={formData.videoSoluzione || ""}
                                 onChange={(e) => setFormData({ ...formData, videoSoluzione: e.target.value })}
                               />
                             </div>
-                            <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-amber-600 dark:text-amber-400 font-semibold">
-                                🎯 40-60s: CTA
+                            <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
+                                4. 🎯 CTA
                               </Label>
-                              <Textarea
-                                placeholder="Chiamata all'azione..."
-                                rows={2}
+                              <Input
+                                placeholder="Chiamata all'azione finale..."
                                 value={formData.videoCta || ""}
                                 onChange={(e) => setFormData({ ...formData, videoCta: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1">
+                                📜 SCRIPT COMPLETO
+                              </Label>
+                              <Textarea
+                                placeholder="Lo script completo del video da leggere..."
+                                rows={5}
+                                value={formData.videoFullScript || ""}
+                                onChange={(e) => setFormData({ ...formData, videoFullScript: e.target.value })}
+                                className="font-mono text-sm"
                               />
                             </div>
                           </div>
@@ -1709,18 +1722,44 @@ export default function ContentStudioPosts() {
                       </div>
                     )}
 
-                    <div className="space-y-2">
-                      <Label>Immagine</Label>
-                      <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer">
-                        <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Clicca per caricare un'immagine
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          PNG, JPG fino a 10MB
+                    {selectedOutputType === "video_script" ? (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <Video className="h-4 w-4 text-purple-500" />
+                          Link Video
+                        </Label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="https://youtube.com/watch?v=... oppure TikTok, Instagram Reels..."
+                              value={formData.videoUrl || ""}
+                              onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                              className="pl-10"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Inserisci il link al video pubblicato (YouTube, TikTok, Instagram, etc.)
                         </p>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <ImagePlus className="h-4 w-4 text-pink-500" />
+                          Immagine
+                        </Label>
+                        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer">
+                          <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            Clicca per caricare un'immagine
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            PNG, JPG fino a 10MB
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     <Collapsible open={showPreview} onOpenChange={setShowPreview}>
                       <CollapsibleTrigger asChild>
