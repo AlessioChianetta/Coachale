@@ -257,6 +257,89 @@ router.delete("/ideas/:id", authenticateToken, requireRole("consultant"), async 
 });
 
 // ============================================================
+// CONTENT IDEA TEMPLATES
+// ============================================================
+
+// GET /api/content/idea-templates - Get all templates for consultant
+router.get("/idea-templates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const templates = await db.select()
+      .from(schema.contentIdeaTemplates)
+      .where(eq(schema.contentIdeaTemplates.consultantId, consultantId))
+      .orderBy(desc(schema.contentIdeaTemplates.createdAt));
+    
+    res.json({
+      success: true,
+      data: templates
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error fetching idea templates:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch idea templates"
+    });
+  }
+});
+
+// POST /api/content/idea-templates - Create new template
+router.post("/idea-templates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const [template] = await db.insert(schema.contentIdeaTemplates)
+      .values({ ...req.body, consultantId })
+      .returning();
+    
+    res.status(201).json({
+      success: true,
+      data: template,
+      message: "Template saved"
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error creating idea template:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to create idea template"
+    });
+  }
+});
+
+// DELETE /api/content/idea-templates/:id - Delete template
+router.delete("/idea-templates/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const templateId = req.params.id;
+    
+    const [deleted] = await db.delete(schema.contentIdeaTemplates)
+      .where(and(
+        eq(schema.contentIdeaTemplates.id, templateId),
+        eq(schema.contentIdeaTemplates.consultantId, consultantId)
+      ))
+      .returning();
+    
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: "Template not found"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Template deleted"
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error deleting idea template:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to delete idea template"
+    });
+  }
+});
+
+// ============================================================
 // CONTENT POSTS
 // ============================================================
 

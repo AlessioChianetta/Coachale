@@ -49,7 +49,18 @@ import {
   GraduationCap,
   Award,
   Check,
+  Save,
+  FolderOpen,
+  ChevronDown,
+  MoreVertical,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -143,9 +154,59 @@ export default function ContentStudioIdeas() {
   const [filterContentType, setFilterContentType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("score-desc");
 
+  const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+
+  const { data: templatesResponse } = useQuery({
+    queryKey: ["/api/content/idea-templates"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/idea-templates", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch templates");
+      return response.json();
+    },
+  });
+  const templates = templatesResponse?.data || [];
+
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim()) return;
+    try {
+      const response = await fetch("/api/content/idea-templates", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: templateName,
+          topic,
+          targetAudience,
+          objective,
+          contentTypes: JSON.stringify(contentTypes),
+          additionalContext,
+        }),
+      });
+      if (response.ok) {
+        toast({ title: "Template salvato!", description: `"${templateName}" è stato salvato` });
+        setShowSaveTemplateDialog(false);
+        setTemplateName("");
+        queryClient.invalidateQueries({ queryKey: ["/api/content/idea-templates"] });
+      }
+    } catch (error) {
+      toast({ title: "Errore", description: "Impossibile salvare il template", variant: "destructive" });
+    }
+  };
+
+  const handleLoadTemplate = (template: any) => {
+    setTopic(template.topic || "");
+    setTargetAudience(template.targetAudience || "");
+    setObjective(template.objective || "");
+    setContentTypes(template.contentTypes ? JSON.parse(template.contentTypes) : []);
+    setAdditionalContext(template.additionalContext || "");
+    toast({ title: "Template caricato", description: `"${template.name}" applicato` });
+  };
 
   const handleDevelopPost = (idea: Idea) => {
     const params = new URLSearchParams();
@@ -480,18 +541,49 @@ export default function ContentStudioIdeas() {
                   />
                 </div>
 
-                <Button
-                  onClick={handleGenerateIdeas}
-                  disabled={isGenerating}
-                  className="w-full sm:w-auto"
-                >
-                  {isGenerating ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={handleGenerateIdeas}
+                    disabled={isGenerating}
+                    className="flex-1 sm:flex-none"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-2" />
+                    )}
+                    {isGenerating ? "Generazione in corso..." : "Genera Idee con AI"}
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowSaveTemplateDialog(true)}
+                    disabled={!topic && !targetAudience}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Salva Template
+                  </Button>
+                  
+                  {templates.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          <FolderOpen className="h-4 w-4 mr-2" />
+                          Carica Template
+                          <ChevronDown className="h-4 w-4 ml-2" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {templates.map((template: any) => (
+                          <DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template)}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            {template.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
-                  {isGenerating ? "Generazione in corso..." : "Genera Idee con AI"}
-                </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -562,118 +654,83 @@ export default function ContentStudioIdeas() {
                 </div>
               ) : filteredAndSortedIdeas.length > 0 ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {filteredAndSortedIdeas.map((idea) => {
-                    const hookType = getHookType(idea.hook);
-                    const hookTypeInfo = getHookTypeInfo(hookType);
-                    const HookIcon = hookTypeInfo.icon;
-                    const potential = getPotential(idea.score || 0);
-                    
-                    return (
-                      <Card key={idea.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-base">{idea.title}</h3>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {idea.description}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => deleteIdeaMutation.mutate(idea.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
+                  {filteredAndSortedIdeas.map((idea) => (
+                    <motion.div
+                      key={idea.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`group relative bg-card rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all ${
+                        (idea.score || 0) >= 85 ? "border-l-green-500" :
+                        (idea.score || 0) >= 70 ? "border-l-amber-500" : "border-l-red-500"
+                      }`}
+                    >
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-base line-clamp-2">{idea.title}</h3>
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                              {idea.description}
+                            </p>
                           </div>
-
-                          {idea.score && (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div
-                                  className={`flex items-center gap-1 px-2 py-1 rounded-lg ${getScoreColor(
-                                    idea.score
-                                  )}`}
+                          <div className="flex items-center gap-1">
+                            <div className={`px-2 py-1 rounded-full text-xs font-bold ${
+                              (idea.score || 0) >= 85 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
+                              (idea.score || 0) >= 70 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" :
+                              "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                            }`}>
+                              {idea.score || 0}
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleDevelopPost(idea)}>
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Sviluppa Post
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <ImageIcon className="h-4 w-4 mr-2" />
+                                  Genera Immagine
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Calendar className="h-4 w-4 mr-2" />
+                                  Aggiungi a Calendario
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => deleteIdeaMutation.mutate(idea.id)}
                                 >
-                                  <Star className="h-4 w-4" />
-                                  <span className="font-bold">{idea.score}</span>
-                                </div>
-                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${potential.color}`}>
-                                  <TrendingUp className="h-3 w-3" />
-                                  {potential.label}
-                                </div>
-                              </div>
-                              <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden">
-                                <div 
-                                  className={`absolute left-0 top-0 h-full rounded-full transition-all ${getScoreProgressColor(idea.score)}`}
-                                  style={{ width: `${idea.score}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {idea.hook && (
-                            <div className="bg-muted/50 p-3 rounded-lg">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="text-xs text-muted-foreground">
-                                  Hook Suggerito:
-                                </p>
-                                <Badge variant="outline" className={`text-xs ${hookTypeInfo.color}`}>
-                                  <HookIcon className="h-3 w-3 mr-1" />
-                                  {hookTypeInfo.label}
-                                </Badge>
-                              </div>
-                              <p className="text-sm font-medium italic">"{idea.hook}"</p>
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {idea.contentType && (
-                              <Badge variant="outline">{idea.contentType}</Badge>
-                            )}
-                            {idea.targetAudience && (
-                              <Badge variant="secondary" className="max-w-[200px] truncate" title={idea.targetAudience}>
-                                {idea.targetAudience.length > 50 ? idea.targetAudience.slice(0, 50) + "..." : idea.targetAudience}
-                              </Badge>
-                            )}
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Elimina
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
+                        </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleDevelopPost(idea)}
-                            >
-                              <FileText className="h-4 w-4 mr-1" />
-                              Sviluppa Post
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <ImageIcon className="h-4 w-4 mr-1" />
-                              Genera Immagine
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <Calendar className="h-4 w-4 mr-1" />
-                              Calendario
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              disabled={idea.isSaved}
-                            >
-                              {idea.isSaved ? (
-                                <BookmarkCheck className="h-4 w-4 mr-1" />
-                              ) : (
-                                <Bookmark className="h-4 w-4 mr-1" />
-                              )}
-                              Salva
-                            </Button>
+                        {idea.hook && (
+                          <div className="bg-purple-50 dark:bg-purple-950/20 p-2 rounded-lg">
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">Hook:</p>
+                            <p className="text-sm italic line-clamp-2">"{idea.hook}"</p>
                           </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                        )}
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {idea.contentType && (
+                            <Badge variant="outline" className="text-xs">{idea.contentType}</Badge>
+                          )}
+                          <Badge variant="secondary" className="text-xs">
+                            {(idea.score || 0) >= 85 ? "Alto Potenziale" :
+                             (idea.score || 0) >= 70 ? "Medio Potenziale" : "Da Sviluppare"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               ) : (
                 <Card>
@@ -690,6 +747,41 @@ export default function ContentStudioIdeas() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showSaveTemplateDialog} onOpenChange={setShowSaveTemplateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Save className="h-5 w-5 text-purple-500" />
+              Salva Template
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Nome Template</Label>
+              <Input
+                id="template-name"
+                placeholder="Es: Template B2B SaaS..."
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+              />
+            </div>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>Verranno salvati:</p>
+              <ul className="list-disc list-inside text-xs">
+                {topic && <li>Topic: {topic.slice(0, 50)}...</li>}
+                {targetAudience && <li>Target: {targetAudience.slice(0, 50)}...</li>}
+                {objective && <li>Obiettivo: {objective}</li>}
+                {contentTypes.length > 0 && <li>Tipi: {contentTypes.join(", ")}</li>}
+              </ul>
+            </div>
+            <Button onClick={handleSaveTemplate} disabled={!templateName.trim()} className="w-full">
+              <Save className="h-4 w-4 mr-2" />
+              Salva Template
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showGeneratedDialog} onOpenChange={(open) => {
         setShowGeneratedDialog(open);

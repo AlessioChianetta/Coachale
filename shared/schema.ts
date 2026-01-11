@@ -7784,6 +7784,26 @@ export const contentIdeas = pgTable("content_ideas", {
 
 export type ContentIdea = typeof contentIdeas.$inferSelect;
 export type InsertContentIdea = typeof contentIdeas.$inferInsert;
+export const insertContentIdeaSchema = createInsertSchema(contentIdeas).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Content Idea Templates - Saved templates for idea generation
+export const contentIdeaTemplates = pgTable("content_idea_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 200 }).notNull(),
+  topic: text("topic"),
+  targetAudience: text("target_audience"),
+  objective: varchar("objective", { length: 50 }),
+  contentTypes: text("content_types"),
+  additionalContext: text("additional_context"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_content_idea_templates_consultant").on(table.consultantId),
+}));
+
+export type ContentIdeaTemplate = typeof contentIdeaTemplates.$inferSelect;
+export type InsertContentIdeaTemplate = typeof contentIdeaTemplates.$inferInsert;
+export const insertContentIdeaTemplateSchema = createInsertSchema(contentIdeaTemplates).omit({ id: true, createdAt: true });
 
 // Content Posts - Created content ready for publishing
 export const contentPosts = pgTable("content_posts", {
@@ -7934,9 +7954,8 @@ export const contentTemplates = pgTable("content_templates", {
 export type ContentTemplate = typeof contentTemplates.$inferSelect;
 export type InsertContentTemplate = typeof contentTemplates.$inferInsert;
 
-// Content Marketing Studio Insert Schemas
+// Content Marketing Studio Insert Schemas (some defined earlier near their tables)
 export const insertBrandAssetSchema = createInsertSchema(brandAssets).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertContentIdeaSchema = createInsertSchema(contentIdeas).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertContentPostSchema = createInsertSchema(contentPosts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAdCampaignSchema = createInsertSchema(adCampaigns).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertContentCalendarSchema = createInsertSchema(contentCalendar).omit({ id: true, createdAt: true });
