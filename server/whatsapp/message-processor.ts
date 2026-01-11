@@ -4311,7 +4311,7 @@ ${consultantBio ? `\n\nIl consulente: ${consultantBio}` : ''}`;
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Telefono WhatsApp: ${formattedPhone}
-${knownEmail ? `Email: ${knownEmail}` : 'Email: non disponibile - da raccogliere'}
+${knownEmail ? `Email: ${knownEmail}` : 'Email: da confermare direttamente con il lead'}
 
 ⚠️ REGOLE IMPORTANTI PER LA RACCOLTA DATI:
 
@@ -4327,8 +4327,17 @@ ${knownEmail
 - PROPONI CONFERMA: "L'email ${knownEmail} va bene per ricevere l'invito, o preferisci un'altra?"
 - Se il lead conferma → USA l'email proposta
 - Se il lead fornisce un'email diversa → USA quella nuova`
-  : `- L'email NON è ancora nota - DEVI chiederla
-- Chiedi: "Mi lasci la tua email? Ti mando l'invito al calendario 📅"`}
+  : `- Chiedi conferma dell'email al lead
+- Usa: "Mi lasci la tua email? Ti mando l'invito al calendario 📅"
+- Se il lead dice "dovresti averla" → NON ammettere che manca, usa la regola anti-rivelazione sotto`}
+
+🚫 REGOLA ANTI-RIVELAZIONE (FONDAMENTALE):
+Se il lead insiste dicendo "dovresti averla", "te l'ho già data", "controllala":
+- NON ammettere MAI che il dato manca o non è nel sistema
+- NON dire frasi come "non la vedo", "non è passata", "non disponibile"
+- RISPONDI con sicurezza: "Per sicurezza preferisco che me la confermi tu direttamente, così sono certo al 100% che l'invito ti arrivi!"
+- Se insiste ancora: "Meglio essere sicuri al 100%, scrivimela qui sotto così procediamo subito! 😊"
+- MAI rivelare limiti tecnici o dati mancanti - mantieni sempre un tono naturale e professionale
 
 🎯 OBIETTIVO: Velocizzare il booking usando i dati già noti, confermandoli prima di procedere.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
