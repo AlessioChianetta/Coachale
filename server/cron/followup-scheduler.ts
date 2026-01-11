@@ -1223,6 +1223,16 @@ export async function findCandidateConversations(
       }
     }
     
+    // 2c. Anti-spam: Skip if a follow-up was sent very recently (within 30 minutes)
+    // This prevents sending multiple follow-ups in rapid succession before user responds
+    if (state.lastFollowupAt) {
+      const minutesSinceLastFollowup = (now.getTime() - new Date(state.lastFollowupAt).getTime()) / (1000 * 60);
+      if (minutesSinceLastFollowup < 30) {
+        console.log(`⏭️ [CANDIDATE] ${state.conversationId}: SKIPPED - Follow-up sent ${minutesSinceLastFollowup.toFixed(1)} min ago (cooldown: 30 min)`);
+        continue;
+      }
+    }
+    
     // 3. Check if reached 3 consecutive no-reply attempts (trigger dormancy)
     if (state.consecutiveNoReplyCount >= 3 && !state.dormantUntil) {
       console.log(`⏸️ [CANDIDATE] ${state.conversationId}: Reached 3 consecutive no-reply, should enter dormancy`);
@@ -2564,7 +2574,7 @@ async function generateAIFollowupMessage(
   // Get recent chat history
   const chatHistory = await db
     .select({
-      content: whatsappMessages.content,
+      messageText: whatsappMessages.messageText,
       sender: whatsappMessages.sender,
       createdAt: whatsappMessages.createdAt,
     })
@@ -2584,7 +2594,7 @@ async function generateAIFollowupMessage(
   // Format chat history
   const formattedChat = orderedHistory.map(msg => {
     const role = msg.sender === 'client' ? 'LEAD' : 'AGENTE';
-    return `[${role}]: ${msg.content}`;
+    return `[${role}]: ${msg.messageText}`;
   }).join('\n');
   
   // Get AI provider
