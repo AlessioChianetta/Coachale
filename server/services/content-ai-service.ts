@@ -12,10 +12,12 @@ export interface GenerateIdeasParams {
   consultantId: string;
   niche: string;
   targetAudience: string;
-  contentType: ContentType;
-  objective: ContentObjective;
+  contentType: string;
+  objective: ContentObjective | "authority";
   additionalContext?: string;
   count?: number;
+  mediaType?: "video" | "photo";
+  copyType?: "short" | "long";
 }
 
 export interface ContentIdea {
@@ -25,6 +27,12 @@ export interface ContentIdea {
   aiReasoning: string;
   suggestedHook: string;
   suggestedCta: string;
+  videoScript?: string;
+  imageDescription?: string;
+  imageOverlayText?: string;
+  copyContent?: string;
+  mediaType?: "video" | "photo";
+  copyType?: "short" | "long";
 }
 
 export interface GenerateIdeasResult {
@@ -202,7 +210,7 @@ function parseJsonResponse<T>(text: string, fallback: T): T {
 }
 
 export async function generateContentIdeas(params: GenerateIdeasParams): Promise<GenerateIdeasResult> {
-  const { consultantId, niche, targetAudience, contentType, objective, additionalContext, count = 5 } = params;
+  const { consultantId, niche, targetAudience, contentType, objective, additionalContext, count = 5, mediaType = "photo", copyType = "short" } = params;
   
   await rateLimitCheck(consultantId);
   
@@ -213,23 +221,92 @@ Tono: ${assets.toneOfVoice || 'friendly professional'}
 Colori: ${JSON.stringify(assets.primaryColors || [])}
 ` : '';
 
-  const prompt = `Sei un esperto di content marketing italiano. Genera ${count} idee creative per contenuti.
+  const mediaInstructions = mediaType === "video" 
+    ? `
+**SCRIPT VIDEO (videoScript)**:
+Genera uno script parlato fluido da registrare in video. Deve essere:
+- Scritto per essere DETTO A VOCE (non letto)
+- Frasi corte e incisive
+- Ritmo veloce, dinamico
+- Segue il framework: Hook→Problema→Soluzione→Prova Sociale→CTA
+- NON usare etichette come "HOOK:" o "PROBLEMA:", scrivi il testo fluido
+- Esempio: "Guadagni bene, ma il tuo conto resta sempre uguale. Il problema non è quanto incassi, è quanto resta e lavora per te. La libertà finanziaria non arriva aumentando il reddito, ma costruendo un sistema..."
+` 
+    : `
+**DESCRIZIONE IMMAGINE (imageDescription)**:
+Descrizione visiva dettagliata per creare o trovare l'immagine perfetta. Include:
+- Soggetto principale
+- Ambientazione/sfondo
+- Colori dominanti
+- Mood/atmosfera
+- Stile fotografico o grafico
+
+**TESTO OVERLAY (imageOverlayText)**:
+Testo breve e d'impatto da sovrapporre all'immagine (max 10 parole).
+`;
+
+  const copyInstructions = copyType === "long"
+    ? `
+**COPY LUNGO NARRATIVO (copyContent)**:
+Genera un copy emotivo e coinvolgente che segue IMPLICITAMENTE il framework Hook→Problema→Soluzione→Prova Sociale→CTA.
+
+REGOLE FONDAMENTALI:
+- NON usare MAI etichette come "HOOK:", "PROBLEMA:", "SOLUZIONE:" ecc
+- Scrivi testo NARRATIVO fluido, come un racconto
+- Usa emoji con moderazione per enfatizzare punti chiave 😤💪🔥
+- Separa i paragrafi con il carattere speciale ㅤ (spazio Unicode)
+- Storytelling emotivo che connette con il lettore
+- Minimo 5-6 blocchi di testo separati
+
+ESEMPIO di struttura (ma senza etichette visibili):
+"Forse non te ne rendi conto, ma hai già un secondo lavoro.
+ㅤ
+Solo che nessuno te lo paga. Anzi, sei tu che paghi per farlo. 😫
+ㅤ
+Qual è questo lavoro?
+ㅤ
+È il tempo che passi nel traffico...
+ㅤ
+La soluzione? [continua naturalmente]
+ㅤ
+[CTA finale]"
+`
+    : `
+**COPY CORTO DIRETTO (copyContent)**:
+Genera un copy conciso e d'impatto:
+- Massimo 3-4 blocchi di testo
+- Dritto al punto
+- Hook forte + Beneficio chiaro + CTA
+- Usa ㅤ per separare i blocchi
+`;
+
+  const prompt = `Sei un esperto di content marketing italiano. Genera ${count} idee creative per contenuti COMPLETI.
 
 CONTESTO:
 - Nicchia/Settore: ${niche}
 - Target Audience: ${targetAudience}
 - Tipo di contenuto: ${contentType}
 - Obiettivo: ${objective}
+- Tipo Media: ${mediaType}
+- Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
 ${brandContext}
 
-Per ogni idea, fornisci:
+Per ogni idea, fornisci TUTTI questi elementi:
+
 1. title: Titolo accattivante (max 60 caratteri)
-2. description: Descrizione del contenuto (2-3 frasi)
+2. description: Descrizione breve del contenuto (2-3 frasi)
 3. aiScore: Punteggio di efficacia stimata (1-100)
 4. aiReasoning: Motivazione del punteggio
 5. suggestedHook: Un hook che cattura l'attenzione
 6. suggestedCta: Call to action suggerita
+7. mediaType: "${mediaType}"
+8. copyType: "${copyType}"
+9. copyContent: Il copy completo secondo le istruzioni sotto
+${mediaType === "video" ? "10. videoScript: Lo script video parlato" : "10. imageDescription: Descrizione visiva dell'immagine\n11. imageOverlayText: Testo da sovrapporre all'immagine"}
+
+${mediaInstructions}
+${copyInstructions}
 
 RISPONDI SOLO con un JSON valido nel formato:
 {
@@ -240,7 +317,11 @@ RISPONDI SOLO con un JSON valido nel formato:
       "aiScore": 85,
       "aiReasoning": "...",
       "suggestedHook": "...",
-      "suggestedCta": "..."
+      "suggestedCta": "...",
+      "mediaType": "${mediaType}",
+      "copyType": "${copyType}",
+      "copyContent": "...",
+      ${mediaType === "video" ? '"videoScript": "..."' : '"imageDescription": "...",\n      "imageOverlayText": "..."'}
     }
   ]
 }`;
@@ -254,7 +335,7 @@ RISPONDI SOLO con un JSON valido nel formato:
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.8,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
       },
     });
     
@@ -269,14 +350,23 @@ RISPONDI SOLO con un JSON valido nel formato:
           aiScore: 70,
           aiReasoning: "Idea generica di fallback",
           suggestedHook: "Scopri come...",
-          suggestedCta: "Scopri di più nel link in bio"
+          suggestedCta: "Scopri di più nel link in bio",
+          mediaType,
+          copyType,
+          copyContent: "Contenuto di esempio per il tuo pubblico.",
         }],
         modelUsed: model,
       };
     }
     
+    const enrichedIdeas = parsed.ideas.slice(0, count).map(idea => ({
+      ...idea,
+      mediaType: idea.mediaType || mediaType,
+      copyType: idea.copyType || copyType,
+    }));
+    
     return {
-      ideas: parsed.ideas.slice(0, count),
+      ideas: enrichedIdeas,
       modelUsed: model,
     };
   } catch (error: any) {

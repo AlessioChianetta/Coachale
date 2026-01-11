@@ -1167,10 +1167,12 @@ import {
 const generateIdeasSchema = z.object({
   niche: z.string().min(1, "Niche is required"),
   targetAudience: z.string().min(1, "Target audience is required"),
-  contentType: z.enum(["post", "carosello", "reel", "video", "story", "articolo"]),
-  objective: z.enum(["awareness", "engagement", "leads", "sales", "education"]),
+  contentType: z.string().min(1, "Content type is required"),
+  objective: z.enum(["awareness", "engagement", "leads", "sales", "education", "authority"]),
   additionalContext: z.string().optional(),
-  count: z.number().min(1).max(10).optional(),
+  count: z.number().min(1).max(20).optional(),
+  mediaType: z.enum(["video", "photo"]).default("photo"),
+  copyType: z.enum(["short", "long"]).default("short"),
 });
 
 const generateCopySchema = z.object({
@@ -1209,16 +1211,18 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
     const consultantId = req.user!.id;
     const validatedData = generateIdeasSchema.parse(req.body);
     
-    console.log(`🤖 [CONTENT-AI] Generating ideas for consultant ${consultantId}`);
+    console.log(`🤖 [CONTENT-AI] Generating ideas for consultant ${consultantId} (mediaType: ${validatedData.mediaType}, copyType: ${validatedData.copyType})`);
     
     const result = await generateContentIdeas({
       consultantId,
       niche: validatedData.niche,
       targetAudience: validatedData.targetAudience,
-      contentType: validatedData.contentType as ContentType,
-      objective: validatedData.objective as ContentObjective,
+      contentType: validatedData.contentType,
+      objective: validatedData.objective,
       additionalContext: validatedData.additionalContext,
       count: validatedData.count,
+      mediaType: validatedData.mediaType,
+      copyType: validatedData.copyType,
     });
     
     console.log(`✅ [CONTENT-AI] Generated ${result.ideas.length} ideas using ${result.modelUsed}`);

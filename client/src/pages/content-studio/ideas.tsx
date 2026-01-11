@@ -54,6 +54,10 @@ import {
   ChevronDown,
   ChevronUp,
   MoreVertical,
+  Video,
+  Camera,
+  FileText as FileTextIcon,
+  AlignLeft,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -81,6 +85,12 @@ interface Idea {
   status: string;
   createdAt: string;
   isSaved?: boolean;
+  mediaType?: "video" | "photo";
+  copyType?: "short" | "long";
+  videoScript?: string;
+  imageDescription?: string;
+  imageOverlayText?: string;
+  copyContent?: string;
 }
 
 const CONTENT_TYPES = [
@@ -150,6 +160,8 @@ export default function ContentStudioIdeas() {
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
   const [showGeneratedDialog, setShowGeneratedDialog] = useState(false);
   const [savedIdeaIndexes, setSavedIdeaIndexes] = useState<Set<number>>(new Set());
+  const [mediaType, setMediaType] = useState<"video" | "photo">("photo");
+  const [copyType, setCopyType] = useState<"short" | "long">("short");
 
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterContentType, setFilterContentType] = useState<string>("all");
@@ -355,6 +367,8 @@ export default function ContentStudioIdeas() {
           objective,
           count: ideaCount,
           additionalContext,
+          mediaType,
+          copyType,
         }),
       });
 
@@ -512,6 +526,84 @@ export default function ContentStudioIdeas() {
                         </Label>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <Label>Tipo Media</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setMediaType("video")}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          mediaType === "video"
+                            ? "border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                            : "border-border hover:border-blue-300"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center text-center gap-2">
+                          <Video className={`h-6 w-6 ${mediaType === "video" ? "text-blue-500" : "text-muted-foreground"}`} />
+                          <h4 className={`font-medium text-sm ${mediaType === "video" ? "text-blue-700 dark:text-blue-300" : ""}`}>Video</h4>
+                          <p className="text-xs text-muted-foreground">Script parlato per video</p>
+                        </div>
+                      </motion.div>
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setMediaType("photo")}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          mediaType === "photo"
+                            ? "border-2 border-green-500 bg-green-50 dark:bg-green-900/20"
+                            : "border-border hover:border-green-300"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center text-center gap-2">
+                          <Camera className={`h-6 w-6 ${mediaType === "photo" ? "text-green-500" : "text-muted-foreground"}`} />
+                          <h4 className={`font-medium text-sm ${mediaType === "photo" ? "text-green-700 dark:text-green-300" : ""}`}>Foto</h4>
+                          <p className="text-xs text-muted-foreground">Descrizione immagine + overlay</p>
+                        </div>
+                      </motion.div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Tipo Copy</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setCopyType("short")}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          copyType === "short"
+                            ? "border-2 border-orange-500 bg-orange-50 dark:bg-orange-900/20"
+                            : "border-border hover:border-orange-300"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center text-center gap-2">
+                          <FileTextIcon className={`h-6 w-6 ${copyType === "short" ? "text-orange-500" : "text-muted-foreground"}`} />
+                          <h4 className={`font-medium text-sm ${copyType === "short" ? "text-orange-700 dark:text-orange-300" : ""}`}>Copy Corto</h4>
+                          <p className="text-xs text-muted-foreground">Diretto, 3-4 blocchi</p>
+                        </div>
+                      </motion.div>
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setCopyType("long")}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          copyType === "long"
+                            ? "border-2 border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                            : "border-border hover:border-purple-300"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center text-center gap-2">
+                          <AlignLeft className={`h-6 w-6 ${copyType === "long" ? "text-purple-500" : "text-muted-foreground"}`} />
+                          <h4 className={`font-medium text-sm ${copyType === "long" ? "text-purple-700 dark:text-purple-300" : ""}`}>Copy Lungo</h4>
+                          <p className="text-xs text-muted-foreground">Narrativo, emotivo, storytelling</p>
+                        </div>
+                      </motion.div>
+                    </div>
                   </div>
                 </div>
 
