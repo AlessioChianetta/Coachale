@@ -459,44 +459,7 @@ router.patch("/proactive-leads/:id", authenticateToken, requireRole("consultant"
   }
 });
 
-// DELETE /api/proactive-leads/:id - Delete lead (verify ownership)
-router.delete("/proactive-leads/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
-  try {
-    const leadId = req.params.id;
-    const consultantId = req.user!.id;
-    
-    // Verify lead exists and belongs to consultant
-    const existingLead = await storage.getProactiveLead(leadId, consultantId);
-    if (!existingLead) {
-      return res.status(404).json({
-        success: false,
-        error: "Lead not found or access denied"
-      });
-    }
-    
-    const deleted = await storage.deleteProactiveLead(leadId, consultantId);
-    
-    if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        error: "Lead not found"
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: "Lead deleted successfully"
-    });
-  } catch (error: any) {
-    console.error("❌ [PROACTIVE LEADS] Error deleting lead:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message || "Failed to delete lead"
-    });
-  }
-});
-
-// DELETE /api/proactive-leads/bulk - Bulk delete leads
+// DELETE /api/proactive-leads/bulk - Bulk delete leads (MUST be before /:id to avoid route conflict)
 router.delete("/proactive-leads/bulk", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
@@ -550,6 +513,43 @@ router.delete("/proactive-leads/bulk", authenticateToken, requireRole("consultan
     res.status(500).json({
       success: false,
       error: error.message || "Failed to delete leads"
+    });
+  }
+});
+
+// DELETE /api/proactive-leads/:id - Delete lead (verify ownership)
+router.delete("/proactive-leads/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const leadId = req.params.id;
+    const consultantId = req.user!.id;
+    
+    // Verify lead exists and belongs to consultant
+    const existingLead = await storage.getProactiveLead(leadId, consultantId);
+    if (!existingLead) {
+      return res.status(404).json({
+        success: false,
+        error: "Lead not found or access denied"
+      });
+    }
+    
+    const deleted = await storage.deleteProactiveLead(leadId, consultantId);
+    
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: "Lead not found"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Lead deleted successfully"
+    });
+  } catch (error: any) {
+    console.error("❌ [PROACTIVE LEADS] Error deleting lead:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to delete lead"
     });
   }
 });
