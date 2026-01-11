@@ -42,7 +42,14 @@ import {
   MessageCircleQuestion,
   Wrench,
   TrendingUp,
+  Eye,
+  Heart,
+  UserPlus,
+  ShoppingCart,
+  GraduationCap,
+  Award,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -70,6 +77,15 @@ const CONTENT_TYPES = [
   { value: "video", label: "Video" },
   { value: "story", label: "Story" },
   { value: "articolo", label: "Articolo" },
+];
+
+const OBJECTIVES = [
+  { value: "awareness", label: "Brand Awareness", description: "Fai conoscere il tuo brand a nuove persone", icon: Eye },
+  { value: "engagement", label: "Engagement", description: "Aumenta like, commenti e interazioni", icon: Heart },
+  { value: "leads", label: "Lead Generation", description: "Raccogli contatti e richieste", icon: UserPlus },
+  { value: "sales", label: "Vendite", description: "Converti il pubblico in clienti", icon: ShoppingCart },
+  { value: "education", label: "Educazione", description: "Insegna e condividi valore", icon: GraduationCap },
+  { value: "authority", label: "Autorità", description: "Posizionati come esperto del settore", icon: Award },
 ];
 
 type HookType = "how-to" | "curiosità" | "numero" | "problema";
@@ -350,48 +366,54 @@ export default function ContentStudioIdeas() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="topic">Topic / Argomento</Label>
-                    <Input
-                      id="topic"
-                      placeholder="Es: Fitness, Nutrizione, Mindset..."
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="topic">Topic / Argomento</Label>
+                  <Textarea
+                    id="topic"
+                    placeholder="Descrivi l'argomento o la nicchia del tuo contenuto. Es: Sono un personal trainer specializzato in crossfit e fitness funzionale. Il mio metodo si chiama..."
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    rows={4}
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label>Target Audience</Label>
-                    <Select value={targetAudience} onValueChange={setTargetAudience}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona target" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="principianti">Principianti</SelectItem>
-                        <SelectItem value="intermedi">Intermedi</SelectItem>
-                        <SelectItem value="avanzati">Avanzati</SelectItem>
-                        <SelectItem value="professionisti">Professionisti 30-45</SelectItem>
-                        <SelectItem value="giovani">Giovani 18-25</SelectItem>
-                        <SelectItem value="tutti">Tutti</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="targetAudience">Target Audience</Label>
+                  <Textarea
+                    id="targetAudience"
+                    placeholder="Descrivi il tuo pubblico ideale. Es: Sportivi amatoriali 25-45 anni che vogliono migliorare le prestazioni, professionisti stressati che cercano equilibrio..."
+                    value={targetAudience}
+                    onChange={(e) => setTargetAudience(e.target.value)}
+                    rows={3}
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label>Obiettivo</Label>
-                    <Select value={objective} onValueChange={setObjective}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona obiettivo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="awareness">Brand Awareness</SelectItem>
-                        <SelectItem value="engagement">Engagement</SelectItem>
-                        <SelectItem value="leads">Lead Generation</SelectItem>
-                        <SelectItem value="sales">Vendite</SelectItem>
-                        <SelectItem value="education">Educazione</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-3">
+                  <Label>Obiettivo</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {OBJECTIVES.map((obj) => {
+                      const IconComponent = obj.icon;
+                      const isSelected = objective === obj.value;
+                      return (
+                        <motion.div
+                          key={obj.value}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setObjective(obj.value)}
+                          className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${
+                            isSelected
+                              ? "border-2 border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                              : "border-border hover:border-purple-300"
+                          }`}
+                        >
+                          <div className="flex flex-col items-center text-center gap-2">
+                            <IconComponent className={`h-6 w-6 ${isSelected ? "text-purple-500" : "text-muted-foreground"}`} />
+                            <h4 className={`font-medium text-sm ${isSelected ? "text-purple-700 dark:text-purple-300" : ""}`}>{obj.label}</h4>
+                            <p className="text-xs text-muted-foreground">{obj.description}</p>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 </div>
 
