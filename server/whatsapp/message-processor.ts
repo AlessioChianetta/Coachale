@@ -2149,15 +2149,9 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     console.log(`   ├── effectiveUserId: ${effectiveUserId ? `❌ PRESENTE (${effectiveUserId}) - è un cliente esistente, skip booking` : '✅ ASSENTE (è un lead)'}`);
     console.log(`   ├── Agent: ${consultantConfig?.agentName || 'Unknown'}`);
     console.log(`   📱 DATI LEAD PROATTIVO:`);
-    console.log(`   ├── isProactiveLead: ${isProactiveLead ? '✅ SÌ' : '❌ NO'}`);
-    console.log(`   ├── proactiveLeadData: ${proactiveLeadData ? '✅ CARICATO' : '❌ NON DISPONIBILE'}`);
-    if (proactiveLeadData) {
-      console.log(`   ├── phoneNumber: ${proactiveLeadData.phoneNumber || 'N/A'}`);
-      console.log(`   ├── email (from leadInfo): ${proactiveLeadData.leadInfo?.email || 'N/A'}`);
-      console.log(`   └── firstName: ${proactiveLeadData.firstName || 'N/A'}`);
-    } else {
-      console.log(`   └── (nessun dato lead proattivo)`);
-    }
+    console.log(`   ├── isProactiveLead: ${conversation.isProactiveLead ? '✅ SÌ' : '❌ NO'}`);
+    console.log(`   └── proactiveLeadId: ${conversation.proactiveLeadId || 'N/A'}`);
+    console.log(`   (Nota: dati lead caricati nella sezione CONTACT PLACEHOLDER se proattivo)`)
     
     const willAnalyzeBooking = consultantConfig?.bookingEnabled !== false && agentHasCalendar && !effectiveUserId;
     console.log(`   🎯 DECISIONE: ${willAnalyzeBooking ? '✅ PROCEDERÀ con analisi booking' : '❌ SKIP analisi booking'}`);
