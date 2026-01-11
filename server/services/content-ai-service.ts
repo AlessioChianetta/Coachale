@@ -12,7 +12,6 @@ export interface GenerateIdeasParams {
   consultantId: string;
   niche: string;
   targetAudience: string;
-  contentType: string;
   objective: ContentObjective | "authority";
   additionalContext?: string;
   count?: number;
@@ -210,7 +209,7 @@ function parseJsonResponse<T>(text: string, fallback: T): T {
 }
 
 export async function generateContentIdeas(params: GenerateIdeasParams): Promise<GenerateIdeasResult> {
-  const { consultantId, niche, targetAudience, contentType, objective, additionalContext, count = 5, mediaType = "photo", copyType = "short" } = params;
+  const { consultantId, niche, targetAudience, objective, additionalContext, count = 5, mediaType = "photo", copyType = "short" } = params;
   
   await rateLimitCheck(consultantId);
   
@@ -285,7 +284,6 @@ Genera un copy conciso e d'impatto:
 CONTESTO:
 - Nicchia/Settore: ${niche}
 - Target Audience: ${targetAudience}
-- Tipo di contenuto: ${contentType}
 - Obiettivo: ${objective}
 - Tipo Media: ${mediaType}
 - Tipo Copy: ${copyType}
@@ -346,7 +344,7 @@ RISPONDI SOLO con un JSON valido nel formato:
       return {
         ideas: [{
           title: "Contenuto di valore per il tuo pubblico",
-          description: `Un ${contentType} che parla al tuo target di ${targetAudience} nel settore ${niche}`,
+          description: `Un contenuto che parla al tuo target di ${targetAudience} nel settore ${niche}`,
           aiScore: 70,
           aiReasoning: "Idea generica di fallback",
           suggestedHook: "Scopri come...",
