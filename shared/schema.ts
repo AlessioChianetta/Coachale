@@ -7729,3 +7729,207 @@ export const emailAiDecisions = pgTable("email_ai_decisions", {
 
 export type EmailAiDecision = typeof emailAiDecisions.$inferSelect;
 export type InsertEmailAiDecision = typeof emailAiDecisions.$inferInsert;
+
+// ============================================================
+// CONTENT MARKETING STUDIO TABLES
+// ============================================================
+
+// Brand Assets - Brand identity settings per consultant
+export const brandAssets = pgTable("brand_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  primaryColor: varchar("primary_color", { length: 7 }),
+  secondaryColor: varchar("secondary_color", { length: 7 }),
+  accentColor: varchar("accent_color", { length: 7 }),
+  colorPalette: jsonb("color_palette").$type<string[]>().default(sql`'[]'::jsonb`),
+  primaryFont: varchar("primary_font", { length: 100 }),
+  secondaryFont: varchar("secondary_font", { length: 100 }),
+  logoUrl: text("logo_url"),
+  logoDarkUrl: text("logo_dark_url"),
+  faviconUrl: text("favicon_url"),
+  brandVoice: text("brand_voice"),
+  keywords: jsonb("keywords").$type<string[]>().default(sql`'[]'::jsonb`),
+  avoidWords: jsonb("avoid_words").$type<string[]>().default(sql`'[]'::jsonb`),
+  instagramHandle: varchar("instagram_handle", { length: 100 }),
+  facebookPage: varchar("facebook_page", { length: 200 }),
+  linkedinPage: varchar("linkedin_page", { length: 200 }),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type BrandAsset = typeof brandAssets.$inferSelect;
+export type InsertBrandAsset = typeof brandAssets.$inferInsert;
+
+// Content Ideas - AI-generated content ideas
+export const contentIdeas = pgTable("content_ideas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  contentType: varchar("content_type", { length: 50 }).notNull().$type<"post" | "carosello" | "reel" | "video" | "story" | "articolo">(),
+  targetAudience: text("target_audience"),
+  niche: varchar("niche", { length: 200 }),
+  objective: varchar("objective", { length: 50 }).$type<"awareness" | "engagement" | "leads" | "sales" | "education">(),
+  aiScore: integer("ai_score").default(0),
+  aiReasoning: text("ai_reasoning"),
+  suggestedHook: text("suggested_hook"),
+  suggestedCta: text("suggested_cta"),
+  status: varchar("status", { length: 50 }).default("draft").$type<"draft" | "approved" | "used" | "archived">(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_content_ideas_consultant").on(table.consultantId),
+  statusIdx: index("idx_content_ideas_status").on(table.status),
+}));
+
+export type ContentIdea = typeof contentIdeas.$inferSelect;
+export type InsertContentIdea = typeof contentIdeas.$inferInsert;
+
+// Content Posts - Created content ready for publishing
+export const contentPosts = pgTable("content_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  ideaId: varchar("idea_id").references(() => contentIdeas.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 500 }),
+  hook: text("hook"),
+  body: text("body"),
+  cta: text("cta"),
+  fullCopy: text("full_copy"),
+  contentType: varchar("content_type", { length: 50 }).notNull().$type<"post" | "carosello" | "reel" | "video" | "story" | "articolo">(),
+  platform: varchar("platform", { length: 50 }).$type<"instagram" | "facebook" | "linkedin" | "twitter" | "tiktok" | "youtube">(),
+  imageUrl: text("image_url"),
+  imagePrompt: text("image_prompt"),
+  carouselImages: jsonb("carousel_images").$type<string[]>().default(sql`'[]'::jsonb`),
+  scheduledAt: timestamp("scheduled_at"),
+  publishedAt: timestamp("published_at"),
+  status: varchar("status", { length: 50 }).default("draft").$type<"draft" | "scheduled" | "published" | "archived">(),
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  engagementRate: real("engagement_rate"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_content_posts_consultant").on(table.consultantId),
+  scheduledIdx: index("idx_content_posts_scheduled").on(table.scheduledAt),
+}));
+
+export type ContentPost = typeof contentPosts.$inferSelect;
+export type InsertContentPost = typeof contentPosts.$inferInsert;
+
+// Ad Campaigns - Full marketing campaigns with 6-step structure
+export const adCampaigns = pgTable("ad_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 200 }).notNull(),
+  objective: varchar("objective", { length: 50 }).$type<"awareness" | "traffic" | "engagement" | "leads" | "sales">(),
+  // Hook section
+  hookWho: text("hook_who"),
+  hookWhat: text("hook_what"),
+  hookHow: text("hook_how"),
+  hookCopy: text("hook_copy"),
+  // Target section
+  targetDemographics: jsonb("target_demographics").$type<{ ageMin?: number; ageMax?: number; gender?: string; locations?: string[] }>().default(sql`'{}'::jsonb`),
+  targetInterests: jsonb("target_interests").$type<string[]>().default(sql`'[]'::jsonb`),
+  targetBehaviors: jsonb("target_behaviors").$type<string[]>().default(sql`'[]'::jsonb`),
+  // Problem section
+  problemMain: text("problem_main"),
+  problemConsequences: text("problem_consequences"),
+  // Solution section
+  solutionOffer: text("solution_offer"),
+  solutionBenefits: jsonb("solution_benefits").$type<string[]>().default(sql`'[]'::jsonb`),
+  // Proof section
+  proofTestimonials: jsonb("proof_testimonials").$type<Array<{ name: string; text: string; result?: string }>>().default(sql`'[]'::jsonb`),
+  proofNumbers: jsonb("proof_numbers").$type<Array<{ value: string; label: string }>>().default(sql`'[]'::jsonb`),
+  // CTA section
+  ctaText: text("cta_text"),
+  ctaUrgency: text("cta_urgency"),
+  ctaUrl: text("cta_url"),
+  // Ad creative
+  primaryText: text("primary_text"),
+  headline: text("headline"),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  videoUrl: text("video_url"),
+  // Budget
+  dailyBudget: real("daily_budget"),
+  totalBudget: real("total_budget"),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  // Status & Metrics
+  status: varchar("status", { length: 50 }).default("draft").$type<"draft" | "active" | "paused" | "completed" | "archived">(),
+  spend: real("spend").default(0),
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  leads: integer("leads").default(0),
+  ctr: real("ctr"),
+  cpl: real("cpl"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_ad_campaigns_consultant").on(table.consultantId),
+  statusIdx: index("idx_ad_campaigns_status").on(table.status),
+}));
+
+export type AdCampaign = typeof adCampaigns.$inferSelect;
+export type InsertAdCampaign = typeof adCampaigns.$inferInsert;
+
+// Content Calendar - Scheduled content items
+export const contentCalendar = pgTable("content_calendar", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  postId: varchar("post_id").references(() => contentPosts.id, { onDelete: "cascade" }),
+  campaignId: varchar("campaign_id").references(() => adCampaigns.id, { onDelete: "cascade" }),
+  scheduledDate: date("scheduled_date").notNull(),
+  scheduledTime: text("scheduled_time").notNull(),
+  title: varchar("title", { length: 200 }),
+  platform: varchar("platform", { length: 50 }),
+  contentType: varchar("content_type", { length: 50 }),
+  status: varchar("status", { length: 50 }).default("scheduled").$type<"scheduled" | "published" | "missed" | "cancelled">(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  dateIdx: index("idx_content_calendar_date").on(table.scheduledDate),
+}));
+
+export type ContentCalendarItem = typeof contentCalendar.$inferSelect;
+export type InsertContentCalendarItem = typeof contentCalendar.$inferInsert;
+
+// Generated Images - AI-generated images
+export const generatedImages = pgTable("generated_images", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  postId: varchar("post_id").references(() => contentPosts.id, { onDelete: "set null" }),
+  campaignId: varchar("campaign_id").references(() => adCampaigns.id, { onDelete: "set null" }),
+  prompt: text("prompt").notNull(),
+  negativePrompt: text("negative_prompt"),
+  style: varchar("style", { length: 100 }),
+  aspectRatio: varchar("aspect_ratio", { length: 20 }),
+  imageUrl: text("image_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  generationProvider: varchar("generation_provider", { length: 50 }),
+  generationTimeMs: integer("generation_time_ms"),
+  status: varchar("status", { length: 50 }).default("generated").$type<"generating" | "generated" | "failed">(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type GeneratedImage = typeof generatedImages.$inferSelect;
+export type InsertGeneratedImage = typeof generatedImages.$inferInsert;
+
+// Content Templates - Reusable content templates
+export const contentTemplates = pgTable("content_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 200 }).notNull(),
+  category: varchar("category", { length: 100 }),
+  templateContent: jsonb("template_content").$type<{
+    hook?: string;
+    body?: string;
+    cta?: string;
+    variables?: string[];
+  }>().notNull(),
+  useCount: integer("use_count").default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ContentTemplate = typeof contentTemplates.$inferSelect;
+export type InsertContentTemplate = typeof contentTemplates.$inferInsert;
