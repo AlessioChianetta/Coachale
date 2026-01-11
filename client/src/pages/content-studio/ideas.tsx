@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -93,15 +92,6 @@ interface Idea {
   copyContent?: string;
 }
 
-const CONTENT_TYPES = [
-  { value: "post", label: "Post" },
-  { value: "carosello", label: "Carosello" },
-  { value: "reel", label: "Reel" },
-  { value: "video", label: "Video" },
-  { value: "story", label: "Story" },
-  { value: "articolo", label: "Articolo" },
-];
-
 const OBJECTIVES = [
   { value: "awareness", label: "Brand Awareness", description: "Fai conoscere il tuo brand a nuove persone", icon: Eye },
   { value: "engagement", label: "Engagement", description: "Aumenta like, commenti e interazioni", icon: Heart },
@@ -152,7 +142,6 @@ export default function ContentStudioIdeas() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [topic, setTopic] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
-  const [contentTypes, setContentTypes] = useState<string[]>([]);
   const [objective, setObjective] = useState("");
   const [ideaCount, setIdeaCount] = useState(5);
   const [additionalContext, setAdditionalContext] = useState("");
@@ -198,7 +187,6 @@ export default function ContentStudioIdeas() {
           topic,
           targetAudience,
           objective,
-          contentTypes: JSON.stringify(contentTypes),
           additionalContext,
         }),
       });
@@ -217,7 +205,6 @@ export default function ContentStudioIdeas() {
     setTopic(template.topic || "");
     setTargetAudience(template.targetAudience || "");
     setObjective(template.objective || "");
-    setContentTypes(template.contentTypes ? JSON.parse(template.contentTypes) : []);
     setAdditionalContext(template.additionalContext || "");
     toast({ title: "Template caricato", description: `"${template.name}" applicato` });
   };
@@ -341,16 +328,8 @@ export default function ContentStudioIdeas() {
     },
   });
 
-  const handleContentTypeToggle = (value: string) => {
-    setContentTypes((prev) =>
-      prev.includes(value)
-        ? prev.filter((t) => t !== value)
-        : [...prev, value]
-    );
-  };
-
   const handleGenerateIdeas = async () => {
-    if (!topic || !targetAudience || contentTypes.length === 0 || !objective) {
+    if (!topic || !targetAudience || !objective) {
       toast({
         title: "Campi obbligatori",
         description: "Compila tutti i campi per generare le idee",
@@ -370,7 +349,6 @@ export default function ContentStudioIdeas() {
         body: JSON.stringify({
           niche: topic,
           targetAudience,
-          contentType: contentTypes.join(", "),
           objective,
           count: ideaCount,
           additionalContext,
@@ -409,7 +387,6 @@ export default function ContentStudioIdeas() {
       description: idea.description,
       hook: idea.suggestedHook || idea.hook,
       score: idea.aiScore || idea.score || 80,
-      contentType: contentTypes.join(", "),
       targetAudience: targetAudience,
       status: "new",
       mediaType: idea.mediaType || mediaType,
@@ -515,30 +492,6 @@ export default function ContentStudioIdeas() {
                         </motion.div>
                       );
                     })}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Tipo Contenuto</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                    {CONTENT_TYPES.map((type) => (
-                      <div
-                        key={type.value}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`content-type-${type.value}`}
-                          checked={contentTypes.includes(type.value)}
-                          onCheckedChange={() => handleContentTypeToggle(type.value)}
-                        />
-                        <Label
-                          htmlFor={`content-type-${type.value}`}
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {type.label}
-                        </Label>
-                      </div>
-                    ))}
                   </div>
                 </div>
 
@@ -946,7 +899,6 @@ export default function ContentStudioIdeas() {
                 {topic && <li>Topic: {topic.slice(0, 50)}...</li>}
                 {targetAudience && <li>Target: {targetAudience.slice(0, 50)}...</li>}
                 {objective && <li>Obiettivo: {objective}</li>}
-                {contentTypes.length > 0 && <li>Tipi: {contentTypes.join(", ")}</li>}
               </ul>
             </div>
             <Button onClick={handleSaveTemplate} disabled={!templateName.trim()} className="w-full">
