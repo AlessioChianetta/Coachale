@@ -543,93 +543,133 @@ export default function ContentStudioPosts() {
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const ideaId = params.get("ideaId");
-    const ideaTitleRaw = params.get("ideaTitle");
-    const ideaHookRaw = params.get("ideaHook");
-    const ideaDescriptionRaw = params.get("ideaDescription");
-    const mediaType = params.get("mediaType");
-    const copyType = params.get("copyType");
-    const videoScriptRaw = params.get("videoScript");
-    const imageDescriptionRaw = params.get("imageDescription");
-    const imageOverlayTextRaw = params.get("imageOverlayText");
-    const copyContentRaw = params.get("copyContent");
 
-    const ideaTitle = ideaTitleRaw ? decodeURIComponent(ideaTitleRaw) : null;
-    const ideaHook = ideaHookRaw ? decodeURIComponent(ideaHookRaw) : null;
-    const ideaDescription = ideaDescriptionRaw ? decodeURIComponent(ideaDescriptionRaw) : null;
-    const videoScript = videoScriptRaw ? decodeURIComponent(videoScriptRaw) : null;
-    const imageDescription = imageDescriptionRaw ? decodeURIComponent(imageDescriptionRaw) : null;
-    const imageOverlayText = imageOverlayTextRaw ? decodeURIComponent(imageOverlayTextRaw) : null;
-    const copyContent = copyContentRaw ? decodeURIComponent(copyContentRaw) : null;
+    if (!ideaId) return;
 
-    if (ideaTitle || ideaHook || ideaDescription || copyContent || videoScript) {
-      if (ideaId) {
-        setSourceIdeaId(ideaId);
-        setSourceIdeaTitle(ideaTitle || null);
+    const fetchIdea = async () => {
+      try {
+        const response = await fetch(`/api/content/ideas/${ideaId}`, {
+          headers: getAuthHeaders(),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch idea");
+        }
+        const result = await response.json();
+        const idea = result.data;
+        
+        if (!idea) {
+          toast({
+            title: "Errore",
+            description: "Idea non trovata",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        setSourceIdeaId(idea.id);
+        setSourceIdeaTitle(idea.title || null);
+
+        const structured = idea.structuredContent;
+        const copyType = idea.copyType || structured?.type;
+        const mediaType = idea.mediaType;
+
+        if (structured && structured.type === "copy_long") {
+          setSelectedOutputType("copy_long");
+          setFormData((prev) => ({
+            ...prev,
+            title: idea.title || "",
+            hook: structured.hook || idea.hook || "",
+            chiCosaCome: structured.chiCosaCome || "",
+            errore: structured.errore || "",
+            soluzione: structured.soluzione || "",
+            riprovaSociale: structured.riprovaSociale || "",
+            cta: structured.cta || "",
+            body: idea.description || "",
+          }));
+        } else if (structured && structured.type === "video_script") {
+          setSelectedOutputType("video_script");
+          setFormData((prev) => ({
+            ...prev,
+            title: idea.title || "",
+            hook: structured.hook || idea.hook || "",
+            videoHook: structured.hook || idea.hook || "",
+            videoProblema: structured.problema || "",
+            videoSoluzione: structured.soluzione || "",
+            videoCta: structured.cta || "",
+            body: structured.fullScript || idea.videoScript || idea.description || "",
+          }));
+        } else if (structured && structured.type === "copy_short") {
+          setSelectedOutputType("copy_short");
+          setFormData((prev) => ({
+            ...prev,
+            title: idea.title || "",
+            hook: structured.hook || idea.hook || "",
+            body: structured.body || idea.copyContent || idea.description || "",
+            cta: structured.cta || "",
+          }));
+        } else if (mediaType === "video" && idea.videoScript) {
+          setSelectedOutputType("video_script");
+          setFormData((prev) => ({
+            ...prev,
+            title: idea.title || "",
+            hook: idea.hook || "",
+            body: idea.videoScript || idea.description || "",
+            videoHook: idea.hook || "",
+            videoCta: "",
+          }));
+        } else if (copyType === "long") {
+          setSelectedOutputType("copy_long");
+          setFormData((prev) => ({
+            ...prev,
+            title: idea.title || "",
+            hook: idea.hook || "",
+            body: idea.copyContent || idea.description || "",
+          }));
+        } else if (copyType === "short") {
+          setSelectedOutputType("copy_short");
+          setFormData((prev) => ({
+            ...prev,
+            title: idea.title || "",
+            hook: idea.hook || "",
+            body: idea.copyContent || idea.description || "",
+          }));
+        } else if (idea.imageDescription) {
+          setSelectedOutputType("image_copy");
+          setFormData((prev) => ({
+            ...prev,
+            title: idea.title || "",
+            hook: idea.hook || "",
+            body: idea.description || "",
+            imageConceptDescription: idea.imageDescription || "",
+            imageText: idea.imageOverlayText || "",
+          }));
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            title: idea.title || "",
+            hook: idea.hook || "",
+            body: idea.copyContent || idea.description || "",
+          }));
+        }
+
+        setIdeaForCopy(idea.copyContent || idea.description || idea.title || "");
+        setIsDialogOpen(true);
+        toast({
+          title: "Idea caricata",
+          description: `Ora puoi sviluppare il post da "${idea.title}"`,
+        });
+        setLocation("/consultant/content-studio/posts", { replace: true });
+      } catch (error: any) {
+        toast({
+          title: "Errore",
+          description: error.message || "Impossibile caricare l'idea",
+          variant: "destructive",
+        });
       }
+    };
 
-      let bodyContent = "";
-      if (copyContent) {
-        bodyContent = copyContent;
-      } else if (videoScript) {
-        bodyContent = videoScript;
-      } else if (ideaDescription) {
-        bodyContent = ideaDescription;
-      }
-
-      if (mediaType === "video" && videoScript) {
-        setSelectedOutputType("video_script");
-        setFormData((prev) => ({
-          ...prev,
-          title: ideaTitle || "",
-          hook: ideaHook || "",
-          body: bodyContent,
-          videoHook: ideaHook || "",
-          videoCta: "",
-        }));
-      } else if (copyType === "long") {
-        setSelectedOutputType("copy_long");
-        setFormData((prev) => ({
-          ...prev,
-          title: ideaTitle || "",
-          hook: ideaHook || "",
-          body: bodyContent,
-        }));
-      } else if (copyType === "short") {
-        setSelectedOutputType("copy_short");
-        setFormData((prev) => ({
-          ...prev,
-          title: ideaTitle || "",
-          hook: ideaHook || "",
-          body: bodyContent,
-        }));
-      } else if (imageDescription) {
-        setSelectedOutputType("image_copy");
-        setFormData((prev) => ({
-          ...prev,
-          title: ideaTitle || "",
-          hook: ideaHook || "",
-          body: ideaDescription || "",
-          imageConceptDescription: imageDescription,
-          imageText: imageOverlayText || "",
-        }));
-      } else {
-        setFormData((prev) => ({
-          ...prev,
-          title: ideaTitle || "",
-          hook: ideaHook || "",
-          body: bodyContent,
-        }));
-      }
-
-      setIdeaForCopy(bodyContent || ideaDescription || ideaTitle || "");
-      setIsDialogOpen(true);
-      toast({
-        title: "Idea caricata",
-        description: `Ora puoi sviluppare il post da "${ideaTitle}"`,
-      });
-      setLocation("/consultant/content-studio/posts", { replace: true });
-    }
-  }, []);
+    fetchIdea();
+  }, [searchString]);
 
   const { data: postsResponse, isLoading } = useQuery({
     queryKey: ["/api/content/posts"],
@@ -961,6 +1001,43 @@ export default function ContentStudioPosts() {
   };
 
   const handleCreatePost = () => {
+    let structuredContent: Record<string, any> | undefined;
+
+    if (selectedOutputType === "copy_long") {
+      structuredContent = {
+        type: "copy_long",
+        hook: formData.hook,
+        chiCosaCome: formData.chiCosaCome,
+        errore: formData.errore,
+        soluzione: formData.soluzione,
+        riprovaSociale: formData.riprovaSociale,
+        cta: formData.cta,
+      };
+    } else if (selectedOutputType === "video_script") {
+      structuredContent = {
+        type: "video_script",
+        hook: formData.videoHook || formData.hook,
+        problema: formData.videoProblema,
+        soluzione: formData.videoSoluzione,
+        cta: formData.videoCta,
+        fullScript: formData.body,
+      };
+    } else if (selectedOutputType === "copy_short") {
+      structuredContent = {
+        type: "copy_short",
+        hook: formData.hook,
+        body: formData.body,
+        cta: formData.cta,
+      };
+    } else if (selectedOutputType === "image_copy") {
+      structuredContent = {
+        type: "image_copy",
+        imageText: formData.imageText,
+        imageSubtitle: formData.imageSubtitle,
+        imageConceptDescription: formData.imageConceptDescription,
+      };
+    }
+
     if (isCarouselMode) {
       const hasContent = carouselSlides.some(
         (slide) => slide.title.trim() || slide.content.trim()
@@ -989,6 +1066,7 @@ export default function ContentStudioPosts() {
         contentType: "carousel",
         title: formData.title || `Carosello ${carouselSlides.length} slide`,
         ideaId: sourceIdeaId || undefined,
+        structuredContent,
       });
     } else {
       if (!formData.title && !formData.hook) {
@@ -1002,6 +1080,7 @@ export default function ContentStudioPosts() {
       createPostMutation.mutate({
         ...formData,
         ideaId: sourceIdeaId || undefined,
+        structuredContent,
       });
     }
   };
