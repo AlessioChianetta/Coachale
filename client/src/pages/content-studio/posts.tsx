@@ -629,6 +629,7 @@ export default function ContentStudioPosts() {
           }));
         } else if (copyType === "long") {
           setSelectedOutputType("copy_long");
+          setOutputTypeFromIdea(true);
           setFormData((prev) => ({
             ...prev,
             title: idea.title || "",
@@ -637,6 +638,7 @@ export default function ContentStudioPosts() {
           }));
         } else if (copyType === "short") {
           setSelectedOutputType("copy_short");
+          setOutputTypeFromIdea(true);
           setFormData((prev) => ({
             ...prev,
             title: idea.title || "",
@@ -645,6 +647,7 @@ export default function ContentStudioPosts() {
           }));
         } else if (idea.imageDescription) {
           setSelectedOutputType("image_copy");
+          setOutputTypeFromIdea(true);
           setFormData((prev) => ({
             ...prev,
             title: idea.title || "",
