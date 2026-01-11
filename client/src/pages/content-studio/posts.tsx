@@ -100,7 +100,10 @@ interface Post {
 
 interface CopyVariation {
   hook: string;
-  body: string;
+  target?: string;
+  problem?: string;
+  solution?: string;
+  proof?: string;
   cta: string;
   hashtags?: string[];
 }
@@ -675,10 +678,18 @@ export default function ContentStudioPosts() {
   };
 
   const handleSelectVariation = (variation: CopyVariation) => {
+    const bodyParts = [
+      variation.target,
+      variation.problem,
+      variation.solution,
+      variation.proof,
+    ].filter(Boolean);
+    const combinedBody = bodyParts.join("\n\n");
+    
     setFormData((prev) => ({
       ...prev,
       hook: variation.hook || prev.hook,
-      body: variation.body || prev.body,
+      body: combinedBody || prev.body,
       cta: variation.cta || prev.cta,
     }));
     if (variation.hashtags?.length) {
@@ -687,7 +698,7 @@ export default function ContentStudioPosts() {
     setShowVariationsDialog(false);
     toast({
       title: "Variazione selezionata",
-      description: "Il copy è stato applicato al form",
+      description: "Il copy è stato applicato al form (6 step framework)",
     });
   };
 
@@ -1395,20 +1406,32 @@ export default function ContentStudioPosts() {
                     <TabsContent key={idx} value={String(idx)} className="space-y-4">
                       <Card>
                         <CardContent className="p-4 space-y-3">
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Hook</Label>
+                          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg">
+                            <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">1. HOOK</Label>
                             <p className="text-sm font-medium mt-1">{variation.hook}</p>
                           </div>
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Body</Label>
-                            <p className="text-sm mt-1 whitespace-pre-wrap">{variation.body}</p>
+                          <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
+                            <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold">2. TARGET (Aiuto chi a fare cosa)</Label>
+                            <p className="text-sm mt-1">{variation.target || "Non specificato"}</p>
                           </div>
-                          <div>
-                            <Label className="text-xs text-muted-foreground">CTA</Label>
+                          <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg">
+                            <Label className="text-xs text-red-600 dark:text-red-400 font-semibold">3. PROBLEMA</Label>
+                            <p className="text-sm mt-1">{variation.problem || "Non specificato"}</p>
+                          </div>
+                          <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg">
+                            <Label className="text-xs text-green-600 dark:text-green-400 font-semibold">4. SOLUZIONE</Label>
+                            <p className="text-sm mt-1">{variation.solution || "Non specificato"}</p>
+                          </div>
+                          <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg">
+                            <Label className="text-xs text-amber-600 dark:text-amber-400 font-semibold">5. RIPROVA (Proof)</Label>
+                            <p className="text-sm mt-1">{variation.proof || "Non specificato"}</p>
+                          </div>
+                          <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg">
+                            <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">6. CTA</Label>
                             <p className="text-sm font-medium mt-1">{variation.cta}</p>
                           </div>
                           {variation.hashtags && variation.hashtags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1 pt-2">
                               {variation.hashtags.map((tag, tagIdx) => (
                                 <Badge key={tagIdx} variant="secondary" className="text-xs">
                                   {tag.startsWith("#") ? tag : `#${tag}`}

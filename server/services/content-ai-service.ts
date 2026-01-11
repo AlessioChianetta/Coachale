@@ -45,7 +45,10 @@ export interface GeneratePostCopyParams {
 
 export interface PostCopy {
   hook: string;
-  body: string;
+  target: string;
+  problem: string;
+  solution: string;
+  proof: string;
   cta: string;
   fullCopy: string;
   hashtags?: string[];
@@ -300,7 +303,7 @@ export async function generatePostCopy(params: GeneratePostCopyParams): Promise<
     twitter: "Max 280 caratteri, conciso, usa thread se necessario, hashtag limitati.",
   };
 
-  const prompt = `Sei un copywriter esperto di social media italiano. Crea il copy completo per un post.
+  const prompt = `Sei un copywriter esperto di social media italiano. Crea il copy completo per un post usando il FRAMEWORK PERSUASIVO a 6 step.
 
 IDEA DEL CONTENUTO:
 ${idea}
@@ -313,20 +316,25 @@ TONO: ${effectiveTone}
 ${keywords?.length ? `KEYWORDS DA INCLUDERE: ${keywords.join(', ')}` : ''}
 ${maxLength ? `LUNGHEZZA MASSIMA: ${maxLength} caratteri` : ''}
 
-Genera:
-1. hook: Prima riga che cattura attenzione (pattern interrupt, curiosità, o provocazione)
-2. body: Corpo del testo con il messaggio principale
-3. cta: Call to action finale
-4. fullCopy: Testo completo pronto da pubblicare
-5. hashtags: Array di hashtag suggeriti (se appropriato per la piattaforma)
-6. emojiLevel: Livello di emoji usati ("none", "minimal", "moderate", "heavy")
+FRAMEWORK PERSUASIVO (6 STEP):
+1. HOOK - Prima riga che cattura attenzione (pattern interrupt, curiosità, provocazione, domanda, statistica scioccante)
+2. TARGET - "Aiuto [CHI] a [FARE COSA] [COME]" - Identifica il pubblico e il beneficio chiaro
+3. PROBLEM - Il problema/pain point che il tuo target sta vivendo (rendi reale e specifico)
+4. SOLUTION - La tua soluzione/offerta - cosa offri e perché funziona
+5. PROOF - Riprova sociale: testimonianze, risultati, numeri, casi studio (anche struttura suggerita se non hai dati reali)
+6. CTA - Call to action finale (chiara, urgente, specifica)
+
+Genera tutti i 6 elementi + il fullCopy che li unisce in un post fluido e naturale.
 
 RISPONDI SOLO con un JSON valido:
 {
   "hook": "...",
-  "body": "...",
+  "target": "Aiuto [chi] a [cosa] [come]",
+  "problem": "...",
+  "solution": "...",
+  "proof": "...",
   "cta": "...",
-  "fullCopy": "...",
+  "fullCopy": "Testo completo che unisce tutti i 6 step in modo naturale",
   "hashtags": ["..."],
   "emojiLevel": "minimal"
 }`;
@@ -347,7 +355,10 @@ RISPONDI SOLO con un JSON valido:
     const responseText = result.response.text();
     const parsed = parseJsonResponse<PostCopy>(responseText, {
       hook: "Scopri qualcosa di nuovo oggi!",
-      body: idea,
+      target: "Aiuto professionisti a raggiungere i loro obiettivi attraverso strategie mirate",
+      problem: "Molti si sentono bloccati senza una direzione chiara",
+      solution: "Il mio metodo ti guida passo dopo passo verso il risultato",
+      proof: "Oltre 100 clienti hanno già ottenuto risultati concreti",
       cta: "Scopri di più nel link in bio",
       fullCopy: `Scopri qualcosa di nuovo oggi!\n\n${idea}\n\nScopri di più nel link in bio`,
     });
@@ -364,7 +375,10 @@ RISPONDI SOLO con un JSON valido:
 
 export interface PostCopyVariation {
   hook: string;
-  body: string;
+  target: string;
+  problem: string;
+  solution: string;
+  proof: string;
   cta: string;
   hashtags?: string[];
 }
@@ -393,7 +407,7 @@ export async function generatePostCopyVariations(params: GeneratePostCopyParams)
     twitter: "Max 280 caratteri, conciso, usa thread se necessario, hashtag limitati.",
   };
 
-  const prompt = `Sei un copywriter esperto di social media italiano. Crea 3 VARIAZIONI DIVERSE del copy per un post.
+  const prompt = `Sei un copywriter esperto di social media italiano. Crea 3 VARIAZIONI DIVERSE del copy per un post usando il FRAMEWORK PERSUASIVO a 6 step.
 
 IDEA DEL CONTENUTO:
 ${idea}
@@ -406,11 +420,13 @@ TONO: ${effectiveTone}
 ${keywords?.length ? `KEYWORDS DA INCLUDERE: ${keywords.join(', ')}` : ''}
 ${maxLength ? `LUNGHEZZA MASSIMA: ${maxLength} caratteri` : ''}
 
-Per ogni variazione genera:
-1. hook: Prima riga che cattura attenzione (usa approcci DIVERSI: curiosità, provocazione, domanda, statistica, etc.)
-2. body: Corpo del testo con il messaggio principale (stili diversi: narrativo, lista, educativo)
-3. cta: Call to action finale (varia tra urgenza, beneficio, curiosità)
-4. hashtags: Array di hashtag suggeriti (se appropriato per la piattaforma)
+FRAMEWORK PERSUASIVO (6 STEP) per ogni variazione:
+1. HOOK - Prima riga che cattura attenzione (usa approcci DIVERSI: curiosità, provocazione, domanda, statistica)
+2. TARGET - "Aiuto [CHI] a [FARE COSA] [COME]" - Identifica il pubblico e il beneficio
+3. PROBLEM - Il problema/pain point che il target sta vivendo
+4. SOLUTION - La tua soluzione/offerta
+5. PROOF - Riprova sociale: testimonianze, risultati, numeri
+6. CTA - Call to action finale (varia tra urgenza, beneficio, curiosità)
 
 IMPORTANTE: Le 3 variazioni devono essere SIGNIFICATIVAMENTE diverse tra loro in tono e approccio.
 
@@ -419,19 +435,28 @@ RISPONDI SOLO con un JSON valido:
   "variations": [
     {
       "hook": "...",
-      "body": "...",
+      "target": "Aiuto [chi] a [cosa] [come]",
+      "problem": "...",
+      "solution": "...",
+      "proof": "...",
       "cta": "...",
       "hashtags": ["..."]
     },
     {
       "hook": "...",
-      "body": "...",
+      "target": "Aiuto [chi] a [cosa] [come]",
+      "problem": "...",
+      "solution": "...",
+      "proof": "...",
       "cta": "...",
       "hashtags": ["..."]
     },
     {
       "hook": "...",
-      "body": "...",
+      "target": "Aiuto [chi] a [cosa] [come]",
+      "problem": "...",
+      "solution": "...",
+      "proof": "...",
       "cta": "...",
       "hashtags": ["..."]
     }
@@ -454,9 +479,9 @@ RISPONDI SOLO con un JSON valido:
     const responseText = result.response.text();
     const parsed = parseJsonResponse<{ variations: PostCopyVariation[] }>(responseText, {
       variations: [
-        { hook: "Scopri qualcosa di nuovo oggi!", body: idea, cta: "Scopri di più nel link in bio", hashtags: [] },
-        { hook: "Non crederai a quello che sto per dirti...", body: idea, cta: "Commenta qui sotto!", hashtags: [] },
-        { hook: "Ecco cosa devi sapere:", body: idea, cta: "Salva questo post per dopo!", hashtags: [] },
+        { hook: "Scopri qualcosa di nuovo oggi!", target: "Aiuto professionisti a crescere online", problem: "Molti non sanno da dove iniziare", solution: "Il mio metodo in 3 step", proof: "100+ clienti soddisfatti", cta: "Scopri di più nel link in bio", hashtags: [] },
+        { hook: "Non crederai a quello che sto per dirti...", target: "Aiuto imprenditori a scalare", problem: "Sei bloccato nella routine quotidiana", solution: "Ecco la strategia che funziona", proof: "Risultati in 30 giorni garantiti", cta: "Commenta qui sotto!", hashtags: [] },
+        { hook: "Ecco cosa devi sapere:", target: "Aiuto freelancer a trovare clienti", problem: "Fatichi a trovare clienti costanti", solution: "Un sistema automatizzato per lead", proof: "Media di 10 lead a settimana", cta: "Salva questo post per dopo!", hashtags: [] },
       ]
     });
     
