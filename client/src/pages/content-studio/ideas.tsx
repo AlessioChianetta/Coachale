@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -48,13 +51,24 @@ interface Idea {
   createdAt: string;
 }
 
+const CONTENT_TYPES = [
+  { value: "post", label: "Post" },
+  { value: "carosello", label: "Carosello" },
+  { value: "reel", label: "Reel" },
+  { value: "video", label: "Video" },
+  { value: "story", label: "Story" },
+  { value: "articolo", label: "Articolo" },
+];
+
 export default function ContentStudioIdeas() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [topic, setTopic] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
-  const [contentType, setContentType] = useState("");
+  const [contentTypes, setContentTypes] = useState<string[]>([]);
   const [objective, setObjective] = useState("");
+  const [ideaCount, setIdeaCount] = useState(5);
+  const [additionalContext, setAdditionalContext] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
   const [showGeneratedDialog, setShowGeneratedDialog] = useState(false);
@@ -132,8 +146,16 @@ export default function ContentStudioIdeas() {
     },
   });
 
+  const handleContentTypeToggle = (value: string) => {
+    setContentTypes((prev) =>
+      prev.includes(value)
+        ? prev.filter((t) => t !== value)
+        : [...prev, value]
+    );
+  };
+
   const handleGenerateIdeas = async () => {
-    if (!topic || !targetAudience || !contentType || !objective) {
+    if (!topic || !targetAudience || contentTypes.length === 0 || !objective) {
       toast({
         title: "Campi obbligatori",
         description: "Compila tutti i campi per generare le idee",
@@ -153,9 +175,10 @@ export default function ContentStudioIdeas() {
         body: JSON.stringify({
           niche: topic,
           targetAudience,
-          contentType,
+          contentType: contentTypes.join(", "),
           objective,
-          count: 5,
+          count: ideaCount,
+          additionalContext,
         }),
       });
 
@@ -188,7 +211,7 @@ export default function ContentStudioIdeas() {
       description: idea.description,
       hook: idea.hook,
       score: idea.score || 80,
-      contentType: contentType,
+      contentType: contentTypes.join(", "),
       targetAudience: targetAudience,
       status: "new",
     });
@@ -231,8 +254,8 @@ export default function ContentStudioIdeas() {
                   Genera Nuove Idee
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="topic">Topic / Argomento</Label>
                     <Input
@@ -261,23 +284,6 @@ export default function ContentStudioIdeas() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Tipo Contenuto</Label>
-                    <Select value={contentType} onValueChange={setContentType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="post">Post</SelectItem>
-                        <SelectItem value="carosello">Carosello</SelectItem>
-                        <SelectItem value="reel">Reel</SelectItem>
-                        <SelectItem value="video">Video</SelectItem>
-                        <SelectItem value="story">Story</SelectItem>
-                        <SelectItem value="articolo">Articolo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
                     <Label>Obiettivo</Label>
                     <Select value={objective} onValueChange={setObjective}>
                       <SelectTrigger>
@@ -292,6 +298,58 @@ export default function ContentStudioIdeas() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Tipo Contenuto</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                    {CONTENT_TYPES.map((type) => (
+                      <div
+                        key={type.value}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={`content-type-${type.value}`}
+                          checked={contentTypes.includes(type.value)}
+                          onCheckedChange={() => handleContentTypeToggle(type.value)}
+                        />
+                        <Label
+                          htmlFor={`content-type-${type.value}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {type.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Numero Idee da Generare</Label>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {ideaCount}
+                    </span>
+                  </div>
+                  <Slider
+                    value={[ideaCount]}
+                    onValueChange={(value) => setIdeaCount(value[0])}
+                    min={3}
+                    max={15}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="additionalContext">Contesto Aggiuntivo (opzionale)</Label>
+                  <Textarea
+                    id="additionalContext"
+                    placeholder="Aggiungi dettagli specifici, stagionalità, eventi, o informazioni sul tuo brand..."
+                    value={additionalContext}
+                    onChange={(e) => setAdditionalContext(e.target.value)}
+                    rows={3}
+                  />
                 </div>
 
                 <Button
