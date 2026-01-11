@@ -10,6 +10,7 @@ import {
   whatsappGlobalApiKeys,
   conversationStates,
   scheduledFollowupMessages,
+  proactiveLeads,
 } from "../../shared/schema";
 import { eq, and, isNull, asc, sql } from "drizzle-orm";
 import { scheduleMessageProcessing } from "./message-processor";
@@ -263,15 +264,46 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
 
   console.log(`📞 Routing message to agent: ${config.agentName} (${toNumber})`);
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROACTIVE LEAD DETECTION: Check if incoming phone belongs to a proactive lead
+  // This must happen BEFORE conversation lookup to set proper flags
+  // ═══════════════════════════════════════════════════════════════════════════
+  const proactiveMatch = await resolveProactiveLeadMatch(phoneNumber, config.consultantId, config.id);
+  
   // CRITICAL FIX: Only find existing conversation, don't create yet
   // This prevents ghost conversations when message is duplicate
   let conversation = await findConversation(phoneNumber, config.consultantId, config.id);
+
+  // If conversation exists but proactive flags need updating
+  if (conversation && proactiveMatch.isProactiveLead && 
+      (!conversation.isProactiveLead || conversation.proactiveLeadId !== proactiveMatch.proactiveLeadId)) {
+    console.log(`🔄 [PROACTIVE UPDATE] Updating existing conversation with proactive lead flags`);
+    const [updated] = await db
+      .update(whatsappConversations)
+      .set({
+        isProactiveLead: true,
+        proactiveLeadId: proactiveMatch.proactiveLeadId,
+        proactiveLeadAssignedAt: sql`now()`,
+      })
+      .where(eq(whatsappConversations.id, conversation.id))
+      .returning();
+    if (updated) {
+      conversation = updated;
+      console.log(`✅ [PROACTIVE UPDATE] Conversation ${conversation.id} now marked as proactive lead`);
+    }
+  }
 
   // NULL SAFETY FIX: If conversation doesn't exist (was deleted or never created), create it now
   // This handles legitimate new messages without crashing
   if (!conversation) {
     console.log(`🆕 Conversation not found for ${phoneNumber}, creating new one...`);
-    conversation = await findOrCreateConversation(phoneNumber, config.consultantId, config.id);
+    conversation = await findOrCreateConversation(
+      phoneNumber, 
+      config.consultantId, 
+      config.id,
+      proactiveMatch.isProactiveLead,
+      proactiveMatch.proactiveLeadId || undefined
+    );
   }
 
   // FASE 1.1: Cancellazione immediata messaggi schedulati quando lead risponde
@@ -570,6 +602,60 @@ export async function findConversation(
   }
 
   return conversation || null;
+}
+
+/**
+ * Resolve if incoming phone number belongs to a proactive lead
+ * This is called BEFORE conversation creation to set proper flags
+ */
+export async function resolveProactiveLeadMatch(
+  phoneNumber: string,
+  consultantId: string,
+  agentConfigId?: string
+): Promise<{ isProactiveLead: boolean; proactiveLeadId: string | null; leadData: any | null }> {
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
+  
+  // Remove + prefix for database comparison (proactiveLeads stores without +)
+  const phoneWithoutPlus = normalizedPhone.replace(/^\+/, '');
+  
+  console.log(`🔍 [PROACTIVE LEAD MATCH] Checking if phone belongs to proactive lead...`);
+  console.log(`   📞 Normalized: ${normalizedPhone}`);
+  console.log(`   📞 Without +: ${phoneWithoutPlus}`);
+  console.log(`   👤 Consultant: ${consultantId}`);
+  console.log(`   🤖 Agent: ${agentConfigId || 'any'}`);
+  
+  // Query proactiveLeads table - try both with and without + prefix
+  const leads = await db
+    .select()
+    .from(proactiveLeads)
+    .where(
+      and(
+        eq(proactiveLeads.consultantId, consultantId),
+        // Match phone with or without + prefix
+        sql`${proactiveLeads.phoneNumber} IN (${normalizedPhone}, ${phoneWithoutPlus})`
+      )
+    )
+    .limit(1);
+  
+  if (leads.length > 0) {
+    const lead = leads[0];
+    console.log(`✅ [PROACTIVE LEAD MATCH] FOUND! Lead ID: ${lead.id}`);
+    console.log(`   👤 Name: ${lead.firstName} ${lead.lastName}`);
+    console.log(`   📧 Email: ${(lead.leadInfo as any)?.email || 'N/A'}`);
+    console.log(`   🏷️ Status: ${lead.status}`);
+    return {
+      isProactiveLead: true,
+      proactiveLeadId: lead.id,
+      leadData: lead
+    };
+  }
+  
+  console.log(`ℹ️ [PROACTIVE LEAD MATCH] No proactive lead found for this phone number`);
+  return {
+    isProactiveLead: false,
+    proactiveLeadId: null,
+    leadData: null
+  };
 }
 
 export async function findOrCreateConversation(
