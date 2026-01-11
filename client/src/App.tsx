@@ -138,6 +138,15 @@ const AdminSettings = lazy(() => import("@/pages/admin-settings"));
 const SasLanding = lazy(() => import("@/pages/sas-landing"));
 const PrivacyPolicy = lazy(() => import("@/pages/privacy-policy"));
 
+// Content Marketing Studio pages
+const ContentStudioDashboard = lazy(() => import("@/pages/content-studio/dashboard"));
+const ContentStudioIdeas = lazy(() => import("@/pages/content-studio/ideas"));
+const ContentStudioPosts = lazy(() => import("@/pages/content-studio/posts"));
+const ContentStudioCampaigns = lazy(() => import("@/pages/content-studio/campaigns"));
+const ContentStudioVisuals = lazy(() => import("@/pages/content-studio/visuals"));
+const ContentStudioCalendar = lazy(() => import("@/pages/content-studio/calendar"));
+const ContentStudioBrand = lazy(() => import("@/pages/content-studio/brand"));
+
 function Router() {
   const user = getAuthUser();
   const isClient = user?.role === "client";
@@ -569,6 +578,49 @@ function Router() {
           <Route path="/consultant/settings">
             <AuthGuard requiredRole="consultant">
               <ConsultantPricingSettings />
+            </AuthGuard>
+          </Route>
+
+          {/* Content Marketing Studio Routes */}
+          <Route path="/consultant/content-studio">
+            <AuthGuard requiredRole="consultant">
+              <ContentStudioDashboard />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/content-studio/ideas">
+            <AuthGuard requiredRole="consultant">
+              <ContentStudioIdeas />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/content-studio/posts">
+            <AuthGuard requiredRole="consultant">
+              <ContentStudioPosts />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/content-studio/campaigns">
+            <AuthGuard requiredRole="consultant">
+              <ContentStudioCampaigns />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/content-studio/visuals">
+            <AuthGuard requiredRole="consultant">
+              <ContentStudioVisuals />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/content-studio/calendar">
+            <AuthGuard requiredRole="consultant">
+              <ContentStudioCalendar />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/content-studio/brand">
+            <AuthGuard requiredRole="consultant">
+              <ContentStudioBrand />
             </AuthGuard>
           </Route>
 

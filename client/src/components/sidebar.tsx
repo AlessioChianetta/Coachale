@@ -44,6 +44,12 @@ import {
   FileSearch,
   Star,
   Gift,
+  // Content Studio icons
+  Lightbulb,
+  Palette,
+  Image,
+  LayoutGrid,
+  PenLine,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -126,6 +132,20 @@ const consultantCategories: SidebarCategoryExtended[] = [
     items: [
       { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target, color: "text-cyan-600", badge: "HUB" },
       { name: "I tuoi dipendenti", href: "/consultant/whatsapp", icon: Settings, color: "text-slate-500" },
+    ]
+  },
+  {
+    name: "CONTENT STUDIO",
+    icon: PenLine,
+    defaultExpanded: false,
+    items: [
+      { name: "Dashboard", href: "/consultant/content-studio", icon: LayoutGrid, color: "text-purple-500" },
+      { name: "Idee", href: "/consultant/content-studio/ideas", icon: Lightbulb, color: "text-amber-500", badge: "AI" },
+      { name: "Contenuti", href: "/consultant/content-studio/posts", icon: PenLine, color: "text-blue-500" },
+      { name: "Campagne", href: "/consultant/content-studio/campaigns", icon: Target, color: "text-rose-500" },
+      { name: "Visuals", href: "/consultant/content-studio/visuals", icon: Image, color: "text-teal-500", badge: "AI" },
+      { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar, color: "text-orange-500" },
+      { name: "Brand Assets", href: "/consultant/content-studio/brand", icon: Palette, color: "text-violet-500" },
     ]
   },
   {
@@ -611,6 +631,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                   const categoryThemes: Record<string, { iconColor: string; textColor: string }> = {
                     "LAVORO QUOTIDIANO": { iconColor: "text-teal-400", textColor: "text-slate-500 dark:text-slate-400" },
                     "COMUNICAZIONE": { iconColor: "text-cyan-400", textColor: "text-slate-500 dark:text-slate-400" },
+                    "CONTENT STUDIO": { iconColor: "text-purple-400", textColor: "text-slate-500 dark:text-slate-400" },
                     "FORMAZIONE": { iconColor: "text-amber-400", textColor: "text-slate-500 dark:text-slate-400" },
                     "BASE DI CONOSCENZA": { iconColor: "text-blue-400", textColor: "text-slate-500 dark:text-slate-400" },
                     "IMPOSTAZIONI": { iconColor: "text-slate-400", textColor: "text-slate-500 dark:text-slate-400" },
