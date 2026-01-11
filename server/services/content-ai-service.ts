@@ -198,18 +198,24 @@ async function getBrandAssets(consultantId: string) {
 }
 
 function parseJsonResponse<T>(text: string, fallback: T): T {
+  // Step 1: Basic cleanup
+  let cleanedText = text
+    .replace(/```json\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim();
+  
+  // Step 2: Try direct parse first
   try {
-    let cleanedText = text
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-    
-    // Fix unescaped newlines inside JSON string values
-    // This regex finds string values and escapes any unescaped newlines within them
-    cleanedText = cleanedText.replace(
+    return JSON.parse(cleanedText) as T;
+  } catch (firstError) {
+    console.log("[CONTENT-AI] Direct parse failed, trying cleanup strategies...");
+  }
+  
+  // Step 3: Fix unescaped newlines inside string values
+  try {
+    const escapedText = cleanedText.replace(
       /"([^"\\]*(?:\\.[^"\\]*)*)"/g,
       (match) => {
-        // Replace actual newlines with escaped \n inside the string
         return match
           .replace(/\r\n/g, '\\n')
           .replace(/\n/g, '\\n')
@@ -217,28 +223,92 @@ function parseJsonResponse<T>(text: string, fallback: T): T {
           .replace(/\t/g, '\\t');
       }
     );
+    return JSON.parse(escapedText) as T;
+  } catch {
+    console.log("[CONTENT-AI] Escaped newlines parse failed, trying truncation repair...");
+  }
+  
+  // Step 4: Handle truncated JSON (response cut off mid-stream)
+  try {
+    let repairedText = cleanedText;
     
-    return JSON.parse(cleanedText) as T;
-  } catch (error) {
-    console.error("[CONTENT-AI] Failed to parse JSON response:", error);
-    console.error("[CONTENT-AI] Raw text:", text.substring(0, 500));
+    // Count open braces/brackets
+    const openBraces = (repairedText.match(/{/g) || []).length;
+    const closeBraces = (repairedText.match(/}/g) || []).length;
+    const openBrackets = (repairedText.match(/\[/g) || []).length;
+    const closeBrackets = (repairedText.match(/]/g) || []).length;
     
-    // Try a more aggressive cleanup as fallback
-    try {
-      let aggressiveClean = text
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim();
+    // If truncated (more opens than closes), try to repair
+    if (openBraces > closeBraces || openBrackets > closeBrackets) {
+      console.log(`[CONTENT-AI] Detected truncation: braces ${openBraces}/${closeBraces}, brackets ${openBrackets}/${closeBrackets}`);
       
-      // Replace all newlines that are not preceded by a backslash
-      aggressiveClean = aggressiveClean.replace(/(?<!\\)\n/g, '\\n');
-      aggressiveClean = aggressiveClean.replace(/(?<!\\)\r/g, '');
-      
-      return JSON.parse(aggressiveClean) as T;
-    } catch {
-      console.error("[CONTENT-AI] Aggressive cleanup also failed, returning fallback");
-      return fallback;
+      // Find last complete object in ideas array
+      const ideasMatch = repairedText.match(/"ideas"\s*:\s*\[/);
+      if (ideasMatch) {
+        // Find all complete idea objects
+        const ideaObjects: string[] = [];
+        let depth = 0;
+        let currentStart = -1;
+        let inString = false;
+        let escapeNext = false;
+        
+        const startIdx = repairedText.indexOf('[', ideasMatch.index || 0);
+        
+        for (let i = startIdx + 1; i < repairedText.length; i++) {
+          const char = repairedText[i];
+          
+          if (escapeNext) {
+            escapeNext = false;
+            continue;
+          }
+          
+          if (char === '\\') {
+            escapeNext = true;
+            continue;
+          }
+          
+          if (char === '"' && !escapeNext) {
+            inString = !inString;
+            continue;
+          }
+          
+          if (inString) continue;
+          
+          if (char === '{') {
+            if (depth === 0) currentStart = i;
+            depth++;
+          } else if (char === '}') {
+            depth--;
+            if (depth === 0 && currentStart !== -1) {
+              ideaObjects.push(repairedText.substring(currentStart, i + 1));
+              currentStart = -1;
+            }
+          }
+        }
+        
+        if (ideaObjects.length > 0) {
+          console.log(`[CONTENT-AI] Extracted ${ideaObjects.length} complete idea objects from truncated response`);
+          const reconstructed = `{"ideas": [${ideaObjects.join(',')}]}`;
+          return JSON.parse(reconstructed) as T;
+        }
+      }
     }
+  } catch (repairError) {
+    console.log("[CONTENT-AI] Truncation repair failed:", repairError);
+  }
+  
+  // Step 5: Final aggressive cleanup
+  try {
+    let aggressiveClean = cleanedText
+      .replace(/(?<!\\)\n/g, '\\n')
+      .replace(/(?<!\\)\r/g, '')
+      .replace(/[\x00-\x1F\x7F]/g, ''); // Remove control characters
+    
+    return JSON.parse(aggressiveClean) as T;
+  } catch {
+    console.error("[CONTENT-AI] All parsing strategies failed, returning fallback");
+    console.error("[CONTENT-AI] Raw text (first 800 chars):", text.substring(0, 800));
+    return fallback;
   }
 }
 
