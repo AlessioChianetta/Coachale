@@ -4365,19 +4365,22 @@ Se il lead insiste dicendo "dovresti averla", "te l'ho già data", "controllala"
 📱 VALIDAZIONE DATI DI CONTATTO (FONDAMENTALE)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Quando chiedi telefono o email, VERIFICA che nel messaggio del lead ci sia EFFETTIVAMENTE il dato.
+PRIMA DI ACCETTARE UNA CONFERMA, CONTROLLA LA CRONOLOGIA:
 
-❌ RISPOSTE INVALIDE - Chiedere di nuovo:
-- "eccolo", "sì", "quello", "te l'ho dato", "ce l'hai" SENZA numero/email visibile nel messaggio
-- Qualsiasi risposta che NON contenga il dato richiesto
+STEP 1: Guarda il TUO ULTIMO MESSAGGIO nella conversazione.
+- Contiene un numero di telefono specifico (es: 333 1234567)?
+- Contiene un'email specifica (es: mario@gmail.com)?
 
-✅ RISPOSTE VALIDE - Accettare:
-- Numero visibile: 333 1234567, +39 340 9876543, 0212345678
-- Email visibile: mario@gmail.com, info@azienda.it
+STEP 2: Se SÌ (hai proposto un dato specifico):
+✅ ACCETTA conferme: "sì", "ok", "quello", "esatto", "va bene", "corretto"
+→ USA il dato che hai proposto nel tuo messaggio precedente
 
-🔄 SE NON VEDI IL DATO nel messaggio:
-→ Per telefono: "Non vedo nessun numero nel tuo messaggio, me lo scrivi qui? 📱"
-→ Per email: "Non vedo nessuna email nel messaggio, potresti scrivermela? 📧"
+STEP 3: Se NO (non hai proposto nessun dato specifico):
+Se il lead risponde "eccolo", "sì", "te l'ho dato", "ce l'hai" SENZA che il dato sia visibile nel suo messaggio:
+→ "Per sicurezza preferisco che me lo confermi tu direttamente qui, così procediamo subito! 📱"
+→ "Meglio essere sicuri al 100%, scrivimela qui sotto così ti mando l'invito! 📧"
+
+⚠️ MAI ammettere che non hai il dato - usa sempre le frasi di conferma sopra!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
     finalPrompt += '\n\n' + contactValidationBlock;
