@@ -13,6 +13,9 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 import { z } from "zod";
+import { getSuperAdminGeminiKeys } from "../ai/provider-factory";
+import fs from "fs";
+import path from "path";
 
 const router = Router();
 
@@ -1237,6 +1240,201 @@ router.post("/ai/generate-image-prompt", authenticateToken, requireRole("consult
     res.status(500).json({
       success: false,
       error: error.message || "Failed to generate image prompt",
+    });
+  }
+});
+
+// ============================================================
+// IMAGE GENERATION (Gemini Imagen 3)
+// ============================================================
+
+const generateImageSchema = z.object({
+  prompt: z.string().min(1, "Prompt is required"),
+  aspectRatio: z.enum(["1:1", "3:4", "4:3", "9:16", "16:9"]).optional().default("1:1"),
+  style: z.string().optional(),
+  negativePrompt: z.string().optional(),
+  postId: z.string().optional(),
+  campaignId: z.string().optional(),
+});
+
+async function getGeminiApiKey(consultantId: string): Promise<string | null> {
+  try {
+    const [user] = await db.select({
+      useSuperadminGemini: schema.users.useSuperadminGemini,
+      geminiApiKeys: schema.users.geminiApiKeys,
+      geminiApiKeyIndex: schema.users.geminiApiKeyIndex,
+    })
+    .from(schema.users)
+    .where(eq(schema.users.id, consultantId))
+    .limit(1);
+
+    if (!user) {
+      console.error(`[IMAGEN] User not found: ${consultantId}`);
+      return null;
+    }
+
+    if (user.useSuperadminGemini !== false) {
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys && superAdminKeys.keys.length > 0) {
+        const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+        console.log(`🔑 [IMAGEN] Using SuperAdmin Gemini key (${index + 1}/${superAdminKeys.keys.length})`);
+        return superAdminKeys.keys[index];
+      }
+    }
+
+    const userApiKeys = (user.geminiApiKeys as string[]) || [];
+    if (userApiKeys.length > 0) {
+      const currentIndex = user.geminiApiKeyIndex || 0;
+      const validIndex = currentIndex % userApiKeys.length;
+      console.log(`🔑 [IMAGEN] Using consultant's Gemini key (${validIndex + 1}/${userApiKeys.length})`);
+      return userApiKeys[validIndex];
+    }
+
+    console.error("[IMAGEN] No Gemini API keys available");
+    return null;
+  } catch (error) {
+    console.error("[IMAGEN] Error fetching API key:", error);
+    return null;
+  }
+}
+
+async function callImagenApi(
+  apiKey: string,
+  prompt: string,
+  aspectRatio: string,
+  negativePrompt?: string
+): Promise<{ imageData: string; mimeType: string }> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+  
+  const requestBody = {
+    instances: [
+      {
+        prompt: prompt,
+      }
+    ],
+    parameters: {
+      aspectRatio: aspectRatio,
+      ...(negativePrompt && { negativePrompt }),
+      sampleCount: 1,
+    }
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[IMAGEN] API Error: ${response.status}`, errorText);
+    throw new Error(`Imagen API error: ${response.status} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  
+  if (!result.predictions || result.predictions.length === 0) {
+    throw new Error("No image generated from Imagen API");
+  }
+
+  const prediction = result.predictions[0];
+  return {
+    imageData: prediction.bytesBase64Encoded,
+    mimeType: prediction.mimeType || "image/png",
+  };
+}
+
+router.post("/ai/generate-image", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  const startTime = Date.now();
+  try {
+    const consultantId = req.user!.id;
+    const validatedData = generateImageSchema.parse(req.body);
+    
+    console.log(`🖼️ [IMAGEN] Generating image for consultant ${consultantId}`);
+    console.log(`   Prompt: "${validatedData.prompt.substring(0, 100)}..."`);
+    console.log(`   Aspect Ratio: ${validatedData.aspectRatio}`);
+    
+    const apiKey = await getGeminiApiKey(consultantId);
+    if (!apiKey) {
+      return res.status(500).json({
+        success: false,
+        error: "No Gemini API key available. Please configure your API keys.",
+      });
+    }
+
+    let fullPrompt = validatedData.prompt;
+    if (validatedData.style) {
+      fullPrompt = `${validatedData.prompt}, ${validatedData.style} style`;
+    }
+
+    const { imageData, mimeType } = await callImagenApi(
+      apiKey,
+      fullPrompt,
+      validatedData.aspectRatio,
+      validatedData.negativePrompt
+    );
+
+    const uploadsDir = path.join(process.cwd(), "uploads", "generated-images");
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    const extension = mimeType === "image/jpeg" ? "jpg" : "png";
+    const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
+    const filePath = path.join(uploadsDir, filename);
+    
+    const imageBuffer = Buffer.from(imageData, "base64");
+    fs.writeFileSync(filePath, imageBuffer);
+    
+    const imageUrl = `/uploads/generated-images/${filename}`;
+    console.log(`✅ [IMAGEN] Image saved: ${imageUrl}`);
+
+    const [generatedImage] = await db.insert(schema.generatedImages)
+      .values({
+        consultantId,
+        prompt: validatedData.prompt,
+        negativePrompt: validatedData.negativePrompt,
+        style: validatedData.style,
+        aspectRatio: validatedData.aspectRatio,
+        imageUrl,
+        generationProvider: "imagen-3.0-generate-002",
+        generationTimeMs: Date.now() - startTime,
+        status: "generated",
+        postId: validatedData.postId,
+        campaignId: validatedData.campaignId,
+      })
+      .returning();
+
+    const generationTimeMs = Date.now() - startTime;
+    console.log(`✅ [IMAGEN] Generation completed in ${generationTimeMs}ms`);
+
+    res.json({
+      success: true,
+      data: {
+        id: generatedImage.id,
+        imageUrl,
+        prompt: validatedData.prompt,
+        aspectRatio: validatedData.aspectRatio,
+        generationTimeMs,
+      },
+    });
+  } catch (error: any) {
+    const generationTimeMs = Date.now() - startTime;
+    console.error(`❌ [IMAGEN] Error after ${generationTimeMs}ms:`, error);
+    
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors,
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate image",
     });
   }
 });
