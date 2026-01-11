@@ -7933,3 +7933,12 @@ export const contentTemplates = pgTable("content_templates", {
 
 export type ContentTemplate = typeof contentTemplates.$inferSelect;
 export type InsertContentTemplate = typeof contentTemplates.$inferInsert;
+
+// Content Marketing Studio Insert Schemas
+export const insertBrandAssetSchema = createInsertSchema(brandAssets).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertContentIdeaSchema = createInsertSchema(contentIdeas).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertContentPostSchema = createInsertSchema(contentPosts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAdCampaignSchema = createInsertSchema(adCampaigns).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertContentCalendarSchema = createInsertSchema(contentCalendar).omit({ id: true, createdAt: true });
+export const insertGeneratedImageSchema = createInsertSchema(generatedImages).omit({ id: true, createdAt: true });
+export const insertContentTemplateSchema = createInsertSchema(contentTemplates).omit({ id: true, createdAt: true, updatedAt: true });
