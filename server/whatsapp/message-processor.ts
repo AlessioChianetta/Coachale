@@ -4316,10 +4316,11 @@ ${knownEmail ? `Email: ${knownEmail}` : 'Email: da confermare direttamente con i
 ⚠️ REGOLE IMPORTANTI PER LA RACCOLTA DATI:
 
 📞 TELEFONO:
-- NON chiedere "qual è il tuo telefono?" - LO HAI GIÀ NEL SISTEMA
+- HAI GIÀ il numero: ${formattedPhone}
 - PROPONI CONFERMA: "Il numero ${formattedPhone} va bene per l'appuntamento, o preferisci usarne un altro?"
 - Se il lead risponde "sì" / "ok" / "va bene" / "quello" → USA il numero proposto
 - Se il lead fornisce un numero diverso → USA quello nuovo
+- Se il lead chiede "che numero hai?" → Rispondi naturalmente con il numero che hai proposto
 
 📧 EMAIL:
 ${knownEmail 
