@@ -180,19 +180,19 @@ export default function ContentStudioDashboard() {
     {
       label: "Genera Nuova Idea",
       icon: Lightbulb,
-      onClick: () => setLocation("/content-studio/ideas"),
+      onClick: () => setLocation("/consultant/content-studio/ideas"),
       gradient: "from-amber-500 to-orange-600",
     },
     {
       label: "Crea Post",
       icon: FileText,
-      onClick: () => setLocation("/content-studio/posts"),
+      onClick: () => setLocation("/consultant/content-studio/posts"),
       gradient: "from-blue-500 to-cyan-600",
     },
     {
       label: "Avvia Campagna",
       icon: Megaphone,
-      onClick: () => setLocation("/content-studio/campaigns"),
+      onClick: () => setLocation("/consultant/content-studio/campaigns"),
       gradient: "from-purple-500 to-pink-600",
     },
   ];
