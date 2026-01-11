@@ -196,15 +196,46 @@ async function getBrandAssets(consultantId: string) {
 
 function parseJsonResponse<T>(text: string, fallback: T): T {
   try {
-    const cleanedText = text
+    let cleanedText = text
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
+    
+    // Fix unescaped newlines inside JSON string values
+    // This regex finds string values and escapes any unescaped newlines within them
+    cleanedText = cleanedText.replace(
+      /"([^"\\]*(?:\\.[^"\\]*)*)"/g,
+      (match) => {
+        // Replace actual newlines with escaped \n inside the string
+        return match
+          .replace(/\r\n/g, '\\n')
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\n')
+          .replace(/\t/g, '\\t');
+      }
+    );
+    
     return JSON.parse(cleanedText) as T;
   } catch (error) {
     console.error("[CONTENT-AI] Failed to parse JSON response:", error);
     console.error("[CONTENT-AI] Raw text:", text.substring(0, 500));
-    return fallback;
+    
+    // Try a more aggressive cleanup as fallback
+    try {
+      let aggressiveClean = text
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+      
+      // Replace all newlines that are not preceded by a backslash
+      aggressiveClean = aggressiveClean.replace(/(?<!\\)\n/g, '\\n');
+      aggressiveClean = aggressiveClean.replace(/(?<!\\)\r/g, '');
+      
+      return JSON.parse(aggressiveClean) as T;
+    } catch {
+      console.error("[CONTENT-AI] Aggressive cleanup also failed, returning fallback");
+      return fallback;
+    }
   }
 }
 
