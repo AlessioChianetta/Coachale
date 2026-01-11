@@ -224,9 +224,16 @@ export default function ContentStudioIdeas() {
 
   const handleDevelopPost = (idea: Idea) => {
     const params = new URLSearchParams();
-    if (idea.title) params.set("ideaTitle", idea.title);
-    if (idea.hook) params.set("ideaHook", idea.hook);
-    if (idea.description) params.set("ideaDescription", idea.description);
+    if (idea.id) params.set("ideaId", idea.id);
+    if (idea.title) params.set("ideaTitle", encodeURIComponent(idea.title));
+    if (idea.hook) params.set("ideaHook", encodeURIComponent(idea.hook));
+    if (idea.description) params.set("ideaDescription", encodeURIComponent(idea.description));
+    if (idea.mediaType) params.set("mediaType", idea.mediaType);
+    if (idea.copyType) params.set("copyType", idea.copyType);
+    if (idea.videoScript) params.set("videoScript", encodeURIComponent(idea.videoScript));
+    if (idea.imageDescription) params.set("imageDescription", encodeURIComponent(idea.imageDescription));
+    if (idea.imageOverlayText) params.set("imageOverlayText", encodeURIComponent(idea.imageOverlayText));
+    if (idea.copyContent) params.set("copyContent", encodeURIComponent(idea.copyContent));
     setLocation(`/consultant/content-studio/posts?${params.toString()}`);
   };
 

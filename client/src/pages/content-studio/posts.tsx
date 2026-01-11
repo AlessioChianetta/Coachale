@@ -90,6 +90,7 @@ interface Post {
   scheduledDate?: string;
   contentType?: string;
   createdAt?: string;
+  ideaId?: string;
   engagement?: {
     likes: number;
     comments: number;
@@ -515,6 +516,8 @@ export default function ContentStudioPosts() {
     imageConceptDescription: "",
   });
   const [ideaForCopy, setIdeaForCopy] = useState("");
+  const [sourceIdeaId, setSourceIdeaId] = useState<string | null>(null);
+  const [sourceIdeaTitle, setSourceIdeaTitle] = useState<string | null>(null);
 
   const [copyVariations, setCopyVariations] = useState<CopyVariation[]>([]);
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
@@ -539,22 +542,90 @@ export default function ContentStudioPosts() {
 
   useEffect(() => {
     const params = new URLSearchParams(searchString);
-    const ideaTitle = params.get("ideaTitle");
-    const ideaHook = params.get("ideaHook");
-    const ideaDescription = params.get("ideaDescription");
+    const ideaId = params.get("ideaId");
+    const ideaTitleRaw = params.get("ideaTitle");
+    const ideaHookRaw = params.get("ideaHook");
+    const ideaDescriptionRaw = params.get("ideaDescription");
+    const mediaType = params.get("mediaType");
+    const copyType = params.get("copyType");
+    const videoScriptRaw = params.get("videoScript");
+    const imageDescriptionRaw = params.get("imageDescription");
+    const imageOverlayTextRaw = params.get("imageOverlayText");
+    const copyContentRaw = params.get("copyContent");
 
-    if (ideaTitle || ideaHook || ideaDescription) {
-      setFormData((prev) => ({
-        ...prev,
-        title: ideaTitle || "",
-        hook: ideaHook || "",
-        body: ideaDescription || "",
-      }));
-      setIdeaForCopy(ideaDescription || ideaTitle || "");
+    const ideaTitle = ideaTitleRaw ? decodeURIComponent(ideaTitleRaw) : null;
+    const ideaHook = ideaHookRaw ? decodeURIComponent(ideaHookRaw) : null;
+    const ideaDescription = ideaDescriptionRaw ? decodeURIComponent(ideaDescriptionRaw) : null;
+    const videoScript = videoScriptRaw ? decodeURIComponent(videoScriptRaw) : null;
+    const imageDescription = imageDescriptionRaw ? decodeURIComponent(imageDescriptionRaw) : null;
+    const imageOverlayText = imageOverlayTextRaw ? decodeURIComponent(imageOverlayTextRaw) : null;
+    const copyContent = copyContentRaw ? decodeURIComponent(copyContentRaw) : null;
+
+    if (ideaTitle || ideaHook || ideaDescription || copyContent || videoScript) {
+      if (ideaId) {
+        setSourceIdeaId(ideaId);
+        setSourceIdeaTitle(ideaTitle || null);
+      }
+
+      let bodyContent = "";
+      if (copyContent) {
+        bodyContent = copyContent;
+      } else if (videoScript) {
+        bodyContent = videoScript;
+      } else if (ideaDescription) {
+        bodyContent = ideaDescription;
+      }
+
+      if (mediaType === "video" && videoScript) {
+        setSelectedOutputType("video_script");
+        setFormData((prev) => ({
+          ...prev,
+          title: ideaTitle || "",
+          hook: ideaHook || "",
+          body: bodyContent,
+          videoHook: ideaHook || "",
+          videoCta: "",
+        }));
+      } else if (copyType === "long") {
+        setSelectedOutputType("copy_long");
+        setFormData((prev) => ({
+          ...prev,
+          title: ideaTitle || "",
+          hook: ideaHook || "",
+          body: bodyContent,
+        }));
+      } else if (copyType === "short") {
+        setSelectedOutputType("copy_short");
+        setFormData((prev) => ({
+          ...prev,
+          title: ideaTitle || "",
+          hook: ideaHook || "",
+          body: bodyContent,
+        }));
+      } else if (imageDescription) {
+        setSelectedOutputType("image_copy");
+        setFormData((prev) => ({
+          ...prev,
+          title: ideaTitle || "",
+          hook: ideaHook || "",
+          body: ideaDescription || "",
+          imageConceptDescription: imageDescription,
+          imageText: imageOverlayText || "",
+        }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          title: ideaTitle || "",
+          hook: ideaHook || "",
+          body: bodyContent,
+        }));
+      }
+
+      setIdeaForCopy(bodyContent || ideaDescription || ideaTitle || "");
       setIsDialogOpen(true);
       toast({
-        title: "Idea caricata da Generatore Idee",
-        description: "Puoi ora sviluppare il post dalla tua idea",
+        title: "Idea caricata",
+        description: `Ora puoi sviluppare il post da "${ideaTitle}"`,
       });
       setLocation("/consultant/content-studio/posts", { replace: true });
     }
@@ -917,6 +988,7 @@ export default function ContentStudioPosts() {
         body: concatenatedBody,
         contentType: "carousel",
         title: formData.title || `Carosello ${carouselSlides.length} slide`,
+        ideaId: sourceIdeaId || undefined,
       });
     } else {
       if (!formData.title && !formData.hook) {
@@ -927,7 +999,10 @@ export default function ContentStudioPosts() {
         });
         return;
       }
-      createPostMutation.mutate(formData);
+      createPostMutation.mutate({
+        ...formData,
+        ideaId: sourceIdeaId || undefined,
+      });
     }
   };
 
@@ -1021,7 +1096,13 @@ export default function ContentStudioPosts() {
                   Crea e gestisci i tuoi contenuti social
                 </p>
               </div>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) {
+                  setSourceIdeaId(null);
+                  setSourceIdeaTitle(null);
+                }
+              }}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
@@ -1033,6 +1114,14 @@ export default function ContentStudioPosts() {
                     <DialogTitle>
                       {isCarouselMode ? "Crea Carosello" : "Crea Nuovo Post"}
                     </DialogTitle>
+                    {sourceIdeaTitle && (
+                      <div className="flex items-center gap-2 pt-2">
+                        <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          Da idea: {sourceIdeaTitle}
+                        </Badge>
+                      </div>
+                    )}
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="flex flex-col sm:flex-row gap-4">
