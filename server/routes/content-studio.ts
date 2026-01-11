@@ -173,6 +173,40 @@ router.post("/ideas", authenticateToken, requireRole("consultant"), async (req: 
   }
 });
 
+// GET /api/content/ideas/:id - Get single idea by ID
+router.get("/ideas/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const ideaId = req.params.id;
+    
+    const [idea] = await db.select()
+      .from(schema.contentIdeas)
+      .where(and(
+        eq(schema.contentIdeas.id, ideaId),
+        eq(schema.contentIdeas.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!idea) {
+      return res.status(404).json({
+        success: false,
+        error: "Content idea not found"
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: idea
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error fetching content idea:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch content idea"
+    });
+  }
+});
+
 // PUT /api/content/ideas/:id - Update idea
 router.put("/ideas/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {

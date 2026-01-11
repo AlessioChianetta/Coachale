@@ -22,6 +22,45 @@ export interface GenerateIdeasParams {
   awarenessLevel?: AwarenessLevel;
 }
 
+export interface StructuredCopyShort {
+  type: "copy_short";
+  hook: string;
+  body: string;
+  cta: string;
+  hashtags?: string[];
+}
+
+export interface StructuredCopyLong {
+  type: "copy_long";
+  hook: string;
+  chiCosaCome: string;
+  errore: string;
+  soluzione: string;
+  riprovaSociale: string;
+  cta: string;
+  hashtags?: string[];
+}
+
+export interface StructuredVideoScript {
+  type: "video_script";
+  hook: string;
+  problema: string;
+  soluzione: string;
+  cta: string;
+  fullScript: string;
+  hashtags?: string[];
+}
+
+export interface StructuredImageCopy {
+  type: "image_copy";
+  imageText: string;
+  subtitle: string;
+  conceptDescription: string;
+  hashtags?: string[];
+}
+
+export type StructuredContent = StructuredCopyShort | StructuredCopyLong | StructuredVideoScript | StructuredImageCopy;
+
 export interface ContentIdea {
   title: string;
   description: string;
@@ -35,6 +74,7 @@ export interface ContentIdea {
   copyContent?: string;
   mediaType?: "video" | "photo";
   copyType?: "short" | "long";
+  structuredContent?: StructuredContent;
 }
 
 export interface GenerateIdeasResult {
@@ -359,64 +399,49 @@ Colori: ${JSON.stringify(assets.primaryColors || [])}
 
   const awarenessInfo = AWARENESS_LEVEL_INSTRUCTIONS[awarenessLevel];
 
-  const mediaInstructions = mediaType === "video" 
-    ? `
-**SCRIPT VIDEO (videoScript)**:
-Genera uno script parlato fluido da registrare in video. Deve essere:
-- Scritto per essere DETTO A VOCE (non letto)
-- Frasi corte e incisive
-- Ritmo veloce, dinamico
-- Segue il framework: Hook→Problema→Soluzione→Prova Sociale→CTA
-- NON usare etichette come "HOOK:" o "PROBLEMA:", scrivi il testo fluido
-- Esempio: "Guadagni bene, ma il tuo conto resta sempre uguale. Il problema non è quanto incassi, è quanto resta e lavora per te. La libertà finanziaria non arriva aumentando il reddito, ma costruendo un sistema..."
-` 
-    : `
-**DESCRIZIONE IMMAGINE (imageDescription)**:
-Descrizione visiva dettagliata per creare o trovare l'immagine perfetta. Include:
-- Soggetto principale
-- Ambientazione/sfondo
-- Colori dominanti
-- Mood/atmosfera
-- Stile fotografico o grafico
+  const getStructuredContentInstructions = () => {
+    if (mediaType === "video") {
+      return `
+**structuredContent** (OBBLIGATORIO - oggetto JSON):
+{
+  "type": "video_script",
+  "hook": "La prima frase che cattura attenzione (3-5 secondi)",
+  "problema": "Il problema che stai risolvendo (10-15 secondi)", 
+  "soluzione": "Come risolvi il problema (15-20 secondi)",
+  "cta": "Call to action finale (5-10 secondi)",
+  "fullScript": "Lo script completo parlato fluido da registrare",
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
+}
+Lo script DEVE essere scritto per essere DETTO A VOCE, frasi corte e incisive.`;
+    } else if (copyType === "long") {
+      return `
+**structuredContent** (OBBLIGATORIO - oggetto JSON):
+{
+  "type": "copy_long",
+  "hook": "La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante",
+  "chiCosaCome": "Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento",
+  "errore": "L'errore comune che il tuo target sta commettendo senza saperlo",
+  "soluzione": "La tua soluzione unica al problema - cosa offri e perché funziona",
+  "riprovaSociale": "Testimonianze, risultati, numeri che provano il valore",
+  "cta": "Call to action finale chiara e urgente",
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
+}
+Ogni blocco deve essere narrativo, emotivo, con emoji moderati. Separa i pensieri all'interno di ogni blocco con ㅤ.`;
+    } else {
+      return `
+**structuredContent** (OBBLIGATORIO - oggetto JSON):
+{
+  "type": "copy_short",
+  "hook": "La prima frase d'impatto che cattura attenzione",
+  "body": "Il corpo del messaggio - conciso, dritto al punto",
+  "cta": "Call to action finale",
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
+}
+Massimo 3-4 blocchi di testo totali. Dritto al punto.`;
+    }
+  };
 
-**TESTO OVERLAY (imageOverlayText)**:
-Testo breve e d'impatto da sovrapporre all'immagine (max 10 parole).
-`;
-
-  const copyInstructions = copyType === "long"
-    ? `
-**COPY LUNGO NARRATIVO (copyContent)**:
-Genera un copy emotivo e coinvolgente che segue IMPLICITAMENTE il framework Hook→Problema→Soluzione→Prova Sociale→CTA.
-
-REGOLE FONDAMENTALI:
-- NON usare MAI etichette come "HOOK:", "PROBLEMA:", "SOLUZIONE:" ecc
-- Scrivi testo NARRATIVO fluido, come un racconto
-- Usa emoji con moderazione per enfatizzare punti chiave 😤💪🔥
-- Separa i paragrafi con il carattere speciale ㅤ (spazio Unicode)
-- Storytelling emotivo che connette con il lettore
-- Minimo 5-6 blocchi di testo separati
-
-ESEMPIO di struttura (ma senza etichette visibili):
-"Forse non te ne rendi conto, ma hai già un secondo lavoro.
-ㅤ
-Solo che nessuno te lo paga. Anzi, sei tu che paghi per farlo. 😫
-ㅤ
-Qual è questo lavoro?
-ㅤ
-È il tempo che passi nel traffico...
-ㅤ
-La soluzione? [continua naturalmente]
-ㅤ
-[CTA finale]"
-`
-    : `
-**COPY CORTO DIRETTO (copyContent)**:
-Genera un copy conciso e d'impatto:
-- Massimo 3-4 blocchi di testo
-- Dritto al punto
-- Hook forte + Beneficio chiaro + CTA
-- Usa ㅤ per separare i blocchi
-`;
+  const structuredContentInstructions = getStructuredContentInstructions();
 
   const prompt = `Sei un esperto di content marketing italiano specializzato nella Piramide della Consapevolezza. Genera ${count} idee creative per contenuti COMPLETI.
 
@@ -446,11 +471,10 @@ Per ogni idea, fornisci TUTTI questi elementi:
 6. suggestedCta: Call to action suggerita
 7. mediaType: "${mediaType}"
 8. copyType: "${copyType}"
-9. copyContent: Il copy completo secondo le istruzioni sotto
-${mediaType === "video" ? "10. videoScript: Lo script video parlato" : "10. imageDescription: Descrizione visiva dell'immagine\n11. imageOverlayText: Testo da sovrapporre all'immagine"}
+9. structuredContent: Contenuto strutturato (vedi formato sotto)
+${mediaType === "photo" ? "10. imageDescription: Descrizione visiva dell'immagine\n11. imageOverlayText: Testo da sovrapporre all'immagine" : ""}
 
-${mediaInstructions}
-${copyInstructions}
+${structuredContentInstructions}
 
 RISPONDI SOLO con un JSON valido nel formato:
 {
@@ -464,8 +488,7 @@ RISPONDI SOLO con un JSON valido nel formato:
       "suggestedCta": "...",
       "mediaType": "${mediaType}",
       "copyType": "${copyType}",
-      "copyContent": "...",
-      ${mediaType === "video" ? '"videoScript": "..."' : '"imageDescription": "...",\n      "imageOverlayText": "..."'}
+      "structuredContent": { /* oggetto JSON secondo il formato sopra */ }${mediaType === "photo" ? ',\n      "imageDescription": "...",\n      "imageOverlayText": "..."' : ''}
     }
   ]
 }`;
