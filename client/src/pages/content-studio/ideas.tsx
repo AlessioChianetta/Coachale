@@ -48,6 +48,7 @@ import {
   ShoppingCart,
   GraduationCap,
   Award,
+  Check,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/navbar";
@@ -136,6 +137,7 @@ export default function ContentStudioIdeas() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
   const [showGeneratedDialog, setShowGeneratedDialog] = useState(false);
+  const [savedIdeaIndexes, setSavedIdeaIndexes] = useState<Set<number>>(new Set());
 
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterContentType, setFilterContentType] = useState<string>("all");
@@ -300,6 +302,7 @@ export default function ContentStudioIdeas() {
 
       const result = await response.json();
       setGeneratedIdeas(result.data.ideas || []);
+      setSavedIdeaIndexes(new Set()); // Reset saved state for new batch
       setShowGeneratedDialog(true);
       toast({
         title: "Idee generate!",
@@ -316,7 +319,7 @@ export default function ContentStudioIdeas() {
     }
   };
 
-  const handleSaveGeneratedIdea = (idea: any) => {
+  const handleSaveGeneratedIdea = (idea: any, index: number) => {
     createIdeaMutation.mutate({
       title: idea.title,
       description: idea.description,
@@ -325,6 +328,14 @@ export default function ContentStudioIdeas() {
       contentType: contentTypes.join(", "),
       targetAudience: targetAudience,
       status: "new",
+    }, {
+      onSuccess: () => {
+        setSavedIdeaIndexes(prev => new Set(prev).add(index));
+        toast({
+          title: "Idea salvata!",
+          description: `"${idea.title}" è stata aggiunta alle tue idee`,
+        });
+      }
     });
   };
 
@@ -623,7 +634,9 @@ export default function ContentStudioIdeas() {
                               <Badge variant="outline">{idea.contentType}</Badge>
                             )}
                             {idea.targetAudience && (
-                              <Badge variant="secondary">{idea.targetAudience}</Badge>
+                              <Badge variant="secondary" className="max-w-[200px] truncate" title={idea.targetAudience}>
+                                {idea.targetAudience.length > 50 ? idea.targetAudience.slice(0, 50) + "..." : idea.targetAudience}
+                              </Badge>
                             )}
                           </div>
 
@@ -678,7 +691,10 @@ export default function ContentStudioIdeas() {
         </div>
       </div>
 
-      <Dialog open={showGeneratedDialog} onOpenChange={setShowGeneratedDialog}>
+      <Dialog open={showGeneratedDialog} onOpenChange={(open) => {
+        setShowGeneratedDialog(open);
+        if (!open) setSavedIdeaIndexes(new Set()); // Reset when closing
+      }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -704,13 +720,16 @@ export default function ContentStudioIdeas() {
                   )}
                   <Button
                     size="sm"
-                    onClick={() => handleSaveGeneratedIdea(idea)}
-                    disabled={createIdeaMutation.isPending}
+                    onClick={() => handleSaveGeneratedIdea(idea, index)}
+                    disabled={createIdeaMutation.isPending || savedIdeaIndexes.has(index)}
+                    className={savedIdeaIndexes.has(index) ? "bg-green-500 hover:bg-green-500" : ""}
                   >
-                    {createIdeaMutation.isPending ? (
+                    {createIdeaMutation.isPending && !savedIdeaIndexes.has(index) ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : savedIdeaIndexes.has(index) ? (
+                      <Check className="h-4 w-4 mr-2" />
                     ) : null}
-                    Salva Idea
+                    {savedIdeaIndexes.has(index) ? "Salvata!" : "Salva Idea"}
                   </Button>
                 </CardContent>
               </Card>

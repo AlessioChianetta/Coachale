@@ -502,6 +502,17 @@ export default function ContentStudioPosts() {
     cta: "",
     platform: "",
     status: "draft",
+    chiCosaCome: "",
+    errore: "",
+    soluzione: "",
+    riprovaSociale: "",
+    videoHook: "",
+    videoProblema: "",
+    videoSoluzione: "",
+    videoCta: "",
+    imageText: "",
+    imageSubtitle: "",
+    imageConceptDescription: "",
   });
   const [ideaForCopy, setIdeaForCopy] = useState("");
 
@@ -617,7 +628,7 @@ export default function ContentStudioPosts() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
       setIsDialogOpen(false);
-      setFormData({ title: "", hook: "", body: "", cta: "", platform: "", status: "draft" });
+      setFormData({ title: "", hook: "", body: "", cta: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", imageText: "", imageSubtitle: "", imageConceptDescription: "" });
       setSuggestedHashtags([]);
       resetCarouselState();
     },
@@ -1279,74 +1290,211 @@ export default function ContentStudioPosts() {
                             id="title"
                             placeholder="Titolo del post..."
                             value={formData.title}
-                            onChange={(e) =>
-                              setFormData({ ...formData, title: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                           />
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="hook">Hook</Label>
-                          <Input
-                            id="hook"
-                            placeholder="La prima frase che cattura l'attenzione..."
-                            value={formData.hook}
-                            onChange={(e) =>
-                              setFormData({ ...formData, hook: e.target.value })
-                            }
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="body">Corpo del Post</Label>
-                          <Textarea
-                            id="body"
-                            placeholder="Il contenuto principale del tuo post..."
-                            rows={4}
-                            value={formData.body}
-                            onChange={(e) =>
-                              setFormData({ ...formData, body: e.target.value })
-                            }
-                          />
-                          {formData.platform && (
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-center text-xs">
-                                <span
-                                  className={
-                                    isOverLimit()
-                                      ? "text-red-500 font-medium"
-                                      : "text-green-600"
-                                  }
-                                >
-                                  {getCharacterCount()} / {getCharacterLimit()} caratteri
-                                </span>
-                                {isOverLimit() && (
-                                  <span className="text-red-500 text-xs">
-                                    Limite superato!
-                                  </span>
-                                )}
-                              </div>
-                              <Progress
-                                value={getCharacterProgress()}
-                                className={`h-1 ${
-                                  isOverLimit() ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"
-                                }`}
+                        {selectedOutputType === "copy_short" && (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="hook">Hook</Label>
+                              <Input
+                                id="hook"
+                                placeholder="La prima frase che cattura l'attenzione..."
+                                value={formData.hook}
+                                onChange={(e) => setFormData({ ...formData, hook: e.target.value })}
                               />
                             </div>
-                          )}
-                        </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="body">Caption</Label>
+                              <Textarea
+                                id="body"
+                                placeholder="Il testo della caption..."
+                                rows={3}
+                                value={formData.body}
+                                onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="cta">Call to Action</Label>
+                              <Input
+                                id="cta"
+                                placeholder="Es: Clicca il link in bio!"
+                                value={formData.cta}
+                                onChange={(e) => setFormData({ ...formData, cta: e.target.value })}
+                              />
+                            </div>
+                          </>
+                        )}
 
-                        <div className="space-y-2">
-                          <Label htmlFor="cta">Call to Action</Label>
-                          <Input
-                            id="cta"
-                            placeholder="Es: Clicca il link in bio!"
-                            value={formData.cta}
-                            onChange={(e) =>
-                              setFormData({ ...formData, cta: e.target.value })
-                            }
-                          />
-                        </div>
+                        {selectedOutputType === "copy_long" && (
+                          <div className="space-y-3">
+                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
+                                1. 🎣 HOOK
+                              </Label>
+                              <Input
+                                placeholder="La frase che cattura l'attenzione..."
+                                value={formData.hook}
+                                onChange={(e) => setFormData({ ...formData, hook: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
+                                2. 👋 CHI-COSA-COME
+                              </Label>
+                              <Textarea
+                                placeholder="Ciao, sono [Nome] e aiuto [chi] a [cosa] attraverso [metodo]..."
+                                rows={2}
+                                value={formData.chiCosaCome || ""}
+                                onChange={(e) => setFormData({ ...formData, chiCosaCome: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
+                                3. ❌ ERRORE
+                              </Label>
+                              <Textarea
+                                placeholder="L'errore specifico che il tuo target sta commettendo..."
+                                rows={2}
+                                value={formData.errore || ""}
+                                onChange={(e) => setFormData({ ...formData, errore: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
+                                4. ✅ SOLUZIONE
+                              </Label>
+                              <Textarea
+                                placeholder="Il tuo metodo unico per risolvere il problema..."
+                                rows={2}
+                                value={formData.soluzione || ""}
+                                onChange={(e) => setFormData({ ...formData, soluzione: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                                5. 💬 RIPROVA SOCIALE
+                              </Label>
+                              <Textarea
+                                placeholder="Storie concrete con nomi ed eventi reali..."
+                                rows={2}
+                                value={formData.riprovaSociale || ""}
+                                onChange={(e) => setFormData({ ...formData, riprovaSociale: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
+                                6. 🎯 CTA
+                              </Label>
+                              <Input
+                                placeholder="Chiamata all'azione finale..."
+                                value={formData.cta}
+                                onChange={(e) => setFormData({ ...formData, cta: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedOutputType === "video_script" && (
+                          <div className="space-y-3">
+                            <div className="bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">
+                                🎬 00-05s: HOOK VISIVO
+                              </Label>
+                              <Textarea
+                                placeholder="Azione visiva che cattura l'attenzione..."
+                                rows={2}
+                                value={formData.videoHook || ""}
+                                onChange={(e) => setFormData({ ...formData, videoHook: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                                📍 05-15s: PROBLEMA
+                              </Label>
+                              <Textarea
+                                placeholder="Descrizione del problema..."
+                                rows={2}
+                                value={formData.videoProblema || ""}
+                                onChange={(e) => setFormData({ ...formData, videoProblema: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-green-600 dark:text-green-400 font-semibold">
+                                💡 15-40s: SOLUZIONE
+                              </Label>
+                              <Textarea
+                                placeholder="Come risolvi il problema..."
+                                rows={3}
+                                value={formData.videoSoluzione || ""}
+                                onChange={(e) => setFormData({ ...formData, videoSoluzione: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                                🎯 40-60s: CTA
+                              </Label>
+                              <Textarea
+                                placeholder="Chiamata all'azione..."
+                                rows={2}
+                                value={formData.videoCta || ""}
+                                onChange={(e) => setFormData({ ...formData, videoCta: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedOutputType === "image_copy" && (
+                          <div className="space-y-3">
+                            <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950/20 dark:to-purple-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-pink-600 dark:text-pink-400 font-semibold">
+                                🖼️ TESTO IMMAGINE (max 10 parole)
+                              </Label>
+                              <Input
+                                placeholder="Il testo che appare sull'immagine..."
+                                value={formData.imageText || ""}
+                                onChange={(e) => setFormData({ ...formData, imageText: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                                📝 SOTTOTITOLO
+                              </Label>
+                              <Input
+                                placeholder="Sottotitolo o descrizione breve..."
+                                value={formData.imageSubtitle || ""}
+                                onChange={(e) => setFormData({ ...formData, imageSubtitle: e.target.value })}
+                              />
+                            </div>
+                            <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
+                                💭 DESCRIZIONE CONCETTO
+                              </Label>
+                              <Textarea
+                                placeholder="Descrivi il concetto visivo dell'immagine..."
+                                rows={3}
+                                value={formData.imageConceptDescription || ""}
+                                onChange={(e) => setFormData({ ...formData, imageConceptDescription: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {(selectedOutputType === "copy_short" || selectedOutputType === "copy_long") && formData.platform && (
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className={isOverLimit() ? "text-red-500 font-medium" : "text-green-600"}>
+                                {getCharacterCount()} / {getCharacterLimit()} caratteri
+                              </span>
+                              {isOverLimit() && <span className="text-red-500 text-xs">Limite superato!</span>}
+                            </div>
+                            <Progress
+                              value={getCharacterProgress()}
+                              className={`h-1 ${isOverLimit() ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`}
+                            />
+                          </div>
+                        )}
                       </>
                     )}
 
