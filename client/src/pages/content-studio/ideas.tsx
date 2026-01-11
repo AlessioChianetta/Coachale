@@ -400,11 +400,17 @@ export default function ContentStudioIdeas() {
     createIdeaMutation.mutate({
       title: idea.title,
       description: idea.description,
-      hook: idea.hook,
-      score: idea.score || 80,
+      hook: idea.suggestedHook || idea.hook,
+      score: idea.aiScore || idea.score || 80,
       contentType: contentTypes.join(", "),
       targetAudience: targetAudience,
       status: "new",
+      mediaType: idea.mediaType || mediaType,
+      copyType: idea.copyType || copyType,
+      videoScript: idea.videoScript,
+      imageDescription: idea.imageDescription,
+      imageOverlayText: idea.imageOverlayText,
+      copyContent: idea.copyContent,
     }, {
       onSuccess: () => {
         setSavedIdeaIndexes(prev => new Set(prev).add(index));
@@ -835,9 +841,54 @@ export default function ContentStudioIdeas() {
                           </div>
                         )}
 
+                        {(idea.videoScript || idea.imageDescription || idea.copyContent) && (
+                          <div className="space-y-2 pt-2 border-t">
+                            {idea.mediaType === "video" && idea.videoScript && (
+                              <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded-lg">
+                                <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 mb-1">
+                                  <Video className="h-3 w-3" />
+                                  <span className="text-xs font-medium">Script Video</span>
+                                </div>
+                                <p className="text-xs line-clamp-3">{idea.videoScript}</p>
+                              </div>
+                            )}
+                            {idea.mediaType === "photo" && idea.imageDescription && (
+                              <div className="bg-green-50 dark:bg-green-950/20 p-2 rounded-lg">
+                                <div className="flex items-center gap-1 text-green-600 dark:text-green-400 mb-1">
+                                  <Camera className="h-3 w-3" />
+                                  <span className="text-xs font-medium">Descrizione Immagine</span>
+                                </div>
+                                <p className="text-xs line-clamp-2">{idea.imageDescription}</p>
+                                {idea.imageOverlayText && (
+                                  <p className="text-xs font-medium mt-1">Overlay: "{idea.imageOverlayText}"</p>
+                                )}
+                              </div>
+                            )}
+                            {idea.copyContent && (
+                              <div className="bg-purple-50 dark:bg-purple-950/20 p-2 rounded-lg">
+                                <div className="flex items-center gap-1 text-purple-600 dark:text-purple-400 mb-1">
+                                  {idea.copyType === "long" ? <AlignLeft className="h-3 w-3" /> : <FileTextIcon className="h-3 w-3" />}
+                                  <span className="text-xs font-medium">{idea.copyType === "long" ? "Copy Lungo" : "Copy Corto"}</span>
+                                </div>
+                                <p className="text-xs line-clamp-3 whitespace-pre-wrap">{idea.copyContent}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-2 flex-wrap">
                           {idea.contentType && (
                             <Badge variant="outline" className="text-xs">{idea.contentType}</Badge>
+                          )}
+                          {idea.mediaType && (
+                            <Badge variant="outline" className="text-xs">
+                              {idea.mediaType === "video" ? <><Video className="h-3 w-3 mr-1" />Video</> : <><Camera className="h-3 w-3 mr-1" />Foto</>}
+                            </Badge>
+                          )}
+                          {idea.copyType && (
+                            <Badge variant="outline" className="text-xs">
+                              {idea.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
+                            </Badge>
                           )}
                           <Badge variant="secondary" className="text-xs">
                             {(idea.score || 0) >= 85 ? "Alto Potenziale" :
@@ -903,42 +954,124 @@ export default function ContentStudioIdeas() {
         setShowGeneratedDialog(open);
         if (!open) setSavedIdeaIndexes(new Set()); // Reset when closing
       }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-purple-500" />
               Idee Generate ({generatedIdeas.length})
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {generatedIdeas.map((idea, index) => (
-              <Card key={index}>
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-start justify-between">
-                    <h4 className="font-semibold">{idea.title}</h4>
-                    {idea.score && (
-                      <Badge className={getScoreColor(idea.score)}>
-                        Score: {idea.score}
-                      </Badge>
+              <Card key={index} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-b">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-lg">{idea.title}</h4>
+                        <p className="text-sm text-muted-foreground mt-1">{idea.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {(idea.aiScore || idea.score) && (
+                          <Badge className={getScoreColor(idea.aiScore || idea.score)}>
+                            {idea.aiScore || idea.score}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="capitalize">
+                          {idea.mediaType === "video" ? (
+                            <><Video className="h-3 w-3 mr-1" /> Video</>
+                          ) : (
+                            <><Camera className="h-3 w-3 mr-1" /> Foto</>
+                          )}
+                        </Badge>
+                        <Badge variant="outline">
+                          {idea.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
+                        </Badge>
+                      </div>
+                    </div>
+                    {(idea.suggestedHook || idea.hook) && (
+                      <div className="mt-3 p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                        <p className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                          Hook: "{idea.suggestedHook || idea.hook}"
+                        </p>
+                      </div>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{idea.description}</p>
-                  {idea.hook && (
-                    <p className="text-sm italic text-purple-600">Hook: "{idea.hook}"</p>
-                  )}
-                  <Button
-                    size="sm"
-                    onClick={() => handleSaveGeneratedIdea(idea, index)}
-                    disabled={createIdeaMutation.isPending || savedIdeaIndexes.has(index)}
-                    className={savedIdeaIndexes.has(index) ? "bg-green-500 hover:bg-green-500" : ""}
-                  >
-                    {createIdeaMutation.isPending && !savedIdeaIndexes.has(index) ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : savedIdeaIndexes.has(index) ? (
-                      <Check className="h-4 w-4 mr-2" />
-                    ) : null}
-                    {savedIdeaIndexes.has(index) ? "Salvata!" : "Salva Idea"}
-                  </Button>
+
+                  <div className="p-4 space-y-4">
+                    {idea.mediaType === "video" && idea.videoScript && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                          <Video className="h-4 w-4" />
+                          <span className="font-medium text-sm">Script Video (da parlare)</span>
+                        </div>
+                        <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{idea.videoScript}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {idea.mediaType === "photo" && (idea.imageDescription || idea.imageOverlayText) && (
+                      <div className="space-y-3">
+                        {idea.imageDescription && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                              <Camera className="h-4 w-4" />
+                              <span className="font-medium text-sm">Descrizione Immagine</span>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                              <p className="text-sm">{idea.imageDescription}</p>
+                            </div>
+                          </div>
+                        )}
+                        {idea.imageOverlayText && (
+                          <div className="space-y-2">
+                            <span className="font-medium text-sm text-green-600 dark:text-green-400">Testo Overlay:</span>
+                            <div className="bg-black text-white p-3 rounded-lg text-center font-bold">
+                              "{idea.imageOverlayText}"
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {idea.copyContent && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                          {idea.copyType === "long" ? <AlignLeft className="h-4 w-4" /> : <FileTextIcon className="h-4 w-4" />}
+                          <span className="font-medium text-sm">
+                            {idea.copyType === "long" ? "Copy Lungo (Narrativo)" : "Copy Corto (Diretto)"}
+                          </span>
+                        </div>
+                        <div className="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{idea.copyContent}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      {idea.suggestedCta && (
+                        <p className="text-xs text-muted-foreground">
+                          CTA suggerita: <span className="font-medium">{idea.suggestedCta}</span>
+                        </p>
+                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveGeneratedIdea(idea, index)}
+                        disabled={createIdeaMutation.isPending || savedIdeaIndexes.has(index)}
+                        className={savedIdeaIndexes.has(index) ? "bg-green-500 hover:bg-green-500" : ""}
+                      >
+                        {createIdeaMutation.isPending && !savedIdeaIndexes.has(index) ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : savedIdeaIndexes.has(index) ? (
+                          <Check className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Bookmark className="h-4 w-4 mr-2" />
+                        )}
+                        {savedIdeaIndexes.has(index) ? "Salvata!" : "Salva Idea"}
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ))}
