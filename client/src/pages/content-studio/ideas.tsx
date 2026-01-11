@@ -52,6 +52,7 @@ import {
   Save,
   FolderOpen,
   ChevronDown,
+  ChevronUp,
   MoreVertical,
 } from "lucide-react";
 import {
@@ -153,6 +154,7 @@ export default function ContentStudioIdeas() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterContentType, setFilterContentType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("score-desc");
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
 
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -668,9 +670,31 @@ export default function ContentStudioIdeas() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-base line-clamp-2">{idea.title}</h3>
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              {idea.description}
-                            </p>
+                            <div 
+                              className="mt-1 cursor-pointer group/desc"
+                              onClick={() => {
+                                const newSet = new Set(expandedDescriptions);
+                                if (newSet.has(idea.id)) {
+                                  newSet.delete(idea.id);
+                                } else {
+                                  newSet.add(idea.id);
+                                }
+                                setExpandedDescriptions(newSet);
+                              }}
+                            >
+                              <p className={`text-sm text-muted-foreground ${expandedDescriptions.has(idea.id) ? "" : "line-clamp-2"}`}>
+                                {idea.description}
+                              </p>
+                              {idea.description && idea.description.length > 100 && (
+                                <button className="text-xs text-primary hover:underline mt-1 flex items-center gap-1">
+                                  {expandedDescriptions.has(idea.id) ? (
+                                    <>Mostra meno <ChevronUp className="h-3 w-3" /></>
+                                  ) : (
+                                    <>Mostra tutto <ChevronDown className="h-3 w-3" /></>
+                                  )}
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-1">
                             <div className={`px-2 py-1 rounded-full text-xs font-bold ${
