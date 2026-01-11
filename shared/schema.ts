@@ -7781,6 +7781,7 @@ export const contentIdeas = pgTable("content_ideas", {
   imageOverlayText: text("image_overlay_text"),
   copyContent: text("copy_content"),
   awarenessLevel: varchar("awareness_level", { length: 50 }).default("problem_aware").$type<"unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware">(),
+  structuredContent: jsonb("structured_content").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
   status: varchar("status", { length: 50 }).default("draft").$type<"draft" | "approved" | "used" | "archived">(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -7790,6 +7791,48 @@ export const contentIdeas = pgTable("content_ideas", {
 }));
 
 export type AwarenessLevel = "unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware";
+
+export interface StructuredCopyShort {
+  type: "copy_short";
+  hook: string;
+  body: string;
+  cta: string;
+  hashtags?: string[];
+}
+
+export interface StructuredCopyLong {
+  type: "copy_long";
+  hook: string;
+  chiCosaCome: string;
+  errore: string;
+  soluzione: string;
+  riprovaSociale: string;
+  cta: string;
+  hashtags?: string[];
+}
+
+export interface VideoScriptSegment {
+  timing: string;
+  visual: string;
+  voiceover: string;
+}
+
+export interface StructuredVideoScript {
+  type: "video_script";
+  segments: VideoScriptSegment[];
+  hashtags?: string[];
+}
+
+export interface StructuredImageCopy {
+  type: "image_copy";
+  imageText: string;
+  subtitle: string;
+  conceptDescription: string;
+  hashtags?: string[];
+}
+
+export type StructuredContent = StructuredCopyShort | StructuredCopyLong | StructuredVideoScript | StructuredImageCopy;
+
 export type ContentIdea = typeof contentIdeas.$inferSelect;
 export type InsertContentIdea = typeof contentIdeas.$inferInsert;
 export const insertContentIdeaSchema = createInsertSchema(contentIdeas).omit({ id: true, createdAt: true, updatedAt: true });
@@ -7834,6 +7877,7 @@ export const contentPosts = pgTable("content_posts", {
   impressions: integer("impressions").default(0),
   clicks: integer("clicks").default(0),
   engagementRate: real("engagement_rate"),
+  structuredContent: jsonb("structured_content").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
