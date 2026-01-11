@@ -397,16 +397,20 @@ export default function ContentStudioIdeas() {
     createIdeaMutation.mutate({
       title: idea.title,
       description: idea.description,
-      hook: idea.suggestedHook || idea.hook,
-      score: idea.aiScore || idea.score || 80,
+      suggestedHook: idea.suggestedHook,
+      suggestedCta: idea.suggestedCta,
+      aiScore: idea.aiScore || 80,
+      aiReasoning: idea.aiReasoning,
       targetAudience: targetAudience,
-      status: "new",
+      status: "draft",
       mediaType: idea.mediaType || mediaType,
       copyType: idea.copyType || copyType,
       videoScript: idea.videoScript,
-      imageDescription: idea.imageDescription,
-      imageOverlayText: idea.imageOverlayText,
+      imageDescription: idea.imageDescription || idea.structuredContent?.imageDescription,
+      imageOverlayText: idea.imageOverlayText || idea.structuredContent?.imageOverlayText,
       copyContent: idea.copyContent,
+      structuredContent: idea.structuredContent,
+      awarenessLevel: awarenessLevel,
     }, {
       onSuccess: () => {
         setSavedIdeaIndexes(prev => new Set(prev).add(index));
