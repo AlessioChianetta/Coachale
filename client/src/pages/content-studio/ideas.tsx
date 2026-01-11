@@ -47,6 +47,11 @@ import {
   ShoppingCart,
   GraduationCap,
   Award,
+  Brain,
+  AlertTriangle,
+  Compass,
+  Package,
+  Gift,
   Check,
   Save,
   FolderOpen,
@@ -101,6 +106,14 @@ const OBJECTIVES = [
   { value: "authority", label: "Autorità", description: "Posizionati come esperto del settore", icon: Award },
 ];
 
+const AWARENESS_LEVELS = [
+  { value: "unaware", label: "Non Consapevole", description: "Non sa di avere un problema", icon: Brain, color: "red" },
+  { value: "problem_aware", label: "Consapevole Problema", description: "Sente disagio ma non conosce soluzioni", icon: AlertTriangle, color: "orange" },
+  { value: "solution_aware", label: "Consapevole Soluzione", description: "Conosce soluzioni ma non la tua", icon: Compass, color: "yellow" },
+  { value: "product_aware", label: "Consapevole Prodotto", description: "Conosce il tuo prodotto ma non è convinto", icon: Package, color: "blue" },
+  { value: "most_aware", label: "Più Consapevole", description: "Desidera il prodotto, aspetta l'offerta giusta", icon: Gift, color: "green" },
+];
+
 type HookType = "how-to" | "curiosità" | "numero" | "problema";
 
 function getHookType(hook: string): HookType {
@@ -143,7 +156,8 @@ export default function ContentStudioIdeas() {
   const [topic, setTopic] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [objective, setObjective] = useState("");
-  const [ideaCount, setIdeaCount] = useState(5);
+  const [ideaCount, setIdeaCount] = useState(3);
+  const [awarenessLevel, setAwarenessLevel] = useState<"unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware">("problem_aware");
   const [additionalContext, setAdditionalContext] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
@@ -354,6 +368,7 @@ export default function ContentStudioIdeas() {
           additionalContext,
           mediaType,
           copyType,
+          awarenessLevel,
         }),
       });
 
@@ -574,6 +589,45 @@ export default function ContentStudioIdeas() {
                 </div>
 
                 <div className="space-y-3">
+                  <Label>Livello di Consapevolezza (Piramide)</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    {AWARENESS_LEVELS.map((level) => {
+                      const IconComponent = level.icon;
+                      const isSelected = awarenessLevel === level.value;
+                      const colorClasses: Record<string, string> = {
+                        red: isSelected ? "border-2 border-red-500 bg-red-50 dark:bg-red-900/20" : "border-border hover:border-red-300",
+                        orange: isSelected ? "border-2 border-orange-500 bg-orange-50 dark:bg-orange-900/20" : "border-border hover:border-orange-300",
+                        yellow: isSelected ? "border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20" : "border-border hover:border-yellow-300",
+                        blue: isSelected ? "border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300",
+                        green: isSelected ? "border-2 border-green-500 bg-green-50 dark:bg-green-900/20" : "border-border hover:border-green-300",
+                      };
+                      const iconColorClasses: Record<string, string> = {
+                        red: isSelected ? "text-red-500" : "text-muted-foreground",
+                        orange: isSelected ? "text-orange-500" : "text-muted-foreground",
+                        yellow: isSelected ? "text-yellow-500" : "text-muted-foreground",
+                        blue: isSelected ? "text-blue-500" : "text-muted-foreground",
+                        green: isSelected ? "text-green-500" : "text-muted-foreground",
+                      };
+                      return (
+                        <motion.div
+                          key={level.value}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setAwarenessLevel(level.value as any)}
+                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${colorClasses[level.color]}`}
+                        >
+                          <div className="flex flex-col items-center text-center gap-1">
+                            <IconComponent className={`h-5 w-5 ${iconColorClasses[level.color]}`} />
+                            <h4 className="font-medium text-xs">{level.label}</h4>
+                            <p className="text-[10px] text-muted-foreground leading-tight">{level.description}</p>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label>Numero Idee da Generare</Label>
                     <span className="text-sm font-medium text-muted-foreground">
@@ -583,8 +637,8 @@ export default function ContentStudioIdeas() {
                   <Slider
                     value={[ideaCount]}
                     onValueChange={(value) => setIdeaCount(value[0])}
-                    min={5}
-                    max={20}
+                    min={1}
+                    max={5}
                     step={1}
                     className="w-full"
                   />

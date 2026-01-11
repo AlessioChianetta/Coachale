@@ -242,8 +242,41 @@ function parseJsonResponse<T>(text: string, fallback: T): T {
   }
 }
 
+const AWARENESS_LEVEL_INSTRUCTIONS: Record<AwarenessLevel, { name: string; strategy: string; tone: string; focus: string }> = {
+  unaware: {
+    name: "Non Consapevole",
+    strategy: "Il pubblico NON sa di avere un problema. Devi risvegliare la consapevolezza con contenuti che fanno riflettere, storie di trasformazione, e 'aha moments' che illuminano un problema nascosto.",
+    tone: "Curioso, provocatorio, educativo, storytelling",
+    focus: "Fai emergere il problema che non sanno di avere. Usa domande retoriche, statistiche sorprendenti, storie di chi era nella stessa situazione."
+  },
+  problem_aware: {
+    name: "Consapevole del Problema",
+    strategy: "Il pubblico SENTE un disagio ma non conosce soluzioni. Devi amplificare il dolore, validare i loro sentimenti, e introdurre l'idea che esiste una via d'uscita.",
+    tone: "Empatico, comprensivo, agitante, speranzoso",
+    focus: "Valida il problema, amplifica le conseguenze di non risolverlo, accenna che una soluzione esiste. Usa 'Anche tu ti senti così?' e 'Sai cosa significa quando...'."
+  },
+  solution_aware: {
+    name: "Consapevole della Soluzione",
+    strategy: "Il pubblico conosce le soluzioni ma NON la tua. Devi differenziarti dalla concorrenza, mostrare il tuo approccio unico, e posizionarti come la scelta migliore.",
+    tone: "Autoritario, differenziante, educativo, comparativo",
+    focus: "Evidenzia cosa rende il tuo metodo/prodotto DIVERSO. Usa case study, confronti (senza nominare competitor), e il tuo Unique Selling Point."
+  },
+  product_aware: {
+    name: "Consapevole del Prodotto",
+    strategy: "Il pubblico conosce il tuo prodotto ma NON è ancora convinto. Devi rimuovere obiezioni, costruire fiducia, e mostrare prove sociali concrete.",
+    tone: "Rassicurante, testimonial-driven, FAQ-style, trust-building",
+    focus: "Rispondi alle obiezioni comuni, mostra testimonianze e risultati, offri garanzie. Usa 'Ecco cosa dicono i clienti...' e 'La domanda più comune è...'."
+  },
+  most_aware: {
+    name: "Più Consapevole (Pronto all'Acquisto)",
+    strategy: "Il pubblico DESIDERA il tuo prodotto e aspetta l'offerta giusta. Devi creare urgenza, presentare offerte irresistibili, e facilitare l'azione immediata.",
+    tone: "Urgente, diretto, offerta-focused, action-oriented",
+    focus: "Crea scarsità e urgenza, presenta offerte speciali, bonus esclusivi, deadline. Usa 'Solo per oggi...', 'Ultimi posti...', 'Bonus esclusivo se agisci ora...'."
+  }
+};
+
 export async function generateContentIdeas(params: GenerateIdeasParams): Promise<GenerateIdeasResult> {
-  const { consultantId, niche, targetAudience, objective, additionalContext, count = 5, mediaType = "photo", copyType = "short" } = params;
+  const { consultantId, niche, targetAudience, objective, additionalContext, count = 3, mediaType = "photo", copyType = "short", awarenessLevel = "problem_aware" } = params;
   
   await rateLimitCheck(consultantId);
   
@@ -253,6 +286,8 @@ Brand Voice: ${assets.brandVoice || 'professional'}
 Tono: ${assets.toneOfVoice || 'friendly professional'}
 Colori: ${JSON.stringify(assets.primaryColors || [])}
 ` : '';
+
+  const awarenessInfo = AWARENESS_LEVEL_INSTRUCTIONS[awarenessLevel];
 
   const mediaInstructions = mediaType === "video" 
     ? `
@@ -313,7 +348,7 @@ Genera un copy conciso e d'impatto:
 - Usa ㅤ per separare i blocchi
 `;
 
-  const prompt = `Sei un esperto di content marketing italiano. Genera ${count} idee creative per contenuti COMPLETI.
+  const prompt = `Sei un esperto di content marketing italiano specializzato nella Piramide della Consapevolezza. Genera ${count} idee creative per contenuti COMPLETI.
 
 CONTESTO:
 - Nicchia/Settore: ${niche}
@@ -323,6 +358,13 @@ CONTESTO:
 - Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
 ${brandContext}
+
+🎯 LIVELLO DI CONSAPEVOLEZZA: ${awarenessInfo.name}
+STRATEGIA DA SEGUIRE: ${awarenessInfo.strategy}
+TONO DA USARE: ${awarenessInfo.tone}
+FOCUS DEL CONTENUTO: ${awarenessInfo.focus}
+
+È FONDAMENTALE che ogni idea sia perfettamente calibrata per questo livello di consapevolezza. Il copy, l'hook, e tutto il contenuto devono riflettere questa strategia.
 
 Per ogni idea, fornisci TUTTI questi elementi:
 

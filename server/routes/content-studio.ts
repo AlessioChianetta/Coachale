@@ -1169,9 +1169,10 @@ const generateIdeasSchema = z.object({
   targetAudience: z.string().min(1, "Target audience is required"),
   objective: z.enum(["awareness", "engagement", "leads", "sales", "education", "authority"]),
   additionalContext: z.string().optional(),
-  count: z.number().min(1).max(20).optional(),
+  count: z.number().min(1).max(5).optional(),
   mediaType: z.enum(["video", "photo"]).default("photo"),
   copyType: z.enum(["short", "long"]).default("short"),
+  awarenessLevel: z.enum(["unaware", "problem_aware", "solution_aware", "product_aware", "most_aware"]).default("problem_aware"),
 });
 
 const generateCopySchema = z.object({
@@ -1221,6 +1222,7 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
       count: validatedData.count,
       mediaType: validatedData.mediaType,
       copyType: validatedData.copyType,
+      awarenessLevel: validatedData.awarenessLevel,
     });
     
     console.log(`✅ [CONTENT-AI] Generated ${result.ideas.length} ideas using ${result.modelUsed}`);
