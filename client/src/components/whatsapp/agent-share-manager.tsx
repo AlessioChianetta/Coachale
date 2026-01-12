@@ -30,8 +30,15 @@ interface AgentShare {
   totalMessagesCount: number;
   publicUrl: string;
   createdAt: string;
+  revokedAt?: string | null;
   requiresLogin?: boolean;
   assignedManagers?: Manager[];
+  agent?: {
+    id: string;
+    agentName?: string;
+    businessName?: string;
+    agentType?: string;
+  };
 }
 
 interface Manager {
