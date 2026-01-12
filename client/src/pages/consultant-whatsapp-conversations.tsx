@@ -839,7 +839,7 @@ export default function ConsultantWhatsAppConversationsPage() {
     }
 
     return (
-      <div className="flex flex-col h-full bg-[#e5ddd5] dark:bg-gray-900">
+      <div className="flex flex-col h-full bg-white dark:bg-gray-900">
         {isMobile && (
           <div className="flex items-center gap-3 px-2 py-2 bg-[#075e54] dark:bg-gray-800">
             <Button
@@ -938,7 +938,7 @@ export default function ConsultantWhatsAppConversationsPage() {
           )}
         </div>
 
-        <div className="bg-[#f0f0f0] dark:bg-gray-800 px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+        <div className="bg-gray-100 dark:bg-gray-800 px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
           <div className="flex items-center gap-2">
             <div className="flex-1 flex items-center bg-white dark:bg-gray-700 rounded-full px-4 py-2 shadow-sm">
               <Input
