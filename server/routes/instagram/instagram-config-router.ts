@@ -16,7 +16,7 @@ import {
   instagramAgentConfig,
   consultantWhatsappConfig,
 } from "../../../shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, isNotNull } from "drizzle-orm";
 import { encrypt, decrypt, encryptForConsultant, decryptForConsultant } from "../../encryption";
 import { nanoid } from "nanoid";
 
@@ -802,18 +802,29 @@ async function subscribeWebhookHandler(req: AuthRequest, res: Response) {
     const consultantId = req.user!.id;
     const encryptionSalt = req.user!.encryptionSalt;
 
+    // Find active config with complete data (facebookPageId and pageAccessToken)
     const [config] = await db
       .select()
       .from(consultantInstagramConfig)
-      .where(eq(consultantInstagramConfig.consultantId, consultantId))
+      .where(
+        and(
+          eq(consultantInstagramConfig.consultantId, consultantId),
+          eq(consultantInstagramConfig.isActive, true),
+          isNotNull(consultantInstagramConfig.facebookPageId),
+          isNotNull(consultantInstagramConfig.pageAccessToken)
+        )
+      )
       .limit(1);
 
-    if (!config || !config.pageAccessToken || !config.facebookPageId) {
+    if (!config) {
+      console.log(`[INSTAGRAM] No active/complete config found for consultant ${consultantId}`);
       return res.status(400).json({ 
         success: false, 
         error: "Configurazione incompleta. Assicurati di aver completato il collegamento OAuth." 
       });
     }
+    
+    console.log(`[INSTAGRAM] Found active config ${config.id} for consultant ${consultantId}`);
 
     // Decrypt token
     let accessToken = config.pageAccessToken;
@@ -848,7 +859,7 @@ async function subscribeWebhookHandler(req: AuthRequest, res: Response) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         access_token: accessToken,
-        subscribed_fields: "messages,messaging_postbacks,message_reactions,message_reads,feed,comments",
+        subscribed_fields: "messages,messaging_postbacks,message_reactions,message_deliveries,feed",
       }).toString(),
     });
     
