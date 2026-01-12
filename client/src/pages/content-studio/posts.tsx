@@ -182,6 +182,11 @@ interface SocialPreviewProps {
   hook: string;
   body: string;
   cta: string;
+  copyType?: "short" | "long";
+  chiCosaCome?: string;
+  errore?: string;
+  soluzione?: string;
+  riprovaSociale?: string;
 }
 
 function formatTextWithHashtags(text: string) {
@@ -199,8 +204,22 @@ function formatTextWithHashtags(text: string) {
   });
 }
 
-function SocialPreview({ platform, hook, body, cta }: SocialPreviewProps) {
-  const fullText = [hook, body, cta].filter(Boolean).join("\n\n");
+function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, errore, soluzione, riprovaSociale }: SocialPreviewProps) {
+  // Build body content based on copy type
+  let displayBody = body;
+  if (copyType === "long") {
+    const longCopyParts = [
+      chiCosaCome,
+      errore,
+      soluzione,
+      riprovaSociale,
+    ].filter(Boolean);
+    if (longCopyParts.length > 0) {
+      displayBody = longCopyParts.join("\n\n");
+    }
+  }
+  
+  const fullText = [hook, displayBody, cta].filter(Boolean).join("\n\n");
   const charCount = fullText.length;
   const twitterLimit = 280;
 
@@ -250,9 +269,9 @@ function SocialPreview({ platform, hook, body, cta }: SocialPreviewProps) {
             <p>
               <span className="font-semibold">il_tuo_brand</span>{" "}
               {hook && <span className="font-bold">{hook}</span>}
-              {hook && body && " "}
-              {formatTextWithHashtags(body)}
-              {(hook || body) && cta && " "}
+              {hook && displayBody && " "}
+              {formatTextWithHashtags(displayBody)}
+              {(hook || displayBody) && cta && " "}
               {cta && <span className="font-medium">{cta}</span>}
             </p>
           </div>
@@ -284,7 +303,7 @@ function SocialPreview({ platform, hook, body, cta }: SocialPreviewProps) {
           </div>
           <div className="mt-3 text-sm space-y-2">
             {hook && <p className="font-semibold">{hook}</p>}
-            {body && <p className="whitespace-pre-wrap">{formatTextWithHashtags(body)}</p>}
+            {displayBody && <p className="whitespace-pre-wrap">{formatTextWithHashtags(displayBody)}</p>}
             {cta && <p className="font-medium text-blue-600">{cta}</p>}
           </div>
         </div>
@@ -355,7 +374,7 @@ function SocialPreview({ platform, hook, body, cta }: SocialPreviewProps) {
           </div>
           <div className="mt-4 text-sm space-y-3">
             {hook && <p className="font-semibold text-base">{hook}</p>}
-            {body && <p className="whitespace-pre-wrap leading-relaxed">{formatTextWithHashtags(body)}</p>}
+            {displayBody && <p className="whitespace-pre-wrap leading-relaxed">{formatTextWithHashtags(displayBody)}</p>}
             {cta && <p className="font-medium text-blue-600">{cta}</p>}
           </div>
         </div>
@@ -423,7 +442,7 @@ function SocialPreview({ platform, hook, body, cta }: SocialPreviewProps) {
               </div>
               <div className="mt-2 text-sm space-y-2">
                 {hook && <p className="font-medium">{hook}</p>}
-                {body && <p className="whitespace-pre-wrap">{formatTextWithHashtags(body)}</p>}
+                {displayBody && <p className="whitespace-pre-wrap">{formatTextWithHashtags(displayBody)}</p>}
                 {cta && <p className="text-sky-500">{cta}</p>}
               </div>
               <div className="mt-4 aspect-video rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center">
@@ -498,7 +517,7 @@ function SocialPreview({ platform, hook, body, cta }: SocialPreviewProps) {
             <p className="font-semibold text-sm">@iltuobrand</p>
             <p className="text-xs mt-1 line-clamp-3">
               {hook && <span className="font-bold">{hook} </span>}
-              {body && formatTextWithHashtags(body)}
+              {displayBody && formatTextWithHashtags(displayBody)}
             </p>
           </div>
         </div>
@@ -1914,6 +1933,11 @@ export default function ContentStudioPosts() {
                             hook={formData.hook}
                             body={formData.body}
                             cta={formData.cta}
+                            copyType={selectedCopyType}
+                            chiCosaCome={formData.chiCosaCome}
+                            errore={formData.errore}
+                            soluzione={formData.soluzione}
+                            riprovaSociale={formData.riprovaSociale}
                           />
                         </div>
                       </CollapsibleContent>
@@ -2304,106 +2328,139 @@ export default function ContentStudioPosts() {
                 </div>
               )}
 
-              {viewingPost.structuredContent?.copyType === "long" && (
-                <Collapsible defaultOpen>
-                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
-                    <ChevronDown className="h-4 w-4" />
-                    Copy Lungo - Dettagli
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-2 space-y-3">
-                    {viewingPost.structuredContent.chiCosaCome && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Chi-Cosa-Come</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.chiCosaCome}</p>
-                      </div>
-                    )}
-                    {viewingPost.structuredContent.errore && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Errore</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.errore}</p>
-                      </div>
-                    )}
-                    {viewingPost.structuredContent.soluzione && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Soluzione</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.soluzione}</p>
-                      </div>
-                    )}
-                    {viewingPost.structuredContent.riprovaSociale && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Riprova Sociale</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.riprovaSociale}</p>
-                      </div>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
+              {(() => {
+                const copyType = viewingPost.copyType || viewingPost.structuredContent?.copyType;
+                const chiCosaCome = viewingPost.chiCosaCome || viewingPost.structuredContent?.chiCosaCome;
+                const errore = viewingPost.errore || viewingPost.structuredContent?.errore;
+                const soluzione = viewingPost.soluzione || viewingPost.structuredContent?.soluzione;
+                const riprovaSociale = viewingPost.riprovaSociale || viewingPost.structuredContent?.riprovaSociale;
+                const hasLongCopyContent = chiCosaCome || errore || soluzione || riprovaSociale;
+                
+                if (copyType === "long" || hasLongCopyContent) {
+                  return (
+                    <Collapsible defaultOpen>
+                      <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                        <ChevronDown className="h-4 w-4" />
+                        Copy Lungo - Dettagli
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-2 space-y-3">
+                        {chiCosaCome && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Chi-Cosa-Come</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{chiCosaCome}</p>
+                          </div>
+                        )}
+                        {errore && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Errore</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{errore}</p>
+                          </div>
+                        )}
+                        {soluzione && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Soluzione</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{soluzione}</p>
+                          </div>
+                        )}
+                        {riprovaSociale && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Riprova Sociale</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{riprovaSociale}</p>
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                }
+                return null;
+              })()}
 
-              {(viewingPost.structuredContent?.mediaType === "video" || viewingPost.structuredContent?.videoFullScript) && (
-                <Collapsible defaultOpen>
-                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
-                    <Video className="h-4 w-4" />
-                    Script Video
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-2 space-y-3">
-                    {viewingPost.structuredContent?.videoHook && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Video Hook</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.videoHook}</p>
-                      </div>
-                    )}
-                    {viewingPost.structuredContent?.videoProblema && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Problema</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.videoProblema}</p>
-                      </div>
-                    )}
-                    {viewingPost.structuredContent?.videoSoluzione && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Soluzione</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.videoSoluzione}</p>
-                      </div>
-                    )}
-                    {viewingPost.structuredContent?.videoCta && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Video CTA</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.videoCta}</p>
-                      </div>
-                    )}
-                    {viewingPost.structuredContent?.videoFullScript && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Script Completo</Label>
-                        <div className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap max-h-48 overflow-y-auto">
-                          {viewingPost.structuredContent.videoFullScript}
-                        </div>
-                      </div>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
+              {(() => {
+                const mediaType = viewingPost.mediaType || viewingPost.structuredContent?.mediaType;
+                const videoHook = viewingPost.videoHook || viewingPost.structuredContent?.videoHook;
+                const videoProblema = viewingPost.videoProblema || viewingPost.structuredContent?.videoProblema;
+                const videoSoluzione = viewingPost.videoSoluzione || viewingPost.structuredContent?.videoSoluzione;
+                const videoCta = viewingPost.videoCta || viewingPost.structuredContent?.videoCta;
+                const videoFullScript = viewingPost.videoFullScript || viewingPost.structuredContent?.videoFullScript;
+                const hasVideoContent = videoHook || videoProblema || videoSoluzione || videoCta || videoFullScript;
+                
+                if (mediaType === "video" || hasVideoContent) {
+                  return (
+                    <Collapsible defaultOpen>
+                      <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                        <Video className="h-4 w-4" />
+                        Script Video
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-2 space-y-3">
+                        {videoHook && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Video Hook</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{videoHook}</p>
+                          </div>
+                        )}
+                        {videoProblema && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Problema</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{videoProblema}</p>
+                          </div>
+                        )}
+                        {videoSoluzione && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Soluzione</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{videoSoluzione}</p>
+                          </div>
+                        )}
+                        {videoCta && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Video CTA</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{videoCta}</p>
+                          </div>
+                        )}
+                        {videoFullScript && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Script Completo</Label>
+                            <div className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap max-h-48 overflow-y-auto">
+                              {videoFullScript}
+                            </div>
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                }
+                return null;
+              })()}
 
-              {(viewingPost.structuredContent?.imageDescription || viewingPost.structuredContent?.imageOverlayText) && (
-                <Collapsible defaultOpen>
-                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
-                    <Image className="h-4 w-4" />
-                    Descrizione Immagine
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-2 space-y-3">
-                    {viewingPost.structuredContent.imageDescription && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Descrizione</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.imageDescription}</p>
-                      </div>
-                    )}
-                    {viewingPost.structuredContent.imageOverlayText && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Testo Overlay</Label>
-                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.imageOverlayText}</p>
-                      </div>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
+              {(() => {
+                const imageDescription = viewingPost.imageDescription || viewingPost.structuredContent?.imageDescription;
+                const imageOverlayText = viewingPost.imageOverlayText || viewingPost.structuredContent?.imageOverlayText;
+                
+                if (imageDescription || imageOverlayText) {
+                  return (
+                    <Collapsible defaultOpen>
+                      <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                        <Image className="h-4 w-4" />
+                        Descrizione Immagine
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-2 space-y-3">
+                        {imageDescription && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Descrizione</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{imageDescription}</p>
+                          </div>
+                        )}
+                        {imageOverlayText && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Testo Overlay</Label>
+                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{imageOverlayText}</p>
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                }
+                return null;
+              })()}
 
               {viewingPost.status === "published" && viewingPost.engagement && (
                 <div className="space-y-2">
