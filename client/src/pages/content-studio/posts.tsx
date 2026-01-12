@@ -26,6 +26,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -93,6 +94,26 @@ interface Post {
   contentType?: string;
   createdAt?: string;
   ideaId?: string;
+  copyType?: string;
+  mediaType?: string;
+  structuredContent?: {
+    copyType?: string;
+    mediaType?: string;
+    hook?: string;
+    body?: string;
+    cta?: string;
+    chiCosaCome?: string;
+    errore?: string;
+    soluzione?: string;
+    riprovaSociale?: string;
+    videoHook?: string;
+    videoProblema?: string;
+    videoSoluzione?: string;
+    videoCta?: string;
+    videoFullScript?: string;
+    imageDescription?: string;
+    imageOverlayText?: string;
+  };
   engagement?: {
     likes: number;
     comments: number;
@@ -515,19 +536,22 @@ export default function ContentStudioPosts() {
     videoCta: "",
     videoFullScript: "",
     videoUrl: "",
-    imageText: "",
-    imageSubtitle: "",
-    imageConceptDescription: "",
+    imageDescription: "",
+    imageOverlayText: "",
   });
   const [ideaForCopy, setIdeaForCopy] = useState("");
   const [sourceIdeaId, setSourceIdeaId] = useState<string | null>(null);
   const [sourceIdeaTitle, setSourceIdeaTitle] = useState<string | null>(null);
-  const [outputTypeFromIdea, setOutputTypeFromIdea] = useState<boolean>(false);
+  const [copyTypeFromIdea, setCopyTypeFromIdea] = useState<boolean>(false);
+  const [mediaTypeFromIdea, setMediaTypeFromIdea] = useState<boolean>(false);
 
   const [copyVariations, setCopyVariations] = useState<CopyVariation[]>([]);
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
   const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
-  const [selectedOutputType, setSelectedOutputType] = useState<CopyOutputType>("copy_long");
+  const [selectedCopyType, setSelectedCopyType] = useState<"short" | "long">("long");
+  const [selectedMediaType, setSelectedMediaType] = useState<"video" | "foto">("foto");
+  const [videoSectionOpen, setVideoSectionOpen] = useState(true);
+  const [imageSectionOpen, setImageSectionOpen] = useState(true);
 
   const [isCarouselMode, setIsCarouselMode] = useState(false);
   const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>([
@@ -539,6 +563,9 @@ export default function ContentStudioPosts() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortPosts, setSortPosts] = useState<string>("date-desc");
   const [showPreview, setShowPreview] = useState(false);
+
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [viewingPost, setViewingPost] = useState<Post | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -575,95 +602,74 @@ export default function ContentStudioPosts() {
         setSourceIdeaTitle(idea.title || null);
 
         const structured = idea.structuredContent;
-        const copyType = idea.copyType || structured?.type;
-        const mediaType = idea.mediaType;
+        const ideaCopyType = idea.copyType || (structured?.type === "copy_long" ? "long" : structured?.type === "copy_short" ? "short" : null);
+        const ideaMediaType = idea.mediaType as "video" | "foto" | null;
 
-        if (structured && structured.type === "copy_long") {
-          setSelectedOutputType("copy_long");
-          setOutputTypeFromIdea(true);
-          setFormData((prev) => ({
-            ...prev,
-            title: idea.title || "",
-            hook: structured.hook || idea.hook || "",
-            chiCosaCome: structured.chiCosaCome || "",
-            errore: structured.errore || "",
-            soluzione: structured.soluzione || "",
-            riprovaSociale: structured.riprovaSociale || "",
-            cta: structured.cta || "",
-            body: idea.description || "",
-          }));
-        } else if (structured && structured.type === "video_script") {
-          setSelectedOutputType("video_script");
-          setOutputTypeFromIdea(true);
-          setFormData((prev) => ({
-            ...prev,
-            title: idea.title || "",
-            hook: structured.hook || idea.hook || "",
-            videoHook: structured.hook || idea.hook || "",
-            videoProblema: structured.problema || "",
-            videoSoluzione: structured.soluzione || "",
-            videoCta: structured.cta || "",
-            videoFullScript: structured.fullScript || idea.videoScript || "",
-            body: structured.fullScript || idea.videoScript || idea.description || "",
-          }));
-        } else if (structured && structured.type === "copy_short") {
-          setSelectedOutputType("copy_short");
-          setOutputTypeFromIdea(true);
-          setFormData((prev) => ({
-            ...prev,
-            title: idea.title || "",
-            hook: structured.hook || idea.hook || "",
-            body: structured.body || idea.copyContent || idea.description || "",
-            cta: structured.cta || "",
-          }));
-        } else if (mediaType === "video" && idea.videoScript) {
-          setOutputTypeFromIdea(true);
-          setSelectedOutputType("video_script");
-          setFormData((prev) => ({
-            ...prev,
-            title: idea.title || "",
-            hook: idea.hook || "",
-            body: idea.videoScript || idea.description || "",
-            videoHook: idea.hook || "",
-            videoCta: "",
-          }));
-        } else if (copyType === "long") {
-          setSelectedOutputType("copy_long");
-          setOutputTypeFromIdea(true);
-          setFormData((prev) => ({
-            ...prev,
-            title: idea.title || "",
-            hook: idea.hook || "",
-            body: idea.copyContent || idea.description || "",
-          }));
-        } else if (copyType === "short") {
-          setSelectedOutputType("copy_short");
-          setOutputTypeFromIdea(true);
-          setFormData((prev) => ({
-            ...prev,
-            title: idea.title || "",
-            hook: idea.hook || "",
-            body: idea.copyContent || idea.description || "",
-          }));
-        } else if (idea.imageDescription) {
-          setSelectedOutputType("image_copy");
-          setOutputTypeFromIdea(true);
-          setFormData((prev) => ({
-            ...prev,
-            title: idea.title || "",
-            hook: idea.hook || "",
-            body: idea.description || "",
-            imageConceptDescription: idea.imageDescription || "",
-            imageText: idea.imageOverlayText || "",
-          }));
-        } else {
-          setFormData((prev) => ({
-            ...prev,
-            title: idea.title || "",
-            hook: idea.hook || "",
-            body: idea.copyContent || idea.description || "",
-          }));
+        // Set copy type from idea (or default to long)
+        if (ideaCopyType === "long" || ideaCopyType === "short") {
+          setSelectedCopyType(ideaCopyType);
+          setCopyTypeFromIdea(true);
+        } else if (structured?.type === "copy_long") {
+          setSelectedCopyType("long");
+          setCopyTypeFromIdea(true);
+        } else if (structured?.type === "copy_short") {
+          setSelectedCopyType("short");
+          setCopyTypeFromIdea(true);
         }
+
+        // Set media type from idea (or default to foto)
+        if (ideaMediaType === "video" || ideaMediaType === "foto") {
+          setSelectedMediaType(ideaMediaType);
+          setMediaTypeFromIdea(true);
+        } else if (idea.videoScript) {
+          setSelectedMediaType("video");
+          setMediaTypeFromIdea(true);
+        } else if (idea.imageDescription) {
+          setSelectedMediaType("foto");
+          setMediaTypeFromIdea(true);
+        }
+
+        // Build complete form data with ALL fields populated
+        const newFormData: Partial<typeof formData> = {
+          title: idea.title || "",
+          hook: structured?.hook || idea.hook || "",
+          body: idea.description || "",
+          cta: structured?.cta || "",
+        };
+
+        // Populate copy_long fields if available
+        if (structured?.type === "copy_long" || ideaCopyType === "long") {
+          newFormData.chiCosaCome = structured?.chiCosaCome || "";
+          newFormData.errore = structured?.errore || "";
+          newFormData.soluzione = structured?.soluzione || "";
+          newFormData.riprovaSociale = structured?.riprovaSociale || "";
+        }
+
+        // Populate copy_short body if available
+        if (structured?.type === "copy_short" || ideaCopyType === "short") {
+          newFormData.body = structured?.body || idea.copyContent || idea.description || "";
+        }
+
+        // Populate video script fields (from structuredContent.videoScript or idea.videoScript)
+        const videoData = structured?.videoScript || (structured?.type === "video_script" ? structured : null);
+        if (videoData || idea.videoScript) {
+          newFormData.videoHook = videoData?.hook || structured?.hook || idea.hook || "";
+          newFormData.videoProblema = videoData?.problema || structured?.problema || "";
+          newFormData.videoSoluzione = videoData?.soluzione || structured?.soluzione || "";
+          newFormData.videoCta = videoData?.cta || structured?.cta || "";
+          newFormData.videoFullScript = videoData?.fullScript || structured?.fullScript || idea.videoScript || "";
+        }
+
+        // Populate image description fields
+        if (idea.imageDescription || idea.imageOverlayText) {
+          newFormData.imageDescription = idea.imageDescription || "";
+          newFormData.imageOverlayText = idea.imageOverlayText || "";
+        }
+
+        setFormData((prev) => ({
+          ...prev,
+          ...newFormData,
+        }));
 
         setIdeaForCopy(idea.copyContent || idea.description || idea.title || "");
         setIsDialogOpen(true);
@@ -730,9 +736,13 @@ export default function ContentStudioPosts() {
   }, [posts, filterPlatform, filterStatus, sortPosts]);
 
   const createPostMutation = useMutation({
-    mutationFn: async (post: Partial<Post>) => {
-      const response = await fetch("/api/content/posts", {
-        method: "POST",
+    mutationFn: async (post: Partial<Post> & { id?: string }) => {
+      const isEditing = !!editingPost;
+      const url = isEditing ? `/api/content/posts/${editingPost.id}` : "/api/content/posts";
+      const method = isEditing ? "PUT" : "POST";
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
@@ -741,20 +751,24 @@ export default function ContentStudioPosts() {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to create post");
+        throw new Error(error.error || `Failed to ${isEditing ? "update" : "create"} post`);
       }
       return response.json();
     },
     onSuccess: () => {
+      const isEditing = !!editingPost;
       toast({
-        title: "Post creato",
-        description: "Il post è stato creato con successo",
+        title: isEditing ? "Post aggiornato" : "Post creato",
+        description: isEditing ? "Il post è stato aggiornato con successo" : "Il post è stato creato con successo",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
       setIsDialogOpen(false);
-      setFormData({ title: "", hook: "", body: "", cta: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", imageText: "", imageSubtitle: "", imageConceptDescription: "" });
+      setEditingPost(null);
+      setFormData({ title: "", hook: "", body: "", cta: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
       setSuggestedHashtags([]);
       resetCarouselState();
+      setCopyTypeFromIdea(false);
+      setMediaTypeFromIdea(false);
     },
     onError: (error: Error) => {
       toast({
@@ -800,6 +814,8 @@ export default function ContentStudioPosts() {
       return;
     }
 
+    const outputType = selectedCopyType === "long" ? "copy_long" : "copy_short";
+
     setIsGenerating(true);
     try {
       const response = await fetch("/api/content/ai/generate-copy-variations", {
@@ -811,7 +827,7 @@ export default function ContentStudioPosts() {
         body: JSON.stringify({
           idea: ideaForCopy,
           platform: formData.platform,
-          outputType: selectedOutputType,
+          outputType: outputType,
         }),
       });
 
@@ -833,7 +849,7 @@ export default function ContentStudioPosts() {
 
       toast({
         title: "Variazioni generate!",
-        description: `${variations.length} variazioni ${getOutputTypeLabel(selectedOutputType)} create con successo`,
+        description: `${variations.length} variazioni ${getCopyTypeLabel(selectedCopyType)} create con successo`,
       });
     } catch (error: any) {
       toast({
@@ -843,6 +859,14 @@ export default function ContentStudioPosts() {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const getCopyTypeLabel = (type: "short" | "long"): string => {
+    switch (type) {
+      case "short": return "Copy Corto";
+      case "long": return "Copy Lungo";
+      default: return "Copy";
     }
   };
 
@@ -857,44 +881,40 @@ export default function ContentStudioPosts() {
   };
 
   const handleSelectVariation = (variation: CopyVariation) => {
-    let hook = "";
-    let body = "";
-    let cta = "";
+    const updates: Partial<typeof formData> = {};
     
     switch (variation.outputType) {
       case "copy_short":
-        hook = variation.hook;
-        cta = variation.cta;
+        updates.hook = variation.hook || "";
+        updates.body = variation.body || "";
+        updates.cta = variation.cta || "";
         break;
       case "copy_long":
-        hook = variation.hook;
-        body = [
-          variation.chiCosaCome,
-          `❌ ERRORE: ${variation.errore}`,
-          `✅ SOLUZIONE: ${variation.soluzione}`,
-          `📊 ${variation.riprovaSociale}`,
-        ].filter(Boolean).join("\n\n");
-        cta = variation.cta;
+        updates.hook = variation.hook || "";
+        updates.chiCosaCome = variation.chiCosaCome || "";
+        updates.errore = variation.errore || "";
+        updates.soluzione = variation.soluzione || "";
+        updates.riprovaSociale = variation.riprovaSociale || "";
+        updates.cta = variation.cta || "";
         break;
       case "video_script":
-        hook = variation.segments?.[0]?.voiceover || "";
-        body = variation.segments?.map(s => 
+        updates.videoHook = variation.segments?.[0]?.voiceover || variation.hook || "";
+        updates.videoProblema = variation.segments?.[1]?.voiceover || "";
+        updates.videoSoluzione = variation.segments?.[2]?.voiceover || "";
+        updates.videoCta = variation.segments?.[variation.segments.length - 1]?.voiceover || "";
+        updates.videoFullScript = variation.segments?.map(s => 
           `[${s.timing}]\n🎬 ${s.visual}\n🎤 ${s.voiceover}`
         ).join("\n\n") || "";
-        cta = variation.segments?.[variation.segments.length - 1]?.voiceover || "";
         break;
       case "image_copy":
-        hook = variation.imageText;
-        body = `📸 Concept: ${variation.conceptDescription}`;
-        cta = variation.subtitle;
+        updates.imageDescription = variation.conceptDescription || "";
+        updates.imageOverlayText = variation.imageText || "";
         break;
     }
     
     setFormData((prev) => ({
       ...prev,
-      hook: hook || prev.hook,
-      body: body || prev.body,
-      cta: cta || prev.cta,
+      ...updates,
     }));
     if (variation.hashtags?.length) {
       setSuggestedHashtags(variation.hashtags);
@@ -1014,42 +1034,44 @@ export default function ContentStudioPosts() {
   };
 
   const handleCreatePost = () => {
-    let structuredContent: Record<string, any> | undefined;
+    const structuredContent: Record<string, any> = {
+      copyType: selectedCopyType,
+      mediaType: selectedMediaType,
+      hook: formData.hook,
+      body: formData.body,
+      cta: formData.cta,
+      chiCosaCome: formData.chiCosaCome,
+      errore: formData.errore,
+      soluzione: formData.soluzione,
+      riprovaSociale: formData.riprovaSociale,
+      videoHook: formData.videoHook,
+      videoProblema: formData.videoProblema,
+      videoSoluzione: formData.videoSoluzione,
+      videoCta: formData.videoCta,
+      videoFullScript: formData.videoFullScript,
+      imageDescription: formData.imageDescription,
+      imageOverlayText: formData.imageOverlayText,
+    };
 
-    if (selectedOutputType === "copy_long") {
-      structuredContent = {
-        type: "copy_long",
-        hook: formData.hook,
-        chiCosaCome: formData.chiCosaCome,
-        errore: formData.errore,
-        soluzione: formData.soluzione,
-        riprovaSociale: formData.riprovaSociale,
-        cta: formData.cta,
-      };
-    } else if (selectedOutputType === "video_script") {
-      structuredContent = {
-        type: "video_script",
-        hook: formData.videoHook || formData.hook,
-        problema: formData.videoProblema,
-        soluzione: formData.videoSoluzione,
-        cta: formData.videoCta,
-        fullScript: formData.body,
-      };
-    } else if (selectedOutputType === "copy_short") {
-      structuredContent = {
-        type: "copy_short",
-        hook: formData.hook,
-        body: formData.body,
-        cta: formData.cta,
-      };
-    } else if (selectedOutputType === "image_copy") {
-      structuredContent = {
-        type: "image_copy",
-        imageText: formData.imageText,
-        imageSubtitle: formData.imageSubtitle,
-        imageConceptDescription: formData.imageConceptDescription,
-      };
-    }
+    // Base payload with all flat fields for database columns
+    const basePayload = {
+      ...formData,
+      copyType: selectedCopyType,
+      mediaType: selectedMediaType,
+      chiCosaCome: formData.chiCosaCome || undefined,
+      errore: formData.errore || undefined,
+      soluzione: formData.soluzione || undefined,
+      riprovaSociale: formData.riprovaSociale || undefined,
+      videoHook: formData.videoHook || undefined,
+      videoProblema: formData.videoProblema || undefined,
+      videoSoluzione: formData.videoSoluzione || undefined,
+      videoCta: formData.videoCta || undefined,
+      videoFullScript: formData.videoFullScript || undefined,
+      imageDescription: formData.imageDescription || undefined,
+      imageOverlayText: formData.imageOverlayText || undefined,
+      structuredContent,
+      ideaId: sourceIdeaId || undefined,
+    };
 
     if (isCarouselMode) {
       const hasContent = carouselSlides.some(
@@ -1074,12 +1096,10 @@ export default function ContentStudioPosts() {
         .join("\n\n---\n\n");
 
       createPostMutation.mutate({
-        ...formData,
+        ...basePayload,
         body: concatenatedBody,
         contentType: "carosello",
         title: formData.title || `Carosello ${carouselSlides.length} slide`,
-        ideaId: sourceIdeaId || undefined,
-        structuredContent,
       });
     } else {
       if (!formData.title && !formData.hook) {
@@ -1092,17 +1112,15 @@ export default function ContentStudioPosts() {
       }
       
       let contentType: string = "post";
-      if (selectedOutputType === "video_script") {
+      if (selectedMediaType === "video") {
         contentType = "reel";
-      } else if (selectedOutputType === "copy_long") {
+      } else if (selectedCopyType === "long") {
         contentType = "articolo";
       }
       
       createPostMutation.mutate({
-        ...formData,
+        ...basePayload,
         contentType,
-        ideaId: sourceIdeaId || undefined,
-        structuredContent,
       });
     }
   };
@@ -1111,6 +1129,44 @@ export default function ContentStudioPosts() {
     setIsCarouselMode(false);
     setCarouselSlides([{ title: "", content: "" }]);
     setActiveSlideIndex(0);
+  };
+
+  const handleEditPost = (post: Post) => {
+    const structured = post.structuredContent || {};
+    
+    setFormData({
+      title: post.title || "",
+      hook: structured.hook || post.hook || "",
+      body: structured.body || post.body || "",
+      cta: structured.cta || post.cta || "",
+      platform: post.platform || "",
+      status: post.status || "draft",
+      chiCosaCome: structured.chiCosaCome || "",
+      errore: structured.errore || "",
+      soluzione: structured.soluzione || "",
+      riprovaSociale: structured.riprovaSociale || "",
+      videoHook: structured.videoHook || "",
+      videoProblema: structured.videoProblema || "",
+      videoSoluzione: structured.videoSoluzione || "",
+      videoCta: structured.videoCta || "",
+      videoFullScript: structured.videoFullScript || "",
+      videoUrl: "",
+      imageDescription: structured.imageDescription || "",
+      imageOverlayText: structured.imageOverlayText || "",
+    });
+    
+    const copyType = structured.copyType || post.copyType;
+    if (copyType === "short" || copyType === "long") {
+      setSelectedCopyType(copyType);
+    }
+    
+    const mediaType = structured.mediaType || post.mediaType;
+    if (mediaType === "video" || mediaType === "foto") {
+      setSelectedMediaType(mediaType);
+    }
+    
+    setEditingPost(post);
+    setIsDialogOpen(true);
   };
 
   const getPlatformIcon = (platform: string) => {
@@ -1200,8 +1256,12 @@ export default function ContentStudioPosts() {
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 setIsDialogOpen(open);
                 if (!open) {
+                  setEditingPost(null);
                   setSourceIdeaId(null);
                   setSourceIdeaTitle(null);
+                  setFormData({ title: "", hook: "", body: "", cta: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
+                  setSuggestedHashtags([]);
+                  resetCarouselState();
                 }
               }}>
                 <DialogTrigger asChild>
@@ -1213,7 +1273,7 @@ export default function ContentStudioPosts() {
                 <DialogContent className={`max-h-[90vh] overflow-y-auto ${isCarouselMode ? "max-w-4xl" : "max-w-lg"}`}>
                   <DialogHeader>
                     <DialogTitle>
-                      {isCarouselMode ? "Crea Carosello" : "Crea Nuovo Post"}
+                      {editingPost ? "Modifica Post" : isCarouselMode ? "Crea Carosello" : "Crea Nuovo Post"}
                     </DialogTitle>
                     {sourceIdeaTitle && (
                       <div className="flex items-center gap-2 pt-2">
@@ -1301,28 +1361,46 @@ export default function ContentStudioPosts() {
                         )}
                       </div>
                       <div className="flex gap-2 items-center flex-wrap">
-                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo output:</Label>
-                        {outputTypeFromIdea ? (
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo Copy:</Label>
+                        {copyTypeFromIdea ? (
                           <Badge variant="secondary" className="text-xs">
-                            {selectedOutputType === "video_script" && "🎬 Script Video"}
-                            {selectedOutputType === "copy_long" && "📄 Copy Lungo"}
-                            {selectedOutputType === "copy_short" && "📝 Copy Corto"}
-                            {selectedOutputType === "image_copy" && "🖼️ Immagine"}
+                            {selectedCopyType === "long" && "📄 Copy Lungo"}
+                            {selectedCopyType === "short" && "📝 Copy Corto"}
                             <span className="ml-1 text-muted-foreground">(da idea)</span>
                           </Badge>
                         ) : (
                           <Select
-                            value={selectedOutputType}
-                            onValueChange={(value) => setSelectedOutputType(value as CopyOutputType)}
+                            value={selectedCopyType}
+                            onValueChange={(value) => setSelectedCopyType(value as "short" | "long")}
                           >
                             <SelectTrigger className="h-8 text-xs w-auto">
                               <SelectValue placeholder="Seleziona tipo" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="copy_short">📝 Copy Corto (Caption)</SelectItem>
-                              <SelectItem value="copy_long">📄 Copy Lungo (6 step)</SelectItem>
-                              <SelectItem value="video_script">🎬 Script Video</SelectItem>
-                              <SelectItem value="image_copy">🖼️ Copy Immagine</SelectItem>
+                              <SelectItem value="short">📝 Copy Corto</SelectItem>
+                              <SelectItem value="long">📄 Copy Lungo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                        
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap ml-4">Tipo Media:</Label>
+                        {mediaTypeFromIdea ? (
+                          <Badge variant="secondary" className="text-xs">
+                            {selectedMediaType === "video" && "🎬 Video"}
+                            {selectedMediaType === "foto" && "📷 Foto"}
+                            <span className="ml-1 text-muted-foreground">(da idea)</span>
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={selectedMediaType}
+                            onValueChange={(value) => setSelectedMediaType(value as "video" | "foto")}
+                          >
+                            <SelectTrigger className="h-8 text-xs w-auto">
+                              <SelectValue placeholder="Seleziona media" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="video">🎬 Video</SelectItem>
+                              <SelectItem value="foto">📷 Foto</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
@@ -1494,7 +1572,7 @@ export default function ContentStudioPosts() {
                           />
                         </div>
 
-                        {selectedOutputType === "copy_short" && (
+                        {selectedCopyType === "short" && (
                           <>
                             <div className="space-y-2">
                               <Label htmlFor="hook">Hook</Label>
@@ -1527,7 +1605,7 @@ export default function ContentStudioPosts() {
                           </>
                         )}
 
-                        {selectedOutputType === "copy_long" && (
+                        {selectedCopyType === "long" && (
                           <div className="space-y-3">
                             <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg space-y-2">
                               <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
@@ -1596,103 +1674,7 @@ export default function ContentStudioPosts() {
                           </div>
                         )}
 
-                        {selectedOutputType === "video_script" && (
-                          <div className="space-y-3">
-                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
-                                1. 🎣 HOOK
-                              </Label>
-                              <Textarea
-                                placeholder="La frase di apertura che cattura l'attenzione..."
-                                rows={2}
-                                value={formData.videoHook || ""}
-                                onChange={(e) => setFormData({ ...formData, videoHook: e.target.value })}
-                              />
-                            </div>
-                            <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
-                                2. ❌ PROBLEMA
-                              </Label>
-                              <Textarea
-                                placeholder="Il problema che affronti nel video..."
-                                rows={2}
-                                value={formData.videoProblema || ""}
-                                onChange={(e) => setFormData({ ...formData, videoProblema: e.target.value })}
-                              />
-                            </div>
-                            <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
-                                3. ✅ SOLUZIONE
-                              </Label>
-                              <Textarea
-                                placeholder="La soluzione o il contenuto principale..."
-                                rows={3}
-                                value={formData.videoSoluzione || ""}
-                                onChange={(e) => setFormData({ ...formData, videoSoluzione: e.target.value })}
-                              />
-                            </div>
-                            <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
-                                4. 🎯 CTA
-                              </Label>
-                              <Input
-                                placeholder="Chiamata all'azione finale..."
-                                value={formData.videoCta || ""}
-                                onChange={(e) => setFormData({ ...formData, videoCta: e.target.value })}
-                              />
-                            </div>
-                            <div className="bg-slate-50 dark:bg-slate-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1">
-                                📜 SCRIPT COMPLETO
-                              </Label>
-                              <Textarea
-                                placeholder="Lo script completo del video da leggere..."
-                                rows={5}
-                                value={formData.videoFullScript || ""}
-                                onChange={(e) => setFormData({ ...formData, videoFullScript: e.target.value })}
-                                className="font-mono text-sm"
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {selectedOutputType === "image_copy" && (
-                          <div className="space-y-3">
-                            <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950/20 dark:to-purple-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-pink-600 dark:text-pink-400 font-semibold">
-                                🖼️ TESTO IMMAGINE (max 10 parole)
-                              </Label>
-                              <Input
-                                placeholder="Il testo che appare sull'immagine..."
-                                value={formData.imageText || ""}
-                                onChange={(e) => setFormData({ ...formData, imageText: e.target.value })}
-                              />
-                            </div>
-                            <div className="bg-slate-50 dark:bg-slate-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
-                                📝 SOTTOTITOLO
-                              </Label>
-                              <Input
-                                placeholder="Sottotitolo o descrizione breve..."
-                                value={formData.imageSubtitle || ""}
-                                onChange={(e) => setFormData({ ...formData, imageSubtitle: e.target.value })}
-                              />
-                            </div>
-                            <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
-                                💭 DESCRIZIONE CONCETTO
-                              </Label>
-                              <Textarea
-                                placeholder="Descrivi il concetto visivo dell'immagine..."
-                                rows={3}
-                                value={formData.imageConceptDescription || ""}
-                                onChange={(e) => setFormData({ ...formData, imageConceptDescription: e.target.value })}
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {(selectedOutputType === "copy_short" || selectedOutputType === "copy_long") && formData.platform && (
+                        {formData.platform && (
                           <div className="space-y-1">
                             <div className="flex justify-between items-center text-xs">
                               <span className={isOverLimit() ? "text-red-500 font-medium" : "text-green-600"}>
@@ -1705,6 +1687,114 @@ export default function ContentStudioPosts() {
                               className={`h-1 ${isOverLimit() ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`}
                             />
                           </div>
+                        )}
+
+                        {selectedMediaType === "video" && (
+                          <Collapsible open={videoSectionOpen} onOpenChange={setVideoSectionOpen}>
+                            <CollapsibleTrigger asChild>
+                              <Button variant="outline" className="w-full justify-between" type="button">
+                                <div className="flex items-center gap-2">
+                                  <Video className="h-4 w-4 text-purple-500" />
+                                  🎬 Script Video (riferimento produzione)
+                                </div>
+                                {videoSectionOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-3 space-y-3">
+                              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
+                                  1. 🎣 HOOK VIDEO
+                                </Label>
+                                <Textarea
+                                  placeholder="La frase di apertura che cattura l'attenzione..."
+                                  rows={2}
+                                  value={formData.videoHook || ""}
+                                  onChange={(e) => setFormData({ ...formData, videoHook: e.target.value })}
+                                />
+                              </div>
+                              <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
+                                  2. ❌ PROBLEMA
+                                </Label>
+                                <Textarea
+                                  placeholder="Il problema che affronti nel video..."
+                                  rows={2}
+                                  value={formData.videoProblema || ""}
+                                  onChange={(e) => setFormData({ ...formData, videoProblema: e.target.value })}
+                                />
+                              </div>
+                              <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
+                                  3. ✅ SOLUZIONE
+                                </Label>
+                                <Textarea
+                                  placeholder="La soluzione o il contenuto principale..."
+                                  rows={3}
+                                  value={formData.videoSoluzione || ""}
+                                  onChange={(e) => setFormData({ ...formData, videoSoluzione: e.target.value })}
+                                />
+                              </div>
+                              <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
+                                  4. 🎯 CTA VIDEO
+                                </Label>
+                                <Input
+                                  placeholder="Chiamata all'azione finale..."
+                                  value={formData.videoCta || ""}
+                                  onChange={(e) => setFormData({ ...formData, videoCta: e.target.value })}
+                                />
+                              </div>
+                              <div className="bg-slate-50 dark:bg-slate-950/20 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1">
+                                  📜 SCRIPT COMPLETO
+                                </Label>
+                                <Textarea
+                                  placeholder="Lo script completo del video da leggere..."
+                                  rows={5}
+                                  value={formData.videoFullScript || ""}
+                                  onChange={(e) => setFormData({ ...formData, videoFullScript: e.target.value })}
+                                  className="font-mono text-sm"
+                                />
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+
+                        {selectedMediaType === "foto" && (
+                          <Collapsible open={imageSectionOpen} onOpenChange={setImageSectionOpen}>
+                            <CollapsibleTrigger asChild>
+                              <Button variant="outline" className="w-full justify-between" type="button">
+                                <div className="flex items-center gap-2">
+                                  <Image className="h-4 w-4 text-pink-500" />
+                                  📷 Descrizione Immagine (riferimento grafico)
+                                </div>
+                                {imageSectionOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-3 space-y-3">
+                              <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950/20 dark:to-purple-950/20 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-pink-600 dark:text-pink-400 font-semibold">
+                                  🖼️ DESCRIZIONE IMMAGINE
+                                </Label>
+                                <Textarea
+                                  placeholder="Descrivi il concetto visivo dell'immagine..."
+                                  rows={3}
+                                  value={formData.imageDescription || ""}
+                                  onChange={(e) => setFormData({ ...formData, imageDescription: e.target.value })}
+                                />
+                              </div>
+                              <div className="bg-slate-50 dark:bg-slate-950/20 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                                  📝 TESTO OVERLAY
+                                </Label>
+                                <Input
+                                  placeholder="Il testo che appare sull'immagine..."
+                                  value={formData.imageOverlayText || ""}
+                                  onChange={(e) => setFormData({ ...formData, imageOverlayText: e.target.value })}
+                                />
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
                         )}
                       </>
                     )}
@@ -1734,7 +1824,7 @@ export default function ContentStudioPosts() {
                       </div>
                     )}
 
-                    {selectedOutputType === "video_script" ? (
+                    {selectedMediaType === "video" ? (
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2">
                           <Video className="h-4 w-4 text-purple-500" />
@@ -1865,7 +1955,7 @@ export default function ContentStudioPosts() {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-yellow-500" />
-                    Scegli una Variazione - {getOutputTypeLabel(selectedOutputType)}
+                    Scegli una Variazione - {getCopyTypeLabel(selectedCopyType)}
                   </DialogTitle>
                 </DialogHeader>
                 <Tabs defaultValue="0" className="mt-4">
@@ -2131,10 +2221,19 @@ export default function ContentStudioPosts() {
                       )}
 
                       <div className="flex gap-2 pt-2">
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => handleEditPost(post)}
+                        >
                           Modifica
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setViewingPost(post)}
+                        >
                           Visualizza
                         </Button>
                       </div>
@@ -2162,6 +2261,208 @@ export default function ContentStudioPosts() {
           </div>
         </div>
       </div>
+
+      <Dialog open={!!viewingPost} onOpenChange={(open) => !open && setViewingPost(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{viewingPost?.title || "Post"}</DialogTitle>
+            <DialogDescription>Dettagli del post</DialogDescription>
+          </DialogHeader>
+          {viewingPost && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="flex items-center gap-1">
+                  {getPlatformIcon(viewingPost.platform)}
+                  <span className="capitalize">{viewingPost.platform}</span>
+                </Badge>
+                {getStatusBadge(viewingPost.status)}
+                {viewingPost.contentType && (
+                  <Badge variant="secondary">{viewingPost.contentType}</Badge>
+                )}
+              </div>
+
+              {viewingPost.hook && (
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium text-muted-foreground">Hook</Label>
+                  <p className="text-sm bg-muted/50 p-3 rounded-lg italic">"{viewingPost.hook}"</p>
+                </div>
+              )}
+
+              {viewingPost.body && (
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium text-muted-foreground">Contenuto</Label>
+                  <div className="text-sm bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">
+                    {formatTextWithHashtags(viewingPost.body)}
+                  </div>
+                </div>
+              )}
+
+              {viewingPost.cta && (
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium text-muted-foreground">Call to Action</Label>
+                  <p className="text-sm bg-muted/50 p-3 rounded-lg font-medium">{viewingPost.cta}</p>
+                </div>
+              )}
+
+              {viewingPost.structuredContent?.copyType === "long" && (
+                <Collapsible defaultOpen>
+                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                    <ChevronDown className="h-4 w-4" />
+                    Copy Lungo - Dettagli
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2 space-y-3">
+                    {viewingPost.structuredContent.chiCosaCome && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Chi-Cosa-Come</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.chiCosaCome}</p>
+                      </div>
+                    )}
+                    {viewingPost.structuredContent.errore && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Errore</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.errore}</p>
+                      </div>
+                    )}
+                    {viewingPost.structuredContent.soluzione && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Soluzione</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.soluzione}</p>
+                      </div>
+                    )}
+                    {viewingPost.structuredContent.riprovaSociale && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Riprova Sociale</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.riprovaSociale}</p>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {(viewingPost.structuredContent?.mediaType === "video" || viewingPost.structuredContent?.videoFullScript) && (
+                <Collapsible defaultOpen>
+                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                    <Video className="h-4 w-4" />
+                    Script Video
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2 space-y-3">
+                    {viewingPost.structuredContent?.videoHook && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Video Hook</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.videoHook}</p>
+                      </div>
+                    )}
+                    {viewingPost.structuredContent?.videoProblema && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Problema</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.videoProblema}</p>
+                      </div>
+                    )}
+                    {viewingPost.structuredContent?.videoSoluzione && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Soluzione</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.videoSoluzione}</p>
+                      </div>
+                    )}
+                    {viewingPost.structuredContent?.videoCta && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Video CTA</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.videoCta}</p>
+                      </div>
+                    )}
+                    {viewingPost.structuredContent?.videoFullScript && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Script Completo</Label>
+                        <div className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap max-h-48 overflow-y-auto">
+                          {viewingPost.structuredContent.videoFullScript}
+                        </div>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {(viewingPost.structuredContent?.imageDescription || viewingPost.structuredContent?.imageOverlayText) && (
+                <Collapsible defaultOpen>
+                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                    <Image className="h-4 w-4" />
+                    Descrizione Immagine
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2 space-y-3">
+                    {viewingPost.structuredContent.imageDescription && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Descrizione</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.imageDescription}</p>
+                      </div>
+                    )}
+                    {viewingPost.structuredContent.imageOverlayText && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Testo Overlay</Label>
+                        <p className="text-sm bg-muted/30 p-2 rounded">{viewingPost.structuredContent.imageOverlayText}</p>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {viewingPost.status === "published" && viewingPost.engagement && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Engagement</Label>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="text-center p-3 bg-pink-50 dark:bg-pink-950/30 rounded-lg">
+                      <div className="flex items-center justify-center gap-1 text-pink-500">
+                        <Heart className="h-4 w-4" />
+                        <span className="font-semibold">{viewingPost.engagement.likes}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Mi piace</p>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                      <div className="flex items-center justify-center gap-1 text-blue-500">
+                        <MessageCircle className="h-4 w-4" />
+                        <span className="font-semibold">{viewingPost.engagement.comments}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Commenti</p>
+                    </div>
+                    <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                      <div className="flex items-center justify-center gap-1 text-green-500">
+                        <Share2 className="h-4 w-4" />
+                        <span className="font-semibold">{viewingPost.engagement.shares}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Condivisioni</p>
+                    </div>
+                    <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
+                      <div className="flex items-center justify-center gap-1 text-purple-500">
+                        <Eye className="h-4 w-4" />
+                        <span className="font-semibold">
+                          {viewingPost.engagement.views > 1000
+                            ? `${(viewingPost.engagement.views / 1000).toFixed(1)}K`
+                            : viewingPost.engagement.views}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Visualizzazioni</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {viewingPost.scheduledDate && (
+                <div className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg">
+                  <Calendar className="h-4 w-4 text-amber-600" />
+                  <span className="text-amber-700 dark:text-amber-400">
+                    Programmato per: {new Date(viewingPost.scheduledDate).toLocaleString("it-IT")}
+                  </span>
+                </div>
+              )}
+
+              {viewingPost.createdAt && (
+                <p className="text-xs text-muted-foreground">
+                  Creato il: {new Date(viewingPost.createdAt).toLocaleString("it-IT")}
+                </p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
