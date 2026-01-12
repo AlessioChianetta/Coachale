@@ -21,6 +21,7 @@ interface WhatsAppLayoutProps {
   headerContent?: ReactNode;
   children: ReactNode;
   showHeader?: boolean;
+  fullWidth?: boolean;
   sidebarOpen?: boolean;
   onSidebarOpenChange?: (open: boolean) => void;
 }
@@ -32,6 +33,7 @@ export default function WhatsAppLayout({
   headerContent,
   children,
   showHeader = true,
+  fullWidth = false,
   sidebarOpen: controlledSidebarOpen,
   onSidebarOpenChange,
 }: WhatsAppLayoutProps) {
@@ -102,7 +104,7 @@ export default function WhatsAppLayout({
         )}
 
         {/* Page Content */}
-        <div className="p-4 lg:p-8">
+        <div className={fullWidth ? "" : "p-4 lg:p-8"}>
           {children}
         </div>
         </main>

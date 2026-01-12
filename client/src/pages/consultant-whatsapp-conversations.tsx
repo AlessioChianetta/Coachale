@@ -1131,7 +1131,7 @@ export default function ConsultantWhatsAppConversationsPage() {
   };
 
   return (
-    <WhatsAppLayout showHeader={false}>
+    <WhatsAppLayout showHeader={false} fullWidth>
       <div className="flex flex-col h-[100dvh] w-full bg-white dark:bg-zinc-900">
         {isMobile ? (
           <>
@@ -1142,7 +1142,7 @@ export default function ConsultantWhatsAppConversationsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => window.location.href = '/consultant/dashboard'}
+                      onClick={() => window.location.href = '/consultant/whatsapp'}
                       className="h-10 w-10"
                     >
                       <ArrowLeft className="h-5 w-5" />
