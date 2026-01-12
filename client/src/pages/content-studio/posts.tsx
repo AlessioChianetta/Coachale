@@ -1315,7 +1315,7 @@ export default function ContentStudioPosts() {
                     Nuovo Post
                   </Button>
                 </DialogTrigger>
-                <DialogContent className={`max-h-[90vh] overflow-y-auto ${isCarouselMode ? "max-w-4xl" : "max-w-lg"}`}>
+                <DialogContent className="max-h-[90vh] overflow-y-auto max-w-5xl w-full">
                   <DialogHeader>
                     <DialogTitle>
                       {editingPost ? "Modifica Post" : isCarouselMode ? "Crea Carosello" : "Crea Nuovo Post"}
@@ -1329,133 +1329,154 @@ export default function ContentStudioPosts() {
                       </div>
                     )}
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="space-y-2 flex-1">
-                        <Label>Piattaforma</Label>
-                        <Select
-                          value={formData.platform}
-                          onValueChange={(value) =>
-                            setFormData({ ...formData, platform: value })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleziona piattaforma" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="instagram">Instagram</SelectItem>
-                            <SelectItem value="facebook">Facebook</SelectItem>
-                            <SelectItem value="linkedin">LinkedIn</SelectItem>
-                            <SelectItem value="twitter">Twitter/X</SelectItem>
-                            <SelectItem value="tiktok">TikTok</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                  <div className="py-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Colonna sinistra - Impostazioni */}
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-lg border bg-muted/20 space-y-4">
+                          <h4 className="font-semibold text-sm flex items-center gap-2">
+                            <Globe className="h-4 w-4 text-blue-500" />
+                            Impostazioni
+                          </h4>
+                          
+                          <div className="space-y-2">
+                            <Label>Piattaforma</Label>
+                            <Select
+                              value={formData.platform}
+                              onValueChange={(value) =>
+                                setFormData({ ...formData, platform: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona piattaforma" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="instagram">Instagram</SelectItem>
+                                <SelectItem value="facebook">Facebook</SelectItem>
+                                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                                <SelectItem value="twitter">Twitter/X</SelectItem>
+                                <SelectItem value="tiktok">TikTok</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
-                        <Layers className="h-5 w-5 text-purple-500" />
-                        <div className="flex-1">
-                          <Label htmlFor="carousel-mode" className="font-medium cursor-pointer">
-                            Modalità Carosello
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            Post multi-slide
-                          </p>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Tipo Copy</Label>
+                            {copyTypeFromIdea ? (
+                              <Badge variant="secondary" className="text-xs w-full justify-center py-2">
+                                {selectedCopyType === "long" && "📄 Copy Lungo"}
+                                {selectedCopyType === "short" && "📝 Copy Corto"}
+                                <span className="ml-1 text-muted-foreground">(da idea)</span>
+                              </Badge>
+                            ) : (
+                              <Select
+                                value={selectedCopyType}
+                                onValueChange={(value) => setSelectedCopyType(value as "short" | "long")}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleziona tipo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="short">📝 Copy Corto</SelectItem>
+                                  <SelectItem value="long">📄 Copy Lungo</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Tipo Media</Label>
+                            {mediaTypeFromIdea ? (
+                              <Badge variant="secondary" className="text-xs w-full justify-center py-2">
+                                {selectedMediaType === "video" && "🎬 Video"}
+                                {selectedMediaType === "foto" && "📷 Foto"}
+                                <span className="ml-1 text-muted-foreground">(da idea)</span>
+                              </Badge>
+                            ) : (
+                              <Select
+                                value={selectedMediaType}
+                                onValueChange={(value) => setSelectedMediaType(value as "video" | "foto")}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleziona media" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="video">🎬 Video</SelectItem>
+                                  <SelectItem value="foto">📷 Foto</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3 p-3 rounded-lg border bg-background">
+                            <Layers className="h-5 w-5 text-purple-500" />
+                            <div className="flex-1">
+                              <Label htmlFor="carousel-mode" className="font-medium cursor-pointer text-sm">
+                                Carosello
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Multi-slide
+                              </p>
+                            </div>
+                            <Switch
+                              id="carousel-mode"
+                              checked={isCarouselMode}
+                              onCheckedChange={(checked) => {
+                                setIsCarouselMode(checked);
+                                if (checked && carouselSlides.length === 1 && !carouselSlides[0].title && !carouselSlides[0].content) {
+                                  setCarouselSlides([{ title: "", content: "" }]);
+                                }
+                              }}
+                            />
+                          </div>
                         </div>
-                        <Switch
-                          id="carousel-mode"
-                          checked={isCarouselMode}
-                          onCheckedChange={(checked) => {
-                            setIsCarouselMode(checked);
-                            if (checked && carouselSlides.length === 1 && !carouselSlides[0].title && !carouselSlides[0].content) {
-                              setCarouselSlides([{ title: "", content: "" }]);
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
 
-                    <div className="space-y-3">
-                      <Label>Genera con AI {isCarouselMode ? "(contenuto per slide)" : "(3 variazioni)"}</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Descrivi l'idea del post..."
-                          value={ideaForCopy}
-                          onChange={(e) => setIdeaForCopy(e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={handleGenerateCopy}
-                          disabled={isGenerating}
-                        >
-                          {isGenerating ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
+                        <div className="p-4 rounded-lg border bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 space-y-3">
+                          <h4 className="font-semibold text-sm flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-purple-500" />
+                            Genera con AI
+                          </h4>
+                          <Textarea
+                            placeholder="Descrivi l'idea del post..."
+                            value={ideaForCopy}
+                            onChange={(e) => setIdeaForCopy(e.target.value)}
+                            rows={3}
+                            className="bg-background"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              variant="default"
+                              onClick={handleGenerateCopy}
+                              disabled={isGenerating}
+                              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                            >
+                              {isGenerating ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : (
+                                <Sparkles className="h-4 w-4 mr-2" />
+                              )}
+                              {isCarouselMode ? "Genera" : "3 Variazioni"}
+                            </Button>
+                            {isCarouselMode && (formData.body || ideaForCopy) && (
+                              <Button
+                                variant="secondary"
+                                onClick={handleConvertToCarouselSlides}
+                                title="Dividi contenuto in slide"
+                              >
+                                <Layers className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          {isCarouselMode && (
+                            <p className="text-xs text-muted-foreground">
+                              Genera il contenuto AI, poi clicca l'icona Layers per dividerlo in slide
+                            </p>
                           )}
-                        </Button>
-                        {isCarouselMode && (formData.body || ideaForCopy) && (
-                          <Button
-                            variant="secondary"
-                            onClick={handleConvertToCarouselSlides}
-                            title="Dividi contenuto in slide"
-                          >
-                            <Layers className="h-4 w-4" />
-                          </Button>
-                        )}
+                        </div>
                       </div>
-                      <div className="flex gap-2 items-center flex-wrap">
-                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo Copy:</Label>
-                        {copyTypeFromIdea ? (
-                          <Badge variant="secondary" className="text-xs">
-                            {selectedCopyType === "long" && "📄 Copy Lungo"}
-                            {selectedCopyType === "short" && "📝 Copy Corto"}
-                            <span className="ml-1 text-muted-foreground">(da idea)</span>
-                          </Badge>
-                        ) : (
-                          <Select
-                            value={selectedCopyType}
-                            onValueChange={(value) => setSelectedCopyType(value as "short" | "long")}
-                          >
-                            <SelectTrigger className="h-8 text-xs w-auto">
-                              <SelectValue placeholder="Seleziona tipo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="short">📝 Copy Corto</SelectItem>
-                              <SelectItem value="long">📄 Copy Lungo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                        
-                        <Label className="text-xs text-muted-foreground whitespace-nowrap ml-4">Tipo Media:</Label>
-                        {mediaTypeFromIdea ? (
-                          <Badge variant="secondary" className="text-xs">
-                            {selectedMediaType === "video" && "🎬 Video"}
-                            {selectedMediaType === "foto" && "📷 Foto"}
-                            <span className="ml-1 text-muted-foreground">(da idea)</span>
-                          </Badge>
-                        ) : (
-                          <Select
-                            value={selectedMediaType}
-                            onValueChange={(value) => setSelectedMediaType(value as "video" | "foto")}
-                          >
-                            <SelectTrigger className="h-8 text-xs w-auto">
-                              <SelectValue placeholder="Seleziona media" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="video">🎬 Video</SelectItem>
-                              <SelectItem value="foto">📷 Foto</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                      {isCarouselMode && (
-                        <p className="text-xs text-muted-foreground">
-                          Genera il contenuto AI, poi clicca sull'icona Layers per dividerlo automaticamente in slide
-                        </p>
-                      )}
-                    </div>
+
+                      {/* Colonna destra - Contenuto (2 colonne) */}
+                      <div className="lg:col-span-2 space-y-4">
 
                     {isCarouselMode ? (
                       <div className="space-y-4">
@@ -1926,68 +1947,70 @@ export default function ContentStudioPosts() {
                       </div>
                     )}
 
-                    <Collapsible open={showPreview} onOpenChange={setShowPreview}>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-between"
-                          type="button"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Eye className="h-4 w-4" />
-                            Anteprima Social
-                          </div>
-                          {showPreview ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-4">
-                        <div className="rounded-lg border bg-muted/30 p-4">
-                          <div className="flex items-center gap-2 mb-4">
-                            {formData.platform && (
-                              <>
-                                {formData.platform === "instagram" && (
-                                  <Instagram className="h-4 w-4 text-pink-500" />
+                        <Collapsible open={showPreview} onOpenChange={setShowPreview}>
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between"
+                              type="button"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Eye className="h-4 w-4" />
+                                Anteprima Social
+                              </div>
+                              {showPreview ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-4">
+                            <div className="rounded-lg border bg-muted/30 p-4">
+                              <div className="flex items-center gap-2 mb-4">
+                                {formData.platform && (
+                                  <>
+                                    {formData.platform === "instagram" && (
+                                      <Instagram className="h-4 w-4 text-pink-500" />
+                                    )}
+                                    {formData.platform === "facebook" && (
+                                      <Facebook className="h-4 w-4 text-blue-600" />
+                                    )}
+                                    {formData.platform === "linkedin" && (
+                                      <Linkedin className="h-4 w-4 text-blue-700" />
+                                    )}
+                                    {formData.platform === "twitter" && (
+                                      <Twitter className="h-4 w-4 text-sky-500" />
+                                    )}
+                                    {formData.platform === "tiktok" && (
+                                      <span className="text-sm">🎵</span>
+                                    )}
+                                  </>
                                 )}
-                                {formData.platform === "facebook" && (
-                                  <Facebook className="h-4 w-4 text-blue-600" />
-                                )}
-                                {formData.platform === "linkedin" && (
-                                  <Linkedin className="h-4 w-4 text-blue-700" />
-                                )}
-                                {formData.platform === "twitter" && (
-                                  <Twitter className="h-4 w-4 text-sky-500" />
-                                )}
-                                {formData.platform === "tiktok" && (
-                                  <span className="text-sm">🎵</span>
-                                )}
-                              </>
-                            )}
-                            <span className="text-sm font-medium">
-                              {formData.platform
-                                ? `Anteprima ${formData.platform.charAt(0).toUpperCase() + formData.platform.slice(1)}`
-                                : "Seleziona una piattaforma"}
-                            </span>
-                          </div>
-                          <SocialPreview
-                            platform={formData.platform}
-                            hook={formData.hook}
-                            body={formData.body}
-                            cta={formData.cta}
-                            copyType={selectedCopyType}
-                            chiCosaCome={formData.chiCosaCome}
-                            errore={formData.errore}
-                            soluzione={formData.soluzione}
-                            riprovaSociale={formData.riprovaSociale}
-                          />
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
+                                <span className="text-sm font-medium">
+                                  {formData.platform
+                                    ? `Anteprima ${formData.platform.charAt(0).toUpperCase() + formData.platform.slice(1)}`
+                                    : "Seleziona una piattaforma"}
+                                </span>
+                              </div>
+                              <SocialPreview
+                                platform={formData.platform}
+                                hook={formData.hook}
+                                body={formData.body}
+                                cta={formData.cta}
+                                copyType={selectedCopyType}
+                                chiCosaCome={formData.chiCosaCome}
+                                errore={formData.errore}
+                                soluzione={formData.soluzione}
+                                riprovaSociale={formData.riprovaSociale}
+                              />
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
+                    </div>
 
-                    <div className="flex gap-2 pt-4">
+                    <div className="flex gap-2 pt-4 border-t mt-4">
                       <Button
                         variant="outline"
                         className="flex-1"
