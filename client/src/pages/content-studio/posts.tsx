@@ -96,6 +96,17 @@ interface Post {
   ideaId?: string;
   copyType?: string;
   mediaType?: string;
+  chiCosaCome?: string;
+  errore?: string;
+  soluzione?: string;
+  riprovaSociale?: string;
+  videoHook?: string;
+  videoProblema?: string;
+  videoSoluzione?: string;
+  videoCta?: string;
+  videoFullScript?: string;
+  imageDescription?: string;
+  imageOverlayText?: string;
   structuredContent?: {
     copyType?: string;
     mediaType?: string;
