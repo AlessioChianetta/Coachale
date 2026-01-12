@@ -1,0 +1,33 @@
+
+consultant-whatsapp-…nversations.tsx:726 Uncaught TypeError: Cannot read properties of undefined (reading 'replace')
+    at getInitials (consultant-whatsapp-…rsations.tsx:726:37)
+    at consultant-whatsapp-…rsations.tsx:771:18
+    at Array.map (<anonymous>)
+    at renderConversationsList (consultant-whatsapp-…rsations.tsx:742:30)
+    at ConsultantWhatsAppConversationsPage (consultant-whatsapp-…sations.tsx:1319:27)
+
+injected.js:37 The above error occurred in the <ConsultantWhatsAppConversationsPage> component:
+
+    at ConsultantWhatsAppConversationsPage (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.dev/src/pages/consultant-whatsapp-conversations.tsx:72:63)
+    at AuthGuard (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=bf46ee3c:226:16)
+    at Switch (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=bf46ee3c:283:17)
+    at Suspense
+    at Router (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.dev/src/App.tsx?v=QQK9BnqSfHEMkiR_Zlo2x:290:35)
+    at Provider (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-VX4UX5ZU.js?v=bf46ee3c:44:15)
+    at TooltipProvider (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=bf46ee3c:158:5)
+    at TourProvider (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=bf46ee3c:3096:3)
+    at V (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=bf46ee3c:44:25)
+    at J (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=bf46ee3c:42:18)
+    at App (https://d947f315-135a-4cc5-9af8-a00fdc94cf53-00-3oaglyvklivvf.worf.replit.dev/src/App.tsx?v=QQK9BnqSfHEMkiR_Zlo2x:1833:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=bf46ee3c:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'replace')
+    at getInitials (consultant-whatsapp-…rsations.tsx:726:37)
+    at consultant-whatsapp-…rsations.tsx:771:18
+    at Array.map (<anonymous>)
+    at renderConversationsList (consultant-whatsapp-…rsations.tsx:742:30)
+    at ConsultantWhatsAppConversationsPage (consultant-whatsapp-…sations.tsx:1319:27)
