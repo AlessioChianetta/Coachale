@@ -784,19 +784,19 @@ export default function ConsultantWhatsAppConversationsPage() {
             )}
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <p className={`text-sm truncate ${
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex items-center gap-2">
+              <p className={`flex-1 text-sm truncate ${
                 conv.unreadByConsultant > 0 ? "font-bold text-gray-900 dark:text-white" : "font-medium text-gray-900 dark:text-white"
               }`}>
                 {conv.contactName || (conv.instagramUsername ? `@${conv.instagramUsername}` : conv.phoneNumber || 'Contatto Sconosciuto')}
               </p>
-              <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+              <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-shrink-0 whitespace-nowrap">
                 {formatMessageDate(new Date(conv.lastMessageAt))}
               </span>
             </div>
-            <div className="flex items-center justify-between gap-2 mt-0.5">
-              <p className={`text-sm truncate ${
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className={`flex-1 text-sm truncate ${
                 conv.unreadByConsultant > 0 ? "text-gray-900 dark:text-gray-200" : "text-gray-500 dark:text-gray-400"
               }`}>
                 {(() => {
@@ -806,7 +806,7 @@ export default function ConsultantWhatsAppConversationsPage() {
                   return msgText;
                 })()}
               </p>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <Badge className={`text-[10px] py-0 px-1.5 h-5 ${badgeInfo.className}`}>
                   {badgeInfo.label}
                 </Badge>
@@ -1138,9 +1138,19 @@ export default function ConsultantWhatsAppConversationsPage() {
             {(!selectedConversationId && activeChannel !== "config") && (
               <>
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-zinc-900">
-                  <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    {activeChannel === "whatsapp" ? "Conversazioni" : "Instagram"}
-                  </h1>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => window.location.href = '/consultant/dashboard'}
+                      className="h-10 w-10"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      {activeChannel === "whatsapp" ? "Conversazioni" : "Instagram"}
+                    </h1>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
@@ -1149,13 +1159,6 @@ export default function ConsultantWhatsAppConversationsPage() {
                       className="h-10 w-10"
                     >
                       <Search className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10"
-                    >
-                      <MoreVertical className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>
