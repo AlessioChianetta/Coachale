@@ -2404,7 +2404,7 @@ export default function ContentStudioPosts() {
       </div>
 
       <Dialog open={!!viewingPost} onOpenChange={(open) => !open && setViewingPost(null)}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden p-0 gap-0">
+        <DialogContent className="max-w-5xl h-[85vh] p-0 gap-0 flex flex-col">
           {viewingPost && (() => {
             const viewStructured = viewingPost.structuredContent || {};
             const viewCopyType = viewStructured.copyType || viewingPost.copyType || "short";
@@ -2413,10 +2413,10 @@ export default function ContentStudioPosts() {
             const ctaText = viewStructured.cta || viewingPost.cta;
             
             return (
-              <div className="flex flex-col lg:flex-row h-full">
+              <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 {/* Left Panel - Preview */}
-                <div className="lg:w-[380px] flex-shrink-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 p-6 border-b lg:border-b-0 lg:border-r overflow-y-auto">
-                  <div className="sticky top-0">
+                <div className="lg:w-[380px] flex-shrink-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 p-6 border-b lg:border-b-0 lg:border-r overflow-y-auto max-h-[300px] lg:max-h-full">
+                  <div className="lg:sticky lg:top-0">
                     <div className="flex items-center gap-2 mb-4">
                       <div className={`p-2 rounded-lg ${
                         viewingPost.platform === "instagram" ? "bg-gradient-to-br from-purple-500/20 to-pink-500/20" :
@@ -2448,9 +2448,9 @@ export default function ContentStudioPosts() {
                 </div>
 
                 {/* Right Panel - Content */}
-                <div className="flex-1 flex flex-col min-w-0">
+                <div className="flex-1 flex flex-col min-w-0 min-h-0">
                   {/* Header */}
-                  <div className="px-6 py-4 border-b bg-white dark:bg-zinc-950">
+                  <div className="px-6 py-4 border-b bg-white dark:bg-zinc-950 flex-shrink-0">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         <h2 className="text-xl font-bold leading-tight truncate">
@@ -2497,7 +2497,7 @@ export default function ContentStudioPosts() {
                   </div>
 
                   {/* Content Sections */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                     {/* Schedule info */}
                     {viewingPost.scheduledDate && (
                       <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/30">
@@ -2644,7 +2644,7 @@ export default function ContentStudioPosts() {
                   </div>
 
                   {/* Footer */}
-                  <div className="px-6 py-3 border-t bg-slate-50 dark:bg-zinc-900">
+                  <div className="px-6 py-3 border-t bg-slate-50 dark:bg-zinc-900 flex-shrink-0">
                     <p className="text-xs text-muted-foreground">
                       Creato il {new Date(viewingPost.createdAt).toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </p>
