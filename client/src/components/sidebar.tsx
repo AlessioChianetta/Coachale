@@ -699,7 +699,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                               "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
                               isActive
                                 ? "text-cyan-500"
-                                : item.color || "text-slate-400 dark:text-slate-500"
+                                : "text-slate-600 dark:text-slate-400"
                             )} />
 
                             <div className="flex-1 flex items-center justify-between min-w-0">
