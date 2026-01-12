@@ -2241,6 +2241,9 @@ export default function ContentStudioPosts() {
                 {filteredPosts.map((post) => {
                   const structured = post.structuredContent || {};
                   const hookText = structured.hook || post.hook || "";
+                  const bodyText = structured.body || post.body || "";
+                  const hasVideoScript = !!(structured.videoFullScript || post.videoFullScript);
+                  const hasImageDesc = !!(structured.imageDescription || post.imageDescription);
                   return (
                     <Card 
                       key={post.id} 
@@ -2294,15 +2297,37 @@ export default function ContentStudioPosts() {
                           {post.title || "Post senza titolo"}
                         </h3>
 
+                        {/* Content type badge */}
+                        {post.contentType && (
+                          <div className="mb-3">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              {post.contentType}
+                            </span>
+                          </div>
+                        )}
+
                         {/* Hook preview */}
                         {hookText && (
-                          <p className="text-sm text-muted-foreground line-clamp-2 mb-4 italic border-l-2 border-purple-300 pl-3">
-                            "{hookText}"
-                          </p>
+                          <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-purple-50/80 to-pink-50/80 dark:from-purple-950/30 dark:to-pink-950/30 border-l-3 border-purple-400">
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mb-1">🎣 Hook</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2 italic">
+                              "{hookText}"
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Body preview */}
+                        {bodyText && !hookText && (
+                          <div className="mb-3 p-3 rounded-lg bg-slate-50 dark:bg-zinc-800/50">
+                            <p className="text-xs text-muted-foreground font-semibold mb-1">📝 Contenuto</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {bodyText}
+                            </p>
+                          </div>
                         )}
 
                         {/* Tags row */}
-                        <div className="flex flex-wrap gap-1.5 mb-4">
+                        <div className="flex flex-wrap gap-1.5 mb-3">
                           {post.mediaType && (
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                               post.mediaType === "video" 
@@ -2320,6 +2345,16 @@ export default function ContentStudioPosts() {
                                 : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                             }`}>
                               {post.copyType === "long" ? "Lungo" : "Corto"}
+                            </span>
+                          )}
+                          {hasVideoScript && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400">
+                              🎬 Script
+                            </span>
+                          )}
+                          {hasImageDesc && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
+                              🖼️ Immagine
                             </span>
                           )}
                         </div>
