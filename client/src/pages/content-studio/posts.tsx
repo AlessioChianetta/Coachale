@@ -2340,14 +2340,17 @@ export default function ContentStudioPosts() {
               )}
 
               {(() => {
-                const copyType = viewingPost.copyType || viewingPost.structuredContent?.copyType;
                 const chiCosaCome = viewingPost.chiCosaCome || viewingPost.structuredContent?.chiCosaCome;
                 const errore = viewingPost.errore || viewingPost.structuredContent?.errore;
                 const soluzione = viewingPost.soluzione || viewingPost.structuredContent?.soluzione;
                 const riprovaSociale = viewingPost.riprovaSociale || viewingPost.structuredContent?.riprovaSociale;
-                const hasLongCopyContent = chiCosaCome || errore || soluzione || riprovaSociale;
+                // Only show section if there's actual content (not just empty strings)
+                const hasLongCopyContent = (chiCosaCome && chiCosaCome.trim()) || 
+                                           (errore && errore.trim()) || 
+                                           (soluzione && soluzione.trim()) || 
+                                           (riprovaSociale && riprovaSociale.trim());
                 
-                if (copyType === "long" || hasLongCopyContent) {
+                if (hasLongCopyContent) {
                   return (
                     <Collapsible defaultOpen>
                       <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">

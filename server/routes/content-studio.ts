@@ -420,9 +420,24 @@ router.post("/posts", authenticateToken, requireRole("consultant"), async (req: 
   try {
     const consultantId = req.user!.id;
     
+    // Debug log to trace what fields arrive
+    console.log("📝 [CONTENT-STUDIO] POST /posts - Incoming long copy fields:", {
+      chiCosaCome: req.body.chiCosaCome?.substring(0, 50) || "(empty)",
+      errore: req.body.errore?.substring(0, 50) || "(empty)",
+      soluzione: req.body.soluzione?.substring(0, 50) || "(empty)",
+      riprovaSociale: req.body.riprovaSociale?.substring(0, 50) || "(empty)",
+    });
+    
     const validatedData = insertContentPostSchema.parse({
       ...req.body,
       consultantId
+    });
+    
+    console.log("📝 [CONTENT-STUDIO] POST /posts - After validation long copy fields:", {
+      chiCosaCome: (validatedData as any).chiCosaCome?.substring(0, 50) || "(empty)",
+      errore: (validatedData as any).errore?.substring(0, 50) || "(empty)",
+      soluzione: (validatedData as any).soluzione?.substring(0, 50) || "(empty)",
+      riprovaSociale: (validatedData as any).riprovaSociale?.substring(0, 50) || "(empty)",
     });
     
     const [post] = await db.insert(schema.contentPosts)
