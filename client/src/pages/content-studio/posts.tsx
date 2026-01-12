@@ -2237,126 +2237,141 @@ export default function ContentStudioPosts() {
                 ))}
               </div>
             ) : filteredPosts.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {filteredPosts.map((post) => (
-                  <Card key={post.id} className="hover:shadow-lg transition-all hover:border-primary/30 group">
-                    <CardContent className="p-5 space-y-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-muted">
-                            {getPlatformIcon(post.platform)}
-                          </div>
-                          <div>
-                            <span className="text-sm font-semibold capitalize block">
-                              {post.platform}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(post.createdAt).toLocaleDateString("it-IT")}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getStatusBadge(post.status)}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => deletePostMutation.mutate(post.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <h3 className="font-bold text-lg">{post.title || "Post senza titolo"}</h3>
-                        {post.hook && (
-                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2 bg-muted/50 p-2 rounded-lg italic">
-                            "{post.hook}"
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {post.mediaType && (
-                          <Badge variant="outline" className={post.mediaType === "video" ? "bg-blue-500/10 text-blue-600 border-blue-200" : "bg-green-500/10 text-green-600 border-green-200"}>
-                            {post.mediaType === "video" ? <Video className="h-3 w-3 mr-1" /> : <Image className="h-3 w-3 mr-1" />}
-                            {post.mediaType === "video" ? "Video" : "Foto"}
-                          </Badge>
-                        )}
-                        {post.copyType && (
-                          <Badge variant="outline" className={post.copyType === "long" ? "bg-purple-500/10 text-purple-600 border-purple-200" : "bg-orange-500/10 text-orange-600 border-orange-200"}>
-                            {post.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {post.scheduledDate && (
-                        <div className="flex items-center gap-2 text-sm bg-blue-500/10 text-blue-600 p-2 rounded-lg">
-                          <Calendar className="h-4 w-4" />
-                          <span className="font-medium">Programmato: {new Date(post.scheduledDate).toLocaleString("it-IT")}</span>
-                        </div>
-                      )}
-
-                      {post.status === "published" && post.engagement && (
-                        <div className="grid grid-cols-4 gap-2 pt-3 border-t">
-                          <div className="text-center">
-                            <div className="flex items-center justify-center gap-1 text-pink-500">
-                              <Heart className="h-4 w-4" />
-                              <span className="text-sm font-semibold">
-                                {post.engagement.likes}
-                              </span>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {filteredPosts.map((post) => {
+                  const structured = post.structuredContent || {};
+                  const postCopyType = structured.copyType || post.copyType || "short";
+                  return (
+                    <Card key={post.id} className="hover:shadow-lg transition-all hover:border-primary/30 group overflow-hidden">
+                      <CardContent className="p-0">
+                        <div className="grid grid-cols-1 md:grid-cols-2">
+                          {/* Anteprima Social */}
+                          <div className="bg-muted/30 p-4 flex items-center justify-center border-r">
+                            <div className="transform scale-[0.85] origin-center">
+                              <SocialPreview
+                                platform={post.platform || "instagram"}
+                                hook={structured.hook || post.hook}
+                                body={structured.body || post.body}
+                                cta={structured.cta || post.cta}
+                                copyType={postCopyType as "short" | "long"}
+                                chiCosaCome={structured.chiCosaCome || post.chiCosaCome}
+                                errore={structured.errore || post.errore}
+                                soluzione={structured.soluzione || post.soluzione}
+                                riprovaSociale={structured.riprovaSociale || post.riprovaSociale}
+                              />
                             </div>
                           </div>
-                          <div className="text-center">
-                            <div className="flex items-center justify-center gap-1 text-blue-500">
-                              <MessageCircle className="h-4 w-4" />
-                              <span className="text-sm font-semibold">
-                                {post.engagement.comments}
-                              </span>
+
+                          {/* Dettagli Post */}
+                          <div className="p-5 space-y-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-muted">
+                                  {getPlatformIcon(post.platform)}
+                                </div>
+                                <div>
+                                  <span className="text-sm font-semibold capitalize block">
+                                    {post.platform}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(post.createdAt).toLocaleDateString("it-IT")}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {getStatusBadge(post.status)}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => deletePostMutation.mutate(post.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="flex items-center justify-center gap-1 text-green-500">
-                              <Share2 className="h-4 w-4" />
-                              <span className="text-sm font-semibold">
-                                {post.engagement.shares}
-                              </span>
+
+                            <div>
+                              <h3 className="font-bold text-lg line-clamp-2">{post.title || "Post senza titolo"}</h3>
                             </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="flex items-center justify-center gap-1 text-purple-500">
-                              <Eye className="h-4 w-4" />
-                              <span className="text-sm font-semibold">
-                                {post.engagement.views > 1000
-                                  ? `${(post.engagement.views / 1000).toFixed(1)}K`
-                                  : post.engagement.views}
-                              </span>
+
+                            <div className="flex flex-wrap gap-2">
+                              {post.mediaType && (
+                                <Badge variant="outline" className={post.mediaType === "video" ? "bg-blue-500/10 text-blue-600 border-blue-200" : "bg-green-500/10 text-green-600 border-green-200"}>
+                                  {post.mediaType === "video" ? <Video className="h-3 w-3 mr-1" /> : <Image className="h-3 w-3 mr-1" />}
+                                  {post.mediaType === "video" ? "Video" : "Foto"}
+                                </Badge>
+                              )}
+                              {post.copyType && (
+                                <Badge variant="outline" className={post.copyType === "long" ? "bg-purple-500/10 text-purple-600 border-purple-200" : "bg-orange-500/10 text-orange-600 border-orange-200"}>
+                                  {post.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
+                                </Badge>
+                              )}
+                            </div>
+
+                            {post.scheduledDate && (
+                              <div className="flex items-center gap-2 text-sm bg-blue-500/10 text-blue-600 p-2 rounded-lg">
+                                <Calendar className="h-4 w-4" />
+                                <span className="font-medium text-xs">
+                                  {new Date(post.scheduledDate).toLocaleString("it-IT")}
+                                </span>
+                              </div>
+                            )}
+
+                            {post.status === "published" && post.engagement && (
+                              <div className="grid grid-cols-4 gap-2 pt-3 border-t">
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1 text-pink-500">
+                                    <Heart className="h-3 w-3" />
+                                    <span className="text-xs font-semibold">{post.engagement.likes}</span>
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1 text-blue-500">
+                                    <MessageCircle className="h-3 w-3" />
+                                    <span className="text-xs font-semibold">{post.engagement.comments}</span>
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1 text-green-500">
+                                    <Share2 className="h-3 w-3" />
+                                    <span className="text-xs font-semibold">{post.engagement.shares}</span>
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1 text-purple-500">
+                                    <Eye className="h-3 w-3" />
+                                    <span className="text-xs font-semibold">
+                                      {post.engagement.views > 1000 ? `${(post.engagement.views / 1000).toFixed(1)}K` : post.engagement.views}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex gap-2 pt-2">
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                                onClick={() => handleEditPost(post)}
+                              >
+                                Modifica
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setViewingPost(post)}
+                              >
+                                Visualizza
+                              </Button>
                             </div>
                           </div>
                         </div>
-                      )}
-
-                      <div className="flex gap-2 pt-2">
-                        <Button 
-                          variant="default" 
-                          size="sm" 
-                          className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                          onClick={() => handleEditPost(post)}
-                        >
-                          Modifica
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setViewingPost(post)}
-                        >
-                          Visualizza
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <Card>
@@ -2380,240 +2395,201 @@ export default function ContentStudioPosts() {
       </div>
 
       <Dialog open={!!viewingPost} onOpenChange={(open) => !open && setViewingPost(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{viewingPost?.title || "Post"}</DialogTitle>
+            <DialogTitle className="text-xl">{viewingPost?.title || "Post"}</DialogTitle>
             <DialogDescription>Dettagli del post</DialogDescription>
           </DialogHeader>
-          {viewingPost && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="flex items-center gap-1">
-                  {getPlatformIcon(viewingPost.platform)}
-                  <span className="capitalize">{viewingPost.platform}</span>
-                </Badge>
-                {getStatusBadge(viewingPost.status)}
-                {viewingPost.contentType && (
-                  <Badge variant="secondary">{viewingPost.contentType}</Badge>
-                )}
+          {viewingPost && (() => {
+            const viewStructured = viewingPost.structuredContent || {};
+            const viewCopyType = viewStructured.copyType || viewingPost.copyType || "short";
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Colonna Anteprima */}
+                <div className="bg-muted/30 rounded-xl p-4 flex items-start justify-center">
+                  <SocialPreview
+                    platform={viewingPost.platform || "instagram"}
+                    hook={viewStructured.hook || viewingPost.hook}
+                    body={viewStructured.body || viewingPost.body}
+                    cta={viewStructured.cta || viewingPost.cta}
+                    copyType={viewCopyType as "short" | "long"}
+                    chiCosaCome={viewStructured.chiCosaCome || viewingPost.chiCosaCome}
+                    errore={viewStructured.errore || viewingPost.errore}
+                    soluzione={viewStructured.soluzione || viewingPost.soluzione}
+                    riprovaSociale={viewStructured.riprovaSociale || viewingPost.riprovaSociale}
+                  />
+                </div>
+
+                {/* Colonna Dettagli */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      {getPlatformIcon(viewingPost.platform)}
+                      <span className="capitalize">{viewingPost.platform}</span>
+                    </Badge>
+                    {getStatusBadge(viewingPost.status)}
+                    {viewingPost.contentType && (
+                      <Badge variant="secondary">{viewingPost.contentType}</Badge>
+                    )}
+                    {viewingPost.mediaType && (
+                      <Badge variant="outline" className={viewingPost.mediaType === "video" ? "bg-blue-500/10 text-blue-600 border-blue-200" : "bg-green-500/10 text-green-600 border-green-200"}>
+                        {viewingPost.mediaType === "video" ? "Video" : "Foto"}
+                      </Badge>
+                    )}
+                    {viewingPost.copyType && (
+                      <Badge variant="outline" className={viewingPost.copyType === "long" ? "bg-purple-500/10 text-purple-600 border-purple-200" : "bg-orange-500/10 text-orange-600 border-orange-200"}>
+                        {viewingPost.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {(viewStructured.hook || viewingPost.hook) && (
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg">
+                      <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">🎣 HOOK</Label>
+                      <p className="text-sm font-medium mt-1">{viewStructured.hook || viewingPost.hook}</p>
+                    </div>
+                  )}
+
+                  {(viewStructured.body || viewingPost.body) && (
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <Label className="text-xs text-muted-foreground font-semibold">📝 CONTENUTO</Label>
+                      <div className="text-sm mt-1 whitespace-pre-wrap line-clamp-6">
+                        {formatTextWithHashtags(viewStructured.body || viewingPost.body)}
+                      </div>
+                    </div>
+                  )}
+
+                  {(viewStructured.cta || viewingPost.cta) && (
+                    <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg">
+                      <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">🎯 CTA</Label>
+                      <p className="text-sm font-medium mt-1">{viewStructured.cta || viewingPost.cta}</p>
+                    </div>
+                  )}
+
+                  {(() => {
+                    const chiCosaCome = viewStructured.chiCosaCome || viewingPost.chiCosaCome;
+                    const errore = viewStructured.errore || viewingPost.errore;
+                    const soluzione = viewStructured.soluzione || viewingPost.soluzione;
+                    const riprovaSociale = viewStructured.riprovaSociale || viewingPost.riprovaSociale;
+                    const hasLongCopyContent = (chiCosaCome && chiCosaCome.trim()) || 
+                                               (errore && errore.trim()) || 
+                                               (soluzione && soluzione.trim()) || 
+                                               (riprovaSociale && riprovaSociale.trim());
+                    
+                    if (hasLongCopyContent) {
+                      return (
+                        <Collapsible defaultOpen className="border rounded-lg p-3 bg-muted/20">
+                          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                            <ChevronDown className="h-4 w-4" />
+                            📄 Copy Lungo - Dettagli
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pt-3 space-y-2">
+                            {chiCosaCome && (
+                              <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded">
+                                <Label className="text-xs text-blue-600 font-semibold">👤 Chi-Cosa-Come</Label>
+                                <p className="text-xs mt-1">{chiCosaCome}</p>
+                              </div>
+                            )}
+                            {errore && (
+                              <div className="bg-red-50 dark:bg-red-950/20 p-2 rounded">
+                                <Label className="text-xs text-red-600 font-semibold">❌ Errore</Label>
+                                <p className="text-xs mt-1">{errore}</p>
+                              </div>
+                            )}
+                            {soluzione && (
+                              <div className="bg-green-50 dark:bg-green-950/20 p-2 rounded">
+                                <Label className="text-xs text-green-600 font-semibold">✅ Soluzione</Label>
+                                <p className="text-xs mt-1">{soluzione}</p>
+                              </div>
+                            )}
+                            {riprovaSociale && (
+                              <div className="bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+                                <Label className="text-xs text-amber-600 font-semibold">📊 Riprova Sociale</Label>
+                                <p className="text-xs mt-1">{riprovaSociale}</p>
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {(() => {
+                    const mediaType = viewStructured.mediaType || viewingPost.mediaType;
+                    const videoHook = viewStructured.videoHook || viewingPost.videoHook;
+                    const videoProblema = viewStructured.videoProblema || viewingPost.videoProblema;
+                    const videoSoluzione = viewStructured.videoSoluzione || viewingPost.videoSoluzione;
+                    const videoCta = viewStructured.videoCta || viewingPost.videoCta;
+                    const videoFullScript = viewStructured.videoFullScript || viewingPost.videoFullScript;
+                    const hasVideoContent = videoHook || videoProblema || videoSoluzione || videoCta || videoFullScript;
+                    
+                    if (mediaType === "video" || hasVideoContent) {
+                      return (
+                        <Collapsible defaultOpen className="border rounded-lg p-3 bg-blue-50/50 dark:bg-blue-950/20">
+                          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                            <Video className="h-4 w-4 text-blue-600" />
+                            🎬 Script Video
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pt-3 space-y-2">
+                            {videoFullScript && (
+                              <div className="bg-white dark:bg-zinc-900 p-2 rounded border text-xs max-h-32 overflow-y-auto whitespace-pre-wrap">
+                                {videoFullScript}
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {(() => {
+                    const imageDescription = viewStructured.imageDescription || viewingPost.imageDescription;
+                    const imageOverlayText = viewStructured.imageOverlayText || viewingPost.imageOverlayText;
+                    
+                    if (imageDescription || imageOverlayText) {
+                      return (
+                        <Collapsible defaultOpen className="border rounded-lg p-3 bg-green-50/50 dark:bg-green-950/20">
+                          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                            <Image className="h-4 w-4 text-green-600" />
+                            🖼️ Descrizione Immagine
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pt-3 space-y-2">
+                            {imageDescription && (
+                              <p className="text-xs bg-white dark:bg-zinc-900 p-2 rounded border">{imageDescription}</p>
+                            )}
+                            {imageOverlayText && (
+                              <div className="bg-white dark:bg-zinc-900 p-2 rounded border text-center">
+                                <span className="text-xs text-muted-foreground">Testo overlay:</span>
+                                <p className="text-sm font-bold">{imageOverlayText}</p>
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {viewingPost.scheduledDate && (
+                    <div className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg">
+                      <Calendar className="h-4 w-4 text-amber-600" />
+                      <span className="text-amber-700 dark:text-amber-400 text-xs">
+                        Programmato: {new Date(viewingPost.scheduledDate).toLocaleString("it-IT")}
+                      </span>
+                    </div>
+                  )}
+
+                  {viewingPost.createdAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Creato il: {new Date(viewingPost.createdAt).toLocaleString("it-IT")}
+                    </p>
+                  )}
+                </div>
               </div>
-
-              {viewingPost.hook && (
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium text-muted-foreground">Hook</Label>
-                  <p className="text-sm bg-muted/50 p-3 rounded-lg italic">"{viewingPost.hook}"</p>
-                </div>
-              )}
-
-              {viewingPost.body && (
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium text-muted-foreground">Contenuto</Label>
-                  <div className="text-sm bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">
-                    {formatTextWithHashtags(viewingPost.body)}
-                  </div>
-                </div>
-              )}
-
-              {viewingPost.cta && (
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium text-muted-foreground">Call to Action</Label>
-                  <p className="text-sm bg-muted/50 p-3 rounded-lg font-medium">{viewingPost.cta}</p>
-                </div>
-              )}
-
-              {(() => {
-                const chiCosaCome = viewingPost.chiCosaCome || viewingPost.structuredContent?.chiCosaCome;
-                const errore = viewingPost.errore || viewingPost.structuredContent?.errore;
-                const soluzione = viewingPost.soluzione || viewingPost.structuredContent?.soluzione;
-                const riprovaSociale = viewingPost.riprovaSociale || viewingPost.structuredContent?.riprovaSociale;
-                // Only show section if there's actual content (not just empty strings)
-                const hasLongCopyContent = (chiCosaCome && chiCosaCome.trim()) || 
-                                           (errore && errore.trim()) || 
-                                           (soluzione && soluzione.trim()) || 
-                                           (riprovaSociale && riprovaSociale.trim());
-                
-                if (hasLongCopyContent) {
-                  return (
-                    <Collapsible defaultOpen>
-                      <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
-                        <ChevronDown className="h-4 w-4" />
-                        Copy Lungo - Dettagli
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-2 space-y-3">
-                        {chiCosaCome && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Chi-Cosa-Come</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{chiCosaCome}</p>
-                          </div>
-                        )}
-                        {errore && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Errore</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{errore}</p>
-                          </div>
-                        )}
-                        {soluzione && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Soluzione</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{soluzione}</p>
-                          </div>
-                        )}
-                        {riprovaSociale && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Riprova Sociale</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{riprovaSociale}</p>
-                          </div>
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
-                  );
-                }
-                return null;
-              })()}
-
-              {(() => {
-                const mediaType = viewingPost.mediaType || viewingPost.structuredContent?.mediaType;
-                const videoHook = viewingPost.videoHook || viewingPost.structuredContent?.videoHook;
-                const videoProblema = viewingPost.videoProblema || viewingPost.structuredContent?.videoProblema;
-                const videoSoluzione = viewingPost.videoSoluzione || viewingPost.structuredContent?.videoSoluzione;
-                const videoCta = viewingPost.videoCta || viewingPost.structuredContent?.videoCta;
-                const videoFullScript = viewingPost.videoFullScript || viewingPost.structuredContent?.videoFullScript;
-                const hasVideoContent = videoHook || videoProblema || videoSoluzione || videoCta || videoFullScript;
-                
-                if (mediaType === "video" || hasVideoContent) {
-                  return (
-                    <Collapsible defaultOpen>
-                      <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
-                        <Video className="h-4 w-4" />
-                        Script Video
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-2 space-y-3">
-                        {videoHook && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Video Hook</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{videoHook}</p>
-                          </div>
-                        )}
-                        {videoProblema && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Problema</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{videoProblema}</p>
-                          </div>
-                        )}
-                        {videoSoluzione && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Soluzione</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{videoSoluzione}</p>
-                          </div>
-                        )}
-                        {videoCta && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Video CTA</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{videoCta}</p>
-                          </div>
-                        )}
-                        {videoFullScript && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Script Completo</Label>
-                            <div className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap max-h-48 overflow-y-auto">
-                              {videoFullScript}
-                            </div>
-                          </div>
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
-                  );
-                }
-                return null;
-              })()}
-
-              {(() => {
-                const imageDescription = viewingPost.imageDescription || viewingPost.structuredContent?.imageDescription;
-                const imageOverlayText = viewingPost.imageOverlayText || viewingPost.structuredContent?.imageOverlayText;
-                
-                if (imageDescription || imageOverlayText) {
-                  return (
-                    <Collapsible defaultOpen>
-                      <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
-                        <Image className="h-4 w-4" />
-                        Descrizione Immagine
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-2 space-y-3">
-                        {imageDescription && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Descrizione</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{imageDescription}</p>
-                          </div>
-                        )}
-                        {imageOverlayText && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Testo Overlay</Label>
-                            <p className="text-sm bg-muted/30 p-2 rounded whitespace-pre-wrap">{imageOverlayText}</p>
-                          </div>
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
-                  );
-                }
-                return null;
-              })()}
-
-              {viewingPost.status === "published" && viewingPost.engagement && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-muted-foreground">Engagement</Label>
-                  <div className="grid grid-cols-4 gap-3">
-                    <div className="text-center p-3 bg-pink-50 dark:bg-pink-950/30 rounded-lg">
-                      <div className="flex items-center justify-center gap-1 text-pink-500">
-                        <Heart className="h-4 w-4" />
-                        <span className="font-semibold">{viewingPost.engagement.likes}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Mi piace</p>
-                    </div>
-                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-                      <div className="flex items-center justify-center gap-1 text-blue-500">
-                        <MessageCircle className="h-4 w-4" />
-                        <span className="font-semibold">{viewingPost.engagement.comments}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Commenti</p>
-                    </div>
-                    <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
-                      <div className="flex items-center justify-center gap-1 text-green-500">
-                        <Share2 className="h-4 w-4" />
-                        <span className="font-semibold">{viewingPost.engagement.shares}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Condivisioni</p>
-                    </div>
-                    <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
-                      <div className="flex items-center justify-center gap-1 text-purple-500">
-                        <Eye className="h-4 w-4" />
-                        <span className="font-semibold">
-                          {viewingPost.engagement.views > 1000
-                            ? `${(viewingPost.engagement.views / 1000).toFixed(1)}K`
-                            : viewingPost.engagement.views}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Visualizzazioni</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {viewingPost.scheduledDate && (
-                <div className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg">
-                  <Calendar className="h-4 w-4 text-amber-600" />
-                  <span className="text-amber-700 dark:text-amber-400">
-                    Programmato per: {new Date(viewingPost.scheduledDate).toLocaleString("it-IT")}
-                  </span>
-                </div>
-              )}
-
-              {viewingPost.createdAt && (
-                <p className="text-xs text-muted-foreground">
-                  Creato il: {new Date(viewingPost.createdAt).toLocaleString("it-IT")}
-                </p>
-              )}
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
