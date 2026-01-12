@@ -845,7 +845,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             "h-4 w-4 flex-shrink-0",
                             isChildActive
                               ? "text-cyan-500"
-                              : child.color || "text-slate-400"
+                              : "text-slate-600 dark:text-slate-400"
                           )} />
                           <span className={cn(
                             "font-medium",
@@ -1027,7 +1027,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                                     "h-4 w-4 flex-shrink-0",
                                     isChildActive
                                       ? "text-cyan-500"
-                                      : child.color || "text-slate-400"
+                                      : "text-slate-600 dark:text-slate-400"
                                   )} />
                                   <span className={cn(
                                     "font-medium",
