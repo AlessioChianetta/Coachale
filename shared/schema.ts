@@ -7753,6 +7753,8 @@ export const brandAssets = pgTable("brand_assets", {
   instagramHandle: varchar("instagram_handle", { length: 100 }),
   facebookPage: varchar("facebook_page", { length: 200 }),
   linkedinPage: varchar("linkedin_page", { length: 200 }),
+  chiSono: text("chi_sono"),
+  noteForAi: text("note_for_ai"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

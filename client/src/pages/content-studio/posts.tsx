@@ -2198,34 +2198,46 @@ export default function ContentStudioPosts() {
             </Card>
 
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
                   <Card key={i}>
-                    <CardContent className="p-4 space-y-3">
-                      <Skeleton className="h-4 w-24" />
+                    <CardContent className="p-5 space-y-3">
+                      <Skeleton className="h-5 w-32" />
                       <Skeleton className="h-6 w-full" />
                       <Skeleton className="h-4 w-3/4" />
+                      <div className="flex gap-2">
+                        <Skeleton className="h-6 w-16" />
+                        <Skeleton className="h-6 w-16" />
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
             ) : filteredPosts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {filteredPosts.map((post) => (
-                  <Card key={post.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 space-y-3">
+                  <Card key={post.id} className="hover:shadow-lg transition-all hover:border-primary/30 group">
+                    <CardContent className="p-5 space-y-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          {getPlatformIcon(post.platform)}
-                          <span className="text-sm font-medium capitalize">
-                            {post.platform}
-                          </span>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-muted">
+                            {getPlatformIcon(post.platform)}
+                          </div>
+                          <div>
+                            <span className="text-sm font-semibold capitalize block">
+                              {post.platform}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(post.createdAt).toLocaleDateString("it-IT")}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           {getStatusBadge(post.status)}
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={() => deletePostMutation.mutate(post.id)}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -2234,51 +2246,65 @@ export default function ContentStudioPosts() {
                       </div>
 
                       <div>
-                        <h3 className="font-semibold">{post.title || "Post senza titolo"}</h3>
+                        <h3 className="font-bold text-lg">{post.title || "Post senza titolo"}</h3>
                         {post.hook && (
-                          <p className="text-sm text-muted-foreground mt-1 italic">
+                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2 bg-muted/50 p-2 rounded-lg italic">
                             "{post.hook}"
                           </p>
                         )}
                       </div>
 
+                      <div className="flex flex-wrap gap-2">
+                        {post.mediaType && (
+                          <Badge variant="outline" className={post.mediaType === "video" ? "bg-blue-500/10 text-blue-600 border-blue-200" : "bg-green-500/10 text-green-600 border-green-200"}>
+                            {post.mediaType === "video" ? <Video className="h-3 w-3 mr-1" /> : <Image className="h-3 w-3 mr-1" />}
+                            {post.mediaType === "video" ? "Video" : "Foto"}
+                          </Badge>
+                        )}
+                        {post.copyType && (
+                          <Badge variant="outline" className={post.copyType === "long" ? "bg-purple-500/10 text-purple-600 border-purple-200" : "bg-orange-500/10 text-orange-600 border-orange-200"}>
+                            {post.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
+                          </Badge>
+                        )}
+                      </div>
+
                       {post.scheduledDate && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm bg-blue-500/10 text-blue-600 p-2 rounded-lg">
                           <Calendar className="h-4 w-4" />
-                          <span>{new Date(post.scheduledDate).toLocaleString("it-IT")}</span>
+                          <span className="font-medium">Programmato: {new Date(post.scheduledDate).toLocaleString("it-IT")}</span>
                         </div>
                       )}
 
                       {post.status === "published" && post.engagement && (
-                        <div className="grid grid-cols-4 gap-2 pt-2 border-t">
+                        <div className="grid grid-cols-4 gap-2 pt-3 border-t">
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-1 text-pink-500">
-                              <Heart className="h-3 w-3" />
-                              <span className="text-xs font-semibold">
+                              <Heart className="h-4 w-4" />
+                              <span className="text-sm font-semibold">
                                 {post.engagement.likes}
                               </span>
                             </div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-1 text-blue-500">
-                              <MessageCircle className="h-3 w-3" />
-                              <span className="text-xs font-semibold">
+                              <MessageCircle className="h-4 w-4" />
+                              <span className="text-sm font-semibold">
                                 {post.engagement.comments}
                               </span>
                             </div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-1 text-green-500">
-                              <Share2 className="h-3 w-3" />
-                              <span className="text-xs font-semibold">
+                              <Share2 className="h-4 w-4" />
+                              <span className="text-sm font-semibold">
                                 {post.engagement.shares}
                               </span>
                             </div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-1 text-purple-500">
-                              <Eye className="h-3 w-3" />
-                              <span className="text-xs font-semibold">
+                              <Eye className="h-4 w-4" />
+                              <span className="text-sm font-semibold">
                                 {post.engagement.views > 1000
                                   ? `${(post.engagement.views / 1000).toFixed(1)}K`
                                   : post.engagement.views}
@@ -2290,15 +2316,15 @@ export default function ContentStudioPosts() {
 
                       <div className="flex gap-2 pt-2">
                         <Button 
-                          variant="outline" 
+                          variant="default" 
                           size="sm" 
-                          className="flex-1"
+                          className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                           onClick={() => handleEditPost(post)}
                         >
                           Modifica
                         </Button>
                         <Button 
-                          variant="ghost" 
+                          variant="outline" 
                           size="sm"
                           onClick={() => setViewingPost(post)}
                         >

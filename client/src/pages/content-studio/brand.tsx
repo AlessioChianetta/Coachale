@@ -40,6 +40,8 @@ interface BrandAssets {
   twitterHandle?: string;
   youtubeHandle?: string;
   logoUrl?: string;
+  chiSono?: string;
+  noteForAi?: string;
 }
 
 export default function ContentStudioBrand() {
@@ -55,6 +57,8 @@ export default function ContentStudioBrand() {
   });
 
   const [brandVoice, setBrandVoice] = useState("");
+  const [chiSono, setChiSono] = useState("");
+  const [noteForAi, setNoteForAi] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [avoidWords, setAvoidWords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState("");
@@ -92,6 +96,8 @@ export default function ContentStudioBrand() {
         accent: data.accentColor || "#f59e0b",
       });
       setBrandVoice(data.brandVoice || "");
+      setChiSono(data.chiSono || "");
+      setNoteForAi(data.noteForAi || "");
       setKeywords(data.keywords || []);
       setAvoidWords(data.avoidWords || []);
       setSocialHandles({
@@ -164,6 +170,8 @@ export default function ContentStudioBrand() {
       secondaryColor: brandColors.secondary,
       accentColor: brandColors.accent,
       brandVoice,
+      chiSono,
+      noteForAi,
       keywords,
       avoidWords,
       instagramHandle: socialHandles.instagram,
@@ -231,6 +239,66 @@ export default function ContentStudioBrand() {
                 Salva
               </Button>
             </div>
+
+            <Card className="border-2 border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50/50 to-transparent dark:from-indigo-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600 dark:text-indigo-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  </div>
+                  Chi Sono
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Descrivi chi sei, cosa fai e per chi lo fai. L'AI userà queste informazioni per creare contenuti più personalizzati.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="chiSono">La tua storia professionale</Label>
+                  <Textarea
+                    id="chiSono"
+                    rows={5}
+                    value={chiSono}
+                    onChange={(e) => setChiSono(e.target.value)}
+                    placeholder="Es: Sono Marco Rossi, consulente finanziario con 15 anni di esperienza. Aiuto imprenditori e liberi professionisti a gestire le proprie finanze personali e aziendali. Il mio approccio si basa su strategie pratiche e risultati misurabili..."
+                    className="resize-none"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600 dark:text-amber-400"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  </div>
+                  Note per l'AI
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Istruzioni personalizzate per l'intelligenza artificiale. Scrivi qui qualsiasi indicazione specifica su come vuoi che vengano creati i tuoi contenuti.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="noteForAi">Istruzioni libere</Label>
+                  <Textarea
+                    id="noteForAi"
+                    rows={5}
+                    value={noteForAi}
+                    onChange={(e) => setNoteForAi(e.target.value)}
+                    placeholder="Es:
+- Non usare mai emoji nei post
+- Tono professionale ma accessibile
+- Evita termini troppo tecnici
+- Usa sempre esempi pratici italiani
+- Menziona sempre il mio metodo '3 Step Finanza'
+- Includi sempre una domanda nel hook"
+                    className="resize-none font-mono text-sm"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>

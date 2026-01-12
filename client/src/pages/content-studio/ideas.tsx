@@ -170,6 +170,28 @@ export default function ContentStudioIdeas() {
   const [filterContentType, setFilterContentType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("score-desc");
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
+  
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(["all"]));
+  const [viewingIdea, setViewingIdea] = useState<Idea | null>(null);
+
+  const toggleFilter = (filter: string) => {
+    setActiveFilters(prev => {
+      const newFilters = new Set(prev);
+      if (filter === "all") {
+        return new Set(["all"]);
+      }
+      newFilters.delete("all");
+      if (newFilters.has(filter)) {
+        newFilters.delete(filter);
+        if (newFilters.size === 0) {
+          return new Set(["all"]);
+        }
+      } else {
+        newFilters.add(filter);
+      }
+      return newFilters;
+    });
+  };
 
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -266,6 +288,23 @@ export default function ContentStudioIdeas() {
       );
     }
 
+    if (!activeFilters.has("all")) {
+      result = result.filter((idea) => {
+        const matchesVideo = activeFilters.has("video") && idea.mediaType === "video";
+        const matchesPhoto = activeFilters.has("photo") && idea.mediaType === "photo";
+        const matchesLong = activeFilters.has("long") && idea.copyType === "long";
+        const matchesShort = activeFilters.has("short") && idea.copyType === "short";
+        
+        const hasMediaFilter = activeFilters.has("video") || activeFilters.has("photo");
+        const hasCopyFilter = activeFilters.has("long") || activeFilters.has("short");
+        
+        const matchesMedia = !hasMediaFilter || matchesVideo || matchesPhoto;
+        const matchesCopy = !hasCopyFilter || matchesLong || matchesShort;
+        
+        return matchesMedia && matchesCopy;
+      });
+    }
+
     result.sort((a, b) => {
       switch (sortBy) {
         case "score-desc":
@@ -280,7 +319,7 @@ export default function ContentStudioIdeas() {
     });
 
     return result;
-  }, [ideas, filterStatus, filterContentType, sortBy]);
+  }, [ideas, filterStatus, filterContentType, sortBy, activeFilters]);
 
   const createIdeaMutation = useMutation({
     mutationFn: async (idea: Partial<Idea>) => {
@@ -703,131 +742,201 @@ export default function ContentStudioIdeas() {
             </Card>
 
             <div>
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Zap className="h-5 w-5 text-amber-500" />
-                Le Tue Idee ({filteredAndSortedIdeas.length})
-              </h2>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-amber-500" />
+                  Le Tue Idee ({filteredAndSortedIdeas.length})
+                </h2>
+                
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Ordina per" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="score-desc">Score (alto-basso)</SelectItem>
+                      <SelectItem value="date-desc">Data (recente)</SelectItem>
+                      <SelectItem value="content-type">Tipo contenuto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-              <Card className="mb-4">
-                <CardContent className="p-4">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex items-center gap-2 flex-1">
-                      <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                      <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                          <SelectValue placeholder="Ordina per" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="score-desc">Score (alto-basso)</SelectItem>
-                          <SelectItem value="date-desc">Data (recente)</SelectItem>
-                          <SelectItem value="content-type">Tipo contenuto</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="w-full sm:w-[160px]">
-                        <SelectValue placeholder="Filtra per Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tutti gli status</SelectItem>
-                        <SelectItem value="new">Nuove</SelectItem>
-                        <SelectItem value="in-progress">In lavorazione</SelectItem>
-                        <SelectItem value="used">Usate</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={filterContentType} onValueChange={setFilterContentType}>
-                      <SelectTrigger className="w-full sm:w-[160px]">
-                        <SelectValue placeholder="Filtra per Tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tutti i tipi</SelectItem>
-                        <SelectItem value="post">Post</SelectItem>
-                        <SelectItem value="carosello">Carosello</SelectItem>
-                        <SelectItem value="reel">Reel</SelectItem>
-                        <SelectItem value="video">Video</SelectItem>
-                        <SelectItem value="story">Story</SelectItem>
-                        <SelectItem value="articolo">Articolo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="flex flex-wrap gap-2 mb-6">
+                <button
+                  onClick={() => toggleFilter("all")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    activeFilters.has("all")
+                      ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  Tutte
+                </button>
+                <button
+                  onClick={() => toggleFilter("video")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                    activeFilters.has("video")
+                      ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <Video className="h-4 w-4" />
+                  Video
+                </button>
+                <button
+                  onClick={() => toggleFilter("photo")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                    activeFilters.has("photo")
+                      ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <Camera className="h-4 w-4" />
+                  Foto
+                </button>
+                <button
+                  onClick={() => toggleFilter("long")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                    activeFilters.has("long")
+                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <AlignLeft className="h-4 w-4" />
+                  Lungo
+                </button>
+                <button
+                  onClick={() => toggleFilter("short")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                    activeFilters.has("short")
+                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <FileTextIcon className="h-4 w-4" />
+                  Corto
+                </button>
+              </div>
 
               {isLoading ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {Array.from({ length: 4 }).map((_, i) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
                     <Card key={i}>
-                      <CardContent className="p-4 space-y-3">
-                        <Skeleton className="h-6 w-3/4" />
-                        <Skeleton className="h-4 w-full" />
+                      <CardContent className="p-5 space-y-4">
+                        <div className="flex gap-2">
+                          <Skeleton className="h-6 w-16 rounded-full" />
+                          <Skeleton className="h-6 w-16 rounded-full" />
+                        </div>
+                        <Skeleton className="h-6 w-full" />
                         <Skeleton className="h-16 w-full" />
+                        <div className="flex gap-2">
+                          <Skeleton className="h-9 flex-1" />
+                          <Skeleton className="h-9 flex-1" />
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               ) : filteredAndSortedIdeas.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {filteredAndSortedIdeas.map((idea) => (
                     <motion.div
                       key={idea.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`group relative bg-card rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all ${
-                        (idea.score || 0) >= 85 ? "border-l-green-500" :
-                        (idea.score || 0) >= 70 ? "border-l-amber-500" : "border-l-red-500"
-                      }`}
+                      whileHover={{ scale: 1.02, y: -4 }}
+                      transition={{ duration: 0.2 }}
                     >
-                      <div className="p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-base line-clamp-2">{idea.title}</h3>
-                            <div 
-                              className="mt-1 cursor-pointer group/desc"
-                              onClick={() => {
-                                const newSet = new Set(expandedDescriptions);
-                                if (newSet.has(idea.id)) {
-                                  newSet.delete(idea.id);
-                                } else {
-                                  newSet.add(idea.id);
-                                }
-                                setExpandedDescriptions(newSet);
-                              }}
-                            >
-                              <p className={`text-sm text-muted-foreground ${expandedDescriptions.has(idea.id) ? "" : "line-clamp-2"}`}>
-                                {idea.description}
-                              </p>
-                              {idea.description && idea.description.length > 100 && (
-                                <button className="text-xs text-primary hover:underline mt-1 flex items-center gap-1">
-                                  {expandedDescriptions.has(idea.id) ? (
-                                    <>Mostra meno <ChevronUp className="h-3 w-3" /></>
+                      <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 group">
+                        <CardContent className="p-5 flex flex-col h-full">
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="flex flex-wrap gap-2">
+                              {idea.mediaType && (
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                  idea.mediaType === "video"
+                                    ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                                    : "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                                }`}>
+                                  {idea.mediaType === "video" ? (
+                                    <><Video className="h-3 w-3" /> Video</>
                                   ) : (
-                                    <>Mostra tutto <ChevronDown className="h-3 w-3" /></>
+                                    <><Camera className="h-3 w-3" /> Foto</>
                                   )}
-                                </button>
+                                </span>
+                              )}
+                              {idea.copyType && (
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                  idea.copyType === "long"
+                                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                                    : "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
+                                }`}>
+                                  {idea.copyType === "long" ? (
+                                    <><AlignLeft className="h-3 w-3" /> Lungo</>
+                                  ) : (
+                                    <><FileTextIcon className="h-3 w-3" /> Corto</>
+                                  )}
+                                </span>
                               )}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className={`px-2 py-1 rounded-full text-xs font-bold ${
-                              (idea.score || 0) >= 85 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
-                              (idea.score || 0) >= 70 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" :
-                              "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                            
+                            <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold ${
+                              (idea.score || 0) >= 85 
+                                ? "bg-gradient-to-br from-green-400 to-green-600 text-white" 
+                                : (idea.score || 0) >= 70 
+                                  ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white" 
+                                  : "bg-gradient-to-br from-red-400 to-red-600 text-white"
                             }`}>
                               {idea.score || 0}
                             </div>
+                          </div>
+
+                          <h3 className="font-semibold text-base mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                            {idea.title}
+                          </h3>
+
+                          {idea.hook && (
+                            <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-3 rounded-lg mb-3 flex-grow">
+                              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1 flex items-center gap-1">
+                                <Sparkles className="h-3 w-3" />
+                                Hook
+                              </p>
+                              <p className="text-sm italic text-muted-foreground line-clamp-3">"{idea.hook}"</p>
+                            </div>
+                          )}
+                          
+                          {!idea.hook && idea.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-3 mb-3 flex-grow">
+                              {idea.description}
+                            </p>
+                          )}
+
+                          <div className="flex gap-2 mt-auto pt-3 border-t">
+                            <Button 
+                              size="sm" 
+                              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                              onClick={() => handleDevelopPost(idea)}
+                            >
+                              <Zap className="h-4 w-4 mr-1" />
+                              Sviluppa
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="flex-1"
+                              onClick={() => setViewingIdea(idea)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Visualizza
+                            </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleDevelopPost(idea)}>
-                                  <FileText className="h-4 w-4 mr-2" />
-                                  Sviluppa Post
-                                </DropdownMenuItem>
                                 <DropdownMenuItem>
                                   <ImageIcon className="h-4 w-4 mr-2" />
                                   Genera Immagine
@@ -847,70 +956,8 @@ export default function ContentStudioIdeas() {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
-                        </div>
-
-                        {idea.hook && (
-                          <div className="bg-purple-50 dark:bg-purple-950/20 p-2 rounded-lg">
-                            <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">Hook:</p>
-                            <p className="text-sm italic line-clamp-2">"{idea.hook}"</p>
-                          </div>
-                        )}
-
-                        {(idea.videoScript || idea.imageDescription || idea.copyContent) && (
-                          <div className="space-y-2 pt-2 border-t">
-                            {idea.mediaType === "video" && idea.videoScript && (
-                              <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded-lg">
-                                <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 mb-1">
-                                  <Video className="h-3 w-3" />
-                                  <span className="text-xs font-medium">Script Video</span>
-                                </div>
-                                <p className="text-xs line-clamp-3">{idea.videoScript}</p>
-                              </div>
-                            )}
-                            {idea.mediaType === "photo" && idea.imageDescription && (
-                              <div className="bg-green-50 dark:bg-green-950/20 p-2 rounded-lg">
-                                <div className="flex items-center gap-1 text-green-600 dark:text-green-400 mb-1">
-                                  <Camera className="h-3 w-3" />
-                                  <span className="text-xs font-medium">Descrizione Immagine</span>
-                                </div>
-                                <p className="text-xs line-clamp-2">{idea.imageDescription}</p>
-                                {idea.imageOverlayText && (
-                                  <p className="text-xs font-medium mt-1">Overlay: "{idea.imageOverlayText}"</p>
-                                )}
-                              </div>
-                            )}
-                            {idea.copyContent && (
-                              <div className="bg-purple-50 dark:bg-purple-950/20 p-2 rounded-lg">
-                                <div className="flex items-center gap-1 text-purple-600 dark:text-purple-400 mb-1">
-                                  {idea.copyType === "long" ? <AlignLeft className="h-3 w-3" /> : <FileTextIcon className="h-3 w-3" />}
-                                  <span className="text-xs font-medium">{idea.copyType === "long" ? "Copy Lungo" : "Copy Corto"}</span>
-                                </div>
-                                <p className="text-xs line-clamp-3 whitespace-pre-wrap">{idea.copyContent}</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {idea.contentType && (
-                            <Badge variant="outline" className="text-xs">{idea.contentType}</Badge>
-                          )}
-                          {idea.mediaType && (
-                            <Badge variant="outline" className="text-xs">
-                              {idea.mediaType === "video" ? <><Video className="h-3 w-3 mr-1" />Video</> : <><Camera className="h-3 w-3 mr-1" />Foto</>}
-                            </Badge>
-                          )}
-                          {idea.copyType && (
-                            <Badge variant="outline" className="text-xs">
-                              {idea.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
-                            </Badge>
-                          )}
-                          <Badge variant="secondary" className="text-xs">
-                            {(idea.score || 0) >= 85 ? "Alto Potenziale" :
-                             (idea.score || 0) >= 70 ? "Medio Potenziale" : "Da Sviluppare"}
-                          </Badge>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     </motion.div>
                   ))}
                 </div>
@@ -1090,6 +1137,148 @@ export default function ContentStudioIdeas() {
               </Card>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingIdea} onOpenChange={(open) => !open && setViewingIdea(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-purple-500" />
+              Dettagli Idea
+            </DialogTitle>
+          </DialogHeader>
+          {viewingIdea && (
+            <div className="space-y-6">
+              <div className="flex flex-wrap gap-2">
+                {viewingIdea.mediaType && (
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
+                    viewingIdea.mediaType === "video"
+                      ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                      : "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                  }`}>
+                    {viewingIdea.mediaType === "video" ? (
+                      <><Video className="h-4 w-4" /> Video</>
+                    ) : (
+                      <><Camera className="h-4 w-4" /> Foto</>
+                    )}
+                  </span>
+                )}
+                {viewingIdea.copyType && (
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
+                    viewingIdea.copyType === "long"
+                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                      : "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
+                  }`}>
+                    {viewingIdea.copyType === "long" ? (
+                      <><AlignLeft className="h-4 w-4" /> Copy Lungo</>
+                    ) : (
+                      <><FileTextIcon className="h-4 w-4" /> Copy Corto</>
+                    )}
+                  </span>
+                )}
+                <div className={`flex items-center justify-center px-3 py-1.5 rounded-full text-sm font-bold ${
+                  (viewingIdea.score || 0) >= 85 
+                    ? "bg-gradient-to-br from-green-400 to-green-600 text-white" 
+                    : (viewingIdea.score || 0) >= 70 
+                      ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white" 
+                      : "bg-gradient-to-br from-red-400 to-red-600 text-white"
+                }`}>
+                  Score: {viewingIdea.score || 0}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-bold mb-2">{viewingIdea.title}</h3>
+                {viewingIdea.description && (
+                  <p className="text-muted-foreground">{viewingIdea.description}</p>
+                )}
+              </div>
+
+              {viewingIdea.hook && (
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-4 rounded-xl">
+                  <p className="text-sm text-purple-600 dark:text-purple-400 font-medium mb-2 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Hook
+                  </p>
+                  <p className="text-lg italic">"{viewingIdea.hook}"</p>
+                </div>
+              )}
+
+              {viewingIdea.mediaType === "video" && viewingIdea.videoScript && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                    <Video className="h-5 w-5" />
+                    <span className="font-semibold">Script Video</span>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <p className="whitespace-pre-wrap leading-relaxed">{viewingIdea.videoScript}</p>
+                  </div>
+                </div>
+              )}
+
+              {viewingIdea.mediaType === "photo" && (viewingIdea.imageDescription || viewingIdea.imageOverlayText) && (
+                <div className="space-y-4">
+                  {viewingIdea.imageDescription && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                        <Camera className="h-5 w-5" />
+                        <span className="font-semibold">Descrizione Immagine</span>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                        <p>{viewingIdea.imageDescription}</p>
+                      </div>
+                    </div>
+                  )}
+                  {viewingIdea.imageOverlayText && (
+                    <div className="space-y-2">
+                      <span className="font-semibold text-green-600 dark:text-green-400">Testo Overlay:</span>
+                      <div className="bg-black text-white p-4 rounded-xl text-center font-bold text-lg">
+                        "{viewingIdea.imageOverlayText}"
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {viewingIdea.copyContent && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                    {viewingIdea.copyType === "long" ? <AlignLeft className="h-5 w-5" /> : <FileTextIcon className="h-5 w-5" />}
+                    <span className="font-semibold">
+                      {viewingIdea.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
+                    </span>
+                  </div>
+                  <div className="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
+                    <p className="whitespace-pre-wrap leading-relaxed">{viewingIdea.copyContent}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t">
+                <Button 
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                  onClick={() => {
+                    handleDevelopPost(viewingIdea);
+                    setViewingIdea(null);
+                  }}
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Sviluppa Post
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => {
+                    deleteIdeaMutation.mutate(viewingIdea.id);
+                    setViewingIdea(null);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

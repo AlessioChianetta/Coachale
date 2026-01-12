@@ -241,6 +241,65 @@ async function getBrandAssets(consultantId: string) {
   }
 }
 
+function buildCompleteBrandContext(assets: Awaited<ReturnType<typeof getBrandAssets>>): string {
+  if (!assets) return '';
+  
+  const sections: string[] = [];
+  
+  if (assets.chiSono) {
+    sections.push(`🧑‍💼 CHI SONO (usa queste informazioni per personalizzare il contenuto):
+${assets.chiSono}`);
+  }
+  
+  if (assets.noteForAi) {
+    sections.push(`📝 ISTRUZIONI SPECIALI DELL'UTENTE (SEGUI RIGOROSAMENTE):
+${assets.noteForAi}`);
+  }
+  
+  if (assets.brandVoice) {
+    sections.push(`🎤 TONO DI VOCE DEL BRAND:
+${assets.brandVoice}`);
+  }
+  
+  const keywords = assets.keywords as string[] | null;
+  if (keywords && keywords.length > 0) {
+    sections.push(`✅ PAROLE CHIAVE DA USARE: ${keywords.join(', ')}`);
+  }
+  
+  const avoidWords = assets.avoidWords as string[] | null;
+  if (avoidWords && avoidWords.length > 0) {
+    sections.push(`❌ PAROLE DA EVITARE ASSOLUTAMENTE: ${avoidWords.join(', ')}`);
+  }
+  
+  const colors: string[] = [];
+  if (assets.primaryColor) colors.push(`Primario: ${assets.primaryColor}`);
+  if (assets.secondaryColor) colors.push(`Secondario: ${assets.secondaryColor}`);
+  if (assets.accentColor) colors.push(`Accento: ${assets.accentColor}`);
+  if (colors.length > 0) {
+    sections.push(`🎨 COLORI DEL BRAND (per descrizioni immagini): ${colors.join(', ')}`);
+  }
+  
+  const socials: string[] = [];
+  if (assets.instagramHandle) socials.push(`Instagram: @${assets.instagramHandle.replace('@', '')}`);
+  if (assets.facebookPage) socials.push(`Facebook: ${assets.facebookPage}`);
+  if (assets.linkedinPage) socials.push(`LinkedIn: ${assets.linkedinPage}`);
+  if (socials.length > 0) {
+    sections.push(`📱 SOCIAL HANDLES: ${socials.join(', ')}`);
+  }
+  
+  if (sections.length === 0) return '';
+  
+  return `
+═══════════════════════════════════════════════════════════
+🔷 BRAND IDENTITY DEL CONSULENTE (ADATTA IL CONTENUTO A QUESTO)
+═══════════════════════════════════════════════════════════
+
+${sections.join('\n\n')}
+
+═══════════════════════════════════════════════════════════
+`;
+}
+
 function parseJsonResponse<T>(text: string, fallback: T): T {
   // Step 1: Basic cleanup
   let cleanedText = text
@@ -395,11 +454,7 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
   await rateLimitCheck(consultantId);
   
   const assets = await getBrandAssets(consultantId);
-  const brandContext = assets ? `
-Brand Voice: ${assets.brandVoice || 'professional'}
-Tono: ${assets.toneOfVoice || 'friendly professional'}
-Colori: ${JSON.stringify(assets.primaryColors || [])}
-` : '';
+  const brandContext = buildCompleteBrandContext(assets);
 
   const awarenessInfo = AWARENESS_LEVEL_INSTRUCTIONS[awarenessLevel];
 
@@ -599,8 +654,8 @@ export async function generatePostCopy(params: GeneratePostCopyParams): Promise<
   await rateLimitCheck(consultantId);
   
   const assets = await getBrandAssets(consultantId);
+  const brandContext = buildCompleteBrandContext(assets);
   const effectiveBrandVoice = brandVoice || assets?.brandVoice || 'professional';
-  const effectiveTone = tone || assets?.toneOfVoice || 'friendly professional';
 
   const platformGuidelines: Record<Platform, string> = {
     instagram: "Usa emoji moderati, hashtag (max 10), formato verticale. Max 2200 caratteri ma primo paragrafo cruciale.",
@@ -612,7 +667,7 @@ export async function generatePostCopy(params: GeneratePostCopyParams): Promise<
   };
 
   const prompt = `Sei un copywriter esperto di social media italiano. Crea il copy completo per un post usando il FRAMEWORK PERSUASIVO a 6 step.
-
+${brandContext}
 IDEA DEL CONTENUTO:
 ${idea}
 
@@ -620,7 +675,6 @@ PIATTAFORMA: ${platform}
 ${platformGuidelines[platform]}
 
 BRAND VOICE: ${effectiveBrandVoice}
-TONO: ${effectiveTone}
 ${keywords?.length ? `KEYWORDS DA INCLUDERE: ${keywords.join(', ')}` : ''}
 ${maxLength ? `LUNGHEZZA MASSIMA: ${maxLength} caratteri` : ''}
 
@@ -1043,8 +1097,9 @@ export async function generatePostCopyVariations(params: GeneratePostCopyVariati
   await rateLimitCheck(consultantId);
   
   const assets = await getBrandAssets(consultantId);
+  const brandContext = buildCompleteBrandContext(assets);
   const effectiveBrandVoice = brandVoice || assets?.brandVoice || 'professional';
-  const effectiveTone = tone || assets?.toneOfVoice || 'friendly professional';
+  const effectiveTone = tone || 'friendly professional';
 
   const platformGuidelines: Record<Platform, string> = {
     instagram: "Usa emoji moderati, hashtag (max 10), formato verticale. Max 2200 caratteri ma primo paragrafo cruciale.",
@@ -1099,10 +1154,11 @@ export async function generateCampaignContent(params: GenerateCampaignParams): P
   await rateLimitCheck(consultantId);
   
   const assets = await getBrandAssets(consultantId);
+  const brandContext = buildCompleteBrandContext(assets);
   const effectiveBrandVoice = brandVoice || assets?.brandVoice || 'professional';
 
   const prompt = `Sei un esperto di marketing e advertising italiano. Crea una strategia di campagna completa seguendo la struttura a 6 step.
-
+${brandContext}
 PRODOTTO/SERVIZIO: ${productOrService}
 TARGET AUDIENCE: ${targetAudience}
 OBIETTIVO: ${objective}
@@ -1248,7 +1304,15 @@ export async function generateImagePrompt(params: GenerateImagePromptParams): Pr
   await rateLimitCheck(consultantId);
   
   const assets = await getBrandAssets(consultantId);
-  const effectiveColors = brandColors || assets?.primaryColors || [];
+  const brandContext = buildCompleteBrandContext(assets);
+  const effectiveColors: string[] = [];
+  if (brandColors && brandColors.length > 0) {
+    effectiveColors.push(...brandColors);
+  } else {
+    if (assets?.primaryColor) effectiveColors.push(assets.primaryColor);
+    if (assets?.secondaryColor) effectiveColors.push(assets.secondaryColor);
+    if (assets?.accentColor) effectiveColors.push(assets.accentColor);
+  }
 
   const platformSpecs: Record<Platform, { ratio: string; resolution: string }> = {
     instagram: { ratio: aspectRatio || "1:1", resolution: "1080x1080" },
@@ -1271,12 +1335,12 @@ export async function generateImagePrompt(params: GenerateImagePromptParams): Pr
   const specs = platformSpecs[platform] || platformSpecs.instagram;
 
   const prompt = `Sei un esperto di prompt engineering per generazione immagini AI. Crea un prompt ottimizzato.
-
+${brandContext}
 DESCRIZIONE CONTENUTO: ${contentDescription}
 STILE: ${style} - ${styleDescriptions[style]}
 PIATTAFORMA: ${platform}
 ASPECT RATIO: ${specs.ratio}
-${effectiveColors.length ? `COLORI BRAND: ${effectiveColors.join(', ')}` : ''}
+${effectiveColors.length ? `COLORI BRAND DA USARE: ${effectiveColors.join(', ')}` : ''}
 ${mood ? `MOOD: ${mood}` : ''}
 ${includeText && textToInclude ? `TESTO DA INCLUDERE: "${textToInclude}"` : ''}
 
