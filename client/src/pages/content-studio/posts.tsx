@@ -669,15 +669,30 @@ export default function ContentStudioPosts() {
 
         // Populate copy_long fields if available
         if (structured?.type === "copy_long" || ideaCopyType === "long") {
-          newFormData.chiCosaCome = structured?.chiCosaCome || "";
-          newFormData.errore = structured?.errore || "";
-          newFormData.soluzione = structured?.soluzione || "";
-          newFormData.riprovaSociale = structured?.riprovaSociale || "";
+          // Check if structured content has the separated fields
+          const hasStructuredLongCopy = structured?.chiCosaCome || structured?.errore || structured?.soluzione || structured?.riprovaSociale;
+          
+          if (hasStructuredLongCopy) {
+            // Use separated fields from structured content
+            newFormData.chiCosaCome = structured?.chiCosaCome || "";
+            newFormData.errore = structured?.errore || "";
+            newFormData.soluzione = structured?.soluzione || "";
+            newFormData.riprovaSociale = structured?.riprovaSociale || "";
+          } else if (idea.copyContent) {
+            // Fallback: use copyContent as the full body text
+            // The user can see it and manually edit into structured fields if needed
+            newFormData.body = idea.copyContent;
+          }
         }
 
         // Populate copy_short body if available
         if (structured?.type === "copy_short" || ideaCopyType === "short") {
           newFormData.body = structured?.body || idea.copyContent || idea.description || "";
+        }
+        
+        // Always ensure body has content from copyContent if not already set
+        if (!newFormData.body && idea.copyContent) {
+          newFormData.body = idea.copyContent;
         }
 
         // Populate video script fields (from structuredContent.videoScript or idea.videoScript)
@@ -1637,6 +1652,24 @@ export default function ContentStudioPosts() {
 
                         {selectedCopyType === "long" && (
                           <div className="space-y-3">
+                            {/* Show body field if it has content from idea.copyContent */}
+                            {formData.body && !formData.chiCosaCome && !formData.errore && !formData.soluzione && !formData.riprovaSociale && (
+                              <div className="bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg space-y-2 border border-orange-200 dark:border-orange-800">
+                                <Label className="text-xs text-orange-600 dark:text-orange-400 font-semibold flex items-center gap-1">
+                                  📋 COPY COMPLETO (dall'idea)
+                                </Label>
+                                <Textarea
+                                  placeholder="Testo completo del copy..."
+                                  rows={4}
+                                  value={formData.body}
+                                  onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+                                  className="text-sm"
+                                />
+                                <p className="text-xs text-orange-600 dark:text-orange-400">
+                                  Puoi copiare parti di questo testo nei campi sottostanti per strutturare il copy
+                                </p>
+                              </div>
+                            )}
                             <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg space-y-2">
                               <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
                                 1. 🎣 HOOK
