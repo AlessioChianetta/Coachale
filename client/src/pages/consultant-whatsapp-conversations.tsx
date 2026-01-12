@@ -857,10 +857,10 @@ export default function ConsultantWhatsAppConversationsPage() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-white truncate">
-                {selectedConversation.contactName || selectedConversation.phoneNumber}
+                {selectedConversation.contactName || 'Contatto'}
               </p>
               <p className="text-xs text-white/70 truncate">
-                {selectedConversation.aiEnabled ? '🤖 AI attivo' : 'Manuale'}
+                {selectedConversation.phoneNumber}
               </p>
             </div>
             <Button
