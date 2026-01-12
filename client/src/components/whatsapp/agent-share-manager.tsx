@@ -258,11 +258,7 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
       if (!res.ok) throw new Error('Errore caricamento condivisioni');
       
       const data = await res.json();
-      console.log('[SHARE-DEBUG] agentId prop:', agentId);
-      console.log('[SHARE-DEBUG] All shares from API:', data.shares);
-      console.log('[SHARE-DEBUG] Share agent IDs:', data.shares.map((s: any) => ({ shareId: s.id, agentId: s.agent?.id, slug: s.slug })));
       const agentShares = data.shares.filter((s: AgentShare) => s.agent?.id === agentId);
-      console.log('[SHARE-DEBUG] Filtered shares for this agent:', agentShares);
       setShares(agentShares);
     } catch (error: any) {
       toast({

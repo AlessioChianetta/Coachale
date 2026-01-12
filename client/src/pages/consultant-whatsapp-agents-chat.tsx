@@ -1529,7 +1529,7 @@ export default function ConsultantWhatsAppAgentsChat() {
           </DialogHeader>
           {selectedAgentId && selectedAgent && (
             <AgentShareManager
-              agentConfigId={selectedAgentId}
+              agentId={selectedAgentId}
               agentName={selectedAgent.agentName}
             />
           )}
