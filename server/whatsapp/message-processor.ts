@@ -4053,9 +4053,7 @@ ${item.content}
     }).join('\n')}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ IMPORTANTE: Quando rispondi basandoti su questi documenti,
-cita sempre la fonte menzionando il titolo del documento.
-Esempio: "Secondo il documento 'Listino Prezzi 2024'..."
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
   }
