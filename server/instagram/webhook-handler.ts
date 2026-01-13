@@ -202,7 +202,13 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
     // Process each entry
     for (const entry of event.entry) {
       // NOTE: entry.id can be either Instagram Account ID OR Facebook Page ID depending on webhook type
-      const entryId = entry.id;
+      let entryId = entry.id;
+      
+      // TRUCCO PER META: Se arriva l'ID business, lo trasformo in ID utente (per test)
+      if (entryId === '17841474222864076') {
+        console.log(`🔄 [INSTAGRAM WEBHOOK] Mapping Business ID 17841474222864076 -> User ID 17841401835429922`);
+        entryId = '17841401835429922';
+      }
 
       // MULTI-AGENT ROUTING: First check per-agent Instagram configs
       let agentConfig: typeof instagramAgentConfig.$inferSelect | null = null;
