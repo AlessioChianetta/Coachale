@@ -60,6 +60,77 @@ function decryptAppSecret(encryptedSecret: string): string {
 }
 
 /**
+ * Required scopes array for validation
+ */
+const REQUIRED_SCOPES = [
+  "pages_show_list",
+  "pages_messaging",
+  "pages_read_engagement",
+  "pages_manage_metadata",
+  "business_management",
+  "instagram_basic",
+  "instagram_manage_messages",
+];
+
+/**
+ * Helper: Validate token scopes using /debug_token API
+ * Returns { valid: true, scopes: [...] } or { valid: false, missing: [...] }
+ * 
+ * NOTE: For Page tokens, Meta returns scopes in granular_scopes array,
+ * while for User tokens they're in the scopes array. We check both.
+ */
+async function validateTokenScopes(
+  accessToken: string,
+  appId: string,
+  appSecret: string
+): Promise<{ valid: boolean; scopes: string[]; missing: string[] }> {
+  try {
+    const appAccessToken = `${appId}|${appSecret}`;
+    const debugUrl = `${FB_GRAPH_URL}/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appAccessToken)}`;
+    
+    const response = await fetch(debugUrl);
+    const data = await response.json() as any;
+    
+    if (data.error) {
+      console.error(`[INSTAGRAM OAUTH] debug_token error:`, data.error);
+      return { valid: false, scopes: [], missing: REQUIRED_SCOPES };
+    }
+    
+    // For User tokens: scopes are in data.scopes array
+    // For Page tokens: scopes are in data.granular_scopes array with {scope: "name"} objects
+    let grantedScopes: string[] = [];
+    
+    if (data.data?.scopes && data.data.scopes.length > 0) {
+      // User token format: ["scope1", "scope2", ...]
+      grantedScopes = data.data.scopes;
+    } else if (data.data?.granular_scopes && data.data.granular_scopes.length > 0) {
+      // Page token format: [{scope: "scope1"}, {scope: "scope2"}, ...]
+      grantedScopes = data.data.granular_scopes.map((s: any) => s.scope);
+    }
+    
+    const missingScopes = REQUIRED_SCOPES.filter(scope => !grantedScopes.includes(scope));
+    
+    console.log(`[INSTAGRAM OAUTH] Token debug info:`);
+    console.log(`   - App ID: ${data.data?.app_id}`);
+    console.log(`   - User ID: ${data.data?.user_id}`);
+    console.log(`   - Token Type: ${data.data?.type || 'unknown'}`);
+    console.log(`   - Valid: ${data.data?.is_valid}`);
+    console.log(`   - Expires: ${data.data?.expires_at ? new Date(data.data.expires_at * 1000).toISOString() : 'never'}`);
+    console.log(`   - Granted scopes (${grantedScopes.length}): ${grantedScopes.join(', ') || 'none'}`);
+    console.log(`   - Missing scopes: ${missingScopes.length > 0 ? missingScopes.join(', ') : 'none'}`);
+    
+    return {
+      valid: missingScopes.length === 0,
+      scopes: grantedScopes,
+      missing: missingScopes,
+    };
+  } catch (error) {
+    console.error(`[INSTAGRAM OAUTH] Error validating token scopes:`, error);
+    return { valid: false, scopes: [], missing: REQUIRED_SCOPES };
+  }
+}
+
+/**
  * GET /api/instagram/oauth/status
  * Check if Instagram OAuth is configured and if consultant has a connection
  */
@@ -131,6 +202,8 @@ router.get("/oauth/start", authenticateToken, async (req: AuthRequest, res: Resp
     authUrl.searchParams.set("state", state);
     authUrl.searchParams.set("scope", SCOPES);
     authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("auth_type", "rerequest");  // Forza il re-consenso dei permessi
+    authUrl.searchParams.set("prompt", "consent");  // Forza la schermata di consenso
 
     console.log(`[INSTAGRAM OAUTH] Started for consultant ${consultantId}`);
 
@@ -273,6 +346,27 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
       console.error(`[INSTAGRAM OAUTH] Make sure Instagram account is Business/Creator AND linked to a Facebook Page`);
       return res.redirect("/consultant/api-keys?instagram_error=no_instagram");
     }
+
+    // VALIDATE USER TOKEN SCOPES before saving
+    // We validate the USER token (not page token) because scopes are granted at user level
+    // The page token inherits these permissions for the specific page
+    console.log(`[INSTAGRAM OAUTH] Validating User Token scopes with /debug_token...`);
+    const scopeValidation = await validateTokenScopes(
+      accessToken,  // Use the long-lived USER token for scope validation
+      superAdminConfig.metaAppId,
+      appSecret
+    );
+
+    if (!scopeValidation.valid) {
+      console.error(`[INSTAGRAM OAUTH] ❌ Token missing required scopes!`);
+      console.error(`   Missing: ${scopeValidation.missing.join(', ')}`);
+      console.error(`   Granted: ${scopeValidation.scopes.join(', ')}`);
+      console.error(`   Required: ${REQUIRED_SCOPES.join(', ')}`);
+      const missingParam = encodeURIComponent(scopeValidation.missing.join(','));
+      return res.redirect(`/consultant/api-keys?instagram_error=missing_scopes&missing=${missingParam}`);
+    }
+
+    console.log(`[INSTAGRAM OAUTH] ✅ All required scopes present in Page Token`);
 
     // Get consultant's encryption salt
     const [consultant] = await db
