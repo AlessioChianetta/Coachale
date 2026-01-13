@@ -204,9 +204,7 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
     if (superAdminConfig?.metaAppSecretEncrypted) {
       try {
         decryptedAppSecret = decrypt(superAdminConfig.metaAppSecretEncrypted);
-        console.log(`🔓 [INSTAGRAM WEBHOOK] Decrypted App Secret from DB:`);
-        console.log(`   Full secret: ${decryptedAppSecret}`);
-        console.log(`   Preview: ${decryptedAppSecret?.substring(0, 8)}...${decryptedAppSecret?.slice(-8)} (length: ${decryptedAppSecret?.length})`);
+        console.log(`🔓 [INSTAGRAM WEBHOOK] App Secret decrypted: ${decryptedAppSecret?.substring(0, 4)}****${decryptedAppSecret?.slice(-4)} (length: ${decryptedAppSecret?.length})`);
       } catch (e) {
         console.log(`⚠️ [INSTAGRAM WEBHOOK] Failed to decrypt App Secret:`, e);
       }
