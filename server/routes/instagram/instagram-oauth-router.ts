@@ -14,7 +14,7 @@ import {
   superadminInstagramConfig,
   users,
 } from "../../../shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { encrypt, encryptForConsultant, decrypt } from "../../encryption";
 import crypto from "crypto";
 
@@ -474,23 +474,59 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
 /**
  * POST /api/instagram/oauth/disconnect
  * Disconnect Instagram account - clears OAuth credentials but preserves agent settings
+ * Can optionally specify configId, otherwise disconnects ALL active configs
  */
 router.post("/oauth/disconnect", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
+    const { configId } = req.body; // Optional: disconnect specific config
 
-    const [config] = await db
-      .select()
-      .from(consultantInstagramConfig)
-      .where(eq(consultantInstagramConfig.consultantId, consultantId))
-      .limit(1);
+    // Find active configs to disconnect
+    let configsToDisconnect;
+    if (configId) {
+      // Disconnect specific config
+      configsToDisconnect = await db
+        .select()
+        .from(consultantInstagramConfig)
+        .where(
+          and(
+            eq(consultantInstagramConfig.id, configId),
+            eq(consultantInstagramConfig.consultantId, consultantId)
+          )
+        );
+    } else {
+      // Disconnect ALL active configs for this consultant
+      configsToDisconnect = await db
+        .select()
+        .from(consultantInstagramConfig)
+        .where(
+          and(
+            eq(consultantInstagramConfig.consultantId, consultantId),
+            eq(consultantInstagramConfig.isActive, true)
+          )
+        );
+    }
 
-    if (!config) {
-      return res.status(404).json({ error: "No Instagram configuration found" });
+    if (configsToDisconnect.length === 0) {
+      return res.status(404).json({ error: "No active Instagram configuration found" });
+    }
+
+    // Disconnect each config
+    for (const config of configsToDisconnect) {
+      console.log(`[INSTAGRAM OAUTH] Disconnecting config ${config.id} (@${config.instagramUsername})`);
     }
 
     // Clear OAuth connection data but keep agent settings (agentName, automations, ice breakers, etc.)
     // Setting isActive to false ensures this config won't appear in the list until reconnected
+    const configIds = configsToDisconnect.map(c => c.id);
+    
+    // First, unlink any WhatsApp agents from these configs
+    await db
+      .update(consultantWhatsappConfig)
+      .set({ instagramConfigId: null, updatedAt: new Date() })
+      .where(inArray(consultantWhatsappConfig.instagramConfigId, configIds));
+    
+    // Then clear the Instagram config credentials
     await db
       .update(consultantInstagramConfig)
       .set({
@@ -504,9 +540,9 @@ router.post("/oauth/disconnect", authenticateToken, async (req: AuthRequest, res
         instagramUsername: null,
         updatedAt: new Date(),
       })
-      .where(eq(consultantInstagramConfig.id, config.id));
+      .where(inArray(consultantInstagramConfig.id, configIds));
 
-    console.log(`[INSTAGRAM OAUTH] Disconnected for consultant ${consultantId} (credentials cleared, settings preserved)`);
+    console.log(`[INSTAGRAM OAUTH] Disconnected ${configsToDisconnect.length} config(s) for consultant ${consultantId}`);
 
     return res.json({ success: true, message: "Account Instagram scollegato" });
   } catch (error) {
