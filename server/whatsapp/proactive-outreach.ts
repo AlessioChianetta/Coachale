@@ -239,7 +239,10 @@ async function checkTemplateApprovalStatus_OLD(
     }
   } catch (error: any) {
     console.error(`❌ [TEMPLATE VALIDATION ERROR] ${error.message}`);
-    console.error(`❌ Full error:`, error);
+    // Don't log full error object - may contain sensitive credentials
+    if (error.code) {
+      console.error(`   Error code: ${error.code}`);
+    }
     // If we can't check, assume not approved for safety
     return { 
       approved: false, 

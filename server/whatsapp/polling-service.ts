@@ -246,8 +246,9 @@ async function pollMessagesForConsultant(
         await handleWebhook(webhookPayload);
         processedCount++;
         
-      } catch (error) {
-        console.error(`❌ Error processing message ${message.sid}:`, error);
+      } catch (error: any) {
+        // Don't log full error object - may contain sensitive credentials
+        console.error(`❌ Error processing message ${message.sid}: ${error?.message || error}`);
         
         // Log error but continue processing other messages
         await db
@@ -279,7 +280,9 @@ async function pollMessagesForConsultant(
     console.log(`✅ [WATERMARK] Updated for agent ${config.agentName} - latest seen: ${latestSeenDate.toISOString()} (processed: ${processedCount})`);
 
   } catch (error: any) {
-    console.error(`❌ [WHATSAPP POLLING] Error for agent ${config.agentName}:`, error);
+    // Don't log full error object - may contain sensitive credentials
+    console.error(`❌ [WHATSAPP POLLING] Error for agent ${config.agentName}: ${error?.message || error}`);
+    if (error?.code) console.error(`   Error code: ${error.code}`);
     
     // Update error tracking and potentially open circuit breaker
     try {
@@ -359,16 +362,18 @@ async function pollAllConsultants(): Promise<void> {
         // This is crucial if you are on a Free Tier database
         await new Promise(resolve => setTimeout(resolve, 500));
 
-      } catch (agentError) {
+      } catch (agentError: any) {
         // Catch error for THIS specific agent so the loop continues for others
-        console.error(`❌ [WHATSAPP POLLING] Failed to poll agent ${config.agentName} (${config.id}):`, agentError);
+        // Don't log full error object - may contain sensitive credentials
+        console.error(`❌ [WHATSAPP POLLING] Failed to poll agent ${config.agentName} (${config.id}): ${agentError?.message || agentError}`);
         // We do not re-throw here, ensuring other agents still get polled
       }
     }
 
-  } catch (error) {
+  } catch (error: any) {
     // This catches unforeseen errors in the main loop logic itself
-    console.error(`❌ [WHATSAPP POLLING] Fatal error in poll cycle:`, error);
+    // Don't log full error object - may contain sensitive credentials
+    console.error(`❌ [WHATSAPP POLLING] Fatal error in poll cycle: ${error?.message || error}`);
   }
 }
 
