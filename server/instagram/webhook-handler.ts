@@ -150,13 +150,48 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       }
     }
 
-    if (event.object !== "instagram") {
-      console.log(`⚠️ [INSTAGRAM WEBHOOK] Ignoring non-Instagram event: ${event.object}`);
+    // Accept both "instagram" and "page" object types
+    // Instagram DMs via Messenger API arrive as object: "page" with entry[].messaging[]
+    // Direct Instagram webhooks arrive as object: "instagram" with entry[].changes[]
+    if (event.object !== "instagram" && event.object !== "page") {
+      console.log(`⚠️ [INSTAGRAM WEBHOOK] Ignoring unknown event object type: ${event.object}`);
       return; // Already responded 200 at start
     }
     
-    console.log(`✅ [INSTAGRAM WEBHOOK] Valid Instagram event received`);
+    const isPageEvent = event.object === "page";
+    console.log(`✅ [INSTAGRAM WEBHOOK] Valid ${isPageEvent ? "PAGE (Messenger API)" : "INSTAGRAM"} event received`);
     console.log(`📊 [INSTAGRAM WEBHOOK] Entries count: ${event.entry?.length || 0}`);
+    
+    // For page events, extract Instagram DM messages from entry[].messaging[]
+    if (isPageEvent) {
+      console.log(`📱 [INSTAGRAM WEBHOOK] Processing PAGE event for Instagram DMs`);
+      for (const entry of event.entry || []) {
+        console.log(`📋 [INSTAGRAM WEBHOOK] PAGE Entry ID (Facebook Page): ${entry.id}`);
+        
+        if (entry.messaging && entry.messaging.length > 0) {
+          for (const msgEvent of entry.messaging) {
+            console.log(`💬 [INSTAGRAM WEBHOOK] PAGE Messaging Event:`);
+            console.log(`   Sender ID: ${msgEvent.sender?.id}`);
+            console.log(`   Recipient ID: ${msgEvent.recipient?.id}`);
+            console.log(`   Timestamp: ${msgEvent.timestamp}`);
+            if (msgEvent.message) {
+              console.log(`   Message ID: ${msgEvent.message.mid}`);
+              console.log(`   Message Text: ${msgEvent.message.text || "(no text)"}`);
+              console.log(`   Has Attachments: ${!!(msgEvent.message.attachments?.length)}`);
+            }
+            if (msgEvent.read) {
+              console.log(`   READ receipt - watermark: ${msgEvent.read.watermark}`);
+            }
+            if (msgEvent.delivery) {
+              console.log(`   DELIVERY receipt - mids: ${msgEvent.delivery.mids?.join(", ")}`);
+            }
+          }
+        }
+      }
+      
+      // For now, log page events but continue to process them through the normal flow
+      // The entry.id for page events is the Facebook Page ID, which we can use to find the config
+    }
 
     // Get signature from headers
     const signature = req.headers["x-hub-signature-256"] as string | undefined;

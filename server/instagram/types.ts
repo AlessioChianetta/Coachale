@@ -4,13 +4,15 @@
  */
 
 // Meta Webhook Event Types
+// Note: Instagram DMs via Messenger API arrive as object: "page" with entry[].messaging[]
+// Direct Instagram webhooks arrive as object: "instagram" with entry[].changes[]
 export interface MetaWebhookEvent {
-  object: "instagram";
+  object: "instagram" | "page";
   entry: MetaWebhookEntry[];
 }
 
 export interface MetaWebhookEntry {
-  id: string; // Instagram Business Account ID
+  id: string; // Instagram Business Account ID (for object: "instagram") or Facebook Page ID (for object: "page")
   time: number;
   messaging?: MetaMessagingEvent[];
   changes?: MetaChange[];
@@ -24,7 +26,13 @@ export interface MetaMessagingEvent {
   message?: MetaMessage;
   postback?: MetaPostback;
   read?: MetaReadEvent;
+  delivery?: MetaDeliveryEvent;
   reaction?: MetaReaction;
+}
+
+export interface MetaDeliveryEvent {
+  mids: string[];
+  watermark: number;
 }
 
 export interface MetaMessage {
