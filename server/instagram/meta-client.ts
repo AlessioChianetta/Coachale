@@ -176,7 +176,15 @@ export class MetaClient {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error(`❌ [INSTAGRAM] Get user profile failed:`, errorData);
+        // This is expected for private accounts or users without business/creator profiles
+        // Error code 100 with subcode 33 = "Object does not exist or cannot be loaded"
+        const errorCode = errorData?.error?.code;
+        const errorSubcode = errorData?.error?.error_subcode;
+        if (errorCode === 100 && errorSubcode === 33) {
+          console.log(`ℹ️ [INSTAGRAM] User profile not accessible for ${userId} (private account or missing permissions)`);
+        } else {
+          console.warn(`⚠️ [INSTAGRAM] Get user profile failed for ${userId}:`, errorData?.error?.message || errorData);
+        }
         return null;
       }
 
