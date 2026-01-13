@@ -963,6 +963,7 @@ async function handleCommentEvent(
           conversationId: newConversation.id,
           consultantId: config.consultantId,
           direction: 'outbound',
+          sender: 'ai', // Private Reply triggered by keyword automation
           messageText: autoReplyMessage,
           instagramMessageId: result.message_id,
           sentAt: new Date(),
@@ -979,6 +980,7 @@ async function handleCommentEvent(
           conversationId: existingConversation.id,
           consultantId: config.consultantId,
           direction: 'outbound',
+          sender: 'ai', // Private Reply triggered by keyword automation
           messageText: autoReplyMessage,
           instagramMessageId: result.message_id,
           sentAt: new Date(),
