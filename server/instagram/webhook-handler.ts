@@ -236,8 +236,20 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
 
     // Process each entry
     for (const entry of event.entry) {
-      // NOTE: entry.id can be either Instagram Account ID OR Facebook Page ID depending on webhook type
+      // For PAGE events: entry.id is Facebook Page ID, but we also need to check recipient.id (IGSID)
+      // For INSTAGRAM events: entry.id is Instagram Account ID
       let entryId = entry.id;
+      
+      // For page events, collect all recipient IDs from messaging (these are Instagram Page IDs)
+      const recipientIds: string[] = [];
+      if (isPageEvent && entry.messaging) {
+        for (const msgEvent of entry.messaging) {
+          if (msgEvent.recipient?.id && !recipientIds.includes(msgEvent.recipient.id)) {
+            recipientIds.push(msgEvent.recipient.id);
+          }
+        }
+        console.log(`📱 [INSTAGRAM WEBHOOK] PAGE event - FB Page ID: ${entryId}, Recipient IGSIDs: [${recipientIds.join(", ")}]`);
+      }
       
       // TRUCCO PER META: Se arriva l'ID business, lo trasformo in ID utente (per test)
       if (entryId === '17841474222864076') {
@@ -249,7 +261,7 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       let agentConfig: typeof instagramAgentConfig.$inferSelect | null = null;
       let whatsappAgent: typeof consultantWhatsappConfig.$inferSelect | null = null;
       
-      // Try to find per-agent config by Instagram Page ID
+      // Try to find per-agent config by Instagram Page ID (entryId or recipientIds)
       const [foundAgentConfig] = await db
         .select()
         .from(instagramAgentConfig)
@@ -276,7 +288,37 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
         console.log(`   🎭 AI Personality: ${agentConfig.aiPersonality}`);
       }
 
-      // Fallback: try Facebook Page ID in per-agent configs
+      // For PAGE events: prioritize recipient IDs (Instagram Page IDs from messaging events)
+      // This is critical because legacy configs may not have facebookPageId populated
+      if (!agentConfig && isPageEvent && recipientIds.length > 0) {
+        for (const recipientId of recipientIds) {
+          const [foundAgentConfigRecipient] = await db
+            .select()
+            .from(instagramAgentConfig)
+            .where(
+              and(
+                eq(instagramAgentConfig.instagramPageId, recipientId),
+                eq(instagramAgentConfig.isActive, true)
+              )
+            )
+            .limit(1);
+
+          if (foundAgentConfigRecipient) {
+            agentConfig = foundAgentConfigRecipient;
+            const [agent] = await db
+              .select()
+              .from(consultantWhatsappConfig)
+              .where(eq(consultantWhatsappConfig.id, foundAgentConfigRecipient.whatsappAgentId))
+              .limit(1);
+            whatsappAgent = agent || null;
+            
+            console.log(`🎯 [INSTAGRAM WEBHOOK] MULTI-AGENT: Found per-agent config via recipient IGSID ${recipientId}`);
+            break;
+          }
+        }
+      }
+
+      // Fallback: try Facebook Page ID in per-agent configs (for both page and instagram events)
       if (!agentConfig) {
         const [foundAgentConfigFB] = await db
           .select()
@@ -320,7 +362,30 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
         
         config = foundConfig || null;
 
-        // Fallback: try Facebook Page ID if not found
+        // For PAGE events: prioritize recipient IDs BEFORE facebookPageId
+        // This is critical because legacy configs may not have facebookPageId populated
+        if (!config && isPageEvent && recipientIds.length > 0) {
+          for (const recipientId of recipientIds) {
+            const [foundConfigRecipient] = await db
+              .select()
+              .from(consultantInstagramConfig)
+              .where(
+                and(
+                  eq(consultantInstagramConfig.instagramPageId, recipientId),
+                  eq(consultantInstagramConfig.isActive, true)
+                )
+              )
+              .limit(1);
+
+            if (foundConfigRecipient) {
+              config = foundConfigRecipient;
+              console.log(`🎯 [INSTAGRAM WEBHOOK] Found consultant config via recipient IGSID ${recipientId}`);
+              break;
+            }
+          }
+        }
+
+        // Last fallback: try Facebook Page ID if not found
         if (!config) {
           const [foundConfigFB] = await db
             .select()
@@ -339,6 +404,9 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
       // Check if we have any config
       if (!agentConfig && !config) {
         console.log(`⚠️ [INSTAGRAM WEBHOOK] No active config for entry.id ${entryId}`);
+        if (recipientIds.length > 0) {
+          console.log(`   Also searched recipient IDs: [${recipientIds.join(", ")}]`);
+        }
         console.log(`   💡 Hint: Searched both per-agent and consultant configs - no match found`);
         
         // Debug: List all active configs to help troubleshoot
@@ -354,10 +422,13 @@ export async function handleInstagramWebhook(req: Request, res: Response): Promi
           .where(eq(consultantInstagramConfig.isActive, true));
         
         console.log(`   📋 DEBUG: Active consultant configs in DB:`);
+        if (allConfigs.length === 0) {
+          console.log(`      (no active configs found - user needs to connect Instagram)`);
+        }
         for (const c of allConfigs) {
           console.log(`      - @${c.instagramUsername}: instagramPageId=${c.instagramPageId}, facebookPageId=${c.facebookPageId}`);
         }
-        console.log(`   🔍 Looking for entry.id: ${entryId}`);
+        console.log(`   🔍 Looking for entry.id: ${entryId}${recipientIds.length > 0 ? ` or recipientIds: [${recipientIds.join(", ")}]` : ""}`);
         
         continue;
       }
