@@ -614,6 +614,7 @@ export default function ContentStudioPosts() {
   const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
   const [selectedCopyType, setSelectedCopyType] = useState<"short" | "long">("long");
   const [selectedMediaType, setSelectedMediaType] = useState<"video" | "foto">("foto");
+  const [sophisticationLevel, setSophisticationLevel] = useState<"level_1" | "level_2" | "level_3" | "level_4" | "level_5">("level_3");
   const [videoSectionOpen, setVideoSectionOpen] = useState(true);
   const [imageSectionOpen, setImageSectionOpen] = useState(true);
 
@@ -1071,6 +1072,7 @@ export default function ContentStudioPosts() {
           idea: ideaForCopy,
           platform: formData.platform,
           outputType: outputType,
+          sophisticationLevel: sophisticationLevel,
         }),
       });
 
@@ -1833,6 +1835,25 @@ export default function ContentStudioPosts() {
                                 </SelectContent>
                               </Select>
                             )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Sofisticazione Mercato</Label>
+                            <Select
+                              value={sophisticationLevel}
+                              onValueChange={(value) => setSophisticationLevel(value as "level_1" | "level_2" | "level_3" | "level_4" | "level_5")}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona livello" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="level_1">🎯 Beneficio Diretto</SelectItem>
+                                <SelectItem value="level_2">📈 Amplifica Promessa</SelectItem>
+                                <SelectItem value="level_3">⚙️ Meccanismo Unico</SelectItem>
+                                <SelectItem value="level_4">🔧 Meccanismo Migliorato</SelectItem>
+                                <SelectItem value="level_5">🏆 Identità e Brand</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           <div className="flex items-center gap-3 p-3 rounded-lg border bg-background">

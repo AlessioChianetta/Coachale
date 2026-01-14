@@ -9,6 +9,7 @@ export type Platform = "instagram" | "facebook" | "linkedin" | "tiktok" | "youtu
 export type ImageStyle = "realistic" | "illustration" | "minimal" | "bold" | "professional" | "playful";
 
 export type AwarenessLevel = "unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware";
+export type SophisticationLevel = "level_1" | "level_2" | "level_3" | "level_4" | "level_5";
 
 export interface GenerateIdeasParams {
   consultantId: string;
@@ -20,6 +21,7 @@ export interface GenerateIdeasParams {
   mediaType?: "video" | "photo";
   copyType?: "short" | "long";
   awarenessLevel?: AwarenessLevel;
+  sophisticationLevel?: SophisticationLevel;
 }
 
 export interface StructuredCopyShort {
@@ -79,6 +81,7 @@ export interface ContentIdea {
   mediaType?: "video" | "photo";
   copyType?: "short" | "long";
   structuredContent?: StructuredContent;
+  lengthWarning?: string;
 }
 
 export interface GenerateIdeasResult {
@@ -415,6 +418,39 @@ function parseJsonResponse<T>(text: string, fallback: T): T {
   }
 }
 
+const SOPHISTICATION_LEVEL_INSTRUCTIONS: Record<SophisticationLevel, { name: string; strategy: string; tone: string; focus: string }> = {
+  level_1: {
+    name: "Beneficio Diretto",
+    strategy: "Sei il PRIMO sul mercato. Il pubblico non conosce soluzioni al problema. Comunica un claim semplice e diretto: 'Questo prodotto fa X'. Non servono prove elaborate, basta il beneficio chiaro.",
+    tone: "Diretto, semplice, promettente, chiaro",
+    focus: "Comunica il beneficio principale in modo diretto e immediato. Usa frasi come 'Finalmente puoi...', 'Ora è possibile...', 'Il primo metodo per...'."
+  },
+  level_2: {
+    name: "Amplifica la Promessa",
+    strategy: "Sei il SECONDO sul mercato. I competitor hanno già fatto claim simili. Devi amplificare la promessa: 'Più veloce', 'Più efficace', 'Risultati 2x'. Aggiungi prove e numeri specifici.",
+    tone: "Competitivo, specifico, quantificato, provato",
+    focus: "Amplifica con numeri, percentuali, confronti impliciti. Usa 'Il 47% più veloce', '3x i risultati', 'In soli 7 giorni invece di mesi'."
+  },
+  level_3: {
+    name: "Meccanismo Unico",
+    strategy: "Il mercato è SATURO di promesse amplificate. Tutti dicono 'il migliore'. Devi introdurre e spiegare il tuo MECCANISMO UNICO: perché il tuo metodo funziona quando gli altri falliscono.",
+    tone: "Educativo, differenziante, tecnico ma accessibile, rivelatorio",
+    focus: "Presenta il tuo meccanismo unico, il 'perché' funziona. Usa 'Il Metodo X', 'La Formula Y', 'Il Sistema Z che nessun altro usa'. Spiega COME funziona."
+  },
+  level_4: {
+    name: "Meccanismo Migliorato",
+    strategy: "La CONCORRENZA ha copiato meccanismi simili. Devi espandere e rendere più specifico il tuo meccanismo. Aggiungi dettagli, casi d'uso specifici, personalizzazione.",
+    tone: "Esperto, dettagliato, personalizzato, evoluto",
+    focus: "Espandi il meccanismo con dettagli specifici: 'Il Metodo X versione 3.0 per [target specifico]', 'Ora con 5 nuove tecniche per...'. Mostra evoluzione e specializzazione."
+  },
+  level_5: {
+    name: "Identità e Brand",
+    strategy: "Il mercato è SCETTICO. Hanno visto tutto, promesse, meccanismi, prove. L'unica differenziazione è l'IDENTITÀ e il BRAND. Vendi chi sei, i tuoi valori, la connessione emotiva.",
+    tone: "Autentico, emotivo, valoriale, esclusivo, identitario",
+    focus: "Focus su chi sei, i tuoi valori, la community. Usa 'Per chi crede in...', 'Se sei uno di noi...', 'La famiglia di [brand]'. Crea appartenenza, non solo benefici."
+  }
+};
+
 const AWARENESS_LEVEL_INSTRUCTIONS: Record<AwarenessLevel, { name: string; strategy: string; tone: string; focus: string }> = {
   unaware: {
     name: "Non Consapevole",
@@ -448,8 +484,30 @@ const AWARENESS_LEVEL_INSTRUCTIONS: Record<AwarenessLevel, { name: string; strat
   }
 };
 
+function validateAndEnrichCopyLength(
+  copyType: string | undefined,
+  copyLength: number
+): string | undefined {
+  if (copyType === "long") {
+    if (copyLength < 1500) {
+      return "Copy troppo corto (min 1500 caratteri)";
+    }
+    if (copyLength > 3000) {
+      return "Copy troppo lungo (max 3000 caratteri)";
+    }
+  } else if (copyType === "short") {
+    if (copyLength < 200) {
+      return "Copy troppo corto (min 200 caratteri)";
+    }
+    if (copyLength > 500) {
+      return "Copy troppo lungo (max 500 caratteri)";
+    }
+  }
+  return undefined;
+}
+
 export async function generateContentIdeas(params: GenerateIdeasParams): Promise<GenerateIdeasResult> {
-  const { consultantId, niche, targetAudience, objective, additionalContext, count = 3, mediaType = "photo", copyType = "short", awarenessLevel = "problem_aware" } = params;
+  const { consultantId, niche, targetAudience, objective, additionalContext, count = 3, mediaType = "photo", copyType = "short", awarenessLevel = "problem_aware", sophisticationLevel = "level_3" } = params;
   
   await rateLimitCheck(consultantId);
   
@@ -457,6 +515,7 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
   const brandContext = buildCompleteBrandContext(assets);
 
   const awarenessInfo = AWARENESS_LEVEL_INSTRUCTIONS[awarenessLevel];
+  const sophisticationInfo = SOPHISTICATION_LEVEL_INSTRUCTIONS[sophisticationLevel];
 
   const getStructuredContentInstructions = () => {
     const imageFields = mediaType === "photo" ? `,
@@ -492,26 +551,38 @@ IMPORTANTE per captionCopy:
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "copy_long",
-  "hook": "La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante",
-  "chiCosaCome": "Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento",
-  "errore": "L'errore comune che il tuo target sta commettendo senza saperlo",
-  "soluzione": "La tua soluzione unica al problema - cosa offri e perché funziona",
-  "riprovaSociale": "Testimonianze, risultati, numeri che provano il valore",
-  "cta": "Call to action finale chiara e urgente",
+  "hook": "100-200 caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante. Deve creare tensione emotiva immediata.",
+  "chiCosaCome": "200-400 caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento con storytelling. Racconta brevemente chi sei e cosa fai in modo narrativo.",
+  "errore": "300-500 caratteri. L'errore comune che il tuo target sta commettendo senza saperlo. Sviluppa il problema con empatia, fai sentire al lettore che lo capisci.",
+  "soluzione": "300-500 caratteri. La tua soluzione unica al problema - cosa offri e perché funziona. Descrivi i benefici concreti e il risultato trasformativo.",
+  "riprovaSociale": "200-400 caratteri. Testimonianze, risultati concreti, numeri specifici che provano il valore. Usa storie brevi di clienti reali o dati d'impatto.",
+  "cta": "100-200 caratteri. Call to action finale chiara e urgente. Crea scarsità o urgenza e indica l'azione esatta da compiere.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
-Ogni blocco deve essere narrativo, emotivo, con emoji moderati. Separa i pensieri all'interno di ogni blocco con ㅤ.`;
+
+IMPORTANTE PER COPY LUNGO:
+- Il copy lungo DEVE essere ALMENO 1500 caratteri totali. Ogni sezione deve essere sviluppata in modo narrativo e approfondito.
+- Il copy TOTALE deve essere tra 1500-3000 caratteri
+- Ogni sezione deve essere sviluppata, narrativa e coinvolgente emotivamente
+- Usa emoji strategiche (max 5-7 per post) per rendere visivamente scorrevole
+- Separa i pensieri all'interno di ogni blocco con righe vuote
+- Il tono deve essere empatico, autorevole e persuasivo`;
     } else {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "copy_short",
-  "hook": "La prima frase d'impatto che cattura attenzione",
-  "body": "Il corpo del messaggio - conciso, dritto al punto",
-  "cta": "Call to action finale",
+  "hook": "La prima frase d'impatto che cattura attenzione (50-100 caratteri)",
+  "body": "Il corpo del messaggio - conciso, dritto al punto (100-300 caratteri)",
+  "cta": "Call to action finale (50-100 caratteri)",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
-Massimo 3-4 blocchi di testo totali. Dritto al punto.`;
+
+IMPORTANTE PER COPY CORTO:
+- Il copy corto DEVE essere MASSIMO 500 caratteri totali. Dritto al punto.
+- Il copy TOTALE deve essere tra 200-500 caratteri
+- Massimo 3-4 blocchi di testo totali
+- Dritto al punto, ogni parola deve contare`;
     }
   };
 
@@ -528,12 +599,20 @@ CONTESTO:
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
 ${brandContext}
 
-🎯 LIVELLO DI CONSAPEVOLEZZA: ${awarenessInfo.name}
-STRATEGIA DA SEGUIRE: ${awarenessInfo.strategy}
-TONO DA USARE: ${awarenessInfo.tone}
-FOCUS DEL CONTENUTO: ${awarenessInfo.focus}
+🎯 LIVELLO DI CONSAPEVOLEZZA DEL PUBBLICO: ${awarenessInfo.name}
+STRATEGIA CONSAPEVOLEZZA: ${awarenessInfo.strategy}
+TONO CONSAPEVOLEZZA: ${awarenessInfo.tone}
+FOCUS CONSAPEVOLEZZA: ${awarenessInfo.focus}
 
-È FONDAMENTALE che ogni idea sia perfettamente calibrata per questo livello di consapevolezza. Il copy, l'hook, e tutto il contenuto devono riflettere questa strategia.
+📊 LIVELLO DI SOFISTICAZIONE DEL MERCATO: ${sophisticationInfo.name}
+STRATEGIA MERCATO: ${sophisticationInfo.strategy}
+TONO MERCATO: ${sophisticationInfo.tone}
+FOCUS MERCATO: ${sophisticationInfo.focus}
+
+È FONDAMENTALE che ogni idea sia perfettamente calibrata per ENTRAMBI i livelli:
+- La CONSAPEVOLEZZA determina COSA dire al pubblico (quanto sanno del problema)
+- La SOFISTICAZIONE determina COME dirlo (quanto è saturo il mercato)
+Il copy, l'hook, e tutto il contenuto devono combinare entrambe le strategie in modo armonico.
 
 Per ogni idea, fornisci TUTTI questi elementi:
 
@@ -606,6 +685,7 @@ RISPONDI SOLO con un JSON valido nel formato:
       let imageDescription: string | undefined;
       let imageOverlayText: string | undefined;
       let copyContent: string | undefined;
+      let copyLength: number = 0;
       
       if (sc) {
         if (sc.type === "video_script") {
@@ -623,6 +703,10 @@ RISPONDI SOLO con un JSON valido nel formato:
           }
           imageDescription = sc.imageDescription;
           imageOverlayText = sc.imageOverlayText;
+          // Per copy_long, usa copyContent
+          if (copyContent) {
+            copyLength = copyContent.length;
+          }
         } else if (sc.type === "copy_short") {
           const copyParts = [sc.hook, sc.body, sc.cta].filter(Boolean);
           if (copyParts.length > 0) {
@@ -630,6 +714,9 @@ RISPONDI SOLO con un JSON valido nel formato:
           }
           imageDescription = sc.imageDescription;
           imageOverlayText = sc.imageOverlayText;
+          // Per copy_short, calcola da hook + body + cta senza separatori
+          const shortParts = [sc.hook, sc.body, sc.cta].filter(Boolean);
+          copyLength = shortParts.join("").length;
         } else if (sc.type === "image_copy") {
           imageDescription = sc.conceptDescription;
           imageOverlayText = sc.imageText;
@@ -639,16 +726,21 @@ RISPONDI SOLO con un JSON valido nel formato:
         }
       }
       
-      console.log(`[CONTENT-AI] Enriching idea "${idea.title}": mediaType=${idea.mediaType || mediaType}, structuredType=${sc?.type}, hasVideoScript=${!!videoScript}, hasImageDesc=${!!imageDescription}, hasCopyContent=${!!copyContent}`);
+      const finalCopyContent = idea.copyContent || copyContent;
+      const effectiveCopyType = (idea.copyType || copyType) as "short" | "long";
+      const lengthWarning = validateAndEnrichCopyLength(effectiveCopyType, copyLength);
+      
+      console.log(`[CONTENT-AI] Enriching idea "${idea.title}": mediaType=${idea.mediaType || mediaType}, structuredType=${sc?.type}, hasVideoScript=${!!videoScript}, hasImageDesc=${!!imageDescription}, hasCopyContent=${!!finalCopyContent}, copyLength=${copyLength}, lengthWarning=${lengthWarning || 'none'}`);
       
       return {
         ...idea,
         mediaType: idea.mediaType || mediaType,
-        copyType: idea.copyType || copyType,
+        copyType: effectiveCopyType,
         videoScript: idea.videoScript || videoScript,
         imageDescription: idea.imageDescription || imageDescription,
         imageOverlayText: idea.imageOverlayText || imageOverlayText,
-        copyContent: idea.copyContent || copyContent,
+        copyContent: finalCopyContent,
+        ...(lengthWarning && { lengthWarning }),
       };
     });
     

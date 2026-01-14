@@ -101,6 +101,7 @@ interface Idea {
   imageOverlayText?: string;
   copyContent?: string;
   developedPostId?: string;
+  lengthWarning?: string;
 }
 
 type IdeaStatus = "new" | "in_progress" | "developed" | "archived";
@@ -1037,6 +1038,13 @@ export default function ContentStudioIdeas() {
                           <h3 className="font-semibold text-base mb-2 line-clamp-2 group-hover:text-primary transition-colors">
                             {idea.title}
                           </h3>
+
+                          {idea.lengthWarning && (
+                            <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded flex items-center gap-1 mb-3">
+                              <AlertTriangle className="h-3 w-3" />
+                              {idea.lengthWarning}
+                            </div>
+                          )}
 
                           {idea.hook && (
                             <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-3 rounded-lg mb-3 flex-grow">
