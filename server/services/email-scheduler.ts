@@ -167,6 +167,20 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
     // Get all active clients for this consultant
     const allClients = await storage.getClientsByConsultant(consultantId, true); // activeOnly = true
     
+    // FILTER: Only include clients with automation enabled (enabled=true)
+    // Clients with enabled=false should NOT receive any emails (not even drafts)
+    const enabledClients = [];
+    for (const client of allClients) {
+      const clientAutomation = await storage.getClientEmailAutomation(consultantId, client.id);
+      if (clientAutomation?.enabled) {
+        enabledClients.push(client);
+      } else {
+        console.log(`🚫 ${client.firstName} - automation disabled, skipping entirely`);
+      }
+    }
+    
+    console.log(`📊 ${enabledClients.length}/${allClients.length} clients have automation enabled`);
+    
     // Get SMTP settings for this consultant to get emailFrequencyDays
     const smtpSettings = await storage.getConsultantSmtpSettings(consultantId);
     const emailFrequencyDays = smtpSettings?.emailFrequencyDays || 2; // Default to 2 days if not configured
@@ -182,7 +196,7 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
     // Check which clients should receive a new email for today's template
     const clientsToEmail = [];
     
-    for (const client of allClients) {
+    for (const client of enabledClients) {
       // Check if template for today already exists (as draft OR sent email)
       
       // 1. Check pending drafts for today's template

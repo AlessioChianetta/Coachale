@@ -3530,35 +3530,53 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                     <p className="text-sm text-muted-foreground">{client.email}</p>
                                   </div>
                                   <div className="flex items-center gap-4">
-                                    <div className="flex flex-col items-end gap-1">
-                                      <span className="text-xs text-muted-foreground">Email attive</span>
-                                      <Switch
-                                        checked={client.automationEnabled}
-                                        onCheckedChange={(checked) => {
-                                          toggleClientAutomationMutation.mutate({
-                                            clientId: client.id,
-                                            enabled: checked,
-                                            saveAsDraft: checked ? client.saveAsDraft : false,
-                                          });
-                                        }}
-                                        disabled={!automationEnabled || toggleClientAutomationMutation.isPending}
-                                      />
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                      <span className={`text-xs ${client.automationEnabled ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>Solo bozza</span>
-                                      <Switch
-                                        checked={client.automationEnabled ? (client.saveAsDraft || false) : false}
-                                        onCheckedChange={(checked) => {
-                                          toggleClientAutomationMutation.mutate({
-                                            clientId: client.id,
-                                            enabled: client.automationEnabled,
-                                            saveAsDraft: checked,
-                                          });
-                                        }}
-                                        disabled={!automationEnabled || !client.automationEnabled || toggleClientAutomationMutation.isPending}
-                                        className="data-[state=checked]:bg-amber-500"
-                                      />
-                                    </div>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex flex-col items-end gap-1">
+                                            <span className="text-xs text-muted-foreground">Riceve email</span>
+                                            <Switch
+                                              checked={client.automationEnabled}
+                                              onCheckedChange={(checked) => {
+                                                toggleClientAutomationMutation.mutate({
+                                                  clientId: client.id,
+                                                  enabled: checked,
+                                                  saveAsDraft: checked ? client.saveAsDraft : false,
+                                                });
+                                              }}
+                                              disabled={toggleClientAutomationMutation.isPending}
+                                            />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Questo cliente riceve email dal journey?</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex flex-col items-end gap-1">
+                                            <span className={`text-xs ${client.automationEnabled ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>Solo bozza</span>
+                                            <Switch
+                                              checked={client.automationEnabled ? (client.saveAsDraft || false) : false}
+                                              onCheckedChange={(checked) => {
+                                                toggleClientAutomationMutation.mutate({
+                                                  clientId: client.id,
+                                                  enabled: client.automationEnabled,
+                                                  saveAsDraft: checked,
+                                                });
+                                              }}
+                                              disabled={!client.automationEnabled || toggleClientAutomationMutation.isPending}
+                                              className="data-[state=checked]:bg-amber-500"
+                                            />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{client.automationEnabled ? "Le email vanno in bozza o partono subito?" : "Attiva prima 'Riceve email'"}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   </div>
                                 </div>
 
