@@ -231,6 +231,13 @@ export default function ContentStudioIdeas() {
   const [mediaType, setMediaType] = useState<"video" | "photo">("photo");
   const [copyType, setCopyType] = useState<"short" | "long">("short");
   const [isSuggestingLevels, setIsSuggestingLevels] = useState(false);
+  const [showLevelsSuggestionDialog, setShowLevelsSuggestionDialog] = useState(false);
+  const [levelsSuggestion, setLevelsSuggestion] = useState<{
+    awarenessLevel: string;
+    awarenessReason: string;
+    sophisticationLevel: string;
+    sophisticationReason: string;
+  } | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [filterContentType, setFilterContentType] = useState<string>("all");
@@ -505,10 +512,8 @@ export default function ContentStudioIdeas() {
       const data = await response.json();
       if (data.awarenessLevel) setAwarenessLevel(data.awarenessLevel);
       if (data.sophisticationLevel) setSophisticationLevel(data.sophisticationLevel);
-      toast({
-        title: "Livelli suggeriti dall'AI",
-        description: `Consapevolezza: ${data.awarenessReason}\nSofisticazione: ${data.sophisticationReason}`,
-      });
+      setLevelsSuggestion(data);
+      setShowLevelsSuggestionDialog(true);
     } catch (error) {
       toast({ title: "Errore nel suggerimento", variant: "destructive" });
     } finally {
@@ -1302,6 +1307,57 @@ export default function ContentStudioIdeas() {
               Salva Template
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showLevelsSuggestionDialog} onOpenChange={setShowLevelsSuggestionDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5 text-purple-500" />
+              Livelli Suggeriti dall'AI
+            </DialogTitle>
+          </DialogHeader>
+          {levelsSuggestion && (
+            <div className="space-y-6 py-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-orange-500" />
+                  <h4 className="font-semibold">Livello di Consapevolezza</h4>
+                </div>
+                <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
+                  <p className="font-medium text-orange-700 dark:text-orange-300 mb-2">
+                    {AWARENESS_LEVELS.find(l => l.value === levelsSuggestion.awarenessLevel)?.label || levelsSuggestion.awarenessLevel}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {levelsSuggestion.awarenessReason}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-purple-500" />
+                  <h4 className="font-semibold">Livello di Sofisticazione</h4>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+                  <p className="font-medium text-purple-700 dark:text-purple-300 mb-2">
+                    {SOPHISTICATION_LEVELS.find(l => l.value === levelsSuggestion.sophisticationLevel)?.label || levelsSuggestion.sophisticationLevel}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {levelsSuggestion.sophisticationReason}
+                  </p>
+                </div>
+              </div>
+
+              <Button 
+                onClick={() => setShowLevelsSuggestionDialog(false)} 
+                className="w-full"
+              >
+                Ho capito, grazie!
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
