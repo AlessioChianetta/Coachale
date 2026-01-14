@@ -9,9 +9,10 @@ import {
   insertAdCampaignSchema,
   insertContentCalendarSchema,
   insertGeneratedImageSchema,
-  insertContentTemplateSchema
+  insertContentTemplateSchema,
+  insertContentFolderSchema
 } from "@shared/schema";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, isNull, asc } from "drizzle-orm";
 import { z } from "zod";
 import { getSuperAdminGeminiKeys } from "../ai/provider-factory";
 import fs from "fs";
@@ -384,13 +385,22 @@ router.get("/posts", authenticateToken, requireRole("consultant"), async (req: A
     const status = req.query.status as string | undefined;
     const platform = req.query.platform as string | undefined;
     const contentType = req.query.contentType as string | undefined;
+    const folderId = req.query.folderId as string | undefined;
     
-    const posts = await db.select()
+    const posts = await db.select({
+      post: schema.contentPosts,
+      folder: schema.contentFolders
+    })
       .from(schema.contentPosts)
+      .leftJoin(schema.contentFolders, eq(schema.contentPosts.folderId, schema.contentFolders.id))
       .where(eq(schema.contentPosts.consultantId, consultantId))
       .orderBy(desc(schema.contentPosts.createdAt));
     
-    let filtered = posts;
+    let filtered = posts.map(row => ({
+      ...row.post,
+      folder: row.folder || null
+    }));
+    
     if (status) {
       filtered = filtered.filter(p => p.status === status);
     }
@@ -399,6 +409,13 @@ router.get("/posts", authenticateToken, requireRole("consultant"), async (req: A
     }
     if (contentType) {
       filtered = filtered.filter(p => p.contentType === contentType);
+    }
+    if (folderId) {
+      if (folderId === "null" || folderId === "root") {
+        filtered = filtered.filter(p => p.folderId === null);
+      } else {
+        filtered = filtered.filter(p => p.folderId === folderId);
+      }
     }
     
     res.json({
@@ -544,6 +561,64 @@ router.delete("/posts/:id", authenticateToken, requireRole("consultant"), async 
     res.status(500).json({
       success: false,
       error: error.message || "Failed to delete content post"
+    });
+  }
+});
+
+// PATCH /api/content/posts/:id/folder - Move post to a different folder
+router.patch("/posts/:id/folder", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const postId = req.params.id;
+    const { folderId } = req.body;
+    
+    const [existing] = await db.select()
+      .from(schema.contentPosts)
+      .where(and(
+        eq(schema.contentPosts.id, postId),
+        eq(schema.contentPosts.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "Content post not found"
+      });
+    }
+    
+    if (folderId !== null) {
+      const [folder] = await db.select()
+        .from(schema.contentFolders)
+        .where(and(
+          eq(schema.contentFolders.id, folderId),
+          eq(schema.contentFolders.consultantId, consultantId)
+        ))
+        .limit(1);
+      
+      if (!folder) {
+        return res.status(404).json({
+          success: false,
+          error: "Folder not found"
+        });
+      }
+    }
+    
+    const [updated] = await db.update(schema.contentPosts)
+      .set({ folderId: folderId || null, updatedAt: new Date() })
+      .where(eq(schema.contentPosts.id, postId))
+      .returning();
+    
+    res.json({
+      success: true,
+      data: updated,
+      message: "Post moved to folder"
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error moving post to folder:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to move post to folder"
     });
   }
 });
@@ -1648,6 +1723,336 @@ router.post("/ai/generate-image", authenticateToken, requireRole("consultant"), 
     res.status(500).json({
       success: false,
       error: error.message || "Failed to generate image",
+    });
+  }
+});
+
+// ============================================================
+// CONTENT FOLDERS
+// ============================================================
+
+// Helper function to build folder tree structure
+function buildFolderTree(folders: schema.ContentFolder[]): (schema.ContentFolder & { children: any[] })[] {
+  const folderMap = new Map<string, schema.ContentFolder & { children: any[] }>();
+  const rootFolders: (schema.ContentFolder & { children: any[] })[] = [];
+  
+  folders.forEach(folder => {
+    folderMap.set(folder.id, { ...folder, children: [] });
+  });
+  
+  folders.forEach(folder => {
+    const folderWithChildren = folderMap.get(folder.id)!;
+    if (folder.parentId && folderMap.has(folder.parentId)) {
+      folderMap.get(folder.parentId)!.children.push(folderWithChildren);
+    } else {
+      rootFolders.push(folderWithChildren);
+    }
+  });
+  
+  const sortByOrder = (a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0);
+  const sortTree = (nodes: any[]) => {
+    nodes.sort(sortByOrder);
+    nodes.forEach(node => {
+      if (node.children && node.children.length > 0) {
+        sortTree(node.children);
+      }
+    });
+  };
+  sortTree(rootFolders);
+  
+  return rootFolders;
+}
+
+// GET /api/content/folders - List all folders for consultant (hierarchical tree structure)
+router.get("/folders", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const flat = req.query.flat === "true";
+    
+    const folders = await db.select()
+      .from(schema.contentFolders)
+      .where(eq(schema.contentFolders.consultantId, consultantId))
+      .orderBy(asc(schema.contentFolders.sortOrder), asc(schema.contentFolders.createdAt));
+    
+    if (flat) {
+      res.json({
+        success: true,
+        data: folders,
+        count: folders.length
+      });
+    } else {
+      const tree = buildFolderTree(folders);
+      res.json({
+        success: true,
+        data: tree,
+        count: folders.length
+      });
+    }
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error fetching content folders:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch content folders"
+    });
+  }
+});
+
+// POST /api/content/folders - Create a new folder/project
+router.post("/folders", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const validatedData = insertContentFolderSchema.parse({
+      ...req.body,
+      consultantId
+    });
+    
+    if (validatedData.parentId) {
+      const [parentFolder] = await db.select()
+        .from(schema.contentFolders)
+        .where(and(
+          eq(schema.contentFolders.id, validatedData.parentId),
+          eq(schema.contentFolders.consultantId, consultantId)
+        ))
+        .limit(1);
+      
+      if (!parentFolder) {
+        return res.status(404).json({
+          success: false,
+          error: "Parent folder not found"
+        });
+      }
+    }
+    
+    const [folder] = await db.insert(schema.contentFolders)
+      .values(validatedData)
+      .returning();
+    
+    res.status(201).json({
+      success: true,
+      data: folder,
+      message: "Content folder created"
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors
+      });
+    }
+    console.error("❌ [CONTENT-STUDIO] Error creating content folder:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to create content folder"
+    });
+  }
+});
+
+// PUT /api/content/folders/:id - Update folder name, color, icon, etc.
+router.put("/folders/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const folderId = req.params.id;
+    
+    const [existing] = await db.select()
+      .from(schema.contentFolders)
+      .where(and(
+        eq(schema.contentFolders.id, folderId),
+        eq(schema.contentFolders.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "Content folder not found"
+      });
+    }
+    
+    const validatedData = insertContentFolderSchema.partial().parse(req.body);
+    
+    const [updated] = await db.update(schema.contentFolders)
+      .set({ ...validatedData, updatedAt: new Date() })
+      .where(eq(schema.contentFolders.id, folderId))
+      .returning();
+    
+    res.json({
+      success: true,
+      data: updated,
+      message: "Content folder updated"
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors
+      });
+    }
+    console.error("❌ [CONTENT-STUDIO] Error updating content folder:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to update content folder"
+    });
+  }
+});
+
+// DELETE /api/content/folders/:id - Delete folder (cascade to children)
+router.delete("/folders/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const folderId = req.params.id;
+    
+    const [existing] = await db.select()
+      .from(schema.contentFolders)
+      .where(and(
+        eq(schema.contentFolders.id, folderId),
+        eq(schema.contentFolders.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "Content folder not found"
+      });
+    }
+    
+    const collectDescendantIds = async (parentId: string): Promise<string[]> => {
+      const children = await db.select()
+        .from(schema.contentFolders)
+        .where(and(
+          eq(schema.contentFolders.parentId, parentId),
+          eq(schema.contentFolders.consultantId, consultantId)
+        ));
+      
+      let ids: string[] = [];
+      for (const child of children) {
+        ids.push(child.id);
+        const descendantIds = await collectDescendantIds(child.id);
+        ids = ids.concat(descendantIds);
+      }
+      return ids;
+    };
+    
+    const descendantIds = await collectDescendantIds(folderId);
+    const allFolderIds = [folderId, ...descendantIds];
+    
+    for (const id of allFolderIds) {
+      await db.update(schema.contentPosts)
+        .set({ folderId: null, updatedAt: new Date() })
+        .where(eq(schema.contentPosts.folderId, id));
+    }
+    
+    for (const id of [...descendantIds].reverse()) {
+      await db.delete(schema.contentFolders)
+        .where(eq(schema.contentFolders.id, id));
+    }
+    
+    await db.delete(schema.contentFolders)
+      .where(eq(schema.contentFolders.id, folderId));
+    
+    res.json({
+      success: true,
+      message: `Content folder and ${descendantIds.length} sub-folders deleted`
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error deleting content folder:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to delete content folder"
+    });
+  }
+});
+
+// PATCH /api/content/folders/:id/move - Move folder to new parent
+router.patch("/folders/:id/move", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const folderId = req.params.id;
+    const { parentId } = req.body;
+    
+    const [existing] = await db.select()
+      .from(schema.contentFolders)
+      .where(and(
+        eq(schema.contentFolders.id, folderId),
+        eq(schema.contentFolders.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "Content folder not found"
+      });
+    }
+    
+    if (parentId === folderId) {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot move folder into itself"
+      });
+    }
+    
+    if (parentId !== null && parentId !== undefined) {
+      const [parentFolder] = await db.select()
+        .from(schema.contentFolders)
+        .where(and(
+          eq(schema.contentFolders.id, parentId),
+          eq(schema.contentFolders.consultantId, consultantId)
+        ))
+        .limit(1);
+      
+      if (!parentFolder) {
+        return res.status(404).json({
+          success: false,
+          error: "Parent folder not found"
+        });
+      }
+      
+      const isDescendant = async (potentialParentId: string, targetId: string): Promise<boolean> => {
+        const children = await db.select()
+          .from(schema.contentFolders)
+          .where(and(
+            eq(schema.contentFolders.parentId, targetId),
+            eq(schema.contentFolders.consultantId, consultantId)
+          ));
+        
+        for (const child of children) {
+          if (child.id === potentialParentId) {
+            return true;
+          }
+          if (await isDescendant(potentialParentId, child.id)) {
+            return true;
+          }
+        }
+        return false;
+      };
+      
+      if (await isDescendant(parentId, folderId)) {
+        return res.status(400).json({
+          success: false,
+          error: "Cannot move folder into its own descendant"
+        });
+      }
+    }
+    
+    const [updated] = await db.update(schema.contentFolders)
+      .set({ parentId: parentId || null, updatedAt: new Date() })
+      .where(eq(schema.contentFolders.id, folderId))
+      .returning();
+    
+    res.json({
+      success: true,
+      data: updated,
+      message: "Folder moved successfully"
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error moving content folder:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to move content folder"
     });
   }
 });
