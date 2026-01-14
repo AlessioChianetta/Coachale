@@ -1631,13 +1631,14 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.5,
-        maxOutputTokens: 800,
+        maxOutputTokens: 2048,
       },
     });
     
     const responseText = result.response.text();
     console.log("[SUGGEST-LEVELS] Model:", model);
-    console.log("[SUGGEST-LEVELS] AI Response:", responseText);
+    console.log("[SUGGEST-LEVELS] Response length:", responseText.length, "chars");
+    console.log("[SUGGEST-LEVELS] AI Response (full):", JSON.stringify(responseText));
     
     // Remove markdown code blocks if present
     let cleanedResponse = responseText
@@ -1645,9 +1646,11 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
       .replace(/```\s*/g, '')
       .trim();
     
+    // Try to find and parse JSON
     const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error("[SUGGEST-LEVELS] No JSON found in response after cleaning");
+      console.error("[SUGGEST-LEVELS] Cleaned response was:", cleanedResponse);
       return res.json({ 
         awarenessLevel: "problem_aware",
         sophisticationLevel: "level_3",
@@ -1656,9 +1659,28 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
       });
     }
     
-    const parsed = JSON.parse(jsonMatch[0]);
-    console.log("[SUGGEST-LEVELS] Parsed result:", parsed);
-    return res.json(parsed);
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      console.log("[SUGGEST-LEVELS] Parsed result:", parsed);
+      
+      // Validate required fields
+      if (!parsed.awarenessReason || !parsed.sophisticationReason) {
+        console.warn("[SUGGEST-LEVELS] Missing reason fields, using defaults");
+        parsed.awarenessReason = parsed.awarenessReason || "Analisi basata sul target specificato";
+        parsed.sophisticationReason = parsed.sophisticationReason || "Analisi basata sul mercato di riferimento";
+      }
+      
+      return res.json(parsed);
+    } catch (parseError) {
+      console.error("[SUGGEST-LEVELS] JSON parse error:", parseError);
+      console.error("[SUGGEST-LEVELS] Attempted to parse:", jsonMatch[0]);
+      return res.json({ 
+        awarenessLevel: "problem_aware",
+        sophisticationLevel: "level_3",
+        awarenessReason: "Errore nel parsing della risposta AI",
+        sophisticationReason: "Errore nel parsing della risposta AI"
+      });
+    }
   } catch (error) {
     console.error("Error suggesting levels:", error);
     return res.json({
