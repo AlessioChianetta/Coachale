@@ -2937,8 +2937,8 @@ export default function ContentStudioPosts() {
             return (
               <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 {/* Left Panel - Phone Mockup Preview */}
-                <div className="lg:w-[420px] flex-shrink-0 bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-black p-6 border-b lg:border-b-0 lg:border-r overflow-y-auto max-h-[350px] lg:max-h-full flex items-start justify-center">
-                  <div className="lg:sticky lg:top-0">
+                <div className="lg:w-[420px] flex-shrink-0 bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-black p-6 border-b lg:border-b-0 lg:border-r max-h-[350px] lg:max-h-full flex items-start justify-center overflow-hidden">
+                  <div className="sticky top-0">
                     {/* Platform indicator */}
                     <div className="flex items-center justify-center gap-2 mb-4">
                       <div className={`p-2.5 rounded-xl shadow-lg ${
@@ -3158,7 +3158,7 @@ export default function ContentStudioPosts() {
                                 <Copy className="h-3 w-3" />
                               </Button>
                             </div>
-                            <div className="bg-white dark:bg-zinc-900 p-4 max-h-48 overflow-y-auto">
+                            <div className="bg-white dark:bg-zinc-900 p-4">
                               <div className="text-sm whitespace-pre-wrap leading-relaxed">
                                 {formatTextWithHashtags(bodyText)}
                               </div>
