@@ -1636,11 +1636,18 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
     });
     
     const responseText = result.response.text();
+    console.log("[SUGGEST-LEVELS] Model:", model);
     console.log("[SUGGEST-LEVELS] AI Response:", responseText);
     
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    // Remove markdown code blocks if present
+    let cleanedResponse = responseText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+    
+    const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error("[SUGGEST-LEVELS] No JSON found in response");
+      console.error("[SUGGEST-LEVELS] No JSON found in response after cleaning");
       return res.json({ 
         awarenessLevel: "problem_aware",
         sophisticationLevel: "level_3",
