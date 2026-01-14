@@ -3175,7 +3175,7 @@ export default function ContentStudioPosts() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const fullText = [hookText, bodyText, ctaText].filter(Boolean).join("\n\n");
+                              const fullText = [bodyText, hookText, ctaText].filter(Boolean).join("\n\n");
                               navigator.clipboard.writeText(fullText);
                               toast({ title: "Copiato!", description: "Testo completo copiato negli appunti" });
                             }}
@@ -3186,30 +3186,7 @@ export default function ContentStudioPosts() {
                           </Button>
                         </div>
 
-                        {/* Hook */}
-                        {hookText && (
-                          <div className="rounded-xl overflow-hidden group relative">
-                            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 flex items-center justify-between">
-                              <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎣 Hook</span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(hookText);
-                                  toast({ title: "Copiato!", description: "Hook copiato" });
-                                }}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-4">
-                              <p className="text-sm font-medium leading-relaxed">{hookText}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Body */}
+                        {/* Body/Contenuto - Prima */}
                         {bodyText && (
                           <div className="rounded-xl overflow-hidden border group relative">
                             <div className="bg-slate-100 dark:bg-zinc-800 px-4 py-2 flex items-center justify-between">
@@ -3234,30 +3211,30 @@ export default function ContentStudioPosts() {
                           </div>
                         )}
 
-                        {/* CTA */}
-                        {ctaText && (
+                        {/* Hook - Dopo contenuto */}
+                        {hookText && (
                           <div className="rounded-xl overflow-hidden group relative">
-                            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 flex items-center justify-between">
-                              <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎯 Call to Action</span>
+                            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎣 Hook</span>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
                                 onClick={() => {
-                                  navigator.clipboard.writeText(ctaText);
-                                  toast({ title: "Copiato!", description: "CTA copiato" });
+                                  navigator.clipboard.writeText(hookText);
+                                  toast({ title: "Copiato!", description: "Hook copiato" });
                                 }}
                               >
                                 <Copy className="h-3 w-3" />
                               </Button>
                             </div>
-                            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 p-4">
-                              <p className="text-sm font-medium">{ctaText}</p>
+                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-4">
+                              <p className="text-sm font-medium leading-relaxed">{hookText}</p>
                             </div>
                           </div>
                         )}
 
-                        {/* Long Copy Sections */}
+                        {/* Long Copy Sections - Prima del CTA */}
                         {(() => {
                           const chiCosaCome = viewStructured.chiCosaCome || viewingPost.chiCosaCome;
                           const errore = viewStructured.errore || viewingPost.errore;
@@ -3302,6 +3279,29 @@ export default function ContentStudioPosts() {
                           }
                           return null;
                         })()}
+
+                        {/* CTA - Alla fine */}
+                        {ctaText && (
+                          <div className="rounded-xl overflow-hidden group relative">
+                            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎯 Call to Action</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(ctaText);
+                                  toast({ title: "Copiato!", description: "CTA copiato" });
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 p-4">
+                              <p className="text-sm font-medium">{ctaText}</p>
+                            </div>
+                          </div>
+                        )}
                       </TabsContent>
 
                       {/* Video Tab */}
