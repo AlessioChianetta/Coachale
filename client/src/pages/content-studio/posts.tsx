@@ -81,6 +81,8 @@ import {
   MoveRight,
   Copy,
   ClipboardCheck,
+  Briefcase,
+  MoreVertical,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -789,7 +791,8 @@ export default function ContentStudioPosts() {
   const { data: foldersData } = useQuery({
     queryKey: ["/api/content/folders"],
     queryFn: async () => {
-      const response = await fetch("/api/content/folders", { headers: getAuthHeaders() });
+      // Request flat array to build hierarchy in frontend
+      const response = await fetch("/api/content/folders?flat=true", { headers: getAuthHeaders() });
       if (!response.ok) throw new Error("Failed to fetch folders");
       return response.json();
     },
@@ -967,6 +970,32 @@ export default function ContentStudioPosts() {
       setNewFolderName("");
       setNewFolderType("folder");
       setNewFolderParentId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const moveFolderMutation = useMutation({
+    mutationFn: async ({ folderId, parentId }: { folderId: string; parentId: string | null }) => {
+      const response = await fetch(`/api/content/folders/${folderId}/move`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ parentId }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to move folder");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content/folders"] });
+      toast({ title: "Cartella spostata", description: "La cartella è stata spostata con successo" });
     },
     onError: (error: Error) => {
       toast({
@@ -1497,15 +1526,39 @@ export default function ContentStudioPosts() {
               const isExpanded = expandedProjects.has(folder.id);
               const isProject = folder.folderType === "project";
               
+              // Get available parent options (projects and folders, excluding current folder and all descendants at any depth)
+              const getAvailableParents = () => {
+                // Build parent->children map from flat folders array
+                const childrenMap = new Map<string | null, string[]>();
+                folders.forEach(f => {
+                  const parentKey = f.parentId ?? null;
+                  if (!childrenMap.has(parentKey)) {
+                    childrenMap.set(parentKey, []);
+                  }
+                  childrenMap.get(parentKey)!.push(f.id);
+                });
+                
+                // Recursively collect all descendant IDs from the flat structure
+                const collectDescendantIds = (folderId: string): string[] => {
+                  const ids = [folderId];
+                  const children = childrenMap.get(folderId) || [];
+                  children.forEach(childId => ids.push(...collectDescendantIds(childId)));
+                  return ids;
+                };
+                
+                const excludeIds = new Set(collectDescendantIds(folder.id));
+                return folders.filter(f => !excludeIds.has(f.id));
+              };
+              
               return (
                 <div key={folder.id} className="space-y-0.5">
                   <div
-                    className={`flex items-center gap-2 py-2 rounded-lg cursor-pointer transition-colors ${
+                    className={`group flex items-center gap-2 py-2 rounded-lg cursor-pointer transition-colors ${
                       selectedFolderId === folder.id
                         ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                         : "hover:bg-muted"
                     }`}
-                    style={{ paddingLeft: `${12 + depth * 16}px`, paddingRight: "12px" }}
+                    style={{ paddingLeft: `${12 + depth * 16}px`, paddingRight: "8px" }}
                   >
                     {hasChildren ? (
                       <button
@@ -1526,13 +1579,65 @@ export default function ContentStudioPosts() {
                       className="flex-1 flex items-center gap-2 text-left min-w-0"
                     >
                       {isProject ? (
-                        <FolderOpen className="h-4 w-4 flex-shrink-0" style={{ color: folder.color || "#6366f1" }} />
+                        <Briefcase className="h-4 w-4 flex-shrink-0 text-indigo-500" />
                       ) : (
-                        <Folder className="h-4 w-4 flex-shrink-0" style={{ color: folder.color || "#94a3b8" }} />
+                        <Folder className="h-4 w-4 flex-shrink-0 text-slate-400" />
                       )}
-                      <span className={`truncate ${isProject ? "font-medium" : ""}`}>{folder.name}</span>
+                      <span className={`truncate ${isProject ? "font-semibold text-indigo-700 dark:text-indigo-300" : ""}`}>{folder.name}</span>
                     </button>
                     <Badge variant="secondary" className="text-xs flex-shrink-0">{getPostCountForFolder(folder.id)}</Badge>
+                    
+                    {/* Dropdown menu for folder actions */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-1 rounded hover:bg-muted-foreground/10 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <MoveRight className="h-4 w-4 mr-2" />
+                            Sposta in...
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
+                            {folder.parentId && (
+                              <DropdownMenuItem
+                                onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: null })}
+                              >
+                                <FolderOpen className="h-4 w-4 mr-2 text-gray-400" />
+                                Livello Root
+                              </DropdownMenuItem>
+                            )}
+                            {getAvailableParents().filter(f => f.folderType === "project").map(project => (
+                              <DropdownMenuItem
+                                key={project.id}
+                                onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: project.id })}
+                                disabled={folder.parentId === project.id}
+                              >
+                                <Briefcase className="h-4 w-4 mr-2 text-indigo-500" />
+                                {project.name}
+                              </DropdownMenuItem>
+                            ))}
+                            {getAvailableParents().filter(f => f.folderType === "folder" && f.id !== folder.id).length > 0 && (
+                              <>
+                                <DropdownMenuSeparator />
+                                {getAvailableParents().filter(f => f.folderType === "folder").map(f => (
+                                  <DropdownMenuItem
+                                    key={f.id}
+                                    onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: f.id })}
+                                    disabled={folder.parentId === f.id}
+                                  >
+                                    <Folder className="h-4 w-4 mr-2 text-slate-400" />
+                                    {f.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </>
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   {/* Render children recursively */}
