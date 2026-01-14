@@ -472,10 +472,21 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
   "problema": "Il problema che stai risolvendo (10-15 secondi)", 
   "soluzione": "Come risolvi il problema (15-20 secondi)",
   "cta": "Call to action finale (5-10 secondi)",
-  "fullScript": "Lo script completo parlato fluido da registrare",
+  "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause. Esempio: 'Il tuo telefono... [PAUSA] ...è diventato una catena.'",
+  "captionCopy": "Il COPY COMPLETO per l'inserzione Instagram. Formattato con a capo, emoji appropriati (🚀💡🔥), pronto da copiare e incollare. Struttura: Hook → Problema → Soluzione → CTA. Ogni sezione separata da una riga vuota.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
 }
-Lo script DEVE essere scritto per essere DETTO A VOCE, frasi corte e incisive.`;
+
+IMPORTANTE per fullScript:
+- Scritto per essere DETTO A VOCE, frasi corte e incisive
+- Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
+- Usa '...' per micro-pause di respiro
+
+IMPORTANTE per captionCopy:
+- Formattato per Instagram: emoji, a capo, spazi
+- Pronto da copiare e incollare direttamente
+- Usa emoji strategiche (max 5-7 per post)
+- Separa i paragrafi con righe vuote`;
     } else if (copyType === "long") {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
@@ -601,6 +612,9 @@ RISPONDI SOLO con un JSON valido nel formato:
           videoScript = sc.fullScript;
           if (!videoScript && (sc.hook || sc.problema || sc.soluzione || sc.cta)) {
             videoScript = [sc.hook, sc.problema, sc.soluzione, sc.cta].filter(Boolean).join("\n\n");
+          }
+          if (sc.captionCopy) {
+            copyContent = sc.captionCopy;
           }
         } else if (sc.type === "copy_long") {
           const copyParts = [sc.hook, sc.chiCosaCome, sc.errore, sc.soluzione, sc.riprovaSociale, sc.cta].filter(Boolean);

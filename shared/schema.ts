@@ -7784,12 +7784,14 @@ export const contentIdeas = pgTable("content_ideas", {
   copyContent: text("copy_content"),
   awarenessLevel: varchar("awareness_level", { length: 50 }).default("problem_aware").$type<"unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware">(),
   structuredContent: jsonb("structured_content").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
-  status: varchar("status", { length: 50 }).default("draft").$type<"draft" | "approved" | "used" | "archived">(),
+  status: varchar("status", { length: 50 }).default("new").$type<"new" | "in_progress" | "developed" | "archived">(),
+  developedPostId: varchar("developed_post_id"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
   consultantIdx: index("idx_content_ideas_consultant").on(table.consultantId),
   statusIdx: index("idx_content_ideas_status").on(table.status),
+  developedIdx: index("idx_content_ideas_developed").on(table.developedPostId),
 }));
 
 export type AwarenessLevel = "unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware";
@@ -7862,11 +7864,34 @@ export type ContentIdeaTemplate = typeof contentIdeaTemplates.$inferSelect;
 export type InsertContentIdeaTemplate = typeof contentIdeaTemplates.$inferInsert;
 export const insertContentIdeaTemplateSchema = createInsertSchema(contentIdeaTemplates).omit({ id: true, createdAt: true });
 
+// Content Folders - Hierarchical folder structure for organizing posts
+export const contentFolders = pgTable("content_folders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  parentId: varchar("parent_id"),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  color: varchar("color", { length: 20 }).default("#6366f1"),
+  icon: varchar("icon", { length: 50 }).default("folder"),
+  folderType: varchar("folder_type", { length: 50 }).default("folder").$type<"project" | "folder">(),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_content_folders_consultant").on(table.consultantId),
+  parentIdx: index("idx_content_folders_parent").on(table.parentId),
+}));
+
+export type ContentFolder = typeof contentFolders.$inferSelect;
+export type InsertContentFolder = typeof contentFolders.$inferInsert;
+export const insertContentFolderSchema = createInsertSchema(contentFolders).omit({ id: true, createdAt: true, updatedAt: true });
+
 // Content Posts - Created content ready for publishing
 export const contentPosts = pgTable("content_posts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
   ideaId: varchar("idea_id").references(() => contentIdeas.id, { onDelete: "set null" }),
+  folderId: varchar("folder_id").references(() => contentFolders.id, { onDelete: "set null" }),
   title: varchar("title", { length: 500 }),
   hook: text("hook"),
   body: text("body"),
