@@ -522,30 +522,55 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
   "imageDescription": "Descrizione visiva dettagliata dell'immagine: soggetto, sfondo, colori, mood, stile fotografico",
   "imageOverlayText": "Testo breve e d'impatto da sovrapporre all'immagine (max 10 parole)"` : "";
     
-    if (mediaType === "video") {
+    if (mediaType === "video" && copyType === "long") {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "video_script",
-  "hook": "La prima frase che cattura attenzione (3-5 secondi)",
-  "problema": "Il problema che stai risolvendo (10-15 secondi)", 
-  "soluzione": "Come risolvi il problema (15-20 secondi)",
-  "cta": "Call to action finale (5-10 secondi)",
+  "copyVariant": "long",
+  "hook": "100-200 caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante. Deve creare tensione emotiva immediata.",
+  "chiCosaCome": "200-400 caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento con storytelling. Racconta brevemente chi sei e cosa fai in modo narrativo.",
+  "errore": "300-500 caratteri. L'errore comune che il tuo target sta commettendo senza saperlo. Sviluppa il problema con empatia, fai sentire al lettore che lo capisci.",
+  "soluzione": "300-500 caratteri. La tua soluzione unica al problema - cosa offri e perché funziona. Descrivi i benefici concreti e il risultato trasformativo.",
+  "riprovaSociale": "200-400 caratteri. Testimonianze, risultati concreti, numeri specifici che provano il valore. Usa storie brevi di clienti reali o dati d'impatto.",
+  "cta": "100-200 caratteri. Call to action finale chiara e urgente. Crea scarsità o urgenza e indica l'azione esatta da compiere.",
+  "captionCopy": "Il copy COMPLETO che concatena tutte le sezioni sopra in un unico testo formattato per Instagram. DEVE essere 1500-3000 caratteri.",
   "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause. Esempio: 'Il tuo telefono... [PAUSA] ...è diventato una catena.'",
-  "captionCopy": "Il COPY COMPLETO per l'inserzione Instagram. Formattato con a capo, emoji appropriati (🚀💡🔥), pronto da copiare e incollare. Struttura: Hook → Problema → Soluzione → CTA. Ogni sezione separata da una riga vuota.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
 }
+
+IMPORTANTE PER VIDEO + COPY LUNGO:
+- captionCopy DEVE essere ALMENO 1500 caratteri e MASSIMO 3000 caratteri
+- captionCopy deve contenere: Hook → Chi/Cosa/Come → Errore → Soluzione → Riprova Sociale → CTA
+- Ogni sezione separata da una riga vuota
+- Il tono deve essere empatico, autorevole e persuasivo
 
 IMPORTANTE per fullScript:
 - Scritto per essere DETTO A VOCE, frasi corte e incisive
 - Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
-- Usa '...' per micro-pause di respiro
+- Usa '...' per micro-pause di respiro`;
+    } else if (mediaType === "video" && copyType === "short") {
+      return `
+**structuredContent** (OBBLIGATORIO - oggetto JSON):
+{
+  "type": "video_script",
+  "copyVariant": "short",
+  "hook": "La prima frase d'impatto che cattura attenzione (50-100 caratteri)",
+  "body": "Il corpo del messaggio - conciso, dritto al punto (100-300 caratteri)",
+  "cta": "Call to action finale (50-100 caratteri)",
+  "captionCopy": "Il copy COMPLETO che concatena hook+body+cta in un unico testo. DEVE essere 200-500 caratteri.",
+  "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause.",
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
+}
 
-IMPORTANTE per captionCopy:
-- Formattato per Instagram: emoji, a capo, spazi
-- Pronto da copiare e incollare direttamente
-- Usa emoji strategiche (max 5-7 per post)
-- Separa i paragrafi con righe vuote`;
+IMPORTANTE PER VIDEO + COPY CORTO:
+- captionCopy DEVE essere MINIMO 200 e MASSIMO 500 caratteri
+- Dritto al punto, ogni parola deve contare
+
+IMPORTANTE per fullScript:
+- Scritto per essere DETTO A VOCE, frasi corte e incisive
+- Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
+- Usa '...' per micro-pause di respiro`;
     } else if (copyType === "long") {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
@@ -695,6 +720,21 @@ RISPONDI SOLO con un JSON valido nel formato:
           }
           if (sc.captionCopy) {
             copyContent = sc.captionCopy;
+            copyLength = sc.captionCopy.length;
+          } else if (sc.copyVariant === "long") {
+            // Fallback: concatenate structured fields for long video copy
+            const copyParts = [sc.hook, sc.chiCosaCome, sc.errore, sc.soluzione, sc.riprovaSociale, sc.cta].filter(Boolean);
+            if (copyParts.length > 0) {
+              copyContent = copyParts.join("\n\n");
+              copyLength = copyContent.length;
+            }
+          } else if (sc.copyVariant === "short") {
+            // Fallback: concatenate structured fields for short video copy
+            const copyParts = [sc.hook, sc.body, sc.cta].filter(Boolean);
+            if (copyParts.length > 0) {
+              copyContent = copyParts.join("\n\n");
+              copyLength = copyParts.join("").length; // For validation, no separators
+            }
           }
         } else if (sc.type === "copy_long") {
           const copyParts = [sc.hook, sc.chiCosaCome, sc.errore, sc.soluzione, sc.riprovaSociale, sc.cta].filter(Boolean);
