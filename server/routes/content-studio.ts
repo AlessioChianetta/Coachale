@@ -14,7 +14,7 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, isNull, asc } from "drizzle-orm";
 import { z } from "zod";
-import { getSuperAdminGeminiKeys } from "../ai/provider-factory";
+import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import fs from "fs";
 import path from "path";
 
@@ -318,13 +318,61 @@ router.get("/idea-templates", authenticateToken, requireRole("consultant"), asyn
   }
 });
 
-// POST /api/content/idea-templates - Create new template
+// POST /api/content/idea-templates - Create new template (or update if name exists)
 router.post("/idea-templates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
+    const body = req.body;
     
+    // Check if template with same name exists for this consultant
+    const [existingTemplate] = await db.select()
+      .from(schema.contentIdeaTemplates)
+      .where(and(
+        eq(schema.contentIdeaTemplates.consultantId, consultantId),
+        eq(schema.contentIdeaTemplates.name, body.name)
+      ))
+      .limit(1);
+    
+    if (existingTemplate) {
+      // Update existing template
+      const [updated] = await db.update(schema.contentIdeaTemplates)
+        .set({
+          topic: body.topic,
+          targetAudience: body.targetAudience,
+          objective: body.objective,
+          contentTypes: body.contentTypes,
+          additionalContext: body.additionalContext,
+          awarenessLevel: body.awarenessLevel,
+          sophisticationLevel: body.sophisticationLevel,
+          mediaType: body.mediaType,
+          copyType: body.copyType,
+        })
+        .where(eq(schema.contentIdeaTemplates.id, existingTemplate.id))
+        .returning();
+      
+      return res.json({
+        success: true,
+        data: updated,
+        message: "Template aggiornato",
+        id: existingTemplate.id
+      });
+    }
+    
+    // Create new template
     const [template] = await db.insert(schema.contentIdeaTemplates)
-      .values({ ...req.body, consultantId })
+      .values({
+        consultantId,
+        name: body.name,
+        topic: body.topic,
+        targetAudience: body.targetAudience,
+        objective: body.objective,
+        contentTypes: body.contentTypes,
+        additionalContext: body.additionalContext,
+        awarenessLevel: body.awarenessLevel,
+        sophisticationLevel: body.sophisticationLevel,
+        mediaType: body.mediaType,
+        copyType: body.copyType,
+      })
       .returning();
     
     res.status(201).json({
@@ -1528,6 +1576,84 @@ router.post("/ai/generate-image-prompt", authenticateToken, requireRole("consult
     res.status(500).json({
       success: false,
       error: error.message || "Failed to generate image prompt",
+    });
+  }
+});
+
+// ============================================================
+// AI SUGGEST LEVELS ENDPOINT
+// ============================================================
+
+router.post("/ai/suggest-levels", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { topic, targetAudience, objective } = req.body;
+    
+    if (!topic && !targetAudience) {
+      return res.status(400).json({ error: "Fornisci almeno topic o target audience" });
+    }
+    
+    const { client, metadata } = await getAIProvider(consultantId, "content-suggest-levels");
+    const { model } = getModelWithThinking(metadata?.name);
+    
+    const prompt = `Analizza questi dati e suggerisci i livelli ottimali per una campagna di content marketing.
+
+DATI:
+- Topic/Nicchia: ${topic || "Non specificato"}
+- Target Audience: ${targetAudience || "Non specificato"}
+- Obiettivo: ${objective || "Non specificato"}
+
+LIVELLI DI CONSAPEVOLEZZA (Piramide della Consapevolezza):
+1. unaware - Non sa di avere un problema
+2. problem_aware - Sente disagio ma non conosce soluzioni
+3. solution_aware - Conosce soluzioni ma non la tua
+4. product_aware - Conosce il tuo prodotto ma non è convinto
+5. most_aware - Desidera il prodotto, aspetta l'offerta giusta
+
+LIVELLI DI SOFISTICAZIONE (Eugene Schwartz):
+1. level_1 - Primo sul mercato, claim semplice e diretto
+2. level_2 - Secondo sul mercato, amplifica promessa con prove
+3. level_3 - Mercato saturo, meccanismo unico che differenzia
+4. level_4 - Concorrenza attiva, meccanismo migliorato e specializzato
+5. level_5 - Mercato scettico, focus su identità e connessione emotiva
+
+Rispondi SOLO con JSON valido:
+{
+  "awarenessLevel": "problem_aware",
+  "awarenessReason": "Spiegazione breve del perché questo livello",
+  "sophisticationLevel": "level_3",
+  "sophisticationReason": "Spiegazione breve del perché questo livello"
+}`;
+
+    const result = await client.generateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 500,
+      },
+    });
+    
+    const responseText = result.response.text();
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return res.json({ 
+        awarenessLevel: "problem_aware",
+        sophisticationLevel: "level_3",
+        awarenessReason: "Default consigliato",
+        sophisticationReason: "Default consigliato"
+      });
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    return res.json(parsed);
+  } catch (error) {
+    console.error("Error suggesting levels:", error);
+    return res.json({
+      awarenessLevel: "problem_aware",
+      sophisticationLevel: "level_3",
+      awarenessReason: "Errore nell'analisi AI",
+      sophisticationReason: "Errore nell'analisi AI"
     });
   }
 });

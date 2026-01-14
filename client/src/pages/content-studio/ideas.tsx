@@ -41,6 +41,10 @@ import {
   MessageCircleQuestion,
   Wrench,
   TrendingUp,
+  Target,
+  Cog,
+  Rocket,
+  Crown,
   Eye,
   Heart,
   UserPlus,
@@ -67,6 +71,7 @@ import {
   Archive,
   ExternalLink,
   PlayCircle,
+  Wand2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -165,6 +170,14 @@ const AWARENESS_LEVELS = [
   { value: "most_aware", label: "Più Consapevole", description: "Desidera il prodotto, aspetta l'offerta giusta", icon: Gift, color: "green" },
 ];
 
+const SOPHISTICATION_LEVELS = [
+  { value: "level_1", label: "Livello 1 - Beneficio Diretto", description: "Primo sul mercato, claim semplice", icon: Target, color: "emerald" },
+  { value: "level_2", label: "Livello 2 - Amplifica Promessa", description: "Secondo sul mercato, prove concrete", icon: TrendingUp, color: "blue" },
+  { value: "level_3", label: "Livello 3 - Meccanismo Unico", description: "Mercato saturo, differenziati", icon: Cog, color: "purple" },
+  { value: "level_4", label: "Livello 4 - Meccanismo Migliorato", description: "Concorrenza attiva, specializzati", icon: Rocket, color: "orange" },
+  { value: "level_5", label: "Livello 5 - Identità e Brand", description: "Mercato scettico, connessione emotiva", icon: Crown, color: "pink" },
+];
+
 type HookType = "how-to" | "curiosità" | "numero" | "problema";
 
 function getHookType(hook: string): HookType {
@@ -209,6 +222,7 @@ export default function ContentStudioIdeas() {
   const [objective, setObjective] = useState("");
   const [ideaCount, setIdeaCount] = useState(3);
   const [awarenessLevel, setAwarenessLevel] = useState<"unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware">("problem_aware");
+  const [sophisticationLevel, setSophisticationLevel] = useState<"level_1" | "level_2" | "level_3" | "level_4" | "level_5">("level_3");
   const [additionalContext, setAdditionalContext] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
@@ -216,6 +230,7 @@ export default function ContentStudioIdeas() {
   const [savedIdeaIndexes, setSavedIdeaIndexes] = useState<Set<number>>(new Set());
   const [mediaType, setMediaType] = useState<"video" | "photo">("photo");
   const [copyType, setCopyType] = useState<"short" | "long">("short");
+  const [isSuggestingLevels, setIsSuggestingLevels] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [filterContentType, setFilterContentType] = useState<string>("all");
@@ -275,6 +290,10 @@ export default function ContentStudioIdeas() {
           targetAudience,
           objective,
           additionalContext,
+          awarenessLevel,
+          sophisticationLevel,
+          mediaType,
+          copyType,
         }),
       });
       if (response.ok) {
@@ -293,6 +312,10 @@ export default function ContentStudioIdeas() {
     setTargetAudience(template.targetAudience || "");
     setObjective(template.objective || "");
     setAdditionalContext(template.additionalContext || "");
+    setAwarenessLevel(template.awarenessLevel || "problem_aware");
+    setSophisticationLevel(template.sophisticationLevel || "level_3");
+    setMediaType(template.mediaType || "photo");
+    setCopyType(template.copyType || "short");
     toast({ title: "Template caricato", description: `"${template.name}" applicato` });
   };
 
@@ -467,6 +490,32 @@ export default function ContentStudioIdeas() {
     updateIdeaStatusMutation.mutate({ ideaId, status: newStatus });
   };
 
+  const handleSuggestLevels = async () => {
+    if (!topic && !targetAudience) {
+      toast({ title: "Inserisci prima Topic o Target Audience", variant: "destructive" });
+      return;
+    }
+    setIsSuggestingLevels(true);
+    try {
+      const response = await fetch("/api/content/ai/suggest-levels", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, targetAudience, objective }),
+      });
+      const data = await response.json();
+      if (data.awarenessLevel) setAwarenessLevel(data.awarenessLevel);
+      if (data.sophisticationLevel) setSophisticationLevel(data.sophisticationLevel);
+      toast({
+        title: "Livelli suggeriti dall'AI",
+        description: `Consapevolezza: ${data.awarenessReason}\nSofisticazione: ${data.sophisticationReason}`,
+      });
+    } catch (error) {
+      toast({ title: "Errore nel suggerimento", variant: "destructive" });
+    } finally {
+      setIsSuggestingLevels(false);
+    }
+  };
+
   const handleGoToPost = (postId: string) => {
     setLocation(`/consultant/content-studio/posts?postId=${postId}`);
   };
@@ -498,6 +547,7 @@ export default function ContentStudioIdeas() {
           mediaType,
           copyType,
           awarenessLevel,
+          sophisticationLevel,
         }),
       });
 
@@ -721,6 +771,23 @@ export default function ContentStudioIdeas() {
                   </div>
                 </div>
 
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSuggestLevels}
+                    disabled={isSuggestingLevels || (!topic && !targetAudience)}
+                    className="gap-2"
+                  >
+                    {isSuggestingLevels ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-4 w-4" />
+                    )}
+                    AI Suggerisci Livelli
+                  </Button>
+                </div>
+
                 <div className="space-y-3">
                   <Label>Livello di Consapevolezza (Piramide)</Label>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -747,6 +814,45 @@ export default function ContentStudioIdeas() {
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => setAwarenessLevel(level.value as any)}
+                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${colorClasses[level.color]}`}
+                        >
+                          <div className="flex flex-col items-center text-center gap-1">
+                            <IconComponent className={`h-5 w-5 ${iconColorClasses[level.color]}`} />
+                            <h4 className="font-medium text-xs">{level.label}</h4>
+                            <p className="text-[10px] text-muted-foreground leading-tight">{level.description}</p>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Sofisticazione Mercato (Schwartz)</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    {SOPHISTICATION_LEVELS.map((level) => {
+                      const IconComponent = level.icon;
+                      const isSelected = sophisticationLevel === level.value;
+                      const colorClasses: Record<string, string> = {
+                        emerald: isSelected ? "border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" : "border-border hover:border-emerald-300",
+                        blue: isSelected ? "border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300",
+                        purple: isSelected ? "border-2 border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300",
+                        orange: isSelected ? "border-2 border-orange-500 bg-orange-50 dark:bg-orange-900/20" : "border-border hover:border-orange-300",
+                        pink: isSelected ? "border-2 border-pink-500 bg-pink-50 dark:bg-pink-900/20" : "border-border hover:border-pink-300",
+                      };
+                      const iconColorClasses: Record<string, string> = {
+                        emerald: isSelected ? "text-emerald-600" : "text-muted-foreground",
+                        blue: isSelected ? "text-blue-600" : "text-muted-foreground",
+                        purple: isSelected ? "text-purple-600" : "text-muted-foreground",
+                        orange: isSelected ? "text-orange-600" : "text-muted-foreground",
+                        pink: isSelected ? "text-pink-600" : "text-muted-foreground",
+                      };
+                      return (
+                        <motion.div
+                          key={level.value}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setSophisticationLevel(level.value as any)}
                           className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${colorClasses[level.color]}`}
                         >
                           <div className="flex flex-col items-center text-center gap-1">
