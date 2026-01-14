@@ -55,18 +55,20 @@ The platform extensively leverages AI for various functionalities:
 
 ## Content Marketing Studio
 - **Goal**: Comprehensive content creation and marketing funnel system to support 1M MRR target.
-- **Database Tables**: 7 tables (`brand_assets`, `content_ideas`, `content_posts`, `ad_campaigns`, `content_calendar`, `generated_images`, `content_templates`) with full Drizzle ORM definitions.
-- **Backend**: 25 CRUD endpoints + 5 AI endpoints in `server/routes/content-studio.ts`.
+- **Database Tables**: 8 tables (`brand_assets`, `content_ideas`, `content_posts`, `content_folders`, `ad_campaigns`, `content_calendar`, `generated_images`, `content_templates`) with full Drizzle ORM definitions.
+- **Backend**: 30+ CRUD endpoints + 5 AI endpoints in `server/routes/content-studio.ts`.
 - **AI Services**: `server/services/content-ai-service.ts` provides:
   - `generateContentIdeas()` - AI-powered content idea generation
-  - `generatePostCopy()` - Social media copy with hook/body/CTA structure
+  - `generatePostCopy()` - Social media copy with hook/body/CTA structure, including `captionCopy` for Instagram-ready text with emojis and [PAUSA] markers for video scripts
   - `generateCampaignContent()` - Full 6-step campaign builder (Hook→Target→Problem→Solution→Proof→CTA)
   - `generateImagePrompt()` - Optimized prompts for image generation
 - **Image Generation**: Integration with Google Gemini Imagen 3 (`imagen-3.0-generate-002`) for AI image creation.
+- **Hierarchical Folder System**: `content_folders` table with `parent_id` for Project → Folder → Post organization. Supports unlimited nesting with `folder_type` field distinguishing projects from folders.
+- **Idea-to-Post Tracking**: `content_ideas` includes `developedPostId` and `status` (new/in_progress/developed/archived) fields. Ideas automatically link to created posts and update status when developed.
 - **Frontend Pages** (in `client/src/pages/content-studio/`):
   - Dashboard with KPI stats
-  - Ideas generator with AI assistance
-  - Posts creator with copy generation
+  - Ideas generator with AI assistance, status filters (Tutte/Nuove/In Lavorazione/Sviluppate/Archiviate), and "Sviluppata" badges with links to developed posts
+  - Posts creator with copy generation and FolderSidebar for hierarchical folder navigation, folder filtering, and move-to-folder functionality
   - Campaign builder with 6-step wizard
   - Visuals generator with Imagen 3
   - Content calendar with scheduling
