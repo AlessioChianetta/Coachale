@@ -684,6 +684,7 @@ router.get("/consultant/client-automation-status", authenticateToken, requireRol
           email: client.email,
           isActive: client.isActive || false,
           automationEnabled: clientAutomation?.enabled || false,
+          saveAsDraft: clientAutomation?.saveAsDraft || false,
           lastEmailSentAt: lastEmailDate ? lastEmailDate.toISOString() : null,
           nextEmailDate: nextEmailDate ? nextEmailDate.toISOString() : null,
           daysUntilNext,
@@ -1570,10 +1571,11 @@ router.post("/consultant/client-automation/:clientId/toggle", authenticateToken,
     const { clientId } = req.params;
 
     const toggleSchema = z.object({
-      enabled: z.boolean()
+      enabled: z.boolean(),
+      saveAsDraft: z.boolean().optional()
     });
 
-    const { enabled } = toggleSchema.parse(req.body);
+    const { enabled, saveAsDraft } = toggleSchema.parse(req.body);
 
     const client = await storage.getUser(clientId);
     if (!client) {
@@ -1593,7 +1595,8 @@ router.post("/consultant/client-automation/:clientId/toggle", authenticateToken,
     const automation = await storage.toggleClientEmailAutomation(
       req.user!.id,
       clientId,
-      enabled
+      enabled,
+      saveAsDraft
     );
 
     res.json({

@@ -1039,6 +1039,7 @@ export const clientEmailAutomation = pgTable("client_email_automation", {
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   enabled: boolean("enabled").notNull().default(false),
+  saveAsDraft: boolean("save_as_draft").notNull().default(false), // Se true, le email vanno sempre in bozza anche con automation attiva
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => {

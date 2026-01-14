@@ -1743,6 +1743,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertClientEmailAutomation(data: InsertClientEmailAutomation): Promise<ClientEmailAutomation> {
+    const setData: any = {
+      enabled: data.enabled,
+      updatedAt: new Date(),
+    };
+    if (data.saveAsDraft !== undefined) {
+      setData.saveAsDraft = data.saveAsDraft;
+    }
     const [automation] = await db.insert(schema.clientEmailAutomation)
       .values({
         ...data,
@@ -1750,10 +1757,7 @@ export class DatabaseStorage implements IStorage {
       })
       .onConflictDoUpdate({
         target: [schema.clientEmailAutomation.consultantId, schema.clientEmailAutomation.clientId],
-        set: {
-          enabled: data.enabled,
-          updatedAt: new Date(),
-        }
+        set: setData
       })
       .returning();
     return automation;
@@ -1775,12 +1779,16 @@ export class DatabaseStorage implements IStorage {
     return results.map(r => r.user);
   }
 
-  async toggleClientEmailAutomation(consultantId: string, clientId: string, enabled: boolean): Promise<ClientEmailAutomation> {
-    return this.upsertClientEmailAutomation({
+  async toggleClientEmailAutomation(consultantId: string, clientId: string, enabled: boolean, saveAsDraft?: boolean): Promise<ClientEmailAutomation> {
+    const data: any = {
       consultantId,
       clientId,
       enabled,
-    });
+    };
+    if (saveAsDraft !== undefined) {
+      data.saveAsDraft = saveAsDraft;
+    }
+    return this.upsertClientEmailAutomation(data);
   }
 
   // Scheduler operations

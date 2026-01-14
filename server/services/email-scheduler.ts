@@ -472,14 +472,21 @@ async function sendAutomatedEmailToClient(client: {
     // We already have smtpSettings from step 1
     let shouldAutoSend = false;
 
+    // Get client automation settings
+    const clientAutomation = await storage.getClientEmailAutomation(client.consultantId, client.id);
+    
     if (smtpSettings?.automationEnabled) {
       console.log(`✓ Consultant has automation enabled`);
       // Check if this specific client has automation enabled
-      const clientAutomation = await storage.getClientEmailAutomation(client.consultantId, client.id);
-      shouldAutoSend = clientAutomation?.enabled || false;
+      const clientEnabled = clientAutomation?.enabled || false;
+      const clientSaveAsDraft = clientAutomation?.saveAsDraft || false;
       
-      if (shouldAutoSend) {
-        console.log(`✓ Client has automation enabled - will send email directly`);
+      if (clientEnabled && !clientSaveAsDraft) {
+        shouldAutoSend = true;
+        console.log(`✓ Client has automation enabled and NOT set to draft - will send email directly`);
+      } else if (clientEnabled && clientSaveAsDraft) {
+        shouldAutoSend = false;
+        console.log(`⏸️  Client has automation enabled but set to draft mode - will create draft for approval`);
       } else {
         console.log(`⏸️  Client automation disabled - will create draft for approval`);
       }

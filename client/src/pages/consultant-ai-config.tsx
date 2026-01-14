@@ -1861,20 +1861,21 @@ export default function ConsultantAIConfigPage() {
   });
 
   const toggleClientAutomationMutation = useMutation({
-    mutationFn: async ({ clientId, enabled }: { clientId: string; enabled: boolean }) => {
+    mutationFn: async ({ clientId, enabled, saveAsDraft }: { clientId: string; enabled: boolean; saveAsDraft?: boolean }) => {
       const res = await fetch(`/api/consultant/client-automation/${clientId}/toggle`, {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ enabled }),
+        body: JSON.stringify({ enabled, saveAsDraft }),
       });
       if (!res.ok) throw new Error("Failed to toggle automation");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/client-automation"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/client-automation-status"] });
       toast({
         title: "Automation Aggiornata",
         description: "Le impostazioni di automation del cliente sono state modificate",
@@ -3528,17 +3529,38 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                     <p className="font-semibold text-lg">{client.name}</p>
                                     <p className="text-sm text-muted-foreground">{client.email}</p>
                                   </div>
-                                  <Switch
-                                    checked={client.automationEnabled}
-                                    onCheckedChange={(checked) => {
-                                      toggleClientAutomationMutation.mutate({
-                                        clientId: client.id,
-                                        enabled: checked,
-                                      });
-                                      queryClient.invalidateQueries({ queryKey: ["/api/consultant/client-automation-status"] });
-                                    }}
-                                    disabled={!automationEnabled || toggleClientAutomationMutation.isPending}
-                                  />
+                                  <div className="flex items-center gap-4">
+                                    <div className="flex flex-col items-end gap-1">
+                                      <span className="text-xs text-muted-foreground">Email attive</span>
+                                      <Switch
+                                        checked={client.automationEnabled}
+                                        onCheckedChange={(checked) => {
+                                          toggleClientAutomationMutation.mutate({
+                                            clientId: client.id,
+                                            enabled: checked,
+                                          });
+                                        }}
+                                        disabled={!automationEnabled || toggleClientAutomationMutation.isPending}
+                                      />
+                                    </div>
+                                    {client.automationEnabled && (
+                                      <div className="flex flex-col items-end gap-1">
+                                        <span className="text-xs text-muted-foreground">Solo bozza</span>
+                                        <Switch
+                                          checked={client.saveAsDraft || false}
+                                          onCheckedChange={(checked) => {
+                                            toggleClientAutomationMutation.mutate({
+                                              clientId: client.id,
+                                              enabled: client.automationEnabled,
+                                              saveAsDraft: checked,
+                                            });
+                                          }}
+                                          disabled={!automationEnabled || toggleClientAutomationMutation.isPending}
+                                          className="data-[state=checked]:bg-amber-500"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
