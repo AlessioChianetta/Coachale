@@ -3138,6 +3138,7 @@ export default function ContentStudioPosts() {
           </div>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
