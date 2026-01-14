@@ -1022,13 +1022,15 @@ export default function ContentStudioIdeas() {
                             </div>
                             
                             <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold ${
-                              (idea.score || 0) >= 85 
+                              (idea.aiScore || 0) >= 85 
                                 ? "bg-gradient-to-br from-green-400 to-green-600 text-white" 
-                                : (idea.score || 0) >= 70 
+                                : (idea.aiScore || 0) >= 70 
                                   ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white" 
-                                  : "bg-gradient-to-br from-red-400 to-red-600 text-white"
+                                  : (idea.aiScore || 0) > 0
+                                    ? "bg-gradient-to-br from-red-400 to-red-600 text-white"
+                                    : "bg-gradient-to-br from-slate-300 to-slate-400 text-white"
                             }`}>
-                              {idea.score || 0}
+                              {idea.aiScore || "-"}
                             </div>
                           </div>
 
