@@ -3371,17 +3371,125 @@ Non limitarti a stato attuale/ideale. Attingi da:
               </Card>
             </TabsContent>
 
-            <TabsContent value="clients" className="space-y-6">
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <div className="p-2 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg">
-                      <Users className="h-4 w-4 text-white" />
+            <TabsContent value="clients" className="space-y-8">
+              {/* Iscritti Attivi al Journey Section */}
+              <Card className="border-2 border-emerald-200 dark:border-emerald-700 shadow-lg bg-gradient-to-br from-emerald-50/80 via-green-50/60 to-teal-50/40 dark:from-emerald-900/20 dark:via-green-900/15 dark:to-teal-900/10 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-md">
+                        <Users className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="flex items-center gap-3 text-emerald-900 dark:text-emerald-100">
+                          Iscritti Attivi al Journey
+                          {clientAutomationStatus?.clients && (
+                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-sm">
+                              {clientAutomationStatus.clients.filter(c => c.automationEnabled).length} attivi
+                            </Badge>
+                          )}
+                        </CardTitle>
+                        <CardDescription className="text-emerald-700 dark:text-emerald-300 mt-1">
+                          Clienti che ricevono le email automatiche
+                        </CardDescription>
+                      </div>
                     </div>
-                    Gestione Automation Clienti
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {clientStatusLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                    </div>
+                  ) : (() => {
+                    const activeClients = clientAutomationStatus?.clients?.filter(c => c.automationEnabled) || [];
+                    
+                    if (activeClients.length === 0) {
+                      return (
+                        <div className="text-center py-10 bg-white/60 dark:bg-slate-800/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                          <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-full w-fit mx-auto mb-4">
+                            <Users className="h-8 w-8 text-emerald-500" />
+                          </div>
+                          <p className="text-lg font-semibold text-emerald-800 dark:text-emerald-200">Nessun cliente iscritto al journey</p>
+                          <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2 max-w-md mx-auto">
+                            Attiva l'automation per i tuoi clienti dalla sezione sottostante per iniziare a inviare email automatiche
+                          </p>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div className="grid gap-3">
+                        {activeClients.map((client) => (
+                          <div
+                            key={client.id}
+                            className="group p-4 bg-white/80 dark:bg-slate-800/60 rounded-xl border border-emerald-200 dark:border-emerald-700 hover:border-emerald-400 dark:hover:border-emerald-500 hover:shadow-md transition-all duration-200"
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center text-white font-semibold shadow-sm">
+                                  {client.name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">{client.name}</p>
+                                  <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{client.email}</p>
+                                </div>
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg">
+                                  <Mail className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{client.emailsSentCount} inviate</span>
+                                </div>
+                              </div>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        toggleClientAutomationMutation.mutate({
+                                          clientId: client.id,
+                                          enabled: false,
+                                        });
+                                      }}
+                                      disabled={toggleClientAutomationMutation.isPending}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30"
+                                    >
+                                      <X className="h-4 w-4 mr-1" />
+                                      Rimuovi
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left">
+                                    <p>Rimuovi dal journey automatico</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+
+              {/* Gestione Automation Clienti Section */}
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-md bg-gradient-to-br from-white/90 to-slate-50/80 dark:from-slate-800/90 dark:to-slate-850/80 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-3 text-slate-900 dark:text-slate-100">
+                    <div className="p-2.5 bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl shadow-md">
+                      <Settings className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <span>Gestione Automation Clienti</span>
+                      {clientAutomationStatus?.clients && (
+                        <Badge variant="secondary" className="ml-3">
+                          {clientAutomationStatus.clients.length} clienti
+                        </Badge>
+                      )}
+                    </div>
                   </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Monitora lo stato delle email automatiche per ogni cliente
+                  <CardDescription className="text-slate-500 dark:text-slate-400 mt-1">
+                    Attiva o disattiva le email automatiche per ogni cliente
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -3390,25 +3498,27 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                     </div>
                   ) : !clientAutomationStatus?.clients || clientAutomationStatus.clients.length === 0 ? (
-                    <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                    <div className="text-center py-12 bg-slate-50/80 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <div className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full w-fit mx-auto mb-4">
+                        <Users className="h-10 w-10 text-slate-400" />
+                      </div>
                       <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessun cliente trovato</p>
                       <p className="text-sm text-slate-500 mt-2">
                         Aggiungi clienti per iniziare a usare l'automation
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {clientAutomationStatus.clients.map((client) => {
                         const isActive = automationEnabled && client.automationEnabled;
 
                         return (
                           <div
                             key={client.id}
-                            className={`p-4 rounded-lg border-2 transition-all ${
+                            className={`group p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
                               isActive 
-                                ? 'bg-emerald-50 border-emerald-200 shadow-sm' 
-                                : 'bg-slate-50 border-slate-200'
+                                ? 'bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/15 border-emerald-300 dark:border-emerald-700 hover:border-emerald-400' 
+                                : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                             }`}
                           >
                             <div className="flex items-start justify-between gap-4">

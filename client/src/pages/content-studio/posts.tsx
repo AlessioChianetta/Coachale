@@ -83,6 +83,7 @@ import {
   ClipboardCheck,
   Briefcase,
   MoreVertical,
+  Pencil,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -639,6 +640,8 @@ export default function ContentStudioPosts() {
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderType, setNewFolderType] = useState<"project" | "folder">("folder");
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
+  const [renameFolderName, setRenameFolderName] = useState("");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -1007,6 +1010,34 @@ export default function ContentStudioPosts() {
     },
   });
 
+  const renameFolderMutation = useMutation({
+    mutationFn: async ({ folderId, name }: { folderId: string; name: string }) => {
+      const response = await fetch(`/api/content/folders/${folderId}`, {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to rename folder");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content/folders"] });
+      toast({ title: "Cartella rinominata", description: "Il nome è stato aggiornato con successo" });
+      setRenameFolderId(null);
+      setRenameFolderName("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const toggleProjectExpanded = (projectId: string) => {
     setExpandedProjects((prev) => {
       const next = new Set(prev);
@@ -1022,7 +1053,18 @@ export default function ContentStudioPosts() {
   const getPostCountForFolder = (folderId: string | null): number => {
     if (folderId === null) return posts.length;
     if (folderId === "root") return posts.filter((p) => !p.folderId).length;
-    return posts.filter((p) => p.folderId === folderId).length;
+    
+    const collectDescendantIds = (parentId: string): string[] => {
+      const childFolders = folders.filter(f => f.parentId === parentId);
+      let ids = [parentId];
+      childFolders.forEach(child => {
+        ids = ids.concat(collectDescendantIds(child.id));
+      });
+      return ids;
+    };
+    
+    const folderIds = collectDescendantIds(folderId);
+    return posts.filter((p) => p.folderId && folderIds.includes(p.folderId)).length;
   };
 
   // Build recursive folder hierarchy - supports unlimited nesting like Google Drive
@@ -1597,6 +1639,11 @@ export default function ContentStudioPosts() {
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => { setRenameFolderId(folder.id); setRenameFolderName(folder.name); }}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Rinomina
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuSub>
                           <DropdownMenuSubTrigger>
                             <MoveRight className="h-4 w-4 mr-2" />
@@ -3508,6 +3555,56 @@ export default function ContentStudioPosts() {
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               Crea
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={renameFolderId !== null} onOpenChange={(open) => { if (!open) { setRenameFolderId(null); setRenameFolderName(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-blue-500" />
+              Rinomina
+            </DialogTitle>
+            <DialogDescription>
+              Inserisci il nuovo nome per la cartella o il progetto.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rename-folder-name">Nome</Label>
+              <Input
+                id="rename-folder-name"
+                placeholder="Nuovo nome"
+                value={renameFolderName}
+                onChange={(e) => setRenameFolderName(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setRenameFolderId(null); setRenameFolderName(""); }}>
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                if (!renameFolderName.trim()) {
+                  toast({ title: "Errore", description: "Inserisci un nome", variant: "destructive" });
+                  return;
+                }
+                if (renameFolderId) {
+                  renameFolderMutation.mutate({
+                    folderId: renameFolderId,
+                    name: renameFolderName.trim(),
+                  });
+                }
+              }}
+              disabled={renameFolderMutation.isPending}
+            >
+              {renameFolderMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Salva
             </Button>
           </div>
         </DialogContent>

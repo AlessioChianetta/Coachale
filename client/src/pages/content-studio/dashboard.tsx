@@ -13,6 +13,9 @@ import {
   Clock,
   ArrowRight,
   AlertCircle,
+  FolderTree,
+  Briefcase,
+  Folder,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -40,6 +43,14 @@ interface ContentPost {
   title: string;
   status: string;
   createdAt: string;
+  folderId?: string;
+}
+
+interface ContentFolder {
+  id: string;
+  name: string;
+  folderType: "project" | "folder";
+  parentId?: string | null;
 }
 
 interface Campaign {
@@ -96,11 +107,39 @@ export default function ContentStudioDashboard() {
     },
   });
 
+  const { data: foldersResponse, isLoading: foldersLoading } = useQuery({
+    queryKey: ["/api/content/folders"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/folders?flat=true", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch folders");
+      return response.json();
+    },
+  });
+
   const ideas: ContentIdea[] = ideasResponse?.data || [];
   const posts: ContentPost[] = postsResponse?.data || [];
   const campaigns: Campaign[] = campaignsResponse?.data || [];
+  const folders: ContentFolder[] = foldersResponse?.data || [];
 
-  const isLoading = ideasLoading || postsLoading || campaignsLoading;
+  const isLoading = ideasLoading || postsLoading || campaignsLoading || foldersLoading;
+
+  const getPostCountForFolder = (folderId: string): number => {
+    const collectDescendantIds = (parentId: string): string[] => {
+      const childFolders = folders.filter(f => f.parentId === parentId);
+      let ids = [parentId];
+      childFolders.forEach(child => {
+        ids = ids.concat(collectDescendantIds(child.id));
+      });
+      return ids;
+    };
+    
+    const folderIds = collectDescendantIds(folderId);
+    return posts.filter((p) => p.folderId && folderIds.includes(p.folderId)).length;
+  };
+
+  const projects = folders.filter(f => f.folderType === "project");
 
   const activeCampaigns = campaigns.filter((c) => c.status === "attiva" || c.status === "active");
   const publishedPosts = posts.filter((p) => p.status === "pubblicato" || p.status === "published");
@@ -410,6 +449,56 @@ export default function ContentStudioDashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FolderTree className="h-5 w-5 text-indigo-500" />
+                  Post per Progetto
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-4 w-8" />
+                      </div>
+                    ))}
+                  </div>
+                ) : projects.length > 0 ? (
+                  <div className="space-y-3">
+                    {projects.map((project) => (
+                      <div key={project.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-indigo-500" />
+                          <span className="text-sm font-medium">{project.name}</span>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {getPostCountForFolder(project.id)} post
+                        </Badge>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <div className="flex items-center gap-2">
+                        <Folder className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-muted-foreground">Senza progetto</span>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {posts.filter(p => !p.folderId).length} post
+                      </Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <FolderTree className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nessun progetto creato</p>
+                    <p className="text-xs mt-1">Crea progetti nella sezione Post per organizzare i contenuti</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
