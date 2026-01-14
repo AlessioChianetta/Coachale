@@ -1596,56 +1596,61 @@ router.post("/ai/suggest-levels", authenticateToken, requireRole("consultant"), 
     const { client, metadata } = await getAIProvider(consultantId, "content-suggest-levels");
     const { model } = getModelWithThinking(metadata?.name);
     
-    const prompt = `Analizza questi dati e suggerisci i livelli ottimali per una campagna di content marketing.
+    const prompt = `Sei un esperto di marketing strategico. Analizza attentamente i dati forniti e suggerisci i livelli OTTIMALI per questa specifica campagna.
 
-DATI:
-- Topic/Nicchia: ${topic || "Non specificato"}
-- Target Audience: ${targetAudience || "Non specificato"}
-- Obiettivo: ${objective || "Non specificato"}
+=== DATI DA ANALIZZARE ===
+Topic/Nicchia: "${topic || "Non specificato"}"
+Target Audience: "${targetAudience || "Non specificato"}"  
+Obiettivo: "${objective || "Non specificato"}"
 
-LIVELLI DI CONSAPEVOLEZZA (Piramide della Consapevolezza):
-1. unaware - Non sa di avere un problema
-2. problem_aware - Sente disagio ma non conosce soluzioni
-3. solution_aware - Conosce soluzioni ma non la tua
-4. product_aware - Conosce il tuo prodotto ma non è convinto
-5. most_aware - Desidera il prodotto, aspetta l'offerta giusta
+=== LIVELLI DI CONSAPEVOLEZZA (Piramide Eugene Schwartz) ===
+- unaware: Il pubblico NON sa di avere un problema. Serve educazione.
+- problem_aware: Sentono disagio/frustrazione ma non conoscono soluzioni concrete.
+- solution_aware: Sanno che esistono soluzioni ma non conoscono la TUA.
+- product_aware: Conoscono il tuo prodotto/servizio ma non sono ancora convinti.
+- most_aware: Sono pronti all'acquisto, aspettano solo l'offerta giusta.
 
-LIVELLI DI SOFISTICAZIONE (Eugene Schwartz):
-1. level_1 - Primo sul mercato, claim semplice e diretto
-2. level_2 - Secondo sul mercato, amplifica promessa con prove
-3. level_3 - Mercato saturo, meccanismo unico che differenzia
-4. level_4 - Concorrenza attiva, meccanismo migliorato e specializzato
-5. level_5 - Mercato scettico, focus su identità e connessione emotiva
+=== LIVELLI DI SOFISTICAZIONE DEL MERCATO ===
+- level_1: Mercato VERGINE - sei il primo, basta un claim semplice e diretto.
+- level_2: Concorrenza INIZIALE - devi amplificare la promessa con prove concrete.
+- level_3: Mercato SATURO - serve un meccanismo unico che ti differenzi.
+- level_4: Concorrenza AGGUERRITA - meccanismo migliorato e ultra-specializzato.
+- level_5: Mercato SCETTICO - focus su identità, valori e connessione emotiva.
 
-Rispondi SOLO con JSON valido:
-{
-  "awarenessLevel": "problem_aware",
-  "awarenessReason": "Spiegazione breve del perché questo livello",
-  "sophisticationLevel": "level_3",
-  "sophisticationReason": "Spiegazione breve del perché questo livello"
-}`;
+=== ISTRUZIONI ===
+1. Analizza il topic e il target audience forniti
+2. Ragiona su quale livello di consapevolezza ha probabilmente questo pubblico
+3. Valuta quanto è saturo/competitivo questo mercato
+4. Fornisci spiegazioni SPECIFICHE e PERSONALIZZATE basate sui dati forniti
+
+Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
+{"awarenessLevel": "<scegli tra: unaware, problem_aware, solution_aware, product_aware, most_aware>", "awarenessReason": "<spiega in 1-2 frasi PERCHÉ questo livello è adatto AL TARGET SPECIFICO fornito>", "sophisticationLevel": "<scegli tra: level_1, level_2, level_3, level_4, level_5>", "sophisticationReason": "<spiega in 1-2 frasi PERCHÉ questo livello è adatto AL MERCATO SPECIFICO di questo topic>"}`;
 
     const result = await client.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 500,
+        temperature: 0.5,
+        maxOutputTokens: 800,
       },
     });
     
     const responseText = result.response.text();
+    console.log("[SUGGEST-LEVELS] AI Response:", responseText);
+    
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error("[SUGGEST-LEVELS] No JSON found in response");
       return res.json({ 
         awarenessLevel: "problem_aware",
         sophisticationLevel: "level_3",
-        awarenessReason: "Default consigliato",
-        sophisticationReason: "Default consigliato"
+        awarenessReason: "L'AI non ha fornito una risposta strutturata",
+        sophisticationReason: "L'AI non ha fornito una risposta strutturata"
       });
     }
     
     const parsed = JSON.parse(jsonMatch[0]);
+    console.log("[SUGGEST-LEVELS] Parsed result:", parsed);
     return res.json(parsed);
   } catch (error) {
     console.error("Error suggesting levels:", error);
