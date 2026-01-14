@@ -73,7 +73,23 @@ import {
   GripVertical,
   Video,
   Link,
+  FolderOpen,
+  FolderPlus,
+  Folder,
+  Menu,
+  X,
+  MoveRight,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Navbar from "@/components/navbar";
@@ -131,6 +147,20 @@ interface Post {
     shares: number;
     views: number;
   };
+  folderId?: string;
+  folder?: { id: string; name: string; color?: string };
+}
+
+interface ContentFolder {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  folderType: "project" | "folder";
+  parentId?: string | null;
+  sortOrder: number;
+  children?: ContentFolder[];
 }
 
 type CopyOutputType = "copy_short" | "copy_long" | "video_script" | "image_copy";
@@ -597,6 +627,14 @@ export default function ContentStudioPosts() {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
 
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [folderSidebarOpen, setFolderSidebarOpen] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderType, setNewFolderType] = useState<"project" | "folder">("folder");
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const searchString = useSearch();
@@ -746,10 +784,26 @@ export default function ContentStudioPosts() {
     },
   });
 
+  const { data: foldersData } = useQuery({
+    queryKey: ["/api/content/folders"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/folders", { headers: getAuthHeaders() });
+      if (!response.ok) throw new Error("Failed to fetch folders");
+      return response.json();
+    },
+  });
+
   const posts: Post[] = postsResponse?.data || [];
+  const folders: ContentFolder[] = foldersData?.data || [];
 
   const filteredPosts = useMemo(() => {
     let result = [...posts];
+
+    if (selectedFolderId === "root") {
+      result = result.filter((p) => !p.folderId);
+    } else if (selectedFolderId) {
+      result = result.filter((p) => p.folderId === selectedFolderId);
+    }
 
     if (filterPlatform !== "all") {
       result = result.filter(
@@ -778,7 +832,7 @@ export default function ContentStudioPosts() {
     }
 
     return result;
-  }, [posts, filterPlatform, filterStatus, sortPosts]);
+  }, [posts, filterPlatform, filterStatus, sortPosts, selectedFolderId]);
 
   const createPostMutation = useMutation({
     mutationFn: async (post: Partial<Post> & { id?: string }) => {
@@ -848,6 +902,86 @@ export default function ContentStudioPosts() {
       });
     },
   });
+
+  const moveToFolderMutation = useMutation({
+    mutationFn: async ({ postId, folderId }: { postId: string; folderId: string | null }) => {
+      const response = await fetch(`/api/content/posts/${postId}/folder`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId }),
+      });
+      if (!response.ok) throw new Error("Failed to move post");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
+      toast({ title: "Post spostato", description: "Il post è stato spostato nella cartella" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createFolderMutation = useMutation({
+    mutationFn: async (folder: { name: string; folderType: "project" | "folder"; parentId?: string | null }) => {
+      const response = await fetch("/api/content/folders", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(folder),
+      });
+      if (!response.ok) throw new Error("Failed to create folder");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content/folders"] });
+      toast({ title: "Cartella creata", description: "La cartella è stata creata con successo" });
+      setCreateFolderDialogOpen(false);
+      setNewFolderName("");
+      setNewFolderType("folder");
+      setNewFolderParentId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleProjectExpanded = (projectId: string) => {
+    setExpandedProjects((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
+        next.add(projectId);
+      }
+      return next;
+    });
+  };
+
+  const getPostCountForFolder = (folderId: string | null): number => {
+    if (folderId === null) return posts.length;
+    if (folderId === "root") return posts.filter((p) => !p.folderId).length;
+    return posts.filter((p) => p.folderId === folderId).length;
+  };
+
+  const buildFolderHierarchy = (folders: ContentFolder[]): ContentFolder[] => {
+    const projects = folders.filter((f) => f.folderType === "project" && !f.parentId);
+    const childFolders = folders.filter((f) => f.folderType === "folder" && f.parentId);
+    
+    return projects.map((project) => ({
+      ...project,
+      children: childFolders.filter((f) => f.parentId === project.id).sort((a, b) => a.sortOrder - b.sortOrder),
+    })).sort((a, b) => a.sortOrder - b.sortOrder);
+  };
+
+  const folderHierarchy = useMemo(() => buildFolderHierarchy(folders), [folders]);
 
   const handleGenerateCopy = async () => {
     if (!ideaForCopy || !formData.platform) {
@@ -1276,6 +1410,134 @@ export default function ContentStudioPosts() {
     return getCharacterCount() > getCharacterLimit();
   };
 
+  const FolderSidebar = () => (
+    <div className={`${isMobile ? (folderSidebarOpen ? "fixed inset-0 z-50 bg-background" : "hidden") : "w-72 border-r flex-shrink-0"} flex flex-col h-full bg-background`}>
+      {isMobile && folderSidebarOpen && (
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="font-semibold">Cartelle</h2>
+          <Button variant="ghost" size="icon" onClick={() => setFolderSidebarOpen(false)}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
+      <ScrollArea className="flex-1">
+        <div className="p-3 space-y-1">
+          <button
+            onClick={() => { setSelectedFolderId(null); if (isMobile) setFolderSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+              selectedFolderId === null
+                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                : "hover:bg-muted"
+            }`}
+          >
+            <FileText className="h-5 w-5" />
+            <span className="flex-1 font-medium">Tutti i Post</span>
+            <Badge variant="secondary" className="text-xs">{getPostCountForFolder(null)}</Badge>
+          </button>
+          
+          <button
+            onClick={() => { setSelectedFolderId("root"); if (isMobile) setFolderSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+              selectedFolderId === "root"
+                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                : "hover:bg-muted"
+            }`}
+          >
+            <Folder className="h-5 w-5 text-gray-400" />
+            <span className="flex-1">Senza Cartella</span>
+            <Badge variant="secondary" className="text-xs">{getPostCountForFolder("root")}</Badge>
+          </button>
+
+          {folderHierarchy.length > 0 && (
+            <>
+              <Separator className="my-3" />
+              <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Progetti</p>
+            </>
+          )}
+
+          {folderHierarchy.map((project) => (
+            <div key={project.id} className="space-y-0.5">
+              <div
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                  selectedFolderId === project.id
+                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                    : "hover:bg-muted"
+                }`}
+              >
+                <button
+                  onClick={() => toggleProjectExpanded(project.id)}
+                  className="p-0.5 hover:bg-muted-foreground/10 rounded"
+                >
+                  {expandedProjects.has(project.id) ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+                <button
+                  onClick={() => { setSelectedFolderId(project.id); if (isMobile) setFolderSidebarOpen(false); }}
+                  className="flex-1 flex items-center gap-2 text-left"
+                >
+                  <FolderOpen className="h-4 w-4" style={{ color: project.color || "#6366f1" }} />
+                  <span className="truncate font-medium">{project.name}</span>
+                </button>
+                <Badge variant="secondary" className="text-xs">{getPostCountForFolder(project.id)}</Badge>
+              </div>
+
+              {expandedProjects.has(project.id) && project.children && project.children.length > 0 && (
+                <div className="ml-6 space-y-0.5">
+                  {project.children.map((folder) => (
+                    <button
+                      key={folder.id}
+                      onClick={() => { setSelectedFolderId(folder.id); if (isMobile) setFolderSidebarOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
+                        selectedFolderId === folder.id
+                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                          : "hover:bg-muted"
+                      }`}
+                    >
+                      <Folder className="h-4 w-4" style={{ color: folder.color || "#94a3b8" }} />
+                      <span className="truncate flex-1">{folder.name}</span>
+                      <Badge variant="secondary" className="text-xs">{getPostCountForFolder(folder.id)}</Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+      
+      <div className="p-3 border-t space-y-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start gap-2"
+          onClick={() => {
+            setNewFolderType("project");
+            setNewFolderParentId(null);
+            setCreateFolderDialogOpen(true);
+          }}
+        >
+          <FolderPlus className="h-4 w-4" />
+          Nuovo Progetto
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-2 text-muted-foreground"
+          onClick={() => {
+            setNewFolderType("folder");
+            setCreateFolderDialogOpen(true);
+          }}
+        >
+          <Plus className="h-4 w-4" />
+          Nuova Cartella
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
@@ -1286,18 +1548,36 @@ export default function ContentStudioPosts() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-                  <FileText className="h-8 w-8 text-blue-500" />
-                  Gestione Post
-                </h1>
-                <p className="text-muted-foreground">
-                  Crea e gestisci i tuoi contenuti social
-                </p>
-              </div>
+        <div className="flex flex-1 overflow-hidden">
+          {!isMobile && <FolderSidebar />}
+          
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  {isMobile && (
+                    <Button variant="outline" size="icon" onClick={() => setFolderSidebarOpen(true)}>
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  )}
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                      <FileText className="h-8 w-8 text-blue-500" />
+                      Gestione Post
+                    </h1>
+                    <p className="text-muted-foreground">
+                      Crea e gestisci i tuoi contenuti social
+                      {selectedFolderId && selectedFolderId !== "root" && (
+                        <span className="ml-2 text-blue-600">
+                          • {folders.find((f) => f.id === selectedFolderId)?.name || "Cartella selezionata"}
+                        </span>
+                      )}
+                      {selectedFolderId === "root" && (
+                        <span className="ml-2 text-gray-500">• Senza Cartella</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 setIsDialogOpen(open);
                 if (!open) {
@@ -2282,15 +2562,75 @@ export default function ContentStudioPosts() {
                               </span>
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                            onClick={() => deletePostMutation.mutate(post.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => handleEditPost(post)}>
+                                <FileText className="h-4 w-4 mr-2" />
+                                Modifica
+                              </DropdownMenuItem>
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                  <MoveRight className="h-4 w-4 mr-2" />
+                                  Sposta in cartella
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="w-48">
+                                  <DropdownMenuItem
+                                    onClick={() => moveToFolderMutation.mutate({ postId: post.id, folderId: null })}
+                                    disabled={!post.folderId}
+                                  >
+                                    <Folder className="h-4 w-4 mr-2 text-gray-400" />
+                                    Senza Cartella
+                                  </DropdownMenuItem>
+                                  {folders.length > 0 && <DropdownMenuSeparator />}
+                                  {folders.map((folder) => (
+                                    <DropdownMenuItem
+                                      key={folder.id}
+                                      onClick={() => moveToFolderMutation.mutate({ postId: post.id, folderId: folder.id })}
+                                      disabled={post.folderId === folder.id}
+                                    >
+                                      {folder.folderType === "project" ? (
+                                        <FolderOpen className="h-4 w-4 mr-2" style={{ color: folder.color || "#6366f1" }} />
+                                      ) : (
+                                        <Folder className="h-4 w-4 mr-2" style={{ color: folder.color || "#94a3b8" }} />
+                                      )}
+                                      {folder.name}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => deletePostMutation.mutate(post.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Elimina
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
+
+                        {/* Folder badge */}
+                        {post.folder && (
+                          <div className="mb-2">
+                            <span 
+                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800"
+                              style={{ borderLeft: `3px solid ${post.folder.color || "#6366f1"}` }}
+                            >
+                              <Folder className="h-3 w-3" style={{ color: post.folder.color || "#6366f1" }} />
+                              {post.folder.name}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Title */}
                         <h3 className="font-semibold text-base leading-tight line-clamp-2 mb-3">
@@ -2688,6 +3028,92 @@ export default function ContentStudioPosts() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {isMobile && <FolderSidebar />}
+
+      <Dialog open={createFolderDialogOpen} onOpenChange={setCreateFolderDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {newFolderType === "project" ? (
+                <>
+                  <FolderOpen className="h-5 w-5 text-indigo-500" />
+                  Nuovo Progetto
+                </>
+              ) : (
+                <>
+                  <FolderPlus className="h-5 w-5 text-gray-500" />
+                  Nuova Cartella
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {newFolderType === "project" 
+                ? "I progetti sono contenitori principali per organizzare i tuoi post."
+                : "Le cartelle sono sottocartelle all'interno di un progetto."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="folder-name">Nome</Label>
+              <Input
+                id="folder-name"
+                placeholder={newFolderType === "project" ? "es. Campagna Estiva 2026" : "es. Contenuti Instagram"}
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+              />
+            </div>
+            {newFolderType === "folder" && folderHierarchy.length > 0 && (
+              <div className="space-y-2">
+                <Label>Progetto padre</Label>
+                <Select
+                  value={newFolderParentId || "none"}
+                  onValueChange={(val) => setNewFolderParentId(val === "none" ? null : val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona progetto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nessuno (cartella principale)</SelectItem>
+                    {folderHierarchy.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        <div className="flex items-center gap-2">
+                          <FolderOpen className="h-4 w-4" style={{ color: project.color || "#6366f1" }} />
+                          {project.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCreateFolderDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                if (!newFolderName.trim()) {
+                  toast({ title: "Errore", description: "Inserisci un nome", variant: "destructive" });
+                  return;
+                }
+                createFolderMutation.mutate({
+                  name: newFolderName.trim(),
+                  folderType: newFolderType,
+                  parentId: newFolderParentId,
+                });
+              }}
+              disabled={createFolderMutation.isPending}
+            >
+              {createFolderMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Crea
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
