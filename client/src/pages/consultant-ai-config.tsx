@@ -3538,28 +3538,27 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                           toggleClientAutomationMutation.mutate({
                                             clientId: client.id,
                                             enabled: checked,
+                                            saveAsDraft: checked ? client.saveAsDraft : false,
                                           });
                                         }}
                                         disabled={!automationEnabled || toggleClientAutomationMutation.isPending}
                                       />
                                     </div>
-                                    {client.automationEnabled && (
-                                      <div className="flex flex-col items-end gap-1">
-                                        <span className="text-xs text-muted-foreground">Solo bozza</span>
-                                        <Switch
-                                          checked={client.saveAsDraft || false}
-                                          onCheckedChange={(checked) => {
-                                            toggleClientAutomationMutation.mutate({
-                                              clientId: client.id,
-                                              enabled: client.automationEnabled,
-                                              saveAsDraft: checked,
-                                            });
-                                          }}
-                                          disabled={!automationEnabled || toggleClientAutomationMutation.isPending}
-                                          className="data-[state=checked]:bg-amber-500"
-                                        />
-                                      </div>
-                                    )}
+                                    <div className="flex flex-col items-end gap-1">
+                                      <span className={`text-xs ${client.automationEnabled ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>Solo bozza</span>
+                                      <Switch
+                                        checked={client.automationEnabled ? (client.saveAsDraft || false) : false}
+                                        onCheckedChange={(checked) => {
+                                          toggleClientAutomationMutation.mutate({
+                                            clientId: client.id,
+                                            enabled: client.automationEnabled,
+                                            saveAsDraft: checked,
+                                          });
+                                        }}
+                                        disabled={!automationEnabled || !client.automationEnabled || toggleClientAutomationMutation.isPending}
+                                        className="data-[state=checked]:bg-amber-500"
+                                      />
+                                    </div>
                                   </div>
                                 </div>
 

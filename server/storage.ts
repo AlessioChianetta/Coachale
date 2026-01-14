@@ -1784,10 +1784,8 @@ export class DatabaseStorage implements IStorage {
       consultantId,
       clientId,
       enabled,
+      saveAsDraft: enabled ? (saveAsDraft ?? false) : false,
     };
-    if (saveAsDraft !== undefined) {
-      data.saveAsDraft = saveAsDraft;
-    }
     return this.upsertClientEmailAutomation(data);
   }
 
