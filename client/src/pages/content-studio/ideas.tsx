@@ -62,6 +62,11 @@ import {
   Camera,
   FileText as FileTextIcon,
   AlignLeft,
+  CheckCircle,
+  Clock,
+  Archive,
+  ExternalLink,
+  PlayCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -86,7 +91,7 @@ interface Idea {
   hook: string;
   contentType: string;
   targetAudience: string;
-  status: string;
+  status: "new" | "in_progress" | "developed" | "archived";
   createdAt: string;
   isSaved?: boolean;
   mediaType?: "video" | "photo";
@@ -95,6 +100,51 @@ interface Idea {
   imageDescription?: string;
   imageOverlayText?: string;
   copyContent?: string;
+  developedPostId?: string;
+}
+
+type IdeaStatus = "new" | "in_progress" | "developed" | "archived";
+
+const STATUS_FILTERS = [
+  { value: "all", label: "Tutte", icon: Lightbulb },
+  { value: "new", label: "Nuove", icon: Sparkles },
+  { value: "in_progress", label: "In Lavorazione", icon: Clock },
+  { value: "developed", label: "Sviluppate", icon: CheckCircle },
+  { value: "archived", label: "Archiviate", icon: Archive },
+] as const;
+
+function getStatusInfo(status: IdeaStatus, developedPostId?: string) {
+  if (developedPostId || status === "developed") {
+    return { 
+      label: "Sviluppata", 
+      color: "bg-green-500/10 text-green-600 border-green-200 dark:border-green-800", 
+      icon: CheckCircle,
+      cardClass: "border-l-4 border-l-green-500"
+    };
+  }
+  switch (status) {
+    case "in_progress":
+      return { 
+        label: "In Lavorazione", 
+        color: "bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-800", 
+        icon: Clock,
+        cardClass: "border-l-4 border-l-amber-500"
+      };
+    case "archived":
+      return { 
+        label: "Archiviata", 
+        color: "bg-gray-500/10 text-gray-500 border-gray-200 dark:border-gray-700", 
+        icon: Archive,
+        cardClass: "border-l-4 border-l-gray-400 opacity-75"
+      };
+    default:
+      return { 
+        label: "Nuova", 
+        color: "bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800", 
+        icon: Sparkles,
+        cardClass: ""
+      };
+  }
 }
 
 const OBJECTIVES = [
@@ -166,7 +216,7 @@ export default function ContentStudioIdeas() {
   const [mediaType, setMediaType] = useState<"video" | "photo">("photo");
   const [copyType, setCopyType] = useState<"short" | "long">("short");
 
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [filterContentType, setFilterContentType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("score-desc");
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
@@ -273,13 +323,12 @@ export default function ContentStudioIdeas() {
   const filteredAndSortedIdeas = useMemo(() => {
     let result = [...ideas];
 
-    if (filterStatus !== "all") {
-      const statusMap: Record<string, string> = {
-        new: "new",
-        "in-progress": "in_progress",
-        used: "used",
-      };
-      result = result.filter((idea) => idea.status === statusMap[filterStatus]);
+    if (statusFilter !== "all") {
+      if (statusFilter === "developed") {
+        result = result.filter((idea) => idea.status === "developed" || idea.developedPostId);
+      } else {
+        result = result.filter((idea) => idea.status === statusFilter && !idea.developedPostId);
+      }
     }
 
     if (filterContentType !== "all") {
@@ -319,7 +368,7 @@ export default function ContentStudioIdeas() {
     });
 
     return result;
-  }, [ideas, filterStatus, filterContentType, sortBy, activeFilters]);
+  }, [ideas, statusFilter, filterContentType, sortBy, activeFilters]);
 
   const createIdeaMutation = useMutation({
     mutationFn: async (idea: Partial<Idea>) => {
@@ -377,6 +426,49 @@ export default function ContentStudioIdeas() {
       });
     },
   });
+
+  const updateIdeaStatusMutation = useMutation({
+    mutationFn: async ({ ideaId, status, developedPostId }: { ideaId: string; status: IdeaStatus; developedPostId?: string }) => {
+      const response = await fetch(`/api/content/ideas/${ideaId}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status, developedPostId }),
+      });
+      if (!response.ok) throw new Error("Failed to update idea status");
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      const statusLabels: Record<IdeaStatus, string> = {
+        new: "Nuova",
+        in_progress: "In Lavorazione",
+        developed: "Sviluppata",
+        archived: "Archiviata",
+      };
+      toast({
+        title: "Stato aggiornato",
+        description: `L'idea è stata segnata come "${statusLabels[variables.status]}"`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/content/ideas"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStatusChange = (ideaId: string, newStatus: IdeaStatus) => {
+    updateIdeaStatusMutation.mutate({ ideaId, status: newStatus });
+  };
+
+  const handleGoToPost = (postId: string) => {
+    setLocation(`/consultant/content-studio/posts?postId=${postId}`);
+  };
 
   const handleGenerateIdeas = async () => {
     if (!topic || !targetAudience || !objective) {
@@ -763,59 +855,97 @@ export default function ContentStudioIdeas() {
                 </div>
               </div>
 
+              <div className="flex flex-wrap gap-2 mb-4">
+                {STATUS_FILTERS.map((filter) => {
+                  const FilterIcon = filter.icon;
+                  const isActive = statusFilter === filter.value;
+                  const count = filter.value === "all" 
+                    ? ideas.length 
+                    : filter.value === "developed"
+                      ? ideas.filter(i => i.status === "developed" || i.developedPostId).length
+                      : ideas.filter(i => i.status === filter.value && !i.developedPostId).length;
+                  return (
+                    <button
+                      key={filter.value}
+                      onClick={() => setStatusFilter(filter.value)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                        isActive
+                          ? filter.value === "developed"
+                            ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md"
+                            : filter.value === "in_progress"
+                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md"
+                              : filter.value === "archived"
+                                ? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md"
+                                : filter.value === "new"
+                                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
+                                  : "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md"
+                          : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                      }`}
+                    >
+                      <FilterIcon className="h-4 w-4" />
+                      {filter.label}
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-muted-foreground/20"}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="flex flex-wrap gap-2 mb-6">
+                <span className="text-xs text-muted-foreground self-center mr-2">Tipo:</span>
                 <button
                   onClick={() => toggleFilter("all")}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                     activeFilters.has("all")
                       ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md"
                       : "bg-muted hover:bg-muted/80 text-muted-foreground"
                   }`}
                 >
-                  Tutte
+                  Tutti
                 </button>
                 <button
                   onClick={() => toggleFilter("video")}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
                     activeFilters.has("video")
                       ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
                       : "bg-muted hover:bg-muted/80 text-muted-foreground"
                   }`}
                 >
-                  <Video className="h-4 w-4" />
+                  <Video className="h-3 w-3" />
                   Video
                 </button>
                 <button
                   onClick={() => toggleFilter("photo")}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
                     activeFilters.has("photo")
                       ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md"
                       : "bg-muted hover:bg-muted/80 text-muted-foreground"
                   }`}
                 >
-                  <Camera className="h-4 w-4" />
+                  <Camera className="h-3 w-3" />
                   Foto
                 </button>
                 <button
                   onClick={() => toggleFilter("long")}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
                     activeFilters.has("long")
                       ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
                       : "bg-muted hover:bg-muted/80 text-muted-foreground"
                   }`}
                 >
-                  <AlignLeft className="h-4 w-4" />
+                  <AlignLeft className="h-3 w-3" />
                   Lungo
                 </button>
                 <button
                   onClick={() => toggleFilter("short")}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
                     activeFilters.has("short")
                       ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md"
                       : "bg-muted hover:bg-muted/80 text-muted-foreground"
                   }`}
                 >
-                  <FileTextIcon className="h-4 w-4" />
+                  <FileTextIcon className="h-3 w-3" />
                   Corto
                 </button>
               </div>
@@ -841,7 +971,13 @@ export default function ContentStudioIdeas() {
                 </div>
               ) : filteredAndSortedIdeas.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {filteredAndSortedIdeas.map((idea) => (
+                  {filteredAndSortedIdeas.map((idea) => {
+                    const statusInfo = getStatusInfo(idea.status, idea.developedPostId);
+                    const StatusIcon = statusInfo.icon;
+                    const isDeveloped = idea.developedPostId || idea.status === "developed";
+                    const isArchived = idea.status === "archived";
+                    
+                    return (
                     <motion.div
                       key={idea.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -849,10 +985,14 @@ export default function ContentStudioIdeas() {
                       whileHover={{ scale: 1.02, y: -4 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 group">
+                      <Card className={`h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 group ${statusInfo.cardClass} ${isArchived ? "opacity-70" : ""}`}>
                         <CardContent className="p-5 flex flex-col h-full">
                           <div className="flex items-center justify-between gap-2 mb-3">
                             <div className="flex flex-wrap gap-2">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${statusInfo.color}`}>
+                                <StatusIcon className="h-3 w-3" />
+                                {statusInfo.label}
+                              </span>
                               {idea.mediaType && (
                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
                                   idea.mediaType === "video"
@@ -912,15 +1052,39 @@ export default function ContentStudioIdeas() {
                             </p>
                           )}
 
+                          {isDeveloped && idea.developedPostId && (
+                            <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-2 mb-3">
+                              <button
+                                onClick={() => handleGoToPost(idea.developedPostId!)}
+                                className="w-full flex items-center justify-center gap-2 text-green-600 dark:text-green-400 font-medium text-sm hover:text-green-700 dark:hover:text-green-300 transition-colors"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                Vai al Post
+                              </button>
+                            </div>
+                          )}
+
                           <div className="flex gap-2 mt-auto pt-3 border-t">
-                            <Button 
-                              size="sm" 
-                              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-                              onClick={() => handleDevelopPost(idea)}
-                            >
-                              <Zap className="h-4 w-4 mr-1" />
-                              Sviluppa
-                            </Button>
+                            {isDeveloped ? (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="flex-1 border-green-300 text-green-600 hover:bg-green-50"
+                                onClick={() => idea.developedPostId && handleGoToPost(idea.developedPostId)}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Post Creato
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                                onClick={() => handleDevelopPost(idea)}
+                              >
+                                <Zap className="h-4 w-4 mr-1" />
+                                Sviluppa
+                              </Button>
+                            )}
                             <Button 
                               size="sm" 
                               variant="outline" 
@@ -937,6 +1101,19 @@ export default function ContentStudioIdeas() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "new")} disabled={idea.status === "new"}>
+                                  <Sparkles className="h-4 w-4 mr-2" />
+                                  Segna come Nuova
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "in_progress")} disabled={idea.status === "in_progress"}>
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  In Lavorazione
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "archived")} disabled={idea.status === "archived"}>
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  Archivia
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem>
                                   <ImageIcon className="h-4 w-4 mr-2" />
                                   Genera Immagine
@@ -959,7 +1136,8 @@ export default function ContentStudioIdeas() {
                         </CardContent>
                       </Card>
                     </motion.div>
-                  ))}
+                  );
+                  })}
                 </div>
               ) : (
                 <Card>
@@ -1148,9 +1326,18 @@ export default function ContentStudioIdeas() {
               Dettagli Idea
             </DialogTitle>
           </DialogHeader>
-          {viewingIdea && (
+          {viewingIdea && (() => {
+            const viewStatusInfo = getStatusInfo(viewingIdea.status, viewingIdea.developedPostId);
+            const ViewStatusIcon = viewStatusInfo.icon;
+            const isViewDeveloped = viewingIdea.developedPostId || viewingIdea.status === "developed";
+            
+            return (
             <div className="space-y-6">
               <div className="flex flex-wrap gap-2">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${viewStatusInfo.color}`}>
+                  <ViewStatusIcon className="h-4 w-4" />
+                  {viewStatusInfo.label}
+                </span>
                 {viewingIdea.mediaType && (
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
                     viewingIdea.mediaType === "video"
@@ -1187,6 +1374,29 @@ export default function ContentStudioIdeas() {
                   Score: {viewingIdea.score || 0}
                 </div>
               </div>
+
+              {isViewDeveloped && viewingIdea.developedPostId && (
+                <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Questa idea è stata sviluppata in un post</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-green-300 text-green-600 hover:bg-green-100"
+                      onClick={() => {
+                        handleGoToPost(viewingIdea.developedPostId!);
+                        setViewingIdea(null);
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      Vai al Post
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <h3 className="text-xl font-bold mb-2">{viewingIdea.title}</h3>
@@ -1256,16 +1466,32 @@ export default function ContentStudioIdeas() {
               )}
 
               <div className="flex gap-3 pt-4 border-t">
-                <Button 
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-                  onClick={() => {
-                    handleDevelopPost(viewingIdea);
-                    setViewingIdea(null);
-                  }}
-                >
-                  <Zap className="h-4 w-4 mr-2" />
-                  Sviluppa Post
-                </Button>
+                {isViewDeveloped ? (
+                  <Button 
+                    variant="outline"
+                    className="flex-1 border-green-300 text-green-600 hover:bg-green-50"
+                    onClick={() => {
+                      if (viewingIdea.developedPostId) {
+                        handleGoToPost(viewingIdea.developedPostId);
+                      }
+                      setViewingIdea(null);
+                    }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Vai al Post
+                  </Button>
+                ) : (
+                  <Button 
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                    onClick={() => {
+                      handleDevelopPost(viewingIdea);
+                      setViewingIdea(null);
+                    }}
+                  >
+                    <Zap className="h-4 w-4 mr-2" />
+                    Sviluppa Post
+                  </Button>
+                )}
                 <Button 
                   variant="destructive" 
                   onClick={() => {
@@ -1278,7 +1504,8 @@ export default function ContentStudioIdeas() {
                 </Button>
               </div>
             </div>
-          )}
+          );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

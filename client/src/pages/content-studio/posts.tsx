@@ -854,8 +854,28 @@ export default function ContentStudioPosts() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async (createdPost) => {
       const isEditing = !!editingPost;
+      
+      if (!isEditing && sourceIdeaId && createdPost?.id) {
+        try {
+          await fetch(`/api/content/ideas/${sourceIdeaId}`, {
+            method: "PUT",
+            headers: {
+              ...getAuthHeaders(),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              status: "developed",
+              developedPostId: createdPost.id,
+            }),
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/content/ideas"] });
+        } catch (error) {
+          console.error("Failed to update idea status:", error);
+        }
+      }
+      
       toast({
         title: isEditing ? "Post aggiornato" : "Post creato",
         description: isEditing ? "Il post è stato aggiornato con successo" : "Il post è stato creato con successo",
@@ -868,6 +888,8 @@ export default function ContentStudioPosts() {
       resetCarouselState();
       setCopyTypeFromIdea(false);
       setMediaTypeFromIdea(false);
+      setSourceIdeaId(null);
+      setSourceIdeaTitle(null);
     },
     onError: (error: Error) => {
       toast({
