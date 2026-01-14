@@ -79,6 +79,8 @@ import {
   Menu,
   X,
   MoveRight,
+  Copy,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -993,14 +995,25 @@ export default function ContentStudioPosts() {
     return posts.filter((p) => p.folderId === folderId).length;
   };
 
+  // Build recursive folder hierarchy - supports unlimited nesting like Google Drive
   const buildFolderHierarchy = (folders: ContentFolder[]): ContentFolder[] => {
-    const projects = folders.filter((f) => f.folderType === "project" && !f.parentId);
-    const childFolders = folders.filter((f) => f.folderType === "folder" && f.parentId);
+    const buildChildren = (parentId: string | null): ContentFolder[] => {
+      return folders
+        .filter((f) => (f.parentId ?? null) === parentId)
+        .map((folder) => ({
+          ...folder,
+          children: buildChildren(folder.id),
+        }))
+        .sort((a, b) => {
+          // Projects first, then folders
+          if (a.folderType === "project" && b.folderType !== "project") return -1;
+          if (a.folderType !== "project" && b.folderType === "project") return 1;
+          return a.sortOrder - b.sortOrder;
+        });
+    };
     
-    return projects.map((project) => ({
-      ...project,
-      children: childFolders.filter((f) => f.parentId === project.id).sort((a, b) => a.sortOrder - b.sortOrder),
-    })).sort((a, b) => a.sortOrder - b.sortOrder);
+    // Get all root-level items (no parent)
+    return buildChildren(null);
   };
 
   const folderHierarchy = useMemo(() => buildFolderHierarchy(folders), [folders]);
@@ -1473,60 +1486,67 @@ export default function ContentStudioPosts() {
           {folderHierarchy.length > 0 && (
             <>
               <Separator className="my-3" />
-              <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Progetti</p>
+              <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cartelle</p>
             </>
           )}
 
-          {folderHierarchy.map((project) => (
-            <div key={project.id} className="space-y-0.5">
-              <div
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                  selectedFolderId === project.id
-                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                    : "hover:bg-muted"
-                }`}
-              >
-                <button
-                  onClick={() => toggleProjectExpanded(project.id)}
-                  className="p-0.5 hover:bg-muted-foreground/10 rounded"
-                >
-                  {expandedProjects.has(project.id) ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </button>
-                <button
-                  onClick={() => { setSelectedFolderId(project.id); if (isMobile) setFolderSidebarOpen(false); }}
-                  className="flex-1 flex items-center gap-2 text-left"
-                >
-                  <FolderOpen className="h-4 w-4" style={{ color: project.color || "#6366f1" }} />
-                  <span className="truncate font-medium">{project.name}</span>
-                </button>
-                <Badge variant="secondary" className="text-xs">{getPostCountForFolder(project.id)}</Badge>
-              </div>
-
-              {expandedProjects.has(project.id) && project.children && project.children.length > 0 && (
-                <div className="ml-6 space-y-0.5">
-                  {project.children.map((folder) => (
+          {/* Recursive folder tree rendering */}
+          {(() => {
+            const renderFolderItem = (folder: ContentFolder, depth: number = 0): React.ReactNode => {
+              const hasChildren = folder.children && folder.children.length > 0;
+              const isExpanded = expandedProjects.has(folder.id);
+              const isProject = folder.folderType === "project";
+              
+              return (
+                <div key={folder.id} className="space-y-0.5">
+                  <div
+                    className={`flex items-center gap-2 py-2 rounded-lg cursor-pointer transition-colors ${
+                      selectedFolderId === folder.id
+                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                        : "hover:bg-muted"
+                    }`}
+                    style={{ paddingLeft: `${12 + depth * 16}px`, paddingRight: "12px" }}
+                  >
+                    {hasChildren ? (
+                      <button
+                        onClick={() => toggleProjectExpanded(folder.id)}
+                        className="p-0.5 hover:bg-muted-foreground/10 rounded flex-shrink-0"
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </button>
+                    ) : (
+                      <div className="w-5" />
+                    )}
                     <button
-                      key={folder.id}
                       onClick={() => { setSelectedFolderId(folder.id); if (isMobile) setFolderSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
-                        selectedFolderId === folder.id
-                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                          : "hover:bg-muted"
-                      }`}
+                      className="flex-1 flex items-center gap-2 text-left min-w-0"
                     >
-                      <Folder className="h-4 w-4" style={{ color: folder.color || "#94a3b8" }} />
-                      <span className="truncate flex-1">{folder.name}</span>
-                      <Badge variant="secondary" className="text-xs">{getPostCountForFolder(folder.id)}</Badge>
+                      {isProject ? (
+                        <FolderOpen className="h-4 w-4 flex-shrink-0" style={{ color: folder.color || "#6366f1" }} />
+                      ) : (
+                        <Folder className="h-4 w-4 flex-shrink-0" style={{ color: folder.color || "#94a3b8" }} />
+                      )}
+                      <span className={`truncate ${isProject ? "font-medium" : ""}`}>{folder.name}</span>
                     </button>
-                  ))}
+                    <Badge variant="secondary" className="text-xs flex-shrink-0">{getPostCountForFolder(folder.id)}</Badge>
+                  </div>
+
+                  {/* Render children recursively */}
+                  {isExpanded && hasChildren && (
+                    <div className="space-y-0.5">
+                      {folder.children!.map((child) => renderFolderItem(child, depth + 1))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            };
+            
+            return folderHierarchy.map((folder) => renderFolderItem(folder, 0));
+          })()}
         </div>
       </ScrollArea>
       
@@ -2811,35 +2831,78 @@ export default function ContentStudioPosts() {
             
             return (
               <div className="flex flex-col lg:flex-row flex-1 min-h-0">
-                {/* Left Panel - Preview */}
-                <div className="lg:w-[380px] flex-shrink-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 p-6 border-b lg:border-b-0 lg:border-r overflow-y-auto max-h-[300px] lg:max-h-full">
+                {/* Left Panel - Phone Mockup Preview */}
+                <div className="lg:w-[420px] flex-shrink-0 bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-black p-6 border-b lg:border-b-0 lg:border-r overflow-y-auto max-h-[350px] lg:max-h-full flex items-start justify-center">
                   <div className="lg:sticky lg:top-0">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className={`p-2 rounded-lg ${
-                        viewingPost.platform === "instagram" ? "bg-gradient-to-br from-purple-500/20 to-pink-500/20" :
-                        viewingPost.platform === "facebook" ? "bg-blue-500/20" :
-                        viewingPost.platform === "linkedin" ? "bg-blue-600/20" :
-                        "bg-muted"
+                    {/* Platform indicator */}
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <div className={`p-2.5 rounded-xl shadow-lg ${
+                        viewingPost.platform === "instagram" ? "bg-gradient-to-br from-purple-500 to-pink-500" :
+                        viewingPost.platform === "facebook" ? "bg-gradient-to-br from-blue-500 to-blue-600" :
+                        viewingPost.platform === "linkedin" ? "bg-gradient-to-br from-blue-600 to-blue-700" :
+                        viewingPost.platform === "twitter" ? "bg-gradient-to-br from-gray-800 to-black" :
+                        viewingPost.platform === "tiktok" ? "bg-gradient-to-br from-gray-900 to-black" :
+                        "bg-gradient-to-br from-gray-500 to-gray-600"
                       }`}>
-                        {getPlatformIcon(viewingPost.platform)}
+                        <div className="text-white">
+                          {getPlatformIcon(viewingPost.platform)}
+                        </div>
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold capitalize">{viewingPost.platform}</h4>
-                        <p className="text-xs text-muted-foreground">Anteprima</p>
+                        <h4 className="text-sm font-bold capitalize">{viewingPost.platform}</h4>
+                        <p className="text-xs text-muted-foreground">Anteprima Live</p>
                       </div>
                     </div>
-                    <div className="transform scale-[0.92] origin-top">
-                      <SocialPreview
-                        platform={viewingPost.platform || "instagram"}
-                        hook={hookText}
-                        body={bodyText}
-                        cta={ctaText}
-                        copyType={viewCopyType as "short" | "long"}
-                        chiCosaCome={viewStructured.chiCosaCome || viewingPost.chiCosaCome}
-                        errore={viewStructured.errore || viewingPost.errore}
-                        soluzione={viewStructured.soluzione || viewingPost.soluzione}
-                        riprovaSociale={viewStructured.riprovaSociale || viewingPost.riprovaSociale}
-                      />
+                    
+                    {/* Phone Mockup Frame */}
+                    <div className="relative mx-auto" style={{ width: "280px" }}>
+                      {/* Phone outer frame */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-gray-800 to-gray-900 rounded-[2.5rem] shadow-2xl" style={{ transform: "scale(1.02)" }} />
+                      
+                      {/* Phone inner bezel */}
+                      <div className="relative bg-gray-900 rounded-[2.3rem] p-2 shadow-inner">
+                        {/* Dynamic Island / Notch */}
+                        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-10" />
+                        
+                        {/* Screen */}
+                        <div className="relative bg-white dark:bg-black rounded-[1.8rem] overflow-hidden" style={{ height: "500px" }}>
+                          {/* Status bar */}
+                          <div className="absolute top-0 inset-x-0 h-11 bg-white/80 dark:bg-black/80 backdrop-blur-sm z-10 flex items-end justify-between px-6 pb-1">
+                            <span className="text-xs font-semibold">9:41</span>
+                            <div className="flex items-center gap-1">
+                              <div className="w-4 h-2 border border-current rounded-sm relative">
+                                <div className="absolute inset-0.5 bg-current rounded-sm" style={{ width: "70%" }} />
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* App content - scrollable */}
+                          <div className="h-full overflow-y-auto pt-11 pb-6 scrollbar-thin">
+                            <div className="transform scale-[0.72] origin-top" style={{ width: "138.88%" }}>
+                              <SocialPreview
+                                platform={viewingPost.platform || "instagram"}
+                                hook={hookText}
+                                body={bodyText}
+                                cta={ctaText}
+                                copyType={viewCopyType as "short" | "long"}
+                                chiCosaCome={viewStructured.chiCosaCome || viewingPost.chiCosaCome}
+                                errore={viewStructured.errore || viewingPost.errore}
+                                soluzione={viewStructured.soluzione || viewingPost.soluzione}
+                                riprovaSociale={viewStructured.riprovaSociale || viewingPost.riprovaSociale}
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Home indicator */}
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-28 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+                        </div>
+                      </div>
+                      
+                      {/* Side buttons */}
+                      <div className="absolute left-0 top-24 w-1 h-8 bg-gray-700 rounded-l-full" />
+                      <div className="absolute left-0 top-36 w-1 h-12 bg-gray-700 rounded-l-full" />
+                      <div className="absolute left-0 top-52 w-1 h-12 bg-gray-700 rounded-l-full" />
+                      <div className="absolute right-0 top-32 w-1 h-16 bg-gray-700 rounded-r-full" />
                     </div>
                   </div>
                 </div>
@@ -2893,11 +2956,11 @@ export default function ContentStudioPosts() {
                     </div>
                   </div>
 
-                  {/* Content Sections */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
-                    {/* Schedule info */}
+                  {/* Content Sections with Tabs */}
+                  <div className="flex-1 overflow-y-auto min-h-0">
+                    {/* Schedule info - always visible */}
                     {viewingPost.scheduledDate && (
-                      <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/30">
+                      <div className="mx-6 mt-4 flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/30">
                         <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
                           <Calendar className="h-5 w-5 text-amber-600" />
                         </div>
@@ -2912,132 +2975,307 @@ export default function ContentStudioPosts() {
                       </div>
                     )}
 
-                    {/* Hook */}
-                    {hookText && (
-                      <div className="rounded-xl overflow-hidden">
-                        <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2">
-                          <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎣 Hook</span>
-                        </div>
-                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-4">
-                          <p className="text-sm font-medium leading-relaxed">{hookText}</p>
-                        </div>
+                    {/* Tabbed Content */}
+                    <Tabs defaultValue="copy" className="flex-1 flex flex-col">
+                      <div className="px-6 pt-4 pb-2 border-b bg-slate-50/50 dark:bg-zinc-900/50">
+                        <TabsList className="grid w-full grid-cols-3 h-10">
+                          <TabsTrigger value="copy" className="text-xs font-medium">
+                            <FileText className="h-3.5 w-3.5 mr-1.5" />
+                            Copy
+                          </TabsTrigger>
+                          <TabsTrigger value="video" className="text-xs font-medium">
+                            <Video className="h-3.5 w-3.5 mr-1.5" />
+                            Video
+                          </TabsTrigger>
+                          <TabsTrigger value="visual" className="text-xs font-medium">
+                            <Image className="h-3.5 w-3.5 mr-1.5" />
+                            Visual
+                          </TabsTrigger>
+                        </TabsList>
                       </div>
-                    )}
 
-                    {/* Body */}
-                    {bodyText && (
-                      <div className="rounded-xl overflow-hidden border">
-                        <div className="bg-slate-100 dark:bg-zinc-800 px-4 py-2">
-                          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">📝 Contenuto</span>
+                      {/* Copy Tab */}
+                      <TabsContent value="copy" className="flex-1 p-6 space-y-4 m-0">
+                        {/* Copy All Button */}
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const fullText = [hookText, bodyText, ctaText].filter(Boolean).join("\n\n");
+                              navigator.clipboard.writeText(fullText);
+                              toast({ title: "Copiato!", description: "Testo completo copiato negli appunti" });
+                            }}
+                            className="gap-2"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            Copia Tutto
+                          </Button>
                         </div>
-                        <div className="bg-white dark:bg-zinc-900 p-4 max-h-48 overflow-y-auto">
-                          <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                            {formatTextWithHashtags(bodyText)}
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
-                    {/* CTA */}
-                    {ctaText && (
-                      <div className="rounded-xl overflow-hidden">
-                        <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2">
-                          <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎯 Call to Action</span>
-                        </div>
-                        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 p-4">
-                          <p className="text-sm font-medium">{ctaText}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Long Copy Sections */}
-                    {(() => {
-                      const chiCosaCome = viewStructured.chiCosaCome || viewingPost.chiCosaCome;
-                      const errore = viewStructured.errore || viewingPost.errore;
-                      const soluzione = viewStructured.soluzione || viewingPost.soluzione;
-                      const riprovaSociale = viewStructured.riprovaSociale || viewingPost.riprovaSociale;
-                      const hasLongCopyContent = (chiCosaCome?.trim()) || (errore?.trim()) || (soluzione?.trim()) || (riprovaSociale?.trim());
-                      
-                      if (hasLongCopyContent) {
-                        return (
-                          <div className="rounded-xl border overflow-hidden">
-                            <div className="bg-violet-100 dark:bg-violet-900/30 px-4 py-2">
-                              <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wide">📄 Copy Lungo - Sezioni</span>
+                        {/* Hook */}
+                        {hookText && (
+                          <div className="rounded-xl overflow-hidden group relative">
+                            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎣 Hook</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(hookText);
+                                  toast({ title: "Copiato!", description: "Hook copiato" });
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
                             </div>
-                            <div className="divide-y">
-                              {chiCosaCome && (
-                                <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20">
-                                  <p className="text-xs font-semibold text-blue-600 mb-1">👤 Chi-Cosa-Come</p>
-                                  <p className="text-sm">{chiCosaCome}</p>
-                                </div>
-                              )}
-                              {errore && (
-                                <div className="p-4 bg-red-50/50 dark:bg-red-950/20">
-                                  <p className="text-xs font-semibold text-red-600 mb-1">❌ Errore</p>
-                                  <p className="text-sm">{errore}</p>
-                                </div>
-                              )}
-                              {soluzione && (
-                                <div className="p-4 bg-green-50/50 dark:bg-green-950/20">
-                                  <p className="text-xs font-semibold text-green-600 mb-1">✅ Soluzione</p>
-                                  <p className="text-sm">{soluzione}</p>
-                                </div>
-                              )}
-                              {riprovaSociale && (
-                                <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20">
-                                  <p className="text-xs font-semibold text-amber-600 mb-1">📊 Riprova Sociale</p>
-                                  <p className="text-sm">{riprovaSociale}</p>
-                                </div>
-                              )}
+                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-4">
+                              <p className="text-sm font-medium leading-relaxed">{hookText}</p>
                             </div>
                           </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                        )}
 
-                    {/* Video Script */}
-                    {(() => {
-                      const videoFullScript = viewStructured.videoFullScript || viewingPost.videoFullScript;
-                      if (viewingPost.mediaType === "video" || videoFullScript) {
-                        return (
-                          <div className="rounded-xl border overflow-hidden">
-                            <div className="bg-blue-100 dark:bg-blue-900/30 px-4 py-2">
-                              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">🎬 Script Video</span>
+                        {/* Body */}
+                        {bodyText && (
+                          <div className="rounded-xl overflow-hidden border group relative">
+                            <div className="bg-slate-100 dark:bg-zinc-800 px-4 py-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">📝 Contenuto</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(bodyText);
+                                  toast({ title: "Copiato!", description: "Contenuto copiato" });
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
                             </div>
-                            <div className="bg-white dark:bg-zinc-900 p-4 max-h-40 overflow-y-auto">
-                              <pre className="text-xs whitespace-pre-wrap font-mono">{videoFullScript || "Nessuno script video"}</pre>
+                            <div className="bg-white dark:bg-zinc-900 p-4 max-h-48 overflow-y-auto">
+                              <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                                {formatTextWithHashtags(bodyText)}
+                              </div>
                             </div>
                           </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                        )}
 
-                    {/* Image Description */}
-                    {(() => {
-                      const imageDescription = viewStructured.imageDescription || viewingPost.imageDescription;
-                      const imageOverlayText = viewStructured.imageOverlayText || viewingPost.imageOverlayText;
-                      if (imageDescription || imageOverlayText) {
-                        return (
-                          <div className="rounded-xl border overflow-hidden">
-                            <div className="bg-emerald-100 dark:bg-emerald-900/30 px-4 py-2">
-                              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">🖼️ Descrizione Immagine</span>
+                        {/* CTA */}
+                        {ctaText && (
+                          <div className="rounded-xl overflow-hidden group relative">
+                            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎯 Call to Action</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(ctaText);
+                                  toast({ title: "Copiato!", description: "CTA copiato" });
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
                             </div>
-                            <div className="bg-white dark:bg-zinc-900 p-4 space-y-3">
-                              {imageDescription && <p className="text-sm">{imageDescription}</p>}
-                              {imageOverlayText && (
-                                <div className="bg-slate-100 dark:bg-zinc-800 p-3 rounded-lg text-center">
-                                  <p className="text-xs text-muted-foreground mb-1">Testo overlay</p>
-                                  <p className="font-bold">{imageOverlayText}</p>
+                            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 p-4">
+                              <p className="text-sm font-medium">{ctaText}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Long Copy Sections */}
+                        {(() => {
+                          const chiCosaCome = viewStructured.chiCosaCome || viewingPost.chiCosaCome;
+                          const errore = viewStructured.errore || viewingPost.errore;
+                          const soluzione = viewStructured.soluzione || viewingPost.soluzione;
+                          const riprovaSociale = viewStructured.riprovaSociale || viewingPost.riprovaSociale;
+                          const hasLongCopyContent = (chiCosaCome?.trim()) || (errore?.trim()) || (soluzione?.trim()) || (riprovaSociale?.trim());
+                          
+                          if (hasLongCopyContent) {
+                            return (
+                              <div className="rounded-xl border overflow-hidden">
+                                <div className="bg-violet-100 dark:bg-violet-900/30 px-4 py-2">
+                                  <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wide">📄 Copy Lungo - Sezioni</span>
                                 </div>
-                              )}
+                                <div className="divide-y">
+                                  {chiCosaCome && (
+                                    <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20">
+                                      <p className="text-xs font-semibold text-blue-600 mb-1">👤 Chi-Cosa-Come</p>
+                                      <p className="text-sm">{chiCosaCome}</p>
+                                    </div>
+                                  )}
+                                  {errore && (
+                                    <div className="p-4 bg-red-50/50 dark:bg-red-950/20">
+                                      <p className="text-xs font-semibold text-red-600 mb-1">❌ Errore</p>
+                                      <p className="text-sm">{errore}</p>
+                                    </div>
+                                  )}
+                                  {soluzione && (
+                                    <div className="p-4 bg-green-50/50 dark:bg-green-950/20">
+                                      <p className="text-xs font-semibold text-green-600 mb-1">✅ Soluzione</p>
+                                      <p className="text-sm">{soluzione}</p>
+                                    </div>
+                                  )}
+                                  {riprovaSociale && (
+                                    <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20">
+                                      <p className="text-xs font-semibold text-amber-600 mb-1">📊 Riprova Sociale</p>
+                                      <p className="text-sm">{riprovaSociale}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </TabsContent>
+
+                      {/* Video Tab */}
+                      <TabsContent value="video" className="flex-1 p-6 space-y-4 m-0">
+                        {(() => {
+                          const videoFullScript = viewStructured.videoFullScript || viewingPost.videoFullScript;
+                          const videoHook = viewStructured.videoHook || viewingPost.videoHook;
+                          const videoProblema = viewStructured.videoProblema || viewingPost.videoProblema;
+                          const videoSoluzione = viewStructured.videoSoluzione || viewingPost.videoSoluzione;
+                          const videoCta = viewStructured.videoCta || viewingPost.videoCta;
+                          
+                          if (videoFullScript || videoHook || videoProblema || videoSoluzione || videoCta) {
+                            return (
+                              <>
+                                {/* Copy Script Button */}
+                                <div className="flex justify-end">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(videoFullScript || [videoHook, videoProblema, videoSoluzione, videoCta].filter(Boolean).join("\n\n"));
+                                      toast({ title: "Copiato!", description: "Script video copiato negli appunti" });
+                                    }}
+                                    className="gap-2"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                    Copia Script
+                                  </Button>
+                                </div>
+
+                                <div className="rounded-xl border overflow-hidden">
+                                  <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <Video className="h-5 w-5 text-white" />
+                                      <span className="text-sm font-semibold text-white">Script Video Completo</span>
+                                    </div>
+                                  </div>
+                                  <div className="bg-white dark:bg-zinc-900 p-4">
+                                    <pre className="text-sm whitespace-pre-wrap font-mono leading-relaxed">{videoFullScript || "Nessuno script video generato"}</pre>
+                                  </div>
+                                </div>
+
+                                {(videoHook || videoProblema || videoSoluzione || videoCta) && (
+                                  <div className="rounded-xl border overflow-hidden">
+                                    <div className="bg-slate-100 dark:bg-zinc-800 px-4 py-2">
+                                      <span className="text-xs font-semibold uppercase tracking-wide">Sezioni Script</span>
+                                    </div>
+                                    <div className="divide-y">
+                                      {videoHook && (
+                                        <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20">
+                                          <p className="text-xs font-semibold text-purple-600 mb-1">🎬 Video Hook</p>
+                                          <p className="text-sm">{videoHook}</p>
+                                        </div>
+                                      )}
+                                      {videoProblema && (
+                                        <div className="p-4 bg-red-50/50 dark:bg-red-950/20">
+                                          <p className="text-xs font-semibold text-red-600 mb-1">❓ Problema</p>
+                                          <p className="text-sm">{videoProblema}</p>
+                                        </div>
+                                      )}
+                                      {videoSoluzione && (
+                                        <div className="p-4 bg-green-50/50 dark:bg-green-950/20">
+                                          <p className="text-xs font-semibold text-green-600 mb-1">💡 Soluzione</p>
+                                          <p className="text-sm">{videoSoluzione}</p>
+                                        </div>
+                                      )}
+                                      {videoCta && (
+                                        <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20">
+                                          <p className="text-xs font-semibold text-blue-600 mb-1">📢 CTA Video</p>
+                                          <p className="text-sm">{videoCta}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                              <Video className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                              <p className="text-muted-foreground">Nessuno script video disponibile</p>
+                              <p className="text-sm text-muted-foreground/70 mt-1">Genera uno script video per questo post</p>
                             </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                          );
+                        })()}
+                      </TabsContent>
+
+                      {/* Visual Tab */}
+                      <TabsContent value="visual" className="flex-1 p-6 space-y-4 m-0">
+                        {(() => {
+                          const imageDescription = viewStructured.imageDescription || viewingPost.imageDescription;
+                          const imageOverlayText = viewStructured.imageOverlayText || viewingPost.imageOverlayText;
+                          
+                          if (imageDescription || imageOverlayText) {
+                            return (
+                              <>
+                                {/* Copy Visual Button */}
+                                <div className="flex justify-end">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const visualText = [imageDescription, imageOverlayText ? `Overlay: ${imageOverlayText}` : null].filter(Boolean).join("\n\n");
+                                      navigator.clipboard.writeText(visualText);
+                                      toast({ title: "Copiato!", description: "Descrizione visiva copiata" });
+                                    }}
+                                    className="gap-2"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                    Copia Descrizione
+                                  </Button>
+                                </div>
+
+                                <div className="rounded-xl border overflow-hidden">
+                                  <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 flex items-center gap-2">
+                                    <Image className="h-5 w-5 text-white" />
+                                    <span className="text-sm font-semibold text-white">Descrizione Visiva</span>
+                                  </div>
+                                  <div className="bg-white dark:bg-zinc-900 p-4 space-y-4">
+                                    {imageDescription && (
+                                      <div>
+                                        <p className="text-xs font-semibold text-emerald-600 mb-2">🖼️ Concept Immagine</p>
+                                        <p className="text-sm leading-relaxed">{imageDescription}</p>
+                                      </div>
+                                    )}
+                                    {imageOverlayText && (
+                                      <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-zinc-800 dark:to-zinc-900 p-4 rounded-xl text-center border-2 border-dashed border-slate-300 dark:border-zinc-600">
+                                        <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Testo Overlay</p>
+                                        <p className="text-lg font-bold">{imageOverlayText}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                              <Image className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                              <p className="text-muted-foreground">Nessuna descrizione visiva</p>
+                              <p className="text-sm text-muted-foreground/70 mt-1">Aggiungi una descrizione dell'immagine per questo post</p>
+                            </div>
+                          );
+                        })()}
+                      </TabsContent>
+                    </Tabs>
                   </div>
 
                   {/* Footer */}
@@ -3087,26 +3325,36 @@ export default function ContentStudioPosts() {
                 onChange={(e) => setNewFolderName(e.target.value)}
               />
             </div>
-            {newFolderType === "folder" && folderHierarchy.length > 0 && (
+            {newFolderType === "folder" && folders.length > 0 && (
               <div className="space-y-2">
-                <Label>Progetto padre</Label>
+                <Label>Cartella padre (opzionale)</Label>
                 <Select
                   value={newFolderParentId || "none"}
                   onValueChange={(val) => setNewFolderParentId(val === "none" ? null : val)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleziona progetto" />
+                    <SelectValue placeholder="Seleziona cartella padre" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nessuno (cartella principale)</SelectItem>
-                    {folderHierarchy.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        <div className="flex items-center gap-2">
-                          <FolderOpen className="h-4 w-4" style={{ color: project.color || "#6366f1" }} />
-                          {project.name}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="none">Nessuna (livello principale)</SelectItem>
+                    {(() => {
+                      const renderOptions = (items: ContentFolder[], depth: number = 0): React.ReactNode[] => {
+                        return items.flatMap((folder) => [
+                          <SelectItem key={folder.id} value={folder.id}>
+                            <div className="flex items-center gap-2" style={{ paddingLeft: `${depth * 12}px` }}>
+                              {folder.folderType === "project" ? (
+                                <FolderOpen className="h-4 w-4" style={{ color: folder.color || "#6366f1" }} />
+                              ) : (
+                                <Folder className="h-4 w-4" style={{ color: folder.color || "#94a3b8" }} />
+                              )}
+                              {folder.name}
+                            </div>
+                          </SelectItem>,
+                          ...(folder.children ? renderOptions(folder.children, depth + 1) : []),
+                        ]);
+                      };
+                      return renderOptions(folderHierarchy);
+                    })()}
                   </SelectContent>
                 </Select>
               </div>
