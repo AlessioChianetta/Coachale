@@ -13,6 +13,29 @@ export interface GenerationProgress {
   error?: string;
 }
 
+export interface BrandVoiceData {
+  consultantDisplayName?: string;
+  businessName?: string;
+  businessDescription?: string;
+  consultantBio?: string;
+  vision?: string;
+  mission?: string;
+  values?: string[];
+  usp?: string;
+  whoWeHelp?: string;
+  whoWeDontHelp?: string;
+  whatWeDo?: string;
+  howWeDoIt?: string;
+  yearsExperience?: number;
+  clientsHelped?: number;
+  resultsGenerated?: string;
+  softwareCreated?: { emoji: string; name: string; description: string }[];
+  booksPublished?: { title: string; year: string }[];
+  caseStudies?: { client: string; result: string }[];
+  servicesOffered?: { name: string; price: string; description: string }[];
+  guarantees?: string;
+}
+
 export interface GenerationConfig {
   consultantId: string;
   businessDescription: string;
@@ -20,6 +43,7 @@ export interface GenerationConfig {
   tone: string;
   companyName?: string;
   senderName?: string;
+  brandVoiceData?: BrandVoiceData;
 }
 
 const TEMPLATE_CATEGORIES = [
@@ -53,6 +77,77 @@ function getCategoryDescription(day: number): string {
   return "Contenuto generale";
 }
 
+function buildBrandVoiceContext(brandVoice?: BrandVoiceData): string {
+  if (!brandVoice || Object.keys(brandVoice).length === 0) {
+    return "";
+  }
+  
+  let context = "\n\nBRAND VOICE & IDENTITÀ DEL CONSULENTE:\n";
+  
+  if (brandVoice.consultantDisplayName) {
+    context += `- Nome Consulente: ${brandVoice.consultantDisplayName}\n`;
+  }
+  if (brandVoice.businessName) {
+    context += `- Nome Business: ${brandVoice.businessName}\n`;
+  }
+  if (brandVoice.businessDescription) {
+    context += `- Descrizione Business: ${brandVoice.businessDescription}\n`;
+  }
+  if (brandVoice.consultantBio) {
+    context += `- Bio Consulente: ${brandVoice.consultantBio}\n`;
+  }
+  if (brandVoice.vision) {
+    context += `- Vision: ${brandVoice.vision}\n`;
+  }
+  if (brandVoice.mission) {
+    context += `- Mission: ${brandVoice.mission}\n`;
+  }
+  if (brandVoice.values && brandVoice.values.length > 0) {
+    context += `- Valori: ${brandVoice.values.join(", ")}\n`;
+  }
+  if (brandVoice.usp) {
+    context += `- Unique Selling Proposition: ${brandVoice.usp}\n`;
+  }
+  if (brandVoice.whoWeHelp) {
+    context += `- Chi Aiutiamo: ${brandVoice.whoWeHelp}\n`;
+  }
+  if (brandVoice.whoWeDontHelp) {
+    context += `- Chi NON Aiutiamo: ${brandVoice.whoWeDontHelp}\n`;
+  }
+  if (brandVoice.whatWeDo) {
+    context += `- Cosa Facciamo: ${brandVoice.whatWeDo}\n`;
+  }
+  if (brandVoice.howWeDoIt) {
+    context += `- Come Lo Facciamo: ${brandVoice.howWeDoIt}\n`;
+  }
+  if (brandVoice.yearsExperience) {
+    context += `- Anni di Esperienza: ${brandVoice.yearsExperience}\n`;
+  }
+  if (brandVoice.clientsHelped) {
+    context += `- Clienti Aiutati: ${brandVoice.clientsHelped}\n`;
+  }
+  if (brandVoice.resultsGenerated) {
+    context += `- Risultati Generati: ${brandVoice.resultsGenerated}\n`;
+  }
+  if (brandVoice.softwareCreated && brandVoice.softwareCreated.length > 0) {
+    context += `- Software Creati: ${brandVoice.softwareCreated.map(s => `${s.emoji} ${s.name} (${s.description})`).join("; ")}\n`;
+  }
+  if (brandVoice.booksPublished && brandVoice.booksPublished.length > 0) {
+    context += `- Libri Pubblicati: ${brandVoice.booksPublished.map(b => `"${b.title}" (${b.year})`).join("; ")}\n`;
+  }
+  if (brandVoice.caseStudies && brandVoice.caseStudies.length > 0) {
+    context += `- Case Studies: ${brandVoice.caseStudies.map(c => `${c.client}: ${c.result}`).join("; ")}\n`;
+  }
+  if (brandVoice.servicesOffered && brandVoice.servicesOffered.length > 0) {
+    context += `- Servizi Offerti:\n${brandVoice.servicesOffered.map(s => `  • ${s.name} (${s.price}): ${s.description}`).join("\n")}\n`;
+  }
+  if (brandVoice.guarantees) {
+    context += `- Garanzie: ${brandVoice.guarantees}\n`;
+  }
+  
+  return context;
+}
+
 async function generateTemplateForDay(
   day: number,
   config: GenerationConfig,
@@ -63,6 +158,8 @@ async function generateTemplateForDay(
   
   const provider = await getAIProvider(consultantId, consultantId);
   
+  const brandVoiceContext = buildBrandVoiceContext(config.brandVoiceData);
+  
   const prompt = `Sei un esperto di email marketing B2C. Genera UN'UNICA email di nurturing per il giorno ${day} di un percorso di 365 giorni.
 
 CONTESTO BUSINESS:
@@ -71,7 +168,7 @@ CONTESTO BUSINESS:
 - Tono: ${config.tone}
 - Azienda: ${config.companyName || "{{nomeAzienda}}"}
 - Mittente: ${config.senderName || "{{firmaEmail}}"}
-
+${brandVoiceContext}
 CATEGORIA EMAIL (Giorno ${day}): ${categoryDesc}
 - Fase del percorso: ${category}
 - Obiettivo fase: ${categoryDesc}

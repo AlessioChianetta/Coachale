@@ -3699,6 +3699,30 @@ export const leadNurturingConfig = pgTable("lead_nurturing_config", {
   // Stato sistema nurturing
   isActive: boolean("is_active").default(false).notNull(),
   
+  // Brand Voice Data (dati per generazione AI personalizzata)
+  brandVoiceData: jsonb("brand_voice_data").$type<{
+    consultantDisplayName?: string;
+    businessName?: string;
+    businessDescription?: string;
+    consultantBio?: string;
+    vision?: string;
+    mission?: string;
+    values?: string[];
+    usp?: string;
+    whoWeHelp?: string;
+    whoWeDontHelp?: string;
+    whatWeDo?: string;
+    howWeDoIt?: string;
+    yearsExperience?: number;
+    clientsHelped?: number;
+    resultsGenerated?: string;
+    softwareCreated?: { emoji: string; name: string; description: string }[];
+    booksPublished?: { title: string; year: string }[];
+    caseStudies?: { client: string; result: string }[];
+    servicesOffered?: { name: string; price: string; description: string }[];
+    guarantees?: string;
+  }>().default(sql`'{}'::jsonb`),
+  
   // Audit
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

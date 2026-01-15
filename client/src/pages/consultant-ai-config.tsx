@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,7 +61,12 @@ import {
   ArrowRight,
   CalendarDays,
   MousePointer,
-  Search
+  Search,
+  Building2,
+  Award,
+  Star,
+  Plus,
+  Download
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
@@ -1525,6 +1530,43 @@ export default function ConsultantAIConfigPage() {
   const [templatePage, setTemplatePage] = useState(1);
   const [expandedTemplate, setExpandedTemplate] = useState<number | null>(null);
   
+  // Brand Voice states per Nurturing
+  const [brandVoiceData, setBrandVoiceData] = useState<{
+    consultantDisplayName?: string;
+    businessName?: string;
+    businessDescription?: string;
+    consultantBio?: string;
+    vision?: string;
+    mission?: string;
+    values?: string[];
+    usp?: string;
+    whoWeHelp?: string;
+    whoWeDontHelp?: string;
+    whatWeDo?: string;
+    howWeDoIt?: string;
+    yearsExperience?: number;
+    clientsHelped?: number;
+    resultsGenerated?: string;
+    softwareCreated?: { emoji: string; name: string; description: string }[];
+    booksPublished?: { title: string; year: string }[];
+    caseStudies?: { client: string; result: string }[];
+    servicesOffered?: { name: string; price: string; description: string }[];
+    guarantees?: string;
+  }>({});
+  const [valueInput, setValueInput] = useState("");
+  
+  // Collapsible states
+  const [businessInfoOpen, setBusinessInfoOpen] = useState(false);
+  const [authorityOpen, setAuthorityOpen] = useState(false);
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
+  
+  // Import dialog
+  const [showImportAgentDialog, setShowImportAgentDialog] = useState(false);
+  const [availableAgents, setAvailableAgents] = useState<any[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [isImportingBrandVoice, setIsImportingBrandVoice] = useState(false);
+  
   const { data: customJourneyData, isLoading: customJourneyLoading } = useQuery<{
     templates: EmailJourneyTemplate[];
     isCustom: boolean;
@@ -1686,6 +1728,193 @@ export default function ConsultantAIConfigPage() {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
+
+  // Load brand voice data from nurturing config
+  useEffect(() => {
+    if (nurturingConfig?.config?.brandVoiceData) {
+      setBrandVoiceData(nurturingConfig.config.brandVoiceData);
+    }
+  }, [nurturingConfig]);
+
+  // Brand Voice Mutation
+  const updateBrandVoiceMutation = useMutation({
+    mutationFn: async (data: typeof brandVoiceData) => {
+      const res = await fetch("/api/lead-nurturing/brand-voice", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore salvataggio");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
+      toast({ title: "Brand Voice salvato" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Brand Voice Helper Functions
+  const handleAddValue = () => {
+    if (valueInput.trim()) {
+      setBrandVoiceData(prev => ({
+        ...prev,
+        values: [...(prev.values || []), valueInput.trim()]
+      }));
+      setValueInput("");
+    }
+  };
+
+  const handleRemoveValue = (index: number) => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      values: (prev.values || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAddSoftware = () => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      softwareCreated: [...(prev.softwareCreated || []), { emoji: "📱", name: "", description: "" }]
+    }));
+  };
+
+  const handleUpdateSoftware = (index: number, field: string, value: string) => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      softwareCreated: (prev.softwareCreated || []).map((s, i) =>
+        i === index ? { ...s, [field]: value } : s
+      )
+    }));
+  };
+
+  const handleRemoveSoftware = (index: number) => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      softwareCreated: (prev.softwareCreated || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAddBook = () => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      booksPublished: [...(prev.booksPublished || []), { title: "", year: "" }]
+    }));
+  };
+
+  const handleUpdateBook = (index: number, field: string, value: string) => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      booksPublished: (prev.booksPublished || []).map((b, i) =>
+        i === index ? { ...b, [field]: value } : b
+      )
+    }));
+  };
+
+  const handleRemoveBook = (index: number) => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      booksPublished: (prev.booksPublished || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAddCaseStudy = () => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      caseStudies: [...(prev.caseStudies || []), { client: "", result: "" }]
+    }));
+  };
+
+  const handleUpdateCaseStudy = (index: number, field: string, value: string) => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      caseStudies: (prev.caseStudies || []).map((c, i) =>
+        i === index ? { ...c, [field]: value } : c
+      )
+    }));
+  };
+
+  const handleRemoveCaseStudy = (index: number) => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      caseStudies: (prev.caseStudies || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAddService = () => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      servicesOffered: [...(prev.servicesOffered || []), { name: "", price: "", description: "" }]
+    }));
+  };
+
+  const handleUpdateService = (index: number, field: string, value: string) => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      servicesOffered: (prev.servicesOffered || []).map((s, i) =>
+        i === index ? { ...s, [field]: value } : s
+      )
+    }));
+  };
+
+  const handleRemoveService = (index: number) => {
+    setBrandVoiceData(prev => ({
+      ...prev,
+      servicesOffered: (prev.servicesOffered || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleImportFromAgent = async () => {
+    if (!selectedAgentId) return;
+    setIsImportingBrandVoice(true);
+    try {
+      const res = await fetch(`/api/whatsapp/agents/${selectedAgentId}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore caricamento agente");
+      const agent = await res.json();
+      if (agent) {
+        setBrandVoiceData({
+          consultantDisplayName: agent.consultantDisplayName,
+          businessName: agent.businessName,
+          businessDescription: agent.businessDescription,
+          consultantBio: agent.consultantBio,
+          vision: agent.vision,
+          mission: agent.mission,
+          values: agent.values,
+          usp: agent.usp,
+          whoWeHelp: agent.whoWeHelp,
+          whoWeDontHelp: agent.whoWeDontHelp,
+          whatWeDo: agent.whatWeDo,
+          howWeDoIt: agent.howWeDoIt,
+          yearsExperience: agent.yearsExperience,
+          clientsHelped: agent.clientsHelped,
+          resultsGenerated: agent.resultsGenerated,
+          softwareCreated: agent.softwareCreated,
+          booksPublished: agent.booksPublished,
+          caseStudies: agent.caseStudies,
+          servicesOffered: agent.servicesOffered,
+          guarantees: agent.guarantees,
+        });
+        toast({ title: "Dati importati", description: "Brand Voice importato dall'agente" });
+        setShowImportAgentDialog(false);
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsImportingBrandVoice(false);
+    }
+  };
+
+  const loadAvailableAgents = async () => {
+    try {
+      const res = await fetch("/api/whatsapp/agents", { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableAgents(data || []);
+      }
+    } catch {}
+  };
 
   // Generate Custom Templates Mutation
   const generateCustomTemplatesMutation = useMutation({
@@ -4290,6 +4519,494 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </Card>
               </div>
 
+              {/* Brand Voice & Credibilità Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      Brand Voice & Credibilità
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      Definisci l'identità del tuo brand per email personalizzate (tutti i campi sono opzionali)
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      loadAvailableAgents();
+                      setShowImportAgentDialog(true);
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Importa da Agente
+                  </Button>
+                </div>
+
+                {/* 1. Informazioni Business */}
+                <Collapsible open={businessInfoOpen} onOpenChange={setBusinessInfoOpen}>
+                  <Card className="border-2 border-primary/20 shadow-lg">
+                    <CollapsibleTrigger className="w-full">
+                      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 cursor-pointer hover:from-primary/10 hover:to-primary/15 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-5 w-5 text-primary" />
+                            <CardTitle>Informazioni Business</CardTitle>
+                          </div>
+                          {businessInfoOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </div>
+                        <CardDescription className="text-left">Nome, descrizione e bio del consulente</CardDescription>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-6 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="bv-consultantDisplayName">Nome Display Consulente</Label>
+                            <Input
+                              id="bv-consultantDisplayName"
+                              value={brandVoiceData.consultantDisplayName || ""}
+                              onChange={(e) => setBrandVoiceData(prev => ({ ...prev, consultantDisplayName: e.target.value }))}
+                              placeholder="Es: Marco Rossi"
+                              className="mt-2"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="bv-businessName">Nome Business</Label>
+                            <Input
+                              id="bv-businessName"
+                              value={brandVoiceData.businessName || ""}
+                              onChange={(e) => setBrandVoiceData(prev => ({ ...prev, businessName: e.target.value }))}
+                              placeholder="Es: Momentum Coaching"
+                              className="mt-2"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="bv-businessDescription">Descrizione Business</Label>
+                          <Textarea
+                            id="bv-businessDescription"
+                            value={brandVoiceData.businessDescription || ""}
+                            onChange={(e) => setBrandVoiceData(prev => ({ ...prev, businessDescription: e.target.value }))}
+                            placeholder="Breve descrizione di cosa fa il tuo business..."
+                            rows={3}
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="bv-consultantBio">Bio Consulente</Label>
+                          <Textarea
+                            id="bv-consultantBio"
+                            value={brandVoiceData.consultantBio || ""}
+                            onChange={(e) => setBrandVoiceData(prev => ({ ...prev, consultantBio: e.target.value }))}
+                            placeholder="Bio personale del consulente..."
+                            rows={3}
+                            className="mt-2"
+                          />
+                        </div>
+                        <Button 
+                          onClick={() => updateBrandVoiceMutation.mutate(brandVoiceData)}
+                          disabled={updateBrandVoiceMutation.isPending}
+                          className="w-full"
+                        >
+                          {updateBrandVoiceMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                          Salva Brand Voice
+                        </Button>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+
+                {/* 2. Authority & Posizionamento */}
+                <Collapsible open={authorityOpen} onOpenChange={setAuthorityOpen}>
+                  <Card className="border-2 border-blue-500/20 shadow-lg">
+                    <CollapsibleTrigger className="w-full">
+                      <CardHeader className="bg-gradient-to-r from-blue-500/5 to-blue-500/10 cursor-pointer hover:from-blue-500/10 hover:to-blue-500/15 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Target className="h-5 w-5 text-blue-500" />
+                            <CardTitle>Authority & Posizionamento</CardTitle>
+                          </div>
+                          {authorityOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </div>
+                        <CardDescription className="text-left">Vision, mission, valori e USP</CardDescription>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-6 space-y-4">
+                        <div>
+                          <Label htmlFor="bv-vision">Vision</Label>
+                          <Textarea
+                            id="bv-vision"
+                            value={brandVoiceData.vision || ""}
+                            onChange={(e) => setBrandVoiceData(prev => ({ ...prev, vision: e.target.value }))}
+                            placeholder="La tua vision per il futuro..."
+                            rows={2}
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="bv-mission">Mission</Label>
+                          <Textarea
+                            id="bv-mission"
+                            value={brandVoiceData.mission || ""}
+                            onChange={(e) => setBrandVoiceData(prev => ({ ...prev, mission: e.target.value }))}
+                            placeholder="La tua mission..."
+                            rows={2}
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label>Valori</Label>
+                          <div className="mt-2 space-y-2">
+                            <div className="flex gap-2">
+                              <Input
+                                value={valueInput}
+                                onChange={(e) => setValueInput(e.target.value)}
+                                placeholder="Aggiungi un valore..."
+                                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddValue())}
+                              />
+                              <Button type="button" onClick={handleAddValue} size="icon">
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {(brandVoiceData.values || []).map((value: string, index: number) => (
+                                <Badge key={index} variant="secondary" className="gap-1">
+                                  {value}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveValue(index)}
+                                    className="ml-1 hover:text-destructive"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="bv-usp">Unique Selling Proposition (USP)</Label>
+                          <Textarea
+                            id="bv-usp"
+                            value={brandVoiceData.usp || ""}
+                            onChange={(e) => setBrandVoiceData(prev => ({ ...prev, usp: e.target.value }))}
+                            placeholder="Cosa ti rende unico rispetto ai competitor..."
+                            rows={2}
+                            className="mt-2"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="bv-whoWeHelp">Chi Aiutiamo</Label>
+                            <Textarea
+                              id="bv-whoWeHelp"
+                              value={brandVoiceData.whoWeHelp || ""}
+                              onChange={(e) => setBrandVoiceData(prev => ({ ...prev, whoWeHelp: e.target.value }))}
+                              placeholder="Il tuo cliente ideale..."
+                              rows={3}
+                              className="mt-2"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="bv-whoWeDontHelp">Chi NON Aiutiamo</Label>
+                            <Textarea
+                              id="bv-whoWeDontHelp"
+                              value={brandVoiceData.whoWeDontHelp || ""}
+                              onChange={(e) => setBrandVoiceData(prev => ({ ...prev, whoWeDontHelp: e.target.value }))}
+                              placeholder="Clienti non target..."
+                              rows={3}
+                              className="mt-2"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="bv-whatWeDo">Cosa Facciamo</Label>
+                            <Textarea
+                              id="bv-whatWeDo"
+                              value={brandVoiceData.whatWeDo || ""}
+                              onChange={(e) => setBrandVoiceData(prev => ({ ...prev, whatWeDo: e.target.value }))}
+                              placeholder="I servizi che offri..."
+                              rows={3}
+                              className="mt-2"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="bv-howWeDoIt">Come Lo Facciamo</Label>
+                            <Textarea
+                              id="bv-howWeDoIt"
+                              value={brandVoiceData.howWeDoIt || ""}
+                              onChange={(e) => setBrandVoiceData(prev => ({ ...prev, howWeDoIt: e.target.value }))}
+                              placeholder="Il tuo metodo/processo..."
+                              rows={3}
+                              className="mt-2"
+                            />
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={() => updateBrandVoiceMutation.mutate(brandVoiceData)}
+                          disabled={updateBrandVoiceMutation.isPending}
+                          className="w-full"
+                        >
+                          {updateBrandVoiceMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                          Salva Brand Voice
+                        </Button>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+
+                {/* 3. Credenziali & Risultati */}
+                <Collapsible open={credentialsOpen} onOpenChange={setCredentialsOpen}>
+                  <Card className="border-2 border-green-500/20 shadow-lg">
+                    <CollapsibleTrigger className="w-full">
+                      <CardHeader className="bg-gradient-to-r from-green-500/5 to-green-500/10 cursor-pointer hover:from-green-500/10 hover:to-green-500/15 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Award className="h-5 w-5 text-green-500" />
+                            <CardTitle>Credenziali & Risultati</CardTitle>
+                          </div>
+                          {credentialsOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </div>
+                        <CardDescription className="text-left">Esperienza, software, libri e case studies</CardDescription>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="bv-yearsExperience">Anni di Esperienza</Label>
+                            <Input
+                              id="bv-yearsExperience"
+                              type="number"
+                              min="0"
+                              value={brandVoiceData.yearsExperience || ""}
+                              onChange={(e) => setBrandVoiceData(prev => ({ ...prev, yearsExperience: parseInt(e.target.value) || 0 }))}
+                              className="mt-2"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="bv-clientsHelped">Clienti Aiutati</Label>
+                            <Input
+                              id="bv-clientsHelped"
+                              type="number"
+                              min="0"
+                              value={brandVoiceData.clientsHelped || ""}
+                              onChange={(e) => setBrandVoiceData(prev => ({ ...prev, clientsHelped: parseInt(e.target.value) || 0 }))}
+                              className="mt-2"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="bv-resultsGenerated">Risultati Generati</Label>
+                            <Input
+                              id="bv-resultsGenerated"
+                              value={brandVoiceData.resultsGenerated || ""}
+                              onChange={(e) => setBrandVoiceData(prev => ({ ...prev, resultsGenerated: e.target.value }))}
+                              placeholder="Es: €10M+ fatturato"
+                              className="mt-2"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Software Creati */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <Label>Software Creati</Label>
+                            <Button type="button" onClick={handleAddSoftware} size="sm" variant="outline">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Aggiungi
+                            </Button>
+                          </div>
+                          <div className="space-y-3">
+                            {(brandVoiceData.softwareCreated || []).map((software: any, index: number) => (
+                              <div key={index} className="flex gap-2 p-3 border rounded-lg bg-card">
+                                <Input
+                                  value={software.emoji}
+                                  onChange={(e) => handleUpdateSoftware(index, "emoji", e.target.value)}
+                                  placeholder="📱"
+                                  className="w-16 text-center"
+                                />
+                                <Input
+                                  value={software.name}
+                                  onChange={(e) => handleUpdateSoftware(index, "name", e.target.value)}
+                                  placeholder="Nome software"
+                                  className="flex-1"
+                                />
+                                <Input
+                                  value={software.description}
+                                  onChange={(e) => handleUpdateSoftware(index, "description", e.target.value)}
+                                  placeholder="Breve descrizione"
+                                  className="flex-1"
+                                />
+                                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSoftware(index)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Libri Pubblicati */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <Label>Libri Pubblicati</Label>
+                            <Button type="button" onClick={handleAddBook} size="sm" variant="outline">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Aggiungi
+                            </Button>
+                          </div>
+                          <div className="space-y-3">
+                            {(brandVoiceData.booksPublished || []).map((book: any, index: number) => (
+                              <div key={index} className="flex gap-2 p-3 border rounded-lg bg-card">
+                                <Input
+                                  value={book.title}
+                                  onChange={(e) => handleUpdateBook(index, "title", e.target.value)}
+                                  placeholder="Titolo libro"
+                                  className="flex-1"
+                                />
+                                <Input
+                                  value={book.year}
+                                  onChange={(e) => handleUpdateBook(index, "year", e.target.value)}
+                                  placeholder="Anno"
+                                  className="w-24"
+                                />
+                                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveBook(index)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Case Studies */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <Label>Case Studies</Label>
+                            <Button type="button" onClick={handleAddCaseStudy} size="sm" variant="outline">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Aggiungi
+                            </Button>
+                          </div>
+                          <div className="space-y-3">
+                            {(brandVoiceData.caseStudies || []).map((caseStudy: any, index: number) => (
+                              <div key={index} className="flex gap-2 p-3 border rounded-lg bg-card">
+                                <Input
+                                  value={caseStudy.client}
+                                  onChange={(e) => handleUpdateCaseStudy(index, "client", e.target.value)}
+                                  placeholder="Nome cliente"
+                                  className="flex-1"
+                                />
+                                <Input
+                                  value={caseStudy.result}
+                                  onChange={(e) => handleUpdateCaseStudy(index, "result", e.target.value)}
+                                  placeholder="Risultato ottenuto"
+                                  className="flex-1"
+                                />
+                                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveCaseStudy(index)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={() => updateBrandVoiceMutation.mutate(brandVoiceData)}
+                          disabled={updateBrandVoiceMutation.isPending}
+                          className="w-full"
+                        >
+                          {updateBrandVoiceMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                          Salva Brand Voice
+                        </Button>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+
+                {/* 4. Servizi & Garanzie */}
+                <Collapsible open={servicesOpen} onOpenChange={setServicesOpen}>
+                  <Card className="border-2 border-purple-500/20 shadow-lg">
+                    <CollapsibleTrigger className="w-full">
+                      <CardHeader className="bg-gradient-to-r from-purple-500/5 to-purple-500/10 cursor-pointer hover:from-purple-500/10 hover:to-purple-500/15 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Star className="h-5 w-5 text-purple-500" />
+                            <CardTitle>Servizi & Garanzie</CardTitle>
+                          </div>
+                          {servicesOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </div>
+                        <CardDescription className="text-left">Offerta servizi e garanzie</CardDescription>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-6 space-y-6">
+                        {/* Servizi Offerti */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <Label>Servizi Offerti</Label>
+                            <Button type="button" onClick={handleAddService} size="sm" variant="outline">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Aggiungi
+                            </Button>
+                          </div>
+                          <div className="space-y-3">
+                            {(brandVoiceData.servicesOffered || []).map((service: any, index: number) => (
+                              <div key={index} className="flex gap-2 p-3 border rounded-lg bg-card">
+                                <Input
+                                  value={service.name}
+                                  onChange={(e) => handleUpdateService(index, "name", e.target.value)}
+                                  placeholder="Nome servizio"
+                                  className="flex-1"
+                                />
+                                <Input
+                                  value={service.price}
+                                  onChange={(e) => handleUpdateService(index, "price", e.target.value)}
+                                  placeholder="Prezzo"
+                                  className="w-32"
+                                />
+                                <Input
+                                  value={service.description}
+                                  onChange={(e) => handleUpdateService(index, "description", e.target.value)}
+                                  placeholder="Descrizione"
+                                  className="flex-1"
+                                />
+                                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveService(index)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="bv-guarantees">Garanzie</Label>
+                          <Textarea
+                            id="bv-guarantees"
+                            value={brandVoiceData.guarantees || ""}
+                            onChange={(e) => setBrandVoiceData(prev => ({ ...prev, guarantees: e.target.value }))}
+                            placeholder="Le garanzie che offri ai tuoi clienti..."
+                            rows={3}
+                            className="mt-2"
+                          />
+                        </div>
+
+                        <Button 
+                          onClick={() => updateBrandVoiceMutation.mutate(brandVoiceData)}
+                          disabled={updateBrandVoiceMutation.isPending}
+                          className="w-full"
+                        >
+                          {updateBrandVoiceMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                          Salva Brand Voice
+                        </Button>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              </div>
+
               {/* Genera Templates Card */}
               <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
@@ -4773,6 +5490,81 @@ Non limitarti a stato attuale/ideale. Attingi da:
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Import Brand Voice from Agent Dialog */}
+      <Dialog open={showImportAgentDialog} onOpenChange={setShowImportAgentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Importa Brand Voice da Agente
+            </DialogTitle>
+            <DialogDescription>
+              Seleziona un agente WhatsApp per importare i dati del Brand Voice
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {availableAgents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">Nessun agente WhatsApp configurato.</p>
+                <p className="text-xs mt-2">Configura prima un agente nella sezione WhatsApp.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {availableAgents.map((agent: any) => (
+                  <div
+                    key={agent.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      selectedAgentId === agent.id
+                        ? "border-primary bg-primary/5"
+                        : "hover:border-muted-foreground/50"
+                    }`}
+                    onClick={() => setSelectedAgentId(agent.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        checked={selectedAgentId === agent.id}
+                        onChange={() => setSelectedAgentId(agent.id)}
+                        className="h-4 w-4 text-primary"
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{agent.name || agent.businessName || "Agente senza nome"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {agent.businessDescription?.substring(0, 100) || "Nessuna descrizione"}
+                          {agent.businessDescription?.length > 100 ? "..." : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowImportAgentDialog(false)}>
+                Annulla
+              </Button>
+              <Button
+                onClick={handleImportFromAgent}
+                disabled={!selectedAgentId || isImportingBrandVoice}
+              >
+                {isImportingBrandVoice ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importazione...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Importa
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <ConsultantAIAssistant />
     </div>
   );

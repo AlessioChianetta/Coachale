@@ -224,6 +224,10 @@ router.post("/lead-nurturing/templates/:dayNumber/regenerate", authenticateToken
       return res.status(400).json({ success: false, error: "businessDescription è richiesto" });
     }
     
+    // Carica Brand Voice data dal database
+    const config = await storage.getNurturingConfig(consultantId);
+    const brandVoiceData = config?.brandVoiceData || undefined;
+    
     const result = await regenerateTemplate(consultantId, dayNumber, {
       consultantId,
       businessDescription,
@@ -231,6 +235,7 @@ router.post("/lead-nurturing/templates/:dayNumber/regenerate", authenticateToken
       tone: tone || "professionale ma amichevole",
       companyName,
       senderName,
+      brandVoiceData,
     });
     
     if (!result.success) {
@@ -325,6 +330,10 @@ router.post("/lead-nurturing/generate", authenticateToken, requireRole("consulta
       return res.status(400).json({ success: false, error: "businessDescription è richiesto" });
     }
     
+    // Carica Brand Voice data dal database
+    const config = await storage.getNurturingConfig(consultantId);
+    const brandVoiceData = config?.brandVoiceData || undefined;
+    
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
@@ -337,6 +346,7 @@ router.post("/lead-nurturing/generate", authenticateToken, requireRole("consulta
       tone: tone || "professionale ma amichevole",
       companyName,
       senderName,
+      brandVoiceData,
     }, res);
     
     res.write(`data: ${JSON.stringify({ 
@@ -377,6 +387,51 @@ router.get("/lead-nurturing/templates/count", authenticateToken, requireRole("co
     res.json({ success: true, count, total: 365 });
   } catch (error: any) {
     console.error("[NURTURING] Error fetching template count:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Brand Voice endpoint per salvare dati identità brand
+router.get("/lead-nurturing/brand-voice", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const config = await storage.getNurturingConfig(consultantId);
+    
+    res.json({ 
+      success: true, 
+      brandVoice: config?.brandVoiceData || {} 
+    });
+  } catch (error: any) {
+    console.error("[NURTURING] Error fetching brand voice:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/lead-nurturing/brand-voice", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const brandVoiceData = req.body;
+    
+    const existing = await storage.getNurturingConfig(consultantId);
+    
+    if (existing) {
+      await db.update(schema.leadNurturingConfig)
+        .set({
+          brandVoiceData,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
+    } else {
+      await db.insert(schema.leadNurturingConfig).values({
+        consultantId,
+        brandVoiceData,
+      });
+    }
+    
+    const updated = await storage.getNurturingConfig(consultantId);
+    res.json({ success: true, brandVoice: updated?.brandVoiceData });
+  } catch (error: any) {
+    console.error("[NURTURING] Error saving brand voice:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
