@@ -4,6 +4,7 @@ import { db } from "../db";
 import { eq, and } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { getAIProvider, GEMINI_3_MODEL, GEMINI_3_THINKING_LEVEL } from "../ai/provider-factory";
+import { createSmtpService } from "./email-hub/smtp-service";
 
 async function logEmailActivity(
   leadId: string,
@@ -276,12 +277,81 @@ export async function sendProactiveLeadWelcomeEmail(
     
     const emailSubject = `${lead.firstName}, benvenuto! Ecco come posso aiutarti`;
     
-    await sendEmail({
-      to: leadEmail,
-      subject: emailSubject,
-      html: htmlContent,
-      consultantId,
-    });
+    // Try to find a configured email account in Email Hub
+    const [emailAccount] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(
+        and(
+          eq(schema.emailAccounts.consultantId, consultantId),
+          // Account must have SMTP configured
+        )
+      )
+      .limit(1);
+    
+    let messageId: string | undefined;
+    
+    if (emailAccount && emailAccount.smtpHost && emailAccount.smtpUser && emailAccount.smtpPassword) {
+      // Use Email Hub account SMTP
+      console.log(`[WELCOME EMAIL] Using Email Hub account: ${emailAccount.emailAddress}`);
+      
+      const smtpService = createSmtpService({
+        host: emailAccount.smtpHost,
+        port: emailAccount.smtpPort || 587,
+        user: emailAccount.smtpUser,
+        password: emailAccount.smtpPassword,
+        tls: emailAccount.smtpTls ?? true,
+      });
+      
+      const sendResult = await smtpService.sendEmail({
+        from: emailAccount.emailAddress,
+        fromName: emailAccount.displayName || consultantName,
+        to: leadEmail,
+        subject: emailSubject,
+        html: htmlContent,
+      });
+      
+      if (!sendResult.success) {
+        throw new Error(`SMTP invio fallito: ${sendResult.error}`);
+      }
+      
+      messageId = sendResult.messageId;
+      
+      // Save email to Email Hub for visibility
+      const generatedMessageId = messageId || `welcome-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      
+      await db.insert(schema.hubEmails).values({
+        accountId: emailAccount.id,
+        consultantId,
+        messageId: generatedMessageId,
+        subject: emailSubject,
+        fromName: emailAccount.displayName || consultantName,
+        fromEmail: emailAccount.emailAddress,
+        toRecipients: [leadEmail],
+        bodyHtml: htmlContent,
+        bodyText: `Benvenuto ${lead.firstName}! ${hook}`,
+        snippet: `Benvenuto ${lead.firstName}! ${hook}`.substring(0, 200),
+        direction: "outbound",
+        folder: "sent",
+        isRead: true,
+        sentAt: new Date(),
+        receivedAt: new Date(),
+        processingStatus: "sent",
+      });
+      
+      console.log(`[WELCOME EMAIL] Saved to Email Hub with messageId: ${generatedMessageId}`);
+      
+    } else {
+      // Fallback to global SMTP settings
+      console.log(`[WELCOME EMAIL] No Email Hub account with SMTP, using global SMTP settings`);
+      
+      await sendEmail({
+        to: leadEmail,
+        subject: emailSubject,
+        html: htmlContent,
+        consultantId,
+      });
+    }
     
     await db.update(schema.proactiveLeads)
       .set({
@@ -313,7 +383,7 @@ export async function sendProactiveLeadWelcomeEmail(
     );
     
     console.log(`[WELCOME EMAIL] Sent successfully to ${leadEmail} for lead ${leadId}`);
-    return { success: true };
+    return { success: true, messageId };
     
   } catch (error: any) {
     console.error(`[WELCOME EMAIL] Error for lead ${leadId}:`, error);
