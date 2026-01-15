@@ -877,20 +877,10 @@ async function processLead(
         'contacted'
       );
 
-      // Trigger welcome email (async, non-blocking)
-      sendProactiveLeadWelcomeEmail({
-        leadId: lead.id,
-        consultantId: lead.consultantId,
-      }).then(result => {
-        if (result.success) {
-          console.log(`📧 [WELCOME EMAIL] Sent to lead ${lead.id}`);
-        } else {
-          console.log(`📧 [WELCOME EMAIL] Skipped for lead ${lead.id}: ${result.error}`);
-        }
-      }).catch(err => {
-        console.error(`📧 [WELCOME EMAIL] Error for lead ${lead.id}:`, err.message);
-      });
     }
+
+    // Trigger welcome email (async, non-blocking) - INDEPENDENT from WhatsApp result
+    triggerWelcomeEmail(lead);
 
   } catch (error: any) {
     console.error(`❌ Error processing lead ${lead.id}:`, error.message);
@@ -906,7 +896,29 @@ async function processLead(
       },
       lead.status
     );
+
+    // Trigger welcome email even if WhatsApp fails - email is independent
+    triggerWelcomeEmail(lead);
   }
+}
+
+/**
+ * Helper function to trigger welcome email (non-blocking)
+ * Called independently from WhatsApp success/failure
+ */
+function triggerWelcomeEmail(lead: typeof proactiveLeads.$inferSelect): void {
+  sendProactiveLeadWelcomeEmail({
+    leadId: lead.id,
+    consultantId: lead.consultantId,
+  }).then(result => {
+    if (result.success) {
+      console.log(`📧 [WELCOME EMAIL] Sent to lead ${lead.id}`);
+    } else {
+      console.log(`📧 [WELCOME EMAIL] Skipped for lead ${lead.id}: ${result.error}`);
+    }
+  }).catch(err => {
+    console.error(`📧 [WELCOME EMAIL] Error for lead ${lead.id}:`, err.message);
+  });
 }
 
 /**
