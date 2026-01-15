@@ -81,12 +81,24 @@ The platform extensively leverages AI for various functionalities:
 - **AI Generation**: Uses Gemini 3 Preview via `provider-factory.ts` to generate 365 personalized email templates with SSE progress streaming.
 - **Template Variables**: Dynamic placeholders (`{{nome}}`, `{{linkCalendario}}`, `{{linkDisiscrizione}}`, etc.) with XSS sanitization.
 - **Cron Scheduler**: Daily email sending at 09:00 Europe/Rome timezone with weekend skip option.
-- **GDPR Compliance**: Public unsubscribe endpoint (`/unsubscribe/:token`) with HMAC-SHA256 token validation.
+- **GDPR Compliance**: Public unsubscribe endpoint (`/unsubscribe/:token`) with HMAC-SHA256 token validation, styled HTML pages with consultant branding.
 - **Backend Services**:
   - `server/services/template-compiler.ts` - Variable compilation with XSS protection
   - `server/services/lead-nurturing-generation-service.ts` - AI batch generation
   - `server/cron/nurturing-scheduler.ts` - Daily sending + weekly log cleanup
+  - `server/routes/nurturing-tracking.ts` - Email open/click tracking endpoints
 - **API Routes**: Full CRUD at `/api/lead-nurturing/*` for config, templates, variables, analytics.
+- **Email Tracking**: Pixel tracking for opens (`/api/nurturing/track/open/:logId`) and click tracking with validated redirects (`/api/nurturing/track/click/:logId/:linkId`).
+- **Frontend UI** (in `client/src/pages/consultant-ai-config.tsx` Tab "Nurturing"):
+  - Dashboard with 4 KPI cards (emails sent, open rate, click rate, active leads)
+  - AI template generation with business description, tone selection, and SSE progress bar
+  - Email variables configuration (calendar link, business name, WhatsApp, signature)
+  - Templates accordion with search, category filter, and pagination (31/page)
+  - Sending settings with enable/disable toggle and skip weekends option
+- **Lead Integration** (in `client/src/pages/proactive-leads.tsx`):
+  - Email field in lead creation/modification form
+  - "Opzioni Email" section with welcome email and nurturing checkboxes
+  - Nurturing column in leads table with "Giorno X/365" badge and quick toggle
 - **Rate Limiting**: 50 emails/batch with 2s delay, 20h cooldown between emails to same lead.
 
 ## Email Hub System
