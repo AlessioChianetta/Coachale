@@ -21,6 +21,7 @@ import { sendWhatsAppMessage } from './twilio-client';
 import { findOrCreateConversation, normalizePhoneNumber } from './webhook-handler';
 import { storage } from '../storage';
 import { checkTemplateApprovalStatus } from '../services/whatsapp/template-approval-checker';
+import { sendProactiveLeadWelcomeEmail } from '../services/proactive-lead-welcome-email';
 
 let schedulerTask: cron.ScheduledTask | null = null;
 
@@ -875,6 +876,20 @@ async function processLead(
         },
         'contacted'
       );
+
+      // Trigger welcome email (async, non-blocking)
+      sendProactiveLeadWelcomeEmail({
+        leadId: lead.id,
+        consultantId: lead.consultantId,
+      }).then(result => {
+        if (result.success) {
+          console.log(`📧 [WELCOME EMAIL] Sent to lead ${lead.id}`);
+        } else {
+          console.log(`📧 [WELCOME EMAIL] Skipped for lead ${lead.id}: ${result.error}`);
+        }
+      }).catch(err => {
+        console.error(`📧 [WELCOME EMAIL] Error for lead ${lead.id}:`, err.message);
+      });
     }
 
   } catch (error: any) {

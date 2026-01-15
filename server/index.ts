@@ -20,6 +20,7 @@ import { initFollowupScheduler } from "./cron/followup-scheduler";
 import { initInstagramWindowCleanup } from "./cron/instagram-window-cleanup";
 import { initFileSearchScheduler } from "./cron/file-search-scheduler";
 import { initMemorySummaryScheduler } from "./cron/memory-summary-scheduler";
+import { startNurturingScheduler } from "./cron/nurturing-scheduler";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -350,6 +351,16 @@ app.use((req, res, next) => {
     log("✅ Follow-up scheduler started");
   } else {
     log("⚡ Follow-up scheduler is disabled (set FOLLOWUP_SCHEDULER_ENABLED=true to enable)");
+  }
+  
+  // Start nurturing scheduler for 365-day email sequences
+  const nurturingSchedulerEnabled = process.env.NURTURING_SCHEDULER_ENABLED !== 'false';
+  if (nurturingSchedulerEnabled) {
+    log("📧 Nurturing scheduler enabled - starting scheduler...");
+    startNurturingScheduler();
+    log("✅ Nurturing scheduler started (09:00 Europe/Rome daily)");
+  } else {
+    log("📧 Nurturing scheduler is disabled (set NURTURING_SCHEDULER_ENABLED=true to enable)");
   }
 
   // Setup Instagram Window Cleanup Scheduler

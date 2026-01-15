@@ -1053,4 +1053,112 @@ router.post("/proactive-leads/:id/trigger-now", authenticateToken, requireRole("
   }
 });
 
+// Rate limiting for welcome email
+const welcomeEmailRateLimiter = new Map<string, number[]>();
+const WELCOME_EMAIL_RATE_LIMIT = 5; // 5 per minute per lead
+const WELCOME_EMAIL_RATE_WINDOW = 60000; // 1 minute
+
+// POST /api/proactive-leads/:leadId/send-welcome-email - Send welcome email manually
+router.post("/proactive-leads/:leadId/send-welcome-email", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const leadId = req.params.leadId;
+    
+    // Rate limiting check
+    const now = Date.now();
+    const key = `${consultantId}:${leadId}`;
+    const timestamps = welcomeEmailRateLimiter.get(key) || [];
+    const recentTimestamps = timestamps.filter(t => now - t < WELCOME_EMAIL_RATE_WINDOW);
+    
+    if (recentTimestamps.length >= WELCOME_EMAIL_RATE_LIMIT) {
+      return res.status(429).json({
+        success: false,
+        error: `Limite raggiunto: massimo ${WELCOME_EMAIL_RATE_LIMIT} email al minuto per lead`
+      });
+    }
+    
+    // Get the lead
+    const lead = await storage.getProactiveLead(leadId, consultantId);
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        error: "Lead non trovato"
+      });
+    }
+    
+    // Get email
+    const leadEmail = storage.getLeadEmail(lead);
+    if (!leadEmail) {
+      return res.status(400).json({
+        success: false,
+        error: "Il lead non ha un indirizzo email configurato"
+      });
+    }
+    
+    // Check if already sent (unless force=true)
+    const force = req.body.force === true;
+    if (lead.welcomeEmailSent && !force) {
+      return res.status(400).json({
+        success: false,
+        error: "Email di benvenuto già inviata. Usa force=true per reinviare.",
+        sentAt: lead.welcomeEmailSentAt
+      });
+    }
+    
+    // Import and call the welcome email service
+    const { sendProactiveLeadWelcomeEmail } = await import('../services/proactive-lead-welcome-email');
+    
+    // Reset welcome email status if forcing resend
+    if (force && lead.welcomeEmailSent) {
+      const { db } = await import('../db');
+      const { proactiveLeads } = await import('../../shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+      
+      await db.update(proactiveLeads)
+        .set({
+          welcomeEmailSent: false,
+          welcomeEmailSentAt: null,
+          welcomeEmailError: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(proactiveLeads.id, leadId),
+            eq(proactiveLeads.consultantId, consultantId)
+          )
+        );
+    }
+    
+    const result = await sendProactiveLeadWelcomeEmail({
+      leadId,
+      consultantId,
+    });
+    
+    // Update rate limiter
+    recentTimestamps.push(now);
+    welcomeEmailRateLimiter.set(key, recentTimestamps);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        message: `Email di benvenuto inviata a ${leadEmail}`,
+        leadId,
+        email: leadEmail
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.error || "Errore nell'invio dell'email"
+      });
+    }
+    
+  } catch (error: any) {
+    console.error("❌ [WELCOME EMAIL] Manual send error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Errore nell'invio dell'email di benvenuto"
+    });
+  }
+});
+
 export default router;

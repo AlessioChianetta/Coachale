@@ -74,6 +74,7 @@ import {
   History,
   Send,
   RefreshCw,
+  Mail,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Papa from "papaparse";
@@ -133,6 +134,7 @@ interface ProactiveLead {
   firstName: string;
   lastName: string;
   phoneNumber: string;
+  email?: string;
   leadInfo: LeadInfo;
   idealState: string | null;
   contactSchedule: string;
@@ -140,6 +142,11 @@ interface ProactiveLead {
   lastContactedAt: string | null;
   lastMessageSent: string | null;
   status: "pending" | "contacted" | "responded" | "converted" | "inactive";
+  welcomeEmailEnabled?: boolean;
+  nurturingEnabled?: boolean;
+  welcomeEmailSent?: boolean;
+  welcomeEmailSentAt?: string;
+  welcomeEmailError?: string;
   metadata?: {
     tags?: string[];
     notes?: string;
@@ -179,11 +186,14 @@ interface FormData {
   firstName: string;
   lastName: string;
   phoneNumber: string;
+  email?: string;
   agentConfigId: string;
   leadInfo: LeadInfo;
   idealState: string;
   contactSchedule: string;
   notes?: string;
+  welcomeEmailEnabled: boolean;
+  nurturingEnabled: boolean;
 }
 
 const emptyFormData: FormData = {
@@ -191,6 +201,7 @@ const emptyFormData: FormData = {
   firstName: "",
   lastName: "",
   phoneNumber: "+39",
+  email: "",
   agentConfigId: "",
   leadInfo: {
     obiettivi: "",
@@ -201,6 +212,8 @@ const emptyFormData: FormData = {
   idealState: "",
   contactSchedule: "",
   notes: "",
+  welcomeEmailEnabled: true,
+  nurturingEnabled: false,
 };
 
 const statusConfig = {

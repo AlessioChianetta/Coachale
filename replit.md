@@ -75,6 +75,20 @@ The platform extensively leverages AI for various functionalities:
   - Brand assets settings (colors, voice, social handles)
 - **Integration Points**: Campaigns connect to `proactive_leads` for lead generation and `consultations` for booking.
 
+## Lead Nurturing 365 System
+- **Purpose**: Automated 365-day email nurturing sequence for proactive leads with AI-generated content.
+- **Database Tables**: 4 tables (`lead_nurturing_templates`, `lead_nurturing_config`, `lead_nurturing_logs`, `consultant_email_variables`) + 5 fields on `proactive_leads`.
+- **AI Generation**: Uses Gemini 3 Preview via `provider-factory.ts` to generate 365 personalized email templates with SSE progress streaming.
+- **Template Variables**: Dynamic placeholders (`{{nome}}`, `{{linkCalendario}}`, `{{linkDisiscrizione}}`, etc.) with XSS sanitization.
+- **Cron Scheduler**: Daily email sending at 09:00 Europe/Rome timezone with weekend skip option.
+- **GDPR Compliance**: Public unsubscribe endpoint (`/unsubscribe/:token`) with HMAC-SHA256 token validation.
+- **Backend Services**:
+  - `server/services/template-compiler.ts` - Variable compilation with XSS protection
+  - `server/services/lead-nurturing-generation-service.ts` - AI batch generation
+  - `server/cron/nurturing-scheduler.ts` - Daily sending + weekly log cleanup
+- **API Routes**: Full CRUD at `/api/lead-nurturing/*` for config, templates, variables, analytics.
+- **Rate Limiting**: 50 emails/batch with 2s delay, 20h cooldown between emails to same lead.
+
 ## Email Hub System
 - **Email Management**: A comprehensive email hub for consultants with IMAP/SMTP support, unified inbox, and AI-powered response generation.
 - **Provider Flexibility**: Supports various account types (smtp_only, imap_only, full, hybrid) and Italian provider presets.

@@ -676,6 +676,38 @@ export interface IStorage {
   getUserRoleProfileById(profileId: string): Promise<UserRoleProfile | null>;
   createUserRoleProfile(profile: InsertUserRoleProfile): Promise<UserRoleProfile>;
   setDefaultProfile(userId: string, profileId: string): Promise<void>;
+
+  // Lead Nurturing System operations
+  // Helper: get lead email with fallback to leadInfo.email
+  getLeadEmail(lead: schema.ProactiveLead): string | null;
+  
+  // Nurturing Config operations
+  getNurturingConfig(consultantId: string): Promise<schema.LeadNurturingConfig | null>;
+  createNurturingConfig(data: schema.InsertLeadNurturingConfig): Promise<schema.LeadNurturingConfig>;
+  updateNurturingConfig(consultantId: string, updates: Partial<schema.InsertLeadNurturingConfig>): Promise<schema.LeadNurturingConfig | null>;
+  
+  // Nurturing Templates operations
+  getNurturingTemplates(consultantId: string, options?: { page?: number; limit?: number; category?: string }): Promise<{ templates: schema.LeadNurturingTemplate[]; total: number }>;
+  getNurturingTemplate(id: string, consultantId: string): Promise<schema.LeadNurturingTemplate | null>;
+  createNurturingTemplate(data: schema.InsertLeadNurturingTemplate): Promise<schema.LeadNurturingTemplate>;
+  updateNurturingTemplate(id: string, consultantId: string, updates: Partial<schema.InsertLeadNurturingTemplate>): Promise<schema.LeadNurturingTemplate | null>;
+  deleteNurturingTemplates(consultantId: string): Promise<number>;
+  getNurturingTemplateByDay(consultantId: string, dayNumber: number): Promise<schema.LeadNurturingTemplate | null>;
+  
+  // Nurturing Logs operations
+  createNurturingLog(data: schema.InsertLeadNurturingLog): Promise<schema.LeadNurturingLog>;
+  getNurturingLogs(consultantId: string, options?: { leadId?: string; limit?: number }): Promise<schema.LeadNurturingLog[]>;
+  updateNurturingLogTracking(id: string, field: 'openedAt' | 'clickedAt'): Promise<boolean>;
+  getNurturingAnalytics(consultantId: string): Promise<{ totalSent: number; totalOpened: number; totalClicked: number; leadsActive: number }>;
+  
+  // Consultant Email Variables operations
+  getEmailVariables(consultantId: string): Promise<schema.ConsultantEmailVariables | null>;
+  createEmailVariables(data: schema.InsertConsultantEmailVariables): Promise<schema.ConsultantEmailVariables>;
+  updateEmailVariables(consultantId: string, updates: Partial<schema.InsertConsultantEmailVariables>): Promise<schema.ConsultantEmailVariables | null>;
+  
+  // Leads with active nurturing
+  getLeadsWithActiveNurturing(consultantId: string): Promise<schema.ProactiveLead[]>;
+  updateLeadNurturingProgress(leadId: string, consultantId: string, emailsSent: number): Promise<boolean>;
 }
 
 import { db } from "./db.js";
@@ -4508,6 +4540,342 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       console.error(`Error fetching proactive lead by phone ${phoneNumber}:`, error);
       return null;
+    }
+  }
+
+  // ============================================================
+  // LEAD NURTURING SYSTEM OPERATIONS
+  // ============================================================
+
+  // Helper: get lead email with fallback to leadInfo.email
+  getLeadEmail(lead: schema.ProactiveLead): string | null {
+    // First check top-level email field
+    if (lead.email) return lead.email;
+    // Fallback to leadInfo.email for backward compatibility
+    if (lead.leadInfo && typeof lead.leadInfo === 'object' && 'email' in lead.leadInfo) {
+      return (lead.leadInfo as any).email || null;
+    }
+    return null;
+  }
+
+  // Nurturing Config operations
+  async getNurturingConfig(consultantId: string): Promise<schema.LeadNurturingConfig | null> {
+    try {
+      const [config] = await db.select()
+        .from(schema.leadNurturingConfig)
+        .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
+      return config || null;
+    } catch (error: any) {
+      console.error(`Error fetching nurturing config for ${consultantId}:`, error);
+      return null;
+    }
+  }
+
+  async createNurturingConfig(data: schema.InsertLeadNurturingConfig): Promise<schema.LeadNurturingConfig> {
+    try {
+      const [config] = await db.insert(schema.leadNurturingConfig)
+        .values(data)
+        .returning();
+      return config;
+    } catch (error: any) {
+      console.error('Error creating nurturing config:', error);
+      throw error;
+    }
+  }
+
+  async updateNurturingConfig(consultantId: string, updates: Partial<schema.InsertLeadNurturingConfig>): Promise<schema.LeadNurturingConfig | null> {
+    try {
+      const [config] = await db.update(schema.leadNurturingConfig)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(schema.leadNurturingConfig.consultantId, consultantId))
+        .returning();
+      return config || null;
+    } catch (error: any) {
+      console.error(`Error updating nurturing config for ${consultantId}:`, error);
+      throw error;
+    }
+  }
+
+  // Nurturing Templates operations
+  async getNurturingTemplates(
+    consultantId: string, 
+    options?: { page?: number; limit?: number; category?: string }
+  ): Promise<{ templates: schema.LeadNurturingTemplate[]; total: number }> {
+    try {
+      const page = options?.page || 1;
+      const limit = options?.limit || 31;
+      const offset = (page - 1) * limit;
+
+      const conditions = [eq(schema.leadNurturingTemplates.consultantId, consultantId)];
+      if (options?.category) {
+        conditions.push(eq(schema.leadNurturingTemplates.category, options.category as any));
+      }
+
+      const templates = await db.select()
+        .from(schema.leadNurturingTemplates)
+        .where(and(...conditions))
+        .orderBy(asc(schema.leadNurturingTemplates.dayNumber))
+        .limit(limit)
+        .offset(offset);
+
+      const [countResult] = await db.select({ count: count() })
+        .from(schema.leadNurturingTemplates)
+        .where(and(...conditions));
+
+      return { templates, total: countResult?.count || 0 };
+    } catch (error: any) {
+      console.error(`Error fetching nurturing templates for ${consultantId}:`, error);
+      return { templates: [], total: 0 };
+    }
+  }
+
+  async getNurturingTemplate(id: string, consultantId: string): Promise<schema.LeadNurturingTemplate | null> {
+    try {
+      const [template] = await db.select()
+        .from(schema.leadNurturingTemplates)
+        .where(
+          and(
+            eq(schema.leadNurturingTemplates.id, id),
+            eq(schema.leadNurturingTemplates.consultantId, consultantId)
+          )
+        );
+      return template || null;
+    } catch (error: any) {
+      console.error(`Error fetching nurturing template ${id}:`, error);
+      return null;
+    }
+  }
+
+  async createNurturingTemplate(data: schema.InsertLeadNurturingTemplate): Promise<schema.LeadNurturingTemplate> {
+    try {
+      const [template] = await db.insert(schema.leadNurturingTemplates)
+        .values(data)
+        .returning();
+      return template;
+    } catch (error: any) {
+      console.error('Error creating nurturing template:', error);
+      throw error;
+    }
+  }
+
+  async updateNurturingTemplate(
+    id: string, 
+    consultantId: string, 
+    updates: Partial<schema.InsertLeadNurturingTemplate>
+  ): Promise<schema.LeadNurturingTemplate | null> {
+    try {
+      const [template] = await db.update(schema.leadNurturingTemplates)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.leadNurturingTemplates.id, id),
+            eq(schema.leadNurturingTemplates.consultantId, consultantId)
+          )
+        )
+        .returning();
+      return template || null;
+    } catch (error: any) {
+      console.error(`Error updating nurturing template ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteNurturingTemplates(consultantId: string): Promise<number> {
+    try {
+      const result = await db.delete(schema.leadNurturingTemplates)
+        .where(eq(schema.leadNurturingTemplates.consultantId, consultantId))
+        .returning();
+      return result.length;
+    } catch (error: any) {
+      console.error(`Error deleting nurturing templates for ${consultantId}:`, error);
+      throw error;
+    }
+  }
+
+  async getNurturingTemplateByDay(consultantId: string, dayNumber: number): Promise<schema.LeadNurturingTemplate | null> {
+    try {
+      const [template] = await db.select()
+        .from(schema.leadNurturingTemplates)
+        .where(
+          and(
+            eq(schema.leadNurturingTemplates.consultantId, consultantId),
+            eq(schema.leadNurturingTemplates.dayNumber, dayNumber),
+            eq(schema.leadNurturingTemplates.isActive, true)
+          )
+        );
+      return template || null;
+    } catch (error: any) {
+      console.error(`Error fetching nurturing template for day ${dayNumber}:`, error);
+      return null;
+    }
+  }
+
+  // Nurturing Logs operations
+  async createNurturingLog(data: schema.InsertLeadNurturingLog): Promise<schema.LeadNurturingLog> {
+    try {
+      const [log] = await db.insert(schema.leadNurturingLogs)
+        .values(data)
+        .returning();
+      return log;
+    } catch (error: any) {
+      console.error('Error creating nurturing log:', error);
+      throw error;
+    }
+  }
+
+  async getNurturingLogs(
+    consultantId: string, 
+    options?: { leadId?: string; limit?: number }
+  ): Promise<schema.LeadNurturingLog[]> {
+    try {
+      const conditions = [eq(schema.leadNurturingLogs.consultantId, consultantId)];
+      if (options?.leadId) {
+        conditions.push(eq(schema.leadNurturingLogs.leadId, options.leadId));
+      }
+
+      return await db.select()
+        .from(schema.leadNurturingLogs)
+        .where(and(...conditions))
+        .orderBy(desc(schema.leadNurturingLogs.sentAt))
+        .limit(options?.limit || 100);
+    } catch (error: any) {
+      console.error(`Error fetching nurturing logs for ${consultantId}:`, error);
+      return [];
+    }
+  }
+
+  async updateNurturingLogTracking(id: string, field: 'openedAt' | 'clickedAt'): Promise<boolean> {
+    try {
+      const result = await db.update(schema.leadNurturingLogs)
+        .set({ [field]: new Date() })
+        .where(eq(schema.leadNurturingLogs.id, id))
+        .returning();
+      return result.length > 0;
+    } catch (error: any) {
+      console.error(`Error updating nurturing log tracking ${id}:`, error);
+      return false;
+    }
+  }
+
+  async getNurturingAnalytics(consultantId: string): Promise<{ totalSent: number; totalOpened: number; totalClicked: number; leadsActive: number }> {
+    try {
+      // Get total sent, opened, clicked
+      const [logStats] = await db.select({
+        totalSent: count(),
+        totalOpened: sql<number>`count(case when ${schema.leadNurturingLogs.openedAt} is not null then 1 end)`,
+        totalClicked: sql<number>`count(case when ${schema.leadNurturingLogs.clickedAt} is not null then 1 end)`,
+      })
+        .from(schema.leadNurturingLogs)
+        .where(
+          and(
+            eq(schema.leadNurturingLogs.consultantId, consultantId),
+            eq(schema.leadNurturingLogs.status, 'sent')
+          )
+        );
+
+      // Get active leads count
+      const [leadsCount] = await db.select({ count: count() })
+        .from(schema.proactiveLeads)
+        .where(
+          and(
+            eq(schema.proactiveLeads.consultantId, consultantId),
+            eq(schema.proactiveLeads.nurturingEnabled, true),
+            isNull(schema.proactiveLeads.nurturingOptOutAt)
+          )
+        );
+
+      return {
+        totalSent: logStats?.totalSent || 0,
+        totalOpened: Number(logStats?.totalOpened) || 0,
+        totalClicked: Number(logStats?.totalClicked) || 0,
+        leadsActive: leadsCount?.count || 0,
+      };
+    } catch (error: any) {
+      console.error(`Error fetching nurturing analytics for ${consultantId}:`, error);
+      return { totalSent: 0, totalOpened: 0, totalClicked: 0, leadsActive: 0 };
+    }
+  }
+
+  // Consultant Email Variables operations
+  async getEmailVariables(consultantId: string): Promise<schema.ConsultantEmailVariables | null> {
+    try {
+      const [vars] = await db.select()
+        .from(schema.consultantEmailVariables)
+        .where(eq(schema.consultantEmailVariables.consultantId, consultantId));
+      return vars || null;
+    } catch (error: any) {
+      console.error(`Error fetching email variables for ${consultantId}:`, error);
+      return null;
+    }
+  }
+
+  async createEmailVariables(data: schema.InsertConsultantEmailVariables): Promise<schema.ConsultantEmailVariables> {
+    try {
+      const [vars] = await db.insert(schema.consultantEmailVariables)
+        .values(data)
+        .returning();
+      return vars;
+    } catch (error: any) {
+      console.error('Error creating email variables:', error);
+      throw error;
+    }
+  }
+
+  async updateEmailVariables(
+    consultantId: string, 
+    updates: Partial<schema.InsertConsultantEmailVariables>
+  ): Promise<schema.ConsultantEmailVariables | null> {
+    try {
+      const [vars] = await db.update(schema.consultantEmailVariables)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(schema.consultantEmailVariables.consultantId, consultantId))
+        .returning();
+      return vars || null;
+    } catch (error: any) {
+      console.error(`Error updating email variables for ${consultantId}:`, error);
+      throw error;
+    }
+  }
+
+  // Leads with active nurturing
+  async getLeadsWithActiveNurturing(consultantId: string): Promise<schema.ProactiveLead[]> {
+    try {
+      return await db.select()
+        .from(schema.proactiveLeads)
+        .where(
+          and(
+            eq(schema.proactiveLeads.consultantId, consultantId),
+            eq(schema.proactiveLeads.nurturingEnabled, true),
+            isNull(schema.proactiveLeads.nurturingOptOutAt),
+            isNotNull(schema.proactiveLeads.nurturingStartDate)
+          )
+        )
+        .orderBy(asc(schema.proactiveLeads.nurturingStartDate));
+    } catch (error: any) {
+      console.error(`Error fetching leads with active nurturing for ${consultantId}:`, error);
+      return [];
+    }
+  }
+
+  async updateLeadNurturingProgress(leadId: string, consultantId: string, emailsSent: number): Promise<boolean> {
+    try {
+      const result = await db.update(schema.proactiveLeads)
+        .set({ 
+          nurturingEmailsSent: emailsSent,
+          nurturingLastEmailAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(schema.proactiveLeads.id, leadId),
+            eq(schema.proactiveLeads.consultantId, consultantId)
+          )
+        )
+        .returning();
+      return result.length > 0;
+    } catch (error: any) {
+      console.error(`Error updating lead nurturing progress ${leadId}:`, error);
+      return false;
     }
   }
 

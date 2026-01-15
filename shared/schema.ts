@@ -3460,6 +3460,23 @@ export const proactiveLeads = pgTable("proactive_leads", {
   sourceRowHash: varchar("source_row_hash", { length: 64 }),
   importedAt: timestamp("imported_at"),
 
+  // ============ EMAIL SYSTEM FIELDS ============
+  // Email diretta del lead (top-level per accesso rapido, fallback a leadInfo.email)
+  email: text("email"),
+  
+  // Email di Benvenuto
+  welcomeEmailEnabled: boolean("welcome_email_enabled").default(true),
+  welcomeEmailSent: boolean("welcome_email_sent").default(false),
+  welcomeEmailSentAt: timestamp("welcome_email_sent_at"),
+  welcomeEmailError: text("welcome_email_error"),
+  
+  // Email Nurturing Annuale
+  nurturingEnabled: boolean("nurturing_enabled").default(false),
+  nurturingStartDate: date("nurturing_start_date"),
+  nurturingEmailsSent: integer("nurturing_emails_sent").default(0),
+  nurturingLastEmailAt: timestamp("nurturing_last_email_at"),
+  nurturingOptOutAt: timestamp("nurturing_opt_out_at"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -3616,6 +3633,160 @@ export const updateProactiveLeadSchema = insertProactiveLeadSchema.partial().omi
 export type ProactiveLead = typeof proactiveLeads.$inferSelect;
 export type InsertProactiveLead = z.infer<typeof insertProactiveLeadSchema>;
 export type UpdateProactiveLead = z.infer<typeof updateProactiveLeadSchema>;
+
+// ============================================================
+// LEAD NURTURING SYSTEM TABLES
+// ============================================================
+
+// Lead Nurturing Templates - 365 email precompilate per consulente
+export const leadNurturingTemplates = pgTable("lead_nurturing_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Identificatore giorno (1-365)
+  dayNumber: integer("day_number").notNull(),
+  
+  // Contenuto email
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  
+  // Categorizzazione
+  category: text("category").$type<
+    "education" | "tips" | "motivation" | "seasonal" | "cta"
+  >().default("education"),
+  tone: text("tone").$type<
+    "professionale" | "amichevole" | "motivazionale"
+  >().default("professionale"),
+  
+  // Stato
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  // Audit
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  uniqueConsultantDay: unique().on(table.consultantId, table.dayNumber),
+  consultantIdx: index("nurturing_templates_consultant_idx").on(table.consultantId),
+  dayNumberIdx: index("nurturing_templates_day_idx").on(table.dayNumber),
+}));
+
+// Lead Nurturing Config - Configurazione nurturing per consulente
+export const leadNurturingConfig = pgTable("lead_nurturing_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  
+  // Stato generazione templates
+  templatesGenerated: boolean("templates_generated").default(false).notNull(),
+  templatesGeneratedAt: timestamp("templates_generated_at"),
+  templatesCount: integer("templates_count").default(0).notNull(),
+  
+  // Input originale (per rigenerazione)
+  businessDescription: text("business_description"),
+  referenceEmail: text("reference_email"),
+  preferredTone: text("preferred_tone").$type<
+    "professionale" | "amichevole" | "motivazionale"
+  >().default("professionale"),
+  
+  // Variabili abilitate
+  enabledVariables: jsonb("enabled_variables").$type<string[]>()
+    .default(sql`'["nome", "link_calendario", "whatsapp", "firma"]'::jsonb`),
+  
+  // Impostazioni invio
+  sendTime: text("send_time").default("09:00"),
+  sendDays: jsonb("send_days").$type<number[]>()
+    .default(sql`'[1,2,3,4,5]'::jsonb`),
+  
+  // Stato sistema nurturing
+  isActive: boolean("is_active").default(false).notNull(),
+  
+  // Audit
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Lead Nurturing Logs - Log invii email nurturing
+export const leadNurturingLogs = pgTable("lead_nurturing_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => proactiveLeads.id, { onDelete: "cascade" }).notNull(),
+  templateId: varchar("template_id").references(() => leadNurturingTemplates.id, { onDelete: "set null" }),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Giorno e ciclo
+  dayNumber: integer("day_number").notNull(),
+  cycleNumber: integer("cycle_number").default(1).notNull(),
+  
+  // Stato invio
+  status: text("status").$type<"sent" | "failed" | "skipped">().notNull(),
+  errorMessage: text("error_message"),
+  
+  // Tracking email
+  emailMessageId: text("email_message_id"),
+  sentAt: timestamp("sent_at").default(sql`now()`),
+  openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
+  
+  // Contenuto inviato (snapshot)
+  subjectSent: text("subject_sent"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  leadIdx: index("nurturing_logs_lead_idx").on(table.leadId),
+  consultantIdx: index("nurturing_logs_consultant_idx").on(table.consultantId),
+  sentAtIdx: index("nurturing_logs_sent_at_idx").on(table.sentAt),
+}));
+
+// Consultant Email Variables - Variabili email per consulente
+export const consultantEmailVariables = pgTable("consultant_email_variables", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  
+  // Variabili standard
+  calendarLink: text("calendar_link"),
+  businessName: text("business_name"),
+  whatsappNumber: text("whatsapp_number"),
+  emailSignature: text("email_signature"),
+  
+  // Variabili personalizzate (key-value)
+  customVariables: jsonb("custom_variables").$type<Record<string, string>>()
+    .default(sql`'{}'::jsonb`),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Lead Nurturing validation schemas
+export const insertLeadNurturingTemplateSchema = createInsertSchema(leadNurturingTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeadNurturingConfigSchema = createInsertSchema(leadNurturingConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeadNurturingLogSchema = createInsertSchema(leadNurturingLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertConsultantEmailVariablesSchema = createInsertSchema(consultantEmailVariables).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Lead Nurturing types
+export type LeadNurturingTemplate = typeof leadNurturingTemplates.$inferSelect;
+export type InsertLeadNurturingTemplate = z.infer<typeof insertLeadNurturingTemplateSchema>;
+export type LeadNurturingConfig = typeof leadNurturingConfig.$inferSelect;
+export type InsertLeadNurturingConfig = z.infer<typeof insertLeadNurturingConfigSchema>;
+export type LeadNurturingLog = typeof leadNurturingLogs.$inferSelect;
+export type InsertLeadNurturingLog = z.infer<typeof insertLeadNurturingLogSchema>;
+export type ConsultantEmailVariables = typeof consultantEmailVariables.$inferSelect;
+export type InsertConsultantEmailVariables = z.infer<typeof insertConsultantEmailVariablesSchema>;
 
 // Proactive Lead Activity Logs - Log delle attività dei lead proattivi
 export const proactiveLeadActivityLogs = pgTable("proactive_lead_activity_logs", {

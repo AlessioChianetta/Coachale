@@ -67,6 +67,8 @@ import clientStateRouter from "./routes/client-state";
 import automatedEmailsRouter from "./routes/automated-emails";
 import momentumRouter from "./routes/momentum";
 import proactiveLeadsRouter from "./routes/proactive-leads";
+import leadNurturingRouter from "./routes/lead-nurturing";
+import publicUnsubscribeRouter from "./routes/public-unsubscribe";
 import campaignsRouter from "./routes/campaigns";
 import customTemplatesRouter from "./routes/whatsapp/custom-templates";
 import templateAssignmentsRouter from "./routes/whatsapp/template-assignments-router";
@@ -12141,6 +12143,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // Proactive Leads routes
   app.use("/api", proactiveLeadsRouter);
 
+  // Lead Nurturing routes (365-day email system)
+  app.use("/api", leadNurturingRouter);
+
   // Marketing Campaigns routes
   app.use("/api", campaignsRouter);
 
@@ -12158,6 +12163,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Public WhatsApp Agent Share routes (unauthenticated access)
   app.use("/public/whatsapp/shares", publicShareRouter);
+
+  // Public Unsubscribe routes (GDPR compliance - no auth required)
+  app.use("/", publicUnsubscribeRouter);
 
   // WhatsApp Template Export to Twilio routes
   app.use("/api", twilioTemplateExportRouter);
