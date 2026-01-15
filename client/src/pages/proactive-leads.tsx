@@ -770,11 +770,14 @@ export default function ProactiveLeadsPage() {
       firstName: lead.firstName,
       lastName: lead.lastName,
       phoneNumber: lead.phoneNumber,
+      email: lead.email || "",
       agentConfigId: lead.agentConfigId,
       leadInfo: appliedLeadInfo,
       idealState: appliedIdealState,
       contactSchedule: contactScheduleFormatted,
       notes: lead.metadata?.notes || "",
+      welcomeEmailEnabled: lead.welcomeEmailEnabled ?? true,
+      nurturingEnabled: lead.nurturingEnabled ?? false,
     });
     setSelectedLead(lead);
     setFormErrors({});
@@ -914,6 +917,13 @@ export default function ProactiveLeadsPage() {
       agentConfigId: formData.agentConfigId,
       contactSchedule: isoSchedule,
     };
+    
+    // Add email and email options if present
+    if (formData.email?.trim()) {
+      dataToSend.email = formData.email.trim();
+      dataToSend.welcomeEmailEnabled = formData.welcomeEmailEnabled;
+      dataToSend.nurturingEnabled = formData.nurturingEnabled;
+    }
     
     // Add notes to metadata if present
     if (formData.notes?.trim()) {

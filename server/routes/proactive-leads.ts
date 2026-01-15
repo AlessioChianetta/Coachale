@@ -221,6 +221,13 @@ router.post("/proactive-leads", authenticateToken, requireRole("consultant"), as
       dataToValidate.metadata = req.body.metadata;
     }
     
+    // Add email and email options if provided
+    if (req.body.email?.trim()) {
+      dataToValidate.email = req.body.email.trim();
+      dataToValidate.welcomeEmailEnabled = req.body.welcomeEmailEnabled === true;
+      dataToValidate.nurturingEnabled = req.body.nurturingEnabled === true;
+    }
+    
     // Validate with Zod schema
     const validatedData = insertProactiveLeadSchema.parse(dataToValidate);
     
@@ -357,6 +364,17 @@ router.patch("/proactive-leads/:id", authenticateToken, requireRole("consultant"
     if (req.body.contactFrequency !== undefined) dataToUpdate.contactFrequency = req.body.contactFrequency;
     if (req.body.status !== undefined) dataToUpdate.status = req.body.status;
     if (req.body.metadata !== undefined) dataToUpdate.metadata = req.body.metadata;
+    
+    // Handle email and email options
+    if (req.body.email !== undefined) {
+      dataToUpdate.email = req.body.email?.trim() || null;
+    }
+    if (req.body.welcomeEmailEnabled !== undefined) {
+      dataToUpdate.welcomeEmailEnabled = req.body.welcomeEmailEnabled === true;
+    }
+    if (req.body.nurturingEnabled !== undefined) {
+      dataToUpdate.nurturingEnabled = req.body.nurturingEnabled === true;
+    }
     
     // Handle leadInfo with defaults from agent config
     if (req.body.leadInfo !== undefined || req.body.agentConfigId) {
