@@ -1534,6 +1534,7 @@ export default function ConsultantAIConfigPage() {
   const [expandedTemplate, setExpandedTemplate] = useState<number | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<{ subject: string; body: string; category: string; dayNumber: number } | null>(null);
   const [showPreviewConfirmDialog, setShowPreviewConfirmDialog] = useState(false);
+  const [showBrandVoiceWarningDialog, setShowBrandVoiceWarningDialog] = useState(false);
   
   // Brand Voice states per Nurturing
   const [brandVoiceData, setBrandVoiceData] = useState<{
@@ -5412,11 +5413,24 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       )}
 
                       <Button
-                        onClick={() => generatePreviewMutation.mutate({
-                          businessDescription,
-                          referenceEmail,
-                          preferredTone,
-                        })}
+                        onClick={() => {
+                          const savedBrandVoice = nurturingConfig?.brandVoiceData;
+                          const hasBrandVoice = savedBrandVoice && Object.keys(savedBrandVoice).some(key => {
+                            const val = (savedBrandVoice as any)[key];
+                            return val !== undefined && val !== null && val !== "" && 
+                                   !(Array.isArray(val) && val.length === 0);
+                          });
+                          
+                          if (!hasBrandVoice) {
+                            setShowBrandVoiceWarningDialog(true);
+                          } else {
+                            generatePreviewMutation.mutate({
+                              businessDescription,
+                              referenceEmail,
+                              preferredTone,
+                            });
+                          }
+                        }}
                         className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                         size="lg"
                         disabled={!businessDescription || isGenerating || isGeneratingPreview || generatePreviewMutation.isPending}
@@ -5979,6 +5993,48 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   Genera tutti i 365 Templates
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBrandVoiceWarningDialog} onOpenChange={setShowBrandVoiceWarningDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Brand Voice non configurato
+            </DialogTitle>
+            <DialogDescription>
+              Non hai ancora salvato le informazioni del Brand Voice. Le email generate saranno generiche e non personalizzate con la tua identità di brand.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              <strong>Consiglio:</strong> Compila almeno i campi principali (Nome Business, Descrizione, Vision/Mission) nella sezione "Brand Voice & Credibilità" e clicca "Salva Brand Voice" prima di generare i template.
+            </p>
+          </div>
+          
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowBrandVoiceWarningDialog(false)}
+            >
+              Torna a configurare
+            </Button>
+            <Button
+              onClick={() => {
+                setShowBrandVoiceWarningDialog(false);
+                generatePreviewMutation.mutate({
+                  businessDescription,
+                  referenceEmail,
+                  preferredTone,
+                });
+              }}
+              variant="secondary"
+            >
+              Continua comunque
             </Button>
           </DialogFooter>
         </DialogContent>
