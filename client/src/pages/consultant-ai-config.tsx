@@ -1996,10 +1996,10 @@ export default function ConsultantAIConfigPage() {
 
   const loadAvailableAgents = async () => {
     try {
-      const res = await fetch("/api/whatsapp/agents", { headers: getAuthHeaders() });
+      const res = await fetch("/api/whatsapp/agent-chat/agents", { headers: getAuthHeaders() });
       if (res.ok) {
-        const data = await res.json();
-        setAvailableAgents(data || []);
+        const response = await res.json();
+        setAvailableAgents(response.data || []);
       }
     } catch {}
   };
@@ -5773,10 +5773,9 @@ Non limitarti a stato attuale/ideale. Attingi da:
                         className="h-4 w-4 text-primary"
                       />
                       <div>
-                        <p className="font-medium text-sm">{agent.name || agent.businessName || "Agente senza nome"}</p>
+                        <p className="font-medium text-sm">{agent.agentName || agent.businessName || "Agente senza nome"}</p>
                         <p className="text-xs text-muted-foreground">
-                          {agent.businessDescription?.substring(0, 100) || "Nessuna descrizione"}
-                          {agent.businessDescription?.length > 100 ? "..." : ""}
+                          {agent.businessName || agent.agentType || "Nessuna descrizione"}
                         </p>
                       </div>
                     </div>
