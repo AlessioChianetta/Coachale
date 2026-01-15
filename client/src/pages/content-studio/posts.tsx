@@ -808,9 +808,12 @@ export default function ContentStudioPosts() {
   const filteredPosts = useMemo(() => {
     let result = [...posts];
 
-    if (selectedFolderId === "root") {
+    // Filtro per cartella
+    if (selectedFolderId === null || selectedFolderId === "root") {
+      // Vista principale: mostra SOLO i post senza cartella (non assegnati)
       result = result.filter((p) => !p.folderId);
     } else if (selectedFolderId) {
+      // Vista cartella specifica: mostra i post in quella cartella
       result = result.filter((p) => p.folderId === selectedFolderId);
     }
 
