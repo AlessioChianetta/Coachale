@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1525,11 +1526,14 @@ export default function ConsultantAIConfigPage() {
   const [referenceEmail, setReferenceEmail] = useState("");
   const [preferredTone, setPreferredTone] = useState<"professionale" | "amichevole" | "motivazionale">("professionale");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 365, percent: 0 });
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategory, setTemplateCategory] = useState<string>("all");
   const [templatePage, setTemplatePage] = useState(1);
   const [expandedTemplate, setExpandedTemplate] = useState<number | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<{ subject: string; body: string; category: string; dayNumber: number } | null>(null);
+  const [showPreviewConfirmDialog, setShowPreviewConfirmDialog] = useState(false);
   
   // Brand Voice states per Nurturing
   const [brandVoiceData, setBrandVoiceData] = useState<{
@@ -1734,6 +1738,85 @@ export default function ConsultantAIConfigPage() {
   });
 
   // Nurturing 365 Mutations
+  const generatePreviewMutation = useMutation({
+    mutationFn: async (data: { businessDescription: string; referenceEmail: string; preferredTone: string }) => {
+      setIsGeneratingPreview(true);
+      const res = await fetch("/api/lead-nurturing/generate-preview", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore generazione preview");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setIsGeneratingPreview(false);
+      if (data.success && data.template) {
+        setPreviewTemplate(data.template);
+        setShowPreviewConfirmDialog(true);
+      } else {
+        toast({ title: "Errore", description: data.error || "Errore generazione", variant: "destructive" });
+      }
+    },
+    onError: (error: any) => {
+      setIsGeneratingPreview(false);
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const generateRemainingMutation = useMutation({
+    mutationFn: async (data: { businessDescription: string; referenceEmail: string; preferredTone: string; previewTemplate: any }) => {
+      setIsGenerating(true);
+      setShowPreviewConfirmDialog(false);
+      setGenerationProgress({ current: 1, total: 365, percent: 0.27 });
+      const res = await fetch("/api/lead-nurturing/generate-remaining", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore generazione");
+      return res;
+    },
+    onSuccess: async (res) => {
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setIsGenerating(false);
+        toast({ title: "Errore", description: "Impossibile leggere lo stream di risposta", variant: "destructive" });
+        return;
+      }
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value);
+        const lines = text.split('\n').filter(l => l.startsWith('data: '));
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line.replace('data: ', ''));
+            if (data.progress) {
+              setGenerationProgress({
+                current: data.progress.current || 1,
+                total: 365,
+                percent: ((data.progress.current || 1) / 365) * 100
+              });
+            }
+            if (data.completed) {
+              setIsGenerating(false);
+              setPreviewTemplate(null);
+              queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/templates"] });
+              toast({ title: "Templates generati!", description: `${data.generated || 365} email create con successo` });
+            }
+          } catch {}
+        }
+      }
+    },
+    onError: (error: any) => {
+      setIsGenerating(false);
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   const generateNurturingTemplatesMutation = useMutation({
     mutationFn: async (data: { businessDescription: string; referenceEmail: string; preferredTone: string }) => {
       setIsGenerating(true);
@@ -5329,16 +5412,21 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       )}
 
                       <Button
-                        onClick={() => generateNurturingTemplatesMutation.mutate({
+                        onClick={() => generatePreviewMutation.mutate({
                           businessDescription,
                           referenceEmail,
                           preferredTone,
                         })}
                         className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                         size="lg"
-                        disabled={!businessDescription || isGenerating || generateNurturingTemplatesMutation.isPending}
+                        disabled={!businessDescription || isGenerating || isGeneratingPreview || generatePreviewMutation.isPending}
                       >
-                        {isGenerating ? (
+                        {isGeneratingPreview ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Generazione anteprima...
+                          </>
+                        ) : isGenerating ? (
                           <>
                             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                             Generazione in corso...
@@ -5346,10 +5434,13 @@ Non limitarti a stato attuale/ideale. Attingi da:
                         ) : (
                           <>
                             <Sparkles className="mr-2 h-5 w-5" />
-                            Genera 365 Templates
+                            Genera Template di Prova
                           </>
                         )}
                       </Button>
+                      <p className="text-xs text-center text-muted-foreground">
+                        Prima generiamo 1 email di esempio, poi decidi se continuare con tutte le 365
+                      </p>
                     </>
                   )}
                 </CardContent>
@@ -5805,6 +5896,91 @@ Non limitarti a stato attuale/ideale. Attingi da:
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPreviewConfirmDialog} onOpenChange={(open) => {
+        if (!open && !isGenerating) {
+          setShowPreviewConfirmDialog(false);
+          setPreviewTemplate(null);
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-emerald-500" />
+              Anteprima Template Giorno 1
+            </DialogTitle>
+            <DialogDescription>
+              Ecco come apparirà la prima email della sequenza. Ti piace lo stile?
+            </DialogDescription>
+          </DialogHeader>
+          
+          {previewTemplate && (
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                <div className="mb-3">
+                  <Label className="text-xs text-muted-foreground">Oggetto:</Label>
+                  <p className="font-medium text-lg">{previewTemplate.subject}</p>
+                </div>
+                <Separator className="my-3" />
+                <div>
+                  <Label className="text-xs text-muted-foreground">Corpo email:</Label>
+                  <div 
+                    className="mt-2 prose prose-sm dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: previewTemplate.body }}
+                  />
+                </div>
+              </div>
+              
+              <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                  <strong>Nota:</strong> Se confermi, verranno generate tutte le 365 email della sequenza.
+                  Questo processo richiederà alcuni minuti.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowPreviewConfirmDialog(false);
+                setPreviewTemplate(null);
+              }}
+              disabled={isGenerating}
+            >
+              Annulla e Riprova
+            </Button>
+            <Button
+              onClick={() => {
+                if (previewTemplate) {
+                  generateRemainingMutation.mutate({
+                    businessDescription,
+                    referenceEmail,
+                    preferredTone,
+                    previewTemplate,
+                  });
+                }
+              }}
+              disabled={isGenerating || !previewTemplate}
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generazione...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Genera tutti i 365 Templates
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

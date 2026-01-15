@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { eq, and, desc, asc, inArray, sql, notInArray } from "drizzle-orm";
 import * as schema from "@shared/schema";
-import { generateNurturingTemplates, regenerateTemplate, getTemplateCount } from "../services/lead-nurturing-generation-service";
+import { generateNurturingTemplates, regenerateTemplate, getTemplateCount, generatePreviewTemplate, generateRemainingTemplates } from "../services/lead-nurturing-generation-service";
 import { validateTemplate } from "../services/template-compiler";
 import { extractTextFromFile } from "../services/document-processor";
 import fs from "fs/promises";
@@ -362,6 +362,101 @@ router.post("/lead-nurturing/generate", authenticateToken, requireRole("consulta
     res.end();
   } catch (error: any) {
     console.error("[NURTURING] Error generating templates:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: error.message });
+    } else {
+      res.write(`data: ${JSON.stringify({ status: "error", error: error.message })}\n\n`);
+      res.end();
+    }
+  }
+});
+
+router.post("/lead-nurturing/generate-preview", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { businessDescription, targetAudience, tone, companyName, senderName } = req.body;
+    
+    if (!businessDescription) {
+      return res.status(400).json({ success: false, error: "businessDescription è richiesto" });
+    }
+    
+    const config = await storage.getNurturingConfig(consultantId);
+    const brandVoiceData = config?.brandVoiceData || undefined;
+    
+    const result = await generatePreviewTemplate({
+      consultantId,
+      businessDescription,
+      targetAudience: targetAudience || "Clienti interessati ai nostri servizi",
+      tone: tone || "professionale ma amichevole",
+      companyName,
+      senderName,
+      brandVoiceData,
+    });
+    
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.error });
+    }
+    
+    res.json({ success: true, template: result.template });
+  } catch (error: any) {
+    console.error("[NURTURING] Error generating preview:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/lead-nurturing/generate-remaining", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { businessDescription, targetAudience, tone, companyName, senderName, previewTemplate } = req.body;
+    
+    if (!businessDescription) {
+      return res.status(400).json({ success: false, error: "businessDescription è richiesto" });
+    }
+    
+    const config = await storage.getNurturingConfig(consultantId);
+    const brandVoiceData = config?.brandVoiceData || undefined;
+    
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+    
+    if (previewTemplate) {
+      await db.delete(schema.leadNurturingTemplates)
+        .where(eq(schema.leadNurturingTemplates.consultantId, consultantId));
+      
+      await db.insert(schema.leadNurturingTemplates).values({
+        consultantId,
+        dayNumber: 1,
+        subject: previewTemplate.subject,
+        body: previewTemplate.body,
+        category: previewTemplate.category || "welcome",
+        isActive: true,
+      });
+      
+      res.write(`data: ${JSON.stringify({ progress: { current: 1, total: 365, percent: 0.27 } })}\n\n`);
+    }
+    
+    const result = await generateRemainingTemplates({
+      consultantId,
+      businessDescription,
+      targetAudience: targetAudience || "Clienti interessati ai nostri servizi",
+      tone: tone || "professionale ma amichevole",
+      companyName,
+      senderName,
+      brandVoiceData,
+    }, 2, res);
+    
+    res.write(`data: ${JSON.stringify({ 
+      completed: true,
+      status: result.success ? "completed" : "error",
+      generated: result.generated + 1,
+      errors: result.errors 
+    })}\n\n`);
+    
+    res.end();
+  } catch (error: any) {
+    console.error("[NURTURING] Error generating remaining templates:", error);
     if (!res.headersSent) {
       res.status(500).json({ success: false, error: error.message });
     } else {

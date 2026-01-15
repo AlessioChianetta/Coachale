@@ -419,3 +419,129 @@ export async function getTemplateCount(consultantId: string): Promise<number> {
     .where(eq(schema.leadNurturingTemplates.consultantId, consultantId));
   return result.length;
 }
+
+export async function generatePreviewTemplate(
+  config: GenerationConfig
+): Promise<{ success: boolean; template?: { subject: string; body: string; category: string; dayNumber: number }; error?: string }> {
+  try {
+    const { consultantId } = config;
+    console.log(`[NURTURING GENERATION] Generating preview template for consultant ${consultantId}`);
+    
+    const knowledgeBaseContext = await fetchNurturingKnowledgeItems(consultantId);
+    const template = await generateTemplateForDay(1, config, consultantId, knowledgeBaseContext);
+    
+    return {
+      success: true,
+      template: {
+        ...template,
+        dayNumber: 1,
+      },
+    };
+  } catch (error: any) {
+    console.error("[NURTURING GENERATION] Error generating preview:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function generateRemainingTemplates(
+  config: GenerationConfig,
+  startFromDay: number = 2,
+  res?: Response
+): Promise<{ success: boolean; generated: number; errors: string[] }> {
+  const { consultantId } = config;
+  const errors: string[] = [];
+  let generated = 0;
+  
+  console.log(`[NURTURING GENERATION] Starting generation from day ${startFromDay} for consultant ${consultantId}`);
+  
+  const sendProgress = (progress: GenerationProgress) => {
+    if (res && !res.writableEnded) {
+      res.write(`data: ${JSON.stringify(progress)}\n\n`);
+    }
+  };
+  
+  try {
+    const knowledgeBaseContext = await fetchNurturingKnowledgeItems(consultantId);
+    
+    const days = Array.from({ length: 365 - startFromDay + 1 }, (_, i) => i + startFromDay);
+    const totalDays = days.length;
+    
+    for (let i = 0; i < days.length; i += BATCH_SIZE) {
+      const batch = days.slice(i, i + BATCH_SIZE);
+      
+      sendProgress({
+        total: totalDays,
+        completed: generated,
+        current: batch[0],
+        category: getCategoryForDay(batch[0]),
+        status: "running",
+      });
+      
+      const batchPromises = batch.map(async (day) => {
+        try {
+          const template = await generateTemplateForDay(day, config, consultantId, knowledgeBaseContext);
+          
+          await db.insert(schema.leadNurturingTemplates).values({
+            consultantId,
+            dayNumber: day,
+            subject: template.subject,
+            body: template.body,
+            category: template.category,
+            isActive: true,
+          });
+          
+          return { success: true, day };
+        } catch (error: any) {
+          console.error(`[NURTURING GENERATION] Error generating day ${day}:`, error.message);
+          return { success: false, day, error: error.message };
+        }
+      });
+      
+      const results = await Promise.all(batchPromises);
+      
+      for (const result of results) {
+        if (result.success) {
+          generated++;
+        } else {
+          errors.push(`Day ${result.day}: ${result.error}`);
+        }
+      }
+      
+      if (i + BATCH_SIZE < days.length) {
+        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES_MS));
+      }
+    }
+    
+    await db.update(schema.leadNurturingConfig)
+      .set({
+        templatesGenerated: generated + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
+    
+    console.log(`[NURTURING GENERATION] Completed: ${generated} templates generated`);
+    
+    sendProgress({
+      total: totalDays,
+      completed: generated,
+      current: 365,
+      category: "completed",
+      status: "completed",
+    });
+    
+    return { success: true, generated, errors };
+  } catch (error: any) {
+    console.error("[NURTURING GENERATION] Fatal error:", error);
+    
+    sendProgress({
+      total: 365,
+      completed: generated,
+      current: 0,
+      category: "error",
+      status: "error",
+      error: error.message,
+    });
+    
+    return { success: false, generated, errors: [...errors, error.message] };
+  }
+}
